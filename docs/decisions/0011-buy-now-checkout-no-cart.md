@@ -1,6 +1,8 @@
 # ADR-0011 — Buy-now checkout; no cart; item-level status stands regardless
 
-**Status:** Accepted · 2026-09-01
+**Status:** Superseded by [ADR-0018](0018-shopping-cart-and-guest-checkout.md) · superseded 2026-09-01
+
+**Superseded:** The original reasoning weighed a cart against *UI convenience* and found no demand. That framing was wrong. Under a per-order manual bank transfer, every extra product meant another transfer, another unique amount, another operator match — buying two things was a payment-friction problem, and "nobody asks to combine products" was a measurement of the rail, not of what customers want. A gateway makes one payment for N products free, and a shop without a cart reads as unfinished to the customers this shop needs to convince. ADR-0018 adds a session cart. The half of this ADR that stands untouched is the argument for item-level status: it was deliberately built on grounds independent of any cart, and the schema was already multi-item, so the cart is a view change and not a migration — exactly as predicted below.
 
 **Context:** At under one order/day the typical order is one plan; a cart drags multi-product checkout UI and edge cases with no demonstrated demand. Cutting it weakens the *original* argument for per-item status, which had to be re-examined rather than passed over.
 

@@ -4,7 +4,7 @@ Read `docs-local/progress.md` first, every session. Continuity lives in files, n
 
 ## What this is
 
-An Iranian web shop (premshop.ir) selling digital subscriptions and accounts — run by **one person**, serving a few dozen customers, moving **real money** over card-to-card transfers, and storing **other people's account credentials**. The scope is genuinely small. The stakes are not. The engineering bar is set by the stakes, not the scope.
+An Iranian web shop (premshop.ir) selling digital subscriptions and accounts — run by **one person**, serving a few dozen customers, moving **real money** through an Iranian payment gateway with an operator-only manual fallback, and storing **other people's account credentials**. The scope is genuinely small. The stakes are not. The engineering bar is set by the stakes, not the scope.
 
 ## Scope versus quality
 
@@ -13,7 +13,7 @@ Cutting features is fine. Cutting craft is not. The test for which is which is *
 ## Never traded away for speed
 
 - Field-level encryption for delivered credentials **and** `customer_input` — with the key escrowed offline before any real delivery. A restore that can't decrypt is a failed restore. (ADR-0007)
-- Server-side price calculation, idempotent payment confirmation, DB-enforced unique-amount matching, and a `Refund` ledger row behind every REFUNDED status. (ADR-0005, 0006)
+- Server-side price calculation, server-side verification only — never a callback's word — with an amount comparison that fails the payment on mismatch, idempotent confirmation through the one shared entry point, the inquiry sweep that catches lost callbacks, and a `Refund` ledger row behind every REFUNDED status. (ADR-0005, 0019)
 - Status transitions only through service methods; every transition writes its audit row in the same transaction. (ADR-0003)
 - Object-level ownership checks — logged-in is not authorized.
 - No credential *values* in any message, log, or error report — ever. The single-use magic link is the one sanctioned convenience, and only with its full constraint list. (ADR-0008)
@@ -22,7 +22,9 @@ Cutting features is fine. Cutting craft is not. The test for which is which is *
 
 ## Deliberately not built — don't helpfully add these back
 
-No DRF/API before phase 3. No cart. No coupons or discount field. No `IN_PROGRESS` or `REPLACED` status. No inventory, supplier, or FX models. No RBAC, wallet, or ticket system. No Postgres FTS. No identity tables. No PaymentProvider interface until Zibal provides the second implementation. Each has an ADR with the condition that would flip it (see ADR-0014); meeting the condition is the only way back in.
+No DRF/API before phase 3. No `IN_PROGRESS` or `REPLACED` status. No inventory, supplier, or FX models. No RBAC, wallet, or ticket system. No Postgres FTS. No identity tables. No PaymentProvider interface until a genuine *second* gateway exists — Zibal is the one implementation, not the first of two (ADR-0013). Each has an ADR with the condition that would flip it (see ADR-0014); meeting the condition is the only way back in.
+
+The cart, discount codes and promotional pricing **are** built and left this list — ADR-0018, ADR-0020, ADR-0021. Don't remove them on the strength of an older note.
 
 ## How we work
 

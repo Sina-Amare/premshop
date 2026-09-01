@@ -13,6 +13,6 @@
 - **Panel = three custom views** (queue, delivery, dashboard) + stock admin for cold-path CRUD. *Flips at* ~10 orders/day, a large repricing-heavy catalog, or a second operator.
 - **Search = normalized column + `icontains`** (yeh/kaf/half-space/digit folding), deliberately unindexed; pg_trgm is the named upgrade path. Postgres FTS has no Persian stemmer — normalization *is* the Persian search problem at this size.
 - **Review extras cut** (auto credential-scan duplicates total manual moderation; helpfulness voting is noise below ~20 reviews/product).
-- **Also not built, recorded here so nobody adds them back:** cart (ADR-0011), coupons/discount field (ADR-0005), inventory/stock, supplier+FX models, RBAC, wallet/ledger, ticket system, queue soft-lock, IN_APP channel.
+- **Also not built, recorded here so nobody adds them back:** inventory/stock, supplier+FX models, RBAC, wallet/ledger, ticket system, queue soft-lock, IN_APP channel. *(The cart and the discount field left this ledger on 2026-09-01 — both are now built, per [ADR-0018](0018-shopping-cart-and-guest-checkout.md) and [ADR-0020](0020-discount-codes.md).)*
 
 **Consequences:** Adding any of these back requires meeting its flip condition, not just enthusiasm.

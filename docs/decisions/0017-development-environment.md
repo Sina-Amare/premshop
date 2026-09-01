@@ -11,6 +11,6 @@ Database access follows **least privilege**: a dedicated `premshop` role (LOGIN,
 **Alternatives considered:**
 - *Full WSL development* (best parity: same OS, native Docker and Celery). Rejected for now — it requires relocating the repository into the WSL filesystem for acceptable speed, re-establishing git credentials there, a sudo password on every boot, and markedly slower tooling; it buys protection against a narrow risk class that CI already covers on every push.
 - *Docker Desktop on Windows*: another daemon and licence surface for the same coverage CI provides.
-- *SQLite for local development*: rejected outright — the design depends on partial unique indexes that SQLite lacks, so tests would pass while proving nothing (see ADR-0006).
+- *SQLite for local development*: rejected outright — the design depends on partial unique indexes that SQLite lacks, so tests would pass while proving nothing (see [ADR-0019](0019-payment-gateway.md)).
 
 **Consequences:** Local Postgres is 15.4 while production will pin its own major version — immaterial for the features used, and revisited when the production stack is built. Celery on Windows will need a development-only pool flag when it arrives. If CI ever starts catching Windows-specific failures repeatedly, that is the signal to revisit full WSL development.

@@ -9,7 +9,7 @@
 - Stated threat model: theft of a DB dump/backup — not live-host compromise (key and DB share the server; accepted at this scale).
 - **Key escrow before the first real delivery**: offline copies of the field key and the backup passphrase in the operator's password manager plus one offline copy. The periodic restore drill must **decrypt a row** to count as passed.
 - Every reveal (customer, operator, or magic-link) writes a `CredentialAccessLog` row.
-- Retention (owner-accepted): receipt images 90 days after confirmation; delivered credentials and `customer_input` hard-deleted at `expires_at + warranty + 30 days`; access logs 1 year; enforced by scheduled jobs and stated on the privacy page. Receipts live outside public media, served only via an authenticated view.
+- Retention (owner-accepted): delivered credentials and `customer_input` hard-deleted at `expires_at + warranty + 30 days`; access logs 1 year; enforced by scheduled jobs and stated on the privacy page.
 
 **Alternatives considered:** external KMS (overkill for one VPS); per-item keys / crypto-shredding (complexity without a driving requirement); keeping credentials forever (silently grows the blast radius of every other failure).
 

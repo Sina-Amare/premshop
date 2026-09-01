@@ -1,6 +1,6 @@
 # پرم‌شاپ · PremShop
 
-Online shop for digital subscriptions and accounts (premshop.ir). Django modular monolith; server-rendered Persian RTL; card-to-card payments at launch. One operator, real money, real credentials — small scope, high bar.
+Online shop for digital subscriptions and accounts (premshop.ir). Django modular monolith; server-rendered Persian RTL; payments through an Iranian gateway, with an operator-only manual fallback. One operator, real money, real credentials — small scope, high bar.
 
 - **Start here:** [docs/README.md](docs/README.md) — maps every question to its document
 - **Why it's built this way:** [docs/decisions/](docs/decisions/README.md)
@@ -29,4 +29,4 @@ mypy apps config    # types
 pytest -q           # tests, against real PostgreSQL
 ```
 
-**No migrations yet, deliberately:** the first migration in this project's history must be the custom user model (S2), because swapping Django's built-in user after tables exist is painful. See [ADR-0012](docs/decisions/0012-auth-email-otp.md).
+**No migrations yet, deliberately:** the first migration in this project's history must be the custom user model (S2), because swapping Django's built-in user after tables exist is painful. That ordering rule belongs to the migration strategy; the user model itself is [ADR-0012](docs/decisions/0012-auth-email-otp.md).

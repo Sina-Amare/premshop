@@ -71,6 +71,7 @@ Nine values, and nothing outside them appears in the stylesheet:
 - `tabular-nums` on every price, count and code — Vazirmatn's ۱ and ۳ differ in width by over 2×, which makes any stacked column ragged without it.
 - Zero renders **رایگان**, never «۰ تومان». رﯾﺎل never appears in the UI.
 - The currency word is never the numeral's weight — that pairing is a reliable amateur tell.
+- A promotional price shows the original beside it, struck through and muted (`.price__was`: `Muted #78716C`, `line-through`, one step down the size scale, never bold). It stays a neutral — **never amber**, which means time and only time. The promotional figure keeps the price numeral treatment; the two never share a weight.
 - Inputs keep Latin digits and `direction: ltr`: in RTL the caret, Home/End and backspace all run backwards while someone types a card number, which is the bug that ends a payment.
 - Logical properties only (`margin-inline-start`, never `margin-left`). Directional icons mirror; clocks, locks, phones and cards do not.
 

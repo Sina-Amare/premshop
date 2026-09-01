@@ -1,6 +1,8 @@
 # ADR-0006 — Card-to-card design: enforced uniqueness, pending-only expiry, revive
 
-**Status:** Accepted · 2026-09-01
+**Status:** Superseded by [ADR-0019](0019-payment-gateway.md) · superseded 2026-09-01
+
+**Superseded:** An Iranian payment gateway (Zibal-class) is the rail. Everything below existed to make a human-matched bank transfer safe — unique-amount allocation and its partial unique index, the 72h quarantine, receipt upload, near-miss shortfall matching, the `UnmatchedTransfer` ledger, revive-from-expired, destination-card slots and snapshots. A gateway settles the amount itself and answers a server-to-server verify, so none of that machinery has a job left; it is deleted, not ported. The reasoning is kept because the failures it was built against — money arriving that matches nothing, a payment confirmed for less than the order costs, a confirmation that fires twice — did not go away with the rail. ADR-0019 answers each of them with gateway mechanisms, and the operator's manual fallback there is deliberately *not* a small card-to-card: no unique amounts, no receipts, no customer submission.
 
 **Context:** Card-to-card with unique-amount matching is the only rail at launch. Transfers are instant and irreversible; customers pay late, pay rounded amounts, pay twice; the operator sleeps. The happy path alone guarantees unaccounted money within the first month.
 
