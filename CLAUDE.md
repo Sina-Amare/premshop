@@ -1,6 +1,6 @@
 # CLAUDE.md — PremShop
 
-Read `docs/progress.md` first, every session. Continuity lives in files, not in memory.
+Read `docs-local/progress.md` first, every session. Continuity lives in files, not in memory.
 
 ## What this is
 
@@ -43,4 +43,10 @@ The shop's biggest obstacle is customer doubt about actually receiving the produ
 
 ## Where to look things up
 
-`docs/README.md` maps every question to its document. Shortest version: *why* → `docs/decisions/` · *what data* → `data-model.md` · *what's allowed to happen* → `state-machine.md` · *who owns what code* → `services-and-modules.md` · *what's next* → `progress.md` + `step-plans/` · *what's undecided* → `open-questions.md`. The design discussion that produced all this is in `docs-local/` (not in the repo); conclusions are in ADRs.
+Two locations, deliberately split.
+
+**In the repo — `docs/`, the engineering reference anyone may read:** *why it's built this way* → `docs/decisions/` (ADRs) · *what data* → `data-model.md` · *what's allowed to happen* → `state-machine.md` · *who owns what code* → `services-and-modules.md` · *what messages go out* → `notifications-and-bot.md` · *what it looks like* → `design-language.md`.
+
+**Outside the repo — `docs-local/`, gitignored:** the product brief (cost prices, margins, supplier arrangements), the working agreement, the build roadmap and its business gates, `progress.md`, `open-questions.md`, step plans, and the whole design discussion. These are internal or commercially sensitive; conclusions from them live in ADRs, which is what the repo carries.
+
+When a decision made in `docs-local/` matters to someone reading the code, it belongs in an ADR — that is the bridge between the two.

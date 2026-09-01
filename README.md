@@ -4,7 +4,6 @@ Online shop for digital subscriptions and accounts (premshop.ir). Django modular
 
 - **Start here:** [docs/README.md](docs/README.md) — maps every question to its document
 - **Why it's built this way:** [docs/decisions/](docs/decisions/README.md)
-- **Current state:** [docs/progress.md](docs/progress.md)
 - **Working with AI sessions:** [CLAUDE.md](CLAUDE.md)
 
 ## Local setup

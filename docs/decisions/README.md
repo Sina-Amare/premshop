@@ -40,5 +40,5 @@ The contract documents (data model, state machine, services, notifications, buil
 | D15, D16 | Flat catalog, normalized search / review cuts → 0014 |
 | D17, D18 | Outbox + dedupe + heartbeat / events on-commit → 0010 |
 | D19, D20 | Cache no-store rules / observability + scrubbing → 0010, 0015 |
-| D21, D22 | App map / step-order changes → 0002, build-plan.md |
+| D21, D22 | App map / step-order changes → 0002; roadmap kept outside the repo |
 | R1–R22 | Cross-artifact reconciliation rulings, folded into the documents themselves |
