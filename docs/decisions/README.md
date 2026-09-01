@@ -20,6 +20,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0014](0014-deliberate-simplifications.md) | The simple-over-flexible verdicts, each with its flip condition |
 | [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
 | [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal on stone; amber means time |
+| [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production |
 
 ## Legacy shorthand map
 
