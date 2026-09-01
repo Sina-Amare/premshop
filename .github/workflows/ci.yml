@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  # Every branch, not just main: a gate that only runs after merging is a
+  # report, not a gate.
+  push:
+  pull_request:
+
+concurrency:
+  # A newer push makes an in-flight run obsolete; don't pay for both.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Test-only values. Real secrets never appear in CI for this project.
+  SECRET_KEY: ci-only-not-a-real-secret
+  DEBUG: "false"
+  ALLOWED_HOSTS: localhost,127.0.0.1
+  DATABASE_URL: postgres://premshop:premshop@localhost:5432/premshop_test
+  DJANGO_SETTINGS_MODULE: config.settings.dev
+
+jobs:
+  lint:
+    name: Lint, format, types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: ruff (likely bugs, imports, security patterns)
+        run: uv run ruff check .
+      - name: black (formatting is not a matter of opinion)
+        run: uv run black --check .
+      - name: mypy (types)
+        run: uv run mypy apps config
+
+  test:
+    name: Tests (real PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      # Real Postgres, never SQLite: the design leans on partial unique indexes
+      # that SQLite lacks, so a SQLite suite would pass while proving nothing.
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: premshop
+          POSTGRES_PASSWORD: premshop
+          POSTGRES_DB: premshop_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: pytest
+        run: uv run pytest -q
+
+  audit:
+    name: Dependency and security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: pip-audit (known CVEs in dependencies)
+        run: uv run pip-audit --skip-editable
+      - name: bandit (insecure code patterns)
+        run: uv run bandit -q -r apps config -x "*/tests/*"

@@ -26,4 +26,48 @@ dev = [
     "bandit>=1.7",
 ]
 
-# Tool configuration (ruff/black/mypy/pytest) lands with S1, when CI runs them.
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# E/F pyflakes+pycodestyle, I import order, UP modern syntax, B bugbear (likely
+# bugs), DJ Django-specific checks, S bandit-style security rules.
+select = ["E", "F", "I", "UP", "B", "DJ", "S"]
+ignore = ["E501"]  # black owns line length
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*" = ["S101"]  # assert is the point of a test
+"config/settings/*" = ["F403", "F405"]  # star-import is the settings convention
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+exclude = ["migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["apps.*.tests.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# jdatetime ships no type information; we only use its date conversion.
+module = ["jdatetime.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["test_*.py"]
+addopts = "--strict-markers --tb=short"
+testpaths = ["apps"]

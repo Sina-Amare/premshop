@@ -1,0 +1,41 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}پرم‌شاپ{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
+
+  {# Preload the body face actually used above the fold; the rest load normally. #}
+  <link rel="preload" href="{% static 'fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="min-h-screen bg-ground text-ink">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:right-2 focus:bg-white focus:p-3">
+    رفتن به محتوای اصلی
+  </a>
+
+  <header class="border-b border-line bg-surface">
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
+      <a href="/" class="font-[family-name:var(--font-display)] text-2xl font-extrabold text-accent no-underline">
+        پرم‌شاپ
+      </a>
+      {% block header_extra %}{% endblock %}
+    </div>
+  </header>
+
+  <main id="main" class="mx-auto max-w-5xl px-5 py-10">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="mt-16 border-t border-line bg-surface">
+    <div class="mx-auto max-w-5xl px-5 py-6 text-sm text-muted">
+      {% block footer %}پرم‌شاپ{% endblock %}
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

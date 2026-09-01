@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+/* Tailwind v4 scans these for class names. */
+@source "../../templates";
+@source "../../apps";
+
+/* ---------------------------------------------------------------------------
+   Fonts — self-hosted only. Iranian visitors cannot reach foreign font CDNs,
+   so a remote font means an unstyled page. font-display: swap renders text
+   immediately in a fallback and swaps when the real face arrives, avoiding
+   invisible text while fonts load (ADR-0016).
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+   Design tokens (ADR-0016 / docs/design-language.md).
+   Named values, referenced everywhere — never a raw hex in a template. One
+   neutral ramp, one accent, semantic status colours. Amber means TIME and
+   nothing else, so the operator's eye learns one signal.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-body: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  --font-display: "Estedad", "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+
+  --color-ground: #fafaf9;
+  --color-surface: #ffffff;
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-line: #e7e5e4;
+
+  --color-accent: #0f766e;
+  --color-accent-hover: #115e59;
+  --color-accent-soft: #f0fdfa;
+
+  --color-success: #16a34a;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+
+  --radius-card: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer — Persian typography rules from the working agreement §9.
+--------------------------------------------------------------------------- */
+@layer base {
+  html {
+    font-family: var(--font-body);
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-size: 17px;
+    line-height: 1.9; /* Persian needs more leading than Latin defaults give */
+  }
+
+  /* Persian script must never be letter-spaced: it breaks the joins between
+     letters. Italics and uppercase do not exist in Persian either. */
+  * {
+    letter-spacing: normal !important;
+    font-style: normal;
+    text-transform: none;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    line-height: 1.45;
+  }
+  h1 { font-size: 41px; font-weight: 800; }
+  h2 { font-size: 33px; font-weight: 800; }
+  h3 { font-size: 26px; font-weight: 600; }
+  h4 { font-size: 21px; font-weight: 600; }
+
+  a {
+    color: var(--color-accent);
+    text-underline-offset: 4px;
+  }
+  a:hover { color: var(--color-accent-hover); }
+
+  /* Latin runs inside Persian text keep their own direction (order otherwise
+     scrambles around punctuation). */
+  .latin { unicode-bidi: isolate; direction: ltr; display: inline-block; }
+}
+
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    border-width: 1px;
+    padding-inline: 0.75rem;
+    padding-block: 0.25rem;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .badge-pending  { background: var(--color-ground);        border-color: var(--color-line);    color: var(--color-muted); }
+  .badge-queued   { background: var(--color-accent-soft);   border-color: var(--color-accent);  color: var(--color-accent); }
+  .badge-waiting  { background: var(--color-warning-soft);  border-color: var(--color-warning); color: var(--color-warning); }
+  .badge-delivered{ background: var(--color-success-soft);  border-color: var(--color-success); color: var(--color-success); }
+  .badge-overdue  { background: var(--color-danger-soft);   border-color: var(--color-danger);  color: var(--color-danger); }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+}

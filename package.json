@@ -1,0 +1,29 @@
+{
+  "name": "premshop",
+  "version": "1.0.0",
+  "description": "PremShop CSS toolchain",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "css": "tailwindcss -i static/css/input.css -o static/css/app.css --minify",
+    "css:watch": "tailwindcss -i static/css/input.css -o static/css/app.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sina-Amare/premshop.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Sina-Amare/premshop/issues"
+  },
+  "homepage": "https://github.com/Sina-Amare/premshop#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "private": true
+}

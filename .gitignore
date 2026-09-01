@@ -20,10 +20,10 @@ htmlcov/
 staticfiles/
 media/
 
-# Frontend build artifacts (source CSS is tracked; built output is not)
-static/css/build/
-*.min.css.map
-tailwindcss.exe
+# Frontend: source CSS and the lockfile are tracked; installed packages and
+# built output are not (they are reproducible from package-lock.json).
+node_modules/
+static/css/app.css
 
 # OS / editor
 .DS_Store
