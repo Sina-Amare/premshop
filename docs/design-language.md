@@ -1,55 +1,114 @@
 # Design Language
 
-The chosen visual system (decision: [ADR-0016](decisions/0016-brand-and-type.md)). The site's biggest conversion obstacle is customer doubt; the typography and palette exist to read as an established Iranian business — composed, specific, unhurried. Not a template, not a poster.
+The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
+
+## The stance
+
+This shop should read like **a small business that keeps records** — not like a brand, and not like a landing page. The buyer's fear is paying into a void, so the antidote is visible bookkeeping: hairlines, aligned figures, stated hours, exact amounts, and a payable typeset with more care than any headline on the site. Warm stone paper, one teal accent spent sparingly, amber only when a clock is running.
 
 ## Type
 
-| Role | Face | Weights shipped | Notes |
-|---|---|---|---|
-| Body | **Vazirmatn** (OFL) | 400 · 500 · 700 | the Persian-web workhorse; fallback stack `Vazirmatn, "Segoe UI", Tahoma, sans-serif` |
-| Headings / display | **Estedad** (OFL-1.1) | 600 · 800 | contrast through skeleton + weight, same modern idiom as the body |
+| Role | Face | Weight | Size | Line-height |
+|---|---|---|---|---|
+| h1 | Estedad | 800 | 34px | 1.25 |
+| h2 | Estedad | 800 | 26px | 1.35 |
+| h3 | Estedad | 600 | 20px | 1.45 |
+| h4 | Estedad | 600 | 17px | 1.5 |
+| Body prose | Vazirmatn | 400 | 17px | **1.85** |
+| UI / buttons | Vazirmatn | 400–500 | 15px | 1.5–1.6 |
+| Small, meta | Vazirmatn | 400 | 13px | 1.7 |
+| Micro, footnote | Vazirmatn | 400 | 12px | 1.9 |
+| Label (the only use of 500) | Vazirmatn | 500 | 13px | 1.5 |
+| Price numeral | Estedad | 800 | 24 / 32 / 40px | 1.2 |
+| Currency word | Vazirmatn | 400 | 0.72em of numeral | 1 |
 
-Self-hosted woff2 only — never a font CDN (Iranian clients can't reach them). `font-display: swap`. Vendor each family's `OFL.txt` beside the files.
+**Why these numbers.** Persian carries finer detail than Latin at the same size — the dot clusters distinguishing ب/پ/ت/ث — so the base is 17px, not 16, and nothing goes below 12px. Descenders (ج, ی) drop well below the baseline while marks sit high; at 1.5 they nearly touch the next line, which is the loudest "translated from a Latin design" signal there is. Hence 1.85 on prose. Headings run tight because at 26px+ the collision is proportionally smaller and tightness reads as confidence. Weight jumps are ≥200 because Persian's uniform baseline mass makes a 500/600 difference invisible.
 
-## Scale (Persian-adjusted per working agreement §9)
+**`size-adjust: 82%` on Estedad** normalises it against Vazirmatn: it renders larger at the same nominal size, so without this every heading reads louder than the scale intends.
 
-| Token | Size / line-height | Face & weight |
-|---|---|---|
-| body | 17px / 1.9 | Vazirmatn 400 |
-| body-sm | 15px / 1.8 | Vazirmatn 400 |
-| h4 / h3 | 21px · 26px / 1.5 | Estedad 600 |
-| h2 / h1 | 33px · 41px / 1.4 | Estedad 800 |
-| panel body | 14–15px / 1.6 | Vazirmatn 400/500 — the panel is a tool; denser |
+**Absolute rules.** `letter-spacing: 0` everywhere — Arabic script is cursive and any tracking breaks the joins. No italic (neither family ships one; a synthesised oblique shears the joins), no `text-transform` (it would uppercase the Latin half of «اشتراک Claude Pro»), no `justify` (no browser implements kashida; you get rivers). `font-synthesis: none`. Latin runs inside Persian are isolated so bidi cannot scramble them.
 
-## Palette
+## Spacing
 
-One neutral ramp, one accent, semantic status colors — nothing else. All pairs pass WCAG AA for their use.
+Nine values, and nothing outside them appears in the stylesheet:
+
+`4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`
+
+| Values | Job |
+|---|---|
+| 4, 8 | inside a component — icon↔label, badge padding |
+| 12, 16 | tightly related — label↔input, card inner gaps |
+| 24, 32 | component↔component |
+| 48, 64 | block↔block within a page region |
+| 96 | page region↔region |
+
+**The rhythm rule:** the gap *between* groups is at least twice the gap *within* them. If two gaps are equal but the relationships aren't, one is wrong.
+
+**Asymmetry is deliberate.** Headings own the space that follows them, never split evenly. Cards get more padding at the block-end because Persian descenders eat optical space there. Buttons are `11px 20px 9px` — Persian ink sits low in the line box, so equal padding reads as floating high.
+
+## Colour
 
 | Role | Value | Use |
 |---|---|---|
-| Ground | stone-50 `#FAFAF9` | page background (warm neutral, deliberately not template blue-gray) |
-| Ink | stone-900 `#1C1917` | text |
-| Muted | stone-500 `#78716C` | secondary text; borders at stone-200/300 |
-| **Accent** | teal-700 `#0F766E` | links, primary buttons, active states; hover teal-800 `#115E59` |
-| Success | green-600 `#16A34A` | DELIVERED, payment confirmed — always with text, never color alone |
-| **Warning** | amber-600 `#D97706` | **time meaning only**: SLA <6h, AWAITING_INPUT, payment window. The one loud thing in the panel |
-| Danger | red-600 `#DC2626` | overdue, failed payment, destructive actions |
+| Ground / Surface | `#FAFAF9` / `#FFFFFF` | warm stone paper, white slabs on it |
+| Fill subtle | `#F2F1F0` | hover fills, quiet panels |
+| Line / Line strong | `#E7E5E4` / `#D6D3D1` | hairlines; borders that must be seen |
+| Muted / Secondary / Ink | `#78716C` / `#57534E` / `#1C1917` | text ramp |
+| **Accent** | teal-700 `#0F766E` | see budget below |
+| Success | `#16A34A` (text `#166534`) | delivered, confirmed |
+| **Time** | amber `#D97706` (text `#92400E`) | deadlines and countdowns, nothing else |
+| Danger | `#DC2626` (text `#991B1B`) | overdue, failed, destructive |
 
-If a new color "is needed," the design is drifting. If amber ever means anything but time, the operator's trained eye is lost.
+**The accent budget: teal appears at most three times in a viewport**, and only as (1) the single primary action, (2) the current-state indicator, (3) inline links. Never on icons, headings, rules, or "to feel branded" — scarcity is what makes the primary button read as *the* button.
 
-## Rules (encoded as base CSS from S1)
+**Neutrals carry all structure.** A border means "this has an edge". A background step means "this is a distinct surface". A shadow means "this floats and will disappear" — menus and toasts only. **Deleting every shadow from the stylesheet would change nothing about the hierarchy**; that is the test.
 
-- No `letter-spacing` on Persian, ever. No italics. No uppercase transforms.
-- Persian digits in prices/dates (via core template filters); Latin digits in inputs and technical IDs. Thousands separators everywhere. Jalali display only; Gregorian storage.
-- Thin borders over big soft shadows; small, consistent radius; motion = state transitions and interaction feedback only — no entrance animations.
-- RTL from the root (`dir="rtl"`, logical CSS properties); directional icons mirrored, non-directional ones not; Latin-in-Persian isolated with `unicode-bidi: isolate`.
-- The wordmark is پرم‌شاپ in Estedad 800, accent-colored, until a real logotype exists.
-- Two registers: public site = trust-building, prices and terms unmissable; panel = dense working tool, no decoration, the only loud element is time-remaining.
+**Badges are tint + border + dark text**, never a saturated fill. Colour is never the only carrier of meaning — every status has words too.
 
-## Implementation checklist (S1 gate items)
+## Numbers and RTL
 
-- [ ] Exact woff2 files from each family's release assets; total payload target ≤ ~350KB for all five files
-- [ ] `OFL.txt` vendored per family
-- [ ] Rendering check: Windows Chrome, Android Chrome, one iOS Safari (vertical metrics, نیم‌فاصله joins)
-- [ ] Amber-on-stone contrast verified in the panel badge component
-- [ ] Palette exposed as CSS custom properties; Tailwind theme maps to them; no raw hex in templates
+- Persian digits in all output, **ASCII comma** as the thousands separator. Not U+066C: it renders as a faint high comma in both our faces and reads as a rendering fault, while the comma is what Iranian shops use and is bidi-safe in mixed text.
+- `tabular-nums` on every price, count and code — Vazirmatn's ۱ and ۳ differ in width by over 2×, which makes any stacked column ragged without it.
+- Zero renders **رایگان**, never «۰ تومان». رﯾﺎل never appears in the UI.
+- The currency word is never the numeral's weight — that pairing is a reliable amateur tell.
+- Inputs keep Latin digits and `direction: ltr`: in RTL the caret, Home/End and backspace all run backwards while someone types a card number, which is the bug that ends a payment.
+- Logical properties only (`margin-inline-start`, never `margin-left`). Directional icons mirror; clocks, locks, phones and cards do not.
+
+## The signature: the ledger line
+
+Every fact-value pair is a ledger row — label at the start, value at the end, joined by a dotted leader.
+
+```html
+<div class="fact">
+  <span class="fact__k">شماره سفارش</span>
+  <span class="fact__lead"></span>
+  <span class="fact__v latin">PS-1405-0217</span>
+</div>
+```
+
+The dotted leader is the visual grammar of an invoice, a receipt, a statement — documents that exist because someone keeps records. Against a buyer's fear of paying into a void, that says "this is a real operation" in a way a trust badge cannot, because a badge can be copied and a habit of typesetting cannot. The leader is lifted `-0.28em` so it clears the ج descender.
+
+Used **once per page region** — a second instance reads as sloppiness rather than authorship.
+
+## Anti-generic checklist
+
+Run this against any new page:
+
+- [ ] No spacing value outside the nine tokens
+- [ ] Every between-group gap ≥ 2× its within-group gap; heading margins asymmetric
+- [ ] Only the three radii in use; no element has border + shadow + radius together
+- [ ] No `box-shadow` outside focus rings and true overlays; no gradients
+- [ ] Teal ≤3 times per viewport, never on icons or headings; amber only on time
+- [ ] Zero literal colour values outside the token block
+- [ ] Body 17px, prose line-height 1.85, every text block capped at 32rem
+- [ ] Estedad only in headings and price numerals; never both faces in one line
+- [ ] `tabular-nums` on all figures; Persian digits out, Latin digits in inputs
+- [ ] No `left`/`right` properties — logical only
+- [ ] `:focus-visible` on everything interactive; no `transition: all`; 120–180ms; no hover `transform`
+- [ ] `prefers-reduced-motion` honoured; `::selection`, `caret-color`, `accent-color` set
+- [ ] One ledger group per region — no more
+- [ ] No centred hero, no three feature cards under it, no rounded-up customer counts, no emoji
+
+## Implementation notes
+
+Fonts are self-hosted woff2 (~316KB for five files) with `font-display: swap` and a metric-matched Tahoma fallback so text does not jump when the real faces load. Tailwind's automatic source scanning is disabled (`source(none)`) and pointed only at `templates/` — left on, it read this very document and generated the utilities the document bans.

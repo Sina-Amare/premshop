@@ -4,95 +4,181 @@
 {% block title %}زبان طراحی — پرم‌شاپ{% endblock %}
 
 {% block content %}
-<p class="mb-10 text-muted">
-  این صفحه نمونه‌ای از زبان طراحی سایت است: تایپوگرافی، رنگ‌ها، نمایش قیمت و تاریخ،
-  و نشان‌های وضعیت. مرجع: <span class="latin">docs/design-language.md</span>
+<h1>زبان طراحی</h1>
+<p class="prose">
+  این صفحه پایه بصری سایت است: مقیاس تایپوگرافی، رنگ‌ها، نمایش قیمت و تاریخ،
+  وضعیت سفارش و اجزای تکرارشونده. هر صفحه‌ای که بعداً ساخته می‌شود از همین
+  اجزا استفاده می‌کند، بنابراین کیفیت اینجا در همه‌جا تکرار می‌شود.
 </p>
 
-<section class="mb-12">
-  <h2 class="mb-4">سلسله‌مراتب تایپوگرافی</h2>
-  <div class="card p-6">
-    <h1>عنوان اصلی صفحه</h1>
-    <h2>عنوان بخش</h2>
-    <h3>عنوان فرعی</h3>
-    <h4>عنوان کوچک</h4>
-    <p class="mt-4">
-      متن اصلی سایت با فونت وزیرمتن نوشته می‌شود و عنوان‌ها با فونت استعداد،
-      تا تفاوت میان آن‌ها از ساختار حروف بیاید نه از تزیین. اعداد لاتین داخل متن
-      فارسی — مثل <span class="latin">Claude Pro</span> — جهت خودشان را حفظ می‌کنند.
-    </p>
-    <p class="mt-3 text-sm text-muted">متن کوچک برای توضیحات فرعی و اطلاعات کم‌اهمیت‌تر.</p>
-  </div>
-</section>
+<h2>تایپوگرافی</h2>
+<div class="card">
+  <h1>عنوان اصلی صفحه</h1>
+  <h2 style="margin-block-start:0">عنوان بخش</h2>
+  <h3>عنوان فرعی</h3>
+  <h4>عنوان کوچک — هم‌اندازه متن، تفاوت را قلم می‌سازد</h4>
+  <p class="prose" style="margin-block-start: var(--spacing-4)">
+    متن اصلی با قلم وزیرمتن نوشته می‌شود و عنوان‌ها با استعداد. نام‌های لاتین
+    داخل متن فارسی — مانند <span class="latin">Claude Pro</span> — جهت خود را
+    حفظ می‌کنند و ترتیب حروف به‌هم نمی‌ریزد.
+  </p>
+  <p class="small" style="margin-block-start: var(--spacing-3)">متن کوچک برای توضیحات فرعی.</p>
+  <p class="micro" style="margin-block-start: var(--spacing-2)">متن ریز برای پانوشت و توضیح حقوقی.</p>
+</div>
 
-<section class="mb-12">
-  <h2 class="mb-4">قیمت و تاریخ</h2>
-  <div class="card grid gap-6 p-6 sm:grid-cols-3">
+<h3>ارتفاع خط: چرا ۱٫۸۵</h3>
+<div class="card">
+  <p class="label">با ارتفاع خط ۱٫۸۵ — انتخاب‌شده</p>
+  <p class="prose" style="margin-block-start: var(--spacing-2)">
+    در خط فارسی کشیدگی حروفی مثل ج و ی به پایین می‌رود و نقطه‌ها بالای خط می‌نشینند.
+    اگر فاصله سطرها کم باشد، این‌ها به سطر بعد می‌چسبند و متن شلوغ به نظر می‌رسد.
+  </p>
+  <p class="label" style="margin-block-start: var(--spacing-5)">با ارتفاع خط ۱٫۴ — برای مقایسه</p>
+  <p style="line-height:1.4; max-inline-size:32rem; margin-block-start: var(--spacing-2)">
+    در خط فارسی کشیدگی حروفی مثل ج و ی به پایین می‌رود و نقطه‌ها بالای خط می‌نشینند.
+    اگر فاصله سطرها کم باشد، این‌ها به سطر بعد می‌چسبند و متن شلوغ به نظر می‌رسد.
+  </p>
+</div>
+
+<h2>قیمت</h2>
+<div class="card">
+  <div style="display:flex; flex-wrap:wrap; gap: var(--spacing-7); align-items:flex-end">
     <div>
-      <div class="text-sm text-muted">قیمت فروش</div>
-      <div class="mt-1 font-[family-name:var(--font-display)] text-3xl font-extrabold">
-        {{ sample_price|toman }}
+      <span class="label">قیمت ساده</span>
+      <div style="margin-block-start: var(--spacing-2)">{{ sample_price|price_html }}</div>
+    </div>
+    <div>
+      <span class="label">با تخفیف</span>
+      <div style="margin-block-start: var(--spacing-2)">
+        <span class="price"><span class="price__was">{{ sample_was|toman_plain }}</span></span>
+        {{ sample_price|price_html }}
       </div>
     </div>
     <div>
-      <div class="text-sm text-muted">قیمت خرید (فقط اپراتور)</div>
-      <div class="mt-1 text-xl font-medium">{{ sample_cost|toman }}</div>
+      <span class="label">رایگان</span>
+      <div style="margin-block-start: var(--spacing-2)">{{ zero_price|price_html }}</div>
     </div>
     <div>
-      <div class="text-sm text-muted">تاریخ امروز</div>
-      <div class="mt-1 text-xl font-medium">{{ now|jalali }}</div>
-      <div class="text-sm text-muted">{{ now|jalali_numeric }}</div>
+      <span class="label">مبلغ یکتای پرداخت</span>
+      <div class="price price--xl" style="margin-block-start: var(--spacing-2)">
+        <span class="price__num">{{ unique_amount|toman_plain }}</span><span class="price__cur">تومان</span>
+      </div>
     </div>
   </div>
-</section>
+  <p class="small" style="margin-block-start: var(--spacing-5)">
+    ارقام فارسی با جداکننده هزارگان، و واژه «تومان» همیشه سبک‌تر از عدد. ارقام
+    هم‌عرض‌اند تا در ستون‌ها زیر هم بنشینند.
+  </p>
+</div>
 
-<section class="mb-12">
-  <h2 class="mb-4">وضعیت سفارش</h2>
-  <div class="card p-6">
-    <div class="flex flex-wrap gap-3">
-      {% for label, kind in statuses %}
-        <span class="badge badge-{{ kind }}">{{ label }}</span>
+<h2>تاریخ</h2>
+<div class="card">
+  <div class="fact">
+    <span class="fact__k">تاریخ کامل</span><span class="fact__lead"></span>
+    <span class="fact__v">{{ now|jalali }}</span>
+  </div>
+  <div class="fact">
+    <span class="fact__k">تاریخ کوتاه</span><span class="fact__lead"></span>
+    <span class="fact__v">{{ now|jalali_numeric }}</span>
+  </div>
+</div>
+
+<h2>وضعیت سفارش</h2>
+<div class="card">
+  <div style="display:flex; flex-wrap:wrap; gap: var(--spacing-3)">
+    <span class="badge badge--neutral">در انتظار پرداخت</span>
+    <span class="badge badge--accent">در صف انجام</span>
+    <span class="badge badge--ok">تحویل شد</span>
+    <span class="badge badge--danger">لغو شد</span>
+    <span class="badge badge--time">۳ ساعت تا پایان مهلت</span>
+  </div>
+  <p class="small" style="margin-block-start: var(--spacing-4)">
+    رنگ هرگز تنها حامل معنی نیست؛ هر وضعیت متن هم دارد. رنگ کهربایی فقط و فقط
+    برای زمان به کار می‌رود، تا چشم اپراتور یک نشانه ثابت یاد بگیرد.
+  </p>
+</div>
+
+<h2>سطر دفتری</h2>
+<div class="card">
+  <div class="fact">
+    <span class="fact__k">شماره سفارش</span><span class="fact__lead"></span>
+    <span class="fact__v latin">PS-1405-0217</span>
+  </div>
+  <div class="fact">
+    <span class="fact__k">محصول</span><span class="fact__lead"></span>
+    <span class="fact__v">اشتراک یک‌ماهه <span class="latin">Claude Pro</span></span>
+  </div>
+  <div class="fact">
+    <span class="fact__k">مبلغ پرداخت‌شده</span><span class="fact__lead"></span>
+    <span class="fact__v">{{ sample_price|toman }}</span>
+  </div>
+  <div class="fact">
+    <span class="fact__k">مهلت تحویل</span><span class="fact__lead"></span>
+    <span class="fact__v">{{ now|jalali }}</span>
+  </div>
+  <p class="small" style="margin-block-start: var(--spacing-4)">
+    این الگو امضای بصری سایت است: برچسب در راست، مقدار در چپ، و خط‌چین میان آن‌ها —
+    دستور زبان یک فاکتور. در هر بخش از صفحه فقط یک بار استفاده می‌شود.
+  </p>
+</div>
+
+<h2>دکمه‌ها</h2>
+<div class="card">
+  <div style="display:flex; flex-wrap:wrap; gap: var(--spacing-3); align-items:center">
+    <button class="btn btn--primary">تأیید و پرداخت</button>
+    <button class="btn btn--secondary">مشاهده جزئیات</button>
+    <button class="btn btn--ghost">انصراف</button>
+    <button class="btn btn--secondary" disabled>غیرفعال</button>
+  </div>
+  <p class="small" style="margin-block-start: var(--spacing-4)">
+    رنگ لهجه در هر صفحه حداکثر سه بار دیده می‌شود و مهم‌ترین آن، تنها دکمه اصلی صفحه است.
+  </p>
+</div>
+
+<h2>جدول</h2>
+<div class="list" style="padding:0">
+  <table class="table">
+    <thead>
+      <tr><th>محصول</th><th>مدت</th><th>قیمت</th><th>وضعیت</th></tr>
+    </thead>
+    <tbody>
+      {% for row in table_rows %}
+        <tr>
+          <td>{{ row.product }}</td>
+          <td class="num">{{ row.duration|fa_digits }} روز</td>
+          <td class="num">{{ row.price|toman_plain }}</td>
+          <td><span class="badge badge--{{ row.kind }}">{{ row.status }}</span></td>
+        </tr>
       {% endfor %}
-    </div>
-    <p class="mt-4 text-sm text-muted">
-      رنگ هرگز تنها حامل معنی نیست: هر وضعیت متن هم دارد. رنگ کهربایی فقط برای
-      «زمان» استفاده می‌شود — مهلت نزدیک یا انتظار برای مشتری.
-    </p>
-  </div>
-</section>
+    </tbody>
+  </table>
+</div>
+<p class="small" style="margin-block-start: var(--spacing-3)">
+  بدون سطرهای یک‌درمیان رنگی و بدون خطوط عمودی — فقط خطوط مویی افقی.
+</p>
 
-<section class="mb-12">
-  <h2 class="mb-4">پالت رنگ</h2>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <div class="card overflow-hidden">
-      <div class="h-16 bg-accent"></div>
-      <div class="p-3 text-sm">لهجه <span class="latin text-muted">teal-700</span></div>
-    </div>
-    <div class="card overflow-hidden">
-      <div class="h-16 bg-success"></div>
-      <div class="p-3 text-sm">موفق <span class="latin text-muted">green-600</span></div>
-    </div>
-    <div class="card overflow-hidden">
-      <div class="h-16 bg-warning"></div>
-      <div class="p-3 text-sm">زمان <span class="latin text-muted">amber-600</span></div>
-    </div>
-    <div class="card overflow-hidden">
-      <div class="h-16 bg-danger"></div>
-      <div class="p-3 text-sm">خطا <span class="latin text-muted">red-600</span></div>
-    </div>
+<h2>حالت خالی</h2>
+<div class="list">
+  <div class="empty">
+    <p style="font-size:15px; color:var(--color-muted)">هنوز سفارشی ثبت نکرده‌اید.</p>
+    <a href="/">اولین سفارش خود را ثبت کنید</a>
   </div>
-</section>
+</div>
 
-<section>
-  <h2 class="mb-4">دکمه‌ها</h2>
-  <div class="card flex flex-wrap items-center gap-3 p-6">
-    <button class="rounded-[var(--radius-card)] bg-accent px-5 py-2.5 font-medium text-white hover:bg-accent-hover">
-      اقدام اصلی
-    </button>
-    <button class="rounded-[var(--radius-card)] border border-line bg-surface px-5 py-2.5 font-medium hover:border-accent hover:text-accent">
-      اقدام ثانویه
-    </button>
-    <a href="/healthz">بررسی سلامت سرویس</a>
+<h2>پالت</h2>
+<div class="card">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap: var(--spacing-4)">
+    {% for swatch in swatches %}
+      <div>
+        <div style="block-size:56px; border-radius:var(--radius-sm); border:1px solid var(--color-line); background:{{ swatch.value }}"></div>
+        <div class="label" style="margin-block-start: var(--spacing-2)">{{ swatch.name }}</div>
+        <div class="micro latin">{{ swatch.value }}</div>
+      </div>
+    {% endfor %}
   </div>
-</section>
+  <p class="small" style="margin-block-start: var(--spacing-5)">
+    یک طیف خنثای گرم، یک رنگ لهجه، و رنگ‌های معنایی. اگر رنگ تازه‌ای لازم شد،
+    یعنی ساختار صفحه اشتباه است نه پالت.
+  </p>
+</div>
 {% endblock %}

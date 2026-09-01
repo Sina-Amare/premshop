@@ -26,24 +26,29 @@ class TestFormatToman:
     @pytest.mark.parametrize(
         ("amount", "expected"),
         [
-            (0, "۰ تومان"),
             (999, "۹۹۹ تومان"),
-            (1_000, "۱٬۰۰۰ تومان"),
-            (450_387, "۴۵۰٬۳۸۷ تومان"),
-            (1_200_000, "۱٬۲۰۰٬۰۰۰ تومان"),
-            (Decimal("1200000"), "۱٬۲۰۰٬۰۰۰ تومان"),
+            (1_000, "۱,۰۰۰ تومان"),
+            (450_387, "۴۵۰,۳۸۷ تومان"),
+            (1_200_000, "۱,۲۰۰,۰۰۰ تومان"),
+            (Decimal("1200000"), "۱,۲۰۰,۰۰۰ تومان"),
         ],
     )
     def test_groups_thousands_in_persian(self, amount: Decimal | int, expected: str) -> None:
         assert formatting.format_toman(amount) == expected
 
     def test_can_omit_the_unit(self) -> None:
-        assert formatting.format_toman(1_200_000, with_unit=False) == "۱٬۲۰۰٬۰۰۰"
+        assert formatting.format_toman(1_200_000, with_unit=False) == "۱,۲۰۰,۰۰۰"
 
-    def test_uses_the_persian_thousands_separator(self) -> None:
-        # U+066C, not the Latin comma — mixing them looks broken in Persian text.
-        assert "٬" in formatting.format_toman(1_000)
-        assert "," not in formatting.format_toman(1_000)
+    def test_uses_an_ascii_comma_separator(self) -> None:
+        # Not U+066C: it renders as a faint high comma in both of our faces and
+        # reads as a rendering fault. Iranian shops use the comma (ADR-0016).
+        assert "," in formatting.format_toman(1_000)
+        assert "٬" not in formatting.format_toman(1_000)
+
+    def test_zero_reads_as_free_not_zero_toman(self) -> None:
+        assert formatting.format_toman(0) == "رایگان"
+        # ...but the bare numeral is still available for composing.
+        assert formatting.format_toman(0, with_unit=False) == "۰"
 
 
 class TestJalali:

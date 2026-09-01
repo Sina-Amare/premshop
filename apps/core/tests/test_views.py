@@ -39,11 +39,30 @@ class TestStyleguide:
         body = response.content.decode()
         assert 'dir="rtl"' in body
         assert 'lang="fa"' in body
-        # Prices render in Persian digits with the Persian thousands separator.
-        assert "۱٬۲۰۰٬۰۰۰" in body
+        # Prices render in Persian digits, grouped with an ASCII comma.
+        assert "۱,۲۰۰,۰۰۰" in body
 
     def test_uses_no_external_resources(self, client: Client) -> None:
         # Iranian visitors cannot reach foreign CDNs: every asset must be local.
         body = client.get(reverse("styleguide")).content.decode()
         for forbidden in ("https://fonts.googleapis.com", "https://cdn.", "//unpkg.com"):
             assert forbidden not in body
+
+    def test_price_numeral_and_currency_are_separate_elements(self, client: Client) -> None:
+        # They differ in family, size and weight by design, so one string
+        # cannot express them — a currency word at the numeral's weight is
+        # the reliable amateur tell (ADR-0016).
+        body = client.get(reverse("styleguide")).content.decode()
+        assert '<span class="price__num">' in body
+        assert '<span class="price__cur">تومان</span>' in body
+
+    def test_free_price_reads_as_free(self, client: Client) -> None:
+        # The "never ۰ تومان" rule is asserted against the filter itself in
+        # test_formatting: as a substring of a rendered page it also matches
+        # the tail of ۱,۲۰۰,۰۰۰ تومان, which is a false positive.
+        body = client.get(reverse("styleguide")).content.decode()
+        assert '<span class="price__num">رایگان</span>' in body
+
+    def test_ledger_signature_is_present(self, client: Client) -> None:
+        body = client.get(reverse("styleguide")).content.decode()
+        assert 'class="fact__lead"' in body

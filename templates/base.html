@@ -1,38 +1,84 @@
 {% load static %}<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+{# lang="fa" is load-bearing: both faces register locl only under arab/URD, and
+   an Urdu guess silently changes the shape of ی/ک. #}
+<html lang="fa" dir="rtl" translate="no">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google" content="notranslate">
   <title>{% block title %}پرم‌شاپ{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
 
-  {# Preload the body face actually used above the fold; the rest load normally. #}
   <link rel="preload" href="{% static 'fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% block head_extra %}{% endblock %}
 </head>
-<body class="min-h-screen bg-ground text-ink">
-  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:right-2 focus:bg-white focus:p-3">
-    رفتن به محتوای اصلی
-  </a>
+<body>
+  <a href="#main" class="sr-only">رفتن به محتوای اصلی</a>
 
-  <header class="border-b border-line bg-surface">
-    <div class="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-      <a href="/" class="font-[family-name:var(--font-display)] text-2xl font-extrabold text-accent no-underline">
-        پرم‌شاپ
+  <header class="hdr">
+    {# One promise, no promotion. It answers the doubt before the visitor scrolls
+       — and it has to stay true. #}
+    <div class="hdr__promise">
+      <div class="wrap">تحویل پس از تأیید پرداخت، در ساعات پشتیبانی ۱۰ تا ۲۲ · گارانتی تا پایان دوره اشتراک</div>
+    </div>
+    <div class="wrap hdr__main">
+      <a href="/" class="hdr__brand">
+        <span class="hdr__word">پرم‌شاپ</span>
       </a>
-      {% block header_extra %}{% endblock %}
+      <div style="flex:1"></div>
+      {% block header_nav %}{% endblock %}
+      <a href="/" class="hdr__icon" aria-label="حساب کاربری">
+        {# Non-directional icon: it must not mirror in RTL. #}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </a>
     </div>
   </header>
 
-  <main id="main" class="mx-auto max-w-5xl px-5 py-10">
+  <main id="main" class="wrap" style="padding-block: var(--spacing-7)">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="mt-16 border-t border-line bg-surface">
-    <div class="mx-auto max-w-5xl px-5 py-6 text-sm text-muted">
-      {% block footer %}پرم‌شاپ{% endblock %}
+  <footer class="ftr">
+    <div class="wrap">
+      <div class="ftr__grid">
+        <div>
+          <div class="hdr__word">پرم‌شاپ</div>
+          <p class="micro" style="margin-block-start: var(--spacing-4)">
+            فروش اشتراک‌ها و اکانت‌های سرویس‌های هوش مصنوعی، ابزارهای توسعه و نرم‌افزارهای
+            بین‌المللی. هر سفارش پس از تأیید پرداخت و در بازه اعلام‌شده تحویل داده می‌شود.
+          </p>
+        </div>
+
+        <nav class="ftr__links" aria-label="پیوندهای مهم">
+          <span class="label">راهنما</span>
+          <a href="/">قوانین و مقررات</a>
+          <a href="/">شرایط بازگشت وجه</a>
+          <a href="/">حریم خصوصی</a>
+          <a href="/">پرسش‌های متداول</a>
+        </nav>
+
+        <div>
+          <span class="label">تماس</span>
+          {# Selectable text, not images: a phone number you cannot copy is decoration. #}
+          <div class="fact" style="margin-block-start: var(--spacing-3)">
+            <span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span>
+            <span class="fact__v latin">@premshop</span>
+          </div>
+          <div class="fact">
+            <span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span>
+            <span class="fact__v">۱۰ تا ۲۲</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ftr__bottom">
+        {% block footer_bottom %}پرم‌شاپ — همه حقوق محفوظ است.{% endblock %}
+      </div>
     </div>
   </footer>
 

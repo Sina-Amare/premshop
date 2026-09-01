@@ -46,9 +46,16 @@ def to_latin_digits(value: str) -> str:
 
 
 def format_toman(amount: Decimal | int, *, with_unit: bool = True) -> str:
-    """Format a toman amount: thousands separators, Persian digits, «تومان»."""
-    grouped = f"{int(amount):,}".replace(",", "٬")  # U+066C, the Persian thousands separator
-    rendered = to_persian_digits(grouped)
+    """Format a toman amount: Persian digits, thousands separators, «تومان».
+
+    The separator is an ASCII comma, not U+066C. Iranian shops use the comma,
+    it is what readers expect, and it is bidi class CS so it is absorbed safely
+    in mixed text — whereas U+066C renders as a faint high comma in both of our
+    faces and reads as a rendering fault (ADR-0016).
+    """
+    if with_unit and int(amount) == 0:
+        return "رایگان"
+    rendered = to_persian_digits(f"{int(amount):,}")
     return f"{rendered} تومان" if with_unit else rendered
 
 
