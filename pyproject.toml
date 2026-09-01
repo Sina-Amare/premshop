@@ -1,0 +1,29 @@
+[project]
+name = "premshop"
+version = "0.1.0"
+description = "PremShop — Persian digital-subscriptions shop (Django modular monolith)"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.2,<5.3",
+    "psycopg[binary]>=3.2",
+    "celery[redis]>=5.4",
+    "redis>=5.0",
+    "sentry-sdk>=2.0",
+    "jdatetime>=5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.9",
+    "factory-boy>=3.3",
+    "time-machine>=2.15",
+    "ruff>=0.6",
+    "black>=24.0",
+    "mypy>=1.11",
+    "django-stubs>=5.0",
+    "pip-audit>=2.7",
+    "bandit>=1.7",
+]
+
+# Tool configuration (ruff/black/mypy/pytest) lands with S1, when CI runs them.

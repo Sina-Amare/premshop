@@ -1,0 +1,32 @@
+# Secrets & environment — never in version control
+.env
+.env.*
+!.env.example
+
+# Design discussion (conclusions live in docs/decisions/; the argument stays local)
+docs-local/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django (S1+)
+staticfiles/
+media/
+
+# Frontend build artifacts (source CSS is tracked; built output is not)
+static/css/build/
+*.min.css.map
+tailwindcss.exe
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
