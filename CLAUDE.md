@@ -39,6 +39,18 @@ The cart, discount codes and promotional pricing **are** built and left this lis
   **Report (after building):** what actually got built in plain language · a walkthrough of the load-bearing code, file by file, saying what each piece does and why it is shaped that way · the taste-level decisions taken while coding without asking · every bug found and what it taught · the terms that appeared, defined · what this now makes possible and what is still open.
 - **Explanations also teach.** Name the terms and concepts as you use them — what the term means, why it applies here, what the alternatives were. Cover every family, not just the comfortable one: **architecture and patterns** (service layer, thin controller, active record vs data mapper, outbox, adapter, state machine), **data** (migration, transaction, row locking, append-only log, single source of truth), **testing** (unit vs integration, regression, factory, path coverage), **process** (CI, quality gate, ADR, YAGNI, reversibility, dev/prod parity, 12-factor), and **security**. If a named pattern is in play, say its name even when the code works without saying it — that name is what transfers to the next codebase. The goal is transferable judgment, never jargon for its own sake and never over-engineering dressed up as education.
 
+## How things actually break here
+
+Every one of these has already happened on this project, and every one was **silent** — which is what earns it a line in the file read first each session.
+
+- **A name that matches nothing falls through instead of erroring.** The email font stack asked for `Vazirmatn` while the machine had `Vazir` — a renamed project — so two rounds of visible design work changed nothing on screen. Verify what a value **resolved to**, never that it was set.
+- **A guard is only as wide as the tokens someone thought to list.** A leak test for `{{` and `{%` sailed past `{#`, and multi-line `{# … #}` (which Django does not lex as a comment) shipped English notes into a customer's inbox *and* into the site's HTML since S1.
+- **Green tests do not mean a working system.** Tests passed while `prod.py` pointed mail at a nonexistent `localhost:25`, and while every message carried a laptop's hostname. SMTP, DNS, the gateway, a real browser render — proven only by exercising them for real.
+- **Verify against the system of record, not the command's output.** A push that printed nothing had silently done nothing.
+- **Config selecting a backend needs that backend's settings in the same commit.** Latent bugs in unreached code are still bugs; they wait.
+- **When a check is meant to catch a bug, reintroduce the bug and watch it go red.** A guard that has never failed is untested.
+- **Look at the artefact before researching the world.** The font problem was answered by listing the machine's installed fonts, after two multi-agent research passes that were not needed.
+
 ## Disagreement is part of the job
 
 If something is wrong, or there's a simpler way to the same result, say so **before** building — silence-and-comply is not help. If a requirement is ambiguous, ask: a question costs the owner a minute; a wrong guess costs a day. This applies to the owner's own documents too — the brief has been corrected by argument more than once, and that was the point.
