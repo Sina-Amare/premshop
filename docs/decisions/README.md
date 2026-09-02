@@ -25,6 +25,8 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
 | [0020](0020-discount-codes.md) | Scoped discount codes computed server-side; `DiscountRedemption` rows; `used_count` under row lock; total floored at zero |
 | [0021](0021-promotional-pricing.md) | Promo price + window on `Plan`; one `effective_price` function is the only place the rule lives |
+| [0022](0022-transactional-email.md) | SMTP2GO relay, env-driven; TLS derived from the port; prod fails closed on a blank relay password |
+| [0023](0023-email-templates.md) | Email templates: tables, system fonts, wordmark in type; three files per message; amber still only means time |
 
 ## Legacy shorthand map
 

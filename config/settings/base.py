@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
+from django.core.mail.utils import DNS_NAME
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -115,6 +116,44 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {"default": database_from_url(env("DATABASE_URL", required=True))}
 
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
+
+# --- Email (ADR-0022). Transactional relay: SMTP2GO. ---
+# Email is the login system: a lost OTP is a customer who cannot reach what they
+# paid for. Everything here is env-driven so switching relay or port is a restart,
+# not a deploy — which is also why there is no provider abstraction (ADR-0013).
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "mail-eu.smtp2go.com")
+EMAIL_PORT = int(env("EMAIL_PORT", "2525"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+
+# The port is the only encryption knob. SMTP2GO speaks implicit TLS on 465/8465/443
+# and STARTTLS everywhere else; Django raises ValueError when both flags are true,
+# so deriving them from the port makes that mistake unrepresentable rather than
+# merely documented. Never set EMAIL_USE_TLS/EMAIL_USE_SSL in .env.
+EMAIL_USE_SSL = EMAIL_PORT in {465, 8465, 443}
+EMAIL_USE_TLS = not EMAIL_USE_SSL
+
+# Django's default is None — no timeout at all. An Iran-to-Europe SMTP connection
+# that blackholes would otherwise pin a web worker forever on the login path.
+EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "10"))
+
+# Must be a mailbox at the SMTP2GO-verified sender domain or the relay rejects the
+# message and still spends quota. support@ over noreply@: it has working inbound
+# forwarding, so a customer who replies is heard instead of bouncing into nothing.
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "پرم‌شاپ <support@premshop.ir>")
+SERVER_EMAIL = env("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+
+# The address customers are told to write to, and the Reply-To on every message.
+# Separate from DEFAULT_FROM_EMAIL, which carries a display name and may change.
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", "support@premshop.ir")
+
+# Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
+# EHLO name. Left alone it stamps the machine's own hostname into every customer's
+# inbox, and its own source warns the lookup "can take a couple of seconds" — it runs
+# before the socket exists, so EMAIL_TIMEOUT cannot bound it. Pinning the cache slot
+# pre-empts the lookup entirely: no reverse DNS, no hostname leak, no stall.
+DNS_NAME._fqdn = env("EMAIL_HELO_NAME", "premshop.ir")
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

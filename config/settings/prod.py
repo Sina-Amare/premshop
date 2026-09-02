@@ -32,7 +32,21 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# base.py already defaults EMAIL_BACKEND to SMTP. What must not be inherited is a
+# blank credential: Django's SMTP backend guards login() with `if self.username and
+# self.password:`, so an empty password connects ANONYMOUSLY and the relay rejects
+# every message. That is a silent total login outage, so it becomes a refusal to boot.
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", required=True)
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", required=True)
+
+# SMTP2GO accepts only mailboxes at the verified sender domain; anything else is
+# rejected after the quota is spent. Assert it here rather than discovering it via
+# a customer who never got their code.
+if not DEFAULT_FROM_EMAIL.strip().rstrip(">").endswith("@premshop.ir"):  # noqa: F405
+    raise ImproperlyConfigured(
+        "DEFAULT_FROM_EMAIL must be a mailbox at premshop.ir, the SMTP2GO-verified "
+        f"sender domain. Got: {DEFAULT_FROM_EMAIL!r}"  # noqa: F405
+    )
 
 # Error reporting: sentry-sdk speaking to self-hosted GlitchTip (ADR-0015).
 # No DSN configured means no reporting — never a crash at startup.
