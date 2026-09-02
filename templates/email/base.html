@@ -1,0 +1,113 @@
+{% comment %}
+Email layout. Not a web page — three constraints shape every choice here:
+
+  1. Outlook on Windows renders with Microsoft Word's engine: no flex, no grid,
+     no float worth trusting. Layout is <table>, which is a constraint, not a style.
+  2. Gmail and Outlook strip @font-face, so Estedad cannot travel. The stack leads
+     with Vazirmatn (the brand's own body face, rendered for anyone who has it
+     installed) then each platform's own Persian face. Tahoma is LAST: it is the
+     safety net, not the choice — it is the face that makes Persian email look
+     like 2005, and leading with it was the first draft's mistake.
+
+     THE ORDER COMES FROM REAL EVIDENCE, NOT GUESSWORK. An audit of the owner's
+     own Windows machine found Vazir.ttf and six weights of IRANSans already
+     installed — and the family name inside Vazir.ttf is 'Vazir', NOT
+     'Vazirmatn'. The project was renamed; older installs register the old name.
+     Asking only for 'Vazirmatn' silently missed a font sitting right there and
+     fell through to Segoe UI, whose Persian is Naskh-derived and reads stiff.
+     That is why two rounds of "softer" changed nothing on screen. A renamed or
+     misspelled family never errors — it falls through in silence, so the stack
+     names every Persian face an Iranian machine plausibly carries.
+  3. Most clients block remote images by default, so the wordmark is set in type.
+     A broken-image box on a login code is a trust cost we do not pay.
+
+Radii are 10px (--radius-md) throughout rather than the site's 4px button: at
+email sizes 4px reads as an artifact rather than as a shape.
+
+Critical styles are inline because Gmail's mobile app strips <style> for accounts
+it does not host. The <style> block carries only what cannot be inlined at all.
+{% endcomment %}<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>{% block title %}پرم‌شاپ{% endblock %}</title>
+{% comment %}
+Vazirmatn for the clients that honour a web font: Apple Mail (macOS + iOS),
+Outlook.com and Samsung Mail. Gmail supports NO @font-face at all — web, Android
+or iOS (caniemail.com/features/css-at-font-face) — so it ignores this and falls
+through the stack below. Verified reachable from inside Iran: the CSS answers in
+~1.8s and the Arabic woff2 is 46KB. Declaring it costs Gmail readers nothing and
+gives everyone else the real brand face.
+{% endcomment %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap">
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<style>
+  body { margin:0 !important; padding:0 !important; width:100% !important; }
+  table { border-collapse:collapse; }
+  img { border:0; outline:none; text-decoration:none; }
+  /* Gmail and Apple Mail linkify bare numbers and addresses in their own blue. */
+  a[x-apple-data-detectors], .unstyle-auto-detected-links a, .aBn {
+    color:inherit !important; text-decoration:none !important; border-bottom:0 !important;
+  }
+  @media only screen and (max-width:600px) {
+    .container { width:100% !important; }
+    .pad       { padding-left:24px !important; padding-right:24px !important; }
+    .code      { font-size:30px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#FAFAF9;">
+
+{# Inbox preview line: shown beside the subject before the message is opened. #}
+<div style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#FAFAF9;">
+  {% block preheader %}{% endblock %}
+  &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847;
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="background-color:#FAFAF9;">
+  <tr>
+    <td align="center" style="padding:48px 12px 32px 12px;">
+
+      <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;background-color:#FFFFFF;border:1px solid #E7E5E4;border-radius:10px;">
+
+        {# Masthead. The teal rule is the accent's first of at most three appearances. #}
+        <tr>
+          <td class="pad" style="padding:36px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;">
+            <div style="font-size:17px;font-weight:bold;line-height:1.5;color:#1C1917;">پرم‌شاپ</div>
+            <div style="height:2px;width:26px;background-color:#0F766E;border-radius:2px;font-size:0;line-height:0;margin-top:10px;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="pad" style="padding:26px 40px 40px 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.95;color:#57534E;">
+            {% block content %}{% endblock %}
+          </td>
+        </tr>
+
+      </table>
+
+      {% comment %}Footer sits outside the card: it is the letterhead, not part of the message.
+         Label and address are on separate lines rather than joined by a colon —
+         a colon between a Persian word and a Latin address flips sides under bidi
+         and renders as «support@premshop.ir :پشتیبانی».{% endcomment %}
+      <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;">
+        <tr>
+          <td class="pad" align="center" style="padding:28px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:12px;line-height:2;color:#A8A29E;">
+            {% block footer %}
+              <div style="color:#78716C;">پشتیبانی پرم‌شاپ</div>
+              <div dir="ltr"><a href="mailto:{{ support_email }}" style="color:#0F766E;text-decoration:none;">{{ support_email }}</a></div>
+              <div dir="ltr" style="margin-top:2px;">premshop.ir</div>
+            {% endblock %}
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
+</body>
+</html>

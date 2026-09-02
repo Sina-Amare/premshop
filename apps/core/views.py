@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import connection
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+
+from apps.core.email import render_email
 
 
 @never_cache
@@ -81,3 +84,53 @@ def styleguide(request: HttpRequest) -> HttpResponse:
             ],
         },
     )
+
+
+# Sample context so every email template can be reviewed in a browser without
+# sending anything. Values are realistic on purpose: a preview filled with "lorem"
+# or "123" hides exactly the problems worth catching — long product names wrapping,
+# Persian digits in a Latin-shaped order number, a price that outgrows its column.
+EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
+    "otp_code": {
+        "code": "418305",
+        "ttl_minutes": 10,
+        "login_url": "https://premshop.ir/enter/preview-token",
+    },
+    "order_ready": {
+        "order_number": "PS-1405-0217",
+        "product_name": "اشتراک Claude Pro — یک‌ماهه",
+        "amount": Decimal("1450000"),
+        "delivery_url": "https://premshop.ir/d/preview-token",
+        "link_ttl_hours": 48,
+    },
+}
+
+
+@never_cache
+def email_preview(request: HttpRequest, name: str = "") -> HttpResponse:
+    """Render an email template in the browser. Development only.
+
+    Email is the one surface that cannot be checked by reloading a page, so this
+    closes the loop: change a template, refresh, look. Add ?part=text to read the
+    plain-text half, which is what spam filters and screen readers see.
+
+    Gated on DEBUG rather than on staff status: it needs no database, and a
+    preview route that exists in production is one more thing to get wrong.
+    """
+    if not settings.DEBUG:
+        raise Http404("Email previews are development-only.")
+
+    if name not in EMAIL_PREVIEWS:
+        items = "".join(
+            f'<li><a href="/dev/emails/{key}/">{key}</a> '
+            f'· <a href="/dev/emails/{key}/?part=text">text</a></li>'
+            for key in EMAIL_PREVIEWS
+        )
+        return HttpResponse(f"<ul>{items}</ul>")
+
+    subject, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    if request.GET.get("part") == "text":
+        return HttpResponse(
+            f"Subject: {subject}\n\n{text}", content_type="text/plain; charset=utf-8"
+        )
+    return HttpResponse(html)

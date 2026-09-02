@@ -91,6 +91,16 @@ The dotted leader is the visual grammar of an invoice, a receipt, a statement �
 
 Used **once per page region** — a second instance reads as sloppiness rather than authorship.
 
+## Email
+
+Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). What carries over unchanged: the palette, hairlines instead of shadows, the `11px 20px 9px` optical button padding, the ledger line, `letter-spacing: 0`, 1.85 on prose, and **amber for time and only time** — the code expiry and the delivery-link expiry, nothing else.
+
+What cannot carry over: Estedad and Vazirmatn, because Gmail and Outlook strip `@font-face`. The stack falls back to `Tahoma, "Segoe UI", "Noto Naskh Arabic", "Geeza Pro", Arial` — the metric rules survive, the faces do not. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
+
+**The one tracking exception.** `letter-spacing: 0` holds everywhere in this system because Arabic is cursive and tracking breaks the joins. Persian *digits* ۰–۹ are isolated forms that never join, so the reason for the rule does not reach them — and a run of six bold digits in a Naskh-derived fallback face is precisely where tightness reads squat. The OTP code carries `letter-spacing: 3px`. Nothing else does, and the exception is scoped to that one element.
+
+Templates live in `templates/email/`; `/dev/emails/` renders them in a browser while `DEBUG` is on.
+
 ## Anti-generic checklist
 
 Run this against any new page:

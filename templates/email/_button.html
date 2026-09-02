@@ -1,0 +1,24 @@
+{% comment %}
+Bulletproof button. The background and padding live on a <td>, not on the <a>:
+Outlook's Word engine ignores both on an anchor, which would leave a bare blue
+link where the primary action should be.
+
+The outer 100%-width table with align="right" is not decoration — a shrink-to-fit
+table does not reliably inherit dir="rtl" in Gmail, so the button drifts off the
+text's right margin. The align attribute is the one alignment every client honours.
+
+Params: url, label.
+{% endcomment %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
+  <tr>
+    <td align="right">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="center" bgcolor="#0F766E" style="background-color:#0F766E;border-radius:10px;padding:13px 26px 11px 26px;">
+            <a href="{{ url }}" style="display:inline-block;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;font-weight:bold;line-height:1.5;color:#FFFFFF;text-decoration:none;">{{ label }}</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
