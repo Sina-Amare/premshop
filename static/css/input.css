@@ -238,6 +238,55 @@
   .btn[disabled] { background: var(--color-fill-subtle); border-color: var(--color-line);
                    color: #a8a29e; cursor: not-allowed; }
 
+  /* --- Fields: a hairline box, no shadow, no fill ---------------------- */
+  /* Inputs are where a shop is judged for competence, so they follow the same
+     rules as everything else: structure by line, one accent, nothing glowing.
+     The block padding is asymmetric for the same optical reason as .btn —
+     Persian ink sits low in the line box. */
+  .field { display: block; margin-block-end: var(--spacing-5); }
+  .field__label { display: block; font-size: 13px; font-weight: 500; line-height: 1.5;
+                  color: var(--color-secondary); margin-block-end: var(--spacing-2); }
+  .field__input {
+    inline-size: 100%; font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+    color: var(--color-ink); background: var(--color-surface);
+    border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px;
+    transition: border-color var(--dur) var(--ease);
+  }
+  .field__input::placeholder { color: #a8a29e; }
+  .field__input:hover { border-color: var(--color-muted); }
+  .field__input:focus-visible { outline: none; border-color: var(--color-accent);
+                                box-shadow: 0 0 0 3px var(--color-accent-tint); }
+  .field__input[aria-invalid="true"] { border-color: var(--color-danger); }
+  .field__hint { font-size: 12px; line-height: 1.9; color: var(--color-muted);
+                 margin-block-start: var(--spacing-2); }
+  .field__error { font-size: 13px; line-height: 1.7; color: var(--color-danger-text);
+                  margin-block-start: var(--spacing-2); }
+
+  /* The code input: six isolated digits, so tracking is allowed here and only
+     here (see design-language.md). Centred because there is nothing to align to. */
+  .field__input--code {
+    text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 6px;
+    padding: 16px 14px 14px; font-variant-numeric: tabular-nums;
+  }
+
+  /* A form-level error belongs above the fields, not beside one of them: it is
+     usually about the pair (email + password), and blaming one field is a lie. */
+  .form-error {
+    background: color-mix(in oklab, var(--color-danger) 8%, var(--color-ground));
+    border: 1px solid color-mix(in oklab, var(--color-danger) 28%, var(--color-ground));
+    color: var(--color-danger-text); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px; font-size: 14px; line-height: 1.7;
+    margin-block-end: var(--spacing-5);
+  }
+  .form-ok {
+    background: color-mix(in oklab, var(--color-ok) 8%, var(--color-ground));
+    border: 1px solid color-mix(in oklab, var(--color-ok) 28%, var(--color-ground));
+    color: var(--color-ok-text); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px; font-size: 14px; line-height: 1.7;
+    margin-block-end: var(--spacing-5);
+  }
+
   /* --- Badges: tint + border + dark text, never a saturated fill -------- */
   .badge {
     display: inline-flex; align-items: center; gap: var(--spacing-1);

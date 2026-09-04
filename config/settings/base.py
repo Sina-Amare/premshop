@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "apps.accounts",
     "apps.core",
 ]
 
@@ -116,6 +117,17 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {"default": database_from_url(env("DATABASE_URL", required=True))}
 
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
+
+# OTP codes and rate-limit counters go through Django's cache API rather than a
+# raw redis client. Two reasons: an expiring code should evaporate on its own
+# instead of accumulating as dead rows someone has to sweep, and the cache API
+# swaps to locmem in tests automatically, so the suite needs no running Redis.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
 
 # --- Email (ADR-0022). Transactional relay: SMTP2GO. ---
 # Email is the login system: a lost OTP is a customer who cannot reach what they
@@ -154,6 +166,15 @@ SUPPORT_EMAIL = env("SUPPORT_EMAIL", "support@premshop.ir")
 # before the socket exists, so EMAIL_TIMEOUT cannot bound it. Pinning the cache slot
 # pre-empts the lookup entirely: no reverse DNS, no hostname leak, no stall.
 DNS_NAME._fqdn = env("EMAIL_HELO_NAME", "premshop.ir")
+
+# Set BEFORE any model in this project exists. Django allows swapping the user
+# model only while the database has no tables; afterwards it is a hand-rebuilt
+# schema on a live system. accounts.0001 is migration one of the whole history.
+AUTH_USER_MODEL = "accounts.User"
+
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/account/"
+LOGOUT_REDIRECT_URL = "/"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

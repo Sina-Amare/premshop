@@ -59,6 +59,9 @@ If something is wrong, or there's a simpler way to the same result, say so **bef
 
 The shop's biggest obstacle is customer doubt about actually receiving the product. Looking like a generated template directly costs sales, so the visual bar is a **business** requirement paid incrementally on every page — never a polish pass at the end. Work as a creative senior UI/UX designer and developer: every visual choice argued from *this business's* needs, never defaulted from what AI-generated sites usually look like — AI-stereotype palettes and layouts are banned on principle, not just the specific ones listed below. Banned outright: purple-blue gradients, glassmorphism, glowing dark heroes, `rounded-2xl` everywhere, emoji-as-icons, entrance animations, "قدرت‌گرفته از AI" copy. The system in force — Estedad over Vazirmatn, teal accent on warm stone, **amber reserved exclusively for time pressure** — is `docs/design-language.md` (ADR-0016). In the operator panel the only loud thing is time remaining.
 
+**Look at it yourself before asking anyone else to.** Render the page (or the email), **take a screenshot, and review it as a senior designer would** — spacing, hierarchy, alignment, type, and every state: empty, error, loading, long content, narrow viewport. For RTL work also check bidi flips on mixed Latin/Persian runs, digit rendering, and descender collisions. Fix what you find, *then* say "take a look". Every defect the owner has to point out is a wasted round trip, and the ones a screenshot would have caught are the least excusable kind.
+
+
 ## Where to look things up
 
 Two locations, deliberately split.

@@ -1,0 +1,11 @@
+{% comment %}
+One field: label, input, and its error. The CSS class lives on the widget in
+forms.py rather than being passed here — a template filter that injects classes
+means the markup and the form disagree about what the field looks like, and the
+form is the one that also renders in the admin. Param: field.
+{% endcomment %}
+<div class="field">
+  <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}
+  {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+</div>

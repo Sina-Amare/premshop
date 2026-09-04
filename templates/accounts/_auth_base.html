@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% comment %}
+The shell every auth page sits in. Narrow on purpose: a login form spanning a
+desktop viewport reads as an internal admin tool, and the measure is far too
+long for Persian at 17px.
+{% endcomment %}
+
+{% block content %}
+<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
+  <div class="card" style="padding: var(--spacing-7) var(--spacing-6)">
+    <h1 style="font-family: var(--font-head); font-size: 26px; font-weight: 800; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
+    {% block auth_intro %}{% endblock %}
+
+    {% if form.non_field_errors %}
+      <div class="form-error" role="alert">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% block auth_body %}{% endblock %}
+  </div>
+  {% block auth_after %}{% endblock %}
+</div>
+{% endblock %}

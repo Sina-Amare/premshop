@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% load fa %}
+
+{% block title %}حساب کاربری — پرم‌شاپ{% endblock %}
+
+{% block content %}
+<div style="max-inline-size: 34rem; margin-inline: auto">
+  <h1 style="font-family: var(--font-head); font-size: 26px; font-weight: 800; line-height: 1.35; margin: 0 0 var(--spacing-5)">حساب کاربری</h1>
+
+  {% for message in messages %}
+    <div class="form-ok" role="status">{{ message }}</div>
+  {% endfor %}
+
+  {% comment %}The ledger line, once per page region — the design's signature.{% endcomment %}
+  <div class="card" style="padding: var(--spacing-5) var(--spacing-6); margin-block-end: var(--spacing-6)">
+    <div class="fact">
+      <span class="fact__k">ایمیل</span>
+      <span class="fact__lead"></span>
+      <span class="fact__v latin">{{ request.user.email }}</span>
+    </div>
+    <div class="fact">
+      <span class="fact__k">وضعیت ایمیل</span>
+      <span class="fact__lead"></span>
+      <span class="fact__v">{% if request.user.is_verified %}تأیید شده{% else %}تأیید نشده{% endif %}</span>
+    </div>
+    <div class="fact">
+      <span class="fact__k">تاریخ عضویت</span>
+      <span class="fact__lead"></span>
+      <span class="fact__v">{{ request.user.date_joined|jalali }}</span>
+    </div>
+  </div>
+
+  <div class="card" style="padding: var(--spacing-6)">
+    <h2 style="font-family: var(--font-head); font-size: 20px; font-weight: 600; line-height: 1.45; margin: 0 0 var(--spacing-4)">
+      {% if request.user.has_usable_password %}تغییر رمز عبور{% else %}تعیین رمز عبور{% endif %}
+    </h2>
+    {% if form.non_field_errors %}
+      <div class="form-error" role="alert">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}{% include "accounts/_field.html" with field=field %}{% endfor %}
+      <button type="submit" class="btn btn--primary">ذخیره</button>
+    </form>
+  </div>
+
+  <form method="post" action="{% url 'logout' %}" style="margin-block-start: var(--spacing-6); text-align: center">
+    {% csrf_token %}
+    <button type="submit" class="btn btn--ghost">خروج از حساب</button>
+  </form>
+</div>
+{% endblock %}

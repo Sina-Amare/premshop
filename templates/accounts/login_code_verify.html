@@ -1,0 +1,26 @@
+{% extends "accounts/_auth_base.html" %}
+
+{% block title %}کد ورود — پرم‌شاپ{% endblock %}
+{% block auth_title %}کد را وارد کنید{% endblock %}
+
+{% block auth_intro %}
+  <p class="small" style="margin-block-end: var(--spacing-5)">
+    کد ۶ رقمی به <span class="latin">{{ email }}</span> فرستاده شد.
+  </p>
+  {% comment %}Amber, because a clock is running — the one thing it ever means.{% endcomment %}
+  <p class="badge badge--time" style="margin-block-end: var(--spacing-6)">تا ۱۰ دقیقه معتبر است</p>
+{% endblock %}
+
+{% block auth_body %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "accounts/_field.html" with field=form.code %}
+    <button type="submit" class="btn btn--primary" style="inline-size: 100%">ورود</button>
+  </form>
+{% endblock %}
+
+{% block auth_after %}
+  <p class="micro" style="text-align: center; margin-block-start: var(--spacing-4)">
+    کد نرسید؟ پوشه‌ی اسپم را ببینید یا <a href="{% url 'login-code' %}">دوباره درخواست بدهید</a>.
+  </p>
+{% endblock %}
