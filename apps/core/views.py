@@ -96,12 +96,13 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "ttl_minutes": 10,
         "login_url": "https://premshop.ir/enter/preview-token",
     },
-    "order_ready": {
+    "item_delivered": {
         "order_number": "PS-1405-0217",
         "product_name": "اشتراک Claude Pro — یک‌ماهه",
         "amount": Decimal("1450000"),
         "delivery_url": "https://premshop.ir/d/preview-token",
-        "link_ttl_hours": 48,
+        "link_ttl_hours": 72,  # ADR-0008 settles this; the first draft invented 48
+        "order_url": "https://premshop.ir/orders/PS-1405-0217",
     },
 }
 

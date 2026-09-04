@@ -69,6 +69,8 @@ Money and numbers follow the display rules in force (ADR-0016): **Persian digits
 
 ### 2.1 Customer notifications
 
+**Where the email versions live.** Each message's email rendering is three files under `templates/email/` — `<name>.subject.txt`, `<name>.txt`, `<name>.html` — sent `multipart/alternative` by `apps.core.email.send_templated_email` (ADR-0023). Built so far: **C12 → `otp_code`**, **C5 → `item_delivered`**. The Persian wording below is the contract; a template that drifts from it is the template's bug. Preview any of them at `/dev/emails/` while `DEBUG` is on.
+
 | # | Event (trigger) | Channels | Persian template (placeholders in `{}`) |
 |---|---|---|---|
 | ~~C1~~ | ~~Order registered~~ — **CUT from phase 1 (R15)** | — | With a gateway the customer is redirected to pay within seconds of creating the order; a "your order is registered" message would arrive after the payment result did. The order-detail page carries the unpaid state and a retry entry point for as long as the order is `PENDING_PAYMENT` — that is `SiteSetting.unpaid_order_ttl_hours` (default 24) from order creation, after which the sweep cancels it with reason `expired_unpaid`. The operator is no longer alerted here either — O1 moved to `payment.verified` (ADR-0019). Numbering below is unchanged so cross‑references keep working |

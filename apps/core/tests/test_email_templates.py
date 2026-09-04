@@ -83,7 +83,7 @@ def test_a_newline_in_the_context_cannot_inject_a_header():
 
 def test_order_delivery_never_carries_the_credentials_themselves():
     """ADR-0008: the link is the sanctioned convenience; values never travel by email."""
-    _, text, html = render_email("order_ready", EMAIL_PREVIEWS["order_ready"])
+    _, text, html = render_email("item_delivered", EMAIL_PREVIEWS["item_delivered"])
 
     for part in (text, html):
         assert "password" not in part.lower()
@@ -195,3 +195,28 @@ def test_the_stack_names_the_persian_faces_iranian_machines_actually_carry(name)
         assert faces.index("Vazir") < faces.index(
             "Segoe UI"
         ), "a Persian face must outrank Segoe UI"
+
+
+def test_the_delivery_message_carries_the_logged_in_fallback_link():
+    """ADR-0008 constraint 6, and the ADR says omitting any constraint reopens it.
+
+    The magic link is a bearer capability with a 72-hour life. A customer who opens
+    the mail on a phone days later, or who has already spent the single use, needs a
+    route that does not depend on the token — otherwise the message is a dead end on
+    the one thing they paid for.
+    """
+    _, text, html = render_email("item_delivered", EMAIL_PREVIEWS["item_delivered"])
+
+    for part in (text, html):
+        assert EMAIL_PREVIEWS["item_delivered"]["delivery_url"] in part
+        assert EMAIL_PREVIEWS["item_delivered"]["order_url"] in part
+
+
+def test_the_delivery_link_lifetime_matches_the_adr():
+    """ADR-0008 settles 72 hours. The first draft invented 48 and nobody would have
+    noticed until a customer was told the wrong number."""
+    assert EMAIL_PREVIEWS["item_delivered"]["link_ttl_hours"] == 72
+
+    _, text, html = render_email("item_delivered", EMAIL_PREVIEWS["item_delivered"])
+    for part in (text, html):
+        assert "۷۲" in part
