@@ -1,4 +1,4 @@
-{% load fa %}پرم‌شاپ
+{% load fa %}PremShop
 ———
 
 کد ورود شما: {{ code|fa_digits }}

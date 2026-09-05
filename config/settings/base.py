@@ -156,7 +156,9 @@ EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "10"))
 # Must be a mailbox at the SMTP2GO-verified sender domain or the relay rejects the
 # message and still spends quota. support@ over noreply@: it has working inbound
 # forwarding, so a customer who replies is heard instead of bouncing into nothing.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "پرم‌شاپ <support@premshop.ir>")
+# Latin brand name in the From: it is the one anchor in an inbox full of Persian
+# subjects, and the owner's ruling is one spelling everywhere — "PremShop".
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "PremShop <support@premshop.ir>")
 SERVER_EMAIL = env("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
 # The address customers are told to write to, and the Reply-To on every message.

@@ -7,5 +7,6 @@ form is the one that also renders in the admin. Param: field.
 <div class="field">
   <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
   {{ field }}
+  {% if field.help_text %}<p class="field__hint">{{ field.help_text }}</p>{% endif %}
   {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
 </div>

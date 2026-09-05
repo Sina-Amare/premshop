@@ -32,7 +32,7 @@ TOO_MANY_CODES = "تعداد درخواست کد بیش از حد مجاز بو�
 TOO_MANY_ATTEMPTS = "تعداد تلاش بیش از حد مجاز بود. چند دقیقه دیگر دوباره تلاش کنید."
 
 
-def request_login_code(request: HttpRequest, email: str) -> None:
+def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
     """Mail a login code, or raise RateLimited.
 
     A code goes to any valid address, known or not. Two reasons, and they point
@@ -58,7 +58,7 @@ def request_login_code(request: HttpRequest, email: str) -> None:
     if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ip):
         raise RateLimited(TOO_MANY_CODES)
 
-    otp.send_login_code(email)
+    return otp.send_login_code(email)
 
 
 def complete_code_login(request: HttpRequest, email: str, code: str) -> User | None:

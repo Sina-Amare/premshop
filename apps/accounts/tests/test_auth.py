@@ -307,7 +307,9 @@ def test_every_public_auth_page_renders(client, name):
     response = client.get(reverse(name))
 
     assert response.status_code == 200
-    assert "پرم‌شاپ" in response.content.decode()
+    assert (
+        "PremShop" in response.content.decode()
+    ), "the wordmark is the brand ruling: Latin, everywhere"
 
 
 def test_the_account_page_renders_for_a_signed_in_user(client, user):

@@ -24,6 +24,7 @@ dev = [
     "django-stubs>=5.0",
     "pip-audit>=2.7",
     "bandit>=1.7",
+    "playwright>=1.47",
 ]
 
 [tool.black]
@@ -70,4 +71,7 @@ django_settings_module = "config.settings.dev"
 DJANGO_SETTINGS_MODULE = "config.settings.dev"
 python_files = ["test_*.py"]
 addopts = "--strict-markers --tb=short"
+markers = [
+    "browser: drives the real page in Playwright Chromium; skips itself when no browser is installed",
+]
 testpaths = ["apps"]

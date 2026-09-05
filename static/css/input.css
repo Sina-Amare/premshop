@@ -293,6 +293,47 @@
     padding: 16px 14px 14px; font-variant-numeric: tabular-nums;
   }
 
+  /* --- The six-cell code input -------------------------------------------
+     Six isolated digits, so tracking is not a concern here: each cell is its
+     own box. dir="ltr" on the row because a code reads left-to-right even in
+     Persian. Feedback is by border colour through the system's own tokens —
+     success green, danger red — with one short shake on a wrong code. Nothing
+     glows, nothing bounces; prefers-reduced-motion zeroes it all globally. */
+  .otp { display: flex; gap: var(--spacing-2); justify-content: center; }
+  .otp__cell {
+    inline-size: 3rem; block-size: 3.5rem; text-align: center;
+    font-family: var(--font-body); font-size: 26px; font-weight: 700; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--color-ink);
+    background: var(--color-surface); border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm); padding: 0; caret-color: var(--color-accent);
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+                background-color var(--dur) var(--ease);
+  }
+  .otp__cell:hover { border-color: var(--color-muted); }
+  .otp__cell:focus-visible { outline: none; border-color: var(--color-accent);
+                             box-shadow: 0 0 0 3px var(--color-accent-tint); }
+  .otp__cell.is-filled { border-color: var(--color-ink); }
+  .otp__cell.is-ok { border-color: var(--color-ok); background: color-mix(in oklab, var(--color-ok) 8%, var(--color-surface)); color: var(--color-ok-text); }
+  .otp__cell.is-error { border-color: var(--color-danger); background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface)); color: var(--color-danger-text); }
+  .otp__cell[disabled] { background: var(--color-fill-subtle); color: var(--color-muted); cursor: not-allowed; }
+  .otp.is-shaking { animation: otp-shake 360ms var(--ease); }
+  @keyframes otp-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+  @media (max-width: 400px) {
+    .otp { gap: 6px; }
+    .otp__cell { inline-size: 2.6rem; block-size: 3.2rem; font-size: 22px; }
+  }
+  .otp__clock { font-variant-numeric: tabular-nums; }
+  .otp__resend { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--spacing-3); margin-block-start: var(--spacing-5); }
+  @media (max-width: 440px) {
+    .otp__resend { flex-direction: column; align-items: stretch; }
+    .otp__resend .btn { inline-size: 100%; }
+  }
+
   /* A form-level error belongs above the fields, not beside one of them: it is
      usually about the pair (email + password), and blaming one field is a lie. */
   .form-error {

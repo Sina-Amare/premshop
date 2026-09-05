@@ -34,7 +34,7 @@ it does not host. The <style> block carries only what cannot be inlined at all.
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light only">
-<title>{% block title %}پرم‌شاپ{% endblock %}</title>
+<title>{% block title %}PremShop{% endblock %}</title>
 {% comment %}
 Vazirmatn for the clients that honour a web font: Apple Mail (macOS + iOS),
 Outlook.com and Samsung Mail. Gmail supports NO @font-face at all — web, Android
@@ -77,7 +77,7 @@ gives everyone else the real brand face.
         {# Masthead. The teal rule is the accent's first of at most three appearances. #}
         <tr>
           <td class="pad" style="padding:36px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;">
-            <div style="font-size:17px;font-weight:bold;line-height:1.5;color:#1C1917;">پرم‌شاپ</div>
+            <div style="font-size:17px;font-weight:bold;line-height:1.5;color:#1C1917;direction:ltr;unicode-bidi:isolate;">PremShop</div>
             <div style="height:2px;width:26px;background-color:#0F766E;border-radius:2px;font-size:0;line-height:0;margin-top:10px;">&nbsp;</div>
           </td>
         </tr>
@@ -98,7 +98,7 @@ gives everyone else the real brand face.
         <tr>
           <td class="pad" align="center" style="padding:28px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:12px;line-height:2;color:#A8A29E;">
             {% block footer %}
-              <div style="color:#78716C;">پشتیبانی پرم‌شاپ</div>
+              <div style="color:#78716C;">پشتیبانی PremShop</div>
               <div dir="ltr"><a href="mailto:{{ support_email }}" style="color:#0F766E;text-decoration:none;">{{ support_email }}</a></div>
               <div dir="ltr" style="margin-top:2px;">premshop.ir</div>
             {% endblock %}

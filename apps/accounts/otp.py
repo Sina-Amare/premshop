@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+import time
 from dataclasses import dataclass
 
 from django.conf import settings
@@ -35,6 +36,7 @@ MAX_ATTEMPTS = 5
 class Issued:
     code: str
     ttl_minutes: int
+    expires_at: int  # unix seconds; the page counts down to this
 
 
 def _key(email: str) -> str:
@@ -58,7 +60,11 @@ def issue(email: str) -> Issued:
     """
     code = f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
     cache.set(_key(email), {"digest": _digest(code), "attempts": 0}, timeout=CODE_TTL_SECONDS)
-    return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60)
+    return Issued(
+        code=code,
+        ttl_minutes=CODE_TTL_SECONDS // 60,
+        expires_at=int(time.time()) + CODE_TTL_SECONDS,
+    )
 
 
 def verify(email: str, code: str) -> bool:
@@ -118,7 +124,7 @@ def normalize_digits(value: str) -> str:
     return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
 
 
-def send_login_code(email: str) -> None:
+def send_login_code(email: str) -> Issued:
     """Issue a code and mail it. Raises if the relay refuses — never silently."""
     from apps.core.email import send_templated_email
 
@@ -128,6 +134,7 @@ def send_login_code(email: str) -> None:
         to=[email],
         context={"code": issued.code, "ttl_minutes": issued.ttl_minutes, "login_url": ""},
     )
+    return issued
 
 
 def normalize_email(email: str) -> str:

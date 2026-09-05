@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google" content="notranslate">
-  <title>{% block title %}پرم‌شاپ{% endblock %}</title>
+  <title>{% block title %}PremShop{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
 
   <link rel="preload" href="{% static 'fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
@@ -25,11 +25,11 @@
     </div>
     <div class="wrap hdr__main">
       <a href="/" class="hdr__brand">
-        <span class="hdr__word">پرم‌شاپ</span>
+        <span class="hdr__word">PremShop</span>
       </a>
       <div style="flex:1"></div>
       {% block header_nav %}{% endblock %}
-      <a href="/" class="hdr__icon" aria-label="حساب کاربری">
+      <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hdr__icon" aria-label="حساب کاربری">
         {# Non-directional icon: it must not mirror in RTL. #}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -47,7 +47,7 @@
     <div class="wrap">
       <div class="ftr__grid">
         <div>
-          <div class="hdr__word">پرم‌شاپ</div>
+          <div class="hdr__word">PremShop</div>
           <p class="micro" style="margin-block-start: var(--spacing-4)">
             فروش اشتراک‌ها و اکانت‌های سرویس‌های هوش مصنوعی، ابزارهای توسعه و نرم‌افزارهای
             بین‌المللی. هر سفارش پس از تأیید پرداخت و در بازه اعلام‌شده تحویل داده می‌شود.
@@ -77,7 +77,7 @@
       </div>
 
       <div class="ftr__bottom">
-        {% block footer_bottom %}پرم‌شاپ — همه حقوق محفوظ است.{% endblock %}
+        {% block footer_bottom %}PremShop — همه حقوق محفوظ است.{% endblock %}
       </div>
     </div>
   </footer>
@@ -115,6 +115,17 @@
     wrap.appendChild(button);
   });
 })();
+// A form that takes seconds (the code request rides a real SMTP round trip) must
+// look busy, or the customer clicks again and burns a second code. The label
+// comes from data-busy so each form says what it is actually doing.
+document.querySelectorAll('form').forEach(function (form) {
+  form.addEventListener('submit', function () {
+    var button = form.querySelector('button[type="submit"][data-busy]');
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = button.getAttribute('data-busy');
+  });
+});
 </script>
 </body>
 </html>

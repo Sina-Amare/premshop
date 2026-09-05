@@ -97,6 +97,10 @@ Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-em
 
 What cannot carry over: Estedad and Vazirmatn, because Gmail and Outlook strip `@font-face`. The stack falls back to `Tahoma, "Segoe UI", "Noto Naskh Arabic", "Geeza Pro", Arial` — the metric rules survive, the faces do not. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
 
+**The wordmark is `PremShop`, in Latin, everywhere** (owner's ruling at the S2 review): site header, footer, email sender name, subjects, masthead. One name, one spelling; the Latin form is the anchor in an inbox full of Persian subjects. Persian prose refers to the shop the same way.
+
+**The code cells show Latin digits.** Six isolated cells in an LTR row; what is typed is what is shown, and Latin in inputs is this system's rule. Persian digits are accepted on the way in and normalised.
+
 **The one tracking exception.** `letter-spacing: 0` holds everywhere in this system because Arabic is cursive and tracking breaks the joins. Persian *digits* ۰–۹ are isolated forms that never join, so the reason for the rule does not reach them — and a run of six bold digits in a Naskh-derived fallback face is precisely where tightness reads squat. The OTP code carries `letter-spacing: 3px`. Nothing else does, and the exception is scoped to that one element.
 
 Templates live in `templates/email/`; `/dev/emails/` renders them in a browser while `DEBUG` is on.
