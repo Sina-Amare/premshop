@@ -263,6 +263,29 @@
   .field__error { font-size: 13px; line-height: 1.7; color: var(--color-danger-text);
                   margin-block-start: var(--spacing-2); }
 
+  /* A password field carries a reveal toggle. Placed at the inline-END — the far
+     side from where RTL text begins — so it never sits under the caret. The
+     button is a real <button>, not a span with a click handler: it has to be
+     reachable by keyboard and announce its state to a screen reader. */
+  .field__wrap { position: relative; display: block; }
+  .field__wrap .field__input { padding-inline-end: 44px; }
+  .field__eye {
+    position: absolute; inset-inline-end: 6px; inset-block-start: 50%;
+    transform: translateY(-50%);
+    inline-size: 32px; block-size: 32px; padding: 0;
+    display: grid; place-items: center;
+    background: transparent; border: 1px solid transparent;
+    border-radius: var(--radius-sm); color: var(--color-muted);
+    cursor: pointer;
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  }
+  .field__eye:hover { color: var(--color-ink); background: var(--color-fill-subtle); }
+  .field__eye svg { inline-size: 18px; block-size: 18px; display: block; }
+  /* Only one of the two icons is ever shown; the script flips which. */
+  .field__eye [data-eye-off] { display: none; }
+  .field__eye[aria-pressed="true"] [data-eye-on] { display: none; }
+  .field__eye[aria-pressed="true"] [data-eye-off] { display: block; }
+
   /* The code input: six isolated digits, so tracking is allowed here and only
      here (see design-language.md). Centred because there is nothing to align to. */
   .field__input--code {

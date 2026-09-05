@@ -87,6 +87,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Before everything else that might touch the cache, so its 503 wins over a
+    # traceback no matter which view raised.
+    "apps.core.middleware.CacheUnavailableMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

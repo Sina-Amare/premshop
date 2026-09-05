@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}اختلال موقت — پرم‌شاپ{% endblock %}
+
+{% block content %}
+<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
+  <div class="card" style="padding: var(--spacing-7) var(--spacing-6)">
+    <h1 style="font-family: var(--font-head); font-size: 26px; font-weight: 800; line-height: 1.35; margin: 0 0 var(--spacing-4)">اختلال موقت</h1>
+    <p class="prose" style="margin: 0 0 var(--spacing-5)">سرویس ورود موقتاً در دسترس نیست. چند دقیقه دیگر دوباره تلاش کنید.</p>
+    <p class="small" style="margin: 0 0 var(--spacing-6)">اگر سفارشی در جریان دارید، نگران نباشید — چیزی از بین نرفته است.</p>
+    <a class="btn btn--secondary" href="{% url 'login-code' %}">تلاش دوباره</a>
+  </div>
+  <p class="micro" style="text-align: center; margin-block-start: var(--spacing-4)">
+    اگر ادامه داشت، به <span class="latin">support@premshop.ir</span> ایمیل بزنید.
+  </p>
+</div>
+{% endblock %}

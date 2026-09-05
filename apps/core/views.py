@@ -18,9 +18,11 @@ from apps.core.email import render_email
 def healthz(request: HttpRequest) -> JsonResponse:
     """Report whether the app can reach its dependencies.
 
-    Monitors poll this; a non-200 means "do not send traffic here". Checks
-    grow as dependencies arrive — Redis with S2, the Celery beat heartbeat
-    with S6 — so this never claims to verify something that isn't wired yet.
+    Monitors poll this; a non-200 means "do not send traffic here". Checks grow
+    as dependencies arrive, so this never claims to verify something that is not
+    wired yet. The cache check earns its place: login codes and every rate-limit
+    counter live there, so Redis being down means authentication is down — and
+    without this line the endpoint reported "ok" while nobody could log in.
     """
     checks: dict[str, str] = {}
     try:
@@ -30,6 +32,16 @@ def healthz(request: HttpRequest) -> JsonResponse:
         checks["database"] = "ok"
     except Exception as exc:  # noqa: BLE001 — the reason is reported, not raised
         checks["database"] = f"error: {type(exc).__name__}"
+
+    try:
+        from django.core.cache import cache
+
+        cache.set("healthz", "1", timeout=10)
+        if cache.get("healthz") != "1":
+            raise RuntimeError("cache did not return what it was given")
+        checks["cache"] = "ok"
+    except Exception as exc:  # noqa: BLE001 — the reason is reported, not raised
+        checks["cache"] = f"error: {type(exc).__name__}"
 
     healthy = all(value == "ok" for value in checks.values())
     return JsonResponse(
