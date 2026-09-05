@@ -1,1 +1,1 @@
-سفارش {{ order_number }} آماده است — PremShop
+سفارش {{ order_number }} آماده است

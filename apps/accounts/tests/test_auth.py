@@ -90,7 +90,7 @@ def test_a_wrong_password_does_not_say_which_half_was_wrong(client, user):
     response = client.post(reverse("login"), {"email": user.email, "password": "nope"})
 
     assert "_auth_user_id" not in client.session
-    assert "ایمیل یا رمز عبور درست نیست" in response.content.decode()
+    assert "ایمیل یا رمز عبور اشتباه است" in response.content.decode()
 
 
 def test_an_inactive_account_cannot_log_in(client, user):
@@ -196,7 +196,7 @@ def test_otp_rate_limit_locks_after_n_attempts(client, user):
     response = client.post(reverse("login-code"), {"email": user.email})
 
     assert len(mail.outbox) == sent_before, "a refused request must not still send mail"
-    assert "بیش از حد مجاز" in response.content.decode()
+    assert "پشت سر هم" in response.content.decode()
 
 
 def test_the_code_is_burned_after_too_many_wrong_guesses(client, user):

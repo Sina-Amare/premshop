@@ -39,8 +39,8 @@ PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 # enough that a mail that really did not arrive is not a two-minute wait.
 RESEND_COOLDOWN_SECONDS = 60
 
-WRONG_CREDENTIALS = "ایمیل یا رمز عبور درست نیست."
-WRONG_CODE = "کد وارد شده درست نیست یا منقضی شده است."
+WRONG_CREDENTIALS = "ایمیل یا رمز عبور اشتباه است."
+WRONG_CODE = "کد اشتباه است یا منقضی شده."
 
 # A real hash of a value nobody knows. Comparing a submitted password against it
 # when the account does not exist makes the miss cost the same work as a genuine

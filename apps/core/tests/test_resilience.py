@@ -48,7 +48,7 @@ def test_a_cache_outage_renders_a_persian_page_not_a_traceback(client):
 
     assert response.status_code == 503
     body = response.content.decode()
-    assert "اختلال موقت" in body
+    assert "ورود فعلاً ممکن نیست" in body
     assert "Traceback" not in body
     assert "DATABASE_URL" not in body, "a debug page would print the whole environment"
 

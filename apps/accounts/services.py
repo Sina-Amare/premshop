@@ -28,8 +28,8 @@ class RateLimited(Exception):
         self.message = message
 
 
-TOO_MANY_CODES = "تعداد درخواست کد بیش از حد مجاز بود. چند دقیقه دیگر دوباره تلاش کنید."
-TOO_MANY_ATTEMPTS = "تعداد تلاش بیش از حد مجاز بود. چند دقیقه دیگر دوباره تلاش کنید."
+TOO_MANY_CODES = "چند بار پشت سر هم کد خواسته‌اید. چند دقیقه بعد دوباره تلاش کنید."
+TOO_MANY_ATTEMPTS = "چند بار پشت سر هم اشتباه وارد کرده‌اید. چند دقیقه بعد دوباره تلاش کنید."
 
 
 def request_login_code(request: HttpRequest, email: str) -> otp.Issued:

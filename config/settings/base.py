@@ -181,11 +181,13 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/account/"
 LOGOUT_REDIRECT_URL = "/"
 
+# Django's rules, with the error sentences in this shop's words — its own Persian
+# says «گذرواژه» where every screen here says «رمز عبور» (apps/accounts/validators.py).
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "apps.accounts.validators.UserAttributeSimilarityValidator"},
+    {"NAME": "apps.accounts.validators.MinimumLengthValidator"},
+    {"NAME": "apps.accounts.validators.CommonPasswordValidator"},
+    {"NAME": "apps.accounts.validators.NumericPasswordValidator"},
 ]
 
 # Persian UI; datetimes are stored in UTC and rendered in Tehran time.

@@ -41,7 +41,7 @@
 
   <div class="card" style="padding: var(--spacing-6)">
     <h2 style="font-family: var(--font-head); font-size: 20px; font-weight: 600; line-height: 1.45; margin: 0 0 var(--spacing-4)">
-      {% if request.user.has_usable_password %}تغییر رمز عبور{% else %}تعیین رمز عبور{% endif %}
+      {% if request.user.has_usable_password %}تغییر رمز عبور{% else %}ثبت رمز عبور{% endif %}
     </h2>
     {% if form.non_field_errors %}
       <div class="form-error" role="alert">

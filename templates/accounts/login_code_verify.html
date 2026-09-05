@@ -1,11 +1,11 @@
 {% extends "accounts/_auth_base.html" %}{% load fa %}
 
 {% block title %}کد ورود — PremShop{% endblock %}
-{% block auth_title %}کد را وارد کنید{% endblock %}
+{% block auth_title %}کد ورود را وارد کنید{% endblock %}
 
 {% block auth_intro %}
   <p class="small" style="margin-block-end: var(--spacing-5)">
-    کد ۶ رقمی به <span class="latin">{{ email }}</span> فرستاده شد.
+    کد ۶ رقمی را به <span class="latin">{{ email }}</span> فرستادیم.
   </p>
 {% endblock %}
 
@@ -54,7 +54,7 @@ session, so a reload never restarts a clock the server has not.
 
 <div class="otp__resend">
   <span class="small" id="resend-hint" style="margin: 0">کد نرسید؟ پوشه‌ی اسپم را هم ببینید.</span>
-  <button type="button" class="btn btn--ghost" id="resend" disabled>ارسال دوباره</button>
+  <button type="button" class="btn btn--ghost" id="resend" disabled>ارسال مجدد</button>
 </div>
 {% endblock %}
 
@@ -175,7 +175,7 @@ session, so a reload never restarts a clock the server has not.
   }
   function fail(message) {
     setState('is-error');
-    showError(message || 'کد درست نیست، دوباره تلاش کنید.');
+    showError(message || 'کد اشتباه است. دوباره تلاش کنید.');
     cellsBox.classList.add('is-shaking');
     setTimeout(function () {
       cellsBox.classList.remove('is-shaking');
@@ -209,15 +209,15 @@ session, so a reload never restarts a clock the server has not.
       clock.hidden = false;
       cells.forEach(function (c) { c.disabled = true; });
       showError('');
-      resendHint.textContent = 'برای دریافت کد جدید، ارسال دوباره را بزنید.';
+      resendHint.textContent = 'برای دریافت کد جدید، «ارسال مجدد» را بزنید.';
     }
     var wait = cooldownUntil - now;
     if (wait > 0) {
       resendButton.disabled = true;
-      resendButton.textContent = 'ارسال دوباره (' + toFa(wait) + ')';
+      resendButton.textContent = 'ارسال مجدد (' + toFa(wait) + ')';
     } else {
       resendButton.disabled = false;
-      resendButton.textContent = 'ارسال دوباره';
+      resendButton.textContent = 'ارسال مجدد';
     }
   }
   tick();
@@ -241,14 +241,14 @@ session, so a reload never restarts a clock the server has not.
         clear();
         cells.forEach(function (c) { c.disabled = false; });
         cells[0].focus();
-        resendHint.textContent = 'کد جدید فرستاده شد.';
+        resendHint.textContent = 'کد جدید را فرستادیم.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       }
       tick();
     }).catch(function () {
-      showError('ارسال انجام نشد. دوباره تلاش کنید.');
+      showError('ارسال نشد. دوباره تلاش کنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       tick();
     });

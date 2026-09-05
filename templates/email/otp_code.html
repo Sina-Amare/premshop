@@ -8,12 +8,12 @@ from the inbox list without opening anything. It is a single-use code sent to
 the address that already controls the account, so surfacing it there costs
 nothing an attacker with inbox access would not already have.
 {% endcomment %}
-{% block preheader %}کد ورود شما {{ code|fa_digits }} است و تا {{ ttl_minutes|fa_digits }} دقیقه دیگر اعتبار دارد.{% endblock %}
+{% block preheader %}کد ورود شما: {{ code|fa_digits }}. تا {{ ttl_minutes|fa_digits }} دقیقه اعتبار دارد.{% endblock %}
 
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">کد ورود شما</h1>
 
-<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">برای ورود به حساب خود در پرم‌شاپ، کد زیر را در صفحه‌ی ورود وارد کنید.</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">این کد را در صفحه‌ی ورود وارد کنید.</p>
 
 {% comment %}
 The payload. Ground-coloured fill and a hairline rather than a shadow — the
@@ -37,17 +37,17 @@ sentence — unreadable, and it silently returns empty on a type mismatch.
 {% endcomment %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
   <tr>
-    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">این کد تا {{ ttl_minutes|fa_digits }} دقیقه دیگر منقضی می‌شود و تنها یک بار قابل استفاده است.</td>
+    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">این کد تا {{ ttl_minutes|fa_digits }} دقیقه اعتبار دارد و فقط یک بار قابل استفاده است.</td>
   </tr>
 </table>
 
 {% if login_url %}
 <div style="height:28px;font-size:0;line-height:0;">&nbsp;</div>
-{% include "email/_button.html" with url=login_url label="ورود مستقیم به حساب" %}
-<p style="margin:14px 0 0 0;font-size:12px;line-height:1.9;color:#A8A29E;">این دکمه فقط یک بار کار می‌کند و پس از آن باطل می‌شود.</p>
+{% include "email/_button.html" with url=login_url label="ورود به حساب" %}
+<p style="margin:14px 0 0 0;font-size:12px;line-height:1.9;color:#A8A29E;">این لینک فقط یک بار کار می‌کند.</p>
 {% endif %}
 
 <div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
 
-<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اگر شما درخواست ورود نداده‌اید، این ایمیل را نادیده بگیرید. بدون این کد کسی نمی‌تواند وارد حساب شما شود، و ما هرگز آن را از شما نمی‌پرسیم.</p>
+<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اگر شما این کد را نخواسته‌اید، نگران نباشید؛ بدون این کد کسی نمی‌تواند وارد حساب شما شود. این کد را به کسی ندهید.</p>
 {% endblock %}
