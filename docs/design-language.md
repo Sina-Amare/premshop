@@ -91,6 +91,14 @@ The dotted leader is the visual grammar of an invoice, a receipt, a statement �
 
 Used **once per page region** — a second instance reads as sloppiness rather than authorship.
 
+## The catalog
+
+**The product card** is the tile, the words, and the price on its own line at the block-end, so a grid of them reads as one column of aligned figures. The tile is an icon on tinted stone, or a monogram when there is no image — the same shape either way, so a grid with and without pictures stays even. The whole card is the link. Region sits on the card as a neutral badge; it is a fact, not an alert.
+
+**The buy box** structures by hairline. The selected plan is the accent's one appearance in it; the promotional original sits struck through and muted beside the new figure, never amber. On a phone the page reads title → buy box → details, so the price is never below the FAQ.
+
+**Chips** for a filter: the active one takes the accent as the current-state indicator, which is one of its three permitted uses. Step numbers, category counts and everything else that merely wants to look branded stay in ink.
+
 ## Email
 
 Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). What carries over unchanged: the palette, hairlines instead of shadows, the `11px 20px 9px` optical button padding, the ledger line, `letter-spacing: 0`, 1.85 on prose, and **amber for time and only time** — the code expiry and the delivery-link expiry, nothing else.

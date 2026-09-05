@@ -36,6 +36,8 @@ OTP_REQUESTS_PER_EMAIL = Limit("otpreq:email", times=3, seconds=15 * 60)
 OTP_REQUESTS_PER_IP = Limit("otpreq:ip", times=10, seconds=60 * 60)
 LOGIN_ATTEMPTS_PER_EMAIL = Limit("login:email", times=10, seconds=15 * 60)
 LOGIN_ATTEMPTS_PER_IP = Limit("login:ip", times=30, seconds=60 * 60)
+# Catalog search: a person searching does not exceed this; a scraper does.
+SEARCH_PER_IP = Limit("search:ip", times=30, seconds=60)
 
 
 def client_ip(request: HttpRequest) -> str:

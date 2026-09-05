@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% load fa %}
+
+{% block title %}جستجو{% if query %}: {{ query }}{% endif %} — PremShop{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  {% if query %}
+    <h1 class="page-head__title">نتایج برای «{{ query }}»</h1>
+    {% if not limited %}<p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>{% endif %}
+  {% else %}
+    <h1 class="page-head__title">جستجو</h1>
+  {% endif %}
+</header>
+
+<form class="search-form" action="{% url 'search' %}" method="get" role="search">
+  <input class="field__input" type="search" name="q" value="{{ query }}" placeholder="نام محصول" aria-label="جستجو در محصولات" autocomplete="off" autofocus>
+  <button class="btn btn--primary" type="submit">جستجو</button>
+</form>
+
+{% if limited %}
+  <div class="card empty">
+    <p class="prose" style="margin:0">جستجوهای پشت سر هم زیاد شد.</p>
+    <p class="small" style="margin:0">یک دقیقه بعد دوباره تلاش کنید.</p>
+  </div>
+{% elif query and not results %}
+  <div class="card empty">
+    <p class="prose" style="margin:0">چیزی برای «{{ query }}» پیدا نشد.</p>
+    <p class="small" style="margin:0">املای دیگری را امتحان کنید، یا از دسته‌بندی‌ها شروع کنید.</p>
+    <a class="btn btn--secondary" href="{% url 'home' %}">دسته‌بندی‌ها</a>
+  </div>
+{% elif results %}
+  <div class="grid">
+    {% for product in results %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

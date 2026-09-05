@@ -75,8 +75,8 @@ def user():
 
 def request_code(page, live_server, email: str) -> None:
     page.goto(f"{live_server.url}/login/code/")
-    page.fill("input[name=email]", email)
-    page.click("button[type=submit]")
+    page.fill("main input[name=email]", email)
+    page.click("main button[type=submit]")  # not the header search button
     page.wait_for_url("**/login/code/verify/")
 
 

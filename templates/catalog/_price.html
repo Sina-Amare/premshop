@@ -1,0 +1,6 @@
+{% load fa %}{% comment %}
+A plan's price. The promotional figure keeps the numeral treatment; the original
+sits beside it struck through, muted, one step down, never bold — and never
+amber, which means time and only time (design-language.md, Numbers and RTL).
+Params: plan, optional size ("lg").
+{% endcomment %}<span class="price{% if size == 'lg' %} price--lg{% endif %}">{% if plan.promotion_is_active %}<span class="price__was">{{ plan.sale_price|toman_plain }}</span>{% endif %}<span class="price__num">{{ plan.effective_price|toman_plain }}</span><span class="price__cur">تومان</span></span>

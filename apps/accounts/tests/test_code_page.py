@@ -15,10 +15,11 @@ import pytest
 from django.core import mail
 from django.urls import reverse
 
-from apps.accounts import otp, ratelimit
+from apps.accounts import otp
 from apps.accounts.models import User
 from apps.accounts.tests.test_auth import PASSWORD, code_from
 from apps.accounts.views import PENDING_EXPIRES_KEY, RESEND_COOLDOWN_SECONDS
+from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
 

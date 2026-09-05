@@ -1,0 +1,68 @@
+{% extends "base.html" %}{% load fa %}
+
+{% block title %}PremShop — اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
+{% block meta_description %}اشتراک ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. تحویل در بازه‌ی اعلام‌شده، گارانتی تا پایان دوره.{% endblock %}
+
+{% block content %}
+{% comment %}
+The home page of a shop that keeps records. No glowing hero: one plain statement,
+the search, and the three facts a doubtful buyer needs — set as ledger lines,
+the signature, used once on this page.
+{% endcomment %}
+<section class="hero">
+  <div class="hero__text">
+    <h1 class="hero__title">اشتراک و اکانت دیجیتال، با تحویل مطمئن</h1>
+    <p class="prose hero__lead">ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. قیمت مشخص، زمان تحویل مشخص، گارانتی مشخص.</p>
+    <form class="hero__search" action="{% url 'search' %}" method="get" role="search">
+      <input class="field__input" type="search" name="q" placeholder="دنبال چه چیزی هستید؟" aria-label="جستجو در محصولات" autocomplete="off">
+      <button class="btn btn--primary" type="submit">جستجو</button>
+    </form>
+  </div>
+  <div class="hero__facts card">
+    <div class="fact"><span class="fact__k">تحویل</span><span class="fact__lead"></span><span class="fact__v">در بازه‌ی اعلام‌شده‌ی هر محصول</span></div>
+    <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">تا پایان دوره‌ی اشتراک</span></div>
+    <div class="fact"><span class="fact__k">پشتیبانی</span><span class="fact__lead"></span><span class="fact__v">هر روز، ۱۰ تا ۲۲</span></div>
+    <div class="fact"><span class="fact__k">پرداخت</span><span class="fact__lead"></span><span class="fact__v">درگاه بانکی</span></div>
+  </div>
+</section>
+
+{% if categories %}
+<section class="section">
+  <h2 class="section__title">دسته‌بندی‌ها</h2>
+  <div class="grid grid--cats">
+    {% for cat in categories %}
+      <a class="ccard" href="{% url 'category' cat.slug %}">
+        <span class="ccard__name">{{ cat.name }}</span>
+        <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
+        {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">محصولات</h2>
+  </div>
+  {% if featured %}
+    <div class="grid">
+      {% for product in featured %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty">
+      <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
+      <p class="small" style="margin:0">به‌زودی فهرست محصولات اینجا قرار می‌گیرد.</p>
+    </div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2 class="section__title">چطور کار می‌کند</h2>
+  <ol class="steps">
+    <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">انتخاب و پرداخت</span><span class="steps__d">محصول و پلن را انتخاب کنید و از درگاه بانکی پرداخت کنید.</span></li>
+    <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">تحویل در بازه‌ی اعلام‌شده</span><span class="steps__d">زمان تحویل هر محصول روی صفحه‌ی آن نوشته شده؛ سفارش در همان بازه انجام می‌شود.</span></li>
+    <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">گارانتی تا پایان دوره</span><span class="steps__d">اگر مشکلی پیش آمد، تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.</span></li>
+  </ol>
+</section>
+{% endblock %}

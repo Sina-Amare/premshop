@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% load fa %}
+
+{% block title %}{{ category.seo_title|default:category.name }} — PremShop{% endblock %}
+{% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
+
+{% block content %}
+<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
+
+<header class="page-head">
+  <h1 class="page-head__title">{{ category.name }}</h1>
+  {% if category.intro_html %}<div class="prose page-head__intro">{{ category.intro_html|safe }}</div>
+  {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
+</header>
+
+{% comment %}A simple filter, as chips. The active chip is the accent's one use here.{% endcomment %}
+<div class="chips" role="group" aria-label="نوع تحویل">
+  <a class="chip{% if not delivery %} is-active{% endif %}" href="{% url 'category' category.slug %}">همه</a>
+  {% for value, label in delivery_types %}
+    <a class="chip{% if delivery == value %} is-active{% endif %}" href="?type={{ value }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if products %}
+  <div class="grid">
+    {% for product in products %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+  </div>
+{% else %}
+  <div class="card empty">
+    {% if delivery %}
+      <p class="prose" style="margin:0">در این دسته محصولی با این نوع تحویل نداریم.</p>
+      <a class="btn btn--secondary" href="{% url 'category' category.slug %}">نمایش همه</a>
+    {% else %}
+      <p class="prose" style="margin:0">فعلاً محصولی در این دسته نیست.</p>
+      <a class="btn btn--secondary" href="{% url 'home' %}">بازگشت به خانه</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

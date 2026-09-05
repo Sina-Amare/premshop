@@ -14,8 +14,9 @@ from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.accounts import otp, ratelimit
+from apps.accounts import otp
 from apps.accounts.models import User
+from apps.core import ratelimit
 from apps.core.email import send_templated_email
 
 

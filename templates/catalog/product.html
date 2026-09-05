@@ -1,0 +1,147 @@
+{% extends "base.html" %}{% load fa %}
+
+{% block title %}{{ product.seo_title|default:product.name }} — PremShop{% endblock %}
+{% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
+
+{% block content %}
+<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span>{{ product.name }}</span></nav>
+
+<div class="pdp">
+  <header class="pdp__head">
+      {% if product.image %}
+        <span class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="56" height="56"></span>
+      {% else %}
+        <span class="tile tile--lg tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
+      {% endif %}
+      <div>
+        <h1 class="pdp__title">{{ product.name }}</h1>
+        {% comment %}Region in the title area is a brief requirement (§4); the rest are the buyer's three questions.{% endcomment %}
+        <div class="pdp__meta">
+          <span class="badge badge--neutral">ریجن {{ product.get_region_display }}</span>
+          <span class="badge badge--neutral">{{ product.get_warranty_display }}</span>
+          <span class="badge badge--neutral">تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</span>
+        </div>
+      </div>
+  </header>
+
+  <div class="pdp__main">
+    {% if product.short_description %}<p class="prose pdp__lead">{{ product.short_description }}</p>{% endif %}
+
+    {% comment %}The product's facts as the ledger — the signature, once on this page.{% endcomment %}
+    <div class="card pdp__facts">
+      <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
+      <div class="fact"><span class="fact__k">ریجن</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_region_display }}</span></div>
+      <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
+      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
+    </div>
+
+    {% if specs %}
+    <section class="pdp__section">
+      <h2 class="pdp__h2">مشخصات</h2>
+      <table class="table spec">
+        <tbody>
+          {% for spec in specs %}<tr><th scope="row">{{ spec.title }}</th><td>{{ spec.value }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% if product.full_description and product.full_description != product.short_description %}
+    <section class="pdp__section">
+      <h2 class="pdp__h2">توضیحات</h2>
+      <div class="prose">{{ product.full_description|linebreaks }}</div>
+    </section>
+    {% endif %}
+
+    <section class="pdp__section">
+      <h2 class="pdp__h2">سؤال‌های رایج</h2>
+      <dl class="faq">
+        <dt>کی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی (۱۰ تا ۲۲).</dd>
+        <dt>اگر مشکلی پیش بیاید؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز پس از تحویل پاسخ‌گو هستیم.{% else %}تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.{% endif %}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <aside class="pdp__buy">
+    <div class="card buybox">
+      {% comment %}
+      The add-to-cart control, complete: plan selector, quantity, one primary
+      button. The cart itself arrives at S4b, which sets this form's action; the
+      control ships now so the page is judged whole and the keyboard path exists.
+      A plan that needs the customer's own account details is capped at one per
+      line — one input per credential — and S4b re-validates that on the server.
+      {% endcomment %}
+      <form class="buybox__form" method="post" action="#" data-cart-pending>
+        {% csrf_token %}
+        <fieldset class="plans">
+          <legend class="buybox__label">پلن</legend>
+          {% for plan in plans %}
+            <label class="plan{% if not plan.is_available %} plan--off{% endif %}">
+              <input type="radio" name="plan" value="{{ plan.id }}"
+                     {% if not plan.is_available %}disabled{% elif forloop.first %}checked{% endif %}
+                     data-requires-input="{{ plan.requires_customer_input|yesno:'1,0' }}">
+              <span class="plan__title">{{ plan.title }}</span>
+              {% if plan.is_available %}
+                {% include "catalog/_price.html" with plan=plan %}
+              {% else %}
+                <span class="plan__off">فعلاً ناموجود</span>
+              {% endif %}
+            </label>
+          {% empty %}
+            <p class="small" style="margin:0">برای این محصول هنوز پلنی ثبت نشده است.</p>
+          {% endfor %}
+        </fieldset>
+
+        {% if available_plans %}
+        <div class="buybox__row">
+          <label class="buybox__label" for="qty">تعداد</label>
+          <div class="stepper">
+            <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
+            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="10" value="1" dir="ltr">
+            <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
+          </div>
+        </div>
+        <p class="micro buybox__hint" id="qty-hint" hidden>این پلن روی اکانت خودتان فعال می‌شود؛ برای هر سفارش یک عدد.</p>
+        <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد</button>
+        {% else %}
+        <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
+        <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+        {% endif %}
+      </form>
+      <p class="micro buybox__note">پرداخت از درگاه بانکی · تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.querySelector('.buybox__form');
+  if (!form) return;
+  var qty = form.querySelector('#qty');
+  var hint = form.querySelector('#qty-hint');
+  function currentPlan() { return form.querySelector('input[name=plan]:checked'); }
+  function applyCap() {
+    var plan = currentPlan();
+    var one = plan && plan.getAttribute('data-requires-input') === '1';
+    if (!qty) return;
+    qty.max = one ? '1' : '10';
+    if (one) qty.value = '1';
+    qty.disabled = !!one;
+    form.querySelectorAll('.stepper__btn').forEach(function (b) { b.disabled = !!one; });
+    if (hint) hint.hidden = !one;
+  }
+  form.querySelectorAll('input[name=plan]').forEach(function (r) { r.addEventListener('change', applyCap); });
+  form.querySelectorAll('.stepper__btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var next = (parseInt(qty.value, 10) || 1) + parseInt(b.getAttribute('data-step'), 10);
+      qty.value = Math.min(Math.max(next, 1), parseInt(qty.max, 10) || 10);
+    });
+  });
+  // The cart arrives at S4b. Until then the control is complete but inert.
+  form.addEventListener('submit', function (e) { if (form.hasAttribute('data-cart-pending')) e.preventDefault(); });
+  applyCap();
+})();
+</script>
+{% endblock %}

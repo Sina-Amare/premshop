@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from apps.accounts import ratelimit, services
+from apps.accounts import services
 from apps.accounts.forms import (
     CodeForm,
     EmailForm,
@@ -27,6 +27,7 @@ from apps.accounts.forms import (
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
+from apps.core import ratelimit
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -191,7 +192,7 @@ def logout(request: HttpRequest) -> HttpResponse:
     """POST only. A GET logout can be triggered by any image tag on any site,
     which is a cross-site request forgery that logs your customers out for fun."""
     django_logout(request)
-    return redirect("styleguide")
+    return redirect("home")
 
 
 @never_cache

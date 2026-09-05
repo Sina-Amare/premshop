@@ -15,8 +15,9 @@ from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
 from django.urls import reverse
 
-from apps.accounts import otp, ratelimit
+from apps.accounts import otp
 from apps.accounts.models import User
+from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
 

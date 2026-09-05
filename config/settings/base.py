@@ -75,6 +75,9 @@ DEBUG = env_bool("DEBUG")
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 INSTALLED_APPS = [
+    # unfold must precede django.contrib.admin: it overrides the admin templates,
+    # and Django resolves templates in INSTALLED_APPS order.
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -82,6 +85,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "apps.accounts",
+    "apps.catalog",
     "apps.core",
 ]
 
@@ -205,6 +209,23 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# The admin is the operator's tool until S7 builds the panel proper. Unfold makes
+# Django's admin usable in RTL; the site name is the brand, in Latin, everywhere.
+UNFOLD = {
+    "SITE_TITLE": "PremShop",
+    "SITE_HEADER": "PremShop",
+    "SITE_SYMBOL": "storefront",
+    "SHOW_HISTORY": True,
+    # The brand's teal as the primary, in the tint ramp Unfold expects.
+    "COLORS": {
+        "primary": {
+            "50": "240 249 248", "100": "204 236 233", "200": "153 217 211", "300": "102 198 190",
+            "400": "51 179 168", "500": "15 118 110", "600": "13 106 99", "700": "11 89 83",
+            "800": "9 71 66", "900": "6 47 44", "950": "3 24 22",
+        },
+    },
+}
 
 # Never log request bodies: they carry credentials and customer input (ADR-0007).
 LOGGING = {

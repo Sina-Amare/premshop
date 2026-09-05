@@ -41,9 +41,7 @@ def test_healthz_goes_degraded_when_the_cache_is_unreachable(client):
 def test_a_cache_outage_renders_a_persian_page_not_a_traceback(client):
     """Reintroduce the bug and watch the guard fire — a guard that has never gone
     red is a guard nobody has tested."""
-    with mock.patch(
-        "apps.accounts.ratelimit.cache.add", side_effect=RedisConnectionError("refused")
-    ):
+    with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
         response = client.post(reverse("login-code"), {"email": "someone@example.test"})
 
     assert response.status_code == 503
@@ -54,9 +52,7 @@ def test_a_cache_outage_renders_a_persian_page_not_a_traceback(client):
 
 
 def test_the_outage_page_offers_a_way_back(client):
-    with mock.patch(
-        "apps.accounts.ratelimit.cache.add", side_effect=RedisConnectionError("refused")
-    ):
+    with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
         body = client.post(reverse("login-code"), {"email": "x@example.test"}).content.decode()
 
     assert reverse("login-code") in body, "a dead end is not an error page"

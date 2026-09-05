@@ -1,0 +1,31 @@
+{% load fa %}{% comment %}
+One product on a shelf. The whole card is the link; the image is a tile that is
+designed for the no-image case (a monogram on tinted stone), because a broken
+or missing picture on a shop card is the fastest way to look unreal.
+Params: product (with plans prefetched).
+{% endcomment %}
+<a class="pcard" href="{% url 'product' product.slug %}">
+  <div class="pcard__media">
+    {% if product.image %}
+      <span class="tile"><img src="{{ product.image.url }}" alt="" loading="lazy" width="40" height="40"></span>
+    {% else %}
+      <span class="tile tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
+    {% endif %}
+    <span class="pcard__region badge badge--neutral">{{ product.get_region_display }}</span>
+  </div>
+  <div class="pcard__body">
+    <span class="pcard__cat">{{ product.category.name }}</span>
+    <h3 class="pcard__name">{{ product.name }}</h3>
+    {% if product.short_description %}<p class="pcard__desc">{{ product.short_description }}</p>{% endif %}
+  </div>
+  <div class="pcard__foot">
+    {% with plan=product.cheapest_plan %}
+      {% if plan %}
+        <span class="pcard__from">{{ plan.title }}</span>
+        {% include "catalog/_price.html" with plan=plan %}
+      {% else %}
+        <span class="small">ناموجود</span>
+      {% endif %}
+    {% endwith %}
+  </div>
+</a>

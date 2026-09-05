@@ -300,7 +300,9 @@ erDiagram
 
 Login OTPs and Telegram link tokens (5-min TTL) live in **Redis, not tables** — see §5.
 
-### `catalog`
+### `catalog` — **settled at S3** (ADR-0025)
+
+> **Money** everywhere in this document is `DecimalField(max_digits=12, decimal_places=0)`: whole toman, exact arithmetic, the unit visible in the schema. One `MoneyField()` definition in `apps/catalog/models.py` is reused by every money column.
 
 **Category** (flat — no parent, D15)
 
@@ -322,7 +324,7 @@ Login OTPs and Telegram link tokens (5-min TTL) live in **Redis, not tables** �
 | full_description | text | blank | "" | rich text |
 | image | ImageField | yes | null | |
 | delivery_type | varchar(24), choices | — | | `ready_account`·`on_customer_account`·`code_license`·`gift_card` |
-| region | varchar(24), choices | — | `global` | must surface in title + checkout confirm (brief §4) |
+| region | varchar(24), choices | — | `global` | `global`·`ir`·`us`·`eu`·`tr` (owner ruling 2026-09-05); must surface in title + checkout confirm (brief §4) |
 | warranty | varchar(24), choices | — | `none` | `none`·`days_7`·`full_period` |
 | delivery_hours | smallint | — | 24 | promised delivery window; SLA input (D7) |
 | delivery_template | text | blank | "" | comma-separated field names; pre-renders delivery form |
