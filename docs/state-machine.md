@@ -1,5 +1,10 @@
 # PremShop — State Machine Specification
 
+> **At a glance.** What an order item and a payment may do next, what each change announces, how simultaneous requests are kept safe, and the tests that prove it.
+> **Built:** nothing yet. The item machine arrives at S4a, the gateway payment machine at S5. The operator's manual payment fallback comes earlier — at S4b per the note below, at S6b per the build plan (the documents disagree; listed for the owner in `docs-local/progress.md`).
+> **Already fixed regardless of step:** everything named as settled in the firmness note below, including the four payment rules at the top of §2.
+> **Read for S4a:** §1 the item machine, §3 Event catalog, §4 Concurrency rules, §5 the item-machine tests.
+
 > **Firmness (owner calibration, 2026-09-01).** Settled now: the 7-status item list, the 5-status payment list, transitions only through services, illegal transitions raise, the executed-Refund gate on REFUNDED, the event-row-inside-the-transaction rule, and the four payment non-negotiables in §2 (verify is the sole source of truth, amount must match, confirm is idempotent, `abandoned` only via inquiry). The per-transition guards/side-effects and the event catalog harden at the step that implements them (item machine → S4a, manual fallback → S4b, gateway machine → S5, notification consumers → S6/S8); until then they are the best current draft. A mid-step discovery that a row here is wrong is a contract conversation, not a workaround.
 
 Scope: OrderItem machine, Payment machine, event catalog, concurrency rules, test list. Implements ADR-0003 (transitions through services), ADR-0005 as amended (money paths, discount codes), ADR-0018 (persistent cart + guest checkout), ADR-0019 (payment gateway — supersedes the card-to-card design of ADR-0006), ADR-0020 (discount codes), plus D7–D11 and D17–D18. All transitions live in `orders/services.py` and `payments/services.py`; any status write outside a service method is a code-review reject.

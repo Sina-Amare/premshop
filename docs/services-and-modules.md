@@ -1,5 +1,10 @@
 # PremShop — Module Boundaries & Service Layer Contract (Phase 1)
 
+> **At a glance.** Which app owns what, which app may import which, and the signature of every service function.
+> **Built:** `core`, `accounts`, `catalog` — for these the code is the source of truth.
+> **Draft, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), `payments` (S6b and S5), `notifications` (S6), `panel` (S7), `cms` (S11).
+> **Read for S4a:** §1 App Map, §2 `orders`, §5 Testing Seams.
+
 ## 1. App Map
 
 Dependency direction is a strict order. An app may import only from apps **above** it in this list (plus stdlib/Django/libs). Panel sits at the top and imports everyone; nothing imports panel. `cms` and `catalog` are domain-leaf apps.

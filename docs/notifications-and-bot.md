@@ -1,5 +1,10 @@
 # PremShop — Notification & Telegram Contract (Phase 1) + Future API Sketch
 
+> **At a glance.** Every message the shop sends — words, channel, trigger — how the outbox delivers it, and the Telegram webhook contract.
+> **Built:** in `templates/email/`, the login-code and sign-in-alert emails (S2), sent directly with no outbox yet, and the delivery-notice template (S2a), which nothing sends until S7.
+> **Draft:** the outbox and operator alerts (S6), the Telegram bot and linking (S8), every other customer message (S6–S10). §4 is a phase-3 sketch, not planned work.
+> **Read for S4a:** nothing — this file matters from S6.
+
 Scope: this document specifies the phase‑1 Telegram bot (one‑way notifications + account linking), the complete outbound message catalog, and the outbox delivery mechanics. Section 4 is a deferred sketch only. Per D4 there is **no DRF and no /api/v1 in phase 1** — the bot is one webhook view plus Celery `sendMessage` tasks calling `services.py` in‑process.
 
 ---

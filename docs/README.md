@@ -14,6 +14,8 @@ Technical reference for the codebase. Which document answers which question:
 
 ## Reading these documents
 
+Each of the four design documents opens with an **"At a glance"** box: what it answers, which parts are built, which are still draft, and which sections the next step needs. Nobody is expected to read them end to end.
+
 The data model, state machine, and service contracts are **contracts**: they exist so the same decision isn't made three different ways across sessions. Each hardens at the step that implements it — the note at the top of each file says what is settled and what is still draft. Discovering mid-work that a contract is wrong is a conversation, not a workaround.
 
 The **ADRs** carry the reasoning. If you are about to change something and wonder why it is the way it is, look there first; the answer, its alternatives, and the condition that would justify revisiting it are usually recorded.
