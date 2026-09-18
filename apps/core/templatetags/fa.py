@@ -42,7 +42,7 @@ def price_html(value: Decimal | int | None) -> str:
         # Constant markup, no interpolation — nothing to escape.
         return mark_safe(
             '<span class="price"><span class="price__num">رایگان</span></span>'
-        )  # noqa: S308
+        )  # noqa: S308  # nosec B308
     return format_html(
         '<span class="price"><span class="price__num">{}</span>'
         '<span class="price__cur">تومان</span></span>',

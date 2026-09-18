@@ -32,11 +32,13 @@ dev = [
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+# Agent worktrees (.kilo/, .claude/) are whole copies of the repo; never format them.
+extend-exclude = '/(\.kilo|\.claude)/'
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["migrations"]
+extend-exclude = ["migrations", ".kilo", ".claude"]
 
 [tool.ruff.lint]
 # E/F pyflakes+pycodestyle, I import order, UP modern syntax, B bugbear (likely

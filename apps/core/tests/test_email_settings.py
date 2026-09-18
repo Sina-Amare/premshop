@@ -83,7 +83,10 @@ def test_the_from_address_is_at_the_verified_sender_domain():
 
 
 def test_production_refuses_to_boot_without_relay_credentials(reload_base):
-    reload_base(EMAIL_HOST_PASSWORD="", ALLOWED_HOSTS="premshop.ir")
+    # Every value this depends on is set here. It used to lean on the developer's
+    # .env for EMAIL_HOST_USER, so it passed locally and failed in CI, where the
+    # first missing variable was a different one.
+    reload_base(EMAIL_HOST_USER="relay-user", EMAIL_HOST_PASSWORD="", ALLOWED_HOSTS="premshop.ir")
     with pytest.raises(ImproperlyConfigured, match="EMAIL_HOST_PASSWORD"):
         import config.settings.prod as prod
 
@@ -91,7 +94,12 @@ def test_production_refuses_to_boot_without_relay_credentials(reload_base):
 
 
 def test_production_refuses_a_from_address_the_relay_would_reject(reload_base):
-    reload_base(ALLOWED_HOSTS="premshop.ir", DEFAULT_FROM_EMAIL="PremShop <hi@gmail.com>")
+    reload_base(
+        ALLOWED_HOSTS="premshop.ir",
+        EMAIL_HOST_USER="relay-user",
+        EMAIL_HOST_PASSWORD="relay-pass",  # noqa: S106 — a fixture value
+        DEFAULT_FROM_EMAIL="PremShop <hi@gmail.com>",
+    )
     with pytest.raises(ImproperlyConfigured, match="premshop.ir"):
         import config.settings.prod as prod
 

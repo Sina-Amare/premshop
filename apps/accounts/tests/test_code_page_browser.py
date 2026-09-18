@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import re
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,7 @@ from apps.accounts.tests.test_auth import ASCII_TO_PERSIAN, PASSWORD, code_from
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 SHOTS = Path(
-    os.environ.get("PREMSHOP_SHOTS", r"C:\Users\sinaa\AppData\Local\Temp\premshop-shots\e2e")
+    os.environ.get("PREMSHOP_SHOTS", Path(tempfile.gettempdir()) / "premshop-shots" / "e2e")
 )
 
 PASTE_JS = """

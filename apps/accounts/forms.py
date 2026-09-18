@@ -76,7 +76,9 @@ class CodeForm(forms.Form):
 
 # The four validators in AUTH_PASSWORD_VALIDATORS, in one breath. If a validator is
 # ever added or removed there, this line is wrong — hence the test that renders it.
-PASSWORD_HINT = "حداقل ۸ کاراکتر و نه فقط عدد. نباید رایج یا شبیه ایمیل شما باشد."  # noqa: S105 — a hint, not a secret
+PASSWORD_HINT = (
+    "حداقل ۸ کاراکتر و نه فقط عدد. نباید رایج یا شبیه ایمیل شما باشد."  # noqa: S105  # nosec B105
+)
 
 
 class StyledPasswordChangeForm(auth_forms.PasswordChangeForm):
@@ -99,11 +101,11 @@ class StyledPasswordChangeForm(auth_forms.PasswordChangeForm):
         super().__init__(*args, **kwargs)
         self.error_messages = {
             **self.error_messages,
-            "password_incorrect": "رمز عبور فعلی اشتباه است.",
-            "password_mismatch": "تکرار رمز عبور یکسان نیست.",
+            "password_incorrect": "رمز عبور فعلی اشتباه است.",  # nosec B105
+            "password_mismatch": "تکرار رمز عبور یکسان نیست.",  # nosec B105
         }
         labels = {
-            "old_password": "رمز عبور فعلی",
+            "old_password": "رمز عبور فعلی",  # nosec B105
             "new_password1": "رمز عبور جدید",
             "new_password2": "تکرار رمز عبور جدید",
         }
@@ -125,7 +127,7 @@ class StyledSetPasswordForm(auth_forms.SetPasswordForm):
         super().__init__(*args, **kwargs)
         self.error_messages = {
             **self.error_messages,
-            "password_mismatch": "تکرار رمز عبور یکسان نیست.",
+            "password_mismatch": "تکرار رمز عبور یکسان نیست.",  # nosec B105
         }
         labels = {"new_password1": "رمز عبور", "new_password2": "تکرار رمز عبور"}
         for name, field in self.fields.items():

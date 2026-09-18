@@ -7,7 +7,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -19,14 +18,6 @@ from apps.core import ratelimit
 pytestmark = pytest.mark.django_db
 
 PRODUCT_PAGE_QUERY_BUDGET = 15
-
-
-@pytest.fixture(autouse=True)
-def clean_cache(settings):
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-    cache.clear()
-    yield
-    cache.clear()
 
 
 @pytest.fixture

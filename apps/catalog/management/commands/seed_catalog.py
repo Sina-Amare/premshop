@@ -289,7 +289,7 @@ class Command(BaseCommand):
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists():
             try:
-                with urllib.request.urlopen(  # noqa: S310 — fixed https constant
+                with urllib.request.urlopen(  # noqa: S310  # nosec B310
                     ICON.format(slug=icon), timeout=15
                 ) as response:
                     target.write_bytes(response.read())

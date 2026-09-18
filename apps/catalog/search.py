@@ -27,10 +27,14 @@ _CHAR_FOLD = str.maketrans(
         "آ": "ا",  # آ → ا
         "ؤ": "و",  # ؤ → و
         "ـ": "",  # ـ tatweel: stretching, never meaning
-        "‌": " ",  # half-space → space: what phones type instead of it
-        "‍": "",
-        "‎": "",
-        "‏": "",
+        # The invisible ones are written as escapes, never as literals: a reviewer
+        # cannot check a character they cannot see, and bidirectional controls in
+        # source are how "trojan source" attacks hide code (bandit B613 flagged the
+        # literal forms, correctly).
+        "\u200c": " ",  # ZWNJ, the half-space → space: what phones type instead of it
+        "\u200d": "",  # ZWJ
+        "\u200e": "",  # left-to-right mark
+        "\u200f": "",  # right-to-left mark
     }
 )
 

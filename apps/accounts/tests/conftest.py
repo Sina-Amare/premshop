@@ -1,23 +1,6 @@
 """Test-wide fixtures for the accounts app."""
 
 import pytest
-from django.core.cache import cache
-
-
-@pytest.fixture(autouse=True)
-def clean_cache(settings):
-    """OTP codes and rate-limit counters live in the cache, so every test must
-    start from an empty one — otherwise a limit spent in one test locks out the
-    next, and the failure looks like a bug in the code under test.
-
-    locmem rather than the real Redis: the suite must run in CI, which has a
-    Postgres service and no Redis, and a test that needs a daemon running is a
-    test people learn to skip.
-    """
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-    cache.clear()
-    yield
-    cache.clear()
 
 
 @pytest.fixture(autouse=True)
