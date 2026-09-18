@@ -12,6 +12,20 @@ Technical reference for the codebase. Which document answers which question:
 | What does the interface look like — type, colour, layout rules? | [design-language.md](design-language.md) |
 | How do I run it locally? | [../README.md](../README.md) |
 
+## Which document owns which kind of fact
+
+Each fact is stated in **one** of these and referred to from the others — restating it elsewhere is how documents drift apart. A step's preparation brings that step's sections into line with this table; where two documents disagree, the disagreement is settled in the step's briefing, not by picking one silently.
+
+| Kind of fact | Its one home |
+|---|---|
+| Tables, fields, constraints, indexes, what happens on delete | `data-model.md` |
+| Which status may change to which and who may change it; the events each change announces and their dedupe-key families; concurrency rules; the tests that prove the two machines | `state-machine.md` |
+| Which app owns what and may import what; service function signatures; background tasks and their schedule | `services-and-modules.md` |
+| The words of each message, its channel, how the outbox delivers it and builds a dedupe key; the Telegram webhook | `notifications-and-bot.md` |
+| Type, colour, spacing, layout, the look of emails | `design-language.md` |
+| Why any of it is so | `decisions/` |
+| For anything already built | the code — these documents keep only what the code cannot say |
+
 ## Reading these documents
 
 Each of the four design documents opens with an **"At a glance"** box: what it answers, which parts are built, which are still draft, and which sections the next step needs. Nobody is expected to read them end to end.
