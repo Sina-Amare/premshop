@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Read `docs-local/progress.md` first, every session (a newest-first log per step, as the working agreement §6 prescribes — keep that shape), then the "Where you are", "Now" and "Log" sections of `docs-local/learning.md`; its concept map and answer keys are opened only when writing a brief or grading. Continuity lives in files, not in memory.
 
-The parent folder's `CLAUDE.md` is the generic template this file was built from, and Claude Code loads it too. Where the two differ, **this file wins** — in particular, progress, the roadmap and open questions live in `docs-local/` here, not `docs/`. The owner's methodology behind both is in `../AI Backend Development — Master Project & Learning Operating System.md` and `../Documentation Discipline.md`; this file is how they apply to this project.
+The parent folder's `CLAUDE.md` is the owner's generic template. Claude Code loads it into every session here as well, so its rules apply unless this file says otherwise — which is why this file does not repeat them. Where the two differ, **this file wins**. The deliberate differences:
+
+- **Approval.** The template gates only high-impact changes and lets straightforward bug fixes through (§11). Here every step — a bug-fix round included — is explained first and waits for an explicit go; that is the owner's standing rule. Inside an approved step, small decisions still need no asking.
+- **Where project memory lives.** Progress, the roadmap and open questions are in `docs-local/` (gitignored, because they hold commercially sensitive material), not `docs/` (template §1, §27). Conclusions reach the repo as ADRs.
+- **`progress.md` is a newest-first log per step** (working agreement §6), not the template's short current-state file (§29).
+- **Briefings and reports go deep** (see "How we work"), where the template keeps them proportional (§13).
+
+The owner's methodology behind both is in `../AI Backend Development — Master Project & Learning Operating System.md` and `../Documentation Discipline.md`; their working rules are distilled into the two CLAUDE.md files, and the full texts are references, not loaded. **A session that runs anywhere else** — a cloud session on the GitHub repo, another machine — gets this file only; before relying on one, copy the template sections this file leans on into it.
 
 ## What this is
 
