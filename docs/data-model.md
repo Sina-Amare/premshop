@@ -1,8 +1,9 @@
 # PremShop — Phase 1 ERD
 
-> **At a glance.** Every table in phase 1 and the database rules that protect it.
-> **Built:** `catalog` (S3). The user table exists only in code (`apps/accounts/models.py`, ADR-0024). For a built table, `models.py` and its migrations are the source of truth; this file keeps what the code cannot say.
-> **Draft, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — the documents disagree; listed for the owner in `docs-local/progress.md`), `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6).
+> **At a glance.** The phase-1 tables and the database rules that protect them.
+> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
+> **Contract, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — the documents disagree; listed for the owner in `docs-local/progress.md`).
+> **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
 > **Firmness (owner calibration, 2026-09-01).** This is a contract that hardens incrementally: each model becomes *settled* at the gate of the step that builds it (accounts → S2, catalog incl. the Plan promo fields → S3, orders → S4a, the cart tables in their own `cart` app (`cart/0001`) + DiscountCode/DiscountRedemption + Order's discount columns → S4b, the payment tables + SiteSetting's two payment clocks → S5, notifications → S6, cms → S11). Until then its rows are the best current draft — buildable-from, but revisable at a step gate through a conversation, never silently. Settled from day one regardless of step: status lives on OrderItem with the 7-status list; snapshots at order time; field-level encryption of `DeliveryField.value` and `customer_input` (ADR-0007); REFUNDED gated on an executed Refund row (ADR-0003 + state machine A12 — not ADR-0007, which is encryption and retention); toman storage; append-only `OrderItemEvent`. If building a step shows a drafted table is wrong, the move is stop-and-discuss, not work-around.
@@ -15,97 +16,26 @@ Notation below: `Money` = `Decimal(12,0)`, `TS` = `DateTimeField`. "—" in Null
 
 ## 1. Entity-Relationship Diagram
 
+Who points at whom, for the built tables and the S4a/S4b tables. The S4a/S4b entities keep their drafted columns, as they stood before 2026-09-21 (§2 carries the same columns with their rules — de-duplicating the two is part of S4a's briefing); the built tables' columns live in `models.py`.
+
 ```mermaid
 erDiagram
     User ||--o{ Order : places
     Category ||--o{ Product : contains
     Product ||--o{ ProductSpec : describes
     Product ||--o{ Plan : offers
-    Product |o--o{ FAQ : "answers (null = site-wide)"
     User |o--o| Cart : "owns (UNIQUE when set)"
     Cart ||--o{ CartItem : holds
     Plan ||--o{ CartItem : "chosen as (PROTECT)"
     Order ||--o{ OrderItem : contains
     Plan ||--o{ OrderItem : "sold as (PROTECT)"
-    OrderItem ||--o{ DeliveryField : "delivers (generations)"
     OrderItem ||--o{ OrderItemEvent : "audit trail"
-    OrderItem ||--o{ CredentialAccessLog : "reveal log"
-    User ||--o{ CredentialAccessLog : revealed_by
-    Order ||--o{ Payment : "paid via"
     DiscountCode |o--o{ Order : "discounts (PROTECT, nullable)"
     DiscountCode }o--o{ Product : "scoped to (scope='selected')"
     DiscountCode ||--o{ DiscountRedemption : "spent as"
     User ||--o{ DiscountRedemption : redeems
     Order ||--o| DiscountRedemption : "one per order (UK)"
-    User |o--o{ Payment : matched_by
-    Payment ||--o{ Refund : "returns money"
-    OrderItem |o--o{ Refund : "per-item (nullable)"
-    User ||--o{ Refund : created_by
-    User |o--o{ Notification : "recipient (null = operator)"
-    Order |o--o{ Notification : about
-    OrderItem |o--o{ Notification : about
-    OrderItem ||--o| Review : "one review (PHASE 2)"
 
-    User {
-        bigint id PK
-        citext email UK "USERNAME_FIELD"
-        varchar full_name
-        varchar phone "collected at checkout (D6)"
-        bool is_verified
-        bigint telegram_id UK "nullable"
-        varchar telegram_username
-        timestamptz telegram_linked_at
-    }
-    SiteSetting {
-        int id PK "CHECK id = 1 (singleton)"
-        bool holiday_stop_new_orders
-        text holiday_message
-        bool holiday_pause_sla
-        time support_start
-        time support_end
-        jsonb off_weekdays
-        varchar support_hours_display
-        int gateway_timeout_minutes "inquiry threshold, default 15"
-        int unpaid_order_ttl_hours "unpaid-order sweep, default 24"
-    }
-    Category {
-        bigint id PK
-        varchar slug UK
-        varchar name
-    }
-    Product {
-        bigint id PK
-        varchar slug UK
-        bigint category_id FK
-        varchar delivery_type
-        varchar region
-        varchar warranty
-        smallint delivery_hours
-        text delivery_template
-        varchar status
-        text search_text "normalized (D15)"
-    }
-    ProductSpec {
-        bigint id PK
-        bigint product_id FK
-        varchar title
-        varchar value
-        smallint sort_order
-    }
-    Plan {
-        bigint id PK
-        bigint product_id FK
-        varchar title
-        int duration_days "nullable"
-        decimal cost_price
-        decimal sale_price
-        decimal promo_price "nullable; admin-set promotion"
-        timestamptz promo_starts_at "nullable = open-ended"
-        timestamptz promo_ends_at "nullable = open-ended"
-        bool is_available
-        bool requires_customer_input
-        varchar supplier_url "per-plan upstream listing"
-    }
     Cart {
         bigint id PK
         bigint user_id FK "nullable, UNIQUE when set"
@@ -176,14 +106,6 @@ erDiagram
         timestamptz delivery_link_expires_at
         timestamptz delivery_link_used_at
     }
-    DeliveryField {
-        bigint id PK
-        bigint order_item_id FK
-        varchar title
-        text value "ENCRYPTED"
-        smallint sort_order
-        bool is_current "generation flag (D10)"
-    }
     OrderItemEvent {
         bigint id PK
         bigint order_item_id FK
@@ -193,80 +115,9 @@ erDiagram
         text note
         timestamptz created_at "append-only"
     }
-    CredentialAccessLog {
-        bigint id PK
-        bigint order_item_id FK
-        bigint user_id FK "nullable (magic-link reveal)"
-        varchar via "panel|magic_link"
-        inet ip
-        timestamptz created_at
-    }
-    Payment {
-        bigint id PK
-        bigint order_id FK "PROTECT"
-        varchar method "gateway|manual"
-        varchar status "created|initiated|verified|failed|abandoned"
-        decimal amount
-        varchar gateway_name
-        varchar authority UK "gateway token; nullable"
-        varchar ref_id "gateway transaction ref"
-        varchar idempotency_key UK
-        varchar failure_reason "nullable; 4 choices"
-        timestamptz initiated_at
-        timestamptz verified_at
-        timestamptz failed_at "set for failed AND abandoned"
-        bigint matched_by_id FK "nullable; manual fallback operator"
-        text note "required non-empty when method=manual"
-        timestamptz created_at
-    }
-    Refund {
-        bigint id PK
-        bigint payment_id FK "PROTECT"
-        bigint order_item_id FK "nullable, PROTECT"
-        decimal amount
-        varchar destination_card_or_sheba
-        varchar bank_ref
-        varchar gateway_refund_ref
-        bigint created_by_id FK
-        timestamptz executed_at "gates CANCELLED→REFUNDED"
-    }
-    Notification {
-        bigint id PK
-        varchar dedupe_key UK "occurrence:recipient:channel (D17)"
-        bigint user_id FK "null = operator alert"
-        varchar channel "email|telegram"
-        varchar event_type
-        jsonb payload "content-free re credentials (D13)"
-        varchar status "pending|sent|failed"
-        smallint attempts
-        timestamptz next_attempt_at
-        bigint order_id FK "nullable"
-        bigint order_item_id FK "nullable"
-    }
-    Page {
-        bigint id PK
-        varchar slug UK
-        varchar title
-        text body
-    }
-    FAQ {
-        bigint id PK
-        bigint product_id FK "nullable"
-        varchar question
-        text answer
-        smallint sort_order
-    }
-    Review {
-        bigint id PK "PHASE 2"
-        bigint order_item_id FK "OneToOne UK"
-        smallint rating "CHECK 1..5"
-        text body
-        varchar status "pending|approved|rejected"
-        text admin_reply
-    }
 ```
 
-**Phase 2:** `Review` only (D16). Everything else is phase 1.
+**Not drawn (beyond S4b):** `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, `CredentialAccessLog`, `Page`, `FAQ`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
 
 ---
 
@@ -274,91 +125,34 @@ erDiagram
 
 ### `core.SiteSetting` — singleton (D8)
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| id | int PK | — | 1 | `CHECK (id = 1)`; loaded via `SiteSetting.load()` |
-| holiday_stop_new_orders | bool | — | false | checkout hard-stop |
-| holiday_message | text | blank | "" | shown to customers when stopped |
-| holiday_pause_sla | bool | — | false | drives mass pause/resume (D7) |
-| support_start | time | — | 10:00 | structured, for SLA math |
-| support_end | time | — | 22:00 | |
-| off_weekdays | jsonb | — | `[]` | list of weekday ints (e.g. `[4]` = Friday) |
-| support_hours_display | varchar(200) | — | | free-text shown on site; independent of the math fields |
-| gateway_timeout_minutes | smallint | — | **15** | how long a payment may sit in `initiated` before the inquiry beat task asks the gateway what happened (ADR-0019). This is the lost-callback net, and nothing else: it never cancels anything — only the gateway's own answer moves a payment out of `initiated` |
-| unpaid_order_ttl_hours | smallint | — | **24** | how long an order may sit in `PENDING_PAYMENT` with no verified payment before the daily sweep cancels its items with `cancel_reason='expired_unpaid'`. The sweep **skips any order whose payment is still `initiated`** — never cancel while money may be moving |
+One row, `CHECK (id = 1)`, holding the operator's clocks and switches. Its columns arrive with the steps that use them: the two payment clocks at S5, the support-hours schedule behind the SLA deadline at S7 (ADR-0009), the holiday switches at S10. One rule is already fixed by ADR-0019: the two payment clocks are two separately named columns and are never merged. `gateway_timeout_minutes` (default 15) decides when the inquiry task asks the gateway about a payment stuck in `initiated`, and it never cancels anything; `unpaid_order_ttl_hours` (default 24) decides when the daily sweep cancels an unpaid order with `cancel_reason='expired_unpaid'`, and the sweep skips any order whose payment is still `initiated`.
 
-> **Two clocks, two names — do not merge them.** `gateway_timeout_minutes` asks the gateway a question; `unpaid_order_ttl_hours` cancels an order. Twenty-four hours is deliberate: the payment-failed message promises the customer their order is still there and hands them a retry link, and a thirty-minute window would make that promise a lie. These two names are the only payment clocks that exist; every other document refers to them by name, and no third name for either is in use anywhere.
+Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `core.SiteSetting`). It is re-specified when S5 is planned.
 
-### `accounts.User` — custom, `USERNAME_FIELD = email`
+### `accounts.User` — custom, `USERNAME_FIELD = email` — **built at S2** (ADR-0024)
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| email | citext, unique | — | | citext (or `UniqueConstraint(Lower('email'))`) — case-insensitive login |
-| password | varchar(128) | — | | unusable password allowed (OTP-only users, D6) |
-| full_name | varchar(150) | blank | "" | |
-| phone | varchar(15) | blank | "" | collected at checkout day one; SMS channel is a later decision (D6) |
-| is_verified | bool | — | false | set by checkout OTP or Telegram link (D6) |
-| telegram_id | bigint, unique | yes | null | one telegram ↔ one user |
-| telegram_username | varchar(64) | blank | "" | display only |
-| telegram_linked_at | TS | yes | null | non-null = accepted verification channel |
-| is_active / is_staff / date_joined / last_login | Django standard | | | is_staff = the operator; no RBAC beyond this |
+Source of truth: `apps/accounts/models.py` and migration `accounts/0001`. What the code cannot say:
 
-Login OTPs and Telegram link tokens (5-min TTL) live in **Redis, not tables** — see §5.
+- **It is frozen as the project's migration 0001.** Django lets `AUTH_USER_MODEL` be swapped only while the database has no tables; once anything holds a foreign key to it, reshaping it means rebuilding the schema by hand on a live system with real orders in it. New identity fields arrive as additive migrations; the model itself is never replaced.
+- **An account created by a login code holds an unusable password** (D6). The account exists and no password opens it until the customer sets one.
+- **Email is unique case-insensitively, and the database enforces it** (`UniqueConstraint(Lower("email"))` beside `unique=True`), not only the manager's lowercasing: the admin, a shell and a data import all reach the table without the manager.
+- **`is_staff` is the operator.** There is no RBAC beyond it (§5).
 
-### `catalog` — **settled at S3** (ADR-0025)
+Login codes live in **Redis, not tables**, for 10 minutes (`CODE_TTL_SECONDS` in `apps/accounts/otp.py`, owner ruling 2026-09-04). Telegram link tokens (S8) are planned at 5 minutes. See §5.
+
+### `catalog` — **built at S3** (ADR-0025)
+
+Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `catalog` migrations; the CHECK constraints are listed in §3. What the code cannot say, or says in one place that every later step must honour:
 
 > **Money** everywhere in this document is `DecimalField(max_digits=12, decimal_places=0)`: whole toman, exact arithmetic, the unit visible in the schema. One `MoneyField()` definition in `apps/catalog/models.py` is reused by every money column.
 
-**Category** (flat — no parent, D15)
+> **One price rule, one function.** Every price shown or charged goes through `catalog.pricing.effective_price` — catalog cards, product pages, cart lines, the checkout summary, and `OrderItem.price_snapshot` at order time. A promotion is therefore a *pricing* fact, never a discount row: it needs no code, no redemption record and no order column (ADR-0021). Duplicating the comparison anywhere else is the bug this note exists to prevent.
 
-| Field | Type | Null | Default |
-|---|---|---|---|
-| name | varchar(100) | — | |
-| slug | varchar(100), unique | — | |
-| description / intro_html | text | blank | "" |
-| seo_title / seo_description | varchar(70)/varchar(160) | blank | "" |
-| sort_order | smallint | — | 0 |
-
-**Product**
-
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| category | FK Category, **PROTECT** | — | | can't delete a category still holding products |
-| name / slug (unique) | varchar(150) | — | | |
-| short_description | varchar(300) | blank | "" | |
-| full_description | text | blank | "" | rich text |
-| image | ImageField | yes | null | |
-| delivery_type | varchar(24), choices | — | | `ready_account`·`on_customer_account`·`code_license`·`gift_card` |
-| region | varchar(24), choices | — | `global` | `global`·`ir`·`us`·`eu`·`tr` (owner ruling 2026-09-05); must surface in title + checkout confirm (brief §4) |
-| warranty | varchar(24), choices | — | `none` | `none`·`days_7`·`full_period` |
-| delivery_hours | smallint | — | 24 | promised delivery window; SLA input (D7) |
-| delivery_template | text | blank | "" | comma-separated field names; pre-renders delivery form |
-| status | varchar(16), choices | — | `draft` | `draft`·`active`·`unavailable` |
-| search_text | text | — | "" | normalized (yeh/kaf folding, half-space, digit folding), maintained on save; `icontains` target (D15) |
-| seo_title / seo_description | varchar | blank | "" | |
-| created_at / updated_at | TS | — | auto | |
-
-**ProductSpec**: `product` FK CASCADE · `title` varchar(100) · `value` varchar(255) · `sort_order` smallint default 0. Admin datalist suggests existing titles (D15).
-
-**Plan**
-
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| product | FK Product, CASCADE | — | | cascade halts at OrderItem.plan PROTECT — a product with sold plans is undeletable, which is correct |
-| title | varchar(100) | — | | «۱ ماهه» |
-| duration_days | int | yes | null | null = no expiry (gift cards); feeds expires_at precompute |
-| cost_price | Money | — | | operator-only; copied to cost_snapshot at order time |
-| sale_price | Money | — | | the list price; struck through in the UI while a promotion is running |
-| promo_price | Money | yes | null | admin-settable promotional price, no code required. Null = no promotion |
-| promo_starts_at | TS | yes | null | null = already started |
-| promo_ends_at | TS | yes | null | null = no end |
-| is_available | bool | — | true | soft delete; never row-delete a sold plan |
-| requires_customer_input | bool | — | false | true ⇒ **quantity is capped at 1** per cart line and re-checked at checkout (rule stated under `cart.CartItem`) |
-| customer_input_label | varchar(200) | blank | "" | |
-| supplier_url | URLField | blank | "" | upstream listing for THIS plan (owner ruling: durations are separate listings upstream); shown on the delivery page's supply column; deliberately NOT copied into product_snapshot — read live via the PROTECTed `OrderItem.plan` FK |
-| sort_order | smallint | — | 0 | |
-
-> **One price rule, one function.** `effective_price(plan, at=now)` returns `promo_price` when it is set and `at` falls inside the window (an absent bound means open-ended), otherwise `sale_price`. Every price shown or charged goes through it — catalog cards, product pages, cart lines, the checkout summary, and `OrderItem.price_snapshot` at order time. A promotion is therefore a *pricing* fact, never a discount row: it needs no code, no redemption record and no order column. Duplicating the comparison anywhere else is the bug this note exists to prevent.
+- **A product with sales is undeletable, on purpose.** `Plan.product` cascades, but the cascade halts at `OrderItem.plan` PROTECT (§3). A sold plan is retired with `is_available=false`, never row-deleted.
+- **`Product.region` must surface in the title area and on the checkout confirmation** (brief §4). The product page does the first; S4b's checkout does the second.
+- **`Plan.supplier_url` is deliberately not copied into `OrderItem.product_snapshot`.** Durations are separate listings upstream (owner ruling), and S7's delivery page reads it live through the PROTECTed `OrderItem.plan` FK.
+- **`Product.delivery_template`** is a comma-separated list of field names; S7's delivery form pre-renders from it.
+- **`Plan.requires_customer_input` limits a cart line to quantity 1.** The rule and its reasons are under `cart.CartItem`.
 
 ### `cart` — persistent, cross-device (ADR-0018, rewritten)
 
@@ -473,87 +267,33 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | delivery_link_used_at | TS | yes | null | stamped under the item lock on first open — single-use |
 | created_at | TS | — | auto | |
 
-**DeliveryField** — `order_item` FK CASCADE · `title` varchar(100) · `value` **EncryptedTextField** · `sort_order` smallint · `is_current` bool default true · `created_at` TS. Replacement writes a new generation and flips old rows to `is_current=false`; old rows are kept (D10).
+**DeliveryField** (S7, D10) — intent: the credentials the operator delivers for one item, one row per field, the value encrypted at field level (ADR-0007). A replacement writes a new generation and keeps the old rows rather than overwriting them (ADR-0003: replacement cycles back to DELIVERED with a new credential generation). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, DeliveryField). It is re-specified when S7 is planned.
 
 **OrderItemEvent** (append-only, D9) — `order_item` FK CASCADE · `from_status` varchar(24) null (null = creation) · `to_status` varchar(24) · `actor` varchar(12) choices `operator`·`customer`·`system` · `note` text blank · `created_at` TS. Written **inside** every transition transaction; the occurrence it records seeds Notification.dedupe_key (D17/D18). No update/delete paths in code.
 
-**CredentialAccessLog** (D9) — `order_item` FK CASCADE · `user` FK User **PROTECT**, **nullable** (a magic-link reveal has no authenticated user — attribution is the redeemed token itself, ADR-0008) · `via` varchar(12) choices `panel`·`magic_link` · `ip` inet · `created_at` TS. One row per reveal, operator included. CASCADE on order_item is safe: items holding credentials are transitively undeletable via Payment PROTECT.
+**CredentialAccessLog** (S7, D9) — intent: every reveal of a delivered credential, by the customer, the operator or a magic link, writes one row (ADR-0007); a magic-link reveal has no signed-in user and is attributed to the redeemed token (ADR-0008). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, CredentialAccessLog). It is re-specified when S7 is planned.
 
 ### `payments`
 
-**Payment** — own small machine (ADR-0019), separate from the item machine
+The money record, built at S6b with the manual fallback and completed at S5 with the gateway. `Payment` is one attempt to pay one order and runs its own small machine, separate from the item machine; `Refund` is one outbound transfer, never a payment status. Rules already fixed by ADR-0019: the browser's redirect parameters only select which payment to verify, and a server-to-server verify (or the operator-only manual action) is the only thing that confirms one; the verified amount must equal `Order.total_amount`, and rial exists only inside the gateway adapter; confirmation is idempotent through a row lock and a re-read, while `idempotency_key` guards only the upstream initiate call; a failed payment cancels nothing and leaves the order payable. No item reaches `REFUNDED` without an executed Refund row (ADR-0003, state machine A12), and a refund message names no card. Everything in the money chain is PROTECT on delete (§3).
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| order | FK Order, **PROTECT** | — | | deleting an order with money history must fail loudly |
-| method | varchar(16), choices | — | `gateway` | `gateway`·`manual`. `manual` = the operator-only "payment received outside the gateway" action (ADR-0019, the manual fallback): same confirmed Payment, same item transitions, listed separately in reconciliation, never customer-facing |
-| status | varchar(12), choices | — | `created` | `created`·`initiated`·`verified`·`failed`·`abandoned`. `initiated` = gateway token obtained and customer redirected; `verified` only ever set by a **server-to-server verify** (or the manual action); `abandoned` only by the inquiry beat task after the gateway says the payment was never completed |
-| amount | Money | — | | order `total_amount` at payment creation; verify rejects any gateway-reported amount that differs |
-| gateway_name | varchar(64) | blank | "" | which provider handled it (empty for `manual`) |
-| authority | varchar(128), **unique** | yes | null | the gateway's payment token/authority from the request call — the key the callback and the inquiry task both look up. **UNIQUE, nullable**: a retry that obtains a fresh token overwrites it on the same row, so uniqueness costs nothing, while an impossible token collision becomes a loud failure instead of a silent mismatch. Null (not `""`) when there is no token yet or the payment is `manual` — PG ignores NULLs in a unique index, empty strings it would not |
-| ref_id | varchar(64) | blank | "" | gateway transaction reference returned by verify; the customer-visible receipt number |
-| idempotency_key | varchar(64), unique | — | | the key sent to the **gateway on the initiate call**, so a retried or double-submitted initiate cannot create two payment requests upstream. UNIQUE because that is what makes the key a key. It plays **no part in confirmation** — see the note below |
-| failure_reason | varchar(24), choices | yes | null | `gateway_failed`·`cancelled_by_customer`·`amount_mismatch`·`abandoned`. Set whenever the payment leaves the live states unpaid; it is what the customer-facing failure message and the operator's reconciliation view both read |
-| initiated_at | TS | yes | null | stamped on `created → initiated`; the inquiry task's scan key |
-| verified_at | TS | yes | null | stamped on `→ verified`; source of `OrderItem.paid_at` and the SLA clock start |
-| failed_at | TS | yes | null | stamped for **both** `failed` and `abandoned` — one column, because the two differ in *why* (`failure_reason`), not in *when* |
-| matched_by | FK User, **PROTECT** | yes | null | the operator who recorded a `manual` payment; null for gateway payments |
-| note | text | blank | "" | **required non-empty for `method='manual'`** (service-enforced): the free-text reference for a payment that has no gateway record |
-| created_at | TS | — | auto | |
-
-Nothing here is trusted from the browser. Redirect parameters are attacker-controllable and are used only to *look up* the payment; the verify call decides.
-
-> **What makes confirmation idempotent — two mechanisms, two jobs.** `payments.confirm_payment` takes a row lock on the Payment (`select_for_update()`), **re-reads `status` under that lock**, and returns the payment unchanged if it is already `verified`. That lock-and-re-read — never an unlocked `if not payment.verified` — is the guarantee that a repeated callback, a customer refresh, or a callback racing the inquiry task confirms exactly once: one verified payment, one set of item transitions, one `payment.verified` event. `idempotency_key` is the *upstream* guard on initiate and does nothing here. Neither is the partial unique index (§3).
-
-**Not columns, deliberately:** no `paid_amount` — the gateway's reported amount is compared against `Order.total_amount` and discarded, because a mismatch fails the payment (`failure_reason='amount_mismatch'`), so there is never a differing amount worth storing. No `unique_amount`, no `receipt_image`, no `expires_at`, no `submitted_at`, no stored raw gateway payload. A failed payment leaves the order `PENDING_PAYMENT` and payable — the retry link in the failure message depends on it — so **nothing in this table cancels items**. The only thing that cancels an unpaid order is the daily sweep on `SiteSetting.unpaid_order_ttl_hours`, and it skips any order whose payment is still `initiated`.
-
-**Refund** (D2) — one row per outbound transfer; refunds are never payment statuses
-
-| Field | Type | Null | Note |
-|---|---|---|---|
-| payment | FK Payment, **PROTECT** | — | money audit chain |
-| order_item | FK OrderItem, **PROTECT** | yes | null = order-level/partial money return not tied to one item |
-| amount | Money | — | > 0 |
-| destination_card_or_sheba | varchar(34) | blank | manual-transfer route only — collected before execution; the 21-day input-timeout auto-cancel (ADR-0009) creates the row blank. Execution requires either this + bank_ref, or gateway_refund_ref (service-enforced) |
-| bank_ref | varchar(64) | blank | filled at execution of a manual bank transfer |
-| gateway_refund_ref | varchar(64) | blank | the provider's refund reference when the refund went back through the gateway's refund API (ADR-0019, preferred route where supported) |
-| note | text | blank | |
-| created_by | FK User, **PROTECT** | — | |
-| created_at / executed_at | TS / TS null | | non-null executed_at is the service-enforced gate for CANCELLED→REFUNDED, whichever route was used |
-
-The reference shown to a customer is **route-agnostic**: `gateway_refund_ref` when the money went back through the gateway, `bank_ref` when it went by manual transfer — one field in the message and the panel, resolved server-side. Notification payloads carry it as `refund_ref` for exactly this reason; no customer-facing surface names `bank_ref` directly.
-
-**No card digits in any refund message.** A gateway refund returns to the original card automatically and we never learn its digits, so there is no `destination_last4` to render — the placeholder does not exist. On the manual route `destination_card_or_sheba` is an operator field for executing the transfer, not something to echo back at the customer. Refund messages carry `refund_ref` and nothing else about the destination.
+Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `payments`, including the list of columns that deliberately do not exist). It is re-specified when S6b is planned.
 
 ### `notifications`
 
-**Notification** (outbox, D17)
+The outbox (D17). One row per occurrence, recipient and channel, created by `events.emit()` after the triggering transaction commits, with a globally unique `dedupe_key` of the form `{occurrence}:{recipient}:{channel}`; `user = NULL` means the operator, and the channels are exactly `email` and `telegram` (ADR-0010). Payloads carry no credential values (ADR-0008). The registry of key families lives in state-machine §3. A notification failure can never affect order state.
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| dedupe_key | varchar(128), unique | — | | `{occurrence}:{recipient}:{channel}`, recipient = the user id or the literal `op`. **The canonical registry of key families is state-machine §3** — this column just stores what that registry produces. The families it holds: `evt:` (item transitions) · `pay:` · `refund:` · `renew7:` / `renew0:` (expiring-soon / expired) · `delay:` · `remind:` · `hpause:` / `hresume:` · `signin:` · `cancelreq:` · `overdue:`. Shapes, e.g.: `evt:{order_item_event_id}:{recipient}:{channel}` · `pay:{payment_id}:{to_status}:{recipient}:{channel}` · `renew7:{order_item_id}:{expires_at_iso}:{recipient}:{channel}` · `overdue:{date_iso}T{hour}:op:{channel}`; concretely `pay:1041:verified:op:telegram`, `renew7:5512:2026-10-01:8:email`. Unique per occurrence, so post-replacement re-delivery notices are legal; renewal keys include `expires_at`, so extending it re-arms the reminder |
-| user | FK User, CASCADE | yes | null | **null = operator alert** (goes to operator chat_id/email from settings) |
-| channel | varchar(12), choices | — | | `email`·`telegram` |
-| event_type | varchar(48) | — | | `payment.verified`, `payment.failed`, `item.delivered`, `item.awaiting_input`, `item.supply_delayed`, `item.replaced`, `item.replacement_rejected`, `item.refunded`, `items.overdue_digest`, `subscription.expiring_soon` (key `renew7:`), `subscription.expired` (key `renew0:`), … (canonical registry lives in state-machine §3). There is no `order.created`: the operator's new-order alert fires on `payment.verified` |
-| payload | jsonb | — | `{}` | content-free re credentials: order number + panel link only (D13) |
-| order / order_item | FK, SET_NULL | yes | null | both nullable (D17); history survives cleanup |
-| status | varchar(12), choices | — | `pending` | `pending`·`sent`·`failed` (failed = retries exhausted, terminal) |
-| attempts | smallint | — | 0 | |
-| next_attempt_at | TS | yes | null | exponential backoff |
-| last_error | text | blank | "" | |
-| created_at / sent_at | TS / TS null | | |
-
-Rows are enqueued by `events.emit()` via `transaction.on_commit` (D18). Beat also pings the external dead-man heartbeat (D17) — no table needed.
+Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `notifications`). It is re-specified when S6 is planned.
 
 ### `cms`
 
-**Page** — `slug` varchar(100) unique · `title` varchar(200) · `body` text (rich) · `seo_title` varchar(70) blank · `seo_description` varchar(160) blank · `created_at`/`updated_at`. Terms, refund policy, privacy, about/contact — Enamad prerequisites, panel-editable.
+The operator-editable content: the legal and information pages Enamad requires (terms, refund policy, privacy, about/contact) and the FAQ, either site-wide or attached to one product. No ADR fixes their shape yet.
 
-**FAQ** — `product` FK Product CASCADE **null** (null = site-wide FAQ page; set = product-page block) · `question` varchar(300) · `answer` text · `sort_order` smallint · `is_published` bool default true.
+Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `cms`). It is re-specified when S11 is planned.
 
-### `reviews` (PHASE 2, D16)
+### `reviews` — phase 2
 
-**Review** — `order_item` OneToOne CASCADE (unique ⇒ one review per delivered item) · `rating` smallint · `body` text · `status` varchar(12) `pending`·`approved`·`rejected` default pending · `admin_reply` text blank · `created_at` · `moderated_at` TS null. Verified-buyer enforced in the service (item must be DELIVERED and owned by the requester). No helpful_count, no voting, no automated scanning — moderation UI carries the leaked-credential reminder line instead.
+Not part of phase 1 (D16): at most one review per order item, arriving in phase 2. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `reviews`).
 
 ---
 
@@ -563,47 +303,35 @@ Rows are enqueued by `events.emit()` via `transaction.on_commit` (D18). Beat als
 
 | Model | Constraint |
 |---|---|
-| User | `email`; `telegram_id` (nullable — PG ignores NULLs) |
-| Category / Product / Page | `slug` |
+| User | `email`, plus `Lower(email)` as `user_email_case_insensitive_unique`; `telegram_id` (nullable — PG ignores NULLs) |
+| Category / Product | `slug` |
 | Order | `order_number`; `tracking_token` |
 | DiscountCode | `code` — stored uppercase, so case can never fork one code into two |
 | DiscountRedemption | `order_id` — one redemption per order |
-| Payment | `idempotency_key`; `authority` (nullable — PG ignores NULLs) |
-| Notification | `dedupe_key` |
-| Review | `order_item_id` (OneToOne) |
 | OrderItem | `delivery_link_token_hash` (nullable — PG ignores NULLs) |
 | Cart | `user_id` (nullable — one cart per account, unlimited guest carts) |
 | CartItem | `(cart_id, plan_id)` — one line per plan |
-| SiteSetting | singleton via check below |
+
+The unique constraints of the tables beyond S4b (`Payment`, `Notification`, `SiteSetting`, `Page`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Unique). It is re-specified when each table's step is planned.
 
 ### Partial unique (exact predicates)
 
-```sql
--- one live payment attempt per order
-CREATE UNIQUE INDEX payment_uniq_active_order
-  ON payments_payment (order_id)
-  WHERE status IN ('created', 'initiated');
-```
-
-(Django `UniqueConstraint(fields=['order'], condition=Q(status__in=['created','initiated']))`.) A failed or abandoned attempt leaves the index, so the customer can retry from the payment-failed link; a `verified` one leaves it too. This index only stops two *live* attempts on one order — the locked re-read inside `confirm_payment` (§2) is what makes confirmation idempotent, and `idempotency_key` is what makes the initiate call idempotent at the gateway.
+None in the built or S4a/S4b tables. The one drafted so far is on `Payment`: at most one *live* payment attempt per order, so a failed or abandoned attempt leaves room for a retry. It only stops two live attempts; it is not what makes confirmation idempotent (ADR-0019). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Partial unique). It is re-specified when S6b is planned.
 
 ### Check constraints
 
 | Model | Constraint |
 |---|---|
-| SiteSetting | `CHECK (id = 1)`; `gateway_timeout_minutes > 0`; `unpaid_order_ttl_hours > 0` |
-| Product | `delivery_hours BETWEEN 1 AND 48`; `status IN ('draft','active','unavailable')` |
-| Plan | `cost_price >= 0 AND sale_price >= 0`; `duration_days IS NULL OR duration_days > 0`; `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` |
+| Product (built: catalog 0002) | `delivery_hours BETWEEN 1 AND 48` (`product_delivery_hours_1_to_48`); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
+| Plan (built: catalog 0001, 0002) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`) |
 | Cart | `(user_id IS NULL) <> (session_key IS NULL)` — exactly one owner |
 | CartItem | `quantity BETWEEN 1 AND 10`; **service-enforced, not a CHECK:** `quantity = 1` when the plan has `requires_customer_input=true` (the condition lives on `Plan`, one join away — refused in the cart, re-validated at checkout) |
 | Order | `subtotal >= 0`; `discount_amount >= 0`; `total_amount >= 0`; `total_amount = subtotal - discount_amount` — the money invariant enforced by the DB, not only by the service; `channel IN ('web','bot','legacy')` |
 | DiscountCode | `code ~ '^[A-Z0-9]{4,8}$'`; `kind IN ('percent','fixed')`; `scope IN ('all','selected')`; `value > 0`; `used_count >= 0`; `max_uses IS NULL OR max_uses > 0`; `per_user_limit IS NULL OR per_user_limit > 0`; `min_order_amount IS NULL OR min_order_amount >= 0`; `valid_from IS NULL OR valid_until IS NULL OR valid_from < valid_until` |
 | DiscountRedemption | `amount >= 0` |
 | OrderItem | `status IN (…7 values…)`; `price_snapshot >= 0 AND cost_snapshot >= 0`; `actual_cost IS NULL OR actual_cost >= 0`; `cancel_reason IS NULL OR cancel_reason IN (…7 values…)`; `status NOT IN ('CANCELLED','REFUNDED') OR cancel_reason IS NOT NULL` — a cancellation can never lose its reason |
-| Payment | `status IN ('created','initiated','verified','failed','abandoned')`; `method IN ('gateway','manual')`; `amount >= 0`; `status <> 'verified' OR verified_at IS NOT NULL`; `failure_reason IS NULL OR failure_reason IN ('gateway_failed','cancelled_by_customer','amount_mismatch','abandoned')`; `status NOT IN ('failed','abandoned') OR (failure_reason IS NOT NULL AND failed_at IS NOT NULL)` — an unpaid ending always records why and when; `method <> 'manual' OR matched_by_id IS NOT NULL` — a manual payment always names the operator who recorded it |
-| Refund | `amount > 0` |
-| Notification | `attempts >= 0`; `channel IN ('email','telegram')`; `status IN ('pending','sent','failed')` |
-| Review (ph2) | `rating BETWEEN 1 AND 5`; `status IN ('pending','approved','rejected')` |
+
+The check constraints of the tables beyond S4b (`SiteSetting`, `Payment`, `Refund`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Check constraints). It is re-specified when each table's step is planned.
 
 Transition legality (the matrix itself) is service-enforced with `select_for_update()` — a check constraint can see the target state but not the edge.
 
@@ -611,12 +339,13 @@ Transition legality (the matrix itself) is service-enforced with `select_for_upd
 
 | FK | on_delete | Rationale |
 |---|---|---|
-| Order.user, Order.discount_code, Payment.order, Refund.payment, Refund.order_item, Refund.created_by, Payment.matched_by, CredentialAccessLog.user, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
+| Order.user, Order.discount_code, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
 | OrderItem.plan, **CartItem.plan** | **PROTECT** | a sold plan row must exist forever; retire with `is_available=false`. Snapshot covers display, the FK keeps the profit/re-buy/renewal link live. A plan sitting in a live cart is protected for the same reason a sold one is: deleting it would silently empty someone's cart |
 | Product.category | **PROTECT** | no orphan products; empty the category first |
-| OrderItem.order; DeliveryField / OrderItemEvent / CredentialAccessLog .order_item; ProductSpec / Plan / FAQ .product; Review.order_item; Notification.user; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
+| OrderItem.order; OrderItemEvent.order_item; ProductSpec / Plan .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
 | DiscountCode.products (M2M) | — | plain join table; unlinking a product narrows the scope of a live code and touches no order, because scope is read at checkout and the outcome is frozen in `discount_amount` |
-| Notification.order, Notification.order_item | SET_NULL | history rows must survive their subject (D17) |
+
+The foreign keys of the tables beyond S4b (`Payment`, `Refund`, `DeliveryField`, `CredentialAccessLog`, `Notification`, `FAQ`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; the rule they follow is the one above, that anything in the money or audit chain is PROTECT.
 
 ---
 
@@ -627,15 +356,11 @@ Django auto-indexes every FK; those cover the per-item timeline (`OrderItemEvent
 | Index | Named query it serves |
 |---|---|
 | `OrderItem (status, due_at)` | Operator queue tabs: `WHERE status = 'QUEUED' ORDER BY due_at ASC` (default tab, D-brief §8); same index serves the AWAITING_INPUT tab, the stats bar counts, and the overdue-order alarm scan (`status='QUEUED' AND due_at < now()`) |
-| Partial `OrderItem (expires_at) WHERE status = 'DELIVERED' AND expires_at IS NOT NULL` | Daily renewal-reminder beat: items expiring in 7 days / today — scans only live subscriptions, skips the whole non-delivered and non-expiring population |
-| Partial `Payment (initiated_at) WHERE status = 'initiated'` | The **lost-callback inquiry** beat task (ADR-0019, mandatory): `WHERE status='initiated' AND initiated_at < now() − gateway_timeout_minutes` → ask the gateway, verify the ones it reports paid, abandon the rest. Index holds only the handful of in-flight payments |
-| Partial `OrderItem (created_at) WHERE status = 'PENDING_PAYMENT'` | The **unpaid-order sweep**: `WHERE status='PENDING_PAYMENT' AND created_at < now() − unpaid_order_ttl_hours`, minus the orders whose payment is still `initiated`. Holds only orders nobody has paid for yet |
-| Partial `Notification (next_attempt_at) WHERE status = 'pending'` | Outbox worker poll: `WHERE status='pending' AND next_attempt_at <= now() ORDER BY next_attempt_at` |
 | `Cart (session_key)` | Every page load by a signed-out visitor resolves the cart from the session key — the single hottest cart lookup there is. `Cart.user` needs no separate index: its unique constraint is one |
 | Partial `Cart (updated_at) WHERE user_id IS NULL` | Daily guest-cart sweep: `WHERE user_id IS NULL AND updated_at < now() − 30 days`. Account carts are never scanned |
 | `DiscountRedemption (discount_code, user)` | The `per_user_limit` check at checkout: `COUNT(*) WHERE discount_code_id = ? AND user_id = ?`. Composite in that order, because the code is always the more selective leading column |
 
-`Payment.authority` needs no separate index — it is unique (§3), and that unique index is the lookup the callback and the inquiry task both use, arriving as they do holding the gateway's token rather than our id.
+Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the lost-callback inquiry and the unpaid-order sweep, S5; the outbox poll, S6) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§4). They are re-specified when those steps are planned.
 
 **Deliberately unindexed:** `Product.search_text` (icontains can't use btree; catalog is a few dozen rows — seq scan is free; pg_trgm is the upgrade path if the catalog ever grows 100×), `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
 
@@ -654,14 +379,13 @@ Django auto-indexes every FK; those cover the per-item timeline (`OrderItemEvent
 | Identity tables (EmailIdentity/TelegramIdentity) | brief §19-الف resolved to flat fields on User; splitting is a mechanical migration if a third login method ever appears |
 | Wallet / ledger | brief out-of-scope; if it comes, it arrives double-entry from day one |
 | Ticket system | email + Telegram suffice |
-| OTP codes / Telegram link tokens | 5-minute TTL values — Redis with expiry, not rows needing a cleanup job |
+| OTP codes / Telegram link tokens | short-lived values (login codes 10 minutes, `apps/accounts/otp.py`; Telegram link tokens 5 minutes, S8) — Redis with expiry, not rows needing a cleanup job |
 | Queue soft-lock (`locked_by`/`locked_at`) | brief cut the logic for one operator; adding the two columns later is a trivial additive migration |
 
 ---
 
 ## Concerns
 
-1. **Payment-model settling depends on the provider.** `authority` / `ref_id` / `gateway_name` are named for the Zibal-class shape; the exact field lengths and whether a provider returns one reference or two is confirmed at S5 against real API docs. The *machine* (created → initiated → verified|failed|abandoned, verify-only confirmation, amount check, idempotency) is settled now and is not a provider detail. Note the build-order dependency from ADR-0019: the gateway needs Enamad, Enamad needs a live orderable site, so S4b (cart + checkout) and S11 (legal pages) land before S5 — during the wait the operator sells via the `manual` fallback.
-2. **Operator-alert recipient.** D17 specifies the outbox's order/order_item FKs but not the recipient column. Modeled as nullable `Notification.user` with NULL meaning "operator channels from settings". Flagging the interpretation so it doesn't pass silently.
-3. **Refund.order_item NULL vs the REFUNDED gate.** A NULL-item Refund (order-level partial money return, D2) can never satisfy D1's "no item enters REFUNDED without an executed Refund row" for any specific item. Consistent as long as the service requires an item-linked Refund whenever the intent is moving that item to REFUNDED; NULL-item refunds are for money-only returns (an order-level goodwill return). Pinning that reading here.
+Concerns 1–3 (payment fields and the provider, the operator-alert recipient, a Refund row without an item) were about S5/S6 tables; they are in the earlier draft (`git show 027c5d1:docs/data-model.md`, Concerns) and return when those steps are planned. The numbering is kept so older references still resolve.
+
 4. **`Order.total_amount` is now derived, and the DB says so.** The check constraint `total_amount = subtotal - discount_amount` makes a bad write fail rather than silently underbill. It also means the discount can never be recomputed after the fact: `discount_amount` is a snapshot, exactly like `price_snapshot` — editing the DiscountCode row later must not move a placed order's total.

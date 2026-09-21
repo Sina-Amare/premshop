@@ -27,7 +27,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0021](0021-promotional-pricing.md) | Promo price + window on `Plan`; one `effective_price` function is the only place the rule lives |
 | [0022](0022-transactional-email.md) | SMTP2GO relay, env-driven; TLS derived from the port; prod fails closed on a blank relay password |
 | [0023](0023-email-templates.md) | Email templates: tables, wordmark in type *(amended: the font stack grew and a web-font link was added)*; three files per message; amber still only means time |
-| [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one flow for login+registration; no separate password reset |
+| [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one flow for login+registration; no separate password reset *(amended 2026-09-21: two of its statements were untrue of the built code until that day's fix)* |
 | [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; region values; Persian CHECK messages; search folding; seeded shop; Unfold admin |
 
 ## Legacy shorthand map
