@@ -125,17 +125,16 @@ def setup() -> None:
     else:
         groups = b32encode(secrets.token_bytes(20)).decode()  # 160 bits; A-Z and 2-7, no 0/O or 1/I
         PASSPHRASE.parent.mkdir(exist_ok=True)
-        PASSPHRASE.write_text(
-            "-".join(groups[i : i + 4] for i in range(0, 32, 4)) + "\n", encoding="utf-8"
-        )
+        passphrase = "-".join(groups[i : i + 4] for i in range(0, 32, 4))
+        PASSPHRASE.write_text(passphrase + "\n", encoding="utf-8", newline="\n")
         print(f"New passphrase written to {PASSPHRASE}. It is not printed here.")
     hook = DOCS / ".git" / "hooks" / "post-commit"
     if hook.exists() and "backup_docs_local" not in hook.read_text(encoding="utf-8"):
         raise BackupError(f"{hook} exists and is not this script's; merge it by hand")
-    python = Path(sys.executable).as_posix()
-    hook.write_text(
-        HOOK.format(python=python, script=Path(__file__).resolve().as_posix()), encoding="utf-8"
+    script = HOOK.format(
+        python=Path(sys.executable).as_posix(), script=Path(__file__).resolve().as_posix()
     )
+    hook.write_text(script, encoding="utf-8", newline="\n")  # a shell script: LF, not CRLF
     print(f"Commit hook installed: {hook}")
 
 
