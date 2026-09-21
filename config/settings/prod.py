@@ -53,14 +53,11 @@ if not DEFAULT_FROM_EMAIL.strip().rstrip(">").endswith("@premshop.ir"):  # noqa:
 if env("SENTRY_DSN"):
     import sentry_sdk
 
-    from apps.core.observability import scrub_event
+    from apps.core.observability import sentry_options
 
     sentry_sdk.init(
-        dsn=env("SENTRY_DSN"),
-        environment=env("SENTRY_ENVIRONMENT", "production"),
-        # Never attach user identity or request bodies (ADR-0007).
-        send_default_pii=False,
-        max_request_body_size="never",
-        before_send=scrub_event,
-        traces_sample_rate=0.0,
+        **sentry_options(
+            dsn=env("SENTRY_DSN"),
+            environment=env("SENTRY_ENVIRONMENT", "production"),
+        )
     )

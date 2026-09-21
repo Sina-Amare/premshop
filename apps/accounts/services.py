@@ -112,8 +112,16 @@ def _send_signin_alert(request: HttpRequest, user: User) -> None:
     A failure here must not fail the login. The customer is already authenticated,
     holding a session and a spent code; refusing that because a notification
     bounced would turn a mail problem into a lockout. So a failure is logged, never
-    raised — and never swallowed silently either. The log names the account id
-    only: no address, no code (ADR-0008).
+    raised — and never swallowed silently either.
+
+    How the log line is shaped is the whole point, and a test holds it there:
+    - ERROR, not WARNING. Error tracking turns ERROR records into issues and
+      keeps anything lower only as a breadcrumb, so a warning would be silent.
+    - No traceback and no exception text. SMTP errors quote the recipient — a
+      "recipients refused" error is a dict keyed by the address, and relays echo
+      it in their replies — and a traceback's local variables hold `to=[email]`.
+      The account id, the error's type and the SMTP status number are enough to
+      act on; the relay's own log has the rest (ADR-0008).
     """
     try:
         send_templated_email(
@@ -124,5 +132,11 @@ def _send_signin_alert(request: HttpRequest, user: User) -> None:
                 "account_url": request.build_absolute_uri(reverse("account")),
             },
         )
-    except Exception:  # noqa: BLE001 — any mail failure; the login has already happened
-        logger.warning("sign-in alert not sent for user %s", user.pk, exc_info=True)
+    except Exception as error:  # noqa: BLE001 — any mail failure; the login already happened
+        status = getattr(error, "smtp_code", None)
+        logger.error(
+            "sign-in alert not sent for user %s: %s%s",
+            user.pk,
+            type(error).__name__,
+            f" (SMTP {status})" if isinstance(status, int) else "",
+        )

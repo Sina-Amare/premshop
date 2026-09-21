@@ -6,10 +6,12 @@ open — a customer locked out by an over-tight limit is a refund, not a save.
 
 from __future__ import annotations
 
+import json
 import re
 import smtplib
 
 import pytest
+import sentry_sdk
 import time_machine
 from django.contrib.auth.hashers import MD5PasswordHasher, make_password
 from django.core import mail
@@ -17,10 +19,12 @@ from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
 from django.urls import reverse
+from sentry_sdk.transport import Transport
 
 from apps.accounts import otp, services, views
 from apps.accounts.models import User
 from apps.core import ratelimit
+from apps.core.observability import sentry_options
 
 pytestmark = pytest.mark.django_db
 
@@ -335,6 +339,69 @@ def test_a_failed_signin_alert_does_not_fail_the_login(client, user, monkeypatch
     assert response.status_code == 302
     assert client.session["_auth_user_id"] == str(user.pk)
     assert "sign-in alert" in caplog.text
+
+
+@pytest.fixture
+def error_reports():
+    """Error tracking configured exactly as production configures it
+    (`sentry_options`), with a transport that keeps each report in memory instead
+    of sending it. Whatever lands here is what GlitchTip would receive."""
+    reports: list[dict] = []
+
+    class KeepInMemory(Transport):
+        def capture_envelope(self, envelope):
+            event = envelope.get_event()
+            if event is not None:
+                reports.append(event)
+
+    sentry_sdk.init(
+        **sentry_options(dsn="https://key@glitchtip.invalid/1", environment="test"),
+        transport=KeepInMemory,
+    )
+    yield reports
+    sentry_sdk.init()  # no DSN: reporting is off again for every other test
+
+
+def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
+    client, user, monkeypatch, caplog, error_reports
+):
+    """The comment above the fix promised two things: the failure is never
+    silent, and what is logged names the account, not the person. Checked against
+    production's own error-reporting settings, both were false. The failure was
+    logged at WARNING, which error tracking keeps only as a breadcrumb — no issue
+    anyone would see. And it was logged with its traceback, whose text quotes the
+    recipient: an SMTP "recipients refused" error is a dict keyed by the address,
+    and relays echo it in their replies."""
+    real_send = services.send_templated_email
+
+    def relay_refuses_the_alert(name, **kwargs):
+        if name == "signin_alert":
+            reply = f"5.1.1 <{user.email}>: Recipient address rejected".encode()
+            raise smtplib.SMTPRecipientsRefused({user.email: (550, reply)})
+        return real_send(name, **kwargs)
+
+    monkeypatch.setattr(services, "send_templated_email", relay_refuses_the_alert)
+    client.post(reverse("login-code"), {"email": user.email})
+    code = code_from(mail.outbox[0])
+
+    client.post(reverse("login-code-verify"), {"code": code})
+
+    assert client.session["_auth_user_id"] == str(user.pk), "the login itself must succeed"
+    alerts = [r for r in error_reports if "sign-in alert not sent" in json.dumps(r)]
+    everything = json.dumps(error_reports) + caplog.text
+    broken = [
+        promise
+        for promise, kept in [
+            ("a failed alert becomes an issue in error tracking", len(alerts) == 1),
+            (
+                "the customer's address appears in no log and no report",
+                user.email not in everything,
+            ),
+            ("the login code appears in no log and no report", code not in everything),
+        ]
+        if not kept
+    ]
+    assert not broken, f"broken promises: {broken}"
 
 
 def test_no_signin_alert_for_an_account_with_no_password(client):

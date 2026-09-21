@@ -110,6 +110,26 @@ def scrub(data: Any, *, _depth: int = 0) -> Any:
     return data
 
 
+def sentry_options(*, dsn: str, environment: str) -> dict[str, Any]:
+    """The one definition of how error reports are sent (prod.py passes it to
+    `sentry_sdk.init`). Tests initialise the SDK from this same function, so what
+    they prove about an error report is what production would actually send.
+
+    Worth knowing: the SDK's default logging integration turns a log record at
+    ERROR or above into an event, and anything below into a breadcrumb only —
+    context attached to some other error, never an issue of its own.
+    """
+    return {
+        "dsn": dsn,
+        "environment": environment,
+        # Never attach user identity or request bodies (ADR-0007).
+        "send_default_pii": False,
+        "max_request_body_size": "never",
+        "before_send": scrub_event,
+        "traces_sample_rate": 0.0,
+    }
+
+
 def scrub_event(event: Event, hint: Hint | None = None) -> Event:
     """`before_send` hook: scrub an error event and drop request bodies entirely.
 
