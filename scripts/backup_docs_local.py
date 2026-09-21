@@ -8,8 +8,9 @@ encrypted with a passphrase that is kept off the laptop too (password manager an
     .venv/Scripts/python.exe scripts/backup_docs_local.py run     # what the hook runs
     .venv/Scripts/python.exe scripts/backup_docs_local.py verify  # restore drill, empty folder
 
-`verify` runs the restore block of the branch's README word for word, so the instructions a
-new machine would follow are the thing being tested. Any failure exits non-zero and says what
+`verify` feeds a shell the restore block of the branch's README word for word and then the
+passphrase, the way a person pastes the block and types, so the instructions a new machine
+would follow are the thing being tested. Any failure exits non-zero and says what
 did not happen; the commit hook repeats it on the commit's output.
 """
 
@@ -43,16 +44,19 @@ branch has one commit. It has no workflows, so pushing it runs no CI. It is writ
 ## Restore
 
 In an empty folder, in a terminal that has git and gpg (on Windows: Git Bash, which comes
-with Git for Windows). Type the passphrase exactly as stored, capitals and dashes included;
-it does not show while you type.
+with Git for Windows), paste the whole block below at once. The braces make the shell read
+all of it before running any of it, so the prompt waits for you. At `Passphrase:` type the
+passphrase exactly as stored, capitals and dashes included, then Enter; it does not show.
 
 ```bash
-git clone --quiet --depth 1 --branch {BRANCH} https://github.com/Sina-Amare/premshop.git fetched
-read -rsp 'Passphrase: ' P && echo
-printf '%s\\n' "$P" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --output docs-local.bundle --decrypt fetched/{ENCRYPTED}
-unset P
-git clone --quiet docs-local.bundle docs-local
-git -C docs-local log -1 --format='Restored docs-local at %h, %cd: %s'
+{{
+  git clone --quiet --depth 1 --branch {BRANCH} https://github.com/Sina-Amare/premshop.git fetched
+  read -rsp 'Passphrase: ' P && echo
+  printf '%s\\n' "$P" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --output docs-local.bundle --decrypt fetched/{ENCRYPTED}
+  unset P
+  git clone --quiet docs-local.bundle docs-local
+  git -C docs-local log -1 --format='Restored docs-local at %h, %cd: %s'
+}}
 ```
 
 `docs-local` is then the notes folder with its history. Put it inside a premshop checkout
@@ -228,10 +232,13 @@ def verify() -> None:
         )
         env.pop("GNUPGHOME", None)
         print(f"Restoring into an empty folder, {folder}, with the README's commands:")
-        # -e: stop at the first command that fails, so the error names it.
-        restore = [str(GIT_BIN / "bin/bash.exe"), "-e", "-c", RESTORE]
+        # The block, then the passphrase, on one input stream: what a terminal receives when a
+        # person pastes the block and types. -e: stop at the first failure, so the error names it.
+        typed = f"{RESTORE}{passphrase}\n".encode()
         try:
-            print(_run(restore, cwd=folder, stdin=f"{passphrase}\n".encode(), env=env))
+            print(
+                _run([str(GIT_BIN / "bin/bash.exe"), "-e", "-s"], cwd=folder, stdin=typed, env=env)
+            )
         finally:
             _kill_agent(env)
         restored = git("rev-parse", "HEAD", cwd=folder / "docs-local")
