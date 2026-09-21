@@ -63,7 +63,11 @@ RESTORE = README.split("```bash\n")[1].split("```")[0]
 
 HOOK = """#!/bin/sh
 # Installed by premshop's scripts/backup_docs_local.py setup: back up after every commit.
-"{python}" "{script}" run || echo "docs-local BACKUP FAILED: this commit is not backed up." >&2
+"{python}" "{script}" run || {{
+  echo 'docs-local BACKUP INCOMPLETE: the line above says where it failed.'
+  echo 'Each backup holds the whole history, so the next commit catches up. To retry now:'
+  echo '"{python}" "{script}" run'
+}} >&2
 """
 
 
