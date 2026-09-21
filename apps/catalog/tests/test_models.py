@@ -1,4 +1,4 @@
-"""The catalog's rules: one price function, two CHECKs, and what a visitor may see."""
+"""The catalog's rules: one price function, the database CHECKs, and what a visitor may see."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ def test_the_window_is_half_open(product):
     assert effective_price(p, at=end) == Decimal("1450000")
 
 
-# --- The two CHECKs, proven at the database, not the form ---------------------
+# --- The two promotion CHECKs, proven at the database, not the form -----------
 
 
 @pytest.mark.parametrize(
@@ -124,6 +124,50 @@ def test_the_checks_reach_the_admin_form_in_persian(product):
     with pytest.raises(ValidationError) as excinfo:
         p.full_clean()
     assert "قیمت تخفیفی" in str(excinfo.value)
+
+
+# --- The rest of data-model §3's CHECKs --------------------------------------
+# The contract specified these for the catalog at S3; the S3 migration shipped
+# with only the two promotion checks. Added 2026-09-21 (catalog 0002).
+
+
+@pytest.mark.parametrize("hours", [0, -1, 49])
+def test_delivery_hours_check_keeps_the_promise_between_1_and_48(product, hours):
+    """Every product page promises delivery within its hours, capped at 48
+    (ADR-0009). Zero would read as instant; forty-nine breaks the cap."""
+    product.delivery_hours = hours
+    with pytest.raises(IntegrityError), transaction.atomic():
+        product.save()
+
+
+def test_status_check_refuses_a_value_outside_the_three(product):
+    """`choices=` binds the admin form only; a shell or an import can write anything,
+    and a product in an unknown status is neither public nor visibly a draft."""
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Product.objects.filter(pk=product.pk).update(status="published")
+
+
+@pytest.mark.parametrize("field", ["cost_price", "sale_price"])
+def test_prices_cannot_be_negative(product, field):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        plan(product, **{field: Decimal("-1")})
+
+
+@pytest.mark.parametrize("days", [0, -30])
+def test_a_plan_lasts_at_least_a_day_or_never_expires(product, days):
+    """NULL means never expires. Zero or negative would put an expiry date on or
+    before the delivery date, and the renewal reminder would fire at once."""
+    with pytest.raises(IntegrityError), transaction.atomic():
+        plan(product, duration_days=days)
+
+
+def test_the_new_checks_reach_the_admin_form_in_persian(product):
+    from django.core.exceptions import ValidationError
+
+    p = Plan(product=product, title="x", cost_price=-1, sale_price=1000)
+    with pytest.raises(ValidationError) as excinfo:
+        p.full_clean()
+    assert "منفی" in str(excinfo.value)
 
 
 # --- What a visitor may see ---------------------------------------------------

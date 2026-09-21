@@ -126,6 +126,21 @@ class Product(models.Model):
         verbose_name = "محصول"
         verbose_name_plural = "محصولات"
         ordering = ["name"]
+        constraints = [
+            # The 48-hour cap is the delivery promise on every product page
+            # (ADR-0009): zero would read as instant, and 49 breaks the promise.
+            models.CheckConstraint(
+                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=48),
+                name="product_delivery_hours_1_to_48",
+                violation_error_message="مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد.",
+            ),
+            # `choices=` binds only the admin form; the database binds everything.
+            models.CheckConstraint(
+                condition=Q(status__in=["draft", "active", "unavailable"]),
+                name="product_status_valid",
+                violation_error_message="وضعیت محصول معتبر نیست.",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -206,6 +221,20 @@ class Plan(models.Model):
                 | Q(promo_starts_at__lt=F("promo_ends_at")),
                 name="plan_promo_window_starts_before_it_ends",
                 violation_error_message="شروع تخفیف باید قبل از پایان آن باشد.",
+            ),
+            # Zero stays allowed — data-model §3 says `>= 0`, and whether a
+            # zero-priced plan may be sold is a checkout question for S4b.
+            models.CheckConstraint(
+                condition=Q(cost_price__gte=0) & Q(sale_price__gte=0),
+                name="plan_prices_not_negative",
+                violation_error_message="قیمت خرید و قیمت فروش نمی‌توانند منفی باشند.",
+            ),
+            # NULL means the plan never expires; zero or less would date the expiry
+            # on or before delivery, and the renewal reminder would fire at once.
+            models.CheckConstraint(
+                condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
+                name="plan_duration_positive_or_unlimited",
+                violation_error_message="مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان.",
             ),
         ]
 
