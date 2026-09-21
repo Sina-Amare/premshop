@@ -51,7 +51,16 @@ npm run css                                            # or css:watch
 - **Redis** runs in Docker inside WSL and stops when WSL idles. Start it with `wsl -d Ubuntu-24.04 -u root -e bash -lc 'service docker start && docker start premshop-redis'` (as root, so no sudo password is asked). A login page showing «ورود فعلاً ممکن نیست» means Redis is down.
 - **`static/css/app.css` is a gitignored build artifact.** Tailwind v4 scans `templates/` only (`source(none)` in `input.css`), so a class used for the first time in a template does nothing until `npm run css` runs.
 - **Never `runserver --noreload` while editing templates** — it serves the old ones, and a screenshot of a stale page looks like a fix that did not work.
+- **RTK is off here.** RTK is a global Claude Code hook on this machine that rewrites shell commands (`grep`, `find`, `git`, `pytest`, `curl`, …) into filtered versions to save tokens; here it made failed checks look clean (AGENTS.md §7). `~/.claude/hooks/rtk-guard.sh` skips it in any project holding `.claude/rtk-off`, and `.claude/settings.json` runs `scripts/rtk_canary.py` at every session start, which prints one line either way. If it says `FAILED`, reinstalling or upgrading RTK (`rtk init -g`) has most likely put back the unguarded hook entry; the guard's header comment gives the line to restore. Deleting `.claude/rtk-off` turns RTK back on here.
 - **Writing files that mix Persian and quotes:** Git Bash heredocs break on them, and tool layers turn `\n` and `\uXXXX` escapes back into the characters. Use a file-writing tool or a script file; build a backslash with `chr(92)` when an escape must survive. The console is cp1256: set `PYTHONIOENCODING=utf-8` before printing Persian, and in PowerShell 5.1 pass `-Encoding utf8` to `Get-Content`.
+
+## Backing up docs-local
+
+`docs-local/` (gitignored: costs, margins, supplier notes) is backed up after every commit made in it, by a post-commit hook that `scripts/backup_docs_local.py setup` installed. A backup is a git bundle of its whole history, encrypted with gpg (AES-256) under a passphrase kept in `~/.premshop-backup/passphrase` on the laptop and, off it, in the owner's password manager and on paper. The encrypted file goes to two places: the `docs-local-backup` branch of this repository (one commit, replaced each time; it holds no workflow files, so pushing it runs no CI), and `G:\Backups\premshop\` on the laptop's second physical disk, which keeps the last five. Before copying, the script checks that the file decrypts back to the bundle **and** that a wrong passphrase does not open it. A failure prints `docs-local BACKUP FAILED` on the commit's output.
+
+- **Restore:** the branch's `README.md` has the commands. `.venv/Scripts/python.exe scripts/backup_docs_local.py verify` runs exactly those commands in an empty folder with an empty home directory, cloning from the public URL, checks the result is the same commit as `docs-local/` here, and decrypts the newest G: copy. Run it after changing anything about the backup.
+- **Uncommitted edits are not in a backup**; the script says so when there are any.
+- **What each copy survives:** G: survives a failed C: drive but not a lost or stolen laptop; GitHub survives both, and is only as good as the passphrase copies kept off the laptop.
 
 ## How the built code hangs together
 

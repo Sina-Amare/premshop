@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Program Files/Git/bin/bash.exe\" -c \".venv/Scripts/python.exe scripts/rtk_canary.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

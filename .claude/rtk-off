@@ -1,0 +1,3 @@
+RTK's Bash rewrite is off in this repository: it made failed checks look clean (AGENTS.md §7).
+The guard that reads this file is ~/.claude/hooks/rtk-guard.sh; scripts/rtk_canary.py proves it
+at every session start. Delete this file to turn RTK back on here.

@@ -30,7 +30,7 @@ Read this file at the start of every session. It is short on purpose: everything
 
 ## 2. Files you maintain (create them when missing; the owner never writes them)
 
-Project state lives in `docs-local/`, which is gitignored: it holds commercial detail (costs, margins, suppliers) and working notes. It has its own local git history — commit there after editing it (`git -C docs-local log`). `docs/` is the public engineering reference. When a decision made in `docs-local/` matters to someone reading the code, it becomes an ADR.
+Project state lives in `docs-local/`, which is gitignored: it holds commercial detail (costs, margins, suppliers) and working notes. It has its own local git history — commit there after editing it (`git -C docs-local log`); each commit is also backed up, encrypted, by a hook, so an uncommitted edit is an unbacked-up one (`docs/development.md`, "Backing up docs-local"). `docs/` is the public engineering reference. When a decision made in `docs-local/` matters to someone reading the code, it becomes an ADR.
 
 | File | What it holds |
 |---|---|
@@ -47,7 +47,7 @@ Keep them true. Stale documentation is worse than none. When docs and code disag
 
 ## 3. Triggers
 
-**Session starts.** Read `docs-local/progress.md`, then `docs-local/learning.md` — not `docs/progress.md`, which does not exist here. In at most five lines: milestone, current task, blocker, next action, open question. Ask: continue or redirect? Read only the parts of the repo the current task touches.
+**Session starts.** Read `docs-local/progress.md`, then `docs-local/learning.md` — not `docs/progress.md`, which does not exist here. In at most five lines: milestone, current task, blocker, next action, open question. Ask: continue or redirect? Read only the parts of the repo the current task touches. The session's opening context must hold the line `RTK canary: Bash commands run unrewritten here`; if it is missing or reads `RTK CANARY FAILED`, fix that before trusting any shell output (§7).
 Because: the files are our shared memory; rereading everything wastes the session.
 
 **Before building any step — including a bug-fix round.** Explain it in plain language and wait for an explicit go from the owner. Silence, enthusiasm or an adjacent answer is not a go. Inside an approved step, small reversible decisions need no asking. "just build" remains the owner's explicit way to skip the loop.
@@ -160,6 +160,7 @@ Every one of these has already happened on this project, and every one was **sil
 - **A local pass is evidence; the CI run is the verdict.** CI was red on GitHub for seventeen commits while every step report said "all checks green". Three independent causes, all invisible locally: `bandit` was in the workflow but never run by hand; `black` was run on `apps/` instead of `.`; and four tests passed only because the developer's machine had a running Redis and relay credentials in `.env`. Run `scripts/check.py`, and **after every push read the run's conclusion from GitHub** before reporting the gate as green.
 - **A comment that promises a behaviour is not a test of it.** Three auth bugs, found 2026-09-18 and fixed 2026-09-21 with a regression test each, sat under comments that claimed the opposite: "a failure here must not fail the login" (it did), "a wrong guess must not buy time" (in production, it reset the clock), "a nonexistent account does not answer faster" (existing ones answered slower). Each promise in a comment is a test that has not been written yet.
 - **A test must build the state it depends on.** If it passes because of something in `.env` or a daemon that happens to be up, it is testing the machine. `apps/conftest.py` forces an in-memory cache for every test for this reason.
+- **The layer between you and a command can change its answer.** RTK, a token-saving hook that rewrote this machine's shell commands, answered `find` on a folder that did not exist with "0 for 'x'" and exit 0 (the real `find`: an error and exit 1); rejected a valid compound `find` with a message only on stderr, which was read at the time as "nothing found"; and summarised a pytest run that could not find its test file as "No tests collected". It is off in this repository (`.claude/rtk-off`), and a canary says at every session start whether it still is. A "nothing found" or a "clean" counts only beside a positive control: the same check, aimed at something that must match, matching.
 
 ## 8. The visual position
 
