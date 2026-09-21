@@ -3,8 +3,15 @@
 .env.*
 !.env.example
 
-# Design discussion (conclusions live in docs/decisions/; the argument stays local)
+# Private working state and business material: progress, learning notes, the build
+# plan, the product brief (costs, margins, suppliers). It has its own local git
+# history; conclusions reach this repository as ADRs in docs/decisions/.
 docs-local/
+
+# The owner's own copies of the working kit: the tutor prompt (pasted into a web
+# chat, never read from here) and the kit's how-to. Personal, not project files.
+tutor.md
+HOW-TO-USE.md
 
 # Python
 .venv/

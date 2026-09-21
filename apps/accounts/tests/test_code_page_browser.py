@@ -5,7 +5,7 @@ that fills all six, a sixth digit that submits, a wrong code that shakes and
 clears, a countdown, a resend cooldown. None of it exists in the test client.
 So this runs the real page in a real browser against the live server, and it
 takes screenshots on the way — those are the artefacts reviewed before the
-owner is asked to look (the rule in CLAUDE.md).
+owner is asked to look (the rule in AGENTS.md, "Anything visual changes").
 
 Skipped automatically when Playwright's Chromium is not installed, so CI without
 a browser stays green and honest rather than red and ignored.
