@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from django.conf import settings
@@ -115,6 +116,11 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "delivery_url": "https://premshop.ir/d/preview-token",
         "link_ttl_hours": 72,  # ADR-0008 settles this; the first draft invented 48
         "order_url": "https://premshop.ir/orders/PS-1405-0217",
+    },
+    "signin_alert": {
+        # 11:02 UTC is 14:32 in Tehran — the template must render local time.
+        "signed_in_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
+        "account_url": "https://premshop.ir/account/",
     },
 }
 

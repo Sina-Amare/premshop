@@ -8,12 +8,26 @@ development-only preview route staying reachable in production.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from django.conf import settings
 from django.core import mail
 
 from apps.core.email import render_email, send_templated_email
 from apps.core.views import EMAIL_PREVIEWS
+
+
+def test_every_email_template_has_a_preview_entry():
+    """Every guard below is parametrized over EMAIL_PREVIEWS, so a message missing
+    from it is skipped by all of them without a word. That is how `signin_alert`
+    shipped at S2 outside every leak check. A message is its `.subject.txt` file."""
+    templates_dir = Path(settings.BASE_DIR) / "templates" / "email"
+    messages = {
+        path.name.removesuffix(".subject.txt") for path in templates_dir.glob("*.subject.txt")
+    }
+
+    assert messages == set(EMAIL_PREVIEWS), f"missing previews: {messages - set(EMAIL_PREVIEWS)}"
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))

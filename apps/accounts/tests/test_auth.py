@@ -7,21 +7,25 @@ open — a customer locked out by an over-tight limit is a refund, not a save.
 from __future__ import annotations
 
 import re
+import smtplib
 
 import pytest
+import time_machine
+from django.contrib.auth.hashers import MD5PasswordHasher, make_password
 from django.core import mail
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
 from django.urls import reverse
 
-from apps.accounts import otp
+from apps.accounts import otp, services, views
 from apps.accounts.models import User
 from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
 
 PASSWORD = "CorrectHorse!2026"  # noqa: S105 — a fixture value, not a credential
+START = 1_790_000_000  # a fixed instant, so time-travel tests never depend on the clock
 PERSIAN_TO_ASCII = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
 ASCII_TO_PERSIAN = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
 
@@ -101,6 +105,43 @@ def test_an_inactive_account_cannot_log_in(client, user):
     client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
 
     assert "_auth_user_id" not in client.session
+
+
+@pytest.mark.parametrize("case", ["unknown", "wrong_password", "no_password", "inactive", "right"])
+def test_every_password_attempt_costs_exactly_one_hash(client, user, monkeypatch, case):
+    """If a miss on a real account costs different work from a miss on a stranger,
+    the response time tells anyone which addresses shop here — and for this shop the
+    customer list is itself sensitive. So every attempt, whatever its outcome, runs
+    exactly one password hash.
+
+    Counted, not timed: a timing assertion would be flaky, while the number of hash
+    computations is exact and is what the time difference is made of. It was two for
+    a real account with a wrong password, and two for an account with no password
+    (Django already fakes one hash for those; the view added a second)."""
+    monkeypatch.setattr(views, "_DUMMY_HASH", make_password("nobody-knows-this"))
+    email, password = user.email, "not-the-password"
+    if case == "unknown":
+        email = "stranger@example.test"
+    elif case == "no_password":
+        email = User.objects.create_user("otponly@example.test").email
+    elif case == "inactive":
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+    elif case == "right":
+        password = PASSWORD
+
+    hashes = []
+    real_encode = MD5PasswordHasher.encode
+
+    def counting_encode(self, *args, **kwargs):
+        hashes.append(1)
+        return real_encode(self, *args, **kwargs)
+
+    monkeypatch.setattr(MD5PasswordHasher, "encode", counting_encode)
+
+    client.post(reverse("login"), {"email": email, "password": password})
+
+    assert len(hashes) == 1, f"{case}: {len(hashes)} hashes"
 
 
 # --- OTP login -------------------------------------------------------------
@@ -213,13 +254,30 @@ def test_the_code_is_burned_after_too_many_wrong_guesses(client, user):
 
 
 def test_a_wrong_guess_does_not_extend_the_codes_life(user):
-    """Otherwise an attacker buys unlimited time simply by guessing at it."""
-    issued = otp.issue(user.email)
+    """Otherwise an attacker buys time simply by guessing at it. A guess a minute
+    before the deadline must not keep the code alive past that deadline.
 
-    otp.verify(user.email, "000000")
+    The test this replaces only checked that the code still worked straight after
+    a wrong guess, so it could not fail for the bug it was named after: on Redis,
+    every wrong guess reset the code's life to five minutes."""
+    with time_machine.travel(START, tick=False) as clock:
+        issued = otp.issue(user.email)
+        clock.shift(otp.CODE_TTL_SECONDS - 60)
+        otp.verify(user.email, "000000")
+        clock.shift(61)
 
-    assert cache.get(f"otp:{user.email}") is not None
-    assert otp.verify(user.email, issued.code), "a real code must still work"
+        assert not otp.verify(user.email, issued.code), "the code outlived its deadline"
+
+
+def test_a_wrong_guess_does_not_shorten_the_codes_life(user):
+    """The page counts down ten minutes. A typo in the first second must not
+    quietly make it five, while the countdown still shows time left."""
+    with time_machine.travel(START, tick=False) as clock:
+        issued = otp.issue(user.email)
+        otp.verify(user.email, "000000")
+        clock.shift(otp.CODE_TTL_SECONDS - 60)
+
+        assert otp.verify(user.email, issued.code), "a typo cut the code's life short"
 
 
 def test_a_successful_login_clears_the_attempt_budget(client, user):
@@ -255,6 +313,28 @@ def test_otp_login_on_passworded_account_sends_signin_alert(client, user):
     alert = mail.outbox[1]
     assert alert.to == [user.email]
     assert "ورود" in alert.subject
+
+
+def test_a_failed_signin_alert_does_not_fail_the_login(client, user, monkeypatch, caplog):
+    """The docstring always promised this and nothing enforced it. By the time the
+    alert is sent the code is already spent, so a relay error or the 200-a-day cap
+    turning into an error page would lock a customer out over our mail problem.
+    The failure must still be visible — logged, never swallowed."""
+    real_send = services.send_templated_email
+
+    def alert_fails(name, **kwargs):
+        if name == "signin_alert":
+            raise smtplib.SMTPServerDisconnected("relay went away")
+        return real_send(name, **kwargs)
+
+    monkeypatch.setattr(services, "send_templated_email", alert_fails)
+    client.post(reverse("login-code"), {"email": user.email})
+
+    response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[0])})
+
+    assert response.status_code == 302
+    assert client.session["_auth_user_id"] == str(user.pk)
+    assert "sign-in alert" in caplog.text
 
 
 def test_no_signin_alert_for_an_account_with_no_password(client):

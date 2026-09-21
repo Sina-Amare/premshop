@@ -9,6 +9,8 @@ forgotten rate-limit call in one view is the whole defence gone.
 
 from __future__ import annotations
 
+import logging
+
 from django.contrib.auth import login as django_login
 from django.http import HttpRequest
 from django.urls import reverse
@@ -18,6 +20,8 @@ from apps.accounts import otp
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.email import send_templated_email
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimited(Exception):
@@ -105,15 +109,20 @@ def _send_signin_alert(request: HttpRequest, user: User) -> None:
     """C14. Only for accounts that HAVE a password: an OTP-only account has no
     second factor for this notice to protect, so it would be noise on every login.
 
-    A failure here must not fail the login. The customer is already authenticated
-    and holding a session; refusing that because a notification bounced would turn
-    a mail problem into a lockout.
+    A failure here must not fail the login. The customer is already authenticated,
+    holding a session and a spent code; refusing that because a notification
+    bounced would turn a mail problem into a lockout. So a failure is logged, never
+    raised — and never swallowed silently either. The log names the account id
+    only: no address, no code (ADR-0008).
     """
-    send_templated_email(
-        "signin_alert",
-        to=[user.email],
-        context={
-            "signed_in_at": timezone.now(),
-            "account_url": request.build_absolute_uri(reverse("account")),
-        },
-    )
+    try:
+        send_templated_email(
+            "signin_alert",
+            to=[user.email],
+            context={
+                "signed_in_at": timezone.now(),
+                "account_url": request.build_absolute_uri(reverse("account")),
+            },
+        )
+    except Exception:  # noqa: BLE001 — any mail failure; the login has already happened
+        logger.warning("sign-in alert not sent for user %s", user.pk, exc_info=True)

@@ -44,9 +44,9 @@ WRONG_CREDENTIALS = "ایمیل یا رمز عبور اشتباه است."
 WRONG_CODE = "کد اشتباه است یا منقضی شده."
 
 # A real hash of a value nobody knows. Comparing a submitted password against it
-# when the account does not exist makes the miss cost the same work as a genuine
-# check; without it a nonexistent account answers measurably faster, which is a
-# user-enumeration oracle. Built once at import, never per request.
+# when there is no live account to check makes the miss cost the same work as a
+# genuine check; without it a nonexistent account answers measurably faster, which
+# is a user-enumeration oracle. Built once at import, never per request.
 _DUMMY_HASH = make_password(secrets.token_urlsafe(16))
 
 
@@ -66,19 +66,22 @@ def login_password(request: HttpRequest) -> HttpResponse:
             form.add_error(None, services.TOO_MANY_ATTEMPTS)
         else:
             user = User.objects.filter(email__iexact=email).first()
-            # check_password is run even when the user is missing, against a
-            # throwaway hash, so a nonexistent account does not answer faster
-            # than a wrong password. That timing difference is a user-enumeration
-            # oracle, and the fix costs one hash.
-            if (
-                user is not None
-                and user.is_active
-                and user.check_password(form.cleaned_data["password"])
-            ):
+            # Exactly ONE password hash per attempt, whatever the outcome. Any
+            # difference in work is a difference in response time, and that tells a
+            # stranger which addresses shop here. A live account costs its own check
+            # (for an account with no password Django fakes that hash itself); every
+            # other case costs one check against a throwaway hash. Never both — the
+            # old code ran the throwaway after every failure, so a real account with
+            # a wrong password cost two hashes and answered slower than a stranger.
+            if user is not None and user.is_active:
+                authenticated = user.check_password(form.cleaned_data["password"])
+            else:
+                check_password(form.cleaned_data["password"], _DUMMY_HASH)
+                authenticated = False
+            if authenticated:
                 django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
                 return redirect("account")
-            check_password(form.cleaned_data["password"], _DUMMY_HASH)
             form.add_error(None, WRONG_CREDENTIALS)
 
     return render(request, "accounts/login_password.html", {"form": form})

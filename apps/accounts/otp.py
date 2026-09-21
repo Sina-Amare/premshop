@@ -12,7 +12,6 @@ live credential lying in the open, and hashing costs nothing to avoid it.
 
 from __future__ import annotations
 
-import logging
 import secrets
 import time
 from dataclasses import dataclass
@@ -22,8 +21,6 @@ from django.core.cache import cache
 from django.utils.crypto import constant_time_compare, salted_hmac
 
 from apps.accounts.models import User
-
-logger = logging.getLogger(__name__)
 
 PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
@@ -59,12 +56,14 @@ def issue(email: str) -> Issued:
     that guards an account.
     """
     code = f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
-    cache.set(_key(email), {"digest": _digest(code), "attempts": 0}, timeout=CODE_TTL_SECONDS)
-    return Issued(
-        code=code,
-        ttl_minutes=CODE_TTL_SECONDS // 60,
-        expires_at=int(time.time()) + CODE_TTL_SECONDS,
-    )
+    expires_at = int(time.time()) + CODE_TTL_SECONDS
+    # The deadline travels WITH the code. Django's cache API cannot read an entry's
+    # remaining lifetime back — on Redis included — so anything that re-saves this
+    # record must compute what is left from here, never guess it. Guessing it is the
+    # bug this replaced: every wrong guess reset a code's life to five minutes.
+    record = {"digest": _digest(code), "attempts": 0, "expires_at": expires_at}
+    cache.set(_key(email), record, timeout=CODE_TTL_SECONDS)
+    return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
 def verify(email: str, code: str) -> bool:
@@ -79,6 +78,13 @@ def verify(email: str, code: str) -> bool:
     if not record:
         return False
 
+    # A record without a deadline predates it being stored; treat it as expired
+    # (fail closed) rather than guess — the customer simply asks for a new code.
+    remaining = record.get("expires_at", 0) - int(time.time())
+    if remaining <= 0:
+        cache.delete(key)
+        return False
+
     submitted = (code or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
     if constant_time_compare(record["digest"], _digest(submitted)):
         cache.delete(key)
@@ -88,29 +94,10 @@ def verify(email: str, code: str) -> bool:
     if record["attempts"] >= MAX_ATTEMPTS:
         cache.delete(key)
     else:
-        # Re-set without extending the deadline: a wrong guess must not buy time.
-        cache.set(key, record, timeout=_remaining_ttl(key))
+        # Re-save with exactly the time the code had left: a wrong guess must
+        # neither buy time nor cost it.
+        cache.set(key, record, timeout=remaining)
     return False
-
-
-def _remaining_ttl(key: str) -> int:
-    """How long the current code has left, floored at one second.
-
-    Django's cache API has no portable TTL read, so this is deliberately
-    conservative: on the locmem backend used in tests there is no way to ask, and
-    re-setting the full TTL would let an attacker extend a code's life by guessing
-    at it. One second short of correct is safe; longer than correct is not.
-    """
-    from django.core.cache import caches
-
-    backend = caches["default"]
-    ttl = getattr(backend, "ttl", None)
-    if callable(ttl):
-        try:
-            return max(1, int(ttl(key) or 1))
-        except Exception:  # noqa: BLE001 — a cache that cannot answer is not fatal
-            logger.debug("cache backend gave no TTL for %s; using the safe floor", key)
-    return max(1, CODE_TTL_SECONDS // 2)
 
 
 def normalize_digits(value: str) -> str:
