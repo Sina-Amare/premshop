@@ -60,7 +60,11 @@ def is_rtks_own(command: str) -> bool:
 def rewrites(command: str) -> bool:
     # The owner's own configured hook, run the way Claude Code runs it.
     hook = subprocess.run(  # noqa: S603
-        [BASH, "-c", command], input=json.dumps(SAMPLE), capture_output=True, text=True
+        [BASH, "-c", command],
+        input=json.dumps(SAMPLE),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return "updatedInput" in hook.stdout
 
