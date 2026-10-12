@@ -7,6 +7,7 @@ encrypted with a passphrase that is kept off the laptop too (password manager an
     .venv/Scripts/python.exe scripts/backup_docs_local.py setup   # once: passphrase + commit hook
     .venv/Scripts/python.exe scripts/backup_docs_local.py run     # what the hook runs
     .venv/Scripts/python.exe scripts/backup_docs_local.py verify  # restore drill, empty folder
+    .venv/Scripts/python.exe scripts/backup_docs_local.py verify --ask   # …typing the passphrase
 
 `verify` feeds a shell the restore block of the branch's README word for word and then the
 passphrase, the way a person pastes the block and types, so the instructions a new machine
@@ -22,6 +23,8 @@ import sys
 import tempfile
 import time
 from base64 import b32encode
+from functools import partial
+from getpass import getpass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -213,8 +216,15 @@ def run() -> None:
         raise BackupError("; ".join(failures))
 
 
-def verify() -> None:
-    passphrase = _stored_passphrase()
+def verify(ask: bool = False) -> None:
+    # --ask tests the copy kept off the laptop: the stored file takes no part. On Windows
+    # getpass reads the console and ignores a pipe, so without a terminal it would hang.
+    if ask:
+        prompt = "Passphrase, exactly as stored (it does not show): "
+        typed = getpass(prompt) if sys.stdin.isatty() else input(prompt)
+        passphrase = typed.strip().upper()
+    else:
+        passphrase = _stored_passphrase()
     expected = git("rev-parse", "HEAD", cwd=DOCS)
     with tempfile.TemporaryDirectory() as tmp:
         home, folder = Path(tmp, "home"), Path(tmp, "restore")
@@ -262,14 +272,19 @@ def verify() -> None:
 
 
 if __name__ == "__main__":
+    args = sys.argv[1:]
     commands = {"setup": setup, "run": run, "verify": verify}
-    if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        sys.exit(f"usage: backup_docs_local.py {' | '.join(commands)}")
+    if args == ["verify", "--ask"]:
+        chosen = partial(verify, ask=True)
+    elif len(args) == 1 and args[0] in commands:
+        chosen = commands[args[0]]
+    else:
+        sys.exit("usage: backup_docs_local.py setup | run | verify [--ask]")
     # Git runs a hook with GIT_DIR and friends pointing at docs-local; without dropping
     # them, the commands meant for this repository would act on docs-local instead.
     for name in _run(["git", "rev-parse", "--local-env-vars"]).split():
         os.environ.pop(name, None)
     try:
-        commands[sys.argv[1]]()
+        chosen()
     except BackupError as error:
         sys.exit(f"BACKUP FAILED: {error}")

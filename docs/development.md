@@ -37,7 +37,15 @@ npm run css                                            # or css:watch
 ```
 
 - **The gate is six steps**, in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`: `ruff check .`, `black --check .`, `mypy apps config`, `pytest -q`, `pip-audit`, `bandit -r apps config`. Keep the two files in step. `bandit` does not read ruff's `# noqa`; its marker is a bare `# nosec B###`, with the reason in an ordinary comment.
-- **After a push**, the verdict is the run *for that commit*: `curl -s "https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=$(git rev-parse HEAD)"` — wait until `status` is `completed`, then read `conclusion`. The newest run overall may belong to an older commit or still be running. CI runs on every branch. `gh` is not installed.
+- **After a push**, the verdict is the run *for that commit*, not the newest run — that one may belong to an older commit or still be running. CI runs on every branch. With `gh` (installed 2026-10-12, already logged in as `Sina-Amare`):
+
+  ```bash
+  gh run list --commit "$(git rev-parse HEAD)" --json headBranch,status,conclusion
+  gh run watch "$(gh run list --commit "$(git rev-parse HEAD)" --branch main --json databaseId -q '.[0].databaseId')" --exit-status
+  ```
+
+  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
+- **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer (AGENTS.md §7).
 
 ## Tests
 
@@ -58,7 +66,7 @@ npm run css                                            # or css:watch
 
 `docs-local/` (gitignored: costs, margins, supplier notes) is backed up after every commit made in it, by a post-commit hook that `scripts/backup_docs_local.py setup` installed. A backup is a git bundle of its whole history, encrypted with gpg (AES-256) under a passphrase kept in `~/.premshop-backup/passphrase` on the laptop and, off it, in the owner's password manager and on paper. The encrypted file goes to two places: the `docs-local-backup` branch of this repository (one commit, replaced each time; it holds no workflow files, so pushing it runs no CI), and `G:\Backups\premshop\` on the laptop's second physical disk, which keeps the last five. Before copying, the script checks that the file decrypts back to the bundle **and** that a wrong passphrase does not open it. A failure prints `BACKUP FAILED: <where and why>` and `docs-local BACKUP INCOMPLETE` on the commit's output; each backup holds the whole history, so the next one that succeeds catches up.
 
-- **Restore:** the branch's `README.md` has the commands. `.venv/Scripts/python.exe scripts/backup_docs_local.py verify` runs exactly those commands in an empty folder with an empty home directory, cloning from the public URL, checks the result is the same commit as `docs-local/` here, and decrypts the newest G: copy. Run it after changing anything about the backup.
+- **Restore:** the branch's `README.md` has the commands. `.venv/Scripts/python.exe scripts/backup_docs_local.py verify` runs exactly those commands in an empty folder with an empty home directory, cloning from the public URL, checks the result is the same commit as `docs-local/` here, and decrypts the newest G: copy. Run it after changing anything about the backup. `verify --ask` is the same drill but prompts for the passphrase instead of reading the stored file, which is the only way the copies kept off the laptop get tested.
 - **Uncommitted edits are not in a backup**; the script says so when there are any.
 - **What each copy survives:** G: survives a failed C: drive but not a lost or stolen laptop; GitHub survives both, and is only as good as the passphrase copies kept off the laptop.
 
