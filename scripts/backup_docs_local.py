@@ -32,6 +32,7 @@ DOCS = REPO / "docs-local"
 PASSPHRASE = Path.home() / ".premshop-backup" / "passphrase"
 MIRROR = Path("G:/Backups/premshop")
 KEEP = 5
+MIN_PASSPHRASE = 20  # `setup` writes 39 characters; a shorter file is a truncated or empty one
 BRANCH = "docs-local-backup"
 ENCRYPTED = "docs-local.bundle.gpg"
 GIT_BIN = Path(r"C:\Program Files\Git")
@@ -124,10 +125,29 @@ def _kill_agent(env: dict[str, str]) -> None:
     )
 
 
+def _normalise(passphrase: str) -> str:
+    """The one place a passphrase becomes a key, whether it was typed or read from the file.
+
+    The generated passphrase is upper-case base32 in dash-separated groups. Stored and typed
+    copies must normalise identically, or a drill passes for a value a real restore would
+    refuse. `\\ufeff` is the byte-order mark Windows tools put at the start of a hand-written
+    file: it is not whitespace, so `.strip()` leaves it in and it silently joins the key.
+    """
+    return passphrase.replace("﻿", "").strip().upper()
+
+
 def _stored_passphrase() -> str:
     if not PASSPHRASE.exists():
         raise BackupError(f"no passphrase at {PASSPHRASE}; run `setup` first")
-    return PASSPHRASE.read_text(encoding="utf-8").strip()
+    passphrase = _normalise(PASSPHRASE.read_text(encoding="utf-8-sig"))
+    # Nothing inside this script can tell a wrong key from the right one — every check it runs
+    # uses the same value — so the only defence is refusing what cannot be the real passphrase.
+    if len(passphrase) < MIN_PASSPHRASE:
+        raise BackupError(
+            f"{PASSPHRASE} holds {len(passphrase)} characters, fewer than {MIN_PASSPHRASE}:"
+            " it must hold the whole passphrase on one line, nothing else"
+        )
+    return passphrase
 
 
 def setup() -> None:
@@ -152,9 +172,17 @@ def setup() -> None:
 def _to_mirror(encrypted: Path, head: str) -> str:
     MIRROR.mkdir(parents=True, exist_ok=True)
     target = MIRROR / f"docs-local-{time.strftime('%Y%m%d-%H%M%S')}-{head[:7]}.bundle.gpg"
-    shutil.copyfile(encrypted, target)
-    if target.read_bytes() != encrypted.read_bytes():
-        raise BackupError(f"{target} does not match what was written")
+    # Written under another name and renamed: a copy that dies mid-write (the disk drops out,
+    # an antivirus lock, a full disk) must not leave a half file holding the newest name, which
+    # the pruning below would then keep in preference to a whole older one.
+    partial = target.with_suffix(".part")
+    try:
+        shutil.copyfile(encrypted, partial)
+        if partial.read_bytes() != encrypted.read_bytes():
+            raise BackupError(f"{partial} does not match what was written")
+        os.replace(partial, target)
+    finally:
+        partial.unlink(missing_ok=True)
     for old in sorted(MIRROR.glob("docs-local-*.bundle.gpg"))[:-KEEP]:
         old.unlink()
     return str(target)
@@ -222,7 +250,7 @@ def verify(ask: bool = False) -> None:
     if ask:
         prompt = "Passphrase, exactly as stored (it does not show): "
         typed = getpass(prompt) if sys.stdin.isatty() else input(prompt)
-        passphrase = typed.strip().upper()
+        passphrase = _normalise(typed)
     else:
         passphrase = _stored_passphrase()
     expected = git("rev-parse", "HEAD", cwd=DOCS)
@@ -253,6 +281,10 @@ def verify(ask: bool = False) -> None:
             _kill_agent(env)
         restored = git("rev-parse", "HEAD", cwd=folder / "docs-local")
         files = len(git("ls-files", cwd=folder / "docs-local").splitlines())
+        # The drill runs this script's copy of the instructions. The ones a new machine would
+        # follow are on the branch, and they are only republished by a backup — so compare.
+        published = (folder / "fetched" / "README.md").read_text(encoding="utf-8")
+        stale = published.split("```bash\n")[1].split("```")[0] != RESTORE
     if restored != expected:
         raise BackupError(f"GitHub restores {restored[:7]}, but docs-local is at {expected[:7]}")
     print(f"GitHub: restored {files} files at {restored[:7]}, the same commit as docs-local here.")
@@ -260,15 +292,25 @@ def verify(ask: bool = False) -> None:
     copies = sorted(MIRROR.glob("docs-local-*.bundle.gpg"))
     if not copies:
         raise BackupError(f"no copies in {MIRROR}")
-    with tempfile.TemporaryDirectory() as tmp:
-        bundle = Path(tmp, "b.bundle")
-        gpg(passphrase, "--decrypt", "--output", str(bundle), str(copies[-1]))
-        heads = git("bundle", "list-heads", str(bundle), cwd=DOCS)
-    if expected not in heads:
-        raise BackupError(f"the newest G: copy, {copies[-1].name}, does not hold {expected[:7]}")
+    # Every copy, not just the newest: a count of filenames says nothing about the archives
+    # behind them. Only the newest holds the current commit; the older ones are older snapshots.
+    for copy in copies:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp, "b.bundle")
+            gpg(passphrase, "--decrypt", "--output", str(bundle), str(copy))
+            heads = git("bundle", "list-heads", str(bundle), cwd=DOCS)
+        if copy is copies[-1] and expected not in heads:
+            raise BackupError(f"the newest G: copy, {copy.name}, does not hold {expected[:7]}")
     print(
-        f"G: disk: {copies[-1].name} decrypts and holds {expected[:7]} ({len(copies)} copies kept)."
+        f"G: disk: all {len(copies)} copies decrypt, and the newest, {copies[-1].name},"
+        f" holds {expected[:7]}."
     )
+    if stale:
+        raise BackupError(
+            "the restore instructions published on the branch are not this script's."
+            " A new machine would follow the published ones: run `backup_docs_local.py run`"
+            " (or make any docs-local commit) to republish them."
+        )
 
 
 if __name__ == "__main__":

@@ -35,7 +35,8 @@ Project state lives in `docs-local/`, which is gitignored: it holds commercial d
 | File | What it holds |
 |---|---|
 | `docs-local/progress.md` | Current state in plain language at the top, then a newest-first log per step. Update after every completed step, not only at session end. |
-| `docs-local/learning.md` | The tour of the built code, study briefs (before the next step / later), check-back questions, decision-journal entries, terms, skip counter. The owner pastes from it into a separate tutor chat that cannot see this repo. |
+| `docs-local/learning.md` | Zones, in order: a preamble the owner pastes once per tutor chat (including what not to teach again), at most two active briefs, the Studied ledger, a titles-only backlog, the tour of the built code, the log, the decision journal, terms, skip counter. Format and rules: §4. |
+| `docs-local/archive/briefs.md` | The full body of every brief once studied, so the active file stays short and nothing is lost. Never pasted anywhere. |
 | `docs-local/learning-reference.md` | Answer keys for the check-backs, and the concept map. Opened only to grade a check-back or write a brief. |
 | `docs-local/build-plan.md` | The blueprint's job: the steps in order, each step's scope, done-when and gates. It points to `docs/` for contract detail and never restates it. |
 | `docs-local/open-questions.md` | What waits on the owner, and what it blocks. |
@@ -101,20 +102,30 @@ Because: skipping is allowed; drifting back into the old pattern unnoticed is no
 
 **`docs-local/progress.md`** — at the top, in plain language: what is built, what remains, what is decided and what is still open, the current step and the next likely action. Below it, the newest-first log of each step (never rewritten). The top stays under one page; git already has the history.
 
-**Study brief** (append to `docs-local/learning.md`):
+**Study brief** (`docs-local/learning.md`, under "Active briefs"):
 
 ```
-### Brief N — <concept>
-Why it matters here: <this project, this step>
-Depth: L1 know what it is · L2 can use it with docs · L3 can explain trade-offs and debug it
-Question you must be able to answer: <one question>
-Don't go into: <adjacent topics>
-Stop when: <observable capability>
-Read first: <two or three files or functions, in order>
-Terms used: <a, b, c>
+### Brief N — <concept> · Depth: L1 / L2 / L3 · Assume known: #a, #b
+
+**The idea (paste this to the tutor)**
+<the concept with no reference to this repository — portable to any project: what it is,
+one generic example, and the choice it represents>
+- Question you must be able to answer: <one question>
+- Don't go into: <adjacent topics>
+- Stop when: <observable capability>
+
+**In this project**
+<where it lives and what shape it takes here; what it already broke here; then
+"Read, in order:" two or three files or functions>
+
+**Check-back (answer without looking):** <one question that needs both halves>
+
+Terms: <a, b, c>
 ```
 
-Written so it can be pasted into a tutor chat that cannot see this repo. Its answer key goes in `docs-local/learning-reference.md`, naming the file and the function or constraint (line numbers drift).
+The two halves exist because the owner studies with a tutor chat that cannot see this repo, and wants knowledge that outlives this project: only "The idea" is pasted there, and the owner reads "In this project" here, with the files open. The answer key goes in `docs-local/learning-reference.md`, naming the file and the function or constraint (line numbers drift).
+
+Rules that keep the file from becoming a backlog nobody reads: **at most two active briefs**; write a brief when its step arrives, never a batch in advance; numbers are fixed and never reused; a graded brief becomes one line under "Studied" and its body moves to `docs-local/archive/briefs.md`; the "already known" list in the pasteable preamble is rebuilt from the Studied lines, so the tutor is told what not to teach again.
 
 **Decision-journal entry** (append to `docs-local/learning.md`):
 
@@ -160,6 +171,7 @@ Every one of these has already happened on this project, and every one was **sil
 - **A local pass is evidence; the CI run is the verdict.** CI was red on GitHub for seventeen commits while every step report said "all checks green". Three independent causes, all invisible locally: `bandit` was in the workflow but never run by hand; `black` was run on `apps/` instead of `.`; and four tests passed only because the developer's machine had a running Redis and relay credentials in `.env`. Run `scripts/check.py`, and **after every push read the run's conclusion from GitHub** before reporting the gate as green.
 - **A comment that promises a behaviour is not a test of it.** Three auth bugs, found 2026-09-18 and fixed 2026-09-21 with a regression test each, sat under comments that claimed the opposite: "a failure here must not fail the login" (it did), "a wrong guess must not buy time" (in production, it reset the clock), "a nonexistent account does not answer faster" (existing ones answered slower). Each promise in a comment is a test that has not been written yet.
 - **A test must build the state it depends on.** If it passes because of something in `.env` or a daemon that happens to be up, it is testing the machine. `apps/conftest.py` forces an in-memory cache for every test for this reason.
+- **A check that reuses the value under test cannot see that the value is wrong.** The backup read its passphrase file as plain UTF-8, so a byte-order mark — which Windows tools write and `.strip()` does not remove — silently joined the key. Every check in the script passed: the round-trip decrypt used the same wrong value, and the wrong-passphrase control was that same wrong value with a prefix. Only a human typing the passphrase from paper could have caught it. Where a check validates a secret, an identity or a key, at least one check must come from outside the system that produced it.
 - **An exit code read through a pipe belongs to the pipe.** `gh run watch … --exit-status | tail -2` printed success for a CI run that had **failed**, because the status read was `tail`'s; the same shape — a `find` whose stderr went to `/dev/null` — is what hid the RTK problem below. Check the command's own status (`${PIPESTATUS[0]}`), or read the verdict as data (`conclusion`) instead of inferring it from a pipeline.
 - **A step skipped locally is a step that can fail.** `scripts/check.py --no-audit` passed while `pip-audit` was failing on three new `urllib3` CVEs; the push went out and CI went red. Run the full gate before a push, or say in the report which step was skipped.
 - **The layer between you and a command can change its answer.** RTK, a token-saving hook that rewrote this machine's shell commands, answered `find` on a folder that did not exist with "0 for 'x'" and exit 0 (the real `find`: an error and exit 1); rejected a valid compound `find` with a message only on stderr, which was read at the time as "nothing found"; and summarised a pytest run that could not find its test file as "No tests collected". It is off in this repository (`.claude/rtk-off`), and a canary says at every session start whether it still is. A "nothing found" or a "clean" counts only beside a positive control: the same check, aimed at something that must match, matching.
