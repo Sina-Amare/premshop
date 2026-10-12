@@ -1,7 +1,6 @@
 """The parts of `scripts/backup_docs_local.py` that decide what key the archive gets.
 
-An adversarial review on 2026-10-12 found the script had no tests at all, and one real
-defect behind that: the stored passphrase was read as plain UTF-8, so a file written by hand
+A review found this script had no tests at all, and one real defect behind that: the stored passphrase was read as plain UTF-8, so a file written by hand
 on Windows — which the published restore instructions tell the owner to do on a new machine —
 starts with a byte-order mark that is not whitespace and silently became part of the key.
 Every check inside the script passed, because they all used the same wrong value.

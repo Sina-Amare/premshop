@@ -1,6 +1,6 @@
 # Development
 
-How to run PremShop locally, the commands you will use, the traps this particular machine setup has, and how the built code hangs together across files. The per-session working rules are in `../AGENTS.md`; this file is reference.
+How to run PremShop locally, the commands you will use, the traps this particular machine setup has, and how the built code hangs together across files.
 
 ## Setup
 
@@ -44,8 +44,8 @@ npm run css                                            # or css:watch
   gh run watch "$(gh run list --commit "$(git rev-parse HEAD)" --branch main --json databaseId -q '.[0].databaseId')" --exit-status
   ```
 
-  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script — but **do not pipe it**: `gh run watch … | tail -2` reports the exit code of `tail`, which is 0, and a failed run then reads as a pass (it did here on 2026-10-12). Read `conclusion` from the `run list` line above, or use `${PIPESTATUS[0]}`. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
-- **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer (AGENTS.md §7).
+  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script — but **do not pipe it**: `gh run watch … | tail -2` reports the exit code of `tail`, which is 0, and a failed run then reads as a pass (it did here once). Read `conclusion` from the `run list` line above, or use `${PIPESTATUS[0]}`. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
+- **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer.
 
 ## Tests
 
@@ -59,7 +59,7 @@ npm run css                                            # or css:watch
 - **Redis** runs in Docker inside WSL and stops when WSL idles. Start it with `wsl -d Ubuntu-24.04 -u root -e bash -lc 'service docker start && docker start premshop-redis'` (as root, so no sudo password is asked). A login page showing «ورود فعلاً ممکن نیست» means Redis is down.
 - **`static/css/app.css` is a gitignored build artifact.** Tailwind v4 scans `templates/` only (`source(none)` in `input.css`), so a class used for the first time in a template does nothing until `npm run css` runs.
 - **Never `runserver --noreload` while editing templates** — it serves the old ones, and a screenshot of a stale page looks like a fix that did not work.
-- **RTK is off here.** RTK is a global Claude Code hook on this machine that rewrites shell commands (`grep`, `find`, `git`, `pytest`, `curl`, …) into filtered versions to save tokens; here it made failed checks look clean (AGENTS.md §7). `~/.claude/hooks/rtk-guard.sh` skips it in any project holding `.claude/rtk-off`, and `.claude/settings.json` runs `scripts/rtk_canary.py` at every session start, which prints one line either way. The canary reads **every settings file Claude Code merges hooks from** (managed, user, user-local, project, project-local) and runs **every** PreToolUse hook that can fire on Bash, not only those mentioning rtk — reading one file and filtering on the word was a hole found by review on 2026-10-12. RTK re-adds its own hook on upgrade (it did on 2026-10-06): the canary now removes that entry itself, keeps the previous settings as `settings.json.bak-<timestamp>`, and says so. A rewriting hook belonging to anything else is reported and left alone. Deleting `.claude/rtk-off` turns RTK back on here.
+- **A wrapper that filters command output cannot be trusted for a check.** If anything on this machine sits between a command and its answer, prove it does not change exit codes or output before believing a result — a "nothing found" from a tool that refused the query looks exactly like a real empty answer. Local tooling notes are kept outside this repository.
 - **Writing files that mix Persian and quotes:** Git Bash heredocs break on them, and tool layers turn `\n` and `\uXXXX` escapes back into the characters. Use a file-writing tool or a script file; build a backslash with `chr(92)` when an escape must survive. The console is cp1256: set `PYTHONIOENCODING=utf-8` before printing Persian, and in PowerShell 5.1 pass `-Encoding utf8` to `Get-Content`.
 
 ## Backing up docs-local

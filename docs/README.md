@@ -11,7 +11,6 @@ Technical reference for the codebase. Which document answers which question:
 | What messages go out, when, and in what words? | [notifications-and-bot.md](notifications-and-bot.md) — the built emails in full; later messages and the Telegram bot as intent |
 | What does the interface look like — type, colour, layout rules? | [design-language.md](design-language.md) |
 | How do I run it, test it, and what are this setup's traps? How does the built code hang together across files? | [development.md](development.md) |
-| How does work happen here — steps, approvals, reviews? | [../AGENTS.md](../AGENTS.md) |
 
 ## Which document owns which kind of fact
 
