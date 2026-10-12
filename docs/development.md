@@ -44,7 +44,7 @@ npm run css                                            # or css:watch
   gh run watch "$(gh run list --commit "$(git rev-parse HEAD)" --branch main --json databaseId -q '.[0].databaseId')" --exit-status
   ```
 
-  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
+  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script — but **do not pipe it**: `gh run watch … | tail -2` reports the exit code of `tail`, which is 0, and a failed run then reads as a pass (it did here on 2026-10-12). Read `conclusion` from the `run list` line above, or use `${PIPESTATUS[0]}`. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
 - **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer (AGENTS.md §7).
 
 ## Tests
