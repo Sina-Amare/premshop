@@ -16,9 +16,8 @@ and a visitor reads the shape long before they read the intent.
   <div class="wrap">
     <h1 class="hero__title">اشتراک‌های جهانی، با پرداخت تومانی</h1>
     <p class="hero__lead">
-      چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، لایسنس جت‌برینز و بقیه — روی حساب خودتان فعال می‌شوند
-      یا کدشان را تحویل می‌گیرید. <b>زمان تحویل و گارانتی روی صفحه‌ی هر محصول نوشته شده</b>
-      و همان است که انجام می‌شود.
+      چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، جت‌برینز و چند سرویس دیگر —
+      <b>روی حساب خودتان، یا با کد.</b>
     </p>
     <div class="hero__act">
       <a class="btn btn--invert" href="#shelf">مشاهده‌ی محصولات</a>
@@ -32,7 +31,7 @@ and a visitor reads the shape long before they read the intent.
   <div class="wrap">
     <div class="shelf__panel">
       <div class="shelf__head">
-        <h2 class="section__title" style="margin: 0; border: 0; padding: 0">سرویس‌هایی که داریم</h2>
+        <h2 class="section__title" style="margin: 0; border: 0; padding: 0">سرویس‌ها</h2>
         <span class="small" style="margin: 0">{{ shelf|length|fa_digits }} سرویس</span>
       </div>
       <div class="shelf__grid">
@@ -57,7 +56,7 @@ and a visitor reads the shape long before they read the intent.
 <div class="wrap page{% if shelf %} page--flush{% endif %}">
   <section class="section" style="margin-block-start: 0">
     <div class="section__head">
-      <h2 class="section__title">محصولات و قیمت‌ها</h2>
+      <h2 class="section__title">محصولات</h2>
     </div>
     {% if featured %}
       <div class="grid">
@@ -66,7 +65,6 @@ and a visitor reads the shape long before they read the intent.
     {% else %}
       <div class="card empty">
         <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
-        <p class="small" style="margin:0">به‌زودی فهرست محصولات اینجا قرار می‌گیرد.</p>
       </div>
     {% endif %}
   </section>
@@ -87,11 +85,11 @@ and a visitor reads the shape long before they read the intent.
   {% endif %}
 
   <section class="section">
-    <h2 class="section__title">خرید چطور انجام می‌شود</h2>
+    <h2 class="section__title">مراحل خرید</h2>
     <ol class="steps">
-      <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">محصول و پلن را انتخاب کنید</span><span class="steps__d">قیمت هر پلن روی صفحه‌ی محصول نوشته شده و همان مبلغ از درگاه بانکی پرداخت می‌شود.</span></li>
-      <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">سفارش را تحویل می‌گیرید</span><span class="steps__d">در بازه‌ای که روی همان محصول نوشته شده و در ساعات پشتیبانی، اشتراک روی حسابتان فعال می‌شود یا کد را دریافت می‌کنید.</span></li>
-      <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">تا پایان دوره پشتیبان‌تان هستیم</span><span class="steps__d">اگر اشتراک قطع شد یا کد کار نکرد، تا پایان دوره پیگیری می‌کنیم؛ اگر درست نشد، وجه برمی‌گردد.</span></li>
+      <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">انتخاب و پرداخت</span><span class="steps__d">قیمت همان است که روی صفحه‌ی محصول نوشته شده.</span></li>
+      <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">تحویل</span><span class="steps__d">روی حساب خودتان، یا با کد — در ساعات پشتیبانی.</span></li>
+      <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">گارانتی</span><span class="steps__d">قطع شد، جایگزین می‌کنیم. درست نشد، وجه برمی‌گردد.</span></li>
     </ol>
   </section>
 </div>

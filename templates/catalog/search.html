@@ -22,8 +22,8 @@
 {% elif query and not results %}
   <div class="card empty">
     <p class="prose" style="margin:0">نتیجه‌ای برای «<bdi>{{ query }}</bdi>» پیدا نشد.</p>
-    <p class="small" style="margin:0">املای دیگری را امتحان کنید، یا از همه‌ی محصولات شروع کنید.</p>
-    <a class="btn btn--secondary" href="{% url 'home' %}">مشاهده‌ی همه‌ی محصولات</a>
+    <p class="small" style="margin:0">املای دیگری را امتحان کنید.</p>
+    <a class="btn btn--secondary" href="{% url 'home' %}">همه‌ی محصولات</a>
   </div>
 {% elif results %}
   <div class="grid">

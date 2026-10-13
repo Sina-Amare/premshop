@@ -31,7 +31,7 @@
     <div class="card pdp__facts">
       <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
       <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
-      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
+      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">تا {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
     </div>
 
     {% if specs %}
@@ -55,8 +55,8 @@
     <section class="pdp__section">
       <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی ({{ SUPPORT_HOURS }}).</dd>
-        <dt>اگر مشکلی پیش بیاید؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز پس از تحویل پاسخ‌گو هستیم.{% else %}تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.{% endif %}</dd>
+        <dt>چه زمانی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی ({{ SUPPORT_HOURS }}).</dd>
+        <dt>اگر مشکلی پیش آمد؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز پس از تحویل پاسخ‌گو هستیم.{% else %}تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.{% endif %}</dd>
       </dl>
     </section>
   </div>
@@ -87,7 +87,7 @@
               {% endif %}
             </label>
           {% empty %}
-            <p class="small" style="margin:0">برای این محصول هنوز پلنی ثبت نشده است.</p>
+            <p class="small" style="margin:0">هنوز پلنی برای این محصول ثبت نشده.</p>
           {% endfor %}
         </fieldset>
 
@@ -100,7 +100,7 @@
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
           </div>
         </div>
-        <p class="micro buybox__hint" id="qty-hint" hidden>این پلن روی اکانت خودتان فعال می‌شود؛ برای هر سفارش یک عدد.</p>
+        <p class="micro buybox__hint" id="qty-hint" hidden>روی اکانت خودتان فعال می‌شود — هر سفارش، یک عدد.</p>
         <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد خرید</button>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>

@@ -48,7 +48,7 @@
         <span class="hdr__word">PremShop</span>
       </a>
       <form class="hdr__search" action="{% url 'search' %}" method="get" role="search">
-        <input class="hdr__search-input" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="نام محصول یا سرویس را بنویسید" aria-label="جستجو در محصولات" autocomplete="off">
+        <input class="hdr__search-input" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="جستجوی محصول" aria-label="جستجو در محصولات" autocomplete="off">
         <button class="hdr__search-btn" type="submit" aria-label="جستجو">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         </button>
@@ -98,19 +98,19 @@
       <div class="ftr__promise">
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
-          <span>پرداخت از درگاه بانکی، با قیمت تومانی</span>
+          <span>پرداخت از درگاه بانکی</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          <span>تحویل در بازه‌ای که روی هر محصول نوشته شده</span>
+          <span>تحویل در ساعات پشتیبانی</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span>گارانتی تا پایان دوره‌ی اشتراک</span>
+          <span>گارانتی تا پایان دوره</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
-          <span>اگر سفارش تحویل نشود، وجه برمی‌گردد</span>
+          <span>ضمانت بازگشت وجه</span>
         </div>
       </div>
 
@@ -118,8 +118,7 @@
         <div>
           <div class="hdr__word">PremShop</div>
           <p class="micro" style="margin-block-start: var(--spacing-4)">
-            فروش اشتراک‌ها و اکانت‌های سرویس‌های هوش مصنوعی، ابزارهای توسعه و نرم‌افزارهای
-            بین‌المللی. هر سفارش پس از تأیید پرداخت و در بازه‌ی اعلام‌شده تحویل داده می‌شود.
+            اشتراک و اکانت سرویس‌های هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت.
           </p>
         </div>
 
