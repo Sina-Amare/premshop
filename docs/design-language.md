@@ -2,6 +2,27 @@
 
 The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
 
+## Voice — 2026-10-14c
+
+Grounded in the FAQ and rules pages of Iranian shops already selling these products, and in Persian style guidance on محاوره‌نویسی. The owner's test: *«نه چیزی ک طرف بخونه مطمعن باشه با ai نوشتم»*.
+
+**The register is polite-colloquial, and it is built by deleting formality markers, not by adding colloquial ones.** Cut `می‌باشد`, `می‌گردد`, `صورت می‌گیرد`, `جهت`, `لذا`, `نمایید`, `مذکور`, and every passive with `توسط`. What is left already sounds human. Only then contract: `است`→`ـه`, `را`→`رو`, `می‌شود`→`می‌شه`, `می‌دهیم`→`می‌دیم`, `اگر`→`اگه`, `می‌توانید`→`می‌تونید`.
+
+- **Second person is always شما with ـید.** `می‌تونید`, `بزنید`, `حسابتون`. Never `ـین` (`می‌تونین`) — correct Persian, normal on Instagram, and nobody handling a customer's money writes it. Never `تو`.
+- **Never `واسه`** (street register) and never `می‌باشه` (the single most illiterate form in Persian web copy — `می‌باشد` is already bureaucratic and breaking it makes it worse).
+- **Orthography does not relax.** `می‌شه` not `میشه`; `رو` always separate, never `اینو`/`کدو`; clitics attach without ZWNJ (`بهتون`, `حسابتون`) except after a final ه (`شماره‌تون`); `آماده‌ست` not `آمادست`; `سفارش‌ها` not `سفارشا`.
+- **One possessive axis per sentence.** `حسابتون` + `می‌تونید` ✓ · `حساب شما` + `می‌تونید` ✓ · `حسابتان` + `می‌تونید` ✗. The classic collision is `ایمیلت رو وارد کنید` — singular clitic, plural verb.
+- **These stay plain whatever the rest does:** amounts and money sentences, error messages, field labels, buttons, and anything the shop could be held to (delivery windows, warranty, refunds). A failed payment is not the place for `یه مشکلی پیش اومد`.
+- **Numbers, not adjectives.** `تا ۱۲ ساعت`, `۳۰ روز` — never `سریع`, `در کمترین زمان ممکن`, `پشتیبانی ۲۴/۷`. `تومان` in a price field, `تومن` in a sentence.
+- **Label, do not explain** (the 2026-10-14 rule, restated because it is the one most easily lost). Verdict first; mechanism only when it is an instruction; reason never. `بله، چون …` is a machine justifying itself.
+- **Admit a limitation somewhere.** The strongest non-generated signal there is: a model hedges, it never confesses. «Netflix را با آی‌پی ایران نمی‌شه باز کرد» and «سفارش نصف‌شب صبح در نوبت می‌افته» do more for trust than any badge.
+- **Say no to something.** «رمز اکانتتون رو نمی‌خوایم.» «شماره کارت شخصی برای واریز نمی‌دیم.» Refusing card-to-card is the strongest substitute for a نماد اعتماد the shop does not have yet.
+- **Punctuation.** No em dash `—` in body copy: it is English typography and renders as an ambiguous bar beside a Latin run in RTL. At most one `؛` per page and never in a short answer. `،` `؟` `«»` always, never the Latin `,` `?` `"`.
+- **Banned as generated:** `همچنین`, `علاوه بر این`, `لازم به ذکر است`, `با خیال راحت`, `نگران نباشید`, `به راحتی`, `تنها با چند کلیک`, `تجربه‌ای بی‌نظیر`, `ما در پرم‌شاپ`; synonym pairs (`امن و مطمئن`, `سریع و آسان` — both words mean one thing); and the same-modifier triplet (`قیمت مشخص، تحویل مشخص، گارانتی مشخص`). Three facts are fine; three facts in the same grammatical shape are a tell.
+- **Brand names in Latin, common nouns in Persian.** `Netflix` beside the Netflix mark is one spelling of one thing. The transliterations live in `Product.aliases` (so search finds «چت جیپت») and in SEO descriptions (so Google does). `گیفت کارت`, `اکانت`, `اشتراک` stay Persian.
+
+An FAQ answers what buyers worry about, not what the shop finds easy to state. «باید حساب بسازم؟» and «پرداخت چطور انجام می‌شود؟» are not questions anyone has; the real ones are whether the account is shared, whether they must hand over their own password, what happens when it is cut off mid-period, whether it works from an Iranian IP, and how they know the money is safe. Answers run one to three sentences.
+
 ## Amendment — 2026-10-14b: the references, applied
 
 The owner reviewed the ink composition and asked the question the first attempt deserved: *«چرا اصلا دیزاین های نمونه ای ک گفتم رو هیچیشونو اعمال نکردی؟ پلت و انیمیشن و بک گراند پیکچر»*. It was a fair hit. All three reference systems are **light**, all three carry colour, and the answer shipped was a dark band — the one thing none of them do. These clauses supersede the matching ones in the amendment below.
