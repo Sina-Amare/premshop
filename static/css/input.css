@@ -240,6 +240,12 @@
   .hdr__brand { display: flex; align-items: center; gap: 11px; text-decoration: none; flex: none; }
   .hdr__word { font-family: var(--font-head); font-size: 20px; font-weight: 600;
                line-height: 1.2; color: var(--color-ink); }
+  /* Inline rather than an <img>, and explicitly ink rather than currentColor:
+     the brand is a link, and a link inherits the accent — a teal mark beside
+     an ink wordmark is two colours in one lockup, and it would take colour
+     this system reserves for the goods. */
+  .hdr__mark { flex: none; color: var(--color-ink); }
+  .ftr .hdr__mark, .ftr .hdr__word { color: var(--color-on-deep); }
   /* The account affordance is a labelled control, not a bare glyph: every
      Iranian shop measured prints the words, and a first-time buyer arriving
      from Telegram should not have to decode a pictogram to find ثبت‌نام. */

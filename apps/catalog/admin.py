@@ -125,7 +125,7 @@ class ProductAdmin(ModelAdmin):
             {
                 "fields": [
                     "delivery_type",
-                    "warranty",
+                    ("warranty", "renewable"),
                     "delivery_hours",
                     "delivery_template",
                 ]

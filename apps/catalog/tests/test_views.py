@@ -106,19 +106,54 @@ def test_home_empty_state_is_designed_not_blank(client):
     assert "هنوز محصولی ثبت نشده است" in body
 
 
-def test_category_page_and_its_empty_states(client, category, product):
+def test_category_page_and_its_empty_state(client, category, product):
     body = client.get(reverse("category", args=[category.slug])).content.decode()
     assert "Claude Pro" in body
-
-    filtered = client.get(
-        reverse("category", args=[category.slug]) + "?type=gift_card"
-    ).content.decode()
-    assert "Claude Pro" not in filtered
-    assert "محصولی با این نوع تحویل نداریم" in filtered
+    assert "۱ محصول" in body
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "فعلاً محصولی در این دسته نیست" in body
+    assert "فعلاً محصولی در این دسته نداریم" in body
+
+
+def test_a_category_page_offers_no_filter(client, category, product):
+    """Surveyed at eleven Iranian shops: account type is a facet on none of
+    them and delivery method on none, and of six small shops with eight
+    products or fewer, zero offer attribute filters. With two or three
+    products in a category every filter returns everything or nothing. The
+    chips also printed the enum's own labels at the customer, including one
+    that described the buyer in the third person."""
+    body = client.get(reverse("category", args=[category.slug])).content.decode()
+
+    assert 'class="chip' not in body
+    assert "نوع تحویل" not in body
+    # The query string is no longer read at all, so it cannot hide the shelf.
+    filtered = client.get(
+        reverse("category", args=[category.slug]) + "?type=gift_card"
+    ).content.decode()
+    assert "Claude Pro" in filtered
+
+
+def test_no_page_describes_the_buyer_in_the_third_person(client, product):
+    """«روی اکانت خود مشتری» is how an operator describes a buyer to
+    themselves. The market writes «روی اکانت شخصی شما»."""
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert "خود مشتری" not in body
+
+
+def test_renewal_is_stated_only_when_it_is_true(client, product):
+    """«اگر نوشته شده باشه میشه» is only honest while absence claims nothing,
+    so there is no grey «قابل تمدید نیست» — and none on a gift card, which
+    has no period to renew."""
+    assert not product.renewable
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+    assert "تمدید" not in body
+
+    product.renewable = True
+    product.save()
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+    assert "روی همین اکانت، با قیمت روز" in body
 
 
 def test_unknown_category_and_product_are_404(client):

@@ -94,6 +94,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Claude Pro",
         slug="claude-pro",
+        renewable=True,
         aliases="کلاود پرو، کلود پرو، کلاد، claude، anthropic، آنتروپیک",
         category="ai",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -111,6 +112,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="ChatGPT Plus",
         slug="chatgpt-plus",
+        renewable=True,
         aliases="چت جی پی تی، چت جیپیتی، چت جیپت، چت گپت، جیپیتی، gpt، chatgpt، openai، اوپن ای آی",
         category="ai",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -124,6 +126,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Gemini Advanced",
         slug="gemini-advanced",
+        renewable=True,
         aliases="جمینای، جمنای، جیمینای، gemini، هوش مصنوعی گوگل",
         category="ai",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -137,6 +140,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="GitHub Copilot",
         slug="github-copilot",
+        renewable=True,
         aliases="گیت هاب کوپایلوت، کوپایلوت، کوپیلوت، copilot، github",
         category="dev",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -163,6 +167,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Spotify Premium",
         slug="spotify-premium",
+        renewable=True,
         aliases="اسپاتیفای، اسپوتیفای، اسپاتی فای، اسپتیفای، spotify، پریمیوم، پرمیوم",
         category="media",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -180,6 +185,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="YouTube Premium",
         slug="youtube-premium",
+        renewable=True,
         aliases="یوتیوب پریمیوم، یوتیوب پرمیوم، یوتوب، یوتیوب بدون تبلیغات، youtube، پریمیوم، پرمیوم",
         category="media",
         delivery=T.ON_CUSTOMER_ACCOUNT,
@@ -193,6 +199,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Netflix",
         slug="netflix",
+        renewable=True,
         aliases="نتفلیکس، نت فلیکس، نتفلیس، نتلفیکس، netflix",
         category="media",
         delivery=T.READY_ACCOUNT,
@@ -301,6 +308,7 @@ class Command(BaseCommand):
                     "warranty": spec["warranty"],
                     "delivery_hours": spec["hours"],
                     "status": spec.get("status", Product.Status.ACTIVE),
+                    "renewable": spec.get("renewable", False),
                     "seo_title": f"خرید {spec['name']}",
                     "seo_description": spec["short"][:160],
                 },

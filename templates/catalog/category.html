@@ -11,15 +11,14 @@
   <h1 class="page-head__title">{{ category.name }}</h1>
   {% if category.intro_html %}<div class="prose page-head__intro">{{ category.intro_html|safe }}</div>
   {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
+  {% comment %}
+  The count and nothing else. A filter over three products returns everything
+  or nothing, and of six small Iranian shops surveyed none offers one — the
+  single exception is a theme default. Sort comes first if a category ever
+  passes about fifteen products; a filter after that.
+  {% endcomment %}
+  {% if products %}<p class="small page-head__intro">{{ products|length|fa_digits }} محصول</p>{% endif %}
 </header>
-
-{% comment %}A simple filter, as chips. The active chip is the accent's one use here.{% endcomment %}
-<div class="chips" role="group" aria-label="نوع تحویل">
-  <a class="chip{% if not delivery %} is-active{% endif %}" href="{% url 'category' category.slug %}">همه</a>
-  {% for value, label in delivery_types %}
-    <a class="chip{% if delivery == value %} is-active{% endif %}" href="?type={{ value }}">{{ label }}</a>
-  {% endfor %}
-</div>
 
 {% if products %}
   <div class="grid">
@@ -27,13 +26,8 @@
   </div>
 {% else %}
   <div class="card empty">
-    {% if delivery %}
-      <p class="prose" style="margin:0">در این دسته محصولی با این نوع تحویل نداریم.</p>
-      <a class="btn btn--secondary" href="{% url 'category' category.slug %}">نمایش همه</a>
-    {% else %}
-      <p class="prose" style="margin:0">فعلاً محصولی در این دسته نیست.</p>
-      <a class="btn btn--secondary" href="{% url 'home' %}">بازگشت به خانه</a>
-    {% endif %}
+    <p class="prose" style="margin:0">فعلاً محصولی در این دسته نداریم.</p>
+    <a class="btn btn--secondary" href="{% url 'home' %}">همه‌ی محصولات</a>
   </div>
 {% endif %}
 </div>

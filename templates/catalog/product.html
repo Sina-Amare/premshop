@@ -39,6 +39,7 @@
       <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
       <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
       <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">تا {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
+      {% if product.renewable %}<div class="fact"><span class="fact__k">تمدید</span><span class="fact__lead"></span><span class="fact__v">روی همین اکانت، با قیمت روز</span></div>{% endif %}
     </div>
 
     {% if specs %}

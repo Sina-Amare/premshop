@@ -81,22 +81,11 @@ def home(request: HttpRequest) -> HttpResponse:
 
 def category(request: HttpRequest, slug: str) -> HttpResponse:
     cat = get_object_or_404(Category, slug=slug)
-    products = _for_cards().filter(category=cat)
-    delivery = request.GET.get("type", "")
-    if delivery in Product.DeliveryType.values:
-        products = products.filter(delivery_type=delivery)
-    else:
-        delivery = ""
+    products = list(_for_cards().filter(category=cat))
     return render(
         request,
         "catalog/category.html",
-        {
-            "category": cat,
-            "current_category": cat.slug,
-            "products": products,
-            "delivery": delivery,
-            "delivery_types": Product.DeliveryType.choices,
-        },
+        {"category": cat, "current_category": cat.slug, "products": products},
     )
 
 

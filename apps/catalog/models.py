@@ -114,7 +114,7 @@ class Product(models.Model):
 
     class DeliveryType(models.TextChoices):
         READY_ACCOUNT = "ready_account", "اکانت آماده"
-        ON_CUSTOMER_ACCOUNT = "on_customer_account", "روی اکانت خود مشتری"
+        ON_CUSTOMER_ACCOUNT = "on_customer_account", "روی اکانت شخصی شما"
         CODE_LICENSE = "code_license", "کد / لایسنس"
         GIFT_CARD = "gift_card", "گیفت کارت"
 
@@ -145,6 +145,17 @@ class Product(models.Model):
         "گارانتی", max_length=24, choices=Warranty.choices, default=Warranty.NONE
     )
     delivery_hours = models.SmallIntegerField("مهلت تحویل (ساعت)", default=24)
+    # Claimed, never assumed. Renewal depends on the upstream provider and on
+    # the operator being able to get the same account back, so an untouched
+    # product says nothing rather than promising something it cannot keep —
+    # and the page prints this only when it is true. The FAQ answers «تمدید
+    # چطوریه؟» with "when the product says so", which is only honest while the
+    # default is off.
+    renewable = models.BooleanField(
+        "قابل تمدید",
+        default=False,
+        help_text="فقط وقتی تیک بزنید که واقعاً می‌توانید همان اکانت را تمدید کنید.",
+    )
     delivery_template = models.TextField("قالب تحویل", blank=True, default="")
     status = models.CharField("وضعیت", max_length=16, choices=Status.choices, default=Status.DRAFT)
     # Maintained on save, never edited by hand. See search.py for what it folds.
