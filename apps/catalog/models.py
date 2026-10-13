@@ -204,9 +204,27 @@ class Plan(models.Model):
     is_available = models.BooleanField(
         "موجود", default=True
     )  # soft delete: sold plans are never removed
-    requires_customer_input = models.BooleanField("نیاز به اطلاعات مشتری", default=False)
+    # Default 1, so a quantity control appears only where the operator has
+    # said it makes sense. Most of this shop is subscriptions activated on one
+    # person's account, where "how many" is not a question the buyer has — and
+    # a stepper on every product invites an order nobody can deliver. Gift
+    # cards are the case that wants it.
+    max_quantity = models.PositiveSmallIntegerField(
+        "حداکثر تعداد در هر سفارش",
+        default=1,
+        help_text="۱ یعنی انتخاب تعداد اصلاً نمایش داده نمی‌شود. برای گیفت کارت بیشتر کنید.",
+    )
+    requires_customer_input = models.BooleanField(
+        "نیاز به اطلاعات مشتری",
+        default=False,
+        help_text="اگر برای فعال‌سازی چیزی از مشتری لازم است (ایمیل، نام کاربری).",
+    )
     customer_input_label = models.CharField(
-        "برچسب اطلاعات مشتری", max_length=200, blank=True, default=""
+        "چه چیزی از مشتری بپرسیم؟",
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="عیناً همین جمله به مشتری نشان داده می‌شود؛ مثلاً «ایمیل حساب Spotify شما».",
     )
     supplier_url = models.URLField("لینک تأمین‌کننده", blank=True, default="")
     sort_order = models.SmallIntegerField("ترتیب", default=0)
@@ -246,6 +264,24 @@ class Plan(models.Model):
                 condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
                 name="plan_duration_positive_or_unlimited",
                 violation_error_message="مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان.",
+            ),
+            models.CheckConstraint(
+                condition=Q(max_quantity__gte=1) & Q(max_quantity__lte=10),
+                name="plan_max_quantity_1_to_10",
+                violation_error_message="حداکثر تعداد باید بین ۱ تا ۱۰ باشد.",
+            ),
+            # One input per credential. A plan that needs the customer's own
+            # account details cannot be ordered twice on one line: there is
+            # one box to type the email into, so a quantity of two would mean
+            # two deliveries to one address with no way to say so. The buy box
+            # has always enforced this in JavaScript; here it cannot be got
+            # around by the admin, a shell or an import.
+            models.CheckConstraint(
+                condition=Q(requires_customer_input=False) | Q(max_quantity=1),
+                name="plan_customer_input_is_one_per_order",
+                violation_error_message=(
+                    "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
+                ),
             ),
         ]
 

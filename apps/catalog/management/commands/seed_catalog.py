@@ -150,6 +150,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="JetBrains All Products",
         slug="jetbrains-all",
+        max_quantity=3,
         aliases="جت برینز، جتبرینز، intellij، pycharm، webstorm، jetbrains، پای چارم",
         category="dev",
         delivery=T.CODE_LICENSE,
@@ -204,6 +205,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Apple Gift Card",
         slug="apple-gift-card",
+        max_quantity=5,
         aliases="گیفت کارت اپل، گیفتکارت اپل، کارت هدیه اپل، آیتونز، itunes، apple",
         category="gift",
         delivery=T.GIFT_CARD,
@@ -219,6 +221,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Google Play Gift Card",
         slug="google-play-gift-card",
+        max_quantity=5,
         aliases="گیفت کارت گوگل پلی، گیفتکارت گوگل، گوگل پلی، google play، کارت هدیه گوگل",
         category="gift",
         delivery=T.GIFT_CARD,
@@ -315,6 +318,10 @@ class Command(BaseCommand):
                     promo_ends_at=now + timedelta(days=14) if promo else None,
                     requires_customer_input=bool(spec.get("input")),
                     customer_input_label=spec.get("input", ""),
+                    # A plan that asks for the buyer's own account details is
+                    # one per order by database CHECK — there is one box to
+                    # type the email into.
+                    max_quantity=1 if spec.get("input") else spec.get("max_quantity", 1),
                     sort_order=order,
                 )
             if not options["no_images"]:

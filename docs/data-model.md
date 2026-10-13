@@ -154,6 +154,7 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 - **`Plan.supplier_url` is deliberately not copied into `OrderItem.product_snapshot`.** Durations are separate listings upstream (owner ruling), and S7's delivery page reads it live through the PROTECTed `OrderItem.plan` FK.
 - **`Product.delivery_template`** is a comma-separated list of field names; S7's delivery form pre-renders from it.
 - **`Plan.requires_customer_input` limits a cart line to quantity 1.** The rule and its reasons are under `cart.CartItem`.
+- **`Plan.max_quantity` (added 2026-10-14) decides whether a quantity control is offered at all.** Default 1, and at 1 the product page renders no stepper — not a disabled one, none. Most of this shop is a subscription activated on one person's account, where "how many" is not a question the buyer has; gift cards are the case that wants it. Two `CHECK`s hold it: `1..10`, and `max_quantity = 1` whenever `requires_customer_input` is true. That second one *is* a CHECK, unlike the cart rule below, because both columns live on the same row — the cart's version still has to exist separately, since a plan's `requires_customer_input` can be flipped on after a line was created.
 
 ### `cart` — persistent, cross-device (ADR-0018, rewritten)
 

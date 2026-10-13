@@ -103,13 +103,20 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
 def product(request: HttpRequest, slug: str) -> HttpResponse:
     obj = get_object_or_404(_for_cards().prefetch_related("specs"), slug=slug)
     plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
+    available = [p for p in plans if p.is_available]
+    # The quantity control is rendered server-side only when some plan can
+    # actually take more than one, so a visitor with JavaScript off never sees
+    # a stepper that cannot do anything.
+    ceilings = [p.max_quantity for p in available] or [1]
     return render(
         request,
         "catalog/product.html",
         {
             "product": obj,
             "plans": plans,
-            "available_plans": [p for p in plans if p.is_available],
+            "available_plans": available,
+            "any_plan_takes_more_than_one": max(ceilings) > 1,
+            "max_quantity": max(ceilings),
             "specs": list(obj.specs.all()),
         },
     )

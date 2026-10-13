@@ -7,7 +7,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from django.db import connection
+from django.db import IntegrityError, connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -203,9 +203,65 @@ def test_add_to_cart_control_disabled_for_unavailable_plan(client, product):
         rf'value="{old_plan.id}"\s+disabled', body
     ), "the unavailable plan's radio is disabled"
     assert "افزودن به سبد" in body
-    assert (
-        'data-requires-input="1"' in body
-    ), "the customer-input plan is marked so the stepper caps at 1"
+
+
+# --- Quantity and what the plan asks for, both set by the operator ----------
+
+
+def test_no_quantity_control_unless_the_operator_asked_for_one(client, product):
+    """Most of this shop is a subscription activated on one person's account,
+    where «how many» is not a question the buyer has — and a stepper on it
+    invites an order nobody can deliver. The control is absent from the markup
+    rather than disabled, so a visitor with JavaScript off never meets a
+    stepper that cannot do anything."""
+    assert all(plan.max_quantity == 1 for plan in product.plans.all())
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert 'name="quantity"' not in body
+    assert "تعداد" not in body
+
+
+def test_the_quantity_control_appears_when_a_plan_takes_more_than_one(client, product):
+    plan = product.plans.filter(is_available=True, requires_customer_input=False).first()
+    plan.max_quantity = 5
+    plan.save()
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert 'name="quantity"' in body
+    assert 'max="5"' in body, "the ceiling is the operator's, not a hard-coded 10"
+    assert f'data-max="{plan.max_quantity}"' in body
+
+
+def test_each_plan_carries_its_own_ceiling_and_its_own_question(client, product):
+    """Two plans on one product can differ: a gift card takes five, the
+    subscription beside it takes one. The script reads both off the radio."""
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    asking = product.plans.get(requires_customer_input=True)
+    assert f'data-asks="{asking.customer_input_label}"' in body
+    assert 'data-max="1"' in body
+
+
+def test_a_plan_that_asks_for_customer_details_cannot_be_ordered_twice(product):
+    """One box to type the email into means one per order. The buy box has
+    always enforced this in JavaScript; the database enforces it now, so the
+    admin, a shell and an import cannot get around it."""
+    plan = product.plans.get(requires_customer_input=True)
+    plan.max_quantity = 3
+
+    with pytest.raises(IntegrityError):
+        plan.save()
+
+
+@pytest.mark.parametrize("bad", [0, 11])
+def test_a_quantity_ceiling_outside_one_to_ten_is_refused(product, bad):
+    plan = product.plans.filter(requires_customer_input=False).first()
+    plan.max_quantity = bad
+
+    with pytest.raises(IntegrityError):
+        plan.save()
 
 
 def test_product_with_no_available_plan_disables_the_button(client, category):

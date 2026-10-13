@@ -79,7 +79,7 @@ class PlanInline(StackedInline):
                 "fields": [
                     ("title", "duration_days", "sort_order"),
                     ("cost_price", "sale_price"),
-                    "is_available",
+                    ("is_available", "max_quantity"),
                 ]
             },
         ),
