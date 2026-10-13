@@ -82,36 +82,6 @@ furniture.
 </section>
 
 <div class="wrap page">
-  {% if categories %}
-  <section class="section" style="margin-block-start: 0">
-    {% comment %}
-    Departments as shelves, not as four identical tinted cards. A card grid is
-    the most-copied layout on the web and it has to describe what is inside a
-    department in a sentence; a shelf just shows it. These rows carry the real
-    marks of the real products in each department, so «what is in هوش مصنوعی»
-    is answered before anyone clicks, and the description — four lines of seed
-    prose nobody needed — is gone with the cards.
-    {% endcomment %}
-    <h2 class="section__title">دسته‌بندی‌ها</h2>
-    <div class="depts">
-      {% for cat in categories %}
-        <a class="dept {% cycle 'dept--a' 'dept--b' 'dept--c' 'dept--d' %}" href="{% url 'category' cat.slug %}">
-          <span class="dept__name">{{ cat.name }}</span>
-          <span class="dept__marks" aria-hidden="true">
-            {% for product in cat.public_products|slice:":5" %}
-              <span class="dept__mark">
-                {% if product.image %}<img src="{{ product.image.url }}" alt="" width="20" height="20" loading="lazy" decoding="async">
-                {% else %}<span class="dept__mono">{{ product.name|slice:":1" }}</span>{% endif %}
-              </span>
-            {% endfor %}
-          </span>
-          <span class="dept__count">{{ cat.product_count|fa_digits }} محصول</span>
-          <svg class="dept__go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
-        </a>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
 
   {% if discounted %}
   <section class="section">
@@ -145,7 +115,7 @@ furniture.
     {% for cat, items in by_category %}
       <div class="shelf">
         <div class="shelf__head">
-          <h3 class="shelf__title">{{ cat.name }}</h3>
+          <h3 class="shelf__title">{{ cat.name }} <span class="shelf__n">{{ cat.product_count|fa_digits }} محصول</span></h3>
           <a class="shelf__all" href="{% url 'category' cat.slug %}">
             مشاهده همه
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>

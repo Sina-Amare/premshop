@@ -379,14 +379,18 @@ def test_seo_fields_render_when_set(client, product):
 # --- Grouping on the home page, and what to show next on a product page ----
 
 
+def shelf_headings(body: str) -> list[str]:
+    return [h.strip() for h in re.findall(r'class="shelf__title">([^<]+)<', body)]
+
+
 def test_home_groups_products_under_their_department(client, category, product):
     other = Category.objects.create(name="گیفت کارت", slug="gift", sort_order=1)
     make_product(other, "steam-gift")
 
     body = client.get(reverse("home")).content.decode()
 
-    groups = re.findall(r'class="shelf__title">([^<]+)<', body)
-    assert groups == ["هوش مصنوعی", "گیفت کارت"], "one heading per department, in sort order"
+    assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
+    assert "۲ محصول" in body, "with a count that has its unit, not a bare digit"
     assert body.count('class="shelf__all"') == 2, "each group links to its own department"
     assert 'href="/c/gift/"' in body
 
@@ -427,7 +431,7 @@ def test_a_department_the_cap_cut_off_gets_no_heading(client, category, product,
 
     shown = list(response.context["featured"])
     assert len(shown) == 1
-    assert re.findall(r'class="shelf__title">([^<]+)<', body) == [shown[0].category.name]
+    assert shelf_headings(body) == [shown[0].category.name]
 
 
 def test_product_page_suggests_other_products(client, category, product):

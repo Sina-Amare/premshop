@@ -34,21 +34,14 @@ def _for_cards() -> ProductQuerySet:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    # Each department carries its own marks, because the home page shows what
-    # is inside a department rather than describing it. One extra query for
-    # all of them, not one per row.
+    # Headings for the product grid, in the operator's order. The count is
+    # over every active product in the department, which can exceed what the
+    # cap below lets onto the page; that is what the link out is for.
     categories = (
         Category.objects.annotate(
             product_count=Count("products", filter=Q(products__status=Product.Status.ACTIVE))
         )
         .filter(product_count__gt=0)
-        .prefetch_related(
-            Prefetch(
-                "products",
-                queryset=Product.objects.public().order_by("name").only("name", "slug", "image"),
-                to_attr="public_products",
-            )
-        )
         .order_by("sort_order", "name")
     )
     # Every active product, newest first. The cap was eight while the home
@@ -67,16 +60,17 @@ def home(request: HttpRequest) -> HttpResponse:
     # on its own — a shop that advertises an expired discount has done worse
     # than not advertising one.
     discounted = [p for p in featured if p.cheapest_plan and p.cheapest_plan.promotion_is_active]
-    # Grouped by department rather than one flat grid. Costs no query: the
-    # products and the categories are both already in memory, and a product
-    # belongs to exactly one category.
+    # Grouped by department rather than one flat grid, which also retired the
+    # separate «دسته‌بندی‌ها» block above it: that block and this one listed
+    # the same four departments in the same order, four hundred pixels apart.
+    # Costs no query — both sides are already in memory, and a product belongs
+    # to exactly one department.
     by_category = [(cat, [p for p in featured if p.category_id == cat.id]) for cat in categories]
     by_category = [(cat, items) for cat, items in by_category if items]
     return render(
         request,
         "catalog/home.html",
         {
-            "categories": categories,
             "featured": featured,
             "shelf": shelf,
             "discounted": discounted,

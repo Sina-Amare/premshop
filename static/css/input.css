@@ -536,6 +536,8 @@
   /* The department is the heading above these cards. Printing it again on
      every card says the same word three times across one row. */
   .shelf .pcard__cat { display: none; }
+  .shelf__n { font-family: var(--font-body); font-size: 13px; font-weight: 400;
+              color: var(--color-muted); }
   .shelf__head { display: flex; align-items: baseline; justify-content: space-between;
                  gap: var(--spacing-4); margin-block-end: var(--spacing-4); }
   .shelf__title { font-family: var(--font-head); font-size: 17px; font-weight: 600;
@@ -624,7 +626,9 @@
      shop will often have exactly one thing on offer, and one card in a
      four-column grid reads as a row that failed to load; inside a panel that
      names what it is, one card reads as a highlight. */
-  .deals { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  /* The text column takes the slack, not the card row. With one discount the
+     cards used to sit against the text with half the panel empty beside them. */
+  .deals { display: grid; grid-template-columns: minmax(15rem, 1fr) auto;
            gap: var(--spacing-6); align-items: start;
            background: var(--color-fill-subtle);
            border: 1px solid var(--color-line); border-radius: var(--radius-lg);
