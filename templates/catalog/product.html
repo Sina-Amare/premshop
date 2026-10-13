@@ -17,7 +17,7 @@
         <h1 class="pdp__title">{{ product.name }}</h1>
         {% comment %}The buyer's two questions, answered before the price: how long, and what if it breaks. A region is not a property every product has — when one matters it is a spec row the operator adds.{% endcomment %}
         <div class="pdp__meta">
-          <span class="badge badge--neutral">{{ product.get_warranty_display }}</span>
+          <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</span>
         </div>
       </div>
@@ -100,7 +100,7 @@
           </div>
         </div>
         <p class="micro buybox__hint" id="qty-hint" hidden>این پلن روی اکانت خودتان فعال می‌شود؛ برای هر سفارش یک عدد.</p>
-        <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد</button>
+        <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد خرید</button>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>

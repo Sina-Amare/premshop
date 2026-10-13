@@ -41,7 +41,7 @@ PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 RESEND_COOLDOWN_SECONDS = 60
 
 WRONG_CREDENTIALS = "ایمیل یا رمز عبور اشتباه است."
-WRONG_CODE = "کد اشتباه است یا منقضی شده."
+WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
 
 # A real hash of a value nobody knows. Comparing a submitted password against it
 # when there is no live account to check makes the miss cost the same work as a
@@ -175,7 +175,10 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
     """
     email = request.session.get(PENDING_EMAIL_KEY)
     if not email:
-        return JsonResponse({"ok": False, "error": "نشست شما منقضی شده است."}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "نشست شما تمام شده است. دوباره ایمیل‌تان را وارد کنید."},
+            status=400,
+        )
     try:
         issued = services.request_login_code(request, email)
     except services.RateLimited as exc:

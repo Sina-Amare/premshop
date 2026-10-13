@@ -54,7 +54,7 @@ session, so a reload never restarts a clock the server has not.
 
 <div class="otp__resend">
   <span class="small" id="resend-hint" style="margin: 0">کد نرسید؟ پوشه‌ی اسپم را هم ببینید.</span>
-  <button type="button" class="btn btn--ghost" id="resend" disabled>ارسال مجدد</button>
+  <button type="button" class="btn btn--ghost" id="resend" disabled>ارسال دوباره</button>
 </div>
 {% endblock %}
 
@@ -175,7 +175,7 @@ session, so a reload never restarts a clock the server has not.
   }
   function fail(message) {
     setState('is-error');
-    showError(message || 'کد اشتباه است. دوباره تلاش کنید.');
+    showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
     cellsBox.classList.add('is-shaking');
     setTimeout(function () {
       cellsBox.classList.remove('is-shaking');
@@ -209,15 +209,15 @@ session, so a reload never restarts a clock the server has not.
       clock.hidden = false;
       cells.forEach(function (c) { c.disabled = true; });
       showError('');
-      resendHint.textContent = 'برای دریافت کد جدید، «ارسال مجدد» را بزنید.';
+      resendHint.textContent = 'برای گرفتن کد تازه، «ارسال دوباره» را بزنید.';
     }
     var wait = cooldownUntil - now;
     if (wait > 0) {
       resendButton.disabled = true;
-      resendButton.textContent = 'ارسال مجدد (' + toFa(wait) + ')';
+      resendButton.textContent = 'ارسال دوباره (' + toFa(wait) + ')';
     } else {
       resendButton.disabled = false;
-      resendButton.textContent = 'ارسال مجدد';
+      resendButton.textContent = 'ارسال دوباره';
     }
   }
   tick();
@@ -241,14 +241,14 @@ session, so a reload never restarts a clock the server has not.
         clear();
         cells.forEach(function (c) { c.disabled = false; });
         cells[0].focus();
-        resendHint.textContent = 'کد جدید را فرستادیم.';
+        resendHint.textContent = 'کد تازه را فرستادیم.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       }
       tick();
     }).catch(function () {
-      showError('ارسال نشد. دوباره تلاش کنید.');
+      showError('کد فرستاده نشد. دوباره تلاش کنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       tick();
     });

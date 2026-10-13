@@ -76,3 +76,38 @@ def test_a_mismatched_repeat_speaks_the_shops_words(client, user):
 @pytest.mark.parametrize("name", ["login", "login-code"])
 def test_no_page_says_gozarvazheh(client, name):
     assert "گذرواژه" not in client.get(reverse(name)).content.decode()
+
+
+# --- The register, not just the vocabulary ------------------------------------
+# Rules taken from nine live Iranian shops plus Divar's and Digikala's own strings
+# (docs-local/archive/persian-copy-research-2026-10-13.md). Each banned word is the
+# tell of a translated interface rather than a written one.
+
+BANNED = [
+    "می‌باشد",  # dead weight; است/هستند does the work
+    "میباشد",
+    "می‌گردد",
+    "گردید",
+    "نمایید",
+    "سفارشات",  # Arabic broken plural; this shop says سفارش‌ها
+    "پیشنهادات",
+    "گذرواژه",  # Django's word; this shop says رمز عبور
+    "تایید",  # one spelling only: تأیید
+    "&quot;",  # ASCII quotes around Persian; the shop uses «»
+]
+
+SHOP_PAGES = ["home", "search", "login", "login-code"]
+
+
+@pytest.mark.parametrize("name", SHOP_PAGES)
+@pytest.mark.parametrize("word", BANNED)
+def test_no_shop_page_reads_as_a_translation(client, name, word):
+    assert word not in client.get(reverse(name)).content.decode()
+
+
+def test_the_signed_in_pages_read_the_same_way(client, user):
+    client.force_login(user)
+    body = client.get(reverse("account")).content.decode()
+
+    for word in BANNED:
+        assert word not in body, word
