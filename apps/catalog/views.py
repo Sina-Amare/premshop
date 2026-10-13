@@ -34,11 +34,21 @@ def _for_cards() -> ProductQuerySet:
 
 
 def home(request: HttpRequest) -> HttpResponse:
+    # Each department carries its own marks, because the home page shows what
+    # is inside a department rather than describing it. One extra query for
+    # all of them, not one per row.
     categories = (
         Category.objects.annotate(
             product_count=Count("products", filter=Q(products__status=Product.Status.ACTIVE))
         )
         .filter(product_count__gt=0)
+        .prefetch_related(
+            Prefetch(
+                "products",
+                queryset=Product.objects.public().order_by("name").only("name", "slug", "image"),
+                to_attr="public_products",
+            )
+        )
         .order_by("sort_order", "name")
     )
     # Every active product, newest first. The cap was eight while the home

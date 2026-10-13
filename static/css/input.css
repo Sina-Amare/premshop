@@ -420,7 +420,17 @@
   .otp__cell.is-filled { border-color: var(--color-ink); }
   .otp__cell.is-ok { border-color: var(--color-ok); background: color-mix(in oklab, var(--color-ok) 8%, var(--color-surface)); color: var(--color-ok-text); }
   .otp__cell.is-error { border-color: var(--color-danger); background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface)); color: var(--color-danger-text); }
-  .otp__cell[disabled] { background: var(--color-fill-subtle); color: var(--color-muted); cursor: not-allowed; }
+  /* `:not()` rather than ordering, because the bug this fixes was ordering.
+     submit() disables every cell before the fetch so the code cannot be sent
+     twice — and this rule, declared after .is-ok with identical specificity,
+     then repainted the confirmed cells grey. The class was applied, the
+     stagger ran, and on the paste path (which is how almost everyone enters
+     a code) the green was never seen. The browser test asserts the painted
+     colour now, not the class name. */
+  .otp__cell[disabled]:not(.is-ok):not(.is-error) {
+    background: var(--color-fill-subtle); color: var(--color-muted);
+  }
+  .otp__cell[disabled] { cursor: not-allowed; }
   .otp.is-shaking { animation: otp-shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
   @keyframes otp-shake {
     0%, 100% { transform: translateX(0); }
@@ -589,8 +599,10 @@
            padding: var(--spacing-5); }
   .deals__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
                   line-height: 1.35; margin: 0 0 var(--spacing-2); }
-  .deals__grid { display: grid; gap: var(--spacing-4);
-                 grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  /* Flex, not a 1fr grid: with one offer on the shelf a grid stretches it
+     across empty columns, which reads as a row that failed to load. */
+  .deals__grid { display: flex; flex-wrap: wrap; gap: var(--spacing-4); }
+  .deals__grid > * { flex: 0 1 15rem; min-inline-size: 13rem; }
   @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
                                        padding: var(--spacing-4); } }
 
@@ -638,36 +650,64 @@
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
   .grid--cats { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
 
-  /* The departments. Four tinted surfaces rather than four identical bordered
-     boxes: a department is a place, and a place is easier to remember by its
-     colour than by its position in a row. The tints are pale enough that the
-     brand marks on the shelf below are still the loudest colour on the page,
-     and the icon is a 24px line glyph, never an emoji. */
-  .ccard { position: relative; display: flex; flex-direction: column; gap: var(--spacing-1);
-           text-decoration: none; overflow: hidden;
-           background: var(--cc-tint, var(--color-fill-subtle));
-           border: 1px solid color-mix(in oklab, var(--cc-ink, var(--color-line)) 16%, transparent);
-           border-radius: var(--radius-lg);
-           padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
-           transition: transform var(--dur-lg) var(--ease-out),
-                       box-shadow var(--dur-lg) var(--ease-out); }
-  .ccard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .ccard:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
-  .ccard__icon { inline-size: 42px; block-size: 42px; display: grid; place-items: center;
-                 border-radius: 12px; background: var(--color-surface);
-                 color: var(--cc-ink, var(--color-secondary));
-                 margin-block-end: var(--spacing-3); }
-  .ccard__icon svg { inline-size: 22px; block-size: 22px; }
-  .ccard__name { font-family: var(--font-head); font-size: 18px; font-weight: 600; color: var(--color-ink); }
-  .ccard__count { font-size: 13px; color: var(--color-secondary); font-variant-numeric: tabular-nums; }
-  .ccard__desc { font-size: 13px; line-height: 1.7; color: var(--color-secondary);
-                 margin-block-start: var(--spacing-2); }
-  /* Four departments, four tints. Assigned by position so a fifth department
-     starts the cycle again rather than rendering untinted. */
-  .ccard--a { --cc-tint: #eef6f4; --cc-ink: #0f766e; }
-  .ccard--b { --cc-tint: #eef2fb; --cc-ink: #2f4d9b; }
-  .ccard--c { --cc-tint: #fdf0ef; --cc-ink: #a63d36; }
-  .ccard--d { --cc-tint: #f6f1fb; --cc-ink: #6b4a96; }
+  /* --- Departments, as shelves ----------------------------------------------
+     Four rows in one ruled container, each showing the actual marks it holds.
+     Not four identical tinted cards: that shape is the most-copied layout on
+     the web, and it forces each department to *describe* its contents in a
+     sentence when it could simply show them. The tint survives as a hover
+     wash, which is where a colour earns its place — it answers a gesture.
+
+     The marks lift one after another on hover, 40ms apart. It is the same
+     idea as the code cells confirming one digit at a time: a cascade reads as
+     a thing responding, where six at once reads as a state flipping.
+     -------------------------------------------------------------------------- */
+  .depts { border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+           overflow: hidden; background: var(--color-surface); }
+  .dept { display: grid; align-items: center; gap: var(--spacing-4);
+          grid-template-columns: minmax(7rem, auto) 1fr auto auto;
+          padding: var(--spacing-4) var(--spacing-5);
+          text-decoration: none; color: inherit;
+          transition: background-color var(--dur) var(--ease); }
+  .dept + .dept { border-block-start: 1px solid var(--color-line); }
+  .dept:hover { background: var(--dept-tint, var(--color-fill-subtle)); }
+  .dept:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  .dept__name { font-family: var(--font-head); font-size: 19px; font-weight: 600;
+                line-height: 1.4; color: var(--color-ink); }
+  .dept__marks { display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
+  .dept__mark { inline-size: 38px; block-size: 38px; flex: none; display: grid; place-items: center;
+                background: var(--color-surface); border: 1px solid var(--color-line);
+                border-radius: 11px;
+                transition: transform var(--dur-lg) var(--ease-out),
+                            border-color var(--dur) var(--ease); }
+  .dept__mark img { inline-size: auto; block-size: auto;
+                    max-inline-size: 21px; max-block-size: 21px; }
+  .dept__mono { font-family: var(--font-head); font-size: 15px; font-weight: 600;
+                color: var(--color-muted); line-height: 1; }
+  .dept:hover .dept__mark { transform: translateY(-3px); border-color: var(--color-line-strong); }
+  .dept__mark:nth-child(2) { transition-delay: 40ms; }
+  .dept__mark:nth-child(3) { transition-delay: 80ms; }
+  .dept__mark:nth-child(4) { transition-delay: 120ms; }
+  .dept__mark:nth-child(5) { transition-delay: 160ms; }
+  .dept__count { font-size: 14px; line-height: 1.5; color: var(--color-muted);
+                 font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* The page is RTL unconditionally, so forward is left and the glyph is
+     drawn that way. A ‹ character would not do: it is Bidi_Mirrored and the
+     renderer would turn it round. */
+  .dept__go { inline-size: 20px; block-size: 20px; color: var(--color-line-strong);
+              transition: color var(--dur) var(--ease), transform var(--dur-lg) var(--ease-out); }
+  .dept:hover .dept__go { color: var(--color-ink); transform: translateX(-3px); }
+  .dept--a { --dept-tint: #eef6f4; }
+  .dept--b { --dept-tint: #eef2fb; }
+  .dept--c { --dept-tint: #fdf0ef; }
+  .dept--d { --dept-tint: #f6f1fb; }
+  @media (max-width: 760px) {
+    .dept { grid-template-columns: 1fr auto; gap: var(--spacing-2) var(--spacing-3);
+            padding: var(--spacing-4); }
+    .dept__name { grid-column: 1; }
+    .dept__count { grid-column: 2; grid-row: 1; }
+    .dept__marks { grid-column: 1 / -1; grid-row: 2; }
+    .dept__go { display: none; }
+  }
 
   /* The product card. The brand mark and the name share the top line, because
      a Persian shopper scans the logo first and reads the name to confirm it.

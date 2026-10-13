@@ -110,8 +110,10 @@ def test_the_answering_hours_are_stated_once_and_agree_everywhere(client, shop):
     for url in [reverse("home"), reverse("product", args=[shop.slug]), reverse("faq")]:
         body = client.get(url).content.decode()
         assert SUPPORT_HOURS in body, url
-        # Any other hour range on the page means a second literal crept back.
-        ranges = set(re.findall(r"[۰-۹]+ تا [۰-۹]+", body))
+        # Any other opening-hours range means a second literal crept back.
+        # A range followed by «ساعت» is a delivery window («۱ تا ۴۸ ساعت»),
+        # which is a different fact and is allowed to differ.
+        ranges = set(re.findall(r"[۰-۹]+ تا [۰-۹]+(?![۰-۹])(?! ساعت)", body))
         assert ranges <= {SUPPORT_HOURS}, (url, ranges)
 
 
@@ -131,8 +133,13 @@ def test_the_faq_answers_the_questions_a_buyer_asks_before_paying(client, shop):
     body = client.get(reverse("faq")).content.decode()
 
     assert "<details" in body, "it must open without JavaScript"
-    for topic in ["تحویل", "گارانتی", "برمی‌گردد", "درگاه بانکی"]:
+    # The questions buyers in this market actually ask, from the FAQ pages of
+    # shops already selling these products. «باید حساب بسازم؟» and «پرداخت
+    # چطور انجام می‌شود؟» were here and are not questions anyone has.
+    for topic in ["رمز اکانت", "اشتراکیه", "تحویل", "گارانتی", "برمی‌گرده", "درگاه بانکی"]:
         assert topic in body, topic
+    for obvious in ["باید حساب بسازم", "بله، چون"]:
+        assert obvious not in body, obvious
 
 
 # --- Bidi --------------------------------------------------------------------

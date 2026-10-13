@@ -55,8 +55,9 @@
     <section class="pdp__section">
       <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>چه زمانی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی ({{ SUPPORT_HOURS }}).</dd>
-        <dt>اگر مشکلی پیش آمد؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز پس از تحویل پاسخ‌گو هستیم.{% else %}تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.{% endif %}</dd>
+        <dt>کِی تحویل می‌گیرم؟</dt><dd>تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. خود تحویل بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه، پس سفارش نصف‌شب صبح در نوبت می‌افته.</dd>
+        <dt>وسط دوره پرید، چی می‌شه؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد و جایگزین نمی‌شه.{% elif product.warranty == "days_7" %}تا ۷ روز بعد از تحویل جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% else %}تا پایان دوره جایگزین می‌کنیم. جایگزین نداشتیم، پول روزهای باقی‌مونده برمی‌گرده.{% endif %}</dd>
+        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط چیزی که موقع سفارش می‌پرسیم، که برای این محصول {{ product.plans.first.customer_input_label|default:"ایمیل حسابتون" }} است.</dd>{% endif %}
       </dl>
     </section>
   </div>
@@ -100,7 +101,7 @@
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
           </div>
         </div>
-        <p class="micro buybox__hint" id="qty-hint" hidden>روی اکانت خودتان فعال می‌شود — هر سفارش، یک عدد.</p>
+        <p class="micro buybox__hint" id="qty-hint" hidden>روی اکانت خودتان فعال می‌شود. برای هر سفارش یکی.</p>
         <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد خرید</button>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>

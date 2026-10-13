@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% load fa %}
 
 {% block title %}پرسش‌های متداول — PremShop{% endblock %}
-{% block meta_description %}پاسخ پرسش‌های رایج درباره‌ی خرید اشتراک و اکانت: زمان تحویل، گارانتی، بازگشت وجه و روش پرداخت.{% endblock %}
+{% block meta_description %}اکانت اشتراکی یا اختصاصی، رمز اکانت، زمان تحویل، تمدید و بازگشت وجه. پاسخ پرسش‌هایی که قبل از خرید اشتراک می‌پرسید.{% endblock %}
 
 {% block content %}
 <div class="wrap page">
@@ -9,51 +9,67 @@
 
 <header class="page-head">
   <h1 class="page-head__title">پرسش‌های متداول</h1>
-  <p class="prose page-head__intro">پاسخ‌تان اینجا نبود؟ در تلگرام بپرسید: <bdi class="latin">@premshop</bdi>، هر روز {{ SUPPORT_HOURS }}.</p>
+  <p class="prose page-head__intro">جوابش اینجا نبود؟ تلگرام بپرسید: <bdi class="latin">@premshop</bdi>، هر روز {{ SUPPORT_HOURS }}.</p>
 </header>
 
 {% comment %}
-details/summary, not a JS accordion: it opens with JavaScript off, it is
-keyboard-reachable without a single attribute, and the browser announces its
-own state to a screen reader. Every answer here is something the shop already
-commits to in code — the delivery window is a database constraint, the
-warranty is a field on the product, and the refund rule is ADR-0005.
+These are the seven questions Iranian buyers of foreign subscriptions
+actually ask, taken from the FAQ and rules pages of shops already in this
+market. The two that used to be here — «باید حساب بسازم؟» and «پرداخت چطور
+انجام می‌شود؟» — are not questions anyone has, and no shop in the survey
+carries either. The payment fact survives as a trust line in the footer,
+where all of them put it, and inside the last answer, where it belongs.
+
+Register: polite-colloquial, second person ـید, contracted verbs. Amounts
+and commitments stay plain. Answers run one to three sentences, give the
+verdict first, and never explain why the shop works the way it does — «بله،
+چون …» is the shape of a machine justifying itself, not a shopkeeper
+answering. Two of these admit a limitation, which is the one thing a
+generated FAQ never does.
+
+details/summary, so it opens with JavaScript off.
 {% endcomment %}
 <div class="qa">
   <details class="qa__item">
-    <summary class="qa__q">سفارش چه زمانی تحویل داده می‌شود؟</summary>
+    <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
     <div class="qa__a">
-      <p class="prose">زمان تحویل روی صفحه‌ی هر محصول نوشته شده؛ بیشترین مهلت ۴۸ ساعت است. شمارش از تأیید پرداخت شروع می‌شود و تحویل در ساعات پشتیبانی ({{ SUPPORT_HOURS }}) انجام می‌گیرد — سفارش نیمه‌شب، صبح در نوبت است.</p>
+      <p class="prose">روی صفحه‌ی هر محصول نوشته. بیشترشون روی حساب خودتون فعال می‌شن، یعنی ایمیل و تنظیمات دست خودتونه و رمز رو هر وقت خواستید عوض می‌کنید. اونایی که اکانت آماده‌ان پروفایل اختصاصی دارن، نه ظرفیت مشترک با چند نفر دیگه.</p>
     </div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">اشتراک روی حساب خودم فعال می‌شود یا اکانت آماده می‌گیرم؟</summary>
+    <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
     <div class="qa__a">
-      <p class="prose">روی صفحه‌ی هر محصول نوشته شده. بیشتر اشتراک‌ها روی حساب خودتان فعال می‌شوند و موقع سفارش ایمیل یا نام کاربری‌تان را می‌گیریم؛ گیفت کارت و لایسنس به‌صورت کد تحویل می‌شود.</p>
+      <p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری‌تون رو می‌خوایم، همونی که موقع سفارش می‌پرسیم. اگه یک‌جا رمز اکانتتون رو خواستیم، سفارش رو ادامه ندید و همون‌جا بهمون بگید.</p>
     </div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">اگر اشتراک وسط دوره قطع شود چه می‌شود؟</summary>
+    <summary class="qa__q">سفارش نصف‌شب رو کِی تحویل می‌دید؟</summary>
     <div class="qa__a">
-      <p class="prose">محصولاتی که گارانتی «تا پایان دوره» دارند تا آخرین روز پشتیبانی می‌شوند: قطع شد، جایگزین می‌کنیم. مدت گارانتی هر محصول روی صفحه‌ی خودش نوشته شده و بعضی محصولات گارانتی ندارند.</p>
+      <p class="prose">مهلت تحویل هر محصول روی صفحه‌ی خودش نوشته، بین ۱ تا ۴۸ ساعت. شمارش از تأیید پرداخت شروع می‌شه، ولی خود تحویل بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه. سفارش نصف‌شب صبح در نوبت می‌افته.</p>
     </div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">اگر سفارش تحویل نشود، پول برمی‌گردد؟</summary>
+    <summary class="qa__q">وسط دوره پرید، چی می‌شه؟</summary>
     <div class="qa__a">
-      <p class="prose">بله. اگر در بازه‌ی اعلام‌شده تحویل ندهیم و جایگزینی هم نداشته باشیم، کل مبلغ به همان کارت برمی‌گردد.</p>
+      <p class="prose">محصولی که گارانتی «تا پایان دوره» داره رو جایگزین می‌کنیم. جایگزین نداشتیم، پول روزهای باقی‌مونده برمی‌گرده. بعضی محصولات گارانتی ندارن و این روی صفحه‌ی خودشون، بالاتر از قیمت، نوشته شده.</p>
     </div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">پرداخت چطور انجام می‌شود؟</summary>
+    <summary class="qa__q">با آی‌پی ایران کار می‌کنه؟</summary>
     <div class="qa__a">
-      <p class="prose">از درگاه بانکی، با کارت ایرانی و به تومان. قیمت روی صفحه‌ی محصول همان مبلغی است که پرداخت می‌کنید؛ چیزی به آن اضافه نمی‌شود.</p>
+      <p class="prose">بعضی‌هاش نه. <bdi>Netflix</bdi> و <bdi>Spotify</bdi> و <bdi>ChatGPT</bdi> رو با آی‌پی ایران نمی‌شه باز کرد و خودتون باید فیلترشکن داشته باشید. گیفت کارت و لایسنس فرقی نمی‌کنن.</p>
     </div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">برای خرید باید حساب بسازم؟</summary>
+    <summary class="qa__q">تمدید چطوریه؟</summary>
     <div class="qa__a">
-      <p class="prose">بله، چون سفارش و اطلاعات تحویل باید جایی ثبت شود که فقط خودتان ببینید. یک مرحله است: ایمیل‌تان را می‌نویسید، کد شش‌رقمی می‌فرستیم، همان کد شما را وارد می‌کند. رمز عبور اختیاری است.</p>
+      <p class="prose">قبل از تموم‌شدن دوره دوباره سفارش بدید، روی همون اکانت تمدید می‌شه. قیمت تمدید، قیمت روز سایته، نه قیمتی که دفعه‌ی قبل دادید.</p>
+    </div>
+  </details>
+  <details class="qa__item">
+    <summary class="qa__q">از کجا مطمئن باشم پولم نمی‌پره؟</summary>
+    <div class="qa__a">
+      <p class="prose">پرداخت فقط از درگاه بانکی همین سایت انجام می‌شه. هیچ‌وقت شماره کارت شخصی برای واریز نمی‌دیم؛ اگه کسی به اسم ما داد، ما نیستیم. تنها آدرس رسمی ما <bdi class="latin">premshop.ir</bdi> است و تنها پشتیبانی ما <bdi class="latin">@premshop</bdi> در تلگرام. سفارش تحویل نشد، کل مبلغ برمی‌گرده.</p>
     </div>
   </details>
 </div>

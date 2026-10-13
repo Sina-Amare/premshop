@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% load fa %}
 
 {% block title %}PremShop — اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
-{% block meta_description %}اشتراک ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. تحویل در سریع‌ترین زمان، گارانتی تا پایان دوره.{% endblock %}
+{% block meta_description %}خرید اشتراک چت جی پی تی، نتفلیکس، اسپاتیفای، جمینای و گیفت کارت با پرداخت تومانی. تحویل در سریع‌ترین زمان، گارانتی تا پایان دوره.{% endblock %}
 
 {% block footer_promise %}{% endblock %}
 
@@ -21,8 +21,15 @@ furniture.
     <div class="hero__said">
       <h1 class="hero__title">اشتراک‌های جهانی، با پرداخت تومانی</h1>
       <p class="hero__lead">
-        چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، جت‌برینز و چند سرویس دیگر —
-        <b>با قیمت مشخص و تحویل در سریع‌ترین زمان.</b>
+        {% comment %}
+        Brand names in Latin, common nouns in Persian. «Netflix» next to the
+        Netflix mark is one spelling of one thing; «نتفلیکس» next to it is
+        two. The transliterations keep the two jobs where they are invisible
+        and useful — Product.aliases, so search still finds «چت جیپت», and the
+        SEO description below, because that is what people type into Google.
+        {% endcomment %}
+        <bdi>ChatGPT</bdi>، <bdi>Netflix</bdi>، <bdi>Spotify</bdi>، <bdi>JetBrains</bdi> و چند سرویس دیگه.
+        <b>با کارت ایرانی می‌خرید، روی حساب خودتون فعال می‌شه.</b>
       </p>
       <div class="hero__act">
         <a class="btn btn--primary btn--pill" href="#products">مشاهده‌ی محصولات</a>
@@ -77,14 +84,29 @@ furniture.
 <div class="wrap page">
   {% if categories %}
   <section class="section" style="margin-block-start: 0">
+    {% comment %}
+    Departments as shelves, not as four identical tinted cards. A card grid is
+    the most-copied layout on the web and it has to describe what is inside a
+    department in a sentence; a shelf just shows it. These rows carry the real
+    marks of the real products in each department, so «what is in هوش مصنوعی»
+    is answered before anyone clicks, and the description — four lines of seed
+    prose nobody needed — is gone with the cards.
+    {% endcomment %}
     <h2 class="section__title">دسته‌بندی‌ها</h2>
-    <div class="grid grid--cats">
+    <div class="depts">
       {% for cat in categories %}
-        <a class="ccard {% cycle 'ccard--a' 'ccard--b' 'ccard--c' 'ccard--d' %}" href="{% url 'category' cat.slug %}">
-          <span class="ccard__icon">{% include "catalog/_cat_icon.html" with slug=cat.slug %}</span>
-          <span class="ccard__name">{{ cat.name }}</span>
-          <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
-          {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
+        <a class="dept {% cycle 'dept--a' 'dept--b' 'dept--c' 'dept--d' %}" href="{% url 'category' cat.slug %}">
+          <span class="dept__name">{{ cat.name }}</span>
+          <span class="dept__marks" aria-hidden="true">
+            {% for product in cat.public_products|slice:":5" %}
+              <span class="dept__mark">
+                {% if product.image %}<img src="{{ product.image.url }}" alt="" width="20" height="20" loading="lazy" decoding="async">
+                {% else %}<span class="dept__mono">{{ product.name|slice:":1" }}</span>{% endif %}
+              </span>
+            {% endfor %}
+          </span>
+          <span class="dept__count">{{ cat.product_count|fa_digits }} محصول</span>
+          <svg class="dept__go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
         </a>
       {% endfor %}
     </div>
@@ -96,7 +118,7 @@ furniture.
     <div class="deals">
       <div class="deals__said">
         <h2 class="deals__title">تخفیف‌دارها</h2>
-        <p class="small" style="margin: 0">قیمت پایین‌تر تا پایان مهلت تخفیف. مهلت هر تخفیف روی صفحه‌ی محصول نوشته شده.</p>
+        <p class="small" style="margin: 0">قیمت پایین‌تر تا پایان مهلت. مهلت هر تخفیف روی صفحه‌ی محصول نوشته.</p>
       </div>
       <div class="deals__grid">
         {% for product in discounted %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
@@ -133,16 +155,16 @@ furniture.
     </div>
     <div class="qa">
       <details class="qa__item">
-        <summary class="qa__q">سفارش چه زمانی تحویل داده می‌شود؟</summary>
-        <div class="qa__a"><p class="prose">زمان تحویل روی صفحه‌ی هر محصول نوشته شده؛ بیشترین مهلت ۴۸ ساعت است. شمارش از تأیید پرداخت شروع می‌شود و تحویل در ساعات پشتیبانی ({{ SUPPORT_HOURS }}) انجام می‌گیرد.</p></div>
+        <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
+        <div class="qa__a"><p class="prose">روی صفحه‌ی هر محصول نوشته. بیشترشون روی حساب خودتون فعال می‌شن، یعنی ایمیل و تنظیمات دست خودتونه. اونایی که اکانت آماده‌ان پروفایل اختصاصی دارن.</p></div>
       </details>
       <details class="qa__item">
-        <summary class="qa__q">اگر سفارش تحویل نشود، پول برمی‌گردد؟</summary>
-        <div class="qa__a"><p class="prose">بله. اگر در بازه‌ی اعلام‌شده تحویل ندهیم و جایگزینی هم نداشته باشیم، کل مبلغ به همان کارت برمی‌گردد.</p></div>
+        <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
+        <div class="qa__a"><p class="prose">نه. فقط ایمیل یا نام کاربری‌تون رو می‌خوایم، همونی که موقع سفارش می‌پرسیم.</p></div>
       </details>
       <details class="qa__item">
-        <summary class="qa__q">اشتراک روی حساب خودم فعال می‌شود؟</summary>
-        <div class="qa__a"><p class="prose">روی صفحه‌ی هر محصول نوشته شده. بیشتر اشتراک‌ها روی حساب خودتان فعال می‌شوند؛ گیفت کارت و لایسنس به‌صورت کد تحویل می‌شود.</p></div>
+        <summary class="qa__q">سفارش تحویل نشد، پول برمی‌گرده؟</summary>
+        <div class="qa__a"><p class="prose">بله. تحویل ندادیم و جایگزین هم نداشتیم، کل مبلغ به همون کارت برمی‌گرده.</p></div>
       </details>
     </div>
   </section>

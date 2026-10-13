@@ -119,6 +119,17 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     # stagger was lost — which is what the owner asked for on 2026-10-13.
     page.wait_for_selector(".otp__cell.is-ok")
     assert page.locator(".otp__cell.is-ok").count() < 6, "all six turned at once"
+
+    # And the green is actually painted. The class landing is not the same
+    # thing: submit() disables the cells before the fetch, and for a while the
+    # disabled rule repainted confirmed cells grey at equal specificity — so
+    # the stagger ran correctly and invisibly, on the paste path, which is how
+    # a code is almost always entered. Read the colour, not the class.
+    red, green, blue = page.evaluate(
+        """() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
+                 .backgroundColor.match(/\d+/g).slice(0, 3).map(Number)"""
+    )
+    assert green > red and green > blue, f"confirmed cell is not green: rgb({red},{green},{blue})"
     page.screenshot(path=str(SHOTS / "04-ok.png"))
     page.wait_for_function("() => document.querySelectorAll('.otp__cell.is-ok').length === 6")
     page.wait_for_url("**/account/")
