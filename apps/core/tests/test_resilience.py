@@ -9,6 +9,7 @@ traceback listing the settings, the database URL and the whole environment.
 
 from __future__ import annotations
 
+import re
 from unittest import mock
 
 import pytest
@@ -56,3 +57,38 @@ def test_the_outage_page_offers_a_way_back(client):
         body = client.post(reverse("login-code"), {"email": "x@example.test"}).content.decode()
 
     assert reverse("login-code") in body, "a dead end is not an error page"
+
+
+# --- Compression safety ------------------------------------------------------
+
+
+def test_the_csrf_token_differs_on_every_render(client):
+    """GZipMiddleware is only safe here because of this.
+
+    Compressing a response makes BREACH structurally possible wherever a
+    secret and attacker-controlled text share one response — and that shape
+    exists on /search/?q=…, whose header carries the logout form's token.
+    What defuses it is that Django masks the token with a fresh random salt
+    per request, so two renders never produce the same bytes and no
+    compressed size correlates with a guess. If that ever stops being true,
+    the compression decision (ADR-0026) stops being safe, silently — so it is
+    checked rather than assumed.
+    """
+    pattern = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
+
+    first = pattern.search(client.get(reverse("login")).content.decode())
+    second = pattern.search(client.get(reverse("login")).content.decode())
+
+    assert first and second, "no CSRF token rendered — the premise changed"
+    assert first.group(1) != second.group(1), "CSRF masking is off; see ADR-0026"
+
+
+def test_responses_are_compressed(client):
+    """The other half: that the saving is actually happening. 27 KB of HTML
+    at 4.9 KB is the single biggest byte change available on a filtered link,
+    and a middleware silently dropped from the list would cost it with no
+    other symptom."""
+    response = client.get(reverse("home"), headers={"accept-encoding": "gzip"})
+
+    assert response["Content-Encoding"] == "gzip"
+    assert "Accept-Encoding" in response["Vary"]

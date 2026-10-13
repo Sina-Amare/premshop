@@ -91,10 +91,23 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # Outermost, so it compresses whatever the stack below produces. The home
-    # page is ~15 KB of HTML and gzips to about a fifth of that, which on an
-    # Iranian mobile link is worth more than any amount of markup trimming.
-    # Safe against BREACH here because Django masks the CSRF token with a fresh
-    # per-request salt, which is the mitigation that attack needs.
+    # page is 27 KB of HTML and 4.9 KB compressed, which on a filtered Iranian
+    # mobile link is worth more than any amount of markup trimming.
+    #
+    # On BREACH, because compressing a response is never free: the attack needs
+    # a secret and attacker-controlled text in the SAME response, and then
+    # reads the compressed size to confirm guesses. That shape does exist here
+    # — /search/?q=… reflects the query into a page whose header carries the
+    # logout form's CSRF token. It is defused because Django masks the token
+    # with a fresh random salt per request (default since 1.10, hardened in
+    # 4.1), so the bytes differ every time and no size correlates with a guess.
+    # Nothing else secret reaches a response body: codes and credentials are
+    # banned from every rendered surface by ADR-0008, and the session id lives
+    # in a cookie, which this middleware does not touch.
+    #
+    # Revisit the moment a page renders a delivered credential — the order
+    # detail page at S5 is the one that will want to. At that point either that
+    # view opts out of compression or the credential does not go in the HTML.
     "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Before everything else that might touch the cache, so its 503 wins over a
