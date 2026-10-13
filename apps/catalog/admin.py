@@ -113,9 +113,9 @@ class CategoryAdmin(ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(ModelAdmin):
-    list_display = ["name", "category", "status", "region", "warranty", "price_range", "updated"]
-    list_filter = ["status", "category", "region", "warranty", "delivery_type"]
-    search_fields = ["name", "short_description"]
+    list_display = ["name", "category", "status", "warranty", "price_range", "updated"]
+    list_filter = ["status", "category", "warranty", "delivery_type"]
+    search_fields = ["name", "short_description", "aliases"]
     list_select_related = ["category"]
     inlines = [ProductSpecInline, PlanInline]
     fieldsets = [
@@ -125,7 +125,6 @@ class ProductAdmin(ModelAdmin):
             {
                 "fields": [
                     "delivery_type",
-                    "region",
                     "warranty",
                     "delivery_hours",
                     "delivery_template",
@@ -133,6 +132,7 @@ class ProductAdmin(ModelAdmin):
             },
         ),
         ("متن", {"fields": ["short_description", "full_description"]}),
+        ("جستجو", {"fields": ["aliases"], "classes": ["collapse"]}),
         ("سئو", {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]}),
     ]
 

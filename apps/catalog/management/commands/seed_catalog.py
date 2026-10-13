@@ -24,10 +24,11 @@ from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
 
-ICON = "https://cdn.jsdelivr.net/npm/simple-icons@13/icons/{slug}.svg"
+# Brand-coloured: the same icon set serves a monochrome file at jsdelivr and the
+# brand's own colour here. A shelf of black glyphs reads as unfinished.
+ICON = "https://cdn.simpleicons.org/{slug}"
 
 T = Product.DeliveryType
-R = Product.Region
 W = Product.Warranty
 
 CATEGORIES = [
@@ -37,15 +38,15 @@ CATEGORIES = [
     ("گیفت کارت", "gift", "کارت‌های هدیه با کد، تحویل فوری."),
 ]
 
-# name, slug, category, icon slug, delivery, region, warranty, hours, short, specs, plans
+# name, slug, category, icon slug, delivery, warranty, hours, short, aliases, specs, plans
 PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Claude Pro",
         slug="claude-pro",
+        aliases="کلاود پرو، کلود پرو، کلاد، claude، anthropic، آنتروپیک",
         category="ai",
         icon="anthropic",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.FULL_PERIOD,
         hours=12,
         short="اشتراک کلاود پرو روی اکانت خودتان؛ دسترسی به مدل‌های جدید و محدودیت پیام بالاتر.",
@@ -60,10 +61,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="ChatGPT Plus",
         slug="chatgpt-plus",
+        aliases="چت جی پی تی، چت جیپیتی، چت جیپت، چت گپت، جیپیتی، gpt، chatgpt، openai، اوپن ای آی",
         category="ai",
         icon="openai",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.FULL_PERIOD,
         hours=12,
         short="اشتراک چت‌جی‌پی‌تی پلاس روی اکانت خودتان.",
@@ -74,10 +75,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Gemini Advanced",
         slug="gemini-advanced",
+        aliases="جمینای، جمنای، جیمینای، gemini، هوش مصنوعی گوگل",
         category="ai",
         icon="googlegemini",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.DAYS_7,
         hours=24,
         short="جمنای ادونسد به همراه ۲ ترابایت فضای گوگل.",
@@ -88,10 +89,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="GitHub Copilot",
         slug="github-copilot",
+        aliases="گیت هاب کوپایلوت، کوپایلوت، کوپیلوت، copilot، github",
         category="dev",
         icon="githubcopilot",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.FULL_PERIOD,
         hours=24,
         short="کوپایلوت روی اکانت گیت‌هاب خودتان؛ برای VS Code و JetBrains.",
@@ -102,10 +103,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="JetBrains All Products",
         slug="jetbrains-all",
+        aliases="جت برینز، جتبرینز، intellij، pycharm، webstorm، jetbrains، پای چارم",
         category="dev",
         icon="jetbrains",
         delivery=T.CODE_LICENSE,
-        region=R.GLOBAL,
         warranty=W.FULL_PERIOD,
         hours=48,
         short="لایسنس همه‌ی محصولات جت‌برینز، فعال‌سازی با کد.",
@@ -115,10 +116,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Spotify Premium",
         slug="spotify-premium",
+        aliases="اسپاتیفای، اسپوتیفای، اسپاتی فای، اسپتیفای، spotify، پریمیوم، پرمیوم",
         category="media",
         icon="spotify",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.TURKEY,
         warranty=W.FULL_PERIOD,
         hours=6,
         short="اسپاتیفای پرمیوم روی اکانت خودتان، ریجن ترکیه.",
@@ -133,10 +134,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="YouTube Premium",
         slug="youtube-premium",
+        aliases="یوتیوب پریمیوم، یوتیوب پرمیوم، یوتوب، یوتیوب بدون تبلیغات، youtube، پریمیوم، پرمیوم",
         category="media",
         icon="youtube",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.TURKEY,
         warranty=W.DAYS_7,
         hours=12,
         short="یوتیوب پرمیوم بدون تبلیغ، به همراه یوتیوب موزیک.",
@@ -147,10 +148,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Netflix",
         slug="netflix",
+        aliases="نتفلیکس، نت فلیکس، نتفلیس، نتلفیکس، netflix",
         category="media",
         icon="netflix",
         delivery=T.READY_ACCOUNT,
-        region=R.TURKEY,
         warranty=W.FULL_PERIOD,
         hours=2,
         short="اکانت آماده‌ی نتفلیکس، یک صفحه‌ی اختصاصی.",
@@ -160,10 +161,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Apple Gift Card",
         slug="apple-gift-card",
+        aliases="گیفت کارت اپل، گیفتکارت اپل، کارت هدیه اپل، آیتونز، itunes، apple",
         category="gift",
         icon="apple",
         delivery=T.GIFT_CARD,
-        region=R.US,
         warranty=W.NONE,
         hours=1,
         short="گیفت کارت اپل ریجن آمریکا، تحویل کد.",
@@ -176,10 +177,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Google Play Gift Card",
         slug="google-play-gift-card",
+        aliases="گیفت کارت گوگل پلی، گیفتکارت گوگل، گوگل پلی، google play، کارت هدیه گوگل",
         category="gift",
         icon="googleplay",
         delivery=T.GIFT_CARD,
-        region=R.US,
         warranty=W.NONE,
         hours=1,
         short="گیفت کارت گوگل پلی ریجن آمریکا.",
@@ -190,10 +191,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Midjourney",
         slug="midjourney",
+        aliases="میدجرنی، میدجورنی، مید جرنی، midjourney",
         category="ai",
         icon="midjourney",
         delivery=T.READY_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.DAYS_7,
         hours=24,
         short="پیش‌نویس — هنوز منتشر نشده.",
@@ -204,10 +205,10 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Adobe Creative Cloud",
         slug="adobe-cc",
+        aliases="ادوبی، ادوب، فتوشاپ، photoshop، adobe، creative cloud، کریتیو کلاد",
         category="dev",
         icon="adobe",
         delivery=T.ON_CUSTOMER_ACCOUNT,
-        region=R.GLOBAL,
         warranty=W.DAYS_7,
         hours=48,
         short="فعلاً ناموجود.",
@@ -249,7 +250,7 @@ class Command(BaseCommand):
                     "short_description": spec["short"],
                     "full_description": spec.get("long", spec["short"]),
                     "delivery_type": spec["delivery"],
-                    "region": spec["region"],
+                    "aliases": spec.get("aliases", ""),
                     "warranty": spec["warranty"],
                     "delivery_hours": spec["hours"],
                     "status": spec.get("status", Product.Status.ACTIVE),
@@ -289,9 +290,12 @@ class Command(BaseCommand):
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists():
             try:
-                with urllib.request.urlopen(  # noqa: S310  # nosec B310
-                    ICON.format(slug=icon), timeout=15
-                ) as response:
+                # The icon CDN answers 403 to a library's default user agent.
+                request = urllib.request.Request(  # noqa: S310  # nosec B310
+                    ICON.format(slug=icon), headers={"User-Agent": "premshop-seed"}
+                )
+                opened = urllib.request.urlopen(request, timeout=15)  # noqa: S310  # nosec B310
+                with opened as response:
                     target.write_bytes(response.read())
             except Exception as exc:  # noqa: BLE001 — no image is a designed state, not a failure
                 self.stderr.write(f"  no icon for {product.name}: {type(exc).__name__}")

@@ -62,13 +62,23 @@ class ProductQuerySet(models.QuerySet["Product"]):
 
     def search(self, query: str) -> ProductQuerySet:
         """Match on the normalised column so an Arabic-keyboard «كلاود» finds
-        «کلاود». Deliberately icontains and deliberately unindexed: a btree cannot
-        serve a substring match, and a sequential scan over a few dozen rows is
-        instant. pg_trgm is the named upgrade if the catalog ever grows."""
+        «کلاود», and match each word separately so word order and an extra word
+        do not decide the answer — «جیپت چت» and «چت جیپت پلاس» are the same
+        question. What a word can match is widened by `aliases`, because no
+        folding turns one transliteration into another.
+
+        Deliberately icontains and deliberately unindexed: a btree cannot serve a
+        substring match, and a sequential scan over a few dozen rows is instant.
+        pg_trgm is the named upgrade if the catalog ever grows."""
         needle = normalize_for_search(query)
         if not needle:
             return self.none()
-        return self.filter(search_text__icontains=needle)
+        matches = self
+        # Bounded: a 100-character query is already capped by the view, and no
+        # real search needs more than a handful of words to be precise.
+        for word in needle.split()[:8]:
+            matches = matches.filter(search_text__icontains=word)
+        return matches
 
 
 class Product(models.Model):
@@ -82,15 +92,6 @@ class Product(models.Model):
         ON_CUSTOMER_ACCOUNT = "on_customer_account", "روی اکانت خود مشتری"
         CODE_LICENSE = "code_license", "کد / لایسنس"
         GIFT_CARD = "gift_card", "گیفت کارت"
-
-    class Region(models.TextChoices):
-        # The owner's ruling names Iran; the others exist so a Turkey-region
-        # account can be labelled honestly rather than mislabelled «جهانی».
-        GLOBAL = "global", "جهانی"
-        IRAN = "ir", "ایران"
-        US = "us", "آمریکا"
-        EU = "eu", "اروپا"
-        TURKEY = "tr", "ترکیه"
 
     class Warranty(models.TextChoices):
         NONE = "none", "بدون گارانتی"
@@ -106,7 +107,15 @@ class Product(models.Model):
     full_description = models.TextField("توضیح کامل", blank=True, default="")
     image = models.ImageField("تصویر", upload_to="products/", null=True, blank=True)
     delivery_type = models.CharField("نوع تحویل", max_length=24, choices=DeliveryType.choices)
-    region = models.CharField("ریجن", max_length=24, choices=Region.choices, default=Region.GLOBAL)
+    # Search-only, never rendered: the spellings a customer actually types. A
+    # Persian shopper writes «چت جیپت» for ChatGPT, and no amount of character
+    # folding turns one transliteration into another — only this list does.
+    aliases = models.TextField(
+        "املاهای دیگر",
+        blank=True,
+        default="",
+        help_text="هر املایی که مشتری ممکن است بنویسد، با ویرگول: چت جی پی تی، چت جیپت، gpt",
+    )
     warranty = models.CharField(
         "گارانتی", max_length=24, choices=Warranty.choices, default=Warranty.NONE
     )
@@ -148,7 +157,9 @@ class Product(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slugify(self.name, allow_unicode=True)
-        self.search_text = normalize_for_search(f"{self.name} {self.short_description}")
+        self.search_text = normalize_for_search(
+            f"{self.name} {self.short_description} {self.aliases}"
+        )
         super().save(*args, **kwargs)
 
     @property

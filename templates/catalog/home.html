@@ -5,25 +5,14 @@
 
 {% block content %}
 {% comment %}
-The home page of a shop that keeps records. No glowing hero: one plain statement,
-the search, and the three facts a doubtful buyer needs — set as ledger lines,
-the signature, used once on this page.
+One statement, then the shelf. The promises that used to sit here as a four-row
+box are already in the header strip and on every product page, where they are
+per-product and true; repeating them generically was furniture.
+Search lives in the header, once per page.
 {% endcomment %}
 <section class="hero">
-  <div class="hero__text">
-    <h1 class="hero__title">اشتراک و اکانت دیجیتال، با تحویل مطمئن</h1>
-    <p class="prose hero__lead">ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. قیمت مشخص، زمان تحویل مشخص، گارانتی مشخص.</p>
-    <form class="hero__search" action="{% url 'search' %}" method="get" role="search">
-      <input class="field__input" type="search" name="q" placeholder="دنبال چه چیزی هستید؟" aria-label="جستجو در محصولات" autocomplete="off">
-      <button class="btn btn--primary" type="submit">جستجو</button>
-    </form>
-  </div>
-  <div class="hero__facts card">
-    <div class="fact"><span class="fact__k">تحویل</span><span class="fact__lead"></span><span class="fact__v">در بازه‌ی اعلام‌شده‌ی هر محصول</span></div>
-    <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">تا پایان دوره‌ی اشتراک</span></div>
-    <div class="fact"><span class="fact__k">پشتیبانی</span><span class="fact__lead"></span><span class="fact__v">هر روز، ۱۰ تا ۲۲</span></div>
-    <div class="fact"><span class="fact__k">پرداخت</span><span class="fact__lead"></span><span class="fact__v">درگاه بانکی</span></div>
-  </div>
+  <h1 class="hero__title">اشتراک و اکانت دیجیتال، با تحویل مطمئن</h1>
+  <p class="prose hero__lead">ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. قیمت مشخص، زمان تحویل مشخص، گارانتی مشخص.</p>
 </section>
 
 {% if categories %}

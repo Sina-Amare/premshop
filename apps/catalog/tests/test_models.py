@@ -205,6 +205,42 @@ def test_search_finds_arabic_keyboard_input(product):
     assert list(Product.objects.public().search("")) == []
 
 
+@pytest.fixture
+def chatgpt(product):
+    """The case the owner found: a Persian shopper types a transliteration that
+    shares no substring with the product's own name."""
+    return Product.objects.create(
+        category=product.category,
+        name="ChatGPT Plus",
+        slug="chatgpt-plus",
+        short_description="اشتراک چت‌جی‌پی‌تی پلاس روی اکانت خودتان.",
+        aliases="چت جی پی تی، چت جیپیتی، چت جیپت، چت گپت، جیپیتی، gpt، openai",
+        delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+        status=Product.Status.ACTIVE,
+    )
+
+
+def test_aliases_carry_the_spellings_a_customer_actually_types(chatgpt):
+    assert "چت جیپت" in chatgpt.search_text
+    assert list(Product.objects.public().search("چت جیپت")) == [chatgpt]
+
+
+def test_every_word_is_matched_separately(chatgpt):
+    """Word order and extra words must not decide whether a product is found:
+    before 2026-10-13 the whole query had to appear as one contiguous substring."""
+    assert list(Product.objects.public().search("جیپت چت")) == [chatgpt]
+    assert list(Product.objects.public().search("چت جیپت پلاس")) == [chatgpt]
+    assert list(Product.objects.public().search("چت جیپت نتفلیکس")) == []
+
+
+def test_aliases_never_reach_the_visitor(client, chatgpt):
+    """They are search fuel, not copy: «چت گپت» on the page would read as a typo."""
+    body = client.get(f"/p/{chatgpt.slug}/").content.decode()
+
+    assert "چت گپت" not in body
+    assert "openai" not in body.lower()
+
+
 def test_slug_is_filled_from_the_name_when_blank():
     category = Category.objects.create(name="ابزار توسعه")
     assert category.slug == "ابزار-توسعه"

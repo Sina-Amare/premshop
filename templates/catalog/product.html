@@ -15,9 +15,8 @@
       {% endif %}
       <div>
         <h1 class="pdp__title">{{ product.name }}</h1>
-        {% comment %}Region in the title area is a brief requirement (§4); the rest are the buyer's three questions.{% endcomment %}
+        {% comment %}The buyer's two questions, answered before the price: how long, and what if it breaks. A region is not a property every product has — when one matters it is a spec row the operator adds.{% endcomment %}
         <div class="pdp__meta">
-          <span class="badge badge--neutral">ریجن {{ product.get_region_display }}</span>
           <span class="badge badge--neutral">{{ product.get_warranty_display }}</span>
           <span class="badge badge--neutral">تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</span>
         </div>
@@ -30,7 +29,6 @@
     {% comment %}The product's facts as the ledger — the signature, once on this page.{% endcomment %}
     <div class="card pdp__facts">
       <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
-      <div class="fact"><span class="fact__k">ریجن</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_region_display }}</span></div>
       <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
       <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
     </div>

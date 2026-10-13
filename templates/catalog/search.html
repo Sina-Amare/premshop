@@ -12,11 +12,7 @@
   {% endif %}
 </header>
 
-<form class="search-form" action="{% url 'search' %}" method="get" role="search">
-  <input class="field__input" type="search" name="q" value="{{ query }}" placeholder="نام محصول" aria-label="جستجو در محصولات" autocomplete="off" autofocus>
-  <button class="btn btn--primary" type="submit">جستجو</button>
-</form>
-
+{% comment %}No second search box: the header's carries the query and is on every page.{% endcomment %}
 {% if limited %}
   <div class="card empty">
     <p class="prose" style="margin:0">جستجوهای پشت سر هم زیاد شد.</p>

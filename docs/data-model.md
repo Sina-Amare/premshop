@@ -149,7 +149,8 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 > **One price rule, one function.** Every price shown or charged goes through `catalog.pricing.effective_price` — catalog cards, product pages, cart lines, the checkout summary, and `OrderItem.price_snapshot` at order time. A promotion is therefore a *pricing* fact, never a discount row: it needs no code, no redemption record and no order column (ADR-0021). Duplicating the comparison anywhere else is the bug this note exists to prevent.
 
 - **A product with sales is undeletable, on purpose.** `Plan.product` cascades, but the cascade halts at `OrderItem.plan` PROTECT (§3). A sold plan is retired with `is_available=false`, never row-deleted.
-- **`Product.region` must surface in the title area and on the checkout confirmation** (brief §4). The product page does the first; S4b's checkout does the second.
+- **There is no `region` column.** Removed 2026-10-13 on the owner's ruling: most of what this shop sells has no region at all, and a field with a default of «جهانی» put a meaningless badge on every card. A product that genuinely is region-bound carries it as a `ProductSpec` row the operator adds, like any other per-product fact, and S4b's checkout confirmation therefore shows it as part of the spec list rather than as a dedicated line. The brief's §4 requirement is met by the spec row.
+- **`Product.aliases` is search fuel and is never rendered.** It holds the spellings a customer actually types — «چت جیپت» for ChatGPT — because character folding cannot turn one transliteration into another. It feeds `search_text` on save; a test asserts it never reaches the page.
 - **`Plan.supplier_url` is deliberately not copied into `OrderItem.product_snapshot`.** Durations are separate listings upstream (owner ruling), and S7's delivery page reads it live through the PROTECTed `OrderItem.plan` FK.
 - **`Product.delivery_template`** is a comma-separated list of field names; S7's delivery form pre-renders from it.
 - **`Plan.requires_customer_input` limits a cart line to quantity 1.** The rule and its reasons are under `cart.CartItem`.
@@ -252,7 +253,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | price_snapshot | Money | — | | |
 | cost_snapshot | Money | — | | copied from Plan.cost_price at order time (D10) |
 | actual_cost | Money | yes | null | delivery-form editable, prefilled from cost_snapshot; replacements add to it (D10) |
-| product_snapshot | jsonb | — | | name, plan title, region, warranty, specs at purchase time |
+| product_snapshot | jsonb | — | | name, plan title, warranty, specs at purchase time |
 | customer_input | **EncryptedTextField** | blank | "" | may contain the customer's own password (D10) |
 | delivery_note | text | blank | "" | operator → customer, plaintext non-secret |
 | expires_at | date | yes | null | subscription expiry; precomputed from duration_days, editable |

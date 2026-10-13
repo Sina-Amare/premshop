@@ -11,7 +11,6 @@ Params: product (with plans prefetched).
     {% else %}
       <span class="tile tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
     {% endif %}
-    <span class="pcard__region badge badge--neutral">{{ product.get_region_display }}</span>
   </div>
   <div class="pcard__body">
     <span class="pcard__cat">{{ product.category.name }}</span>

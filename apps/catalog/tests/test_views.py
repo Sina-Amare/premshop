@@ -33,7 +33,6 @@ def product(category):
         slug="claude-pro",
         short_description="اشتراک کلاود پرو",
         delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
-        region=Product.Region.GLOBAL,
         warranty=Product.Warranty.FULL_PERIOD,
         delivery_hours=12,
         status=Product.Status.ACTIVE,
@@ -144,12 +143,35 @@ def test_draft_product_hidden_everywhere(client, category):
 # --- The product page ---------------------------------------------------------
 
 
-def test_product_page_shows_region_warranty_and_delivery_in_the_title_area(client, product):
+def test_product_page_shows_warranty_and_delivery_in_the_title_area(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert "ریجن جهانی" in body
     assert "تا پایان دوره" in body
     assert "تحویل تا ۱۲ ساعت" in body
+
+
+def test_region_is_not_a_property_of_every_product(client, product):
+    """Removed on the owner's ruling 2026-10-13: a product that genuinely is
+    region-bound says so in a spec row the operator adds, like any other fact."""
+    from apps.catalog.models import ProductSpec
+
+    ProductSpec.objects.create(product=product, title="ریجن", value="ترکیه", sort_order=0)
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert "جهانی" not in body
+    assert "ترکیه" in body  # the spec row, which is the only way a region appears now
+
+
+def test_one_search_box_per_page(client, product):
+    """Three of them used to be on screen at once: the header's, the home hero's,
+    and the search page's own."""
+    for url in [
+        reverse("home"),
+        reverse("search") + "?q=کلاود",
+        reverse("product", args=[product.slug]),
+    ]:
+        body = client.get(url).content.decode()
+        assert body.count('name="q"') == 1, url
 
 
 def test_product_page_query_count(client, product):
