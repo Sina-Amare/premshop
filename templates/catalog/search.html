@@ -5,7 +5,7 @@
 {% block content %}
 <header class="page-head">
   {% if query %}
-    <h1 class="page-head__title">نتایج جستجو برای «{{ query }}»</h1>
+    <h1 class="page-head__title">نتایج جستجو برای «<bdi>{{ query }}</bdi>»</h1>
     {% if not limited %}<p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>{% endif %}
   {% else %}
     <h1 class="page-head__title">جستجو</h1>
@@ -20,7 +20,7 @@
   </div>
 {% elif query and not results %}
   <div class="card empty">
-    <p class="prose" style="margin:0">نتیجه‌ای برای «{{ query }}» پیدا نشد.</p>
+    <p class="prose" style="margin:0">نتیجه‌ای برای «<bdi>{{ query }}</bdi>» پیدا نشد.</p>
     <p class="small" style="margin:0">املای دیگری را امتحان کنید، یا از همه‌ی محصولات شروع کنید.</p>
     <a class="btn btn--secondary" href="{% url 'home' %}">مشاهده‌ی همه‌ی محصولات</a>
   </div>

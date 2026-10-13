@@ -2,6 +2,19 @@
 
 The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
 
+## Amendment — 2026-10-13: the editorial turn
+
+The owner reviewed the built shop and asked for a quieter, more professional surface, supplying an editorial reference (white canvas, hairline rules, 4px corners, headlines set light). The direction taken is hybrid, and these clauses override the matching ones above:
+
+- **The canvas is white** (`--color-ground: #ffffff`) and the neutral ramp is neutral, not warm stone. The page should read as a printed sheet.
+- **A hairline rule, not a box, marks a region.** Section heads carry a 1px rule the width of the column. Boxing a region to announce it is a region is the habit this replaces.
+- **One radius: 4px.** `--radius-md` and the pill radius are gone; chips, cards, tiles, inputs and buttons all take the same slight corner.
+- **Headings are set at 600, never 800**, and the scale came down: h1 30px, h2 21px, h3 18px. Authority comes from space and restraint, not from weight. **The price numeral keeps 800** — it is the one figure the page exists to state.
+- **Colour belongs to the goods.** Product brand marks render in their own brand colours; the interface around them stays achromatic. Teal survives as the single primary action and inline links; amber still means time and nothing else.
+- **Two motion tokens:** `--dur` 140ms for colour and state, `--dur-lg` 220ms for anything that moves or reveals. The easing is `cubic-bezier(0.2, 0, 0, 1)` — a soft stop, no overshoot, no bounce.
+
+Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian, and Google-hosted fonts do not load from Iran at all. Estedad and Vazirmatn stay, self-hosted.
+
 ## The stance
 
 This shop should read like **a small business that keeps records** — not like a brand, and not like a landing page. The buyer's fear is paying into a void, so the antidote is visible bookkeeping: hairlines, aligned figures, stated hours, exact amounts, and a payable typeset with more care than any headline on the site. Warm stone paper, one teal accent spent sparingly, amber only when a clock is running.

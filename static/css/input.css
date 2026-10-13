@@ -62,15 +62,18 @@
   --spacing-4: 16px; --spacing-5: 24px; --spacing-6: 32px;
   --spacing-7: 48px; --spacing-8: 64px; --spacing-9: 96px;
 
-  /* Eight neutrals carry all structure. A ninth would mean the nesting is wrong. */
-  --color-ground: #fafaf9;
+  /* Eight neutrals carry all structure. A ninth would mean the nesting is wrong.
+     White canvas and a neutral ramp since 2026-10-13: the page is a printed
+     sheet ruled with hairlines, and the only colour in it belongs to the
+     brands on the shelf and to the one action the customer came to take. */
+  --color-ground: #ffffff;
   --color-surface: #ffffff;
-  --color-fill-subtle: #f2f1f0;
+  --color-fill-subtle: #f5f5f4;
   --color-line: #e7e5e4;
-  --color-line-strong: #d6d3d1;
-  --color-muted: #78716c;
-  --color-secondary: #57534e;
-  --color-ink: #1c1917;
+  --color-line-strong: #d4d4d4;
+  --color-muted: #737373;
+  --color-secondary: #525252;
+  --color-ink: #171717;
 
   --color-accent: #0f766e;
   --color-accent-hover: #0d6560;
@@ -84,15 +87,17 @@
   --color-danger: #dc2626;
   --color-danger-text: #991b1b;
 
+  /* One radius. The slight corner is the whole gesture; anything rounder reads
+     as a template. */
   --radius-sm: 4px;
-  --radius-md: 10px;
 }
 
 :root {
   --gutter: 18px;
   --container: 1100px;
-  --dur: 140ms;
-  --ease: cubic-bezier(0, 0, 0.2, 1);
+  --dur: 140ms;      /* colour, border, small state changes */
+  --dur-lg: 220ms;   /* anything that moves or reveals: longer, still quiet */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 @media (max-width: 680px) { :root { --gutter: 14px; } }
 
@@ -119,9 +124,9 @@
 
   h1, h2, h3, h4 { font-family: var(--font-head); color: var(--color-ink); text-wrap: balance; }
   /* Space belongs to what follows a heading, never split evenly around it. */
-  h1 { font-size: 34px; font-weight: 800; line-height: 1.25; margin-block: 0 var(--spacing-4); }
-  h2 { font-size: 26px; font-weight: 800; line-height: 1.35; margin-block: var(--spacing-6) var(--spacing-3); }
-  h3 { font-size: 20px; font-weight: 600; line-height: 1.45; margin-block: var(--spacing-5) var(--spacing-3); }
+  h1 { font-size: 30px; font-weight: 600; line-height: 1.3;  margin-block: 0 var(--spacing-4); }
+  h2 { font-size: 21px; font-weight: 600; line-height: 1.4;  margin-block: var(--spacing-7) var(--spacing-3); }
+  h3 { font-size: 18px; font-weight: 600; line-height: 1.45; margin-block: var(--spacing-5) var(--spacing-3); }
   h4 { font-size: 17px; font-weight: 600; line-height: 1.5;  margin-block: var(--spacing-4) var(--spacing-2); }
 
   p { max-inline-size: 32rem; }
@@ -171,7 +176,7 @@
   }
   .hdr__main { min-block-size: 78px; display: flex; align-items: center; gap: var(--spacing-6); }
   .hdr__brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
-  .hdr__word { font-family: var(--font-head); font-size: 17px; font-weight: 800;
+  .hdr__word { font-family: var(--font-head); font-size: 17px; font-weight: 600;
                line-height: 1.2; color: var(--color-ink); }
   .hdr__icon {
     inline-size: 40px; block-size: 40px; border-radius: var(--radius-sm);
@@ -199,7 +204,7 @@
   /* --- Surfaces --------------------------------------------------------- */
   .card {
     background: var(--color-surface); border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     /* Asymmetric: Persian descenders eat optical space at the block end. */
     padding: var(--spacing-4) var(--spacing-4) var(--spacing-5);
     transition: border-color var(--dur) var(--ease);
@@ -208,7 +213,7 @@
 
   /* A list of things is one bordered container with hairlines — not N cards. */
   .list { background: var(--color-surface); border: 1px solid var(--color-line);
-          border-radius: var(--radius-md); overflow: hidden; }
+          border-radius: var(--radius-sm); overflow: hidden; }
   .list > * { padding: var(--spacing-4); }
   .list > * + * { border-block-start: 1px solid var(--color-line); }
 
@@ -388,20 +393,24 @@
   .crumbs a:hover { color: var(--color-ink); text-decoration: underline; }
   .crumbs__sep { color: var(--color-line-strong); }
   .page-head { margin-block-end: var(--spacing-6); }
-  .page-head__title { font-family: var(--font-head); font-size: 34px; font-weight: 800;
+  .page-head__title { font-family: var(--font-head); font-size: 30px; font-weight: 600;
                       line-height: 1.25; margin: 0; }
   .page-head__intro { margin-block-start: var(--spacing-3); }
   .section { margin-block-start: var(--spacing-8); }
+  /* The rule under a section title is the page's structure, the way a printed
+     column rule is. It replaces boxing a region to say it is a region. */
+  .section__head, .section > .section__title {
+    border-block-end: 1px solid var(--color-line); padding-block-end: var(--spacing-3); }
   .section__head { display: flex; align-items: baseline; justify-content: space-between;
                    gap: var(--spacing-4); }
-  .section__title { font-family: var(--font-head); font-size: 26px; font-weight: 800;
+  .section__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
                     line-height: 1.35; margin: 0 0 var(--spacing-5); }
 
   /* --- Home: the opening statement ------------------------------------------ */
   /* No glow, no gradient, no animation, and no box of generic promises: one
      sentence, then the shelf. */
   .hero { padding-block: var(--spacing-5) var(--spacing-3); }
-  .hero__title { font-family: var(--font-head); font-size: 34px; font-weight: 800; line-height: 1.25;
+  .hero__title { font-family: var(--font-head); font-size: 30px; font-weight: 600; line-height: 1.3;
                  margin: 0 0 var(--spacing-4); max-inline-size: 18ch; }
   .hero__lead { margin: 0; }
   @media (max-width: 860px) { .hero__title { font-size: 28px; } }
@@ -413,7 +422,7 @@
 
   .ccard { display: flex; flex-direction: column; gap: var(--spacing-1); text-decoration: none;
            background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-md); padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
+           border-radius: var(--radius-sm); padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
            transition: border-color var(--dur) var(--ease); }
   .ccard:hover { border-color: var(--color-line-strong); }
   .ccard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; color: var(--color-ink); }
@@ -425,7 +434,7 @@
      block-end so a grid of them reads as one column of aligned figures. */
   .pcard { display: flex; flex-direction: column; text-decoration: none; color: inherit;
            background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-md); overflow: hidden;
+           border-radius: var(--radius-sm); overflow: hidden;
            transition: border-color var(--dur) var(--ease); }
   .pcard:hover { border-color: var(--color-line-strong); }
   .pcard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -448,9 +457,9 @@
      Both are the same shape, so a grid with and without pictures stays even. */
   .tile { inline-size: 56px; block-size: 56px; display: grid; place-items: center;
           background: var(--color-fill-subtle); border: 1px solid var(--color-line);
-          border-radius: var(--radius-md); flex: none; }
+          border-radius: var(--radius-sm); flex: none; }
   .tile img { inline-size: 32px; block-size: 32px; object-fit: contain; }
-  .tile--mono { font-family: var(--font-head); font-size: 22px; font-weight: 800;
+  .tile--mono { font-family: var(--font-head); font-size: 22px; font-weight: 600;
                 color: var(--color-secondary); }
   .tile--lg { inline-size: 72px; block-size: 72px; }
   .tile--lg img { inline-size: 40px; block-size: 40px; }
@@ -458,7 +467,7 @@
 
   /* --- Filter chips ---------------------------------------------------------- */
   .chips { display: flex; flex-wrap: wrap; gap: var(--spacing-2); margin-block-end: var(--spacing-5); }
-  .chip { font-size: 13px; line-height: 1.4; padding: 6px 12px 4px; border-radius: 999px;
+  .chip { font-size: 13px; line-height: 1.4; padding: 6px 12px 4px; border-radius: var(--radius-sm);
           border: 1px solid var(--color-line-strong); color: var(--color-secondary);
           text-decoration: none; background: var(--color-surface);
           transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
@@ -473,7 +482,7 @@
   .pdp__main { grid-area: main; }
   .pdp__buy { grid-area: buy; align-self: start; }
   .pdp__head { display: flex; gap: var(--spacing-4); align-items: flex-start; }
-  .pdp__title { font-family: var(--font-head); font-size: 30px; font-weight: 800; line-height: 1.3; margin: 0; }
+  .pdp__title { font-family: var(--font-head); font-size: 30px; font-weight: 600; line-height: 1.3; margin: 0; }
   .pdp__meta { display: flex; flex-wrap: wrap; gap: var(--spacing-2); margin-block-start: var(--spacing-3); }
   .pdp__lead { margin: var(--spacing-5) 0 0; }
   .pdp__facts { margin-block-start: var(--spacing-6); padding: var(--spacing-3) var(--spacing-5); }
@@ -538,7 +547,7 @@
            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
   .steps__item { display: flex; flex-direction: column; gap: var(--spacing-2);
                  padding: var(--spacing-5) var(--spacing-5) var(--spacing-6); }
-  .steps__n { font-family: var(--font-head); font-size: 24px; font-weight: 800; color: var(--color-ink);
+  .steps__n { font-family: var(--font-head); font-size: 24px; font-weight: 600; color: var(--color-muted);
               line-height: 1; }
   .steps__t { font-family: var(--font-head); font-size: 17px; font-weight: 600; color: var(--color-ink); }
   .steps__d { font-size: 14px; line-height: 1.8; color: var(--color-secondary); }
@@ -567,8 +576,9 @@
                 color: var(--color-muted); margin-inline-start: 0.28em; }
   .price--lg .price__num { font-size: 32px; }
   .price--xl .price__num { font-size: 40px; }
-  .price__was { font-size: 0.78em; color: #a8a29e; text-decoration: line-through;
-                margin-inline-end: var(--spacing-2); font-variant-numeric: tabular-nums; }
+  .price__was { font-size: 0.78em; color: var(--color-muted); text-decoration: line-through;
+                text-decoration-thickness: 1px; margin-inline-end: var(--spacing-3);
+                font-variant-numeric: tabular-nums; }
 
   /* --- The signature: the ledger line -----------------------------------
      Every fact-value pair is a ledger row. The dotted leader is the grammar
