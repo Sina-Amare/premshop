@@ -62,9 +62,9 @@
     <section class="pdp__section">
       <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کِی تحویل می‌گیرم؟</dt><dd>تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. خود تحویل بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه، پس سفارش نصف‌شب صبح در نوبت می‌افته.</dd>
-        <dt>وسط دوره پرید، چی می‌شه؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد و جایگزین نمی‌شه.{% elif product.warranty == "days_7" %}تا ۷ روز بعد از تحویل جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% else %}تا پایان دوره جایگزین می‌کنیم. جایگزین نداشتیم، پول روزهای باقی‌مونده برمی‌گرده.{% endif %}</dd>
-        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط چیزی که موقع سفارش می‌پرسیم، که برای این محصول {{ product.plans.first.customer_input_label|default:"ایمیل حسابتون" }} است.</dd>{% endif %}
+        <dt>کِی تحویل می‌گیرم؟</dt><dd>تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. تحویل‌ها بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه.</dd>
+        <dt>وسط دوره پرید، چی می‌شه؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% else %}تا پایان دوره جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% endif %}</dd>
+        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ product.plans.first.customer_input_label|default:"ایمیل حساب" }} رو می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
   </div>
@@ -156,7 +156,7 @@
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'برای فعال‌سازی ' + question + ' را می‌پرسیم.' : '';
+      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' رو می‌پرسیم.' : '';
       asks.hidden = !question;
     }
   }

@@ -364,7 +364,7 @@ Django auto-indexes every FK; those cover the per-item timeline (`OrderItemEvent
 
 Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the lost-callback inquiry and the unpaid-order sweep, S5; the outbox poll, S6) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§4). They are re-specified when those steps are planned.
 
-**Deliberately unindexed:** `Product.search_text` (icontains can't use btree; catalog is a few dozen rows — seq scan is free; pg_trgm is the upgrade path if the catalog ever grows 100×), `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
+**`Product.search_text` carries a GIN index with `gin_trgm_ops`** since 2026-10-14 (`catalog 0006`), serving the trigram fallback in `search()`. It does nothing at a dozen rows, where a sequential scan is already free; it is there because it is what keeps the approach correct at a thousand, and because adding it later means remembering it was missing. The exact `icontains` pass still cannot use an index and still does not need one, `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
 
 ---
 

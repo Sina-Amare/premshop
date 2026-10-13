@@ -4,31 +4,58 @@
 
 {% block content %}
 <div class="wrap page">
-<header class="page-head">
-  {% if query %}
-    <h1 class="page-head__title">نتایج جستجو برای «<bdi>{{ query }}</bdi>»</h1>
-    {% if not limited %}<p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>{% endif %}
-  {% else %}
-    <h1 class="page-head__title">جستجو</h1>
-  {% endif %}
-</header>
+{% comment %}
+No second search box: the header's carries the query and is on every page.
 
-{% comment %}No second search box: the header's carries the query and is on every page.{% endcomment %}
+A miss shows the shelf. Every credible Iranian site answers an empty search
+with exactly one concrete next thing — Taaghche sends you to the bestsellers,
+Divar offers to save the search, Digikala points at the filters — and at ten
+products the most useful by a distance is the whole catalogue. Someone who
+typed «چت جپت» sees ChatGPT without touching the keyboard again.
+
+The page used to say «املای دیگه‌ای رو امتحان کنید». «املا» is what a teacher
+marks wrong on a child's dictation; it accuses, and it is advice rather than
+an answer. The heading takes the blame in the first person plural, which is
+what digikala, basalam and modiseh all do: «پیدا نکردیم», never «پیدا نشد».
+{% endcomment %}
 {% if limited %}
+  <header class="page-head">
+    <h1 class="page-head__title">جستجو</h1>
+  </header>
   <div class="card empty">
     <p class="prose" style="margin:0">جستجوهای پشت سر هم زیاد شد.</p>
     <p class="small" style="margin:0">یک دقیقه دیگه دوباره تلاش کنید.</p>
   </div>
+
 {% elif query and not results %}
-  <div class="card empty">
-    <p class="prose" style="margin:0">نتیجه‌ای برای «<bdi>{{ query }}</bdi>» پیدا نشد.</p>
-    <p class="small" style="margin:0">املای دیگه‌ای رو امتحان کنید، یا از تلگرام بپرسید.</p>
-    <a class="btn btn--secondary" href="{% url 'home' %}">همه‌ی محصولات</a>
-  </div>
-{% elif results %}
-  <div class="grid">
-    {% for product in results %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
-  </div>
+  <header class="page-head">
+    <h1 class="page-head__title"><bdi>{{ query }}</bdi> رو نداریم</h1>
+    {% if everything %}<p class="small page-head__intro">هرچی داریم اینهاست:</p>{% endif %}
+  </header>
+  {% if everything %}
+    <div class="grid">
+      {% for product in everything %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty">
+      <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
+    </div>
+  {% endif %}
+
+{% else %}
+  <header class="page-head">
+    {% if query %}
+      <h1 class="page-head__title">نتایج جستجو برای «<bdi>{{ query }}</bdi>»</h1>
+      <p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>
+    {% else %}
+      <h1 class="page-head__title">جستجو</h1>
+    {% endif %}
+  </header>
+  {% if results %}
+    <div class="grid">
+      {% for product in results %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+    </div>
+  {% endif %}
 {% endif %}
 </div>
 {% endblock %}

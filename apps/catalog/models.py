@@ -17,12 +17,20 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar
 
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import TrigramWordSimilarity
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.catalog.search import normalize_for_search
+
+# How close a misspelling has to be before the shop offers it as the answer.
+# Measured against every seeded product: real misspellings of a product name
+# score 0.5 and up, and the highest any unrelated word reaches is well under
+# this. Raise it if a search starts answering the wrong question.
+FUZZY_THRESHOLD = 0.4
 
 
 def MoneyField(**kwargs: Any) -> models.DecimalField:  # noqa: N802 — reads as a type
@@ -61,15 +69,26 @@ class ProductQuerySet(models.QuerySet["Product"]):
         return self.filter(status=Product.Status.ACTIVE)
 
     def search(self, query: str) -> ProductQuerySet:
-        """Match on the normalised column so an Arabic-keyboard «كلاود» finds
-        «کلاود», and match each word separately so word order and an extra word
-        do not decide the answer — «جیپت چت» and «چت جیپت پلاس» are the same
-        question. What a word can match is widened by `aliases`, because no
-        folding turns one transliteration into another.
+        """Exact first, then close enough.
 
-        Deliberately icontains and deliberately unindexed: a btree cannot serve a
-        substring match, and a sequential scan over a few dozen rows is instant.
-        pg_trgm is the named upgrade if the catalog ever grows."""
+        The first pass matches on the normalised column, so an Arabic-keyboard
+        «كلاود» finds «کلاود», and matches each word separately, so word order
+        and an extra word do not decide the answer — «جیپت چت» and «چت جیپت
+        پلاس» are the same question. What a word can mean is widened by
+        `aliases`, the operator's list of spellings a customer might type.
+
+        That list can never be finished, which is the whole reason for the
+        second pass. «چت جیپت» was on it and «چت جپت» was not, so one real
+        spelling of ChatGPT found the product and the other found nothing —
+        and no amount of character folding turns one transliteration into
+        another. A trigram compares the shapes of the letters instead of the
+        words, so a missing ی, a doubled letter or a swapped pair still
+        matches. It runs only when the exact pass finds nothing: fuzzy results
+        for a query that had a real answer would be noise, and a miss is the
+        only moment where a near-match is better than an empty page.
+
+        0.4 is measured, not guessed — see
+        `test_the_fuzzy_threshold_separates_real_spellings_from_noise`."""
         needle = normalize_for_search(query)
         if not needle:
             return self.none()
@@ -78,7 +97,13 @@ class ProductQuerySet(models.QuerySet["Product"]):
         # real search needs more than a handful of words to be precise.
         for word in needle.split()[:8]:
             matches = matches.filter(search_text__icontains=word)
-        return matches
+        if matches.exists():
+            return matches
+        return (
+            self.annotate(closeness=TrigramWordSimilarity(needle, "search_text"))
+            .filter(closeness__gte=FUZZY_THRESHOLD)
+            .order_by("-closeness", "name")
+        )
 
 
 class Product(models.Model):
@@ -135,6 +160,16 @@ class Product(models.Model):
         verbose_name = "محصول"
         verbose_name_plural = "محصولات"
         ordering = ["name"]
+        # Serves the trigram fallback in `search()`. It does nothing at a
+        # dozen rows and everything at a thousand; declared here so the model
+        # and the migration state agree about it existing.
+        indexes = [
+            GinIndex(
+                fields=["search_text"],
+                opclasses=["gin_trgm_ops"],
+                name="product_search_text_trgm",
+            )
+        ]
         constraints = [
             # The 48-hour cap is the delivery promise on every product page
             # (ADR-0009): zero would read as instant, and 49 breaks the promise.

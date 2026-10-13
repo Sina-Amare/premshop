@@ -106,7 +106,7 @@ PRODUCTS: list[dict[str, Any]] = [
             ("پشتیبانی", "تا پایان دوره"),
         ],
         plans=[("۱ ماهه", 30, 900000, 1450000, None), ("۳ ماهه", 90, 2600000, 3900000, 3500000)],
-        input="ایمیل حساب Claude شما",
+        input="ایمیل حساب Claude",
     ),
     dict(
         name="ChatGPT Plus",
@@ -117,9 +117,9 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=12,
         short="اشتراک ChatGPT Plus روی اکانت خودتان.",
-        specs=[("نوع اشتراک", "Plus"), ("فعال‌سازی", "روی ایمیل شما")],
+        specs=[("نوع اکانت", "اختصاصی", True), ("نوع اشتراک", "Plus")],
         plans=[("۱ ماهه", 30, 850000, 1390000, None)],
-        input="ایمیل حساب OpenAI شما",
+        input="ایمیل حساب OpenAI",
     ),
     dict(
         name="Gemini Advanced",
@@ -130,9 +130,9 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.DAYS_7,
         hours=24,
         short="Gemini Advanced به همراه ۲ ترابایت فضای Google One.",
-        specs=[("فضای ابری", "۲ ترابایت"), ("فعال‌سازی", "روی آدرس Gmail شما")],
+        specs=[("نوع اکانت", "اختصاصی", True), ("فضای ابری", "۲ ترابایت")],
         plans=[("۱ ماهه", 30, 700000, 1190000, None), ("۲ ماهه", 60, 1300000, 2290000, None)],
-        input="آدرس Gmail شما",
+        input="آدرس Gmail",
     ),
     dict(
         name="GitHub Copilot",
@@ -145,7 +145,7 @@ PRODUCTS: list[dict[str, Any]] = [
         short="Copilot روی اکانت GitHub خودتان؛ برای VS Code و JetBrains.",
         specs=[("پلن", "Individual"), ("محیط‌ها", "VS Code · JetBrains · Neovim")],
         plans=[("۱ ماهه", 30, 550000, 890000, None), ("۱۲ ماهه", 365, 5200000, 8900000, 7900000)],
-        input="نام کاربری GitHub شما",
+        input="نام کاربری GitHub",
     ),
     dict(
         name="JetBrains All Products",
@@ -169,13 +169,13 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=6,
         short="Spotify Premium روی اکانت خودتان.",
-        specs=[("ریجن", "ترکیه"), ("فعال‌سازی", "روی اکانت شما")],
+        specs=[("نوع اکانت", "اختصاصی", True), ("ریجن", "ترکیه")],
         plans=[
             ("۱ ماهه", 30, 90000, 190000, None),
             ("۳ ماهه", 90, 250000, 490000, 420000),
             ("۱۲ ماهه", 365, 900000, 1690000, None),
         ],
-        input="ایمیل حساب Spotify شما",
+        input="ایمیل حساب Spotify",
     ),
     dict(
         name="YouTube Premium",
@@ -186,9 +186,9 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.DAYS_7,
         hours=12,
         short="YouTube Premium بدون تبلیغ، به همراه YouTube Music.",
-        specs=[("ریجن", "ترکیه"), ("شامل", "YouTube Music")],
+        specs=[("نوع اکانت", "اختصاصی", True), ("ریجن", "ترکیه"), ("شامل", "YouTube Music")],
         plans=[("۱ ماهه", 30, 120000, 240000, None)],
-        input="آدرس Gmail شما",
+        input="آدرس Gmail",
     ),
     dict(
         name="Netflix",
@@ -199,7 +199,12 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=2,
         short="اکانت آماده‌ی Netflix، یک پروفایل اختصاصی.",
-        specs=[("پلن", "Standard"), ("کیفیت", "Full HD"), ("صفحه", "۱ اختصاصی")],
+        specs=[
+            ("نوع اکانت", "اختصاصی", True),
+            ("پخش هم‌زمان", "۲ دستگاه", True),
+            ("پلن", "Standard"),
+            ("کیفیت", "Full HD"),
+        ],
         plans=[("۱ ماهه", 30, 200000, 390000, 340000)],
     ),
     dict(
@@ -212,7 +217,7 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.NONE,
         hours=1,
         short="گیفت کارت Apple آمریکا، تحویل کد.",
-        specs=[("ریجن", "آمریکا"), ("تحویل", "کد ۱۶ رقمی")],
+        specs=[("ریجن", "آمریکا", True), ("تحویل", "کد ۱۶ رقمی")],
         plans=[
             ("۱۰ دلاری", None, 1050000, 1180000, None),
             ("۲۵ دلاری", None, 2600000, 2900000, None),
@@ -301,9 +306,14 @@ class Command(BaseCommand):
                 },
             )
             product.specs.all().delete()
-            for order, (title, value) in enumerate(spec["specs"]):
+            for order, row in enumerate(spec["specs"]):
+                title, value, *key = row
                 ProductSpec.objects.create(
-                    product=product, title=title, value=value, sort_order=order
+                    product=product,
+                    title=title,
+                    value=value,
+                    is_key=bool(key and key[0]),
+                    sort_order=order,
                 )
             product.plans.all().delete()
             for order, (title, days, cost, sale, promo) in enumerate(spec["plans"]):

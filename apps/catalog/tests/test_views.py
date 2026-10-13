@@ -352,10 +352,15 @@ def test_search_finds_sloppy_arabic_keyboard_input(client, product):
 
 
 def test_search_miss_is_a_designed_empty_state(client, product):
+    """It used to be a card saying «پیدا نشد» with a link home. It is the
+    catalogue now: with ten products the shelf is a better answer than a
+    sentence, and the heading takes the blame in the first person the way
+    every Iranian shop surveyed does."""
     body = client.get(reverse("search") + "?q=xyzzy").content.decode()
 
-    assert "پیدا نشد" in body
-    assert reverse("home") in body
+    assert "نداریم" in body
+    assert product.name in body, "the shelf should be on the page"
+    assert "پیدا نشد" not in body, "the passive puts the miss on the visitor"
 
 
 def test_search_rate_limited(client, product):

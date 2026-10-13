@@ -181,6 +181,54 @@ def test_a_mixed_name_is_isolated_too(client, shop):
     assert 'class="pcard__name"><bdi>اشتراک Netflix</bdi>' in body
 
 
+# --- Empty states and the length of an answer --------------------------------
+
+
+def test_a_search_miss_shows_the_shelf_instead_of_advice(client, shop):
+    """Every credible Iranian site answers an empty search with one concrete
+    next thing. At ten products that is the catalogue: someone who typed
+    «چت جپت» sees ChatGPT without touching the keyboard again."""
+    body = client.get(reverse("search"), {"q": "zzzqqq"}).content.decode()
+
+    assert shop.name in body, "the shelf is not on the page"
+    assert 'class="pcard"' in body
+
+
+@pytest.mark.parametrize("scolding", ["املا", "اشتباه تایپ", "دوباره بنویس"])
+def test_no_page_tells_the_visitor_they_typed_it_wrong(client, shop, scolding):
+    """«املا» is what a teacher marks on a child's dictation — it accuses, and
+    it is advice rather than an answer. Divar's «نگارش کلمه‌ها» survives only
+    because it sits under a heading that claims the *exact* match is missing,
+    with an action above it. Ours had neither."""
+    for url in [reverse("search") + "?q=zzzqqq", reverse("home"), "/no-such-page/"]:
+        assert scolding not in client.get(url).content.decode(), url
+
+
+def test_the_shop_takes_the_blame_for_a_miss(client, shop):
+    """digikala «پیدا نکردیم», basalam «چیزی پیدا نکردیم», modiseh «پیدا
+    نکردیم» — first person plural, every time. «پیدا نشد» is the passive that
+    puts it on the visitor."""
+    body = client.get(reverse("search"), {"q": "zzzqqq"}).content.decode()
+
+    assert "پیدا نشد" not in body
+
+
+def test_every_faq_answer_is_short(client, shop):
+    """Measured, not felt: across 126 answers on real Iranian shop FAQ pages,
+    61% are one sentence and 87% are two or fewer, median 25 words. A third
+    sentence puts this shop in the worst-written 12% of its market."""
+    body = client.get(reverse("faq")).content.decode()
+    answers = re.findall(r'<div class="qa__a"><p class="prose">(.*?)</p>', body, re.S)
+
+    assert len(answers) >= 5, "the FAQ lost its answers"
+    for answer in answers:
+        plain = re.sub(r"<[^>]+>", "", answer).strip()
+        words = len(plain.split())
+        sentences = len([part for part in re.split(r"[.؟!]", plain) if part.strip()])
+        assert words <= 30, f"{words} words: {plain[:60]}"
+        assert sentences <= 2, f"{sentences} sentences: {plain[:60]}"
+
+
 # --- The brand marks ---------------------------------------------------------
 
 

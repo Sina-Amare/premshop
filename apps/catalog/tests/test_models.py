@@ -9,7 +9,7 @@ import pytest
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.catalog.models import Category, Plan, Product
+from apps.catalog.models import FUZZY_THRESHOLD, Category, Plan, Product
 from apps.catalog.pricing import effective_price
 
 pytestmark = pytest.mark.django_db
@@ -230,7 +230,15 @@ def test_every_word_is_matched_separately(chatgpt):
     before 2026-10-13 the whole query had to appear as one contiguous substring."""
     assert list(Product.objects.public().search("جیپت چت")) == [chatgpt]
     assert list(Product.objects.public().search("چت جیپت پلاس")) == [chatgpt]
-    assert list(Product.objects.public().search("چت جیپت نتفلیکس")) == []
+
+
+def test_a_word_matching_nothing_now_falls_through_to_the_closest_product(chatgpt):
+    """This returned nothing until the trigram pass existed, and the change is
+    deliberate. The AND is still strict — no product contains both names, so
+    the exact pass finds nothing — but a miss now offers the nearest product
+    instead of an empty page. Someone who typed two product names at once is
+    better served by one of them than by neither."""
+    assert list(Product.objects.public().search("چت جیپت نتفلیکس")) == [chatgpt]
 
 
 def test_aliases_never_reach_the_visitor(client, chatgpt):
@@ -262,3 +270,71 @@ def test_a_category_with_products_cannot_be_deleted(product):
 
     with pytest.raises(ProtectedError):
         product.category.delete()
+
+
+# --- Spellings nobody listed -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "typed",
+    [
+        "چت جپت",  # the ی dropped — the spelling that started this
+        "چتجیپیتی",  # run together, no spaces
+        "چت جی پی تی",  # on the alias list, so the exact pass answers
+        "chatgtp",  # Latin, two letters transposed
+    ],
+)
+def test_a_spelling_that_is_not_on_the_alias_list_still_finds_it(chatgpt, typed):
+    """`aliases` is a hand-written list and can never be finished. «چت جیپت»
+    was on it and «چت جپت» was not, so one real spelling of ChatGPT found the
+    product and the other found nothing. A trigram compares the shapes of the
+    letters, which is the only thing that catches a transliteration the
+    operator never thought of."""
+    assert list(Product.objects.public().search(typed)) == [chatgpt]
+
+
+def test_an_exact_match_is_never_diluted_by_near_ones(chatgpt):
+    """The fuzzy pass runs only when the exact one finds nothing. A query
+    that had a real answer must not pick up neighbours as well."""
+    Product.objects.create(
+        category=chatgpt.category,
+        name="ChatGPT Team",
+        slug="chatgpt-team",
+        delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+        delivery_hours=12,
+        status=Product.Status.ACTIVE,
+    )
+
+    found = list(Product.objects.public().search("chatgpt plus"))
+
+    assert found == [chatgpt]
+
+
+@pytest.mark.parametrize("nonsense", ["zzzqqq", "کفش", "سلام", "qwertyuiop"])
+def test_nonsense_still_finds_nothing(chatgpt, nonsense):
+    """A fuzzy search that answers everything is worse than one that answers
+    nothing: it would put ChatGPT in front of someone looking for shoes."""
+    assert list(Product.objects.public().search(nonsense)) == []
+
+
+def test_the_fuzzy_threshold_separates_real_spellings_from_noise(chatgpt):
+    """The number in FUZZY_THRESHOLD is measured, and this is the measurement.
+    If a future catalogue narrows the gap, this fails before a customer finds
+    out by being shown the wrong product."""
+    from django.contrib.postgres.search import TrigramWordSimilarity
+
+    def closeness(text: str) -> float:
+        return (
+            Product.objects.filter(pk=chatgpt.pk)
+            .annotate(score=TrigramWordSimilarity(text, "search_text"))
+            .values_list("score", flat=True)[0]
+        )
+
+    real = [closeness(q) for q in ["چت جپت", "چتجیپیتی", "chatgtp", "چت گپت"]]
+    noise = [closeness(q) for q in ["zzzqqq", "کفش", "سلام", "نتفلیکس"]]
+
+    assert min(real) >= FUZZY_THRESHOLD, f"a real spelling scores {min(real):.2f}"
+    assert max(noise) < FUZZY_THRESHOLD, f"noise scores {max(noise):.2f}"
+    # And the gap is wide enough that the threshold is not balanced on a knife
+    # edge — if this shrinks, the two populations have started to overlap.
+    assert min(real) - max(noise) > 0.1

@@ -143,9 +143,15 @@ def search(request: HttpRequest) -> HttpResponse:
         ratelimit.SEARCH_PER_IP, ratelimit.client_ip(request)
     )
     results = [] if (limited or not query) else list(_for_cards().search(query)[:SEARCH_RESULT_CAP])
+    # A miss shows the whole shelf. Every credible Iranian site answers an
+    # empty search with one concrete thing to do next, and at ten products the
+    # most useful thing by a distance is the catalogue itself: someone who
+    # typed «چت جپت» sees ChatGPT on the page without touching the keyboard
+    # again. Telling them to check their spelling is advice, not an answer.
+    everything = [] if (results or limited) else list(_for_cards().order_by("name"))
     return render(
         request,
         "catalog/search.html",
-        {"query": query, "results": results, "limited": limited},
+        {"query": query, "results": results, "limited": limited, "everything": everything},
         status=429 if limited else 200,
     )
