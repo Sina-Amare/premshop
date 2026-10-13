@@ -176,3 +176,68 @@ def test_the_page_at_phone_width(browser, live_server, user):
         page.screenshot(path=str(SHOTS / "09-phone-login.png"), full_page=True)
     finally:
         context.close()
+
+
+@pytest.fixture
+def shelves(db):
+    """The shelves row only renders for departments that have something in
+    them, so a header test needs a shop behind it."""
+    from decimal import Decimal
+
+    from apps.catalog.models import Category, Plan, Product
+
+    category = Category.objects.create(name="هوش مصنوعی", slug="ai")
+    product = Product.objects.create(
+        category=category,
+        name="ChatGPT Plus",
+        slug="chatgpt-plus",
+        delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+        warranty=Product.Warranty.FULL_PERIOD,
+        delivery_hours=12,
+        status=Product.Status.ACTIVE,
+    )
+    Plan.objects.create(
+        product=product,
+        title="۱ ماهه",
+        duration_days=30,
+        cost_price=Decimal(850000),
+        sale_price=Decimal(1390000),
+    )
+    return product
+
+
+def test_the_header_pins_itself_while_the_promise_strip_scrolls_away(browser, live_server, shelves):
+    """`position: sticky` fails silently — one `overflow: hidden` on an
+    ancestor and it simply stops sticking, with no error anywhere. It also
+    only travels inside its own parent, which is why the sticky box here is
+    <header> itself rather than a wrapper inside it: wrapped, it would pin
+    for the height of the header and then leave with it.
+
+    A shop whose search box disappears the moment you scroll the catalogue
+    is a shop that is harder to buy from, so this is worth a browser test.
+    """
+    context = browser.new_context(viewport={"width": 1280, "height": 800})
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/")
+        assert (
+            page.evaluate(
+                "() => document.querySelector('.hdr__promise').getBoundingClientRect().top"
+            )
+            == 0
+        )
+
+        page.evaluate("() => window.scrollTo(0, 900)")
+        geometry = page.evaluate("""() => ({
+                bar: Math.round(document.querySelector('.hdr__main').getBoundingClientRect().top),
+                cats: Math.round(document.querySelector('.cats').getBoundingClientRect().top),
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            })""")
+
+        assert geometry["bar"] == 0, f"the header did not pin: {geometry}"
+        assert geometry["cats"] < 0, "the shelves row should scroll away, not pin"
+        assert (
+            geometry["overflow"] <= 0
+        ), f"the full-bleed bands overflow by {geometry['overflow']}px"
+    finally:
+        context.close()
