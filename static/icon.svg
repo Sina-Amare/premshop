@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="PremShop">
+  <!-- The same ink the page opens and closes on, at the same 14px-per-128
+       corner as a card. The P is drawn as a stroke rather than set in type:
+       a favicon that depends on a font renders as a blank square wherever
+       that font is not there, which is every browser tab. -->
+  <rect width="128" height="128" rx="28" fill="#131313"/>
+  <path d="M48 98 V34 H68 a17 17 0 0 1 0 34 H48"
+        fill="none" stroke="#ffffff" stroke-width="13"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
