@@ -130,6 +130,29 @@
     </div>
   </aside>
 </div>
+
+{% if related %}
+<section class="section">
+  {% comment %}
+  Same department first, then whatever carries a live discount, then the
+  newest — ranked in the view, not shuffled. The heading claims no more than
+  that: nothing here knows what this visitor likes, and there are no orders
+  yet to learn from, so «پیشنهاد ویژه‌ی شما» would be a lie told in a
+  friendly voice.
+  {% endcomment %}
+  <div class="section__head">
+    <h2 class="section__title">اینا رو هم داریم</h2>
+    <a class="shelf__all" href="{% url 'category' product.category.slug %}">
+      همه‌ی {{ product.category.name }}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+    </a>
+  </div>
+  <div class="grid">
+    {% for other in related %}{% include "catalog/_card.html" with product=other first=False %}{% endfor %}
+  </div>
+</section>
+{% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -179,5 +202,4 @@
   applyPlan();
 })();
 </script>
-</div>
 {% endblock %}

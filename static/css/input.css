@@ -523,6 +523,32 @@
   .section__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
                     line-height: 1.35; margin: 0 0 var(--spacing-5); }
 
+  /* A department heading inside a list the visitor is already reading, so it
+     is deliberately quieter than .section__title: no rule, smaller type, and
+     a link out to the full department. The chevron points to the start of the
+     line and nudges that way on hover, matching .dept__go. */
+  .shelf + .shelf { margin-block-start: var(--spacing-7); }
+  /* Wider cards inside a department than in the flat grid. Departments here
+     hold two or three products, and four narrow columns left every row with
+     a hole in it; three wide ones fill the row at three and look deliberate
+     at two. */
+  .shelf .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  /* The department is the heading above these cards. Printing it again on
+     every card says the same word three times across one row. */
+  .shelf .pcard__cat { display: none; }
+  .shelf__head { display: flex; align-items: baseline; justify-content: space-between;
+                 gap: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .shelf__title { font-family: var(--font-head); font-size: 17px; font-weight: 600;
+                  line-height: 1.4; margin: 0; }
+  .shelf__all { display: inline-flex; align-items: center; gap: var(--spacing-1);
+                font-size: 14px; color: var(--color-secondary); text-decoration: none;
+                white-space: nowrap;
+                transition: color var(--dur) var(--ease); }
+  .shelf__all svg { inline-size: 16px; block-size: 16px;
+                    transition: transform var(--dur-lg) var(--ease-out); }
+  .shelf__all:hover { color: var(--color-ink); }
+  .shelf__all:hover svg { transform: translateX(-3px); }
+
   /* --- Home: the opening composition ----------------------------------------
      Light, like all three of the references the owner chose, and coloured by
      the only thing on this site allowed to carry colour: the goods. The field

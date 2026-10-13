@@ -376,6 +376,97 @@ def test_seo_fields_render_when_set(client, product):
     assert 'content="کلاود پرو با تحویل ۱۲ ساعته"' in body
 
 
+# --- Grouping on the home page, and what to show next on a product page ----
+
+
+def test_home_groups_products_under_their_department(client, category, product):
+    other = Category.objects.create(name="گیفت کارت", slug="gift", sort_order=1)
+    make_product(other, "steam-gift")
+
+    body = client.get(reverse("home")).content.decode()
+
+    groups = re.findall(r'class="shelf__title">([^<]+)<', body)
+    assert groups == ["هوش مصنوعی", "گیفت کارت"], "one heading per department, in sort order"
+    assert body.count('class="shelf__all"') == 2, "each group links to its own department"
+    assert 'href="/c/gift/"' in body
+
+
+def test_every_product_on_the_home_page_lands_in_a_group(client, category, product):
+    """A product belongs to exactly one department, so a grid grouped by
+    department must still show all of them. The group list and the grid are
+    built from two separate queries; if those two filters ever drift apart, a
+    product disappears from the home page and nothing says so."""
+    make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
+    make_product(category, "copilot")
+
+    response = client.get(reverse("home"))
+    grouped = [p.pk for _, items in response.context["by_category"] for p in items]
+
+    assert sorted(grouped) == sorted(p.pk for p in response.context["featured"])
+    assert len(grouped) == len(set(grouped)), "and in exactly one group, not two"
+
+
+def test_an_empty_department_gets_no_heading(client, category, product):
+    Category.objects.create(name="خالی", slug="empty")
+
+    body = client.get(reverse("home")).content.decode()
+
+    assert "خالی" not in body
+
+
+def test_a_department_the_cap_cut_off_gets_no_heading(client, category, product, monkeypatch):
+    """The grid is capped and the department list is not, so once the
+    catalogue outgrows one screen a department can have products and still
+    have nothing to show here. A heading over an empty grid is the visible
+    form of that."""
+    monkeypatch.setattr("apps.catalog.views.HOME_PRODUCT_CAP", 1)
+    make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
+
+    response = client.get(reverse("home"))
+    body = response.content.decode()
+
+    shown = list(response.context["featured"])
+    assert len(shown) == 1
+    assert re.findall(r'class="shelf__title">([^<]+)<', body) == [shown[0].category.name]
+
+
+def test_product_page_suggests_other_products(client, category, product):
+    sibling = make_product(category, "copilot")
+    elsewhere = make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+    suggested = body.split("اینا رو هم داریم", 1)[1]
+
+    assert f'href="/p/{sibling.slug}/"' in suggested
+    assert f'href="/p/{elsewhere.slug}/"' in suggested, "a thin department is topped up"
+    assert f'href="/p/{product.slug}/"' not in suggested, "never suggest the page you are on"
+
+
+def test_suggestions_put_the_same_department_first(client, category, product):
+    """Ranked, not shuffled: the department the visitor is already in, then a
+    live discount, then the rest. Nothing here knows the visitor — there are
+    no orders yet to learn from — so the page must not imply that it does."""
+    gifts = Category.objects.create(name="گیفت کارت", slug="gift")
+    make_product(gifts, "discounted-gift", promo_price=Decimal("100000"))
+    sibling = make_product(category, "copilot")
+
+    response = client.get(reverse("product", args=[product.slug]))
+
+    assert response.context["related"][0].pk == sibling.pk
+    assert "پیشنهاد" not in response.content.decode(), "no claim of personalisation"
+
+
+def test_suggestions_are_capped_and_cost_a_fixed_number_of_queries(client, category, product):
+    for i in range(9):
+        make_product(category, f"p{i}")
+
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(reverse("product", args=[product.slug]))
+
+    assert len(response.context["related"]) == 4
+    assert len(queries) <= PRODUCT_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
+
+
 # --- Search ---------------------------------------------------------------------
 
 

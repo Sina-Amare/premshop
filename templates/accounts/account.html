@@ -14,11 +14,13 @@ at the moment of login, so it would read «لحظاتی پیش» every single ti
 
 The phone number appears once, in the field that edits it. It used to be
 printed on an overview page as well, which meant one fact in two places and
-no way to tell which one was authoritative.
+no way to tell which one was authoritative. «روش ورود» is gone for a
+related reason: it described the login system rather than the account, and
+the only part of it the customer can act on is the «ثبت رمز عبور» card
+below.
 {% endcomment %}
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
-  <div class="fact"><span class="fact__k">روش ورود</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.has_usable_password %}رمز عبور یا کد ایمیل{% else %}فقط کد ایمیل{% endif %}</span></div>
   <div class="fact"><span class="fact__k">عضو از</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 

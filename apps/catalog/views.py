@@ -67,6 +67,11 @@ def home(request: HttpRequest) -> HttpResponse:
     # on its own — a shop that advertises an expired discount has done worse
     # than not advertising one.
     discounted = [p for p in featured if p.cheapest_plan and p.cheapest_plan.promotion_is_active]
+    # Grouped by department rather than one flat grid. Costs no query: the
+    # products and the categories are both already in memory, and a product
+    # belongs to exactly one category.
+    by_category = [(cat, [p for p in featured if p.category_id == cat.id]) for cat in categories]
+    by_category = [(cat, items) for cat, items in by_category if items]
     return render(
         request,
         "catalog/home.html",
@@ -75,6 +80,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "featured": featured,
             "shelf": shelf,
             "discounted": discounted,
+            "by_category": by_category,
         },
     )
 
@@ -97,6 +103,7 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     # actually take more than one, so a visitor with JavaScript off never sees
     # a stepper that cannot do anything.
     ceilings = [p.max_quantity for p in available] or [1]
+    related = _related_to(obj)
     return render(
         request,
         "catalog/product.html",
@@ -107,12 +114,45 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             "any_plan_takes_more_than_one": max(ceilings) > 1,
             "max_quantity": max(ceilings),
             "specs": list(obj.specs.all()),
+            "related": related,
             # The facts the operator marked important enough to print beside
             # the title. Nothing is key by default, so a product the operator
             # has not thought about shows exactly what it showed before.
             "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
         },
     )
+
+
+RELATED_COUNT = 4
+
+
+def _related_to(product: Product) -> list[Product]:
+    """What to show someone at the bottom of a product page.
+
+    Ranked, not random: same department first, then anything with a live
+    discount, then the newest. There is no "customers also bought" here and
+    there will not be until there are customers — no order table exists yet,
+    so any claim about what is popular would be invented. These three signals
+    are all true today, which is the whole bar.
+
+    One query, or two when a department is too small to fill the row.
+    """
+    same = list(
+        _for_cards().filter(category=product.category).exclude(pk=product.pk)[:RELATED_COUNT]
+    )
+    if len(same) < RELATED_COUNT:
+        seen = {product.pk, *(p.pk for p in same)}
+        same += list(_for_cards().exclude(pk__in=seen)[: RELATED_COUNT - len(same)])
+
+    def rank(other: Product) -> tuple[int, int, str]:
+        plan = other.cheapest_plan
+        return (
+            0 if other.category_id == product.category_id else 1,
+            0 if plan and plan.promotion_is_active else 1,
+            other.name,
+        )
+
+    return sorted(same, key=rank)[:RELATED_COUNT]
 
 
 def faq(request: HttpRequest) -> HttpResponse:

@@ -128,19 +128,38 @@ furniture.
   {% endif %}
 
   <section class="section" id="products">
+    {% comment %}
+    One grid of everything told a visitor nothing about what kind of shop this
+    is; the same products under their department headings do. Grouping here
+    rather than on the category pages, because this is the page someone lands
+    on — the department page is where you go once you know which one you want.
+
+    Every active product is in exactly one of these groups: the group list is
+    built from the same ACTIVE filter the grid is, so nothing can quietly fall
+    between two headings. A test holds that.
+    {% endcomment %}
     <div class="section__head">
       <h2 class="section__title">محصولات</h2>
       <span class="small" style="margin: 0">{{ featured|length|fa_digits }} محصول</span>
     </div>
-    {% if featured %}
-      <div class="grid">
-        {% for product in featured %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+    {% for cat, items in by_category %}
+      <div class="shelf">
+        <div class="shelf__head">
+          <h3 class="shelf__title">{{ cat.name }}</h3>
+          <a class="shelf__all" href="{% url 'category' cat.slug %}">
+            مشاهده همه
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+          </a>
+        </div>
+        <div class="grid">
+          {% for product in items %}{% if forloop.first and forloop.parentloop.first %}{% include "catalog/_card.html" with product=product first=True %}{% else %}{% include "catalog/_card.html" with product=product first=False %}{% endif %}{% endfor %}
+        </div>
       </div>
-    {% else %}
+    {% empty %}
       <div class="card empty">
         <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
       </div>
-    {% endif %}
+    {% endfor %}
   </section>
 
   {% comment %}
