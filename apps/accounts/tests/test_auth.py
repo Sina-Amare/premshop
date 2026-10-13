@@ -468,7 +468,7 @@ def test_the_account_page_renders_for_a_signed_in_user(client, user):
     assert response.status_code == 200
     body = response.content.decode()
     assert user.email in body
-    assert "رمز عبور" in body, "the password form must be there and use the site's wording"
+    assert "رمز عبور" in body, "the dashboard must offer the password section"
 
 
 def test_an_otp_only_user_is_not_asked_for_a_current_password(client):
@@ -476,7 +476,7 @@ def test_an_otp_only_user_is_not_asked_for_a_current_password(client):
     passwordless = User.objects.create_user("otponly2@example.test")
     client.force_login(passwordless)
 
-    body = client.get(reverse("account")).content.decode()
+    body = client.get(reverse("account-password")).content.decode()
 
     assert "رمز عبور فعلی" not in body
 
@@ -488,7 +488,7 @@ def test_no_password_input_is_ever_rendered_without_the_field_class(client, user
     on the account page and was caught by looking at a screenshot, not a test."""
     client.force_login(user)
 
-    body = client.get(reverse("account")).content.decode()
+    body = client.get(reverse("account-password")).content.decode()
 
     for match in re.finditer(r"<input[^>]*type=\"password\"[^>]*>", body):
         assert "field__input" in match.group(0), match.group(0)

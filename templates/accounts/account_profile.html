@@ -1,0 +1,18 @@
+{% extends "accounts/_account_base.html" %}{% load fa %}
+
+{% block title %}اطلاعات حساب — PremShop{% endblock %}
+{% block heading %}اطلاعات حساب{% endblock %}
+
+{% block section %}
+<div class="card acct__card">
+  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin">{{ request.user.email }}</span></div>
+  <div class="fact"><span class="fact__k">وضعیت ایمیل</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.is_verified %}تأیید شده{% else %}تأیید نشده{% endif %}</span></div>
+  <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
+</div>
+
+<form method="post" class="acct__form">
+  {% csrf_token %}
+  {% include "accounts/_field.html" with field=profile_form.phone %}
+  <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
+</form>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% comment %}
+The account shell: navigation on the inline-start, which in this right-to-left
+page puts it on the right, where every Persian dashboard keeps it. One section
+per page, so adding سفارش‌های من at S4b and اشتراک‌های من at S9 costs one entry
+each and changes nothing else. Nothing is listed before it exists.
+{% endcomment %}
+
+{% block content %}
+<div class="acct">
+  <nav class="acct__nav" aria-label="بخش‌های حساب کاربری">
+    <a href="{% url 'account' %}"{% if section == "overview" %} aria-current="page"{% endif %}>پیشخوان</a>
+    <a href="{% url 'account-profile' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
+    <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
+    <form method="post" action="{% url 'logout' %}" class="acct__out">
+      {% csrf_token %}
+      <button type="submit" class="btn btn--ghost">خروج از حساب</button>
+    </form>
+  </nav>
+
+  <main class="acct__main">
+    {% for message in messages %}<div class="form-ok" role="status">{{ message }}</div>{% endfor %}
+    <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
+    {% block section %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

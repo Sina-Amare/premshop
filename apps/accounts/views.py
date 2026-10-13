@@ -203,36 +203,47 @@ def logout(request: HttpRequest) -> HttpResponse:
 
 @never_cache
 @login_required
-@require_http_methods(["GET", "POST"])
 def account(request: HttpRequest) -> HttpResponse:
+    """The dashboard's front page: who you are, and the way to everything else.
+
+    One section per page rather than every form stacked in one column — the
+    shape the shop grows into, where S4b adds سفارش‌های من and S9 adds
+    اشتراک‌های من as one navigation entry each. Nothing is listed before it
+    exists; a dead link on a shop that takes money reads as a shop that is not
+    finished.
+    """
+    return render(request, "accounts/account.html", {"section": "overview"})
+
+
+@never_cache
+@login_required
+@require_http_methods(["GET", "POST"])
+def account_profile(request: HttpRequest) -> HttpResponse:
+    user = cast(User, request.user)  # @login_required guarantees this
+    form = ProfileForm(request.POST or None, instance=user)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "شماره تماس ذخیره شد.")
+        return redirect(reverse("account-profile"))
+    return render(
+        request, "accounts/account_profile.html", {"profile_form": form, "section": "profile"}
+    )
+
+
+@never_cache
+@login_required
+@require_http_methods(["GET", "POST"])
+def account_password(request: HttpRequest) -> HttpResponse:
     # An OTP-only account has no current password to ask for, and asking anyway
     # would be an unanswerable question on the page that is supposed to fix it.
-    user = cast(User, request.user)  # @login_required guarantees this
-    password_form_class = (
-        StyledPasswordChangeForm if user.has_usable_password() else StyledSetPasswordForm
-    )
-    # Two forms on one page, told apart by a hidden `form` field. Only the one
-    # that was submitted is bound; the other renders clean, so a validation error
-    # in one never paints the other red.
-    which = request.POST.get("form") if request.method == "POST" else None
-    password_form = password_form_class(user, request.POST if which == "password" else None)
-    profile_form = ProfileForm(request.POST if which == "profile" else None, instance=user)
-
-    if which == "password" and password_form.is_valid():
-        user = password_form.save()
+    user = cast(User, request.user)
+    form_class = StyledPasswordChangeForm if user.has_usable_password() else StyledSetPasswordForm
+    form = form_class(user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
         # Changing a password rotates the session hash, which would log the user
         # out of the tab they are looking at. Re-issue it so it does not.
         django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         messages.success(request, "رمز عبور تغییر کرد.")
-        return redirect(reverse("account"))
-
-    if which == "profile" and profile_form.is_valid():
-        profile_form.save()
-        messages.success(request, "شماره تماس ذخیره شد.")
-        return redirect(reverse("account"))
-
-    return render(
-        request,
-        "accounts/account.html",
-        {"form": password_form, "profile_form": profile_form},
-    )
+        return redirect(reverse("account-password"))
+    return render(request, "accounts/account_password.html", {"form": form, "section": "password"})

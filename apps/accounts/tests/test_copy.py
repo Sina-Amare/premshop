@@ -24,8 +24,8 @@ def user():
 
 def change_password(client, old: str, new: str) -> str:
     return client.post(
-        reverse("account"),
-        {"form": "password", "old_password": old, "new_password1": new, "new_password2": new},
+        reverse("account-password"),
+        {"old_password": old, "new_password1": new, "new_password2": new},
     ).content.decode()
 
 
@@ -60,9 +60,8 @@ def test_a_mismatched_repeat_speaks_the_shops_words(client, user):
     client.force_login(user)
 
     body = client.post(
-        reverse("account"),
+        reverse("account-password"),
         {
-            "form": "password",
             "old_password": PASSWORD,
             "new_password1": "Str0ng-enough-pass",
             "new_password2": "Str0ng-enough-pasS",

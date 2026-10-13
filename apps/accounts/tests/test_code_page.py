@@ -167,7 +167,7 @@ def test_the_password_hint_names_the_rules(client, user):
     from apps.accounts.forms import PASSWORD_HINT
 
     client.force_login(user)
-    body = client.get(reverse("account")).content.decode()
+    body = client.get(reverse("account-password")).content.decode()
 
     assert PASSWORD_HINT in body
     assert "۸" in PASSWORD_HINT, "the minimum length in settings is 8"
@@ -186,7 +186,7 @@ def test_the_password_hint_names_the_rules(client, user):
 def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
     client.force_login(user)
 
-    client.post(reverse("account"), {"form": "profile", "phone": typed})
+    client.post(reverse("account-profile"), {"phone": typed})
 
     user.refresh_from_db()
     assert user.phone == stored
@@ -195,20 +195,22 @@ def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
 def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
     client.force_login(user)
 
-    response = client.post(reverse("account"), {"form": "profile", "phone": "02122334455"})
+    response = client.post(reverse("account-profile"), {"phone": "02122334455"})
 
     user.refresh_from_db()
     assert user.phone == ""
     assert "۱۱ رقم" in response.content.decode()
 
 
-def test_saving_the_phone_does_not_touch_the_password_form(client, user):
-    """Two forms, one page: a submit to one must not paint the other red."""
+def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
+    """One section per page since 2026-10-13: the password form is not even on
+    this page, so a phone error cannot reach it. What must still hold is that
+    exactly one field is marked."""
     client.force_login(user)
 
-    body = client.post(reverse("account"), {"form": "profile", "phone": "12345"}).content.decode()
+    body = client.post(reverse("account-profile"), {"phone": "12345"}).content.decode()
 
-    assert "رمز عبور فعلی" in body
+    assert "رمز عبور فعلی" not in body
     assert body.count("field__error") == 1
 
 
@@ -227,3 +229,44 @@ def test_the_header_icon_goes_to_the_account_when_signed_in(client, user):
     body = client.get(reverse("account")).content.decode()
 
     assert f'href="{reverse("account")}" class="hdr__icon"' in body
+
+
+# --- The account dashboard ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("name", "heading"),
+    [("account", "پیشخوان"), ("account-profile", "اطلاعات حساب"), ("account-password", "رمز عبور")],
+)
+def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
+    client.force_login(user)
+
+    response = client.get(reverse(name))
+
+    assert response.status_code == 200
+    assert heading in response.content.decode()
+
+
+@pytest.mark.parametrize("name", ["account", "account-profile", "account-password"])
+def test_a_dashboard_section_requires_a_session(client, name):
+    assert client.get(reverse(name)).status_code == 302
+
+
+def test_the_navigation_marks_exactly_one_current_section(client, user):
+    client.force_login(user)
+
+    body = client.get(reverse("account-profile")).content.decode()
+
+    assert body.count('aria-current="page"') == 1
+    assert f'href="{reverse("account-profile")}" aria-current="page"' in body
+
+
+def test_the_dashboard_does_not_advertise_what_is_not_built(client, user):
+    """Orders arrive at S4b and subscriptions at S9. A menu entry that leads
+    nowhere on a shop that already takes money reads as an unfinished shop."""
+    client.force_login(user)
+
+    body = client.get(reverse("account")).content.decode()
+
+    for unbuilt in ["سفارش‌های من", "اشتراک‌های من", "تیکت", "کیف پول", "به‌زودی"]:
+        assert unbuilt not in body, unbuilt

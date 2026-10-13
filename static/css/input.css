@@ -580,6 +580,43 @@
                 text-decoration-thickness: 1px; margin-inline-end: var(--spacing-3);
                 font-variant-numeric: tabular-nums; }
 
+  /* --- Account dashboard ----------------------------------------------------
+     Navigation on the inline-start — the right, in this page's direction, where
+     every Persian dashboard keeps it. The current section is marked by a keyline
+     rather than a filled pill: one accent, spent on the action, not on the menu. */
+  .acct { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: var(--spacing-7);
+          align-items: start; }
+  .acct__nav { display: grid; gap: 2px; position: sticky; inset-block-start: var(--spacing-5); }
+  .acct__nav a { font-size: 15px; line-height: 1.5; color: var(--color-secondary);
+                 text-decoration: none; padding: 10px var(--spacing-3) 8px;
+                 border-inline-start: 2px solid transparent;
+                 transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+                             border-color var(--dur) var(--ease); }
+  .acct__nav a:hover { color: var(--color-ink); background: var(--color-fill-subtle); }
+  .acct__nav a[aria-current] { color: var(--color-ink); border-inline-start-color: var(--color-accent);
+                               background: var(--color-fill-subtle); }
+  .acct__out { margin-block-start: var(--spacing-4); padding-block-start: var(--spacing-4);
+               border-block-start: 1px solid var(--color-line); }
+  .acct__title { font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.4;
+                 margin: 0 0 var(--spacing-5); padding-block-end: var(--spacing-3);
+                 border-block-end: 1px solid var(--color-line); }
+  .acct__card { padding: var(--spacing-4) var(--spacing-5); margin-block-end: var(--spacing-5); }
+  .acct__hint { color: var(--color-muted); margin-block: 0 var(--spacing-5); }
+  .acct__form { max-inline-size: 26rem; display: grid; gap: var(--spacing-4); }
+  @media (max-width: 860px) {
+    .acct { grid-template-columns: 1fr; gap: var(--spacing-5); }
+    /* Wrapping, not scrolling: a menu item parked off the edge of a phone is a
+       menu item nobody finds. */
+    .acct__nav { position: static; display: flex; flex-wrap: wrap; align-items: center;
+                 gap: var(--spacing-2) var(--spacing-3); padding-block-end: var(--spacing-2);
+                 border-block-end: 1px solid var(--color-line); }
+    .acct__nav a { border-inline-start: 0; border-block-end: 2px solid transparent;
+                   white-space: nowrap; }
+    .acct__nav a[aria-current] { border-block-end-color: var(--color-accent); background: none; }
+    .acct__out { margin: 0; padding: 0; border: 0; }
+    .acct__out .btn { white-space: nowrap; }
+  }
+
   /* --- The signature: the ledger line -----------------------------------
      Every fact-value pair is a ledger row. The dotted leader is the grammar
      of an invoice — a document that exists because someone keeps records.

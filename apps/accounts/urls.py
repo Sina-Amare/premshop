@@ -9,4 +9,6 @@ urlpatterns = [
     path("login/code/resend/", views.login_code_resend, name="login-code-resend"),
     path("logout/", views.logout, name="logout"),
     path("account/", views.account, name="account"),
+    path("account/profile/", views.account_profile, name="account-profile"),
+    path("account/password/", views.account_password, name="account-password"),
 ]
