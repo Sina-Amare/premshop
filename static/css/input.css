@@ -860,11 +860,18 @@
            transition: background-color var(--dur) var(--ease); }
   .qa__q::-webkit-details-marker { display: none; }
   .qa__q:hover { background: var(--color-fill-subtle); }
-  .qa__q::after { content: ""; inline-size: 13px; block-size: 13px; flex: none;
-                  background: currentColor; color: var(--color-muted);
-                  clip-path: polygon(44% 0, 56% 0, 56% 44%, 100% 44%, 100% 56%, 56% 56%, 56% 100%, 44% 100%, 44% 56%, 0 56%, 0 44%, 44% 44%);
-                  transition: transform var(--dur-lg) var(--ease-out); }
-  .qa__item[open] .qa__q::after { transform: rotate(45deg); }
+  /* A plus whose upright stroke retracts into a minus. Rotating the plus 45°
+     makes an ✕, which means dismiss, not collapse — two different promises. */
+  .qa__q::after {
+    content: ""; inline-size: 13px; block-size: 13px; flex: none; color: var(--color-muted);
+    background:
+      linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
+    transition: background-size var(--dur-lg) var(--ease-out);
+  }
+  .qa__item[open] .qa__q::after {
+    background-size: 100% 1.5px, 1.5px 0;
+  }
   .qa__item[open] .qa__q { color: var(--color-ink); }
   .qa__a { padding: 0 var(--spacing-5) var(--spacing-5); }
   .qa__a .prose { margin: 0; max-inline-size: 46rem; }
