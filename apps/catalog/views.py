@@ -118,6 +118,10 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             "any_plan_takes_more_than_one": max(ceilings) > 1,
             "max_quantity": max(ceilings),
             "specs": list(obj.specs.all()),
+            # The facts the operator marked important enough to print beside
+            # the title. Nothing is key by default, so a product the operator
+            # has not thought about shows exactly what it showed before.
+            "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
         },
     )
 

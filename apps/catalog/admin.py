@@ -54,7 +54,7 @@ def format_html_join_safe(values: Any) -> SafeString:
 class ProductSpecForm(forms.ModelForm):
     class Meta:
         model = ProductSpec
-        fields = ["title", "value", "sort_order"]
+        fields = ["title", "value", "is_key", "sort_order"]
         widgets = {"title": SuggestingTextInput}
 
 
@@ -63,7 +63,7 @@ class ProductSpecInline(TabularInline):
     form = ProductSpecForm
     extra = 3
     hide_title = True
-    fields = ["title", "value", "sort_order"]
+    fields = ["title", "value", "is_key", "sort_order"]
     ordering = ["sort_order", "id"]
 
 

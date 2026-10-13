@@ -884,6 +884,10 @@
     font-variant-numeric: tabular-nums;
   }
   .badge--neutral { background: var(--color-fill-subtle); border-color: var(--color-line-strong); color: var(--color-secondary); }
+  /* A fact the operator marked important. Ink rather than tinted: it is not
+     a status, it is a property of the thing being sold, and the colour
+     budget belongs to the brand marks. */
+  .badge--key { background: var(--color-surface); border-color: var(--color-ink); color: var(--color-ink); }
   .badge--accent  { background: var(--color-accent-tint); border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-ground)); color: var(--color-accent); }
   .badge--ok      { background: color-mix(in oklab, var(--color-ok) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-ok) 28%, var(--color-ground)); color: var(--color-ok-text); }
   .badge--danger  { background: color-mix(in oklab, var(--color-danger) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-danger) 28%, var(--color-ground)); color: var(--color-danger-text); }

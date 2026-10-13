@@ -255,6 +255,42 @@ def test_a_plan_that_asks_for_customer_details_cannot_be_ordered_twice(product):
         plan.save()
 
 
+# --- Facts the operator writes, and decides the weight of ------------------
+
+
+def test_nothing_is_printed_beside_the_title_unless_the_operator_said_so(client, product):
+    """Capacity, device count, region, a condition that applies to one product
+    and nothing else — none of these is true of every product, so none is a
+    column. A product nobody has thought about shows what it always showed."""
+    assert not product.specs.filter(is_key=True).exists()
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert "badge--key" not in body
+
+
+def test_a_key_spec_is_printed_beside_the_title_and_still_in_the_table(client, product):
+    ProductSpec.objects.create(
+        product=product, title="نوع اکانت", value="اشتراکی، ۴ نفره", is_key=True, sort_order=-1
+    )
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert 'class="badge badge--key">نوع اکانت: <bdi>اشتراکی، ۴ نفره</bdi>' in body
+    # And it has not left the specification table, which is still the full list.
+    assert body.count("اشتراکی، ۴ نفره") == 2
+
+
+def test_a_key_spec_value_is_isolated(client, product):
+    """Spec values are operator-written and routinely carry a Latin run or a
+    number, which is where bidi reorders a line."""
+    ProductSpec.objects.create(product=product, title="ریجن", value="US", is_key=True)
+
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert "<bdi>US</bdi>" in body
+
+
 @pytest.mark.parametrize("bad", [0, 11])
 def test_a_quantity_ceiling_outside_one_to_ten_is_refused(product, bad):
     plan = product.plans.filter(requires_customer_input=False).first()

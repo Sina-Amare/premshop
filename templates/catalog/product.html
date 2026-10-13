@@ -16,10 +16,17 @@
       {% endif %}
       <div>
         <h1 class="pdp__title"><bdi>{{ product.name }}</bdi></h1>
-        {% comment %}The buyer's two questions, answered before the price: how long, and what if it breaks. A region is not a property every product has — when one matters it is a spec row the operator adds.{% endcomment %}
+        {% comment %}
+        The two questions every buyer has — how long, and what if it breaks —
+        then whatever this particular product needs said. Capacity, device
+        count, region, a condition that applies to one product and nothing
+        else: none of those is true of every product, so each is a spec row
+        the operator writes and marks «مهم». Nothing is key by default.
+        {% endcomment %}
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</span>
+          {% for spec in key_specs %}<span class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
         </div>
       </div>
   </header>

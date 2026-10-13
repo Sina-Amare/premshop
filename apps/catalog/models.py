@@ -178,9 +178,28 @@ class Product(models.Model):
 
 
 class ProductSpec(models.Model):
+    """One fact about one product, written by the operator.
+
+    This is deliberately free text rather than a column per fact. Whether an
+    account is shared and with how many people, how many devices it allows,
+    which region it is locked to, any condition particular to one product —
+    none of these is true of every product, and a column that is blank on
+    most rows is a column the form asks about anyway. The same reasoning
+    removed `Product.region` in 0003.
+
+    `is_key` is what makes that workable: a row marked key is printed beside
+    the title where a buyer scans, instead of only in the table further down.
+    So the operator decides both the fact and its weight.
+    """
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specs")
     title = models.CharField("عنوان", max_length=100)
     value = models.CharField("مقدار", max_length=255)
+    is_key = models.BooleanField(
+        "مهم",
+        default=False,
+        help_text="کنار عنوان محصول و روی کارت هم نشان داده می‌شود، نه فقط در جدول مشخصات.",
+    )
     sort_order = models.SmallIntegerField("ترتیب", default=0)
 
     class Meta:
