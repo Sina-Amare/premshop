@@ -114,10 +114,13 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     persian = code_from(mail.outbox[0]).translate(ASCII_TO_PERSIAN)
     page.evaluate(PASTE_JS, persian)
 
-    # Right: all six go green, then the page leaves for the account.
+    # Right: the cells go green one at a time, the way a person reads the code
+    # back, and only then does the page leave. Six at once would mean the
+    # stagger was lost — which is what the owner asked for on 2026-10-13.
     page.wait_for_selector(".otp__cell.is-ok")
-    assert page.locator(".otp__cell.is-ok").count() == 6
+    assert page.locator(".otp__cell.is-ok").count() < 6, "all six turned at once"
     page.screenshot(path=str(SHOTS / "04-ok.png"))
+    page.wait_for_function("() => document.querySelectorAll('.otp__cell.is-ok').length === 6")
     page.wait_for_url("**/account/")
     assert user.email in page.content()
 

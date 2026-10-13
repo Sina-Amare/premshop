@@ -100,6 +100,21 @@ session, so a reload never restarts a clock the server has not.
   function setState(cls) {
     cells.forEach(function (c) { c.classList.remove('is-ok', 'is-error'); if (cls) c.classList.add(cls); });
   }
+  // Someone who asked for less motion gets none: the CSS already zeroes every
+  // transition, and these timers would otherwise hold the page still for no
+  // reason the viewer can see.
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var STEP = still ? 0 : 70;    // between one cell turning green and the next
+  var HOLD = still ? 0 : 260;   // the finished row, held, before the page moves
+  function confirmCells(done) {
+    // Checked one digit at a time, left to right, the way a person reads them
+    // back. The row finishing is the signal that the code was accepted.
+    cells.forEach(function (c, i) {
+      c.classList.remove('is-error');
+      setTimeout(function () { c.classList.add('is-ok'); }, i * STEP);
+    });
+    setTimeout(done, (cells.length - 1) * STEP + HOLD);
+  }
   function showError(text) {
     errorBox.textContent = text;
     errorBox.hidden = !text;
@@ -162,8 +177,7 @@ session, so a reload never restarts a clock the server has not.
       return isJson ? r.json() : Promise.reject(new Error('non-json'));
     }).then(function (data) {
       if (data.ok) {
-        setState('is-ok');
-        setTimeout(function () { location.href = data.next; }, 420);
+        confirmCells(function () { location.href = data.next; });
         return;
       }
       fail(data.error);
@@ -174,6 +188,7 @@ session, so a reload never restarts a clock the server has not.
     });
   }
   function fail(message) {
+    // Wrong is one event, not six: the whole row turns at once and shakes once.
     setState('is-error');
     showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
     cellsBox.classList.add('is-shaking');
@@ -183,7 +198,7 @@ session, so a reload never restarts a clock the server has not.
       clear();
       cells[0].focus();
       busy = false;
-    }, 380);
+    }, still ? 0 : 380);
   }
   form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
 
