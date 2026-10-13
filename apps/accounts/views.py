@@ -204,30 +204,21 @@ def logout(request: HttpRequest) -> HttpResponse:
 @never_cache
 @login_required
 def account(request: HttpRequest) -> HttpResponse:
-    """The dashboard's front page: who you are, and the way to everything else.
+    """Everything about the account itself, on one page.
 
-    One section per page rather than every form stacked in one column — the
-    shape the shop grows into, where S4b adds سفارش‌های من and S9 adds
-    اشتراک‌های من as one navigation entry each. Nothing is listed before it
-    exists; a dead link on a shop that takes money reads as a shop that is not
-    finished.
+    It used to be two: an overview that listed the phone number and a profile
+    page that listed it again and let you edit it. Two pages, one fact, and a
+    first word — «پیشخوان» — that said nothing about what was on them. The
+    shop grows by adding sections that are genuinely different (سفارش‌ها at
+    S4b, اشتراک‌ها at S9), not by splitting one.
     """
-    return render(request, "accounts/account.html", {"section": "overview"})
-
-
-@never_cache
-@login_required
-@require_http_methods(["GET", "POST"])
-def account_profile(request: HttpRequest) -> HttpResponse:
     user = cast(User, request.user)  # @login_required guarantees this
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "شماره تماس ذخیره شد.")
-        return redirect(reverse("account-profile"))
-    return render(
-        request, "accounts/account_profile.html", {"profile_form": form, "section": "profile"}
-    )
+        return redirect(reverse("account"))
+    return render(request, "accounts/account.html", {"profile_form": form, "section": "profile"})
 
 
 @never_cache

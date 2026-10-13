@@ -50,17 +50,30 @@ def shop():
 # --- The shelf ---------------------------------------------------------------
 
 
-def test_the_shelf_lists_every_service_and_each_one_is_a_link(client, shop):
-    """The panel across the seam answers «do you have it» — so it is the whole
-    catalogue, not the eight cards below it, and every mark is tappable."""
+def test_the_hero_shows_every_service_and_each_mark_is_a_link(client, shop):
+    """The constellation in the hero is the catalogue, not decoration: it
+    answers «do you have it» in a glance, so every active product is in it and
+    every tile goes to that product."""
     body = client.get(reverse("home")).content.decode()
 
-    assert 'id="shelf"' in body
-    assert body.count('class="mark"') == Product.objects.public().count()
-    assert f'class="mark" href="{reverse("product", args=[shop.slug])}"' in body
+    assert body.count('class="nebula__item"') == Product.objects.public().count()
+    assert f'class="nebula__item" href="{reverse("product", args=[shop.slug])}"' in body
 
 
-def test_a_draft_product_is_not_on_the_shelf(client, shop):
+def test_every_mark_in_the_hero_has_an_accessible_name(client, shop):
+    """A link whose only content is an image has no name without one. These
+    tiles are the first ten links on the page; empty alt text would make the
+    whole hero unreadable to a screen reader and invisible to search."""
+    body = client.get(reverse("home")).content.decode()
+
+    hero = body[body.index("nebula") : body.index("promises")]
+
+    assert f'title="{shop.name}"' in hero, "no hover name on the tile"
+    # With a mark it is the image's alt; without one it is visually hidden text.
+    assert shop.name in hero, "the service is unnamed to a screen reader"
+
+
+def test_a_draft_product_is_not_in_the_hero(client, shop):
     Product.objects.create(
         category=shop.category,
         name="Secret",
@@ -73,7 +86,7 @@ def test_a_draft_product_is_not_on_the_shelf(client, shop):
     body = client.get(reverse("home")).content.decode()
 
     assert "Secret" not in body
-    assert body.count('class="mark"') == 1
+    assert body.count('class="nebula__item"') == 1
 
 
 def test_the_shelves_row_lists_only_departments_that_have_something_in_them(client, shop):
@@ -133,7 +146,6 @@ BIDI_PAGES = ["home", "search", "faq"]
 # it. A guard that another element can satisfy is not guarding anything.
 ISOLATED = [
     ("home", 'class="pcard__name"><bdi>{name}</bdi>'),
-    ("home", 'class="mark__name"><bdi>{name}</bdi>'),
     ("product", 'class="pdp__title"><bdi>{name}</bdi>'),
 ]
 

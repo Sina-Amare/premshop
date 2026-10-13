@@ -1,57 +1,47 @@
 {% extends "accounts/_account_base.html" %}{% load fa %}
 
-{% block title %}حساب کاربری — PremShop{% endblock %}
-{% block heading %}پیشخوان{% endblock %}
+{% block title %}اطلاعات حساب — PremShop{% endblock %}
+{% block heading %}اطلاعات حساب{% endblock %}
 
 {% block section %}
 {% comment %}
-Everything on this page is a field the User model actually holds. There is no
-order table yet (S4b), no subscription table (S9) and no ticket system
-(ADR-0014), so there is nothing here shaped like one — and no completion
-meter either: three of the four things such a meter would count can never be
-completed today, which makes it a chore the shop invented for its customer.
+Every value here is a field the User model holds. There is no order table
+yet (S4b), no subscription table (S9) and no ticket system (ADR-0014), so
+there is nothing here shaped like one — and no completion meter, because
+three of the four things such a meter would count can never be completed
+today. «آخرین ورود» is absent for the same reason: Django writes last_login
+at the moment of login, so it would read «لحظاتی پیش» every single time.
 
-«آخرین ورود» is deliberately absent for the same reason. Django writes
-last_login at the moment of login, so a customer who signs in and clicks
-پیشخوان would read «لحظاتی پیش», every time — and everyone who has seen that
-label on a bank site reads it as the *previous* session, which would make it
-a quiet untruth on the account page of a shop that stores credentials.
+The phone number appears once, in the field that edits it. It used to be
+printed on an overview page as well, which meant one fact in two places and
+no way to tell which one was authoritative.
 {% endcomment %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin"><bdi>{{ request.user.email }}</bdi></span></div>
-  <div class="fact"><span class="fact__k">شماره تماس</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.phone %}{{ request.user.phone|fa_digits }}{% else %}ثبت نشده{% endif %}</span></div>
+  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
   <div class="fact"><span class="fact__k">روش ورود</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.has_usable_password %}رمز عبور یا کد ایمیل{% else %}فقط کد ایمیل{% endif %}</span></div>
   <div class="fact"><span class="fact__k">عضو از</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
-{% comment %}
-One next step, named, or none. A dashboard that lists three optional chores
-teaches the customer to ignore it; the shop picks the single most useful
-thing that is actually missing and says only that.
-{% endcomment %}
-{% if not request.user.phone %}
-  <div class="acct__next">
-    <div>
-      <h2 class="acct__next-t">شماره تماس</h2>
-      <p class="small" style="margin: 0">برای پیگیری سفارش، وقتی ایمیل در دسترس نیست.</p>
-    </div>
-    <a class="btn btn--primary" href="{% url 'account-profile' %}">افزودن شماره</a>
-  </div>
-{% elif not request.user.has_usable_password %}
+{# The field carries its own label; a heading above it says the same word twice. #}
+<form method="post" class="acct__form acct__form--spaced">
+  {% csrf_token %}
+  {% include "accounts/_field.html" with field=profile_form.phone %}
+  <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
+</form>
+
+{% if not request.user.has_usable_password %}
   <div class="acct__next">
     <div>
       <h2 class="acct__next-t">رمز عبور</h2>
       <p class="small" style="margin: 0">ورود بدون منتظرماندن برای کد.</p>
     </div>
-    <a class="btn btn--primary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
+    <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
   </div>
-{% else %}
-  <p class="small acct__hint">اطلاعات حساب‌تان کامل است.</p>
 {% endif %}
 
 <h2 class="acct__h2">پشتیبانی</h2>
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span><span class="fact__v latin"><bdi>@premshop</bdi></span></div>
+  <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">@premshop</bdi></span></div>
   <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">هر روز {{ SUPPORT_HOURS }}</span></div>
 </div>
 <p class="small acct__hint"><a href="{% url 'faq' %}">پرسش‌های متداول</a></p>

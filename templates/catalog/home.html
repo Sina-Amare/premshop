@@ -1,62 +1,114 @@
 {% extends "base.html" %}{% load fa %}
 
 {% block title %}PremShop — اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
-{% block meta_description %}اشتراک ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. تحویل در بازه‌ی اعلام‌شده، گارانتی تا پایان دوره.{% endblock %}
+{% block meta_description %}اشتراک ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. تحویل در سریع‌ترین زمان، گارانتی تا پایان دوره.{% endblock %}
+
+{% block footer_promise %}{% endblock %}
 
 {% block content %}
 {% comment %}
-The band, then the shelf laid across its lower edge. The headline names the
-one thing this shop actually solves — these services do not take a تومان and
-this one does — and the marks under it answer the next question in a glance:
-do you really have the thing I came for. They are still and every one is a
-link; a drifting strip of brand logos has meant «trusted by» for five years,
-and a visitor reads the shape long before they read the intent.
+The opening: a light field coloured out of the brand palette, the marks
+floating over it as links, one statement and one action. Then the promise
+strip, the departments, the discounts, the shelf and the questions — six
+surfaces a buyer can act on, where there used to be a headline and a grid.
+
+«مراحل خرید» is gone. It explained in three cards what the promise strip,
+the product page and the FAQ each already say, which is the definition of
+furniture.
 {% endcomment %}
 <section class="hero">
-  <div class="wrap">
-    <h1 class="hero__title">اشتراک‌های جهانی، با پرداخت تومانی</h1>
-    <p class="hero__lead">
-      چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، جت‌برینز و چند سرویس دیگر —
-      <b>روی حساب خودتان، یا با کد.</b>
-    </p>
-    <div class="hero__act">
-      <a class="btn btn--invert" href="#shelf">مشاهده‌ی محصولات</a>
-      <p class="hero__note">پرداخت از درگاه بانکی · پشتیبانی هر روز {{ SUPPORT_HOURS }}</p>
+  <div class="wrap hero__inner">
+    <div class="hero__said">
+      <h1 class="hero__title">اشتراک‌های جهانی، با پرداخت تومانی</h1>
+      <p class="hero__lead">
+        چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، جت‌برینز و چند سرویس دیگر —
+        <b>با قیمت مشخص و تحویل در سریع‌ترین زمان.</b>
+      </p>
+      <div class="hero__act">
+        <a class="btn btn--primary btn--pill" href="#products">مشاهده‌ی محصولات</a>
+        <p class="hero__note">پرداخت از درگاه بانکی · پشتیبانی هر روز {{ SUPPORT_HOURS }}</p>
+      </div>
+    </div>
+
+    {% if shelf %}
+    <div class="nebula" aria-label="سرویس‌های موجود">
+      {% comment %}
+      A product with no mark yet still gets a tile. Skipping it would quietly
+      drop a service the shop actually sells out of the one place that claims
+      to list them all — and the monogram is a designed state, the same one
+      the product card uses.
+      {% endcomment %}
+      {% for product in shelf %}
+        <a class="nebula__item" href="{% url 'product' product.slug %}" title="{{ product.name }}">
+          {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" width="42" height="42" decoding="async">
+          {% else %}
+            <span class="nebula__mono">{{ product.name|slice:":1" }}</span>
+            <span class="sr-only">{{ product.name }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="promises">
+  <div class="wrap promises__row">
+    <div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
+      <span>پرداخت از درگاه بانکی</span>
+    </div>
+    <div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>تحویل در سریع‌ترین زمان</span>
+    </div>
+    <div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>گارانتی تا پایان دوره</span>
+    </div>
+    <div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.2-6.9"/><path d="M21 4v5h-5"/></svg>
+      <span>ضمانت بازگشت وجه</span>
     </div>
   </div>
 </section>
 
-{% if shelf %}
-<section class="shelf" id="shelf">
-  <div class="wrap">
-    <div class="shelf__panel">
-      <div class="shelf__head">
-        <h2 class="section__title" style="margin: 0; border: 0; padding: 0">سرویس‌ها</h2>
-        <span class="small" style="margin: 0">{{ shelf|length|fa_digits }} سرویس</span>
-      </div>
-      <div class="shelf__grid">
-        {% for product in shelf %}
-          <a class="mark" href="{% url 'product' product.slug %}">
-            <span class="mark__tile">
-              {% if product.image %}
-                <img src="{{ product.image.url }}" alt="" width="30" height="30" decoding="async">
-              {% else %}
-                <span class="tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
-              {% endif %}
-            </span>
-            <span class="mark__name"><bdi>{{ product.name }}</bdi></span>
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
-
-<div class="wrap page{% if shelf %} page--flush{% endif %}">
+<div class="wrap page">
+  {% if categories %}
   <section class="section" style="margin-block-start: 0">
+    <h2 class="section__title">دسته‌بندی‌ها</h2>
+    <div class="grid grid--cats">
+      {% for cat in categories %}
+        <a class="ccard {% cycle 'ccard--a' 'ccard--b' 'ccard--c' 'ccard--d' %}" href="{% url 'category' cat.slug %}">
+          <span class="ccard__icon">{% include "catalog/_cat_icon.html" with slug=cat.slug %}</span>
+          <span class="ccard__name">{{ cat.name }}</span>
+          <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
+          {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if discounted %}
+  <section class="section">
+    <div class="deals">
+      <div class="deals__said">
+        <h2 class="deals__title">تخفیف‌دارها</h2>
+        <p class="small" style="margin: 0">قیمت پایین‌تر تا پایان مهلت تخفیف. مهلت هر تخفیف روی صفحه‌ی محصول نوشته شده.</p>
+      </div>
+      <div class="deals__grid">
+        {% for product in discounted %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section" id="products">
     <div class="section__head">
       <h2 class="section__title">محصولات</h2>
+      <span class="small" style="margin: 0">{{ featured|length|fa_digits }} محصول</span>
     </div>
     {% if featured %}
       <div class="grid">
@@ -69,28 +121,30 @@ and a visitor reads the shape long before they read the intent.
     {% endif %}
   </section>
 
-  {% if categories %}
+  {% comment %}
+  Three questions, not six: the ones a first-time buyer asks before paying a
+  shop they have not used. The rest are on the FAQ page, which this links to.
+  details/summary, so it opens with JavaScript off.
+  {% endcomment %}
   <section class="section">
-    <h2 class="section__title">دسته‌بندی‌ها</h2>
-    <div class="grid grid--cats">
-      {% for cat in categories %}
-        <a class="ccard" href="{% url 'category' cat.slug %}">
-          <span class="ccard__name">{{ cat.name }}</span>
-          <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
-          {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
-        </a>
-      {% endfor %}
+    <div class="section__head">
+      <h2 class="section__title">پرسش‌های متداول</h2>
+      <a class="small" style="margin: 0" href="{% url 'faq' %}">همه‌ی پرسش‌ها</a>
     </div>
-  </section>
-  {% endif %}
-
-  <section class="section">
-    <h2 class="section__title">مراحل خرید</h2>
-    <ol class="steps">
-      <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">انتخاب و پرداخت</span><span class="steps__d">قیمت همان است که روی صفحه‌ی محصول نوشته شده.</span></li>
-      <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">تحویل</span><span class="steps__d">روی حساب خودتان، یا با کد — در ساعات پشتیبانی.</span></li>
-      <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">گارانتی</span><span class="steps__d">قطع شد، جایگزین می‌کنیم. درست نشد، وجه برمی‌گردد.</span></li>
-    </ol>
+    <div class="qa">
+      <details class="qa__item">
+        <summary class="qa__q">سفارش چه زمانی تحویل داده می‌شود؟</summary>
+        <div class="qa__a"><p class="prose">زمان تحویل روی صفحه‌ی هر محصول نوشته شده؛ بیشترین مهلت ۴۸ ساعت است. شمارش از تأیید پرداخت شروع می‌شود و تحویل در ساعات پشتیبانی ({{ SUPPORT_HOURS }}) انجام می‌گیرد.</p></div>
+      </details>
+      <details class="qa__item">
+        <summary class="qa__q">اگر سفارش تحویل نشود، پول برمی‌گردد؟</summary>
+        <div class="qa__a"><p class="prose">بله. اگر در بازه‌ی اعلام‌شده تحویل ندهیم و جایگزینی هم نداشته باشیم، کل مبلغ به همان کارت برمی‌گردد.</p></div>
+      </details>
+      <details class="qa__item">
+        <summary class="qa__q">اشتراک روی حساب خودم فعال می‌شود؟</summary>
+        <div class="qa__a"><p class="prose">روی صفحه‌ی هر محصول نوشته شده. بیشتر اشتراک‌ها روی حساب خودتان فعال می‌شوند؛ گیفت کارت و لایسنس به‌صورت کد تحویل می‌شود.</p></div>
+      </details>
+    </div>
   </section>
 </div>
 {% endblock %}

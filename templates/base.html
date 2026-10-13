@@ -59,6 +59,15 @@
       have to decode a glyph to find out where ثبت‌نام lives. The icon trails
       the label, which is the side a Persian line ends on.
       {% endcomment %}
+      {% comment %}
+      Support sits in the header, not only in the footer. On a shop with no
+      نماد اعتماد, a reachable human is the trust signal that is actually
+      available, and a buyer who cannot find one leaves rather than asks.
+      {% endcomment %}
+      <a href="https://t.me/premshop" class="hdr__support" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
+        <span>پشتیبانی</span>
+      </a>
       <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hdr__account">
         <span>{% if request.user.is_authenticated %}حساب کاربری{% else %}ورود یا ثبت‌نام{% endif %}</span>
         {# Non-directional icon: it must not mirror in RTL. #}
@@ -73,6 +82,12 @@
   {% if nav_categories %}
   <nav class="cats" aria-label="دسته‌بندی‌ها">
     <div class="wrap cats__row">
+      {% comment %}
+      Current only on the home page itself. Keyed on the absence of a category
+      it also lit up on /account/ and /faq/, which told a screen reader the
+      visitor was somewhere they were not.
+      {% endcomment %}
+      <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page"{% endif %}>همه‌ی محصولات</a>
       {% for cat in nav_categories %}
         <a href="{% url 'category' cat.slug %}"{% if cat.slug == current_category %} aria-current="page"{% endif %}>{{ cat.name }}</a>
       {% endfor %}
@@ -95,14 +110,14 @@
       the warranty field, and the answering hours, which come from one place
       so the header and the footer can never disagree.
       {% endcomment %}
-      <div class="ftr__promise">
+      {% block footer_promise %}<div class="ftr__promise">
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
           <span>پرداخت از درگاه بانکی</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          <span>تحویل در ساعات پشتیبانی</span>
+          <span>تحویل در سریع‌ترین زمان</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -112,7 +127,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
           <span>ضمانت بازگشت وجه</span>
         </div>
-      </div>
+      </div>{% endblock %}
 
       <div class="ftr__grid">
         <div>

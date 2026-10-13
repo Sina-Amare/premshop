@@ -16,6 +16,7 @@ from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.core import ratelimit
 
 SEARCH_RESULT_CAP = 50
+HOME_PRODUCT_CAP = 24
 
 
 def _for_cards() -> ProductQuerySet:
@@ -40,18 +41,31 @@ def home(request: HttpRequest) -> HttpResponse:
         .filter(product_count__gt=0)
         .order_by("sort_order", "name")
     )
-    # "Featured" is the newest active products until the operator asks for a
-    # flag; with a catalog this size the newest are the ones worth showing.
-    featured = _for_cards().order_by("-created_at")[:8]
+    # Every active product, newest first. The cap was eight while the home
+    # page also carried a separate shelf of marks; now that the shelf is the
+    # hero, a count that says ۱۰ over a grid of eight is just a page
+    # contradicting itself. The cap comes back the moment the catalogue is
+    # bigger than one screen of scrolling, with paging behind it.
+    featured = _for_cards().order_by("-created_at")[:HOME_PRODUCT_CAP]
     # The shelf is the complete index — every service the shop stocks, as a
     # mark you can tap. It answers a different question from the cards below
     # ("do you have it" rather than "what does it cost"), so it carries no
     # plans and needs none of the prefetching the cards do: one flat query.
     shelf = Product.objects.public().order_by("name").only("name", "slug", "image")
+    # Real discounts only. `promotion_is_active` consults the window as well as
+    # the price, so a promotion whose end date has passed drops out of this row
+    # on its own — a shop that advertises an expired discount has done worse
+    # than not advertising one.
+    discounted = [p for p in featured if p.cheapest_plan and p.cheapest_plan.promotion_is_active]
     return render(
         request,
         "catalog/home.html",
-        {"categories": categories, "featured": featured, "shelf": shelf},
+        {
+            "categories": categories,
+            "featured": featured,
+            "shelf": shelf,
+            "discounted": discounted,
+        },
     )
 
 

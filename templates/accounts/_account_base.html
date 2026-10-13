@@ -1,8 +1,11 @@
 {% extends "base.html" %}{% comment %}
-The account shell: navigation on the inline-start, which in this right-to-left
-page puts it on the right, where every Persian dashboard keeps it. One section
-per page, so adding سفارش‌های من at S4b and اشتراک‌های من at S9 costs one entry
-each and changes nothing else. Nothing is listed before it exists.
+The account shell. Navigation on the inline-start, which in this right-to-left
+page puts it on the right, where every Persian dashboard keeps it.
+
+Two sections, not three: «پیشخوان» was a word that described nothing and a
+page that listed the same phone number as the one next to it. سفارش‌ها (S4b)
+and اشتراک‌ها (S9) are sections that will be genuinely different, and each
+costs one entry here. Nothing is listed before it exists.
 {% endcomment %}
 
 {% block content %}
@@ -11,10 +14,10 @@ each and changes nothing else. Nothing is listed before it exists.
   <nav class="acct__nav" aria-label="بخش‌های حساب کاربری">
     <div class="acct__who">
       <span class="acct__avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>
-      <span class="acct__email latin"><bdi>{{ request.user.email }}</bdi></span>
+      {# The address is one unbroken token; it gets the whole row and an ellipsis. #}
+      <span class="acct__email" title="{{ request.user.email }}"><bdi>{{ request.user.email }}</bdi></span>
     </div>
-    <a href="{% url 'account' %}"{% if section == "overview" %} aria-current="page"{% endif %}>پیشخوان</a>
-    <a href="{% url 'account-profile' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
+    <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
     <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
     <form method="post" action="{% url 'logout' %}" class="acct__out">
       {% csrf_token %}

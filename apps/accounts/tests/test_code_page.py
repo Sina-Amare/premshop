@@ -186,7 +186,7 @@ def test_the_password_hint_names_the_rules(client, user):
 def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
     client.force_login(user)
 
-    client.post(reverse("account-profile"), {"phone": typed})
+    client.post(reverse("account"), {"phone": typed})
 
     user.refresh_from_db()
     assert user.phone == stored
@@ -195,7 +195,7 @@ def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
 def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
     client.force_login(user)
 
-    response = client.post(reverse("account-profile"), {"phone": "02122334455"})
+    response = client.post(reverse("account"), {"phone": "02122334455"})
 
     user.refresh_from_db()
     assert user.phone == ""
@@ -203,12 +203,11 @@ def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
 
 
 def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
-    """One section per page since 2026-10-13: the password form is not even on
-    this page, so a phone error cannot reach it. What must still hold is that
-    exactly one field is marked."""
+    """The password form lives on its own page, so a phone error cannot reach
+    it. What must still hold is that exactly one field is marked."""
     client.force_login(user)
 
-    body = client.post(reverse("account-profile"), {"phone": "12345"}).content.decode()
+    body = client.post(reverse("account"), {"phone": "12345"}).content.decode()
 
     assert "رمز عبور فعلی" not in body
     assert body.count("field__error") == 1
@@ -240,7 +239,7 @@ def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user
 
 @pytest.mark.parametrize(
     ("name", "heading"),
-    [("account", "پیشخوان"), ("account-profile", "اطلاعات حساب"), ("account-password", "رمز عبور")],
+    [("account", "اطلاعات حساب"), ("account-password", "رمز عبور")],
 )
 def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
     client.force_login(user)
@@ -251,18 +250,59 @@ def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
     assert heading in response.content.decode()
 
 
-@pytest.mark.parametrize("name", ["account", "account-profile", "account-password"])
+def test_the_old_profile_address_still_goes_somewhere(client, user):
+    """The two account pages merged on 2026-10-14. The address was live, and a
+    404 on a page someone bookmarked is a worse answer than the page they
+    wanted — so it redirects rather than disappearing."""
+    client.force_login(user)
+
+    response = client.get(reverse("account-profile"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("account")
+
+
+@pytest.mark.parametrize("name", ["account", "account-password"])
 def test_a_dashboard_section_requires_a_session(client, name):
     assert client.get(reverse(name)).status_code == 302
 
 
-def test_the_navigation_marks_exactly_one_current_section(client, user):
+def test_one_fact_lives_in_one_place(client, user):
+    """The phone number used to be printed on an overview page and edited on
+    another. One fact in two places means no way to tell which is
+    authoritative, and two pages to keep in step."""
+    # Not the number in the field's own example, which would collide.
+    user.phone = "09351112233"
+    user.save()
     client.force_login(user)
 
-    body = client.get(reverse("account-profile")).content.decode()
+    body = client.get(reverse("account")).content.decode()
+
+    assert body.count("09351112233") == 1, "the stored number is rendered more than once"
+    assert 'value="09351112233"' in body, "and the one place is the field that edits it"
+
+
+def test_the_navigation_marks_exactly_one_current_section(client, user):
+    from apps.catalog.models import Category, Product
+
+    # With a department in the header the shop nav renders too, which is where
+    # a second aria-current can hide: «همه‌ی محصولات» lit up on every page that
+    # was not a category, including this one.
+    category = Category.objects.create(name="هوش مصنوعی", slug="ai")
+    Product.objects.create(
+        category=category,
+        name="ChatGPT Plus",
+        slug="chatgpt-plus",
+        delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+        delivery_hours=12,
+        status=Product.Status.ACTIVE,
+    )
+    client.force_login(user)
+
+    body = client.get(reverse("account")).content.decode()
 
     assert body.count('aria-current="page"') == 1
-    assert f'href="{reverse("account-profile")}" aria-current="page"' in body
+    assert f'href="{reverse("account")}" aria-current="page"' in body
 
 
 def test_the_dashboard_does_not_advertise_what_is_not_built(client, user):
@@ -309,28 +349,20 @@ def test_the_dashboard_names_one_next_step_at_a_time(client, user):
     page. The shop picks the single most useful thing that is actually
     missing, and when nothing is missing it says so instead of inventing."""
     client.force_login(user)
-    assert not user.phone
     assert user.has_usable_password()
 
     body = client.get(reverse("account")).content.decode()
-    assert body.count('class="acct__next"') == 1
-    assert "افزودن شماره" in body
 
-    # Nothing left that is both true and useful: say that, invent nothing.
-    user.phone = "09120000000"
-    user.save()
-    body = client.get(reverse("account")).content.decode()
-    assert "اطلاعات حساب‌تان کامل است" in body
+    # Nothing to prompt: this account can already sign in both ways, and the
+    # phone is an ordinary editable field rather than a chore to nag about.
     assert 'class="acct__next"' not in body
 
 
 def test_an_otp_only_account_is_offered_a_password_and_nothing_else(client):
-    """An account created by a code login has no password. That is the one
-    step worth naming for them — and it is named on its own, not alongside
-    the phone, because two "next steps" is a list and a list gets ignored."""
+    """An account created by a code login has no password. That is the single
+    step worth naming for them, and it is the only one — a dashboard that
+    lists three optional chores teaches the customer to ignore it."""
     only_code = User.objects.create_user("codeonly@example.test", None, is_verified=True)
-    only_code.phone = "09120000001"
-    only_code.save()
     client.force_login(only_code)
 
     body = client.get(reverse("account")).content.decode()

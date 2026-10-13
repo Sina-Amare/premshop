@@ -252,6 +252,12 @@
   }
   .hdr__account:hover { background: var(--color-fill-subtle); border-color: var(--color-muted); }
   .hdr__account svg { inline-size: 18px; block-size: 18px; color: var(--color-muted); }
+  .hdr__support { display: inline-flex; align-items: center; gap: var(--spacing-2); flex: none;
+                  font-size: 15px; line-height: 1.5; color: var(--color-secondary);
+                  text-decoration: none; padding: 9px 4px 7px;
+                  transition: color var(--dur) var(--ease); }
+  .hdr__support:hover { color: var(--color-ink); }
+  .hdr__support svg { color: var(--color-muted); }
 
   /* The shelves. A shop with four departments does not need a mega-menu; it
      needs its departments legible in one row. The current one is marked by a
@@ -275,6 +281,10 @@
                  padding-block-end: var(--spacing-3); }
     .hdr__search { order: 9; inline-size: 100%; }
     .hdr__account { padding: 7px 10px 5px; font-size: 14px; }
+    /* On a phone the header has room for one labelled control; support is a
+       tap away in the footer and on every product page. */
+    .hdr__support span { display: none; }
+    .hdr__support { padding-inline: 8px; }
     .hdr__word { font-size: 18px; }
   }
 
@@ -315,6 +325,7 @@
   .btn--secondary { background: var(--color-surface); border-color: var(--color-line-strong); color: var(--color-ink); }
   .btn--secondary:hover { background: var(--color-fill-subtle); border-color: var(--color-muted); }
   .btn--secondary:active { background: var(--color-line); }
+  .btn--pill { border-radius: 999px; padding: 13px 26px 11px; font-size: 16px; }
   .btn--ghost { background: transparent; color: var(--color-secondary); }
   .btn--ghost:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
   /* On ink, the primary action is paper. Teal-700 against #131313 is a 2.4:1
@@ -496,92 +507,130 @@
   .section__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
                     line-height: 1.35; margin: 0 0 var(--spacing-5); }
 
-  /* --- Home: the ink band and the shelf that crosses it ----------------------
-     The page opens on a full-bleed band of ink carrying one statement and one
-     action, and the shelf of brand marks is a white panel laid across its
-     lower edge — the one object on the site that exists in both surfaces, and
-     the only one allowed a shadow. The pattern is alibaba.ir's, which is why
-     it reads as an Iranian shop rather than a Western landing page.
+  /* --- Home: the opening composition ----------------------------------------
+     Light, like all three of the references the owner chose, and coloured by
+     the only thing on this site allowed to carry colour: the goods. The field
+     behind the headline is four very soft radial washes in real brand hues —
+     Spotify green, Netflix red, Google blue, Claude clay — at a fraction of
+     their saturation. It is not an invented gradient and it is not a glow
+     behind the type: it is the shelf, out of focus.
 
-     No gradient, no glow, no logo marquee: a drifting strip of brand logos has
-     meant "trusted by" for five years and the shape is read before the intent.
-     The marks sit still, in colour, and every one of them is a link.
+     Over it, the marks themselves, as a loose constellation of tiles at three
+     sizes carrying the one shadow in the system. Each is a link. They drift a
+     few pixels on a long cycle, which is the whole of the page's ambient
+     motion — enough to be alive, too little to pull the eye off the headline.
+     Off below 900px and under prefers-reduced-motion.
      -------------------------------------------------------------------------- */
   .hero { position: relative; isolation: isolate; overflow: hidden;
-          background: var(--color-deep); color: var(--color-on-deep);
-          padding-block: var(--spacing-8) calc(var(--spacing-9) + var(--spacing-5)); }
-  /* The band's surface: a drafting grid at 4.5% white, drifting one pixel a
-     second. It is CSS, so it costs no bytes and one composited layer; it is a
-     grid rather than a glow because this shop's metaphor is a ruled book, and
-     because every soft radial light behind a headline reads as generated. */
+          background: var(--color-ground);
+          padding-block: var(--spacing-9) var(--spacing-8); }
   .hero::before {
-    content: ""; position: absolute; z-index: -1; inset: -80px;
-    background-image:
-      repeating-linear-gradient(to right, var(--color-on-deep-line) 0 1px, transparent 1px 34px),
-      repeating-linear-gradient(to bottom, var(--color-on-deep-line) 0 1px, transparent 1px 34px);
-    opacity: 0.32;
-    mask-image: radial-gradient(130% 115% at 88% 15%, transparent 0%, #000 62%);
-    -webkit-mask-image: radial-gradient(130% 115% at 88% 15%, transparent 0%, #000 62%);
-    animation: hero-drift 60s linear infinite;
+    content: ""; position: absolute; z-index: -1; inset: -30% -5% auto -5%; block-size: 170%;
+    background:
+      radial-gradient(34rem 22rem at 64% 30%, color-mix(in oklab, #1ed760 30%, transparent), transparent 66%),
+      radial-gradient(30rem 20rem at 86% 12%, color-mix(in oklab, #e50914 20%, transparent), transparent 64%),
+      radial-gradient(40rem 26rem at 70% 86%, color-mix(in oklab, #4285f4 24%, transparent), transparent 68%),
+      radial-gradient(26rem 18rem at 18% 22%, color-mix(in oklab, #d97757 18%, transparent), transparent 64%);
+    opacity: 0.62;
   }
-  @keyframes hero-drift { to { transform: translate3d(-34px, -34px, 0); } }
-  .hero__title { font-family: var(--font-head); font-size: 40px; font-weight: 600; line-height: 1.28;
-                 color: var(--color-on-deep); margin: 0; max-inline-size: 17ch; text-wrap: balance; }
-  .hero__lead { color: var(--color-on-deep-muted); font-size: 18px; line-height: 1.8;
-                margin: var(--spacing-4) 0 0; max-inline-size: 44ch; }
-  .hero__lead b { color: var(--color-on-deep); font-weight: 400; }
+  .hero__inner { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+                 gap: var(--spacing-7); align-items: center; }
+  .hero__said { grid-column: 2; grid-row: 1; }
+  .hero__title { font-family: var(--font-head); font-size: 44px; font-weight: 600; line-height: 1.26;
+                 color: var(--color-ink); margin: 0; max-inline-size: 17ch; text-wrap: balance; }
+  .hero__lead { color: var(--color-secondary); font-size: 19px; line-height: 1.8;
+                margin: var(--spacing-4) 0 0; max-inline-size: 42ch; }
+  .hero__lead b { color: var(--color-ink); font-weight: 500; }
   .hero__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-4);
                margin-block-start: var(--spacing-6); }
-  .hero__note { font-size: 13px; line-height: 1.75; color: var(--color-on-deep-muted); margin: 0; }
+  .hero__note { font-size: 14px; line-height: 1.7; color: var(--color-secondary); margin: 0; }
 
-  /* The shelf: lifted over the seam so part of it is on ink and part on paper. */
-  .shelf { margin-block-start: calc(-1 * var(--spacing-9)); margin-block-end: var(--spacing-8);
-           position: relative; z-index: 1; }
-  .shelf__panel { background: var(--color-surface); border: 1px solid var(--color-line);
-                  border-radius: var(--radius-lg); box-shadow: var(--shadow-lift);
-                  padding: var(--spacing-5); }
-  .shelf__head { display: flex; align-items: baseline; justify-content: space-between;
-                 gap: var(--spacing-4); margin-block-end: var(--spacing-4); }
-  .shelf__grid { display: grid; gap: var(--spacing-2);
-                 grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .mark { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-2);
-          padding: var(--spacing-3) var(--spacing-2); border-radius: var(--radius-sm);
-          text-decoration: none; color: var(--color-secondary);
-          transition: background-color var(--dur) var(--ease); }
-  .mark:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
-  .mark__tile { inline-size: 48px; block-size: 48px; display: grid; place-items: center;
-                border: 1px solid var(--color-line); border-radius: var(--radius-lg);
-                background: var(--color-surface); flex: none;
-                transition: border-color var(--dur) var(--ease), transform var(--dur-lg) var(--ease-out); }
-  /* Both axes are capped, and the artwork is pre-padded at seed time: these
-     marks run from 0.81:1 (Apple) to 1.42:1 (YouTube), so constraining one
-     axis alone makes the wide ones tower over the tall ones. */
-  .mark__tile img { inline-size: auto; block-size: auto; max-inline-size: 30px; max-block-size: 30px; }
-  .mark:hover .mark__tile { border-color: var(--color-line-strong); transform: translateY(-2px); }
-  .mark:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .mark__name { font-size: 12px; line-height: 1.6; text-align: center; }
+  /* The constellation: three sizes on offset rows, so it reads as an
+     arrangement rather than a grid that lost a column. */
+  .nebula { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap;
+            gap: var(--spacing-4); justify-content: center; align-content: center; }
+  .nebula__item { display: grid; place-items: center; text-decoration: none;
+                  inline-size: 86px; block-size: 86px; flex: none;
+                  background: var(--color-surface);
+                  border: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent);
+                  border-radius: 22px; box-shadow: var(--shadow-lift);
+                  animation: nebula-float 9s ease-in-out infinite;
+                  transition: transform var(--dur-lg) var(--ease-out),
+                              box-shadow var(--dur-lg) var(--ease-out); }
+  .nebula__item img { inline-size: auto; block-size: auto;
+                      max-inline-size: 42px; max-block-size: 42px; }
+  .nebula__mono { font-family: var(--font-head); font-size: 26px; font-weight: 600;
+                  line-height: 1; color: var(--color-secondary); }
+  .nebula__item:nth-child(3n + 2) { inline-size: 70px; block-size: 70px; border-radius: 18px;
+                                    animation-delay: -3s; }
+  .nebula__item:nth-child(3n + 2) img { max-inline-size: 34px; max-block-size: 34px; }
+  .nebula__item:nth-child(4n + 3) { inline-size: 100px; block-size: 100px; border-radius: 26px;
+                                    animation-delay: -6s; }
+  .nebula__item:nth-child(4n + 3) img { max-inline-size: 50px; max-block-size: 50px; }
+  .nebula__item:hover, .nebula__item:focus-visible {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 2px 4px rgba(19, 19, 19, 0.05), 0 26px 50px -24px rgba(19, 19, 19, 0.38);
+  }
+  .nebula__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  @keyframes nebula-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
 
-  @media (max-width: 900px) {
-    .hero { padding-block: var(--spacing-6) calc(var(--spacing-8) + var(--spacing-4)); }
-    .hero__title { font-size: 30px; }
+  /* --- The discounts panel --------------------------------------------------
+     A tinted surface holding the cards, rather than a bare row of them. The
+     shop will often have exactly one thing on offer, and one card in a
+     four-column grid reads as a row that failed to load; inside a panel that
+     names what it is, one card reads as a highlight. */
+  .deals { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+           gap: var(--spacing-6); align-items: start;
+           background: var(--color-fill-subtle);
+           border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+           padding: var(--spacing-5); }
+  .deals__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
+                  line-height: 1.35; margin: 0 0 var(--spacing-2); }
+  .deals__grid { display: grid; gap: var(--spacing-4);
+                 grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
+                                       padding: var(--spacing-4); } }
+
+  /* --- The promise strip, where an Iranian buyer looks first ---------------- */
+  .promises { background: var(--color-fill-subtle);
+              border-block: 1px solid var(--color-line); }
+  .promises__row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+                   gap: var(--spacing-4) var(--spacing-5); padding-block: var(--spacing-5); }
+  .promises__row > div { display: flex; align-items: center; gap: var(--spacing-3);
+                         font-size: 14px; line-height: 1.6; color: var(--color-ink); }
+  .promises__row svg { inline-size: 26px; block-size: 26px; flex: none; color: var(--color-accent); }
+
+  @media (max-width: 1000px) {
+    .hero { padding-block: var(--spacing-7); }
+    .hero__inner { grid-template-columns: 1fr; gap: var(--spacing-6); }
+    .hero__said { grid-column: 1; grid-row: 1; }
+    .nebula { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+    .hero__title { font-size: 34px; }
     .hero__lead { font-size: 17px; }
-    .shelf { margin-block-start: calc(-1 * var(--spacing-8)); }
-    .shelf__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .promises__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-  @media (max-width: 480px) {
-    .hero { padding-block: var(--spacing-5) calc(var(--spacing-8) + var(--spacing-3)); }
-    .hero__title { font-size: 26px; }
-    .hero__lead { font-size: 16px; line-height: 1.85; }
-    .hero__act { margin-block-start: var(--spacing-5); gap: var(--spacing-3); }
-    .strip__wide { display: none; }
-    .shelf__panel { padding: var(--spacing-4) var(--spacing-3); }
-    .shelf__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .mark__tile { inline-size: 44px; block-size: 44px; }
+  @media (max-width: 520px) {
+    .hero { padding-block: var(--spacing-6); }
+    .hero__title { font-size: 28px; }
+    .hero__act { gap: var(--spacing-3); }
+    .hero__act .btn { inline-size: 100%; }
+    .nebula { gap: var(--spacing-3); }
+    .nebula__item,
+    .nebula__item:nth-child(3n + 2),
+    .nebula__item:nth-child(4n + 3) { inline-size: 64px; block-size: 64px; border-radius: 16px; }
+    .nebula__item img,
+    .nebula__item:nth-child(3n + 2) img,
+    .nebula__item:nth-child(4n + 3) img { max-inline-size: 32px; max-block-size: 32px; }
+    .promises__row { grid-template-columns: 1fr; gap: var(--spacing-3);
+                     padding-block: var(--spacing-4); }
   }
-  /* A moving surface on a phone is battery spent where nobody is looking, and
-     it sits directly under the thumb during the first scroll. */
+  /* Ambient motion is a desktop affordance: on a phone it sits under the thumb
+     during the first scroll and costs battery nobody asked to spend. */
   @media (max-width: 900px), (prefers-reduced-motion: reduce) {
-    .hero::before { animation: none; }
+    .nebula__item { animation: none; }
   }
 
   /* --- Grids and cards ------------------------------------------------------ */
@@ -589,16 +638,36 @@
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
   .grid--cats { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
 
-  .ccard { display: flex; flex-direction: column; gap: var(--spacing-1); text-decoration: none;
-           background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-lg); padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
-           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+  /* The departments. Four tinted surfaces rather than four identical bordered
+     boxes: a department is a place, and a place is easier to remember by its
+     colour than by its position in a row. The tints are pale enough that the
+     brand marks on the shelf below are still the loudest colour on the page,
+     and the icon is a 24px line glyph, never an emoji. */
+  .ccard { position: relative; display: flex; flex-direction: column; gap: var(--spacing-1);
+           text-decoration: none; overflow: hidden;
+           background: var(--cc-tint, var(--color-fill-subtle));
+           border: 1px solid color-mix(in oklab, var(--cc-ink, var(--color-line)) 16%, transparent);
+           border-radius: var(--radius-lg);
+           padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
+           transition: transform var(--dur-lg) var(--ease-out),
+                       box-shadow var(--dur-lg) var(--ease-out); }
   .ccard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .ccard:hover { border-color: var(--color-line-strong); }
-  .ccard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; color: var(--color-ink); }
-  .ccard__count { font-size: 13px; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+  .ccard:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+  .ccard__icon { inline-size: 42px; block-size: 42px; display: grid; place-items: center;
+                 border-radius: 12px; background: var(--color-surface);
+                 color: var(--cc-ink, var(--color-secondary));
+                 margin-block-end: var(--spacing-3); }
+  .ccard__icon svg { inline-size: 22px; block-size: 22px; }
+  .ccard__name { font-family: var(--font-head); font-size: 18px; font-weight: 600; color: var(--color-ink); }
+  .ccard__count { font-size: 13px; color: var(--color-secondary); font-variant-numeric: tabular-nums; }
   .ccard__desc { font-size: 13px; line-height: 1.7; color: var(--color-secondary);
                  margin-block-start: var(--spacing-2); }
+  /* Four departments, four tints. Assigned by position so a fifth department
+     starts the cycle again rather than rendering untinted. */
+  .ccard--a { --cc-tint: #eef6f4; --cc-ink: #0f766e; }
+  .ccard--b { --cc-tint: #eef2fb; --cc-ink: #2f4d9b; }
+  .ccard--c { --cc-tint: #fdf0ef; --cc-ink: #a63d36; }
+  .ccard--d { --cc-tint: #f6f1fb; --cc-ink: #6b4a96; }
 
   /* The product card. The brand mark and the name share the top line, because
      a Persian shopper scans the logo first and reads the name to confirm it.
@@ -798,14 +867,19 @@
      never names the account is the one place a shared-device customer most
      needs it named. */
   .acct__who { display: flex; align-items: center; gap: var(--spacing-3);
+               min-inline-size: 0;
                padding-block-end: var(--spacing-4); margin-block-end: var(--spacing-3);
                border-block-end: 1px solid var(--color-line); }
   .acct__avatar { inline-size: 36px; block-size: 36px; flex: none; display: grid; place-items: center;
                   border-radius: var(--radius-lg); background: var(--color-accent-tint);
                   color: var(--color-accent); font-family: var(--font-head); font-size: 16px;
                   font-weight: 600; line-height: 1; }
+  /* An address breaks in the middle of the domain if you let it wrap, which
+     looks like a rendering fault rather than a long address. One line, LTR,
+     and the end goes to an ellipsis with the whole value in the title. */
   .acct__email { font-size: 13px; line-height: 1.5; color: var(--color-secondary);
-                 overflow-wrap: anywhere; min-inline-size: 0; }
+                 min-inline-size: 0; direction: ltr; text-align: start;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acct__h2 { font-family: var(--font-head); font-size: 18px; font-weight: 600; line-height: 1.45;
               margin: var(--spacing-7) 0 var(--spacing-3); }
   /* The single next step, if there is one. A bordered row rather than a card:
@@ -837,6 +911,7 @@
   /* A submit that spans its form reads as a phone layout stranded on a
      desktop; the button is as wide as its label and starts where the labels do. */
   .acct__form > .btn { justify-self: start; }
+  .acct__form--spaced { margin-block-start: var(--spacing-6); }
   @media (max-width: 860px) {
     .acct { grid-template-columns: 1fr; gap: var(--spacing-5); }
     /* Wrapping, not scrolling: a menu item parked off the edge of a phone is a
