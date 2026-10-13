@@ -39,7 +39,7 @@ grid — its mark is an LCP candidate and must not be lazy-loaded).
       {% if plan %}
         {% comment %}The plan above the figure, both at the reading edge: a price
         and its label on one line collide the moment the figure has seven digits.{% endcomment %}
-        <span class="pcard__from">{{ plan.title }}</span>
+        <span class="pcard__from">{{ plan.title }}{% include "catalog/_deadline.html" with plan=plan %}</span>
         <span class="pcard__price">{% if product.available_plans|length > 1 %}<span class="pcard__pre">از</span>{% endif %}{% include "catalog/_price.html" with plan=plan %}</span>
       {% else %}
         <span class="badge badge--neutral">ناموجود</span>

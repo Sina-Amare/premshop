@@ -1,0 +1,15 @@
+{% load fa %}{% comment %}
+How long a discount has left. Amber, which on this site means time and only
+time (design-language.md, ADR-0016).
+
+The server renders the text and sends the seconds beside it, so the badge is
+right with JavaScript off and ticks with it on. It never sends the deadline
+itself: a countdown measured against an absolute server time is wrong by
+however much the visitor's own clock is wrong.
+
+Under a day it counts seconds, because that is the hour someone decides in.
+Above a day it says days and hours, because a clock reading 412:06:55 is a
+number, not a deadline.
+
+Params: plan.
+{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}">{{ left|countdown }} مونده</span>{% endif %}{% endwith %}

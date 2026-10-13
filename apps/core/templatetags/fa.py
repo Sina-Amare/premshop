@@ -58,3 +58,8 @@ def jalali(value: datetime | date | None) -> str:
 @register.filter(name="jalali_numeric")
 def jalali_numeric(value: datetime | date | None) -> str:
     return formatting.format_jalali(value, with_month_name=False)
+
+
+@register.filter(name="countdown")
+def countdown(seconds: int | None) -> str:
+    return "" if seconds is None else formatting.format_countdown(seconds)

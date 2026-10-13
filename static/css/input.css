@@ -765,7 +765,15 @@
   .pcard__foot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
                  padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
                  border-block-start: 1px solid var(--color-line); }
-  .pcard__from { font-size: 13px; line-height: 1.6; color: var(--color-muted); }
+  .pcard__from { font-size: 13px; line-height: 1.6; color: var(--color-muted);
+                 display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2); }
+
+  /* The deadline on a discount. Amber and tabular, so the figure does not
+     jog sideways as the seconds roll over. Once it reaches zero it stops
+     being time pressure, so it stops being amber. */
+  .deadline { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .deadline--done { background: var(--color-fill-subtle); border-color: var(--color-line);
+                    color: var(--color-muted); }
   .pcard__price { display: inline-flex; align-items: baseline; gap: 6px; }
   .pcard__pre { font-size: 14px; color: var(--color-muted); }
   .pcard__foot .price__num { font-size: 21px; }
@@ -833,7 +841,11 @@
   .buybox__label { font-size: 13px; font-weight: 500; color: var(--color-secondary); }
   .plans { border: 0; padding: 0; margin: 0 0 var(--spacing-5); }
   .plans legend { padding: 0; margin-block-end: var(--spacing-2); }
-  .plan { display: flex; align-items: center; gap: var(--spacing-3); cursor: pointer;
+  /* Wraps, because the row can carry a title, a struck original, a figure,
+     a currency word and a deadline, and at 390px that is wider than the
+     screen. Before this the row pushed the whole page sideways. */
+  .plan { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2) var(--spacing-3);
+          cursor: pointer;
           padding: 11px 12px 9px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
   .plan + .plan { margin-block-start: var(--spacing-2); }

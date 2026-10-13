@@ -75,3 +75,22 @@ class TestJalali:
         settings.TIME_ZONE = "Asia/Tehran"
         utc_evening = datetime(2026, 9, 1, 22, 0, tzinfo=ZoneInfo("UTC"))
         assert formatting.format_jalali(utc_evening) == "۱۱ شهریور ۱۴۰۵"
+
+
+@pytest.mark.parametrize(
+    "seconds, expected",
+    [
+        (0, "۰۰:۰۰:۰۰"),
+        (59, "۰۰:۰۰:۵۹"),
+        (3600, "۰۱:۰۰:۰۰"),
+        (86399, "۲۳:۵۹:۵۹"),
+        (86400, "۱ روز"),
+        (90000, "۱ روز و ۱ ساعت"),
+        (1483200, "۱۷ روز و ۴ ساعت"),
+        (-5, "۰۰:۰۰:۰۰"),
+    ],
+)
+def test_a_countdown_reads_at_the_granularity_someone_can_act_on(seconds, expected):
+    """86400 is the switch: a second past a day stops being a clock. Negative
+    seconds floor at zero rather than printing a clock running backwards."""
+    assert formatting.format_countdown(seconds) == expected

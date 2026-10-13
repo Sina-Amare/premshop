@@ -364,6 +364,19 @@ class Plan(models.Model):
         return self.effective_price != self.sale_price
 
     @property
+    def promo_seconds_left(self) -> int | None:
+        """Seconds until this plan's discount ends, or None when nothing ends.
+
+        The page sends this rather than the deadline itself: a countdown run
+        against an absolute server time is wrong by however much the visitor's
+        own clock is wrong, and plenty of them are. Same reason the login
+        code's clock takes seconds-remaining.
+        """
+        if not self.promotion_is_active or self.promo_ends_at is None:
+            return None
+        return max(0, int((self.promo_ends_at - timezone.now()).total_seconds()))
+
+    @property
     def expires_never(self) -> bool:
         return self.duration_days is None
 

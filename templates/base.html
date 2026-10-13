@@ -166,6 +166,59 @@
 
   {% block scripts %}{% endblock %}
 <script>
+// Discount deadlines tick. The server rendered the text already, so a visitor
+// with JavaScript off sees the time that was left when the page was built;
+// this only keeps it moving. The remaining seconds come from the server and
+// the deadline is computed against this machine's clock, never against an
+// absolute server time — a customer whose clock is a day out would otherwise
+// see a countdown that is a day wrong.
+//
+// A price that has run out stays on the page until the next navigation. That
+// is safe and deliberate: the badge says so, and the cart and the checkout
+// re-read every price from the database, so nothing can be bought at a price
+// that has expired.
+(function () {
+  var badges = [].slice.call(document.querySelectorAll('.deadline[data-left]'));
+  if (!badges.length) return;
+
+  var FA = '۰۱۲۳۴۵۶۷۸۹';
+  var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
+  var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+
+  function text(left) {
+    if (left >= 86400) {
+      var days = Math.floor(left / 86400), hours = Math.floor((left % 86400) / 3600);
+      return hours
+        ? toFa(days) + ' روز و ' + toFa(hours) + ' ساعت'
+        : toFa(days) + ' روز';
+    }
+    return toFa(pad(Math.floor(left / 3600))) + ':' + toFa(pad(Math.floor((left % 3600) / 60))) + ':' + toFa(pad(left % 60));
+  }
+
+  badges.forEach(function (badge) {
+    badge.endsAt = Math.floor(Date.now() / 1000) + (parseInt(badge.getAttribute('data-left'), 10) || 0);
+  });
+
+  function tick() {
+    var now = Math.floor(Date.now() / 1000);
+    var running = false;
+    badges.forEach(function (badge) {
+      var left = badge.endsAt - now;
+      if (left > 0) {
+        running = true;
+        badge.textContent = text(left) + ' مونده';
+      } else {
+        badge.textContent = 'تخفیف تموم شد';
+        badge.classList.add('deadline--done');
+      }
+    });
+    if (!running) clearInterval(timer);
+  }
+  var timer = setInterval(tick, 1000);
+  tick();
+})();
+</script>
+<script>
 // Progressive enhancement: every password field gains a reveal toggle. Done here
 // rather than in each form so the next step's forms inherit it, and so a field
 // rendered by Django's own auth forms gets it too without subclassing anything.

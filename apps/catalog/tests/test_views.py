@@ -345,16 +345,28 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
     assert "این محصول فعلاً موجود نیست" in body
 
 
+PRICE_COMPONENT = re.compile(r'<span class="price[^"]*">.*?</span></span>', re.S)
+
+
 def test_catalog_card_and_product_page_render_struck_through_original(client, product):
     """The promo is on the cheapest plan, so the card shows the pair; the product
-    page shows it on that plan's row. The original is muted and struck, never amber."""
+    page shows it on that plan's row. The original is muted and struck, never amber.
+
+    The assertion is scoped to the price component. It used to search the whole
+    page for `badge--time`, which read as "a promotion is not a countdown" and
+    was wrong twice over: amber is exactly what a countdown is for
+    (design-language.md, Colour), and the rule it meant to pin is only that the
+    *figure* is never amber."""
     listing = client.get(reverse("category", args=[product.category.slug])).content.decode()
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
     for body in (listing, page):
         assert '<span class="price__was">۱,۴۵۰,۰۰۰</span>' in body
         assert "۱,۲۰۰,۰۰۰" in body
-        assert "badge--time" not in body, "a promotion is not a countdown"
+        prices = PRICE_COMPONENT.findall(body)
+        assert prices
+        for markup in prices:
+            assert "badge--time" not in markup, "the figure itself is never amber"
 
 
 def test_prices_render_persian_digits_and_ascii_thousands_separator(client, product):
@@ -469,6 +481,60 @@ def test_suggestions_are_capped_and_cost_a_fixed_number_of_queries(client, categ
 
     assert len(response.context["related"]) == 4
     assert len(queries) <= PRODUCT_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
+
+
+# --- The clock on a discount -----------------------------------------------
+
+
+def test_a_discount_with_a_deadline_shows_how_long_is_left(client, category):
+    obj = make_product(category, "sale", promo_price=Decimal("90000"))
+    obj.plans.update(promo_ends_at=timezone.now() + timedelta(hours=5, minutes=30))
+
+    for url in (reverse("home"), reverse("product", args=[obj.slug])):
+        body = client.get(url).content.decode()
+        assert "badge--time" in body, url
+        assert "مونده" in body, url
+        # Rendered by the server, so it is right with JavaScript off, and the
+        # seconds travel beside it so the browser can tick without trusting
+        # its own clock against the server's.
+        assert re.search(r'data-left="(\d+)"', body), url
+        assert "۰۵:۲۹:" in body or "۰۵:۳۰:" in body, url
+
+
+def test_a_discount_without_a_deadline_shows_no_clock(client, category):
+    """Most discounts here have no end date. A clock that counts down to
+    nothing is the kind of invented urgency this shop does not use."""
+    obj = make_product(category, "forever", promo_price=Decimal("90000"))
+    obj.plans.update(promo_ends_at=None)
+
+    body = client.get(reverse("product", args=[obj.slug])).content.decode()
+
+    assert "badge--time" not in body
+    assert "۹۰,۰۰۰" in body, "the discount itself is still on the page"
+
+
+def test_a_deadline_that_has_passed_is_neither_a_price_nor_a_clock(client, category):
+    """The window closing takes the promotional price with it, through the
+    same `promo_window_open_at` the cart and the checkout use. Nothing here
+    needs to remember to expire anything."""
+    obj = make_product(category, "over", promo_price=Decimal("90000"))
+    obj.plans.update(promo_ends_at=timezone.now() - timedelta(minutes=1))
+
+    body = client.get(reverse("product", args=[obj.slug])).content.decode()
+
+    assert "badge--time" not in body
+    assert "۹۰,۰۰۰" not in body, "an expired promotion is not a price"
+    assert "۲۰۰,۰۰۰" in body, "the sale price is what is charged"
+
+
+def test_the_clock_counts_days_once_a_clock_would_be_absurd(client, category):
+    obj = make_product(category, "long", promo_price=Decimal("90000"))
+    obj.plans.update(promo_ends_at=timezone.now() + timedelta(days=17, hours=4, minutes=30))
+
+    body = client.get(reverse("product", args=[obj.slug])).content.decode()
+
+    assert "۱۷ روز و ۴ ساعت مونده" in body
+    assert "۴۱۲:" not in body, "a clock reading 412 hours is a number, not a deadline"
 
 
 # --- Search ---------------------------------------------------------------------

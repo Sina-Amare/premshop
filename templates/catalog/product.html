@@ -97,7 +97,7 @@
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
               {% if plan.is_available %}
-                {% include "catalog/_price.html" with plan=plan %}
+                {% include "catalog/_price.html" with plan=plan %}{% include "catalog/_deadline.html" with plan=plan %}
               {% else %}
                 <span class="plan__off">فعلاً ناموجود</span>
               {% endif %}
