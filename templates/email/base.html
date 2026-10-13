@@ -1,31 +1,15 @@
 {% comment %}
-Email layout. Not a web page — three constraints shape every choice here:
+Email layout, not a web page. Outlook on Windows renders with Word's engine,
+so layout is <table>; Gmail and Outlook strip @font-face, so the brand faces
+cannot travel and the stack below names every Persian family an Iranian
+machine plausibly carries, Tahoma last; most clients block remote images, so
+the wordmark is set in type. Critical styles are inline because Gmail's
+mobile app strips <style> for accounts it does not host.
 
-  1. Outlook on Windows renders with Microsoft Word's engine: no flex, no grid,
-     no float worth trusting. Layout is <table>, which is a constraint, not a style.
-  2. Gmail and Outlook strip @font-face, so Estedad cannot travel. The stack leads
-     with Vazirmatn (the brand's own body face, rendered for anyone who has it
-     installed) then each platform's own Persian face. Tahoma is LAST: it is the
-     safety net, not the choice — it is the face that makes Persian email look
-     like 2005, and leading with it was the first draft's mistake.
-
-     THE ORDER COMES FROM REAL EVIDENCE, NOT GUESSWORK. An audit of the owner's
-     own Windows machine found Vazir.ttf and six weights of IRANSans already
-     installed — and the family name inside Vazir.ttf is 'Vazir', NOT
-     'Vazirmatn'. The project was renamed; older installs register the old name.
-     Asking only for 'Vazirmatn' silently missed a font sitting right there and
-     fell through to Segoe UI, whose Persian is Naskh-derived and reads stiff.
-     That is why two rounds of "softer" changed nothing on screen. A renamed or
-     misspelled family never errors — it falls through in silence, so the stack
-     names every Persian face an Iranian machine plausibly carries.
-  3. Most clients block remote images by default, so the wordmark is set in type.
-     A broken-image box on a login code is a trust cost we do not pay.
-
-Radii are 10px (--radius-md) throughout rather than the site's 4px button: at
-email sizes 4px reads as an artifact rather than as a shape.
-
-Critical styles are inline because Gmail's mobile app strips <style> for accounts
-it does not host. The <style> block carries only what cannot be inlined at all.
+The font stack is the one thing here that is not obvious from the markup: a
+family name that matches nothing falls through in silence, and this stack
+asks for the pre-rename `Vazir` as well as `Vazirmatn` for that reason.
+Reasoning and the audit behind it: ADR-0023, amendment 2026-09-18.
 {% endcomment %}<!doctype html>
 <html lang="fa" dir="rtl">
 <head>

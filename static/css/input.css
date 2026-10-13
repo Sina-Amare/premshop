@@ -552,18 +552,11 @@
   .shelf__all:hover svg { transform: translateX(-3px); }
 
   /* --- Home: the opening composition ----------------------------------------
-     Light, like all three of the references the owner chose, and coloured by
-     the only thing on this site allowed to carry colour: the goods. The field
-     behind the headline is four very soft radial washes in real brand hues —
-     Spotify green, Netflix red, Google blue, Claude clay — at a fraction of
-     their saturation. It is not an invented gradient and it is not a glow
-     behind the type: it is the shelf, out of focus.
-
-     Over it, the marks themselves, as a loose constellation of tiles at three
-     sizes carrying the one shadow in the system. Each is a link. They drift a
-     few pixels on a long cycle, which is the whole of the page's ambient
-     motion — enough to be alive, too little to pull the eye off the headline.
-     Off below 900px and under prefers-reduced-motion.
+     The only colour the site allows is the goods', so the field behind the
+     headline is four soft radial washes in real brand hues at a fraction of
+     their saturation, and over it the marks themselves as linked tiles. Their
+     drift is the page's entire ambient motion; it stops below 900px and under
+     prefers-reduced-motion. Why this and not a photograph: ADR-0026.
      -------------------------------------------------------------------------- */
   .hero { position: relative; isolation: isolate; overflow: hidden;
           background: var(--color-ground);
