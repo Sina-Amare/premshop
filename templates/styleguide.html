@@ -4,6 +4,7 @@
 {% block title %}زبان طراحی — PremShop{% endblock %}
 
 {% block content %}
+<div class="wrap page">
 <h1>زبان طراحی</h1>
 <p class="prose">
   این صفحه پایه بصری سایت است: مقیاس تایپوگرافی، رنگ‌ها، نمایش قیمت و تاریخ،
@@ -177,8 +178,56 @@
     {% endfor %}
   </div>
   <p class="small" style="margin-block-start: var(--spacing-5)">
-    یک طیف خنثای گرم، یک رنگ لهجه، و رنگ‌های معنایی. اگر رنگ تازه‌ای لازم شد،
-    یعنی ساختار صفحه اشتباه است نه پالت.
+    یک طیف خنثا، یک رنگ لهجه، و رنگ‌های معنایی. رنگ اشباع‌شده فقط از آنِ نشان
+    برندهای روی قفسه است. اگر رنگ تازه‌ای لازم شد، یعنی ساختار صفحه اشتباه است نه پالت.
+    این نمونه‌ها مستقیم از <span class="latin">input.css</span> خوانده می‌شوند.
   </p>
+</div>
+
+<h2>شعاع گوشه</h2>
+<div class="card">
+  <p class="small" style="margin-block-start:0">دو مقدار، و فاصله‌شان خودش اطلاعات است: ۶ پیکسل برای چیزی که روی آن عمل می‌کنید، ۱۴ پیکسل برای سطحی که کالا را نگه می‌دارد. هر چیزی که به لبه‌ی صفحه می‌رسد شعاع ندارد.</p>
+  <div style="display:flex; gap:var(--spacing-4); flex-wrap:wrap; margin-block-start:var(--spacing-4)">
+    <div style="inline-size:120px">
+      <div style="block-size:64px; border:1px solid var(--color-line-strong); border-radius:var(--radius-sm)"></div>
+      <div class="micro">۶ — دکمه، ورودی، تراشه</div>
+    </div>
+    <div style="inline-size:120px">
+      <div style="block-size:64px; border:1px solid var(--color-line-strong); border-radius:var(--radius-lg)"></div>
+      <div class="micro">۱۴ — کارت، کاشی، پنل</div>
+    </div>
+    <div style="inline-size:120px">
+      <div style="block-size:64px; background:var(--color-deep)"></div>
+      <div class="micro">۰ — نوار تمام‌عرض</div>
+    </div>
+  </div>
+</div>
+
+{% comment %}
+These two blocks exist so that a future change can be *seen* to break them.
+The first is the shaping the subset fonts must keep: a cut that drops a
+joining feature or a Persian letter outside the Arabic block looks like a
+rendering fault, not like an error, and nothing else on the site would catch
+it. The second is the bidi string that every real failure in this shop has
+come from — a Latin product name inside a Persian sentence, next to
+parentheses, a Persian numeral and a question mark.
+{% endcomment %}
+<h2>قلم و شکل‌گیری حروف</h2>
+<div class="card">
+  <p class="label">وزیرمتن ۴۰۰ — اتصال حروف، نیم‌فاصله، و حروف فارسیِ بیرون از بلوک عربی</p>
+  <p style="font-size:22px; line-height:1.9; margin:var(--spacing-2) 0 0">کتاب‌های ژاپنی، چگونه می‌شود پژوهش گُل‌ها را دسته‌بندی کرد؟</p>
+  <p class="label" style="margin-block-start:var(--spacing-5)">استعداد ۶۰۰ و ۸۰۰ — ارقام فارسی با شکل درست ۴ و ۶ و ۷</p>
+  <p style="font-family:var(--font-head); font-weight:600; font-size:26px; margin:var(--spacing-2) 0 0">پرسش‌های متداول ۰۱۲۳۴۵۶۷۸۹</p>
+  <p style="font-family:var(--font-head); font-weight:800; font-size:26px; font-variant-numeric:tabular-nums; margin:var(--spacing-2) 0 0">۶,۴۰۰,۰۰۰ تومان</p>
+  <p class="label" style="margin-block-start:var(--spacing-5)">لاتین داخل فارسی نباید به قلم جایگزین بیفتد</p>
+  <p style="font-size:20px; margin:var(--spacing-2) 0 0">Netflix · Spotify · JetBrains All Products · <span class="latin">@premshop</span></p>
+</div>
+
+<h2>جهت‌گیری متن دوسویه</h2>
+<div class="card">
+  <p class="small" style="margin-block-start:0">هر نام لاتینی که از پایگاه داده می‌آید داخل <span class="latin">&lt;bdi&gt;</span> می‌نشیند. بدون آن، نقطه‌ی پایان جمله و پرانتزها به سمت اشتباه می‌پرند.</p>
+  <p style="font-size:20px; line-height:1.9; margin-block-start:var(--spacing-3)">آیا اشتراک <bdi>ChatGPT Plus</bdi> (۱ ماهه) فعال است؟ — ۱۲۰,۰۰۰ تومان</p>
+  <p style="font-size:20px; line-height:1.9">«<bdi>Netflix</bdi>» و «<bdi>Spotify Premium</bdi>» هر دو موجودند.</p>
+</div>
 </div>
 {% endblock %}

@@ -5,13 +5,15 @@ catalog page with one product tells you nothing about how the grid, the
 prices, the search or the empty states behave. Idempotent — run it twice and
 you get the same shop. `--reset` wipes what it made first.
 
-Images come from Simple Icons on jsDelivr (reachable from Iran, checked) and are
-written to MEDIA_ROOT, which is not committed. If the network is unavailable the
-product simply has no image, which the cards are designed for.
+Brand marks are downloaded once into MEDIA_ROOT, which is not committed, and
+served from there — the running site never reaches a CDN, because most of them
+are unreachable from Iran. If the network is unavailable the product simply has
+no image, which the cards are designed for.
 """
 
 from __future__ import annotations
 
+import re
 import urllib.request
 from datetime import timedelta
 from decimal import Decimal
@@ -24,12 +26,61 @@ from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
 
-# Brand-coloured: the same icon set serves a monochrome file at jsdelivr and the
-# brand's own colour here. A shelf of black glyphs reads as unfinished.
-ICON = "https://cdn.simpleicons.org/{slug}"
+# One source per brand, because no single icon set has all twelve in colour.
+# gilbarbara/logos carries the full-colour marks; lobehub has the AI brands the
+# icon CDNs never added. The CDN we used before (cdn.simpleicons.org) answers
+# 404 for openai, adobe and midjourney — which is exactly why three products
+# fell back to a letter — and serves one flat colour per mark even when it
+# answers, so it structurally cannot give us the four-colour Google Play
+# triangle. Every URL below was fetched and the file inspected on 2026-10-13.
+GB = "https://cdn.jsdelivr.net/gh/gilbarbara/logos@main/logos/"
+LH = "https://unpkg.com/@lobehub/icons-static-svg@1.95.1/icons/"
+
+# slug → (url, pad). Five of these marks are bare glyphs that float in
+# whitespace (the Apple apple, the Adobe A, the OpenAI knot) and three bring
+# their own coloured container (the Spotify circle, the YouTube rectangle, the
+# JetBrains square). Rendered at one size the glyphs tower over the containers
+# and the containers read as stickers lost in a box, so the padding that evens
+# them out is baked into the file at download time — see `_normalise_mark`.
+MARKS = {
+    "claude-pro": (GB + "claude-icon.svg", 0.16),
+    "chatgpt-plus": (GB + "openai-icon.svg", 0.16),
+    "gemini-advanced": (LH + "gemini-color.svg", 0.10),
+    "github-copilot": (GB + "github-copilot.svg", 0.16),
+    "jetbrains-all": (GB + "jetbrains.svg", 0),
+    "spotify-premium": (GB + "spotify-icon.svg", 0),
+    "youtube-premium": (GB + "youtube-icon.svg", 0.06),
+    "netflix": ("https://cdn.simpleicons.org/netflix", 0.16),
+    "apple-gift-card": (GB + "apple.svg", 0.27),
+    "google-play-gift-card": (GB + "google-play-icon.svg", 0.16),
+    "midjourney": (GB + "midjourney.svg", 0.16),
+    "adobe-cc": (GB + "adobe-icon.svg", 0.16),
+}
 
 T = Product.DeliveryType
 W = Product.Warranty
+
+
+def _normalise_mark(svg: bytes, pad: float) -> bytes:
+    """Give every brand mark the same optical size inside an identical tile.
+
+    Widening the viewBox around its own centre shrinks the artwork inside an
+    unchanged box — the one adjustment that evens a shelf of twelve logos
+    without touching a single path. Scaling the `<img>` instead would need a
+    per-brand CSS rule, and the knowledge of what each file looks like belongs
+    where the file is acquired, not in the stylesheet.
+    """
+    if not pad:
+        return svg
+    match = re.search(rb'viewBox="\s*([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)\s*"', svg)
+    if not match:
+        return svg
+    x, y, w, h = (float(value) for value in match.groups())
+    box = (
+        f'viewBox="{x - w * pad:g} {y - h * pad:g} ' f'{w * (1 + 2 * pad):g} {h * (1 + 2 * pad):g}"'
+    )
+    return svg[: match.start()] + box.encode() + svg[match.end() :]
+
 
 CATEGORIES = [
     ("هوش مصنوعی", "ai", "اشتراک ابزارهای هوش مصنوعی، تحویل سریع و با گارانتی."),
@@ -38,14 +89,13 @@ CATEGORIES = [
     ("گیفت کارت", "gift", "کارت‌های هدیه با کد، تحویل فوری."),
 ]
 
-# name, slug, category, icon slug, delivery, warranty, hours, short, aliases, specs, plans
+# name, slug, category, delivery, warranty, hours, short, aliases, specs, plans
 PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Claude Pro",
         slug="claude-pro",
         aliases="کلاود پرو، کلود پرو، کلاد، claude، anthropic، آنتروپیک",
         category="ai",
-        icon="anthropic",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=12,
@@ -63,7 +113,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="chatgpt-plus",
         aliases="چت جی پی تی، چت جیپیتی، چت جیپت، چت گپت، جیپیتی، gpt، chatgpt، openai، اوپن ای آی",
         category="ai",
-        icon="openai",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=12,
@@ -77,7 +126,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="gemini-advanced",
         aliases="جمینای، جمنای، جیمینای، gemini، هوش مصنوعی گوگل",
         category="ai",
-        icon="googlegemini",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.DAYS_7,
         hours=24,
@@ -91,7 +139,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="github-copilot",
         aliases="گیت هاب کوپایلوت، کوپایلوت، کوپیلوت، copilot، github",
         category="dev",
-        icon="githubcopilot",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=24,
@@ -105,7 +152,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="jetbrains-all",
         aliases="جت برینز، جتبرینز، intellij، pycharm، webstorm، jetbrains، پای چارم",
         category="dev",
-        icon="jetbrains",
         delivery=T.CODE_LICENSE,
         warranty=W.FULL_PERIOD,
         hours=48,
@@ -118,7 +164,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="spotify-premium",
         aliases="اسپاتیفای، اسپوتیفای، اسپاتی فای، اسپتیفای، spotify، پریمیوم، پرمیوم",
         category="media",
-        icon="spotify",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=6,
@@ -136,7 +181,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="youtube-premium",
         aliases="یوتیوب پریمیوم، یوتیوب پرمیوم، یوتوب، یوتیوب بدون تبلیغات، youtube، پریمیوم، پرمیوم",
         category="media",
-        icon="youtube",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.DAYS_7,
         hours=12,
@@ -150,7 +194,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="netflix",
         aliases="نتفلیکس، نت فلیکس، نتفلیس، نتلفیکس، netflix",
         category="media",
-        icon="netflix",
         delivery=T.READY_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=2,
@@ -163,7 +206,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="apple-gift-card",
         aliases="گیفت کارت اپل، گیفتکارت اپل، کارت هدیه اپل، آیتونز، itunes، apple",
         category="gift",
-        icon="apple",
         delivery=T.GIFT_CARD,
         warranty=W.NONE,
         hours=1,
@@ -179,7 +221,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="google-play-gift-card",
         aliases="گیفت کارت گوگل پلی، گیفتکارت گوگل، گوگل پلی، google play، کارت هدیه گوگل",
         category="gift",
-        icon="googleplay",
         delivery=T.GIFT_CARD,
         warranty=W.NONE,
         hours=1,
@@ -193,7 +234,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="midjourney",
         aliases="میدجرنی، میدجورنی، مید جرنی، midjourney",
         category="ai",
-        icon="midjourney",
         delivery=T.READY_ACCOUNT,
         warranty=W.DAYS_7,
         hours=24,
@@ -207,7 +247,6 @@ PRODUCTS: list[dict[str, Any]] = [
         slug="adobe-cc",
         aliases="ادوبی، ادوب، فتوشاپ، photoshop، adobe، creative cloud، کریتیو کلاد",
         category="dev",
-        icon="adobe",
         delivery=T.ON_CUSTOMER_ACCOUNT,
         warranty=W.DAYS_7,
         hours=48,
@@ -278,27 +317,38 @@ class Command(BaseCommand):
                     customer_input_label=spec.get("input", ""),
                     sort_order=order,
                 )
-            if not options["no_images"] and not product.image:
-                self._attach_icon(product, spec["icon"])
+            if not options["no_images"]:
+                self._attach_icon(product, *MARKS[spec["slug"]])
             self.stdout.write(f"  {product.name}: {product.plans.count()} plans")
         self.stdout.write(
             self.style.SUCCESS(f"seeded {len(PRODUCTS)} products in {len(CATEGORIES)} categories")
         )
 
-    def _attach_icon(self, product: Product, icon: str) -> None:
+    def _attach_icon(self, product: Product, url: str, pad: float) -> None:
         target = Path(settings.MEDIA_ROOT) / "products" / f"{product.slug}.svg"
         target.parent.mkdir(parents=True, exist_ok=True)
+        body: bytes | None = None
+        try:
+            # Some logo hosts answer 403 to a library's default user agent.
+            request = urllib.request.Request(  # noqa: S310  # nosec B310
+                url, headers={"User-Agent": "premshop-seed"}
+            )
+            opened = urllib.request.urlopen(request, timeout=15)  # noqa: S310  # nosec B310
+            with opened as response:
+                body = response.read()
+        except Exception as exc:  # noqa: BLE001 — no image is a designed state, not a failure
+            self.stderr.write(f"  no mark for {product.name}: {type(exc).__name__}")
+        # A 404 from a logo host is an HTML page, and `startswith(b"<svg")` is
+        # the wrong check: most of these files open with an XML declaration.
+        # The previous version wrote whatever came back and then skipped the
+        # fetch forever because the file existed, so one bad answer was
+        # permanent. Nothing is written unless it parses as a mark.
+        if body is not None and (b"<svg" not in body[:400] or b"viewBox" not in body):
+            self.stderr.write(f"  not an svg for {product.name}: {len(body)} bytes")
+            body = None
+        if body is not None:
+            target.write_bytes(_normalise_mark(body, pad))
         if not target.exists():
-            try:
-                # The icon CDN answers 403 to a library's default user agent.
-                request = urllib.request.Request(  # noqa: S310  # nosec B310
-                    ICON.format(slug=icon), headers={"User-Agent": "premshop-seed"}
-                )
-                opened = urllib.request.urlopen(request, timeout=15)  # noqa: S310  # nosec B310
-                with opened as response:
-                    target.write_bytes(response.read())
-            except Exception as exc:  # noqa: BLE001 — no image is a designed state, not a failure
-                self.stderr.write(f"  no icon for {product.name}: {type(exc).__name__}")
-                return
+            return
         product.image.name = f"products/{product.slug}.svg"
         product.save(update_fields=["image"])

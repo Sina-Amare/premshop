@@ -8,6 +8,8 @@ would otherwise leak through.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.urls import reverse
 
@@ -82,17 +84,25 @@ def test_no_page_says_gozarvazheh(client, name):
 # (docs-local/archive/persian-copy-research-2026-10-13.md). Each banned word is the
 # tell of a translated interface rather than a written one.
 
+# Patterns, not substrings. The ban is on «می‌گردد» as the bureaucratic
+# stand-in for «می‌شود» («پرداخت انجام می‌گردد») — but it is a substring of
+# «برمی‌گردد», which is a different verb entirely and the plainest way a shop
+# can say that money comes back. A guard that forbids the clearest sentence in
+# the refund promise is a guard aimed at the wrong thing, so this one looks
+# behind it. `test_the_translation_guard_still_catches_what_it_is_for` below
+# is the positive control: loosening a check without one is how it quietly
+# stops working.
 BANNED = [
-    "می‌باشد",  # dead weight; است/هستند does the work
-    "میباشد",
-    "می‌گردد",
-    "گردید",
-    "نمایید",
-    "سفارشات",  # Arabic broken plural; this shop says سفارش‌ها
-    "پیشنهادات",
-    "گذرواژه",  # Django's word; this shop says رمز عبور
-    "تایید",  # one spelling only: تأیید
-    "&quot;",  # ASCII quotes around Persian; the shop uses «»
+    r"می‌باشد",  # dead weight; است/هستند does the work
+    r"میباشد",
+    r"(?<!بر)می‌گردد",  # «انجام می‌گردد» yes, «برمی‌گردد» no
+    r"گردید",
+    r"نمایید",
+    r"سفارشات",  # Arabic broken plural; this shop says سفارش‌ها
+    r"پیشنهادات",
+    r"گذرواژه",  # Django's word; this shop says رمز عبور
+    r"تایید",  # one spelling only: تأیید
+    r"&quot;",  # ASCII quotes around Persian; the shop uses «»
 ]
 
 SHOP_PAGES = ["home", "search", "login", "login-code"]
@@ -101,7 +111,9 @@ SHOP_PAGES = ["home", "search", "login", "login-code"]
 @pytest.mark.parametrize("name", SHOP_PAGES)
 @pytest.mark.parametrize("word", BANNED)
 def test_no_shop_page_reads_as_a_translation(client, name, word):
-    assert word not in client.get(reverse(name)).content.decode()
+    body = client.get(reverse(name)).content.decode()
+
+    assert not re.search(word, body), word
 
 
 def test_the_signed_in_pages_read_the_same_way(client, user):
@@ -109,4 +121,19 @@ def test_the_signed_in_pages_read_the_same_way(client, user):
     body = client.get(reverse("account")).content.decode()
 
     for word in BANNED:
-        assert word not in body, word
+        assert not re.search(word, body), word
+
+
+@pytest.mark.parametrize(
+    ("text", "caught"),
+    [
+        ("پرداخت انجام می‌گردد", True),
+        ("ارسال می‌گردد و تأیید گردید", True),
+        ("اگر سفارش تحویل نشود، وجه برمی‌گردد", False),
+        ("مبلغ به کارت شما برمی‌گردد", False),
+    ],
+)
+def test_the_translation_guard_still_catches_what_it_is_for(text, caught):
+    """The «می‌گردد» pattern has a lookbehind in it; this is what proves the
+    lookbehind did not simply switch the rule off."""
+    assert any(re.search(word, text) for word in BANNED) is caught

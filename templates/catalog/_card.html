@@ -1,29 +1,52 @@
 {% load fa %}{% comment %}
-One product on a shelf. The whole card is the link; the image is a tile that is
-designed for the no-image case (a monogram on tinted stone), because a broken
-or missing picture on a shop card is the fastest way to look unreal.
-Params: product (with plans prefetched).
+One product on a shelf. The whole card is the link.
+
+The mark and the name share the top line because a Persian shopper finds the
+logo first and reads the name to confirm it. Under them is the line the buyer
+is actually anxious about — when it arrives, and what happens if it breaks —
+rather than a marketing sentence: both values come from the product's own
+fields, so the card cannot promise something the product page contradicts.
+The price sits at the reading edge of the foot, which is where digikala,
+basalam and irpremium all put it; label-at-the-start, figure-at-the-end is an
+English invoice row mirrored, and it reads as one.
+
+Params: product (with plans prefetched), first (True for the first card in a
+grid — its mark is an LCP candidate and must not be lazy-loaded).
 {% endcomment %}
 <a class="pcard" href="{% url 'product' product.slug %}">
-  <div class="pcard__media">
+  <div class="pcard__top">
     {% if product.image %}
-      <span class="tile"><img src="{{ product.image.url }}" alt="" loading="lazy" width="40" height="40"></span>
+      <span class="tile"><img src="{{ product.image.url }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async" width="28" height="28"></span>
     {% else %}
       <span class="tile tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
     {% endif %}
+    <span>
+      <span class="pcard__cat">{{ product.category.name }}</span>
+      {# bdi: the name is DB-supplied and almost always a Latin run inside a Persian page. #}
+      <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>
+    </span>
   </div>
   <div class="pcard__body">
-    <span class="pcard__cat">{{ product.category.name }}</span>
-    <h3 class="pcard__name">{{ product.name }}</h3>
-    {% if product.short_description %}<p class="pcard__desc">{{ product.short_description }}</p>{% endif %}
+    <div class="pcard__terms">
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        تحویل تا {{ product.delivery_hours|fa_digits }} ساعت
+      </span>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/></svg>
+        {% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}
+      </span>
+    </div>
   </div>
   <div class="pcard__foot">
     {% with plan=product.cheapest_plan %}
       {% if plan %}
+        {% comment %}The plan above the figure, both at the reading edge: a price
+        and its label on one line collide the moment the figure has seven digits.{% endcomment %}
         <span class="pcard__from">{{ plan.title }}</span>
-        {% include "catalog/_price.html" with plan=plan %}
+        <span class="pcard__price">{% if product.available_plans|length > 1 %}<span class="pcard__pre">از</span>{% endif %}{% include "catalog/_price.html" with plan=plan %}</span>
       {% else %}
-        <span class="small">ناموجود</span>
+        <span class="badge badge--neutral">ناموجود</span>
       {% endif %}
     {% endwith %}
   </div>

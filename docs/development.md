@@ -34,6 +34,7 @@ python manage.py runserver      # http://127.0.0.1:8000
 .venv/Scripts/python.exe manage.py seed_catalog        # 12 mock products; --reset, --no-images
 .venv/Scripts/python.exe -m uv add <package>           # uv lives inside the venv
 npm run css                                            # or css:watch
+.venv/Scripts/python.exe scripts/subset_fonts.py       # after replacing a font file only
 ```
 
 - **The gate is six steps**, in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`: `ruff check .`, `black --check .`, `mypy apps config`, `pytest -q`, `pip-audit`, `bandit -r apps config`. Keep the two files in step. `bandit` does not read ruff's `# noqa`; its marker is a bare `# nosec B###`, with the reason in an ordinary comment.
@@ -46,6 +47,24 @@ npm run css                                            # or css:watch
 
   `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script — but **do not pipe it**: `gh run watch … | tail -2` reports the exit code of `tail`, which is 0, and a failed run then reads as a pass (it did here once). Read `conclusion` from the `run list` line above, or use `${PIPESTATUS[0]}`. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
 - **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer.
+
+## Assets: fonts, marks, bytes
+
+- **The fonts in `static/fonts/` are already subset** and the subset files are what is committed. They were 81% of the home page's bytes unsubset. `scripts/subset_fonts.py` cuts each face to the codepoints this UI renders — the Arabic block, the four Persian letters outside it, ZWNJ, basic Latin, the guillemets — keeping `locl` (which selects the Persian shapes of ک ی ۴ ۶ ۷) and the joining and mark-positioning features that make Arabic script cursive. 313 KB → 129 KB.
+
+  Run it only after replacing a font file, and **look at the result**: a subset that drops a joining feature does not raise, it just renders Persian as disconnected letters. `/styleguide/` carries the specimen that shows it — joins, ZWNJ, پ چ ژ گ, Persian digit forms, and a Latin run that must not fall back mid-sentence. Latin is deliberately kept in both faces: without it «Netflix» drops to Tahoma inside a Persian line, which is the exact assembled-from-parts look the design is avoiding.
+- **Both fallback faces carry measured overrides.** `Estedad Fallback` is `local("Tahoma")` at `size-adjust: 76.5%`, which is where Tahoma renders the hero line at Estedad's width to within a pixel. Re-measure if either face changes: render the same string in both and compare `getBoundingClientRect().width`. Getting this wrong costs layout shift, not an error — it was worth 0.027 CLS before the fallback existed.
+- **Brand marks are downloaded once at seed time** into `MEDIA_ROOT` and served from there; the running site never reaches a CDN, because most are unreachable from Iran. The sources are per brand in `seed_catalog.py` (`MARKS`) — no single icon set has all twelve in colour, and the one previously used answered 404 for three of them, which is why they rendered as letters. Each download is checked for `<svg` and a `viewBox` before it is written, and the viewBox is widened for bare glyphs so a shelf of twelve looks like one family.
+- **Responses are gzipped** by `GZipMiddleware`: the home page is 27 KB of HTML and 4.9 KB compressed. Static files in development are served by Django's staticfiles handler, which the middleware does not reach — in production the reverse proxy must gzip `/static/` and send `Cache-Control: public, max-age=31536000, immutable` for the hashed files. Fonts are already compressed; do not compress them again.
+- **Measuring it.** Nothing to install:
+
+  ```bash
+  curl -s -H "Accept-Encoding: gzip" -o /dev/null -w "%{size_download}
+" http://127.0.0.1:8000/
+  for f in static/fonts/*.woff2; do stat -c"%s %n" "$f"; done
+  ```
+
+  For LCP/CLS/transfer, drive Chromium through the Playwright already in the venv and read `largest-contentful-paint` and `layout-shift` from a `PerformanceObserver`. Current home page at 390px: LCP 524 ms, CLS 0.000, 210 KB transferred over 15 requests.
 
 ## Tests
 

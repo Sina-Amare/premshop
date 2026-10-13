@@ -1,0 +1,26 @@
+# ADR-0026 — The storefront: an ink band, a shelf across its edge, colour only from the goods
+
+**Status:** Accepted (owner's review, "the site is very raw") · 2026-10-14
+
+**Context.** The shop was built on a white canvas ruled with hairlines, and the system worked exactly as written: one radius, no shadow anywhere, a strict accent budget, no hero. The owner reviewed it and rejected it — *«هیچ استایل و داینامیک بودنی نداریم … سایت خیلی خامه»* — and supplied three reference systems (Brex, Airbnb, monday.com) with the instruction to understand them rather than copy them. The common structure across all three is not decoration: a white body, one saturated accent, one elevated signature element, and a hero whose subject is the product itself. The previous build had none of those four, and the clause that was meant to supply the colour — "colour belongs to the goods" — had never actually executed, because the goods rendered as grey monochrome glyphs in grey boxes.
+
+Three independent design directions were produced and judged on three lenses (originality, Persian/RTL correctness, buildability). All three reached for a drifting brand-logo marquee as the hero and all three were rejected on that point: a horizontal strip of logos has meant "trusted by" for five years, the shape is read before the intent, and a moving target cannot be tapped.
+
+**Decision.**
+
+1. **The page opens and closes on ink.** A full-bleed `--color-deep` promise strip at the top, a full-bleed ink hero on the home page, and an ink footer. The white body between them is what makes the restraint read as deliberate rather than unfinished. Text on ink uses its own ramp (`--color-on-deep*`); the body ramp is about 2:1 there and fails outright.
+2. **The shelf crosses the seam.** A white panel laid over the hero's lower edge carries every service the shop stocks as a full-colour brand mark, each one a link. It is the only object on the site that exists in both surfaces, the only one with a shadow, and it answers "do you actually have X" in one glance and one tap. The pattern is alibaba.ir's, not a Western landing page's.
+3. **No marquee, and no non-user-triggered motion except one.** The hero band carries a drafting grid at 4.5% white drifting 34px a minute — CSS only, one composited layer, zero bytes, switched off below 900px and under `prefers-reduced-motion`. Everything else moves only in answer to a person.
+4. **Two radii, and the step between them is information.** 6px for a control you act on, 14px for a surface that holds goods, 0 for anything touching a viewport edge. This supersedes the single-radius clause of 2026-10-13.
+5. **One shadow token with one consumer.** `--shadow-lift`, on the shelf panel and nothing else. This supersedes "deleting every shadow would change nothing about the hierarchy" — deleting it now changes exactly one element, which is the weaker claim the system can still honestly make.
+6. **Colour is only ever the goods.** Teal keeps the single primary action and the current-state indicator; amber still means time and nothing else; no third hue was invented. Every saturated colour on the site comes from a brand mark.
+7. **Brand marks are sourced per brand and normalised at download.** One CDN cannot serve twelve marks in colour — the one in use answered 404 for three of them, which is why they rendered as letters. Each product names its own source, and the padding that evens a bare glyph against a containerised app icon is baked into the file's viewBox at seed time rather than carried as a per-brand CSS rule.
+8. **Fonts are subset and all four above-the-fold faces are preloaded,** and Estedad gets a measured metric fallback.
+
+**Alternatives considered.** A drifting logo marquee (rejected: reads as a partner wall, cannot be tapped, and duplicates the card grid 400px below it). A completion meter on the account page (rejected: of the four things it would count, one is true for every account from birth and one is an S8 field with no view behind it, so it would sit at ۲ از ۴ forever). A dark *card* hero in the style of the direct competitor irpremium (rejected: full-bleed differs from them, and an inset rounded card on ink would need a third radius). Inventing a brighter accent for the ink band (rejected: a saturated accent on near-black is itself a generated-site signature; the primary action on ink is paper instead).
+
+**Assumptions.** That the brand marks may be used nominatively by a reseller, which is the ordinary case. Midjourney is the exception — no official SVG is distributed and the file in use is a community trace; if that becomes a problem the product falls back to a monogram, which the tile is designed for.
+
+**Revisit when.** A real photograph of the operator's own delivery exists (it would outrank the drafting grid); or the catalogue outgrows a single shelf panel, at which point the panel becomes the categories rather than the products; or an e-namad seal is granted, which needs a white card and will change the footer's composition.
+
+**Consequences.** `docs/design-language.md` carries the clause-by-clause amendment. Two of its older rules are now wrong and are marked so rather than deleted. The styleguide reads its palette out of the stylesheet instead of restating it, because the hard-coded copy had already drifted for a month without anyone noticing.

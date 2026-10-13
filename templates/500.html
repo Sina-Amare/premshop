@@ -3,13 +3,14 @@
 {% block title %}خطای سرور — PremShop{% endblock %}
 
 {% block content %}
-<div class="py-16 text-center">
-  <p class="font-[family-name:var(--font-display)] text-6xl font-extrabold text-danger">۵۰۰</p>
-  <h1 class="mt-4">مشکلی در سرور پیش آمد</h1>
-  <p class="mx-auto mt-3 max-w-md text-muted">
-    خطا ثبت شد و بررسی می‌شود. اگر در حال ثبت سفارش بودید، پیش از تلاش دوباره
-    وضعیت سفارش‌هایتان را بررسی کنید.
-  </p>
-  <p class="mt-8"><a href="/">بازگشت به صفحه اصلی</a></p>
+<div class="wrap page">
+<div class="notfound">
+  <p class="notfound__code notfound__code--bad">۵۰۰</p>
+  <h1 class="page-head__title">مشکلی در سرور پیش آمد</h1>
+  <p class="prose">خطا ثبت شد و پیگیری می‌شود. اگر در حال پرداخت بودید، پیش از تلاش دوباره در تلگرام بپرسید: <bdi class="latin">@premshop</bdi></p>
+  <div class="notfound__act">
+    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
+  </div>
+</div>
 </div>
 {% endblock %}

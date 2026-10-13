@@ -5,53 +5,94 @@
 
 {% block content %}
 {% comment %}
-One statement, then the shelf. The promises that used to sit here as a four-row
-box are already in the header strip and on every product page, where they are
-per-product and true; repeating them generically was furniture.
-Search lives in the header, once per page.
+The band, then the shelf laid across its lower edge. The headline names the
+one thing this shop actually solves — these services do not take a تومان and
+this one does — and the marks under it answer the next question in a glance:
+do you really have the thing I came for. They are still and every one is a
+link; a drifting strip of brand logos has meant «trusted by» for five years,
+and a visitor reads the shape long before they read the intent.
 {% endcomment %}
 <section class="hero">
-  <h1 class="hero__title">اشتراک و اکانت دیجیتال، با تحویل مطمئن</h1>
-  <p class="prose hero__lead">ابزارهای هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت. قیمت مشخص، زمان تحویل مشخص، گارانتی مشخص.</p>
+  <div class="wrap">
+    <h1 class="hero__title">اشتراک‌های جهانی، با پرداخت تومانی</h1>
+    <p class="hero__lead">
+      چت‌جی‌پی‌تی، نتفلیکس، اسپاتیفای، لایسنس جت‌برینز و بقیه — روی حساب خودتان فعال می‌شوند
+      یا کدشان را تحویل می‌گیرید. <b>زمان تحویل و گارانتی روی صفحه‌ی هر محصول نوشته شده</b>
+      و همان است که انجام می‌شود.
+    </p>
+    <div class="hero__act">
+      <a class="btn btn--invert" href="#shelf">مشاهده‌ی محصولات</a>
+      <p class="hero__note">پرداخت از درگاه بانکی · پشتیبانی هر روز {{ SUPPORT_HOURS }}</p>
+    </div>
+  </div>
 </section>
 
-{% if categories %}
-<section class="section">
-  <h2 class="section__title">دسته‌بندی‌ها</h2>
-  <div class="grid grid--cats">
-    {% for cat in categories %}
-      <a class="ccard" href="{% url 'category' cat.slug %}">
-        <span class="ccard__name">{{ cat.name }}</span>
-        <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
-        {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
-      </a>
-    {% endfor %}
+{% if shelf %}
+<section class="shelf" id="shelf">
+  <div class="wrap">
+    <div class="shelf__panel">
+      <div class="shelf__head">
+        <h2 class="section__title" style="margin: 0; border: 0; padding: 0">سرویس‌هایی که داریم</h2>
+        <span class="small" style="margin: 0">{{ shelf|length|fa_digits }} سرویس</span>
+      </div>
+      <div class="shelf__grid">
+        {% for product in shelf %}
+          <a class="mark" href="{% url 'product' product.slug %}">
+            <span class="mark__tile">
+              {% if product.image %}
+                <img src="{{ product.image.url }}" alt="" width="30" height="30" decoding="async">
+              {% else %}
+                <span class="tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
+              {% endif %}
+            </span>
+            <span class="mark__name"><bdi>{{ product.name }}</bdi></span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </section>
 {% endif %}
 
-<section class="section">
-  <div class="section__head">
-    <h2 class="section__title">محصولات</h2>
-  </div>
-  {% if featured %}
-    <div class="grid">
-      {% for product in featured %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+<div class="wrap page{% if shelf %} page--flush{% endif %}">
+  <section class="section" style="margin-block-start: 0">
+    <div class="section__head">
+      <h2 class="section__title">محصولات و قیمت‌ها</h2>
     </div>
-  {% else %}
-    <div class="card empty">
-      <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
-      <p class="small" style="margin:0">به‌زودی فهرست محصولات اینجا قرار می‌گیرد.</p>
-    </div>
-  {% endif %}
-</section>
+    {% if featured %}
+      <div class="grid">
+        {% for product in featured %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+      </div>
+    {% else %}
+      <div class="card empty">
+        <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
+        <p class="small" style="margin:0">به‌زودی فهرست محصولات اینجا قرار می‌گیرد.</p>
+      </div>
+    {% endif %}
+  </section>
 
-<section class="section">
-  <h2 class="section__title">چطور کار می‌کند</h2>
-  <ol class="steps">
-    <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">انتخاب و پرداخت</span><span class="steps__d">محصول و پلن را انتخاب کنید و از درگاه بانکی پرداخت کنید.</span></li>
-    <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">تحویل در بازه‌ی اعلام‌شده</span><span class="steps__d">زمان تحویل هر محصول روی صفحه‌ی آن نوشته شده؛ سفارش در همان بازه انجام می‌شود.</span></li>
-    <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">گارانتی تا پایان دوره</span><span class="steps__d">اگر مشکلی پیش آمد، تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.</span></li>
-  </ol>
-</section>
+  {% if categories %}
+  <section class="section">
+    <h2 class="section__title">دسته‌بندی‌ها</h2>
+    <div class="grid grid--cats">
+      {% for cat in categories %}
+        <a class="ccard" href="{% url 'category' cat.slug %}">
+          <span class="ccard__name">{{ cat.name }}</span>
+          <span class="ccard__count">{{ cat.product_count|fa_digits }} محصول</span>
+          {% if cat.description %}<span class="ccard__desc">{{ cat.description }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section">
+    <h2 class="section__title">خرید چطور انجام می‌شود</h2>
+    <ol class="steps">
+      <li class="steps__item card"><span class="steps__n">۱</span><span class="steps__t">محصول و پلن را انتخاب کنید</span><span class="steps__d">قیمت هر پلن روی صفحه‌ی محصول نوشته شده و همان مبلغ از درگاه بانکی پرداخت می‌شود.</span></li>
+      <li class="steps__item card"><span class="steps__n">۲</span><span class="steps__t">سفارش را تحویل می‌گیرید</span><span class="steps__d">در بازه‌ای که روی همان محصول نوشته شده و در ساعات پشتیبانی، اشتراک روی حسابتان فعال می‌شود یا کد را دریافت می‌کنید.</span></li>
+      <li class="steps__item card"><span class="steps__n">۳</span><span class="steps__t">تا پایان دوره پشتیبان‌تان هستیم</span><span class="steps__d">اگر اشتراک قطع شد یا کد کار نکرد، تا پایان دوره پیگیری می‌کنیم؛ اگر درست نشد، وجه برمی‌گردد.</span></li>
+    </ol>
+  </section>
+</div>
 {% endblock %}

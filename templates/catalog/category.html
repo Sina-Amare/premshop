@@ -4,6 +4,7 @@
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
 {% block content %}
+<div class="wrap page">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
 
 <header class="page-head">
@@ -22,7 +23,7 @@
 
 {% if products %}
   <div class="grid">
-    {% for product in products %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+    {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
   </div>
 {% else %}
   <div class="card empty">
@@ -35,4 +36,5 @@
     {% endif %}
   </div>
 {% endif %}
+</div>
 {% endblock %}

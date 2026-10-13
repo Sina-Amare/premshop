@@ -217,18 +217,22 @@ def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
 # --- The header ------------------------------------------------------------
 
 
-def test_the_header_icon_goes_to_login_when_signed_out(client):
+def test_the_header_account_link_goes_to_login_when_signed_out(client):
     body = client.get(reverse("login")).content.decode()
 
-    assert f'href="{reverse("login-code")}" class="hdr__icon"' in body
+    assert f'href="{reverse("login-code")}" class="hdr__account"' in body
+    # Labelled, not a bare pictogram: a first-time visitor has to be able to
+    # see where signing up happens without decoding a glyph.
+    assert "ورود یا ثبت‌نام" in body
 
 
-def test_the_header_icon_goes_to_the_account_when_signed_in(client, user):
+def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user):
     client.force_login(user)
 
     body = client.get(reverse("account")).content.decode()
 
-    assert f'href="{reverse("account")}" class="hdr__icon"' in body
+    assert f'href="{reverse("account")}" class="hdr__account"' in body
+    assert "ورود یا ثبت‌نام" not in body
 
 
 # --- The account dashboard ---------------------------------------------------
@@ -270,3 +274,66 @@ def test_the_dashboard_does_not_advertise_what_is_not_built(client, user):
 
     for unbuilt in ["سفارش‌های من", "اشتراک‌های من", "تیکت", "کیف پول", "به‌زودی"]:
         assert unbuilt not in body, unbuilt
+
+
+def test_the_dashboard_does_not_score_the_customer_against_things_they_cannot_do(client, user):
+    """A completeness meter was designed and cut. Of the four things such a
+    meter would count, email-verified is true for every account from birth
+    (services.py: the code proved the mailbox) and Telegram linking is S8 with
+    no view behind it — so the bar would sit at ۲ از ۴ forever with two dead
+    actions under it. A progress meter nobody can finish is a chore the shop
+    invented for its customer, on the one page where it should be answering
+    questions instead."""
+    client.force_login(user)
+
+    body = client.get(reverse("account")).content.decode()
+
+    for invented in ["از ۴", "تکمیل حساب", "تلگرام شما", "درصد"]:
+        assert invented not in body, invented
+
+
+def test_the_dashboard_does_not_report_the_current_session_as_the_last_one(client, user):
+    """Django writes last_login at the moment of login, so «آخرین ورود» on
+    this page would always read «لحظاتی پیش» — and everyone who has met that
+    label on a bank site reads it as the *previous* session. Showing it needs
+    a second timestamp the model does not have."""
+    client.force_login(user)
+
+    body = client.get(reverse("account")).content.decode()
+
+    assert "آخرین ورود" not in body
+
+
+def test_the_dashboard_names_one_next_step_at_a_time(client, user):
+    """A list of three optional chores teaches the customer to ignore the
+    page. The shop picks the single most useful thing that is actually
+    missing, and when nothing is missing it says so instead of inventing."""
+    client.force_login(user)
+    assert not user.phone
+    assert user.has_usable_password()
+
+    body = client.get(reverse("account")).content.decode()
+    assert body.count('class="acct__next"') == 1
+    assert "افزودن شماره" in body
+
+    # Nothing left that is both true and useful: say that, invent nothing.
+    user.phone = "09120000000"
+    user.save()
+    body = client.get(reverse("account")).content.decode()
+    assert "اطلاعات حساب‌تان کامل است" in body
+    assert 'class="acct__next"' not in body
+
+
+def test_an_otp_only_account_is_offered_a_password_and_nothing_else(client):
+    """An account created by a code login has no password. That is the one
+    step worth naming for them — and it is named on its own, not alongside
+    the phone, because two "next steps" is a list and a list gets ignored."""
+    only_code = User.objects.create_user("codeonly@example.test", None, is_verified=True)
+    only_code.phone = "09120000001"
+    only_code.save()
+    client.force_login(only_code)
+
+    body = client.get(reverse("account")).content.decode()
+
+    assert body.count('class="acct__next"') == 1
+    assert "ثبت رمز عبور" in body

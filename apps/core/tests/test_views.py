@@ -63,6 +63,21 @@ class TestStyleguide:
         body = client.get(reverse("styleguide")).content.decode()
         assert '<span class="price__num">رایگان</span>' in body
 
+    def test_the_styleguide_swatches_match_the_stylesheet(self, client):
+        """The hard-coded list went on showing warm stone (#FAFAF9, #1C1917)
+        for a month after the canvas turned white. The page whose job is
+        documenting the design system was the last place anyone looked, so it
+        now reads the values out of input.css instead of restating them."""
+        from apps.core.views import design_tokens
+
+        body = client.get(reverse("styleguide")).content.decode()
+        tokens = design_tokens()
+
+        assert tokens, "no colour tokens found in input.css"
+        for token in tokens:
+            assert token["value"] in body, token
+        assert "#FAFAF9" not in body, "the warm-stone palette is gone from the stylesheet"
+
     def test_ledger_signature_is_present(self, client: Client) -> None:
         body = client.get(reverse("styleguide")).content.decode()
         assert 'class="fact__lead"' in body

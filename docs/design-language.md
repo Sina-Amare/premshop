@@ -2,6 +2,20 @@
 
 The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
 
+## Amendment — 2026-10-14: somewhere dark to stand
+
+The owner reviewed the editorial turn below and rejected it: *«هیچ استایل و داینامیک بودنی نداریم … سایت خیلی خامه»*. The diagnosis was not that the system was wrong but that four things it forbade were the four things the page needed. Decision and alternatives: [ADR-0026](decisions/0026-storefront-composition.md). These clauses override the matching ones further down, including in the 2026-10-13 amendment.
+
+- **Ink is a surface, not only a text colour.** `--color-deep #131313` carries the promise strip, the home hero and the footer, full-bleed and flat — no gradient, no glow, no blue cast, because twelve brand colours sit on top of it and must read true. Text on ink uses `--color-on-deep` / `--color-on-deep-muted` / `--color-on-deep-line`; the body ramp's `#525252` on `#131313` is about 2:1 and fails WCAG outright.
+- **The primary action on ink is paper.** `.btn--invert`. Brightening teal until it passed contrast on near-black would have produced exactly the acid-accent-on-black that ADR-0016 exists to avoid.
+- **Two radii, and the step between them is information.** `--radius-sm 6px` for a control you act on (button, input, chip, badge, plan, code cell); `--radius-lg 14px` for a surface that holds goods (card, tile, panel, list); `0` for anything touching a viewport edge, because a rounded corner on a full-bleed band is a lie about where the page ends. ~~One radius: 4px~~ is superseded; a single value across every element read as utilitarian rather than restrained.
+- **One shadow token, one consumer.** `--shadow-lift` on `.shelf__panel` and nothing else. ~~Deleting every shadow from the stylesheet would change nothing about the hierarchy~~ is superseded: deleting it now changes exactly one element, which is the stronger claim this system can honestly make. Everywhere else, structure is still a hairline.
+- **The home page opens on a band, not a sentence.** ~~No centred hero~~ stands — the hero is start-aligned like everything else — but the ban on having one does not. The composition is: ink band with one statement and one action, then a white shelf panel laid across its lower edge carrying every service as a full-colour mark, every mark a link. Nothing drifts: a horizontal strip of brand logos has meant "trusted by" for five years, the shape is read before the intent, and a moving target cannot be tapped.
+- **One piece of ambient motion exists, and this is it.** The hero band's drafting grid, 4.5% white at a 34px pitch, drifting one pitch a minute. CSS only, one composited layer, zero bytes; off below 900px and under `prefers-reduced-motion`. Everything else moves only in answer to a person: `--dur-xs 90ms` for a press, `--dur 140ms` for colour and state, `--dur-lg 220ms` for anything that reveals, `--ease-out` for what enters.
+- **Colour is only ever the goods.** Unchanged in intent, newly true in fact: the marks now download in their real brand colours from a source named per brand, normalised at seed time so a shelf of twelve looks like one family. Teal keeps the primary action and the current-state indicator; amber still means time and nothing else.
+- **Every Latin run that comes from data is wrapped in `<bdi>`.** Product names, plan titles, spec values, emails. Without it «اشتراک Netflix.» puts the full stop on the wrong side and «(Spotify)» renders «)Spotify(» — the most common real bidi failure in a shop whose entire inventory is Latin names inside Persian sentences. The regression string lives on `/styleguide/` so the next change can be *seen* to break it.
+- **Fonts are subset, and all four faces that paint above the fold are preloaded.** `scripts/subset_fonts.py` cut 313 KB to 129 KB with no change to shaping. Estedad gained a measured metric fallback (`size-adjust: 76.5%`, Tahoma), which took the home page's CLS from 0.027 to 0.000 — the hero heading used to measure 109px in the fallback against 73px in Estedad, wrap to a third line, and drop the page 45px when the real face arrived.
+
 ## Amendment — 2026-10-13: the editorial turn
 
 The owner reviewed the built shop and asked for a quieter, more professional surface, supplying an editorial reference (white canvas, hairline rules, 4px corners, headlines set light). The direction taken is hybrid, and these clauses override the matching ones above:
@@ -23,9 +37,10 @@ This shop should read like **a small business that keeps records** — not like 
 
 | Role | Face | Weight | Size | Line-height |
 |---|---|---|---|---|
-| h1 | Estedad | 800 | 34px | 1.25 |
-| h2 | Estedad | 800 | 26px | 1.35 |
-| h3 | Estedad | 600 | 20px | 1.45 |
+| Hero h1 (home) | Estedad | 600 | 40px (26 on a phone) | 1.28 |
+| h1 | Estedad | 600 | 30px | 1.3 |
+| h2 | Estedad | 600 | 21px | 1.4 |
+| h3 | Estedad | 600 | 18px | 1.45 |
 | h4 | Estedad | 600 | 17px | 1.5 |
 | Body prose | Vazirmatn | 400 | 17px | **1.85** |
 | UI / buttons | Vazirmatn | 400–500 | 15px | 1.5–1.6 |
@@ -63,10 +78,11 @@ Nine values, and nothing outside them appears in the stylesheet:
 
 | Role | Value | Use |
 |---|---|---|
-| Ground / Surface | `#FAFAF9` / `#FFFFFF` | warm stone paper, white slabs on it |
-| Fill subtle | `#F2F1F0` | hover fills, quiet panels |
-| Line / Line strong | `#E7E5E4` / `#D6D3D1` | hairlines; borders that must be seen |
-| Muted / Secondary / Ink | `#78716C` / `#57534E` / `#1C1917` | text ramp |
+| Ground / Surface | `#FFFFFF` | the page, and every card on it |
+| Deep | `#131313` | the bands the page opens and closes on; text on it uses the on-deep ramp |
+| Fill subtle | `#F5F5F4` | hover fills, quiet panels |
+| Line / Line strong | `#E7E5E4` / `#D4D4D4` | hairlines; borders that must be seen |
+| Muted / Secondary / Ink | `#737373` / `#525252` / `#171717` | text ramp |
 | **Accent** | teal-700 `#0F766E` | see budget below |
 | Success | `#16A34A` (text `#166534`) | delivered, confirmed |
 | **Time** | amber `#D97706` (text `#92400E`) | deadlines and countdowns, nothing else |
@@ -132,8 +148,8 @@ Run this against any new page:
 
 - [ ] No spacing value outside the nine tokens
 - [ ] Every between-group gap ≥ 2× its within-group gap; heading margins asymmetric
-- [ ] Only the three radii in use; no element has border + shadow + radius together
-- [ ] No `box-shadow` outside focus rings and true overlays; no gradients
+- [ ] Only `--radius-sm` and `--radius-lg` in use, and 0 on anything full-bleed
+- [ ] No `box-shadow` outside focus rings and `--shadow-lift` on the shelf panel; no gradients
 - [ ] Teal ≤3 times per viewport, never on icons or headings; amber only on time
 - [ ] Zero literal colour values outside the token block
 - [ ] Body 17px, prose line-height 1.85, every text block capped at 32rem
@@ -143,8 +159,10 @@ Run this against any new page:
 - [ ] `:focus-visible` on everything interactive; no `transition: all`; 120–180ms; no hover `transform`
 - [ ] `prefers-reduced-motion` honoured; `::selection`, `caret-color`, `accent-color` set
 - [ ] One ledger group per region — no more
-- [ ] No centred hero, no three feature cards under it, no rounded-up customer counts, no emoji
+- [ ] Nothing centred, no three feature cards, no rounded-up customer counts, no emoji
+- [ ] Every `{{ product.name }}`, `{{ plan.title }}` and user value wrapped in `<bdi>`
+- [ ] Nothing drifts, slides or fades except the hero's grid; motion answers an action
 
 ## Implementation notes
 
-Fonts are self-hosted woff2 (~316KB for five files) with `font-display: swap` and a metric-matched Tahoma fallback so text does not jump when the real faces load. Tailwind's automatic source scanning is disabled (`source(none)`) and pointed only at `templates/` — left on, it read this very document and generated the utilities the document bans.
+Fonts are self-hosted woff2, subset by `scripts/subset_fonts.py` (129KB for five files, from 313KB) with `font-display: swap` and a metric-matched Tahoma fallback so text does not jump when the real faces load. Tailwind's automatic source scanning is disabled (`source(none)`) and pointed only at `templates/` — left on, it read this very document and generated the utilities the document bans.

@@ -7,9 +7,10 @@ long for Persian at 17px.
 {% endcomment %}
 
 {% block content %}
+<div class="wrap page">
 <div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
   <div class="card" style="padding: var(--spacing-7) var(--spacing-6)">
-    <h1 style="font-family: var(--font-head); font-size: 26px; font-weight: 800; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
+    <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
     {% block auth_intro %}{% endblock %}
 
     {% if form.non_field_errors %}
@@ -21,5 +22,6 @@ long for Persian at 17px.
     {% block auth_body %}{% endblock %}
   </div>
   {% block auth_after %}{% endblock %}
+</div>
 </div>
 {% endblock %}

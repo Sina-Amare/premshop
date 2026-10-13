@@ -4,19 +4,55 @@
 {% block heading %}پیشخوان{% endblock %}
 
 {% block section %}
-{% comment %}The ledger line, once per page region — the design's signature.{% endcomment %}
+{% comment %}
+Everything on this page is a field the User model actually holds. There is no
+order table yet (S4b), no subscription table (S9) and no ticket system
+(ADR-0014), so there is nothing here shaped like one — and no completion
+meter either: three of the four things such a meter would count can never be
+completed today, which makes it a chore the shop invented for its customer.
+
+«آخرین ورود» is deliberately absent for the same reason. Django writes
+last_login at the moment of login, so a customer who signs in and clicks
+پیشخوان would read «لحظاتی پیش», every time — and everyone who has seen that
+label on a bank site reads it as the *previous* session, which would make it
+a quiet untruth on the account page of a shop that stores credentials.
+{% endcomment %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin">{{ request.user.email }}</span></div>
-  <div class="fact"><span class="fact__k">وضعیت ایمیل</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.is_verified %}تأیید شده{% else %}تأیید نشده{% endif %}</span></div>
+  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin"><bdi>{{ request.user.email }}</bdi></span></div>
   <div class="fact"><span class="fact__k">شماره تماس</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.phone %}{{ request.user.phone|fa_digits }}{% else %}ثبت نشده{% endif %}</span></div>
-  <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
+  <div class="fact"><span class="fact__k">روش ورود</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.has_usable_password %}رمز عبور یا کد ایمیل{% else %}فقط کد ایمیل{% endif %}</span></div>
+  <div class="fact"><span class="fact__k">عضو از</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
-<p class="small acct__hint">
-  {% if request.user.phone %}
-    برای تغییر شماره یا رمز عبور، از بخش‌های کنار صفحه وارد شوید.
-  {% else %}
-    شماره تماس‌تان را ثبت کنید تا پیگیری سفارش‌ها ساده‌تر باشد — <a href="{% url 'account-profile' %}">اطلاعات حساب</a>.
-  {% endif %}
-</p>
+{% comment %}
+One next step, named, or none. A dashboard that lists three optional chores
+teaches the customer to ignore it; the shop picks the single most useful
+thing that is actually missing and says only that.
+{% endcomment %}
+{% if not request.user.phone %}
+  <div class="acct__next">
+    <div>
+      <h2 class="acct__next-t">شماره تماس‌تان را اضافه کنید</h2>
+      <p class="small" style="margin: 0">اگر موقع تحویل سفارش به ایمیل‌تان دسترسی نداشتید، از همین شماره پیگیری می‌کنیم.</p>
+    </div>
+    <a class="btn btn--primary" href="{% url 'account-profile' %}">افزودن شماره</a>
+  </div>
+{% elif not request.user.has_usable_password %}
+  <div class="acct__next">
+    <div>
+      <h2 class="acct__next-t">یک رمز عبور بگذارید</h2>
+      <p class="small" style="margin: 0">با رمز عبور دیگر لازم نیست هر بار منتظر کد ایمیل بمانید.</p>
+    </div>
+    <a class="btn btn--primary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
+  </div>
+{% else %}
+  <p class="small acct__hint">اطلاعات حساب‌تان کامل است. برای تغییر شماره یا رمز، از منوی کنار صفحه وارد شوید.</p>
+{% endif %}
+
+<h2 class="acct__h2">خرید و پشتیبانی</h2>
+<div class="card acct__card">
+  <div class="fact"><span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span><span class="fact__v latin"><bdi>@premshop</bdi></span></div>
+  <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">هر روز {{ SUPPORT_HOURS }}</span></div>
+</div>
+<p class="small acct__hint">پرسش‌های رایج درباره‌ی تحویل و گارانتی: <a href="{% url 'faq' %}">پرسش‌های متداول</a></p>
 {% endblock %}

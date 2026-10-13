@@ -2,13 +2,23 @@
 
 {% block title %}صفحه پیدا نشد — PremShop{% endblock %}
 
+{% comment %}
+Written in the system's own classes. The previous version reached for Tailwind
+utilities and asked for `--font-display`, a token that is defined nowhere — so
+the numeral silently rendered in the body face instead of the display one, and
+nothing failed. It also centred Persian body text, which is the first thing on
+the list of marks of a translated layout.
+{% endcomment %}
 {% block content %}
-<div class="py-16 text-center">
-  <p class="font-[family-name:var(--font-display)] text-6xl font-extrabold text-accent">۴۰۴</p>
-  <h1 class="mt-4">این صفحه پیدا نشد</h1>
-  <p class="mx-auto mt-3 max-w-md text-muted">
-    ممکن است نشانی را اشتباه وارد کرده باشید یا این صفحه دیگر وجود نداشته باشد.
-  </p>
-  <p class="mt-8"><a href="/">بازگشت به صفحه اصلی</a></p>
+<div class="wrap page">
+<div class="notfound">
+  <p class="notfound__code">۴۰۴</p>
+  <h1 class="page-head__title">این صفحه پیدا نشد</h1>
+  <p class="prose">ممکن است نشانی را اشتباه وارد کرده باشید، یا این صفحه دیگر وجود نداشته باشد.</p>
+  <div class="notfound__act">
+    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
+    <a class="btn btn--secondary" href="{% url 'faq' %}">پرسش‌های متداول</a>
+  </div>
+</div>
 </div>
 {% endblock %}

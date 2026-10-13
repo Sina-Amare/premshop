@@ -6,8 +6,13 @@ each and changes nothing else. Nothing is listed before it exists.
 {% endcomment %}
 
 {% block content %}
+<div class="wrap page">
 <div class="acct">
   <nav class="acct__nav" aria-label="بخش‌های حساب کاربری">
+    <div class="acct__who">
+      <span class="acct__avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>
+      <span class="acct__email latin"><bdi>{{ request.user.email }}</bdi></span>
+    </div>
     <a href="{% url 'account' %}"{% if section == "overview" %} aria-current="page"{% endif %}>پیشخوان</a>
     <a href="{% url 'account-profile' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
     <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
@@ -22,5 +27,6 @@ each and changes nothing else. Nothing is listed before it exists.
     <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
     {% block section %}{% endblock %}
   </main>
+</div>
 </div>
 {% endblock %}

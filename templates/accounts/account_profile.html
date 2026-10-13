@@ -5,8 +5,7 @@
 
 {% block section %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin">{{ request.user.email }}</span></div>
-  <div class="fact"><span class="fact__k">وضعیت ایمیل</span><span class="fact__lead"></span><span class="fact__v">{% if request.user.is_verified %}تأیید شده{% else %}تأیید نشده{% endif %}</span></div>
+  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v latin"><bdi>{{ request.user.email }}</bdi></span></div>
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 

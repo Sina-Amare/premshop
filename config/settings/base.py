@@ -90,6 +90,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Outermost, so it compresses whatever the stack below produces. The home
+    # page is ~15 KB of HTML and gzips to about a fifth of that, which on an
+    # Iranian mobile link is worth more than any amount of markup trimming.
+    # Safe against BREACH here because Django masks the CSRF token with a fresh
+    # per-request salt, which is the mitigation that attack needs.
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Before everything else that might touch the cache, so its 503 wins over a
     # traceback no matter which view raised.
@@ -114,6 +120,9 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # The header's shelves row and the one definition of the
+                # answering hours; see apps/core/context.py.
+                "apps.core.context.shell",
             ],
         },
     },

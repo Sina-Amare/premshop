@@ -4,17 +4,18 @@
 {% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
 
 {% block content %}
-<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span>{{ product.name }}</span></nav>
+<div class="wrap page">
+<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span><bdi>{{ product.name }}</bdi></span></nav>
 
 <div class="pdp">
   <header class="pdp__head">
       {% if product.image %}
-        <span class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="56" height="56"></span>
+        <span class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="42" height="42" decoding="async"></span>
       {% else %}
         <span class="tile tile--lg tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
       {% endif %}
       <div>
-        <h1 class="pdp__title">{{ product.name }}</h1>
+        <h1 class="pdp__title"><bdi>{{ product.name }}</bdi></h1>
         {% comment %}The buyer's two questions, answered before the price: how long, and what if it breaks. A region is not a property every product has — when one matters it is a spec row the operator adds.{% endcomment %}
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
@@ -38,7 +39,7 @@
       <h2 class="pdp__h2">مشخصات</h2>
       <table class="table spec">
         <tbody>
-          {% for spec in specs %}<tr><th scope="row">{{ spec.title }}</th><td>{{ spec.value }}</td></tr>{% endfor %}
+          {% for spec in specs %}<tr><th scope="row">{{ spec.title }}</th><td><bdi>{{ spec.value }}</bdi></td></tr>{% endfor %}
         </tbody>
       </table>
     </section>
@@ -52,9 +53,9 @@
     {% endif %}
 
     <section class="pdp__section">
-      <h2 class="pdp__h2">سؤال‌های رایج</h2>
+      <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی (۱۰ تا ۲۲).</dd>
+        <dt>کی تحویل می‌گیرم؟</dt><dd>حداکثر {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت، در ساعات پشتیبانی ({{ SUPPORT_HOURS }}).</dd>
         <dt>اگر مشکلی پیش بیاید؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز پس از تحویل پاسخ‌گو هستیم.{% else %}تا پایان دوره‌ی اشتراک پاسخ‌گو هستیم.{% endif %}</dd>
       </dl>
     </section>
@@ -78,7 +79,7 @@
               <input type="radio" name="plan" value="{{ plan.id }}"
                      {% if not plan.is_available %}disabled{% elif forloop.first %}checked{% endif %}
                      data-requires-input="{{ plan.requires_customer_input|yesno:'1,0' }}">
-              <span class="plan__title">{{ plan.title }}</span>
+              <span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
               {% if plan.is_available %}
                 {% include "catalog/_price.html" with plan=plan %}
               {% else %}
@@ -142,4 +143,5 @@
   applyCap();
 })();
 </script>
+</div>
 {% endblock %}

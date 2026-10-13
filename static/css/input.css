@@ -46,16 +46,27 @@
   src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
   font-weight: 800; font-style: normal; font-display: swap; size-adjust: 82%;
 }
-/* Metric-matched fallback: keeps layout from shifting while fonts load. */
+/* Metric-matched fallbacks: keep layout from shifting while fonts load.
+   Estedad had none until 2026-10-14, and it was the whole of the page's 0.027
+   CLS: the hero h1 measured 109px in Tahoma against 73px in Estedad, so the
+   headline wrapped to a third line and dropped everything below it by 45px
+   the moment the real face arrived. 76.5% is measured, not guessed — Tahoma
+   renders the hero line at 482.4px there, which is Estedad's width to within
+   a pixel. Re-measure it if either face is replaced. */
 @font-face {
   font-family: "Vazirmatn Fallback";
   src: local("Tahoma");
   size-adjust: 97%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%;
 }
+@font-face {
+  font-family: "Estedad Fallback";
+  src: local("Tahoma");
+  size-adjust: 76.5%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%;
+}
 
 @theme {
   --font-body: "Vazirmatn", "Vazirmatn Fallback", Tahoma, sans-serif;
-  --font-head: "Estedad", "Vazirmatn", "Vazirmatn Fallback", Tahoma, sans-serif;
+  --font-head: "Estedad", "Estedad Fallback", "Vazirmatn", Tahoma, sans-serif;
 
   /* Nine spacing values. Nothing outside this set appears in the stylesheet. */
   --spacing-1: 4px;  --spacing-2: 8px;  --spacing-3: 12px;
@@ -75,6 +86,16 @@
   --color-secondary: #525252;
   --color-ink: #171717;
 
+  /* Ink as a surface. The page opens on a band of it and closes on another,
+     and the white between them reads as deliberate instead of unfinished —
+     which is the whole complaint the 2026-10-14 round answers. Neutral, not
+     blue-black: twelve brand colours sit on top of it and must read true.
+     Text on ink gets its own ramp; the body ramp fails contrast there. */
+  --color-deep: #131313;
+  --color-on-deep: rgba(255, 255, 255, 0.94);
+  --color-on-deep-muted: rgba(255, 255, 255, 0.66);
+  --color-on-deep-line: rgba(255, 255, 255, 0.14);
+
   --color-accent: #0f766e;
   --color-accent-hover: #0d6560;
   --color-accent-active: #0b5450;
@@ -87,19 +108,33 @@
   --color-danger: #dc2626;
   --color-danger-text: #991b1b;
 
-  /* One radius. The slight corner is the whole gesture; anything rounder reads
-     as a template. */
-  --radius-sm: 4px;
+  /* Two radii, and the step between them is the information: 6px is a control
+     you act on, 14px is a surface that holds goods. One value for everything
+     read as utilitarian — the 2026-10-13 single-radius clause is amended, not
+     drifted from. Anything touching a viewport edge keeps 0: a rounded corner
+     on a full-bleed band is a lie about where the page ends. */
+  --radius-sm: 6px;
+  --radius-lg: 14px;
 }
 
 :root {
   --gutter: 18px;
   --container: 1100px;
+  --strip-h: 38px;   /* the ink promise strip; the header sticks past it */
+  --dur-xs: 90ms;    /* press: contact has to feel instant */
   --dur: 140ms;      /* colour, border, small state changes */
   --dur-lg: 220ms;   /* anything that moves or reveals: longer, still quiet */
   --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);   /* enters fast, lands slowly */
+
+  /* The only shadow in the stylesheet, and it has exactly one consumer: the
+     shelf panel that crosses the seam between the ink band and the page. Two
+     layers, tinted from ink rather than black, no bloom. Everywhere else
+     structure is still carried by a hairline — delete this token and only the
+     shelf changes. */
+  --shadow-lift: 0 1px 2px rgba(19, 19, 19, 0.04), 0 18px 40px -22px rgba(19, 19, 19, 0.3);
 }
-@media (max-width: 680px) { :root { --gutter: 14px; } }
+@media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; } }
 
 @layer base {
   html {
@@ -149,6 +184,10 @@
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
       animation-duration: 0.01ms !important;
+      /* Without this an infinite animation still runs forever, 0.01ms at a
+         time — it burns the same battery and never settles. Zeroing the
+         duration is only half of switching motion off. */
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
   }
@@ -156,6 +195,11 @@
 
 @layer components {
   .wrap { inline-size: min(100% - (var(--gutter) * 2), var(--container)); margin-inline: auto; }
+  /* <main> is full-width now so a band can bleed to the viewport edge; the
+     column lives on the content inside each template instead. */
+  .page { padding-block: var(--spacing-7); }
+  .page--flush { padding-block-start: 0; }
+  .acct__main { min-inline-size: 0; }
 
   .prose { font-size: 17px; line-height: 1.85; max-inline-size: 32rem; }
   .prose + .prose { margin-block-start: 1.6rem; }
@@ -167,44 +211,73 @@
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr;
           unicode-bidi: isolate; font-size: 15px; overflow-wrap: anywhere; }
 
-  /* --- Header: a white slab on stone, two bands ------------------------- */
-  .hdr { background: var(--color-surface); border-block-end: 1px solid var(--color-line); }
-  .hdr__promise {
-    min-block-size: 36px; display: flex; align-items: center;
-    font-size: 12px; line-height: 1.9; color: var(--color-secondary);
+  /* --- Header --------------------------------------------------------------
+     Three bands, the Iranian shape: an ink promise strip, the white bar that
+     carries the brand, the search and the account, and a row of shelves.
+     Only the first two stick. `position: sticky` can only travel inside its
+     own parent, so the sticky box is <header> itself — a child of <body>, and
+     therefore free for the whole page — with the strip's height as a negative
+     offset so the strip scrolls away and the bar pins at the top. The shelves
+     row sits outside the header and scrolls off with the page.
+     -------------------------------------------------------------------------- */
+  .hdr {
+    position: sticky; inset-block-start: calc(-1 * var(--strip-h)); z-index: 30;
+    background: var(--color-surface);
     border-block-end: 1px solid var(--color-line);
   }
-  .hdr__main { min-block-size: 78px; display: flex; align-items: center; gap: var(--spacing-6); }
-  .hdr__brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
-  .hdr__word { font-family: var(--font-head); font-size: 17px; font-weight: 600;
+  .hdr__promise {
+    min-block-size: var(--strip-h); display: flex; align-items: center;
+    background: var(--color-deep); color: var(--color-on-deep-muted);
+    font-size: 13px; line-height: 1.75;
+  }
+  .hdr__promise b { color: var(--color-on-deep); font-weight: 500; }
+  .hdr__promise .wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hdr__main { min-block-size: 68px; display: flex; align-items: center; gap: var(--spacing-5); }
+  .hdr__brand { display: flex; align-items: center; gap: 11px; text-decoration: none; flex: none; }
+  .hdr__word { font-family: var(--font-head); font-size: 20px; font-weight: 600;
                line-height: 1.2; color: var(--color-ink); }
-  .hdr__icon {
-    inline-size: 40px; block-size: 40px; border-radius: var(--radius-sm);
-    border: 1px solid transparent; display: grid; place-items: center;
-    color: var(--color-muted); text-decoration: none;
-    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  /* The account affordance is a labelled control, not a bare glyph: every
+     Iranian shop measured prints the words, and a first-time buyer arriving
+     from Telegram should not have to decode a pictogram to find ثبت‌نام. */
+  .hdr__account {
+    display: inline-flex; align-items: center; gap: var(--spacing-2); flex: none;
+    font-size: 15px; font-weight: 500; line-height: 1.5; color: var(--color-ink);
+    text-decoration: none; padding: 9px 14px 7px;
+    border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
-  .hdr__icon:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
-  @media (max-width: 680px) {
-    .hdr__promise { min-block-size: 34px; font-size: 11px; }
-    .hdr__main { min-block-size: 64px; gap: var(--spacing-3); }
-  }
+  .hdr__account:hover { background: var(--color-fill-subtle); border-color: var(--color-muted); }
+  .hdr__account svg { inline-size: 18px; block-size: 18px; color: var(--color-muted); }
 
-  /* Nav: the active item gains a keyline without the label moving — the
-     negative margin cancels the border plus padding exactly. */
-  .nav { display: flex; align-items: center; gap: var(--spacing-5); font-size: 15px; }
-  .nav a { color: var(--color-secondary); text-decoration: none; }
-  .nav a:hover { color: var(--color-ink); }
-  .nav a[aria-current] {
-    color: var(--color-ink);
-    border-inline-start: 3px solid var(--color-accent);
-    padding-inline-start: 9px; margin-inline-start: -12px;
+  /* The shelves. A shop with four departments does not need a mega-menu; it
+     needs its departments legible in one row. The current one is marked by a
+     keyline under the label, which is where an Iranian shop puts it. */
+  .cats { background: var(--color-surface); border-block-end: 1px solid var(--color-line); }
+  .cats__row { display: flex; align-items: stretch; gap: var(--spacing-5);
+               overflow-x: auto; scrollbar-width: none; }
+  .cats__row::-webkit-scrollbar { display: none; }
+  .cats__row a {
+    display: inline-flex; align-items: center; white-space: nowrap;
+    font-size: 15px; line-height: 1.5; color: var(--color-secondary); text-decoration: none;
+    padding-block: 11px 9px; border-block-end: 2px solid transparent; margin-block-end: -1px;
+    transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .cats__row a:hover { color: var(--color-ink); }
+  .cats__row a[aria-current] { color: var(--color-ink); border-block-end-color: var(--color-accent); }
+
+  @media (max-width: 760px) {
+    .hdr__promise { font-size: 12px; }
+    .hdr__main { min-block-size: 58px; gap: var(--spacing-3); flex-wrap: wrap;
+                 padding-block-end: var(--spacing-3); }
+    .hdr__search { order: 9; inline-size: 100%; }
+    .hdr__account { padding: 7px 10px 5px; font-size: 14px; }
+    .hdr__word { font-size: 18px; }
   }
 
   /* --- Surfaces --------------------------------------------------------- */
   .card {
     background: var(--color-surface); border: 1px solid var(--color-line);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     /* Asymmetric: Persian descenders eat optical space at the block end. */
     padding: var(--spacing-4) var(--spacing-4) var(--spacing-5);
     transition: border-color var(--dur) var(--ease);
@@ -213,7 +286,7 @@
 
   /* A list of things is one bordered container with hairlines — not N cards. */
   .list { background: var(--color-surface); border: 1px solid var(--color-line);
-          border-radius: var(--radius-sm); overflow: hidden; }
+          border-radius: var(--radius-lg); overflow: hidden; }
   .list > * { padding: var(--spacing-4); }
   .list > * + * { border-block-start: 1px solid var(--color-line); }
 
@@ -240,6 +313,18 @@
   .btn--secondary:active { background: var(--color-line); }
   .btn--ghost { background: transparent; color: var(--color-secondary); }
   .btn--ghost:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
+  /* On ink, the primary action is paper. Teal-700 against #131313 is a 2.4:1
+     failure, and brightening the teal until it passed would hand the page the
+     acid accent on near-black that every generated dark hero already has. */
+  .btn--invert { background: var(--color-ground); border-color: var(--color-ground);
+                 color: var(--color-ink); }
+  .btn--invert:hover { background: #e9e9e8; border-color: #e9e9e8; }
+  .btn--invert:active { background: #dcdcda; border-color: #dcdcda; }
+  .btn--invert:focus-visible { outline: none;
+    box-shadow: 0 0 0 2px var(--color-deep), 0 0 0 4px var(--color-ground); }
+  /* Contact is instant and release is not: nothing in the interface should
+     take longer to answer a press than the press itself. */
+  .btn:active { transform: translateY(1px); transition-duration: 0ms; }
   .btn[disabled] { background: var(--color-fill-subtle); border-color: var(--color-line);
                    color: #a8a29e; cursor: not-allowed; }
 
@@ -356,35 +441,36 @@
     margin-block-end: var(--spacing-5);
   }
 
-  /* --- Header search ------------------------------------------------------ */
-  .hdr__search { display: flex; align-items: center; inline-size: min(100%, 22rem); }
+  /* --- Header search --------------------------------------------------------
+     A fat field, never an icon. Every Iranian shop measured gives search a
+     44px well across the width the layout can spare, with the magnifier at
+     the reading edge — it is the control a returning customer uses first.
+     -------------------------------------------------------------------------- */
+  .hdr__search { position: relative; display: flex; align-items: center;
+                 flex: 1 1 auto; inline-size: auto; max-inline-size: 34rem; }
   .hdr__search-input {
-    flex: 1; min-inline-size: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    inline-size: 100%; min-inline-size: 0; font-family: var(--font-body);
+    font-size: 16px; line-height: 1.5;
     color: var(--color-ink); background: var(--color-fill-subtle);
-    border: 1px solid transparent; border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    padding: 9px 12px 7px;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    /* Inline-start is the right edge here, which is where the magnifier sits. */
+    padding-block: 11px 9px; padding-inline: 44px 14px;
     transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
   }
   .hdr__search-input::placeholder { color: var(--color-muted); }
+  .hdr__search-input:hover { background: var(--color-line); }
   .hdr__search-input:focus-visible { outline: none; background: var(--color-surface);
-                                     border-color: var(--color-accent); }
+                                     border-color: var(--color-accent);
+                                     box-shadow: 0 0 0 3px var(--color-accent-tint); }
   .hdr__search-btn {
-    inline-size: 40px; block-size: 40px; display: grid; place-items: center;
-    background: var(--color-fill-subtle); border: 1px solid transparent;
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--color-secondary);
-    cursor: pointer; transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+    position: absolute; inset-inline-start: 4px; inset-block-start: 50%;
+    transform: translateY(-50%);
+    inline-size: 34px; block-size: 34px; display: grid; place-items: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-muted); cursor: pointer;
+    transition: color var(--dur) var(--ease);
   }
-  .hdr__search-btn:hover { background: var(--color-line); color: var(--color-ink); }
-  /* RTL: the input starts on the right, so the join is on its left. Logical
-     radii would be cleaner but Safari support is uneven; explicit per side. */
-  [dir="rtl"] .hdr__search-input { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-  [dir="rtl"] .hdr__search-btn { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-  /* One search box per page. On a phone it takes its own row under the brand
-     rather than hiding behind an icon that used to lead to an empty page. */
-  @media (max-width: 680px) {
-    .hdr__main { flex-wrap: wrap; padding-block-end: var(--spacing-3); }
-    .hdr__search { order: 9; inline-size: 100%; }
-  }
+  .hdr__search-btn:hover { color: var(--color-ink); }
 
   /* --- Page furniture ------------------------------------------------------- */
   .crumbs { display: flex; flex-wrap: wrap; gap: var(--spacing-2); font-size: 13px;
@@ -406,14 +492,93 @@
   .section__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
                     line-height: 1.35; margin: 0 0 var(--spacing-5); }
 
-  /* --- Home: the opening statement ------------------------------------------ */
-  /* No glow, no gradient, no animation, and no box of generic promises: one
-     sentence, then the shelf. */
-  .hero { padding-block: var(--spacing-5) var(--spacing-3); }
-  .hero__title { font-family: var(--font-head); font-size: 30px; font-weight: 600; line-height: 1.3;
-                 margin: 0 0 var(--spacing-4); max-inline-size: 18ch; }
-  .hero__lead { margin: 0; }
-  @media (max-width: 860px) { .hero__title { font-size: 28px; } }
+  /* --- Home: the ink band and the shelf that crosses it ----------------------
+     The page opens on a full-bleed band of ink carrying one statement and one
+     action, and the shelf of brand marks is a white panel laid across its
+     lower edge — the one object on the site that exists in both surfaces, and
+     the only one allowed a shadow. The pattern is alibaba.ir's, which is why
+     it reads as an Iranian shop rather than a Western landing page.
+
+     No gradient, no glow, no logo marquee: a drifting strip of brand logos has
+     meant "trusted by" for five years and the shape is read before the intent.
+     The marks sit still, in colour, and every one of them is a link.
+     -------------------------------------------------------------------------- */
+  .hero { position: relative; isolation: isolate; overflow: hidden;
+          background: var(--color-deep); color: var(--color-on-deep);
+          padding-block: var(--spacing-8) calc(var(--spacing-9) + var(--spacing-5)); }
+  /* The band's surface: a drafting grid at 4.5% white, drifting one pixel a
+     second. It is CSS, so it costs no bytes and one composited layer; it is a
+     grid rather than a glow because this shop's metaphor is a ruled book, and
+     because every soft radial light behind a headline reads as generated. */
+  .hero::before {
+    content: ""; position: absolute; z-index: -1; inset: -80px;
+    background-image:
+      repeating-linear-gradient(to right, var(--color-on-deep-line) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(to bottom, var(--color-on-deep-line) 0 1px, transparent 1px 34px);
+    opacity: 0.32;
+    mask-image: radial-gradient(130% 115% at 88% 15%, transparent 0%, #000 62%);
+    -webkit-mask-image: radial-gradient(130% 115% at 88% 15%, transparent 0%, #000 62%);
+    animation: hero-drift 60s linear infinite;
+  }
+  @keyframes hero-drift { to { transform: translate3d(-34px, -34px, 0); } }
+  .hero__title { font-family: var(--font-head); font-size: 40px; font-weight: 600; line-height: 1.28;
+                 color: var(--color-on-deep); margin: 0; max-inline-size: 17ch; text-wrap: balance; }
+  .hero__lead { color: var(--color-on-deep-muted); font-size: 18px; line-height: 1.8;
+                margin: var(--spacing-4) 0 0; max-inline-size: 44ch; }
+  .hero__lead b { color: var(--color-on-deep); font-weight: 400; }
+  .hero__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-4);
+               margin-block-start: var(--spacing-6); }
+  .hero__note { font-size: 13px; line-height: 1.75; color: var(--color-on-deep-muted); margin: 0; }
+
+  /* The shelf: lifted over the seam so part of it is on ink and part on paper. */
+  .shelf { margin-block-start: calc(-1 * var(--spacing-9)); margin-block-end: var(--spacing-8);
+           position: relative; z-index: 1; }
+  .shelf__panel { background: var(--color-surface); border: 1px solid var(--color-line);
+                  border-radius: var(--radius-lg); box-shadow: var(--shadow-lift);
+                  padding: var(--spacing-5); }
+  .shelf__head { display: flex; align-items: baseline; justify-content: space-between;
+                 gap: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .shelf__grid { display: grid; gap: var(--spacing-2);
+                 grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .mark { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-2);
+          padding: var(--spacing-3) var(--spacing-2); border-radius: var(--radius-sm);
+          text-decoration: none; color: var(--color-secondary);
+          transition: background-color var(--dur) var(--ease); }
+  .mark:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
+  .mark__tile { inline-size: 48px; block-size: 48px; display: grid; place-items: center;
+                border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+                background: var(--color-surface); flex: none;
+                transition: border-color var(--dur) var(--ease), transform var(--dur-lg) var(--ease-out); }
+  /* Both axes are capped, and the artwork is pre-padded at seed time: these
+     marks run from 0.81:1 (Apple) to 1.42:1 (YouTube), so constraining one
+     axis alone makes the wide ones tower over the tall ones. */
+  .mark__tile img { inline-size: auto; block-size: auto; max-inline-size: 30px; max-block-size: 30px; }
+  .mark:hover .mark__tile { border-color: var(--color-line-strong); transform: translateY(-2px); }
+  .mark:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .mark__name { font-size: 12px; line-height: 1.6; text-align: center; }
+
+  @media (max-width: 900px) {
+    .hero { padding-block: var(--spacing-6) calc(var(--spacing-8) + var(--spacing-4)); }
+    .hero__title { font-size: 30px; }
+    .hero__lead { font-size: 17px; }
+    .shelf { margin-block-start: calc(-1 * var(--spacing-8)); }
+    .shelf__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width: 480px) {
+    .hero { padding-block: var(--spacing-5) calc(var(--spacing-8) + var(--spacing-3)); }
+    .hero__title { font-size: 26px; }
+    .hero__lead { font-size: 16px; line-height: 1.85; }
+    .hero__act { margin-block-start: var(--spacing-5); gap: var(--spacing-3); }
+    .strip__wide { display: none; }
+    .shelf__panel { padding: var(--spacing-4) var(--spacing-3); }
+    .shelf__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mark__tile { inline-size: 44px; block-size: 44px; }
+  }
+  /* A moving surface on a phone is battery spent where nobody is looking, and
+     it sits directly under the thumb during the first scroll. */
+  @media (max-width: 900px), (prefers-reduced-motion: reduce) {
+    .hero::before { animation: none; }
+  }
 
   /* --- Grids and cards ------------------------------------------------------ */
   .grid { display: grid; gap: var(--spacing-4);
@@ -422,47 +587,62 @@
 
   .ccard { display: flex; flex-direction: column; gap: var(--spacing-1); text-decoration: none;
            background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-sm); padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
-           transition: border-color var(--dur) var(--ease); }
+           border-radius: var(--radius-lg); padding: var(--spacing-5) var(--spacing-5) var(--spacing-6);
+           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+  .ccard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .ccard:hover { border-color: var(--color-line-strong); }
   .ccard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; color: var(--color-ink); }
   .ccard__count { font-size: 13px; color: var(--color-muted); font-variant-numeric: tabular-nums; }
   .ccard__desc { font-size: 13px; line-height: 1.7; color: var(--color-secondary);
                  margin-block-start: var(--spacing-2); }
 
-  /* The product card: the tile, the words, and the price on its own line at the
-     block-end so a grid of them reads as one column of aligned figures. */
+  /* The product card. The brand mark and the name share the top line, because
+     a Persian shopper scans the logo first and reads the name to confirm it.
+     Under them, the one line the buyer is actually afraid about — when it
+     arrives and what happens if it breaks — then the price at the reading
+     edge of the foot, which is where digikala, basalam and irpremium all put
+     it. A label at the start and a figure at the end is an English invoice
+     row mirrored, and it reads as one. */
   .pcard { display: flex; flex-direction: column; text-decoration: none; color: inherit;
            background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-sm); overflow: hidden;
-           transition: border-color var(--dur) var(--ease); }
+           border-radius: var(--radius-lg); overflow: hidden;
+           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
   .pcard:hover { border-color: var(--color-line-strong); }
   .pcard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .pcard__media { display: flex; align-items: flex-start;
-                  padding: var(--spacing-4) var(--spacing-4) 0; }
-  .pcard__body { padding: var(--spacing-4) var(--spacing-4) var(--spacing-3); flex: 1; }
-  .pcard__cat { display: block; font-size: 12px; color: var(--color-muted); margin-block-end: var(--spacing-1); }
+  .pcard__top { display: flex; align-items: center; gap: var(--spacing-3);
+                padding: var(--spacing-4) var(--spacing-4) 0; }
+  .pcard__body { padding: var(--spacing-3) var(--spacing-4) var(--spacing-4); flex: 1; }
+  .pcard__cat { display: block; font-size: 13px; color: var(--color-muted); }
   .pcard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; line-height: 1.45;
                  color: var(--color-ink); margin: 0; }
-  .pcard__desc { font-size: 13px; line-height: 1.7; color: var(--color-secondary);
-                 margin: var(--spacing-2) 0 0; display: -webkit-box; -webkit-line-clamp: 2;
-                 -webkit-box-orient: vertical; overflow: hidden; }
-  .pcard__foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-3);
-                 padding: var(--spacing-3) var(--spacing-4) var(--spacing-5);
+  .pcard__terms { display: flex; flex-wrap: wrap; gap: var(--spacing-1) var(--spacing-3);
+                  font-size: 13px; line-height: 1.75; color: var(--color-secondary);
+                  margin: var(--spacing-3) 0 0; }
+  .pcard__terms span { display: inline-flex; align-items: center; gap: 6px; }
+  .pcard__terms svg { inline-size: 15px; block-size: 15px; color: var(--color-muted); flex: none; }
+  .pcard__foot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+                 padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
                  border-block-start: 1px solid var(--color-line); }
-  .pcard__from { font-size: 13px; color: var(--color-muted); }
-  .pcard__foot .price__num { font-size: 20px; }
+  .pcard__from { font-size: 13px; line-height: 1.6; color: var(--color-muted); }
+  .pcard__price { display: inline-flex; align-items: baseline; gap: 6px; }
+  .pcard__pre { font-size: 14px; color: var(--color-muted); }
+  .pcard__foot .price__num { font-size: 21px; }
+  .pcard:hover .tile { border-color: var(--color-line-strong); }
 
-  /* The tile: an icon on tinted stone, or a monogram when there is no image.
-     Both are the same shape, so a grid with and without pictures stays even. */
-  .tile { inline-size: 56px; block-size: 56px; display: grid; place-items: center;
-          background: var(--color-fill-subtle); border: 1px solid var(--color-line);
-          border-radius: var(--radius-sm); flex: none; }
-  .tile img { inline-size: 32px; block-size: 32px; object-fit: contain; }
-  .tile--mono { font-family: var(--font-head); font-size: 22px; font-weight: 600;
-                color: var(--color-secondary); }
+  /* The tile: the brand's own mark, or a monogram when there is no image.
+     Both are the same shape, so a grid with and without pictures stays even.
+     White rather than tinted — a containerised mark (the Spotify circle, the
+     YouTube rectangle) on a grey field reads as a sticker stuck on a box. */
+  .tile { inline-size: 48px; block-size: 48px; display: grid; place-items: center;
+          background: var(--color-surface); border: 1px solid var(--color-line);
+          border-radius: var(--radius-lg); flex: none;
+          transition: border-color var(--dur) var(--ease); }
+  .tile img { inline-size: auto; block-size: auto;
+              max-inline-size: 28px; max-block-size: 28px; object-fit: contain; }
+  .tile--mono { font-family: var(--font-head); font-size: 20px; font-weight: 600;
+                color: var(--color-secondary); background: var(--color-fill-subtle); }
   .tile--lg { inline-size: 72px; block-size: 72px; }
-  .tile--lg img { inline-size: 40px; block-size: 40px; }
+  .tile--lg img { max-inline-size: 42px; max-block-size: 42px; }
   .tile--lg.tile--mono { font-size: 28px; }
 
   /* --- Filter chips ---------------------------------------------------------- */
@@ -553,6 +733,29 @@
   .steps__d { font-size: 14px; line-height: 1.8; color: var(--color-secondary); }
   .empty .btn { margin-block-start: var(--spacing-2); }
 
+  /* --- Questions and answers -------------------------------------------
+     <details>, so it opens with JavaScript off and announces its own state.
+     The marker is ours because the browser's triangle is directional and
+     mirrors wrongly in RTL on some engines; this one is a plus that becomes
+     a minus, which has no handedness at all. */
+  .qa { border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow: hidden; }
+  .qa__item + .qa__item { border-block-start: 1px solid var(--color-line); }
+  .qa__q { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--spacing-4); cursor: pointer; list-style: none;
+           font-size: 17px; font-weight: 500; line-height: 1.6; color: var(--color-ink);
+           padding: var(--spacing-4) var(--spacing-5);
+           transition: background-color var(--dur) var(--ease); }
+  .qa__q::-webkit-details-marker { display: none; }
+  .qa__q:hover { background: var(--color-fill-subtle); }
+  .qa__q::after { content: ""; inline-size: 13px; block-size: 13px; flex: none;
+                  background: currentColor; color: var(--color-muted);
+                  clip-path: polygon(44% 0, 56% 0, 56% 44%, 100% 44%, 100% 56%, 56% 56%, 56% 100%, 44% 100%, 44% 56%, 0 56%, 0 44%, 44% 44%);
+                  transition: transform var(--dur-lg) var(--ease-out); }
+  .qa__item[open] .qa__q::after { transform: rotate(45deg); }
+  .qa__item[open] .qa__q { color: var(--color-ink); }
+  .qa__a { padding: 0 var(--spacing-5) var(--spacing-5); }
+  .qa__a .prose { margin: 0; max-inline-size: 46rem; }
+
   /* --- Badges: tint + border + dark text, never a saturated fill -------- */
   .badge {
     display: inline-flex; align-items: center; gap: var(--spacing-1);
@@ -586,7 +789,31 @@
      rather than a filled pill: one accent, spent on the action, not on the menu. */
   .acct { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: var(--spacing-7);
           align-items: start; }
-  .acct__nav { display: grid; gap: 2px; position: sticky; inset-block-start: var(--spacing-5); }
+  .acct__nav { display: grid; gap: 2px; position: sticky; inset-block-start: 84px; }
+  /* Who is signed in, at the top of their own menu — an account page that
+     never names the account is the one place a shared-device customer most
+     needs it named. */
+  .acct__who { display: flex; align-items: center; gap: var(--spacing-3);
+               padding-block-end: var(--spacing-4); margin-block-end: var(--spacing-3);
+               border-block-end: 1px solid var(--color-line); }
+  .acct__avatar { inline-size: 36px; block-size: 36px; flex: none; display: grid; place-items: center;
+                  border-radius: var(--radius-lg); background: var(--color-accent-tint);
+                  color: var(--color-accent); font-family: var(--font-head); font-size: 16px;
+                  font-weight: 600; line-height: 1; }
+  .acct__email { font-size: 13px; line-height: 1.5; color: var(--color-secondary);
+                 overflow-wrap: anywhere; min-inline-size: 0; }
+  .acct__h2 { font-family: var(--font-head); font-size: 18px; font-weight: 600; line-height: 1.45;
+              margin: var(--spacing-7) 0 var(--spacing-3); }
+  /* The single next step, if there is one. A bordered row rather than a card:
+     it is an instruction, not a record. */
+  .acct__next { display: flex; align-items: center; justify-content: space-between;
+                gap: var(--spacing-4); flex-wrap: wrap;
+                border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+                background: var(--color-fill-subtle);
+                padding: var(--spacing-4) var(--spacing-5); }
+  .acct__next-t { font-family: var(--font-head); font-size: 16px; font-weight: 600;
+                  line-height: 1.5; margin: 0 0 var(--spacing-1); }
+  .acct__next .btn { flex: none; }
   .acct__nav a { font-size: 15px; line-height: 1.5; color: var(--color-secondary);
                  text-decoration: none; padding: 10px var(--spacing-3) 8px;
                  border-inline-start: 2px solid transparent;
@@ -603,10 +830,15 @@
   .acct__card { padding: var(--spacing-4) var(--spacing-5); margin-block-end: var(--spacing-5); }
   .acct__hint { color: var(--color-muted); margin-block: 0 var(--spacing-5); }
   .acct__form { max-inline-size: 26rem; display: grid; gap: var(--spacing-4); }
+  /* A submit that spans its form reads as a phone layout stranded on a
+     desktop; the button is as wide as its label and starts where the labels do. */
+  .acct__form > .btn { justify-self: start; }
   @media (max-width: 860px) {
     .acct { grid-template-columns: 1fr; gap: var(--spacing-5); }
     /* Wrapping, not scrolling: a menu item parked off the edge of a phone is a
        menu item nobody finds. */
+    .acct__who { inline-size: 100%; padding-block-end: var(--spacing-3);
+                 margin-block-end: 0; border: 0; }
     .acct__nav { position: static; display: flex; flex-wrap: wrap; align-items: center;
                  gap: var(--spacing-2) var(--spacing-3); padding-block-end: var(--spacing-2);
                  border-block-end: 1px solid var(--color-line); }
@@ -643,18 +875,58 @@
   .empty { min-block-size: 180px; padding: var(--spacing-5); display: flex; flex-direction: column;
            justify-content: center; align-items: flex-start; gap: var(--spacing-3); }
 
-  /* --- Footer ----------------------------------------------------------- */
+  /* --- Error pages ------------------------------------------------------
+     Start-aligned, like every other page: a centred Persian column is the
+     clearest sign a layout was built for Latin and translated afterwards.
+     The numeral is the one loud thing, and it is muted, not red-on-white. */
+  .notfound { padding-block: var(--spacing-8) var(--spacing-9); max-inline-size: 36rem; }
+  .notfound__code { font-family: var(--font-head); font-size: 64px; font-weight: 800;
+                    line-height: 1; color: var(--color-line-strong);
+                    font-variant-numeric: tabular-nums; margin: 0 0 var(--spacing-5); }
+  .notfound__code--bad { color: color-mix(in oklab, var(--color-danger) 34%, var(--color-ground)); }
+  .notfound__act { display: flex; flex-wrap: wrap; gap: var(--spacing-3);
+                   margin-block-start: var(--spacing-6); }
+
+  /* --- Footer ---------------------------------------------------------------
+     The second ink band, and the one an Iranian buyer actually scans before
+     paying a stranger. It gets its own ramp: the body's #525252 on #131313 is
+     about 2:1 and fails outright, so links and muted text are white at a set
+     opacity instead. Above the columns, the promise row — the shape digikala
+     and basalam both use to answer "what happens if this goes wrong".
+     -------------------------------------------------------------------------- */
   .ftr { margin-block-start: var(--spacing-9); padding-block: var(--spacing-7) var(--spacing-5);
-         background: var(--color-surface); border-block-start: 1px solid var(--color-line); }
+         background: var(--color-deep); color: var(--color-on-deep-muted); }
+  .ftr .hdr__word, .ftr .label { color: var(--color-on-deep); }
+  .ftr .micro, .ftr .small { color: var(--color-on-deep-muted); }
+  .ftr .fact { padding-block: 8px; }
+  .ftr .fact + .fact { border-block-start-color: var(--color-on-deep-line); }
+  .ftr .fact__k { color: var(--color-on-deep-muted); }
+  .ftr .fact__v { color: var(--color-on-deep); }
+  .ftr .fact__lead { border-block-end-color: var(--color-on-deep-line); }
+
+  .ftr__promise { display: grid; gap: var(--spacing-4) var(--spacing-5);
+                  grid-template-columns: repeat(4, minmax(0, 1fr));
+                  padding-block-end: var(--spacing-7);
+                  margin-block-end: var(--spacing-7);
+                  border-block-end: 1px solid var(--color-on-deep-line); }
+  .ftr__promise div { display: flex; align-items: flex-start; gap: var(--spacing-3);
+                      font-size: 14px; line-height: 1.7; color: var(--color-on-deep); }
+  .ftr__promise svg { inline-size: 22px; block-size: 22px; flex: none;
+                      color: var(--color-on-deep-muted); margin-block-start: 2px; }
+  @media (max-width: 860px) { .ftr__promise { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 480px) { .ftr__promise { grid-template-columns: 1fr; gap: var(--spacing-3); } }
+
   .ftr__grid { display: grid; gap: var(--spacing-7) var(--spacing-6); align-items: start;
                grid-template-columns: minmax(280px, 1.25fr) minmax(180px, 0.7fr) minmax(260px, 1fr); }
   @media (max-width: 1020px) { .ftr__grid { grid-template-columns: 1.2fr 0.8fr; } }
   @media (max-width: 680px)  { .ftr__grid { grid-template-columns: 1fr; gap: var(--spacing-6); } }
-  .ftr__links { display: flex; flex-direction: column; gap: var(--spacing-3); font-size: 13px; }
-  .ftr__links a { color: var(--color-secondary); text-decoration: none; }
-  .ftr__links a:hover { color: var(--color-ink); text-decoration: underline; }
+  .ftr__links { display: flex; flex-direction: column; gap: var(--spacing-3); font-size: 14px; }
+  .ftr__links a { color: var(--color-on-deep-muted); text-decoration: none;
+                  transition: color var(--dur) var(--ease); }
+  .ftr__links a:hover { color: var(--color-on-deep); text-decoration: underline; }
   .ftr__bottom { margin-block-start: var(--spacing-6); padding-block-start: var(--spacing-4);
-                 border-block-start: 1px solid var(--color-line); font-size: 12px; color: var(--color-muted); }
+                 border-block-start: 1px solid var(--color-on-deep-line);
+                 font-size: 13px; color: var(--color-on-deep-muted); }
 
   .sr-only { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
              overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

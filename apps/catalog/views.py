@@ -43,7 +43,16 @@ def home(request: HttpRequest) -> HttpResponse:
     # "Featured" is the newest active products until the operator asks for a
     # flag; with a catalog this size the newest are the ones worth showing.
     featured = _for_cards().order_by("-created_at")[:8]
-    return render(request, "catalog/home.html", {"categories": categories, "featured": featured})
+    # The shelf is the complete index — every service the shop stocks, as a
+    # mark you can tap. It answers a different question from the cards below
+    # ("do you have it" rather than "what does it cost"), so it carries no
+    # plans and needs none of the prefetching the cards do: one flat query.
+    shelf = Product.objects.public().order_by("name").only("name", "slug", "image")
+    return render(
+        request,
+        "catalog/home.html",
+        {"categories": categories, "featured": featured, "shelf": shelf},
+    )
 
 
 def category(request: HttpRequest, slug: str) -> HttpResponse:
@@ -59,6 +68,7 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
         "catalog/category.html",
         {
             "category": cat,
+            "current_category": cat.slug,
             "products": products,
             "delivery": delivery,
             "delivery_types": Product.DeliveryType.choices,
@@ -79,6 +89,17 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             "specs": list(obj.specs.all()),
         },
     )
+
+
+def faq(request: HttpRequest) -> HttpResponse:
+    """Static answers, in a template rather than a model.
+
+    Six questions that change when the shop's promises change — which is a
+    code change, in the same commit as the promise. A FAQ table in the
+    database would let the answers drift away from the constraints that make
+    them true (ADR-0014: no content model before there is content to model).
+    """
+    return render(request, "catalog/faq.html", {"current_category": "faq"})
 
 
 def search(request: HttpRequest) -> HttpResponse:

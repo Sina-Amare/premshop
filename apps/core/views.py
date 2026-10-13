@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 
 from django.conf import settings
 from django.db import connection
@@ -51,6 +52,39 @@ def healthz(request: HttpRequest) -> JsonResponse:
     )
 
 
+# The palette, read out of the stylesheet that actually paints the site. A
+# second copy of these hex values is a second thing to forget: the old hard-coded
+# list went on describing a warm-stone canvas for a month after the canvas turned
+# white, and the page whose job is documenting the design system was the last
+# place anyone looked.
+TOKEN_NAMES = [
+    ("--color-ground", "زمینه"),
+    ("--color-deep", "زمینه‌ی تیره"),
+    ("--color-ink", "متن"),
+    ("--color-secondary", "متن دوم"),
+    ("--color-muted", "متن کم‌رنگ"),
+    ("--color-fill-subtle", "سطح کم‌رنگ"),
+    ("--color-line", "خط"),
+    ("--color-line-strong", "خط پررنگ"),
+    ("--color-accent", "لهجه"),
+    ("--color-ok", "موفق"),
+    ("--color-time", "زمان"),
+    ("--color-danger", "خطا"),
+]
+
+
+def design_tokens() -> list[dict[str, str]]:
+    source = (Path(settings.BASE_DIR) / "static" / "css" / "input.css").read_text(encoding="utf-8")
+    found: dict[str, str] = {}
+    for line in source.splitlines():
+        name, _, rest = line.strip().partition(":")
+        if name.startswith("--color-") and rest.strip().startswith("#"):
+            found[name] = rest.split(";")[0].strip()
+    return [
+        {"name": label, "value": found[token]} for token, label in TOKEN_NAMES if token in found
+    ]
+
+
 def styleguide(request: HttpRequest) -> HttpResponse:
     """The S1 demo page: the design system rendered, so it can be reviewed live."""
     return render(
@@ -85,16 +119,11 @@ def styleguide(request: HttpRequest) -> HttpResponse:
                     "kind": "time",
                 },
             ],
-            "swatches": [
-                {"name": "زمینه", "value": "#FAFAF9"},
-                {"name": "متن", "value": "#1C1917"},
-                {"name": "متن کم‌رنگ", "value": "#78716C"},
-                {"name": "خط", "value": "#E7E5E4"},
-                {"name": "لهجه", "value": "#0F766E"},
-                {"name": "موفق", "value": "#16A34A"},
-                {"name": "زمان", "value": "#D97706"},
-                {"name": "خطا", "value": "#DC2626"},
-            ],
+            # Read from the stylesheet, never retyped. This list described the
+            # warm-stone palette for a month after the canvas turned white,
+            # because nothing compared the two — see test_the_styleguide_
+            # swatches_match_the_stylesheet.
+            "swatches": design_tokens(),
         },
     )
 

@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static %}{% load fa %}<!DOCTYPE html>
 {% comment %}lang="fa" is load-bearing: both faces register locl only under arab/URD, and
    an Urdu guess silently changes the shape of ی/ک.{% endcomment %}
 <html lang="fa" dir="rtl" translate="no">
@@ -6,10 +6,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google" content="notranslate">
+  <meta name="theme-color" content="#131313">
   <title>{% block title %}PremShop{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
 
+  {% comment %}
+  Four faces paint above the fold and all four are preloaded. Until 2026-10-14
+  this list named Estedad-ExtraBold — which only the price numeral uses — and
+  left Estedad-SemiBold, the face behind every heading on the site, to be
+  discovered after the stylesheet parsed, one round trip late on exactly the
+  connections that can least afford it.
+  {% endcomment %}
   <link rel="preload" href="{% static 'fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/Vazirmatn-Medium.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/Estedad-SemiBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% block head_extra %}{% endblock %}
@@ -17,27 +27,41 @@
 <body>
   <a href="#main" class="sr-only">رفتن به محتوای اصلی</a>
 
+  {% comment %}
+  The header sticks, and it is <header> itself that does it: a sticky element
+  can only travel inside its own parent, so wrapping the bar in another div
+  inside the header would pin it for the height of the header and no further.
+  The negative offset is the strip's height, so the strip scrolls away and the
+  bar lands at the top of the viewport. The shelves row is a sibling, outside
+  the sticky box, and scrolls off with the page.
+  {% endcomment %}
   <header class="hdr">
-    {% comment %}One promise, no promotion. It answers the doubt before the visitor scrolls
-       — and it has to stay true.{% endcomment %}
     <div class="hdr__promise">
-      <div class="wrap">تحویل پس از تأیید پرداخت · پشتیبانی هر روز ۱۰ تا ۲۲ · گارانتی تا پایان دوره‌ی اشتراک</div>
+      {% comment %}Three facts on a desktop strip, two on a phone: at 375px the
+      third wraps onto a second line and orphans two words above the header,
+      which is worse than not saying it here — the footer says it as well.{% endcomment %}
+      <div class="wrap">پشتیبانی هر روز <b>{{ SUPPORT_HOURS }}</b><span class="strip__wide"> · تحویل پس از تأیید پرداخت</span> · گارانتی تا پایان دوره</div>
     </div>
     <div class="wrap hdr__main">
-      <a href="{% url 'home' %}" class="hdr__brand">
+      <a href="{% url 'home' %}" class="hdr__brand" aria-label="PremShop، خانه">
         <span class="hdr__word">PremShop</span>
       </a>
       <form class="hdr__search" action="{% url 'search' %}" method="get" role="search">
-        <input class="hdr__search-input" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="جستجو" aria-label="جستجو در محصولات" autocomplete="off">
+        <input class="hdr__search-input" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="نام محصول یا سرویس را بنویسید" aria-label="جستجو در محصولات" autocomplete="off">
         <button class="hdr__search-btn" type="submit" aria-label="جستجو">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         </button>
       </form>
-      <div style="flex:1"></div>
-      {% block header_nav %}{% endblock %}
-      <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hdr__icon" aria-label="حساب کاربری">
+      {% comment %}
+      Labelled, not a bare pictogram. Every Iranian shop measured prints the
+      words, and a first-time buyer arriving from a Telegram link should not
+      have to decode a glyph to find out where ثبت‌نام lives. The icon trails
+      the label, which is the side a Persian line ends on.
+      {% endcomment %}
+      <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hdr__account">
+        <span>{% if request.user.is_authenticated %}حساب کاربری{% else %}ورود یا ثبت‌نام{% endif %}</span>
         {# Non-directional icon: it must not mirror in RTL. #}
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
@@ -45,45 +69,81 @@
     </div>
   </header>
 
-  <main id="main" class="wrap" style="padding-block: var(--spacing-7)">
+  {% if nav_categories %}
+  <nav class="cats" aria-label="دسته‌بندی‌ها">
+    <div class="wrap cats__row">
+      {% for cat in nav_categories %}
+        <a href="{% url 'category' cat.slug %}"{% if cat.slug == current_category %} aria-current="page"{% endif %}>{{ cat.name }}</a>
+      {% endfor %}
+      <a href="{% url 'faq' %}"{% if current_category == 'faq' %} aria-current="page"{% endif %}>پرسش‌های متداول</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main id="main">
     {% block content %}{% endblock %}
   </main>
 
   <footer class="ftr">
     <div class="wrap">
+      {% comment %}
+      The promise row. An Iranian buyer paying a shop with no نماد اعتماد looks
+      for exactly these four answers before they trust it, and every one of
+      them here is something the shop already commits to elsewhere in the code
+      — the gateway (ADR-0005), the per-product delivery window (ADR-0009),
+      the warranty field, and the answering hours, which come from one place
+      so the header and the footer can never disagree.
+      {% endcomment %}
+      <div class="ftr__promise">
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
+          <span>پرداخت از درگاه بانکی، با قیمت تومانی</span>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span>تحویل در بازه‌ای که روی هر محصول نوشته شده</span>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>گارانتی تا پایان دوره‌ی اشتراک</span>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
+          <span>اگر سفارش تحویل نشود، وجه برمی‌گردد</span>
+        </div>
+      </div>
+
       <div class="ftr__grid">
         <div>
           <div class="hdr__word">PremShop</div>
           <p class="micro" style="margin-block-start: var(--spacing-4)">
             فروش اشتراک‌ها و اکانت‌های سرویس‌های هوش مصنوعی، ابزارهای توسعه و نرم‌افزارهای
-            بین‌المللی. هر سفارش پس از تأیید پرداخت و در بازه اعلام‌شده تحویل داده می‌شود.
+            بین‌المللی. هر سفارش پس از تأیید پرداخت و در بازه‌ی اعلام‌شده تحویل داده می‌شود.
           </p>
         </div>
 
         <nav class="ftr__links" aria-label="پیوندهای مهم">
           <span class="label">راهنما</span>
-          <a href="/">قوانین و مقررات</a>
-          <a href="/">شرایط بازگشت وجه</a>
-          <a href="/">حریم خصوصی</a>
-          <a href="/">پرسش‌های متداول</a>
+          <a href="{% url 'faq' %}">پرسش‌های متداول</a>
+          <a href="{% url 'home' %}">همه‌ی محصولات</a>
         </nav>
 
         <div>
-          <span class="label">تماس</span>
+          <span class="label">ارتباط با ما</span>
           {# Selectable text, not images: a phone number you cannot copy is decoration. #}
           <div class="fact" style="margin-block-start: var(--spacing-3)">
             <span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span>
-            <span class="fact__v latin">@premshop</span>
+            <span class="fact__v"><bdi class="latin">@premshop</bdi></span>
           </div>
           <div class="fact">
             <span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span>
-            <span class="fact__v">۱۰ تا ۲۲</span>
+            <span class="fact__v">{{ SUPPORT_HOURS }}</span>
           </div>
         </div>
       </div>
 
       <div class="ftr__bottom">
-        {% block footer_bottom %}PremShop — همه حقوق محفوظ است.{% endblock %}
+        {% block footer_bottom %}PremShop — همه‌ی حقوق محفوظ است.{% endblock %}
       </div>
     </div>
   </footer>

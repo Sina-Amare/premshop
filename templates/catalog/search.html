@@ -3,6 +3,7 @@
 {% block title %}جستجو{% if query %}: {{ query }}{% endif %} — PremShop{% endblock %}
 
 {% block content %}
+<div class="wrap page">
 <header class="page-head">
   {% if query %}
     <h1 class="page-head__title">نتایج جستجو برای «<bdi>{{ query }}</bdi>»</h1>
@@ -26,7 +27,8 @@
   </div>
 {% elif results %}
   <div class="grid">
-    {% for product in results %}{% include "catalog/_card.html" with product=product %}{% endfor %}
+    {% for product in results %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
   </div>
 {% endif %}
+</div>
 {% endblock %}
