@@ -311,3 +311,39 @@ msgstr "حساب"
 
 msgid "Profile"
 msgstr "پروفایل"
+
+msgid "This object doesn’t have a change history. It probably wasn’t added via this admin site."
+msgstr "هنوز تغییری روی این مورد ثبت نشده. احتمالاً از همین پنل ساخته نشده."
+
+msgid "Change my password"
+msgstr "تغییر رمز عبور من"
+
+msgid "Password change"
+msgstr "تغییر رمز عبور"
+
+msgid "Password change successful"
+msgstr "رمز عبور عوض شد"
+
+msgid "Your password was changed."
+msgstr "رمز عبورتان عوض شد."
+
+msgid "Password reset"
+msgstr "بازنشانی رمز عبور"
+
+msgid "Enter new password"
+msgstr "رمز عبور تازه"
+
+msgid "Confirm password"
+msgstr "تکرار رمز عبور"
+
+msgid "Forgotten your password or username?"
+msgstr "رمز عبور یا نام کاربری‌تان یادتان رفته؟"
+
+msgid "Enable password-based authentication"
+msgstr "ورود با رمز عبور را روشن کن"
+
+msgid "View on site"
+msgstr "دیدن روی سایت"
+
+msgid "Thanks for using our site!"
+msgstr "ممنون که از سایت ما استفاده کردید."

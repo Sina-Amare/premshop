@@ -12,3 +12,10 @@
 **Alternatives considered:** full business-hours `due_at` accounting (internally green while publicly breached — the two clocks disagree exactly when it matters); human-only timeout with no end (indefinitely held money is the worse Enamad complaint).
 
 **Consequences:** `due_at` has exactly three writers: the compute function, pause/resume arithmetic, and the explicit `extend_due_at` supply-delay service. Anything else touching it is a bug.
+
+**Amendment — 2026-10-18 (owner's ruling).** The delivery cap moves from **48 to 72 hours**. The decision above is kept as it was made; what changes is the number, in three places that have to move together or the shop starts lying: the `Product.delivery_hours` CHECK (now `product_delivery_hours_1_to_72`, catalog 0013), the FAQ answer that quotes the range to customers, and `due_at`'s hard cap when the SLA clock is built. The public promise in this ADR's own Context — «حداکثر ۴۸ ساعت» — is therefore «حداکثر ۷۲ ساعت» from this date.
+
+Unchanged: the **48-hour re-reminder** in the input-timeout ladder. It shares a number with the old cap and nothing else — one is how long the shop may take, the other is how long a customer is left before being reminded. Whoever next edits this file should not unify them.
+
+Also from this round, and the reason the cap could move cheaply: `Product.delivery_note` lets the operator replace the *displayed* time with a sentence («به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت)») while `delivery_hours` stays the machine-readable deadline this ADR's arithmetic needs. The note never touches `due_at`.
+

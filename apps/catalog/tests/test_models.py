@@ -131,13 +131,26 @@ def test_the_checks_reach_the_admin_form_in_persian(product):
 # with only the two promotion checks. Added 2026-09-21 (catalog 0002).
 
 
-@pytest.mark.parametrize("hours", [0, -1, 49])
-def test_delivery_hours_check_keeps_the_promise_between_1_and_48(product, hours):
-    """Every product page promises delivery within its hours, capped at 48
-    (ADR-0009). Zero would read as instant; forty-nine breaks the cap."""
+@pytest.mark.parametrize("hours", [0, -1, 73])
+def test_delivery_hours_check_keeps_the_promise_inside_the_cap(product, hours):
+    """Every product page promises delivery within its hours, and the FAQ
+    quotes the cap to customers. Zero would read as instant; anything past
+    the cap breaks a printed promise. Raised 48 -> 72 on 2026-10-18
+    (ADR-0009, amended)."""
     product.delivery_hours = hours
     with pytest.raises(IntegrityError), transaction.atomic():
         product.save()
+
+
+@pytest.mark.parametrize("hours", [1, 48, 72])
+def test_the_cap_itself_is_allowed(product, hours):
+    """The boundary, which the refusals above cannot show: a test that only
+    ever checks what is rejected passes just as well with the whole field
+    rejected."""
+    product.delivery_hours = hours
+    product.save()
+    product.refresh_from_db()
+    assert product.delivery_hours == hours
 
 
 def test_status_check_refuses_a_value_outside_the_three(product):

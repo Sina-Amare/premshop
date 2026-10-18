@@ -215,7 +215,7 @@ class Product(models.Model):
     delivery_hours = models.SmallIntegerField(
         "مهلت تحویل (ساعت)",
         default=24,
-        help_text="بین ۱ تا ۴۸. همین عدد مهلت شماست و پنل بعداً ازش شمارش معکوس می‌سازد، پس دست‌بالا بنویسید.",
+        help_text="بین ۱ تا ۷۲. همین عدد مهلت شماست و پنل بعداً ازش شمارش معکوس می‌سازد، پس دست‌بالا بنویسید.",
     )
     delivery_note = models.CharField(
         "به‌جای مهلت، این را بنویس",
@@ -288,12 +288,15 @@ class Product(models.Model):
             )
         ]
         constraints = [
-            # The 48-hour cap is the delivery promise on every product page
-            # (ADR-0009): zero would read as instant, and 49 breaks the promise.
+            # The cap is the delivery promise on every product page: zero would
+            # read as instant, and anything past the cap breaks a promise the
+            # shop prints. Raised from 48 to 72 on the owner's ruling,
+            # 2026-10-18 (ADR-0009, amended) — the FAQ quotes this number to
+            # customers, so the two move together or the page starts lying.
             models.CheckConstraint(
-                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=48),
-                name="product_delivery_hours_1_to_48",
-                violation_error_message="مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد.",
+                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=72),
+                name="product_delivery_hours_1_to_72",
+                violation_error_message="مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد.",
             ),
             # `choices=` binds only the admin form; the database binds everything.
             models.CheckConstraint(
@@ -320,7 +323,7 @@ class Product(models.Model):
 
         `delivery_hours` stays a number because it is the operator's real
         deadline — the panel counts down from it, and a CHECK keeps it inside
-        the 48 hours every page promises. But a number cannot say "slower this
+        the hours every page promises. But a number cannot say "slower this
         week because the gateway is flaky", so an optional note replaces the
         *display* and nothing else.
         """
