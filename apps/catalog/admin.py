@@ -175,7 +175,20 @@ class ProductAdmin(ModelAdmin):
     @display(
         description="وضعیت",
         ordering="status",
-        label={"فعال": "success", "پیش‌نویس": "warning", "ناموجود": "danger"},
+        # Keyed off the enum, not off the Persian words. Unfold looks the
+        # value up with `value in label` and falls through to neutral grey on
+        # a miss, so renaming a label in models.py would have turned every
+        # badge grey with nothing raising — the same silent fall-through that
+        # made «Vazirmatn» vs «Vazir» change nothing on screen.
+        #
+        # Draft is `info`, not `warning`: Unfold's warning variant renders
+        # orange, and this project reserves amber for time and nothing else
+        # (ADR-0016). A draft is not a clock.
+        label={
+            Product.Status.ACTIVE.label: "success",
+            Product.Status.DRAFT.label: "info",
+            Product.Status.UNAVAILABLE.label: "danger",
+        },
     )
     def status_label(self, obj: Product) -> str:
         """Draft and unavailable are the two states that cost money when they

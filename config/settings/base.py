@@ -260,6 +260,16 @@ UNFOLD = {
     # The shop's own mark, so the panel's tab is not the browser's blank page
     # icon while the storefront's tab has a logo.
     "SITE_FAVICONS": [{"rel": "icon", "href": lambda request: static("icon.svg")}],
+    # Every page, including the dashboard and the login screen. Those two
+    # extend admin/base.html and unfold/layouts/unauthenticated.html directly,
+    # skipping base_site.html — so a stylesheet hung on base_site's
+    # `extrastyle` block reached every page but the first one the operator
+    # opens, which is exactly where the font looked unloaded.
+    #
+    # STYLES loads *before* Unfold's own stylesheet, which does not matter
+    # here: Unfold declares --font-sans inside `@layer theme`, and unlayered
+    # CSS beats a layer whatever the source order.
+    "STYLES": [lambda request: static("css/admin.css")],
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     # Matches --radius-sm on the storefront, so the two do not look like two

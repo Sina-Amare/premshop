@@ -40,45 +40,40 @@ def MoneyField(**kwargs: Any) -> models.DecimalField:  # noqa: N802 — reads as
 
 
 class Category(models.Model):
-    name = models.CharField(
-        "نام", max_length=100, help_text="همان‌طور که مشتری روی سایت می‌بیند. مثل: هوش مصنوعی"
-    )
+    name = models.CharField("نام", max_length=100)
     slug = models.SlugField(
-        "نامک",
+        "آدرس در لینک",
         max_length=100,
         unique=True,
         allow_unicode=True,
-        help_text="آدرس این دسته توی لینک. خالی بگذارید تا از روی اسم ساخته شود.",
+        help_text="خالی بگذارید تا خودش ساخته شود.",
     )
     description = models.CharField(
         "توضیح کوتاه",
         max_length=300,
         blank=True,
         default="",
-        help_text="یک جمله، بالای صفحه‌ی دسته و برای موتور جستجو.",
     )
     intro_html = models.TextField(
         "متن معرفی",
         blank=True,
         default="",
-        help_text="بالای صفحه‌ی دسته می‌آید. کد HTML اینجا اجرا می‌شود، پس چیزی که مطمئن نیستید نچسبانید.",
+        help_text="کد HTML اینجا اجرا می‌شود.",
     )
     seo_title = models.CharField(
         "عنوان سئو",
         max_length=70,
         blank=True,
         default="",
-        help_text="عنوان تب مرورگر و نتیجه‌ی گوگل. خالی بگذارید تا از روی اسم ساخته شود.",
     )
     seo_description = models.CharField(
         "توضیح سئو",
         max_length=160,
         blank=True,
         default="",
-        help_text="همان دو خطی که زیر لینک توی گوگل می‌آید. حدود ۱۵۰ حرف.",
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب", default=0, help_text="عدد کوچک‌تر بالاتر می‌آید."
+        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
     )
 
     class Meta:
@@ -160,41 +155,35 @@ class Product(models.Model):
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products", verbose_name="دسته‌بندی"
     )
-    name = models.CharField(
-        "نام", max_length=150, help_text="همان‌طور که مردم سرچ می‌کنند. مثل: ChatGPT Plus"
-    )
+    name = models.CharField("نام", max_length=150)
     slug = models.SlugField(
-        "نامک",
+        "آدرس در لینک",
         max_length=150,
         unique=True,
         allow_unicode=True,
-        help_text="آدرس محصول توی لینک. خالی بگذارید تا از روی اسم ساخته شود.",
+        help_text="خالی بگذارید تا خودش ساخته شود.",
     )
     short_description = models.CharField(
         "توضیح کوتاه",
         max_length=300,
         blank=True,
         default="",
-        help_text="یک جمله. زیر اسم محصول روی کارت و بالای صفحه می‌آید.",
     )
     full_description = models.TextField(
         "توضیح کامل",
         blank=True,
         default="",
-        help_text="توضیح بلندتر داخل صفحه‌ی محصول. اگر با توضیح کوتاه یکی باشد، دوباره نشان داده نمی‌شود.",
     )
     image = models.ImageField(
         "تصویر",
         upload_to="products/",
         null=True,
         blank=True,
-        help_text="لوگوی سرویس، ترجیحاً SVG. نگذارید، حرف اول اسم نشان داده می‌شود.",
     )
     delivery_type = models.CharField(
         "نوع تحویل",
         max_length=24,
         choices=DeliveryType.choices,
-        help_text="همین روی کارت و صفحه‌ی محصول به مشتری نشان داده می‌شود.",
     )
     # Search-only, never rendered: the spellings a customer actually types. A
     # Persian shopper writes «چت جیپت» for ChatGPT, and no amount of character
@@ -203,30 +192,25 @@ class Product(models.Model):
         "املاهای دیگر",
         blank=True,
         default="",
-        help_text="هر املایی که مشتری ممکن است بنویسد، با ویرگول: چت جی پی تی، چت جیپت، gpt",
+        help_text="غلط‌های رایجی که مشتری سرچ می‌کند، با ویرگول: چت جیپت، gpt",
     )
     warranty = models.CharField(
         "گارانتی",
         max_length=24,
         choices=Warranty.choices,
         default=Warranty.NONE,
-        help_text="اگر اکانت وسط دوره خراب شد، تا کی تعویضش می‌کنید.",
     )
     delivery_hours = models.SmallIntegerField(
         "مهلت تحویل (ساعت)",
         default=24,
-        help_text="بین ۱ تا ۷۲. همین عدد مهلت شماست و پنل بعداً ازش شمارش معکوس می‌سازد، پس دست‌بالا بنویسید.",
+        help_text="بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید.",
     )
     delivery_note = models.CharField(
-        "به‌جای مهلت، این را بنویس",
+        "متن دلخواه مهلت",
         max_length=120,
         blank=True,
         default="",
-        help_text=(
-            "اگر پر باشد، به‌جای «تا ۲۴ ساعت» همین متن به مشتری نشان داده می‌شود. "
-            "مثل: به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت). "
-            "عدد بالا را عوض نکنید — مهلت واقعی شما همان است."
-        ),
+        help_text="پرش کنید تا به‌جای «تا ۲۴ ساعت» همین را ببینند.",
     )
     # Claimed, never assumed. Renewal depends on the upstream provider and on
     # the operator being able to get the same account back, so an untouched
@@ -237,20 +221,20 @@ class Product(models.Model):
     renewable = models.BooleanField(
         "قابل تمدید",
         default=False,
-        help_text="فقط وقتی تیک بزنید که واقعاً می‌توانید همان اکانت را تمدید کنید.",
+        help_text="روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود.",
     )
     delivery_template = models.TextField(
         "قالب تحویل",
         blank=True,
         default="",
-        help_text="متن آماده‌ای که موقع تحویل برای مشتری می‌فرستید. فعلاً فقط یادداشت خودتان است.",
+        help_text="یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود.",
     )
     status = models.CharField(
         "وضعیت",
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text="فقط «فعال» روی سایت دیده می‌شود. پیش‌نویس و ناموجود هر دو کاملاً پنهان‌اند.",
+        help_text="پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند.",
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")
@@ -259,14 +243,12 @@ class Product(models.Model):
         max_length=70,
         blank=True,
         default="",
-        help_text="عنوان تب مرورگر و نتیجه‌ی گوگل. خالی بگذارید تا از روی اسم ساخته شود.",
     )
     seo_description = models.CharField(
         "توضیح سئو",
         max_length=160,
         blank=True,
         default="",
-        help_text="همان دو خطی که زیر لینک توی گوگل می‌آید. حدود ۱۵۰ حرف.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -372,15 +354,15 @@ class ProductSpec(models.Model):
     """
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specs")
-    title = models.CharField("عنوان", max_length=100, help_text="اسم ویژگی. مثل: نوع اکانت")
-    value = models.CharField("مقدار", max_length=255, help_text="مقدارش. مثل: اختصاصی")
+    title = models.CharField("عنوان", max_length=100)
+    value = models.CharField("مقدار", max_length=255)
     is_key = models.BooleanField(
         "مهم",
         default=False,
-        help_text="کنار عنوان محصول و روی کارت هم نشان داده می‌شود، نه فقط در جدول مشخصات.",
+        help_text="کنار اسم محصول و روی کارت هم می‌آید.",
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب", default=0, help_text="عدد کوچک‌تر بالاتر می‌آید."
+        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
     )
 
     class Meta:
@@ -394,41 +376,37 @@ class ProductSpec(models.Model):
 
 class Plan(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="plans")
-    title = models.CharField(
-        "عنوان", max_length=100, help_text="همان‌طور که مشتری می‌بیند. مثل: ۱ ماهه"
-    )
+    title = models.CharField("عنوان", max_length=100)
     duration_days = models.IntegerField(
         "مدت (روز)",
         null=True,
         blank=True,
-        help_text="چند روز اعتبار دارد. برای چیزی که تمام نمی‌شود مثل گیفت کارت خالی بگذارید — صفر قبول نمی‌شود.",
+        help_text="برای گیفت کارت خالی بگذارید.",
     )  # null: never expires
     cost_price = MoneyField(
         verbose_name="قیمت خرید",
-        help_text="چقدر برای خودتان آب می‌خورد. هیچ‌جا به مشتری نشان داده نمی‌شود؛ فقط برای حساب سود.",
+        help_text="مشتری این را نمی‌بیند.",
     )  # operator-only; snapshotted at order time
-    sale_price = MoneyField(
-        verbose_name="قیمت فروش", help_text="چیزی که مشتری می‌پردازد، به تومان."
-    )
+    sale_price = MoneyField(verbose_name="قیمت فروش")
     promo_price = MoneyField(
         verbose_name="قیمت تخفیفی",
         null=True,
         blank=True,
-        help_text="قیمت روی تخفیف. باید از قیمت فروش کمتر باشد، وگرنه ذخیره نمی‌شود.",
+        help_text="باید از قیمت فروش کمتر باشد.",
     )
     promo_starts_at = models.DateTimeField(
-        "شروع تخفیف", null=True, blank=True, help_text="خالی یعنی از همین حالا."
+        "شروع تخفیف", null=True, blank=True, help_text="خالی یعنی همین حالا."
     )
     promo_ends_at = models.DateTimeField(
         "پایان تخفیف",
         null=True,
         blank=True,
-        help_text="خالی یعنی تا وقتی خودتان برش دارید. اگر تاریخ بگذارید، روی سایت شمارش معکوس نشان داده می‌شود.",
+        help_text="تاریخ بگذارید تا روی سایت شمارش معکوس بیفتد.",
     )
     is_available = models.BooleanField(
         "موجود",
         default=True,
-        help_text="تیک را بردارید تا این پلن قابل خرید نباشد. پاکش نکنید — سفارش‌های قبلی به آن وصل‌اند.",
+        help_text="تیک را بردارید تا خریدنی نباشد. پاکش نکنید.",
     )  # soft delete: sold plans are never removed
     # Default 1, so a quantity control appears only where the operator has
     # said it makes sense. Most of this shop is subscriptions activated on one
@@ -438,28 +416,28 @@ class Plan(models.Model):
     max_quantity = models.PositiveSmallIntegerField(
         "حداکثر تعداد در هر سفارش",
         default=1,
-        help_text="۱ یعنی انتخاب تعداد اصلاً نمایش داده نمی‌شود. برای گیفت کارت بیشتر کنید.",
+        help_text="۱ یعنی مشتری تعداد نمی‌بیند.",
     )
     requires_customer_input = models.BooleanField(
         "نیاز به اطلاعات مشتری",
         default=False,
-        help_text="اگر برای فعال‌سازی چیزی از مشتری لازم است (ایمیل، نام کاربری).",
+        help_text="برای فعال‌سازی چیزی از مشتری لازم است؟",
     )
     customer_input_label = models.CharField(
         "چه چیزی از مشتری بپرسیم؟",
         max_length=200,
         blank=True,
         default="",
-        help_text="عیناً همین جمله به مشتری نشان داده می‌شود؛ مثلاً «ایمیل حساب Spotify شما».",
+        help_text="همین جمله را از مشتری می‌پرسیم. مثل: ایمیل حساب Spotify",
     )
     supplier_url = models.URLField(
         "لینک تأمین‌کننده",
         blank=True,
         default="",
-        help_text="از کجا می‌خریدش. فقط یادداشت خودتان است و به مشتری نشان داده نمی‌شود.",
+        help_text="مشتری این را نمی‌بیند.",
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب", default=0, help_text="عدد کوچک‌تر بالاتر می‌آید."
+        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
     )
 
     class Meta:

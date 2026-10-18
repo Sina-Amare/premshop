@@ -76,7 +76,15 @@ def tracked_files() -> list[Path]:
     out = subprocess.run(  # noqa: S603 - argv is literal, the path is resolved above
         [git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout
-    found = [ROOT / n for n in out.split("\0") if n and Path(n).suffix in SCANNED]
+    # `is_file()` because git lists what is tracked, not what is on disk: a
+    # file deleted but not yet staged is still in the index, and reading it
+    # crashed the scan. A lint that errors on an ordinary working state
+    # teaches people to skip it.
+    found = [
+        ROOT / n
+        for n in out.split("\0")
+        if n and Path(n).suffix in SCANNED and (ROOT / n).is_file()
+    ]
     return [path for path in found if path.resolve() != SELF]
 
 

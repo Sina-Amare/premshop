@@ -347,3 +347,69 @@ msgstr "دیدن روی سایت"
 
 msgid "Thanks for using our site!"
 msgstr "ممنون که از سایت ما استفاده کردید."
+
+msgid "Delete multiple objects"
+msgstr "حذف چند مورد"
+
+msgid "object id"
+msgstr "شناسه"
+
+msgid "object repr"
+msgstr "نمایش"
+
+msgid "You may edit it again below."
+msgstr "پایین می‌توانید دوباره ویرایشش کنید."
+
+msgid "Database error"
+msgstr "خطای پایگاه داده"
+
+msgid "Disable password-based authentication"
+msgstr "ورود با رمز عبور را خاموش کن"
+
+msgid "Forgotten your login credentials?"
+msgstr "مشخصات ورودتان یادتان رفته؟"
+
+msgid "Password reset confirmation"
+msgstr "تأیید رمز عبور تازه"
+
+msgid "New password:"
+msgstr "رمز عبور تازه:"
+
+msgid "Confirm password:"
+msgstr "تکرار رمز عبور:"
+
+msgid "Reset my password"
+msgstr "بازنشانی رمز عبور من"
+
+msgid "Select all objects on this page for an action"
+msgstr "انتخاب همه‌ی موردهای این صفحه"
+
+msgid "Your password has been set.  You may go ahead and log in now."
+msgstr "رمز عبورتان ثبت شد. حالا وارد شوید."
+
+msgid "Please enter your new password twice so we can verify you typed it in correctly."
+msgstr "رمز عبور تازه را دو بار بنویسید تا از درستی‌اش مطمئن شویم."
+
+msgid "Please go to the following page and choose a new password:"
+msgstr "به این صفحه بروید و رمز عبور تازه‌ای انتخاب کنید:"
+
+msgid "There’s been an error. It’s been reported to the site administrators via email and should be fixed shortly. Thanks for your patience."
+msgstr "خطایی رخ داد. گزارشش ایمیل شد و به‌زودی درست می‌شود."
+
+msgid "Something’s wrong with your database installation. Make sure the appropriate database tables have been created, and make sure the database is readable by the appropriate user."
+msgstr "پایگاه داده مشکل دارد. مطمئن شوید جدول‌ها ساخته شده‌اند و کاربر دسترسی خواندن دارد."
+
+msgid "The password reset link was invalid, possibly because it has already been used.  Please request a new password reset."
+msgstr "این لینک معتبر نیست؛ احتمالاً قبلاً از آن استفاده شده. دوباره درخواست بدهید."
+
+msgid "We’ve emailed you instructions for setting your password, if an account exists with the email you entered. You should receive them shortly."
+msgstr "اگر حسابی با این ایمیل باشد، راهنمای ساختن رمز عبور را فرستادیم. به‌زودی می‌رسد."
+
+msgid "You're receiving this email because you requested a password reset for your user account at %(site_name)s."
+msgstr "این ایمیل را فرستادیم چون برای حسابتان در %(site_name)s درخواست رمز عبور تازه دادید."
+
+msgid "Forgotten your password? Enter your email address below, and we’ll email instructions for setting a new one."
+msgstr "رمز عبورتان یادتان رفته؟ ایمیلتان را بنویسید تا راهنمای ساختن رمز تازه را بفرستیم."
+
+msgid "Please enter the correct %(username)s and password for a staff account. Note that both fields may be case-sensitive."
+msgstr "%(username)s و رمز عبور یک حساب مدیر را درست بنویسید. هر دو به بزرگی و کوچکی حروف حساس‌اند."

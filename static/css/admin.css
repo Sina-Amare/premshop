@@ -193,3 +193,46 @@ input.vTimeField {
 [dir="rtl"] input.vTimeField {
   text-align: left;
 }
+
+/* --- The dashboard rows are rows, not words ------------------------------- */
+/* Unfold wraps only the model's name in the <a>, so the hover highlight
+   covers the whole row while the click target is the width of the text.
+   Everything about the row says "clickable" and most of it is not.
+
+   The link is stretched over the row instead of the row being wrapped in a
+   link, which keeps the markup valid and the heading semantics intact. The
+   action icons sit in their own cell and are lifted above the overlay so
+   they keep their own targets. */
+#content .module table tr {
+  position: relative;
+}
+#content .module table th > a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+/* The pencil and plus must stay reachable through the overlay. */
+#content .module table td {
+  position: relative;
+  z-index: 1;
+}
+/* A row that is entirely clickable should say so under the cursor. */
+#content .module table tr:hover {
+  cursor: pointer;
+}
+
+/* --- Room for Persian descenders ------------------------------------------ */
+/* Unfold's section headings are a 38px band with a 20px line box, measured
+   for Inter. Persian drops ج چ ح خ ر ز و well below the baseline, so «جستجو»
+   and «سئو» sat with their tails against the bottom edge of the tint.
+   Nothing clips them — there is no overflow:hidden anywhere above — but a
+   descender that touches the edge of a filled band reads as cut.
+
+   Height becomes a minimum and the line box is given Persian's leading. */
+[dir="rtl"] .module h2,
+[dir="rtl"] summary h2,
+[dir="rtl"] fieldset h2 {
+  height: auto;
+  min-block-size: 42px;
+  line-height: 1.9;
+}
