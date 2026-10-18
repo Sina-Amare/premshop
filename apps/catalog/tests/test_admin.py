@@ -18,6 +18,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils import timezone
 
@@ -175,26 +176,74 @@ def test_a_product_with_no_discount_shows_no_clock(client, operator, catalogue):
     assert "—" in body
 
 
-def test_publishing_from_the_list_writes_the_status(client, operator, catalogue):
-    """The row action exists so status can change without opening the form.
-    A button that looks like it worked and did not is worse than no button."""
+def test_publishing_writes_the_status(client, operator, catalogue):
+    """A button that looks like it worked and did not is worse than no
+    button."""
     draft = catalogue["draft"]
-    url = reverse("admin:catalog_product_publish", args=[draft.pk])
 
-    response = client.get(url)
+    client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "publish", "_selected_action": [str(draft.pk)]},
+        follow=True,
+    )
     draft.refresh_from_db()
 
-    assert response.status_code in (200, 302)
     assert draft.status == Product.Status.ACTIVE
 
 
 def test_unpublishing_takes_it_off_the_site(client, operator, catalogue):
     live = catalogue["live"]
-    client.get(reverse("admin:catalog_product_unpublish", args=[live.pk]))
+
+    client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "unpublish", "_selected_action": [str(live.pk)]},
+        follow=True,
+    )
     live.refresh_from_db()
 
     assert live.status == Product.Status.DRAFT
     assert live not in Product.objects.public()
+
+
+def test_a_get_cannot_change_a_product(client, operator, catalogue):
+    """Unfold renders a row action as a plain link, so the first version of
+    these actions changed state on GET — an <img src> on any page the
+    operator visited while signed in would have taken a product off the
+    shop. Django's bulk actions POST with a CSRF token; this holds them
+    there, because the convenient shape is the unsafe one."""
+    live = catalogue["live"]
+
+    for url in [
+        f"/admin/catalog/product/{live.pk}/publish/",
+        f"/admin/catalog/product/{live.pk}/unpublish/",
+        reverse("admin:catalog_product_changelist") + "?action=unpublish",
+    ]:
+        client.get(url)
+        live.refresh_from_db()
+        assert live.status == Product.Status.ACTIVE, url
+
+
+def test_an_action_needs_change_permission(client, catalogue):
+    """`is_staff` is editable in this panel, so a staff account without
+    change permission is a real shape. Logged in is not authorised."""
+    weak = User.objects.create_user("weak@example.test", "x", is_staff=True)
+    # View permission, so they genuinely reach the changelist. Without it the
+    # test would pass because the page 403s, which proves nothing about the
+    # action.
+    weak.user_permissions.add(Permission.objects.get(codename="view_product"))
+    client.force_login(weak)
+    live = catalogue["live"]
+
+    assert client.get(reverse("admin:catalog_product_changelist")).status_code == 200
+
+    client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "unpublish", "_selected_action": [str(live.pk)]},
+        follow=True,
+    )
+    live.refresh_from_db()
+
+    assert live.status == Product.Status.ACTIVE
 
 
 def test_the_plan_list_shows_what_each_plan_earns(client, operator, catalogue):

@@ -15,13 +15,12 @@ from typing import Any
 
 from django import forms
 from django.contrib import admin, messages
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
-from django.urls import reverse
+from django.http import HttpRequest
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
-from unfold.decorators import action, display
+from unfold.decorators import display
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
 from apps.core.formatting import (
@@ -152,7 +151,7 @@ class ProductAdmin(ModelAdmin):
     # the row, not axes you slice on, and at a dozen products the filter column
     # was taller than the result.
     list_filter = ["status", "category"]
-    actions_row = ["publish", "unpublish"]
+    actions = ["publish", "unpublish"]
     search_fields = ["name", "short_description", "aliases"]
     list_select_related = ["category"]
     inlines = [ProductSpecInline, PlanInline]
@@ -234,29 +233,24 @@ class ProductAdmin(ModelAdmin):
             return "بدون مهلت"
         return format_countdown(left) if left else "تمام شد"
 
-    @action(description="انتشار", icon="visibility")
-    def publish(self, request: HttpRequest, object_id: int) -> HttpResponse:
-        """Status is the field that costs money when it goes unnoticed, and
-        changing it meant opening the form, scrolling, and saving. No confirm
-        dialog: this is one click to undo, and confirming reversible actions
-        is how an operator learns to click through the dialog that matters.
-        """
-        return self._set_status(request, object_id, Product.Status.ACTIVE)
+    # Django's own bulk actions rather than Unfold's row buttons. Unfold
+    # renders a row action as a plain link, so the handler changes state on a
+    # GET: an <img src="…/unpublish/"> on any page the operator visits while
+    # signed in would take a product off the shop. Django's actions POST with
+    # a CSRF token and enforce `permissions` for free, and publishing several
+    # products at once is the commoner job anyway.
+    @admin.action(description="انتشار", permissions=["change"])
+    def publish(self, request: HttpRequest, queryset: Any) -> None:
+        self._set_status(request, queryset, Product.Status.ACTIVE)
 
-    @action(description="برداشتن از سایت", icon="visibility_off")
-    def unpublish(self, request: HttpRequest, object_id: int) -> HttpResponse:
-        return self._set_status(request, object_id, Product.Status.DRAFT)
+    @admin.action(description="برداشتن از سایت", permissions=["change"])
+    def unpublish(self, request: HttpRequest, queryset: Any) -> None:
+        self._set_status(request, queryset, Product.Status.DRAFT)
 
-    def _set_status(self, request: HttpRequest, object_id: int, status: str) -> HttpResponse:
-        product = Product.objects.get(pk=object_id)
-        product.status = status
-        # update_fields so a row action cannot quietly rewrite a field the
-        # operator is editing in another tab.
-        product.save(update_fields=["status", "updated_at"])
-        messages.success(request, f"«{product.name}» {product.get_status_display()} شد.")
-        # The view must return a response: Unfold routes the action through
-        # never_cache, which calls has_header on whatever comes back.
-        return redirect(reverse("admin:catalog_product_changelist"))
+    def _set_status(self, request: HttpRequest, queryset: Any, status: str) -> None:
+        changed = queryset.update(status=status, updated_at=timezone.now())
+        label = Product.Status(status).label
+        messages.success(request, f"{to_persian_digits(changed)} محصول {label} شد.")
 
     @admin.display(description="قیمت")
     def price_range(self, obj: Product) -> str:
