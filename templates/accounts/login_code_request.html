@@ -10,6 +10,7 @@
 {% block auth_body %}
   <form method="post" novalidate>
     {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
     {% include "accounts/_field.html" with field=form.email %}
     <button type="submit" class="btn btn--primary" style="inline-size: 100%" data-busy="در حال ارسال…">دریافت کد ورود</button>
   </form>
@@ -17,6 +18,6 @@
 
 {% block auth_after %}
   <p class="micro" style="text-align: center; margin-block-start: var(--spacing-4)">
-    رمز عبور دارید؟ <a href="{% url 'login' %}">ورود با رمز عبور</a>
+    رمز عبور دارید؟ <a href="{% url 'login' %}?next={{ next|urlencode }}">ورود با رمز عبور</a>
   </p>
 {% endblock %}

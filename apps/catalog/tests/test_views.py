@@ -569,6 +569,12 @@ def test_search_rate_limited(client, product):
     assert "جستجوهای پشت سر هم زیاد شد" in response.content.decode()
 
 
-def test_an_empty_query_does_not_spend_the_search_budget(client):
+def test_an_empty_query_does_not_spend_the_search_budget(client, category, product):
+    """An empty box now redirects to the shelf rather than rendering a heading
+    over nothing, but the budget rule is unchanged: pressing Enter on an empty
+    field must never be what locks someone out of searching."""
     for _ in range(ratelimit.SEARCH_PER_IP.times + 5):
-        assert client.get(reverse("search")).status_code == 200
+        assert client.get(reverse("search")).status_code == 302
+
+    spent = client.get(reverse("search"), {"q": product.name})
+    assert spent.status_code == 200, "a real query after many empty ones still works"

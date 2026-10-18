@@ -14,6 +14,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
@@ -34,6 +35,7 @@ from apps.core import ratelimit
 # else's address between requests.
 PENDING_EMAIL_KEY = "accounts.pending_email"
 PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
+PENDING_NEXT_KEY = "accounts.pending_next"
 
 # How long the resend button stays disabled after each send. Long enough that a
 # customer does not fire twice while the first mail is still in flight, short
@@ -50,11 +52,31 @@ WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
 _DUMMY_HASH = make_password(secrets.token_urlsafe(16))
 
 
+def _safe_next(request: HttpRequest) -> str:
+    """Where to send someone once they are signed in.
+
+    `@login_required` already puts the page they wanted in `?next=`, and until
+    now both login views threw it away and sent everyone to `/account/`. That
+    is only invisible while `/account/` is the one protected page; the moment
+    the cart arrives, "sign in to see your order" would land on the wrong one.
+
+    The host check is the whole security of this: without it `?next=` accepts
+    an absolute URL and the login page becomes an open redirect, which is
+    worth more to a phisher on a shop's own domain than on anyone else's.
+    """
+    candidate = request.POST.get("next") or request.GET.get("next") or ""
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return candidate
+    return reverse("account")
+
+
 @never_cache
 @require_http_methods(["GET", "POST"])
 def login_password(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
-        return redirect("account")
+        return redirect(_safe_next(request))
 
     form = PasswordLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -81,17 +103,21 @@ def login_password(request: HttpRequest) -> HttpResponse:
             if authenticated:
                 django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
-                return redirect("account")
+                return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)
 
-    return render(request, "accounts/login_password.html", {"form": form})
+    # The destination rides a hidden field, because the form posts to this URL
+    # without its query string.
+    return render(
+        request, "accounts/login_password.html", {"form": form, "next": _safe_next(request)}
+    )
 
 
 @never_cache
 @require_http_methods(["GET", "POST"])
 def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
-        return redirect("account")
+        return redirect(_safe_next(request))
 
     form = EmailForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -103,9 +129,15 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         else:
             request.session[PENDING_EMAIL_KEY] = email
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
+            # The code flow spans three requests, so the destination rides the
+            # session with the address rather than the URL. It is validated
+            # here, on the way in, and never re-read from the request after.
+            request.session[PENDING_NEXT_KEY] = _safe_next(request)
             return redirect("login-code-verify")
 
-    return render(request, "accounts/login_code_request.html", {"form": form})
+    return render(
+        request, "accounts/login_code_request.html", {"form": form, "next": _safe_next(request)}
+    )
 
 
 @never_cache
@@ -127,9 +159,10 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
             if user is not None:
                 request.session.pop(PENDING_EMAIL_KEY, None)
                 request.session.pop(PENDING_EXPIRES_KEY, None)
+                destination = request.session.pop(PENDING_NEXT_KEY, None) or reverse("account")
                 if _wants_json(request):
-                    return JsonResponse({"ok": True, "next": reverse("account")})
-                return redirect("account")
+                    return JsonResponse({"ok": True, "next": destination})
+                return redirect(destination)
             form.add_error(None, WRONG_CODE)
 
     # The six-cell input submits by fetch so it can flash green before leaving the

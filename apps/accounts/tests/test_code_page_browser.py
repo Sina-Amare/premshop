@@ -126,7 +126,7 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     # the stagger ran correctly and invisibly, on the paste path, which is how
     # a code is almost always entered. Read the colour, not the class.
     red, green, blue = page.evaluate(
-        """() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
+        r"""() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
                  .backgroundColor.match(/\d+/g).slice(0, 3).map(Number)"""
     )
     assert green > red and green > blue, f"confirmed cell is not green: rgb({red},{green},{blue})"

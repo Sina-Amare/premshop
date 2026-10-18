@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import smtplib
+from urllib.parse import urljoin, urlparse
 
 import pytest
 import sentry_sdk
@@ -492,3 +493,97 @@ def test_no_password_input_is_ever_rendered_without_the_field_class(client, user
 
     for match in re.finditer(r"<input[^>]*type=\"password\"[^>]*>", body):
         assert "field__input" in match.group(0), match.group(0)
+
+
+# --- Where you land after signing in --------------------------------------
+
+
+def test_password_login_returns_you_to_the_page_you_asked_for(client, user):
+    """`@login_required` puts the wanted page in `?next=`. Both login views
+    used to discard it and send everyone to /account/."""
+    response = client.post(
+        reverse("login") + "?next=/account/password/",
+        {"email": user.email, "password": PASSWORD, "next": "/account/password/"},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/account/password/"
+
+
+def test_code_login_returns_you_to_the_page_you_asked_for(client):
+    """The code flow spans three requests, so the destination rides the
+    session rather than the URL."""
+    client.post(
+        reverse("login-code") + "?next=/account/password/",
+        {"email": "lands@example.test", "next": "/account/password/"},
+    )
+    code = code_from(mail.outbox[-1])
+
+    response = client.post(reverse("login-code-verify"), {"code": code})
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/account/password/"
+
+
+def test_the_json_path_reports_the_same_destination(client):
+    client.post(
+        reverse("login-code") + "?next=/account/password/",
+        {"email": "json@example.test", "next": "/account/password/"},
+    )
+    code = code_from(mail.outbox[-1])
+
+    response = client.post(
+        reverse("login-code-verify"), {"code": code}, headers={"accept": "application/json"}
+    )
+
+    assert json.loads(response.content)["next"] == "/account/password/"
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        "https://evil.example/phish",
+        "//evil.example/phish",
+        "http://evil.example",
+        "https://premshop.ir.evil.example/",
+        "\\evil.example/phish",
+        "https:evil.example",
+    ],
+)
+@pytest.mark.parametrize("route", ["login", "login-code"])
+def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
+    """Without the host check `?next=` turns a login page into an open
+    redirect, which is worth more to a phisher on the shop's own domain than
+    on anyone else's.
+
+    The assertion resolves the Location against this origin with `urljoin`
+    rather than asking Django's own validator again — a check that reuses the
+    value under test cannot see that the value is wrong. A backslash form is
+    allowed through deliberately: browsers read it as a path separator, so it
+    lands on a path of *this* site, which is a 404 and not a phishing hop.
+    """
+    payload = {"next": hostile}
+    if route == "login":
+        payload |= {"email": user.email, "password": PASSWORD}
+    else:
+        payload |= {"email": "hostile@example.test"}
+
+    response = client.post(reverse(route), payload)
+    assert response.status_code == 302
+
+    landing = response.headers["Location"]
+    if route == "login-code":
+        # The code flow stores it; follow through to where it actually sends you.
+        code = code_from(mail.outbox[-1])
+        landing = client.post(reverse("login-code-verify"), {"code": code}).headers["Location"]
+
+    assert urlparse(urljoin("http://testserver/", landing)).netloc == "testserver", landing
+
+
+def test_an_empty_search_goes_to_the_shelf_instead_of_a_blank_page(client):
+    """It used to render a heading over nothing, having fetched the whole
+    catalogue first and thrown it away."""
+    response = client.get(reverse("search"))
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == reverse("home")

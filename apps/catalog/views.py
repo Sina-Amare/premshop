@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.core import ratelimit
@@ -162,10 +162,14 @@ def faq(request: HttpRequest) -> HttpResponse:
 
 def search(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("q", "").strip()[:100]
-    limited = bool(query) and not ratelimit.hit(
-        ratelimit.SEARCH_PER_IP, ratelimit.client_ip(request)
-    )
-    results = [] if (limited or not query) else list(_for_cards().search(query)[:SEARCH_RESULT_CAP])
+    # Submitting an empty box used to render a heading over nothing, after
+    # fetching the whole catalogue and discarding it. Home already *is* the
+    # every-product page, and grouped by department rather than flat, so the
+    # honest answer to "show me everything" is to go there.
+    if not query:
+        return redirect("home")
+    limited = not ratelimit.hit(ratelimit.SEARCH_PER_IP, ratelimit.client_ip(request))
+    results = [] if limited else list(_for_cards().search(query)[:SEARCH_RESULT_CAP])
     # A miss shows the whole shelf. Every credible Iranian site answers an
     # empty search with one concrete thing to do next, and at ten products the
     # most useful thing by a distance is the catalogue itself: someone who
