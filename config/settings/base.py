@@ -15,6 +15,8 @@ from urllib.parse import unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail.utils import DNS_NAME
+from django.templatetags.static import static
+from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -117,6 +119,13 @@ MIDDLEWARE = [
     # traceback no matter which view raised.
     "apps.core.middleware.CacheUnavailableMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Before the locale middleware, so the negotiation it runs never sees a
+    # browser's Accept-Language unless the operator has actually chosen one.
+    "apps.core.middleware.PersianUnlessChosen",
+    # After sessions, because that is where the chosen language is stored, and
+    # before common, whose redirects depend on the active locale. Without it
+    # the admin's language switch writes the choice and nothing reads it.
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -222,6 +231,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Persian UI; datetimes are stored in UTC and rendered in Tehran time.
 # Jalali is a presentation concern only (apps.core.formatting).
 LANGUAGE_CODE = "fa-ir"
+# The shop is Persian; English is here so a non-Persian reader can navigate the
+# panel, and it falls back to Django's own admin strings. Leaving this unset
+# would offer the operator every locale Django ships.
+LANGUAGES = [("fa", "فارسی"), ("en", "English")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Asia/Tehran"
 USE_I18N = True
 USE_TZ = True
@@ -240,9 +254,64 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 UNFOLD = {
     "SITE_TITLE": "PremShop",
     "SITE_HEADER": "PremShop",
+    "SITE_SUBHEADER": "پنل مدیریت",
     "SITE_SYMBOL": "storefront",
+    "SITE_URL": "/",
+    # The shop's own mark, so the panel's tab is not the browser's blank page
+    # icon while the storefront's tab has a logo.
+    "SITE_FAVICONS": [{"rel": "icon", "href": lambda request: static("icon.svg")}],
     "SHOW_HISTORY": True,
-    # The brand's teal as the primary, in the tint ramp Unfold expects.
+    "SHOW_VIEW_ON_SITE": True,
+    # Matches --radius-sm on the storefront, so the two do not look like two
+    # products. Unfold's default is rounder than anything this project draws.
+    "BORDER_RADIUS": "6px",
+    # The switch the owner asked for. It needs LocaleMiddleware and the
+    # set_language URL, both wired above and in config/urls.py — with
+    # SHOW_LANGUAGES on and either missing, every admin page raises.
+    "SHOW_LANGUAGES": True,
+    # No LANGUAGE_FLAGS: a flag is a country, not a language, and the menu
+    # already names each one in its own script. The repository also bans
+    # emoji outright, and the lint caught these.
+    # Ctrl+K jumps to a model. With a dozen products it is faster than the
+    # sidebar, and it costs nothing to turn on.
+    "COMMAND": {"search_models": True, "show_history": True},
+    "SIDEBAR": {
+        "show_search": True,
+        # Deliberately off: it lists every registered model including Django's
+        # own plumbing, which is the bare app list this panel is replacing.
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "فروشگاه",
+                "separator": False,
+                "items": [
+                    {
+                        "title": "محصولات",
+                        "icon": "inventory_2",
+                        "link": reverse_lazy("admin:catalog_product_changelist"),
+                    },
+                    {
+                        "title": "دسته‌بندی‌ها",
+                        "icon": "category",
+                        "link": reverse_lazy("admin:catalog_category_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "مشتریان",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "کاربران",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:accounts_user_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+    # The brand's teal as the primary. Unfold's own default ramp is violet, and
+    # "R G B" triples are converted to rgb() for it (unfold/utils.convert_color).
     "COLORS": {
         "primary": {
             "50": "240 249 248",

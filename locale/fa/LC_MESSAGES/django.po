@@ -1,0 +1,313 @@
+# Persian for the operator panel.
+#
+# Two jobs. django-unfold ships no locale directory at all, so every string
+# it wrote rendered as English in a right-to-left Persian panel. And a few of
+# Django's own admin strings are worded differently here — Django's fa locale
+# says «گذرواژه» where this shop has said «رمز عبور» everywhere since S2, and
+# a test enforces that on the storefront.
+#
+# Compile with scripts/compile_messages.py (no gettext needed); a test fails
+# if the .mo on disk does not match this file.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8
+"
+"Language: fa
+"
+
+msgid "Add"
+msgstr "افزودن"
+
+msgid "Add row"
+msgstr "افزودن ردیف"
+
+msgid "After you've created a user, you’ll be able to edit more user options."
+msgstr "پس از ساختن کاربر، گزینه‌های بیشتری در دسترس است."
+
+msgid "All applications"
+msgstr "همه‌ی بخش‌ها"
+
+msgid "Apply Filters"
+msgstr "اعمال فیلترها"
+
+msgid "Available shortcuts"
+msgstr "میان‌برها"
+
+msgid "Cancel"
+msgstr "انصراف"
+
+msgid "Change"
+msgstr "ویرایش"
+
+msgid "Change password"
+msgstr "تغییر رمز عبور"
+
+msgid "Changelist shortcuts"
+msgstr "میان‌برهای فهرست"
+
+msgid "Clear"
+msgstr "پاک کردن"
+
+msgid "Clear all filters"
+msgstr "پاک کردن فیلترها"
+
+msgid "Clear selection"
+msgstr "برداشتن انتخاب"
+
+msgid "Click here to select the objects across all pages"
+msgstr "همه‌ی موردها در همه‌ی صفحه‌ها را انتخاب کن"
+
+msgid "Click to cancel"
+msgstr "برای لغو کلیک کنید"
+
+msgid "Click to download"
+msgstr "برای دانلود کلیک کنید"
+
+msgid "Close"
+msgstr "بستن"
+
+msgid "Command tool shortcuts"
+msgstr "میان‌برهای جستجوی سریع"
+
+msgid "Create new record"
+msgstr "ساختن رکورد تازه"
+
+msgid "Dark"
+msgstr "تاریک"
+
+msgid "Date"
+msgstr "تاریخ"
+
+msgid "Delete"
+msgstr "حذف"
+
+msgid "False"
+msgstr "خیر"
+
+msgid "Filters"
+msgstr "فیلترها"
+
+msgid "General"
+msgstr "کلی"
+
+msgid "Global shortcuts"
+msgstr "میان‌برهای عمومی"
+
+msgid "Go back"
+msgstr "بازگشت"
+
+msgid "Hide counts"
+msgstr "پنهان کردن تعداد"
+
+msgid "Light"
+msgstr "روشن"
+
+msgid "Log in again"
+msgstr "دوباره وارد شوید"
+
+msgid "Log out"
+msgstr "خروج"
+
+msgid "Navigate"
+msgstr "جابه‌جایی"
+
+msgid "New password"
+msgstr "رمز عبور جدید"
+
+msgid "New password confirmation"
+msgstr "تکرار رمز عبور جدید"
+
+msgid "Next"
+msgstr "بعدی"
+
+msgid "No data"
+msgstr "داده‌ای نیست"
+
+msgid "No results found"
+msgstr "چیزی پیدا نشد"
+
+msgid "No, take me back"
+msgstr "نه، برگرد"
+
+msgid "Nothing matched your search"
+msgstr "جستجو نتیجه‌ای نداشت"
+
+msgid "Objects"
+msgstr "مورد"
+
+msgid "Old password"
+msgstr "رمز عبور فعلی"
+
+msgid "Open command tool"
+msgstr "باز کردن جستجوی سریع"
+
+msgid "Open selection"
+msgstr "باز کردن انتخاب‌شده‌ها"
+
+msgid "Open selection in new tab"
+msgstr "باز کردن در تب تازه"
+
+msgid "Open shortcuts list"
+msgstr "فهرست میان‌برها"
+
+msgid "Password"
+msgstr "رمز عبور"
+
+msgid "Please enter your old password, for security’s sake, and then enter your new password twice so we can verify you typed it in correctly."
+msgstr "برای امنیت، اول رمز عبور فعلی و بعد رمز تازه را دو بار وارد کنید."
+
+msgid "Previous"
+msgstr "قبلی"
+
+msgid "Recent actions"
+msgstr "کارهای اخیر"
+
+msgid "Recent searches"
+msgstr "جستجوهای اخیر"
+
+msgid "Record picture"
+msgstr "تصویر رکورد"
+
+msgid "Remove from sorting"
+msgstr "حذف از ترتیب"
+
+msgid "Reset filters"
+msgstr "بازنشانی فیلترها"
+
+msgid "Run"
+msgstr "اجرا"
+
+msgid "Run the selected action"
+msgstr "اجرای عملیات انتخاب‌شده"
+
+msgid "Save"
+msgstr "ذخیره"
+
+msgid "Save and add another"
+msgstr "ذخیره و ایجاد یکی دیگر"
+
+msgid "Save and continue editing"
+msgstr "ذخیره و ادامه‌ی ویرایش"
+
+msgid "Save and view"
+msgstr "ذخیره و مشاهده"
+
+msgid "Save as new"
+msgstr "ذخیره به‌عنوان مورد تازه"
+
+msgid "Select"
+msgstr "انتخاب"
+
+msgid "Select action"
+msgstr "انتخاب عملیات"
+
+msgid "Select action to run"
+msgstr "عملیاتی برای اجرا انتخاب کنید"
+
+msgid "Select currency"
+msgstr "انتخاب واحد پول"
+
+msgid "Select record"
+msgstr "انتخاب رکورد"
+
+msgid "Show all"
+msgstr "نمایش همه"
+
+msgid "Show counts"
+msgstr "نمایش تعداد"
+
+msgid "Submit"
+msgstr "ثبت"
+
+msgid "Summary"
+msgstr "خلاصه"
+
+msgid "System"
+msgstr "سیستم"
+
+msgid "Thanks for spending some quality time with the web site today."
+msgstr ""
+
+msgid "This item will be deleted."
+msgstr "این مورد حذف می‌شود."
+
+msgid "This page yielded into no results. Create a new item or reset your filters."
+msgstr "این صفحه نتیجه‌ای ندارد. مورد تازه‌ای بسازید یا فیلترها را بردارید."
+
+msgid "Time"
+msgstr "ساعت"
+
+msgid "Toggle dark/light mode"
+msgstr "حالت روشن و تاریک"
+
+msgid "Toggle filter"
+msgstr "باز و بسته کردن فیلتر"
+
+msgid "Toggle password visibility"
+msgstr "نمایش رمز عبور"
+
+msgid "Toggle sidebar"
+msgstr "باز و بسته کردن منو"
+
+msgid "Toggle sorting"
+msgstr "تغییر ترتیب"
+
+msgid "True"
+msgstr "بله"
+
+msgid "Type to search"
+msgstr "جستجو…"
+
+msgid "Unknown"
+msgstr "نامشخص"
+
+msgid "View"
+msgstr "مشاهده"
+
+msgid "View site"
+msgstr "مشاهده‌ی سایت"
+
+msgid "Yes, I’m sure"
+msgstr "بله، مطمئنم"
+
+msgid "You don’t have permission to view or edit anything."
+msgstr "دسترسی دیدن یا ویرایش چیزی را ندارید."
+
+msgid "You have been successfully logged out from the administration"
+msgstr "از پنل مدیریت خارج شدید"
+
+msgid "password"
+msgstr "رمز عبور"
+
+msgid "Welcome back to"
+msgstr "خوش آمدید به"
+
+msgid "Return to site"
+msgstr "بازگشت به فروشگاه"
+
+msgid "Django site admin"
+msgstr "پنل مدیریت"
+
+msgid "Site administration"
+msgstr "پنل مدیریت"
+
+msgid "Search apps and models..."
+msgstr "جستجو در بخش‌ها…"
+
+msgid "Search"
+msgstr "جستجو"
+
+msgid "Breadcrumbs"
+msgstr "مسیر"
+
+msgid "Navigation"
+msgstr "منو"
+
+msgid "Toggle theme"
+msgstr "تغییر پوسته"
+
+msgid "Account"
+msgstr "حساب"
+
+msgid "Profile"
+msgstr "پروفایل"

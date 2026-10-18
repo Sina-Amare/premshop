@@ -7,6 +7,10 @@ from apps.core import views as core_views
 
 urlpatterns = [
     path("", include("apps.catalog.urls")),
+    # set_language, which the operator panel's language switch posts to. Unfold
+    # reverses this name on every sidebar render, so without it the whole admin
+    # raises NoReverseMatch the moment SHOW_LANGUAGES is on.
+    path("i18n/", include("django.conf.urls.i18n")),
     # The design system rendered, for review. Not linked from the shop.
     path("styleguide/", core_views.styleguide, name="styleguide"),
     path("healthz", core_views.healthz, name="healthz"),

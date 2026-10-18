@@ -483,6 +483,44 @@ def test_suggestions_are_capped_and_cost_a_fixed_number_of_queries(client, categ
     assert len(queries) <= PRODUCT_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
 
 
+# --- When a product arrives ------------------------------------------------
+
+
+def test_delivery_time_falls_back_to_the_hours(client, category, product):
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert "تا ۱۲ ساعت" in body
+    assert product.delivery_display == "تا ۱۲ ساعت"
+
+
+def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, category, product):
+    """A number cannot say «slower this week because the gateway is flaky».
+    The note replaces the display on every surface at once — the card, the
+    badge, the facts table, the buy box and the page's own question — because
+    they all read one property rather than formatting the field themselves."""
+    note = "به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت)"
+    product.delivery_note = note
+    product.save()
+
+    page = client.get(reverse("product", args=[product.slug])).content.decode()
+    listing = client.get(reverse("category", args=[category.slug])).content.decode()
+
+    assert page.count(note) >= 4, "the badge, the facts row, the question and the buy box"
+    assert note in listing, "and the card on the listing"
+    assert "تا ۱۲ ساعت" not in page, "the hours must not survive beside the note"
+
+
+def test_the_note_never_touches_the_real_deadline(product):
+    """The operator panel counts down from `delivery_hours`, and the 48-hour
+    promise is a database CHECK on it. A note is display only, so the number
+    it overrides stays exactly where the deadline arithmetic will look."""
+    product.delivery_note = "هر وقت رسید"
+    product.save()
+    product.refresh_from_db()
+
+    assert product.delivery_hours == 12
+
+
 # --- The clock on a discount -----------------------------------------------
 
 

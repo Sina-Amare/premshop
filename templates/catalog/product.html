@@ -25,7 +25,7 @@
         {% endcomment %}
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
-          <span class="badge badge--neutral">تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</span>
+          <span class="badge badge--neutral">{{ product.delivery_sentence }}</span>
           {% for spec in key_specs %}<span class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
         </div>
       </div>
@@ -38,7 +38,7 @@
     <div class="card pdp__facts">
       <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
       <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
-      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">تا {{ product.delivery_hours|fa_digits }} ساعت پس از پرداخت</span></div>
+      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.delivery_display }}</span></div>
       {% if product.renewable %}<div class="fact"><span class="fact__k">تمدید</span><span class="fact__lead"></span><span class="fact__v">روی همین اکانت، با قیمت روز</span></div>{% endif %}
     </div>
 
@@ -63,7 +63,7 @@
     <section class="pdp__section">
       <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کِی تحویل می‌گیرم؟</dt><dd>تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. تحویل‌ها بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه.</dd>
+        <dt>کِی تحویل می‌گیرم؟</dt><dd>{{ product.delivery_display }} بعد از تأیید پرداخت. تحویل‌ها بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه.</dd>
         <dt>وسط دوره پرید، چی می‌شه؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% else %}تا پایان دوره جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% endif %}</dd>
         {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ product.plans.first.customer_input_label|default:"ایمیل حساب" }} رو می‌پرسیم.</dd>{% endif %}
       </dl>
@@ -126,7 +126,7 @@
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
       </form>
-      <p class="micro buybox__note">پرداخت از درگاه بانکی · تحویل تا {{ product.delivery_hours|fa_digits }} ساعت</p>
+      <p class="micro buybox__note">پرداخت از درگاه بانکی · {{ product.delivery_sentence }}</p>
     </div>
   </aside>
 </div>

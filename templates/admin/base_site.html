@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% comment %}
+A copy of unfold/templates/admin/base_site.html with one block added.
+
+The block is the point. `{% block extrastyle %}` is rendered after Unfold's
+own stylesheet, and the UNFOLD["STYLES"] setting is not — anything set there
+loads first and loses to styles.css at equal specificity, which is a silent
+failure rather than an error. The panel's font had to come through here.
+
+Extending "admin/base.html" from a file named "admin/base_site.html" does not
+recurse: this file shadows Unfold's base_site.html only, and base.html still
+resolves to Unfold's.
+{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

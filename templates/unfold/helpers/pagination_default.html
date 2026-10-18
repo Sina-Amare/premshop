@@ -1,0 +1,40 @@
+{% load unfold_list fa i18n %}
+
+{% comment %}
+A copy of unfold/helpers/pagination_default.html with the count line fixed.
+
+Unfold picks verbose_name_plural whenever the count is not 1, which is right
+for English and wrong for Persian: a counted noun does not take a plural, so
+the panel read «۱۲ محصولات» where a Persian reader expects «۱۲ محصول». The
+digits go through the same `fa_digits` filter as every number on the
+storefront, and only when Persian is the active language — in English the
+original rule is what reads correctly.
+{% endcomment %}
+
+{% get_current_language as LANGUAGE %}
+
+{% if pagination_required %}
+    {% for i in page_range %}
+        <div class="{% if forloop.last %}pr-2{% else %}pr-4{% endif %}">
+            {% paginator_number cl i %}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="py-4">
+    {% if pagination_required %}
+        -
+    {% endif %}
+
+    {% if LANGUAGE == "fa" %}
+        {{ cl.result_count|fa_digits }} {{ cl.opts.verbose_name }}
+    {% else %}
+        {{ cl.result_count }}
+
+        {% if cl.result_count == 1 %}
+            {{ cl.opts.verbose_name }}
+        {% else %}
+            {{ cl.opts.verbose_name_plural }}
+        {% endif %}
+    {% endif %}
+</div>

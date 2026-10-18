@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.catalog.search import normalize_for_search
+from apps.core.formatting import to_persian_digits
 
 # How close a misspelling has to be before the shop offers it as the answer.
 # Measured against every seeded product: real misspellings of a product name
@@ -39,10 +40,23 @@ def MoneyField(**kwargs: Any) -> models.DecimalField:  # noqa: N802 — reads as
 
 
 class Category(models.Model):
-    name = models.CharField("نام", max_length=100)
-    slug = models.SlugField("نامک", max_length=100, unique=True, allow_unicode=True)
+    name = models.CharField(
+        "نام", max_length=100, help_text="همان‌طور که مشتری روی سایت می‌بیند. مثل: هوش مصنوعی"
+    )
+    slug = models.SlugField(
+        "نامک",
+        max_length=100,
+        unique=True,
+        allow_unicode=True,
+        help_text="آدرس این دسته توی لینک. خالی بگذارید تا از روی اسم ساخته شود.",
+    )
     description = models.CharField("توضیح کوتاه", max_length=300, blank=True, default="")
-    intro_html = models.TextField("متن معرفی", blank=True, default="")
+    intro_html = models.TextField(
+        "متن معرفی",
+        blank=True,
+        default="",
+        help_text="بالای صفحه‌ی دسته می‌آید. کد HTML اینجا اجرا می‌شود، پس چیزی که مطمئن نیستید نچسبانید.",
+    )
     seo_title = models.CharField("عنوان سئو", max_length=70, blank=True, default="")
     seo_description = models.CharField("توضیح سئو", max_length=160, blank=True, default="")
     sort_order = models.SmallIntegerField("ترتیب", default=0)
@@ -126,11 +140,36 @@ class Product(models.Model):
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products", verbose_name="دسته‌بندی"
     )
-    name = models.CharField("نام", max_length=150)
-    slug = models.SlugField("نامک", max_length=150, unique=True, allow_unicode=True)
-    short_description = models.CharField("توضیح کوتاه", max_length=300, blank=True, default="")
-    full_description = models.TextField("توضیح کامل", blank=True, default="")
-    image = models.ImageField("تصویر", upload_to="products/", null=True, blank=True)
+    name = models.CharField(
+        "نام", max_length=150, help_text="همان‌طور که مردم سرچ می‌کنند. مثل: ChatGPT Plus"
+    )
+    slug = models.SlugField(
+        "نامک",
+        max_length=150,
+        unique=True,
+        allow_unicode=True,
+        help_text="آدرس محصول توی لینک. خالی بگذارید تا از روی اسم ساخته شود.",
+    )
+    short_description = models.CharField(
+        "توضیح کوتاه",
+        max_length=300,
+        blank=True,
+        default="",
+        help_text="یک جمله. زیر اسم محصول روی کارت و بالای صفحه می‌آید.",
+    )
+    full_description = models.TextField(
+        "توضیح کامل",
+        blank=True,
+        default="",
+        help_text="توضیح بلندتر داخل صفحه‌ی محصول. اگر با توضیح کوتاه یکی باشد، دوباره نشان داده نمی‌شود.",
+    )
+    image = models.ImageField(
+        "تصویر",
+        upload_to="products/",
+        null=True,
+        blank=True,
+        help_text="لوگوی سرویس، ترجیحاً SVG. نگذارید، حرف اول اسم نشان داده می‌شود.",
+    )
     delivery_type = models.CharField("نوع تحویل", max_length=24, choices=DeliveryType.choices)
     # Search-only, never rendered: the spellings a customer actually types. A
     # Persian shopper writes «چت جیپت» for ChatGPT, and no amount of character
@@ -144,7 +183,22 @@ class Product(models.Model):
     warranty = models.CharField(
         "گارانتی", max_length=24, choices=Warranty.choices, default=Warranty.NONE
     )
-    delivery_hours = models.SmallIntegerField("مهلت تحویل (ساعت)", default=24)
+    delivery_hours = models.SmallIntegerField(
+        "مهلت تحویل (ساعت)",
+        default=24,
+        help_text="بین ۱ تا ۴۸. همین عدد مهلت شماست و پنل بعداً ازش شمارش معکوس می‌سازد، پس دست‌بالا بنویسید.",
+    )
+    delivery_note = models.CharField(
+        "به‌جای مهلت، این را بنویس",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text=(
+            "اگر پر باشد، به‌جای «تا ۲۴ ساعت» همین متن به مشتری نشان داده می‌شود. "
+            "مثل: به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت). "
+            "عدد بالا را عوض نکنید — مهلت واقعی شما همان است."
+        ),
+    )
     # Claimed, never assumed. Renewal depends on the upstream provider and on
     # the operator being able to get the same account back, so an untouched
     # product says nothing rather than promising something it cannot keep —
@@ -207,6 +261,30 @@ class Product(models.Model):
             f"{self.name} {self.short_description} {self.aliases}"
         )
         super().save(*args, **kwargs)
+
+    @property
+    def delivery_display(self) -> str:
+        """The one phrase the shop uses to say when a product arrives.
+
+        `delivery_hours` stays a number because it is the operator's real
+        deadline — the panel counts down from it, and a CHECK keeps it inside
+        the 48 hours every page promises. But a number cannot say "slower this
+        week because the gateway is flaky", so an optional note replaces the
+        *display* and nothing else.
+        """
+        if self.delivery_note:
+            return self.delivery_note
+        return f"تا {to_persian_digits(self.delivery_hours)} ساعت"
+
+    @property
+    def delivery_sentence(self) -> str:
+        """The same fact where it stands alone, on a badge or under the buy box.
+
+        A note is a sentence, so nothing can be prefixed to it — «تحویل» in
+        front of «به‌علت مشکلات پرداخت…» reads as a typo. The default carries
+        its own word instead, and the note is printed exactly as written.
+        """
+        return self.delivery_note or f"تحویل تا {to_persian_digits(self.delivery_hours)} ساعت"
 
     @property
     def is_public(self) -> bool:

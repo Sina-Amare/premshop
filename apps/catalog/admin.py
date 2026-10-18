@@ -10,6 +10,7 @@ never disagree).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from django import forms
@@ -17,9 +18,26 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.decorators import display
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
-from apps.core.formatting import format_toman
+from apps.core.formatting import format_jalali, format_toman
+
+
+@dataclass(frozen=True)
+class Thumbnail:
+    """What Unfold's header display wants in the image slot.
+
+    It reads `.path` and puts it straight into an <img src>, so despite the
+    name it must be a URL. Handing it Django's ImageFieldFile instead renders
+    `file:///C:/...`, which every browser refuses to load — the whole column
+    of marks was broken that way before this existed, with nothing failing
+    server-side to say so.
+    """
+
+    path: str
+    squared: bool = True
+    borderless: bool = False
 
 
 class SuggestingTextInput(forms.TextInput):
@@ -62,7 +80,7 @@ class ProductSpecInline(TabularInline):
     model = ProductSpec
     form = ProductSpecForm
     extra = 3
-    hide_title = True
+    show_title = False
     fields = ["title", "value", "is_key", "sort_order"]
     ordering = ["sort_order", "id"]
 
@@ -70,7 +88,7 @@ class ProductSpecInline(TabularInline):
 class PlanInline(StackedInline):
     model = Plan
     extra = 1
-    hide_title = True
+    show_title = False
     ordering = ["sort_order", "id"]
     fieldsets = [
         (
@@ -113,11 +131,17 @@ class CategoryAdmin(ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(ModelAdmin):
-    list_display = ["name", "category", "status", "warranty", "price_range", "updated"]
+    list_display = ["product", "status_label", "warranty", "price_range", "updated"]
     list_filter = ["status", "category", "warranty", "delivery_type"]
     search_fields = ["name", "short_description", "aliases"]
     list_select_related = ["category"]
     inlines = [ProductSpecInline, PlanInline]
+    # The table is the operator's working surface; the centred container wasted
+    # a third of a wide screen on margins.
+    list_fullwidth = True
+    # The product form is long enough to lose work in. The browser asks before
+    # a half-finished product is abandoned.
+    warn_unsaved_form = True
     fieldsets = [
         (None, {"fields": ["name", "slug", "category", "status", "image"]}),
         (
@@ -126,7 +150,7 @@ class ProductAdmin(ModelAdmin):
                 "fields": [
                     "delivery_type",
                     ("warranty", "renewable"),
-                    "delivery_hours",
+                    ("delivery_hours", "delivery_note"),
                     "delivery_template",
                 ]
             },
@@ -135,6 +159,30 @@ class ProductAdmin(ModelAdmin):
         ("جستجو", {"fields": ["aliases"], "classes": ["collapse"]}),
         ("سئو", {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]}),
     ]
+
+    @display(description="محصول", header=True, ordering="name")
+    def product(self, obj: Product) -> list[Any]:
+        """Mark, name and department in one column.
+
+        The mark is how a Persian shopper — and the operator — finds a product
+        first; the list used to be ten rows of text that all began the same
+        way. Unfold's header display takes (title, subtitle, initials, image)
+        and falls back to the initials when a product has no picture yet.
+        """
+        mark = Thumbnail(obj.image.url) if obj.image else None
+        return [obj.name, obj.category.name, obj.name[:1], mark]
+
+    @display(
+        description="وضعیت",
+        ordering="status",
+        label={"فعال": "success", "پیش‌نویس": "warning", "ناموجود": "danger"},
+    )
+    def status_label(self, obj: Product) -> str:
+        """Draft and unavailable are the two states that cost money when they
+        go unnoticed — one hides a product that should be selling, the other
+        advertises one that cannot be delivered. A coloured badge is read at a
+        glance where a word in a column is not."""
+        return obj.get_status_display()
 
     @admin.display(description="قیمت")
     def price_range(self, obj: Product) -> str:
@@ -147,8 +195,11 @@ class ProductAdmin(ModelAdmin):
         return f"{format_toman(low, with_unit=False)} تا {format_toman(high)}"
 
     @admin.display(description="به‌روزرسانی", ordering="updated_at")
-    def updated(self, obj: Product) -> Any:
-        return obj.updated_at
+    def updated(self, obj: Product) -> str:
+        """Jalali, like every other date this shop shows. The admin was
+        printing «۱۸ اکتبر ۲۰۲۶» at an operator who works in Mehr and Aban —
+        a Gregorian month name is a date they have to convert in their head."""
+        return format_jalali(obj.updated_at)
 
     def get_queryset(self, request: Any) -> Any:
         return super().get_queryset(request).prefetch_related("plans")

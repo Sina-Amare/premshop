@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from redis.exceptions import RedisError
@@ -39,3 +40,26 @@ class CacheUnavailableMiddleware:
         # Loud in the log and in error tracking, quiet and honest on screen.
         logger.error("cache unavailable on %s: %s", request.path, exception)
         return render(request, "503.html", status=503)
+
+
+class PersianUnlessChosen:
+    """The panel opens in Persian whatever the browser claims to prefer.
+
+    `LocaleMiddleware` negotiates in order: language cookie, then the browser's
+    Accept-Language, then LANGUAGE_CODE. Windows ships an English browser, so
+    without this the operator of a Persian shop opens the panel and finds it in
+    English — and the language switch the owner asked for would read as a bug
+    rather than a choice.
+
+    Dropping the header only when no cookie is set is what keeps the switch
+    working: once the operator picks a language, `set_language` writes the
+    cookie, this stands aside, and their choice wins on every later request.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if settings.LANGUAGE_COOKIE_NAME not in request.COOKIES:
+            request.META.pop("HTTP_ACCEPT_LANGUAGE", None)
+        return self.get_response(request)

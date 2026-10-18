@@ -1,0 +1,195 @@
+/* The operator panel's type and direction.
+ *
+ * Loaded from templates/admin/base_site.html through {% block extrastyle %},
+ * which is the only hook that lands AFTER unfold/css/styles.css. The UNFOLD
+ * "STYLES" setting loads before it, so a font set there is silently overridden
+ * and appears to do nothing.
+ *
+ * Two problems are fixed here.
+ *
+ * The font. Unfold ships Inter, which has no Persian glyphs at all, so every
+ * Persian character in the panel fell through to whatever the operating system
+ * happened to offer. Nothing errors when that happens — it is the same silent
+ * substitution that made the email font stack look wrong for two rounds.
+ *
+ * The direction. Unfold 0.105 writes dir="rtl" on <html> and does nothing else:
+ * its Tailwind build has no [dir=rtl] rules and no logical utilities, so every
+ * one-sided margin, border and absolute offset is physically left/right. What
+ * survives RTL on its own is anything symmetric — mx-*, px-*, gap-* compile to
+ * margin-inline/padding-inline — plus flex and grid, which follow dir. The
+ * corrections below are only for what is left, and each one names what it fixes.
+ */
+
+/* --- The faces, the same files the storefront serves ---------------------- */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+/* Unfold declares --font-sans inside @layer theme. Unlayered CSS beats a
+   layer whatever the order, so this needs no !important and no specificity
+   games. Vazirmatn carries Latin too, so a product named "ChatGPT Plus" and
+   the Persian around it are set in one family. */
+:root {
+  --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* --- Persian typography (docs/design-language.md) ------------------------- */
+body {
+  /* Persian is never letter-spaced: the glyphs join, and spacing breaks the
+     join. Unfold's Tailwind reset does not set it, but browsers and pasted
+     styles sometimes do. */
+  letter-spacing: 0;
+}
+
+/* Figures line up in a column only if they are tabular. Vazirmatn's ۱ and ۳
+   differ in width by over 2x, which makes any price column ragged without
+   this — the same rule the storefront applies to every price. */
+table, .tabular-nums, input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A Latin run inside an RTL line — a slug, a file path, an email — is
+   reordered by the bidi algorithm unless it is isolated. The change form
+   showed "media/products/claude-pro.svg/" with the slash migrated to the
+   front for exactly this reason. */
+.field-slug input,
+.field-image a,
+input[type="email"],
+input[type="url"],
+.readonly code {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+}
+
+/* --- RTL corrections for Unfold's physical-only layout -------------------- */
+
+/* The sidebar is on the right in RTL, so its divider belongs on its left
+   edge. Unfold pins border-r unconditionally. */
+[dir="rtl"] #nav-sidebar,
+[dir="rtl"] .border-r {
+  border-right-width: 0;
+  border-left-width: 1px;
+}
+
+/* Icon-to-label spacing in labels, badges and buttons: mr-*/ml-* are frozen
+   to physical sides, so in RTL the gap lands on the wrong side of the glyph
+   and the text touches the icon. */
+[dir="rtl"] .mr-1 { margin-right: 0; margin-left: 0.25rem; }
+[dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+[dir="rtl"] .mr-3 { margin-right: 0; margin-left: 0.75rem; }
+[dir="rtl"] .ml-1 { margin-left: 0; margin-right: 0.25rem; }
+[dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .ml-3 { margin-left: 0; margin-right: 0.75rem; }
+/* ml-auto pushes a trailing element away; in RTL that is mr-auto. */
+[dir="rtl"] .ml-auto { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .mr-auto { margin-right: 0; margin-left: auto; }
+
+/* The lg: variants are separate class names, so none of the rules above
+   reach them. This is not hypothetical: a switch's help text is wrapped in
+   `lg:-mt-2 lg:ml-2`, and with the gap stuck on the left the sentence sat
+   flush against the toggle on every wide screen. */
+@media (min-width: 64rem) {
+  [dir="rtl"] .lg\:mr-1 { margin-right: 0; margin-left: 0.25rem; }
+  [dir="rtl"] .lg\:mr-2 { margin-right: 0; margin-left: 0.5rem; }
+  [dir="rtl"] .lg\:mr-3 { margin-right: 0; margin-left: 0.75rem; }
+  [dir="rtl"] .lg\:ml-1 { margin-left: 0; margin-right: 0.25rem; }
+  [dir="rtl"] .lg\:ml-2 { margin-left: 0; margin-right: 0.5rem; }
+  [dir="rtl"] .lg\:ml-3 { margin-left: 0; margin-right: 0.75rem; }
+  [dir="rtl"] .lg\:ml-4 { margin-left: 0; margin-right: 1rem; }
+  [dir="rtl"] .lg\:ml-auto { margin-left: 0; margin-right: auto; }
+  [dir="rtl"] .lg\:mr-auto { margin-right: 0; margin-left: auto; }
+}
+
+/* A switch and the sentence explaining it are read together, so the gap has
+   to be wide enough to group them without touching. */
+[dir="rtl"] .lg\:ml-2 { margin-right: 0.75rem; }
+
+/* Explicit alignment. text-left means "the start of the line", which in a
+   Persian panel is the right. */
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+/* The responsive variants are separate class names, so the rules above do not
+   reach them. Unfold writes `text-right lg:text-left` on the list's header
+   cell, which would left-align a Persian product name on any wide screen. */
+@media (min-width: 64rem) {
+  [dir="rtl"] .lg\:text-left { text-align: right; }
+  [dir="rtl"] .lg\:text-right { text-align: left; }
+}
+
+/* --- The product image on the change form --------------------------------- */
+/* Unfold renders the current image at its natural size, so a 512px logo
+   became the tallest thing on the form and pushed every field below the
+   fold. It is a confirmation that the right file is attached, not a preview. */
+.field-image img,
+.form-row img {
+  max-block-size: 72px;
+  max-inline-size: 72px;
+  inline-size: auto;
+  block-size: auto;
+  object-fit: contain;
+}
+
+/* Delete ends up at the far end of the submit row as a consequence of the
+   mr-auto flip above, which is the point: Unfold pushes it away from Save
+   with a physical margin, and in RTL that unflipped margin would have pushed
+   it towards Save instead — a delete button next to the primary action on a
+   panel that edits live prices. Measured at 695px of separation.
+
+   An earlier version of this file styled `.deletelink`, which is Django's
+   class and does not exist in Unfold's markup. It matched nothing and was
+   removed rather than left looking load-bearing. */
+
+/* --- The date and time shortcuts ------------------------------------------ */
+/* Django injects «امروز |» and «اکنون |» into the date and time inputs and
+   Unfold pins them with `right: 1px`. In LTR that is the trailing end of the
+   field, past the text. In RTL the trailing end is the left, so the pin put
+   them on top of the first characters — the calendar glyph sat over the «ت»
+   of «تاریخ» and over the day in «۲۰۲۶-۱۰-۱۷».
+
+   Moved to the real trailing end and the field padded to match, so the text
+   can never run under them. Measured: the widest of the two is 42px. */
+[dir="rtl"] .datetimeshortcuts {
+  right: auto;
+  left: 1px;
+}
+[dir="rtl"] input.vDateField,
+[dir="rtl"] input.vTimeField {
+  padding-left: 3.5rem;
+}
+
+/* A date and a time are Latin, ordered runs. Left to themselves in an RTL
+   field the bidi algorithm moves the pieces around — a value typed as
+   2026-10-17 can render with the year adrift. */
+input.vDateField,
+input.vTimeField {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+}
+[dir="rtl"] input.vDateField,
+[dir="rtl"] input.vTimeField {
+  text-align: left;
+}
