@@ -14,10 +14,12 @@ otherwise. Everything here exists to make that class of failure loud:
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
@@ -148,3 +150,69 @@ def test_groups_are_not_in_the_panel(client, operator):
     body = client.get(reverse("admin:index")).content.decode()
 
     assert "/admin/auth/group/" not in body
+
+
+# --- What the list answers without opening a product -----------------------
+
+
+def test_a_running_discount_shows_its_time_left(client, operator, catalogue):
+    """The catalogue's only real clock. Before this it took opening the
+    product and reading two datetime fields to learn a promotion ends
+    tonight."""
+    plan = catalogue["live"].plans.first()
+    plan.promo_price = Decimal("150000")
+    plan.promo_ends_at = timezone.now() + timedelta(hours=5)
+    plan.save()
+
+    body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
+
+    assert "۰۴:" in body or "۰۵:" in body, "the hours left are not on the list"
+
+
+def test_a_product_with_no_discount_shows_no_clock(client, operator, catalogue):
+    body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
+
+    assert "—" in body
+
+
+def test_publishing_from_the_list_writes_the_status(client, operator, catalogue):
+    """The row action exists so status can change without opening the form.
+    A button that looks like it worked and did not is worse than no button."""
+    draft = catalogue["draft"]
+    url = reverse("admin:catalog_product_publish", args=[draft.pk])
+
+    response = client.get(url)
+    draft.refresh_from_db()
+
+    assert response.status_code in (200, 302)
+    assert draft.status == Product.Status.ACTIVE
+
+
+def test_unpublishing_takes_it_off_the_site(client, operator, catalogue):
+    live = catalogue["live"]
+    client.get(reverse("admin:catalog_product_unpublish", args=[live.pk]))
+    live.refresh_from_db()
+
+    assert live.status == Product.Status.DRAFT
+    assert live not in Product.objects.public()
+
+
+def test_the_plan_list_shows_what_each_plan_earns(client, operator, catalogue):
+    """`cost_price` says it is «برای حساب سود» and nothing computed that sum
+    until this page. The figure is the effective price, so a running
+    discount is counted rather than the list quoting a profit nobody makes."""
+    plan = catalogue["live"].plans.first()
+
+    body = client.get(reverse("admin:catalog_plan_changelist")).content.decode()
+
+    assert response_has_margin(body), body[:200]
+    assert plan.product.name in body
+
+
+def response_has_margin(body: str) -> bool:
+    return "٪" in body
+
+
+def test_a_plan_cannot_be_created_without_its_product(client, operator):
+    """A plan with no product prices nothing. It is added on the product."""
+    assert client.get(reverse("admin:catalog_plan_add")).status_code in (403, 302)

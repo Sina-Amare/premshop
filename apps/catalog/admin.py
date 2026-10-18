@@ -14,14 +14,22 @@ from dataclasses import dataclass
 from typing import Any
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
-from unfold.decorators import display
+from unfold.decorators import action, display
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
-from apps.core.formatting import format_jalali, format_toman
+from apps.core.formatting import (
+    format_countdown,
+    format_jalali,
+    format_toman,
+    to_persian_digits,
+)
 
 
 @dataclass(frozen=True)
@@ -81,8 +89,14 @@ class ProductSpecInline(TabularInline):
     form = ProductSpecForm
     extra = 3
     show_title = False
-    fields = ["title", "value", "is_key", "sort_order"]
+    fields = ["title", "value", "is_key"]
     ordering = ["sort_order", "id"]
+    # Drag the row instead of typing a number into it. The owner could not
+    # read «ترتیب نمایش» and no wording fixes that: a sort key is a control
+    # problem, not a labelling one. Unfold hides the column and writes the
+    # field itself.
+    ordering_field = "sort_order"
+    hide_ordering_field = True
 
 
 class PlanInline(StackedInline):
@@ -90,6 +104,8 @@ class PlanInline(StackedInline):
     extra = 1
     show_title = False
     ordering = ["sort_order", "id"]
+    ordering_field = "sort_order"
+    hide_ordering_field = True
     fieldsets = [
         (
             None,
@@ -131,8 +147,12 @@ class CategoryAdmin(ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(ModelAdmin):
-    list_display = ["product", "status_label", "warranty", "price_range", "updated"]
-    list_filter = ["status", "category", "warranty", "delivery_type"]
+    list_display = ["product", "status_label", "price_range", "promo_left", "updated"]
+    # Status earns a filter. Warranty and delivery type are facts you read off
+    # the row, not axes you slice on, and at a dozen products the filter column
+    # was taller than the result.
+    list_filter = ["status", "category"]
+    actions_row = ["publish", "unpublish"]
     search_fields = ["name", "short_description", "aliases"]
     list_select_related = ["category"]
     inlines = [ProductSpecInline, PlanInline]
@@ -197,6 +217,47 @@ class ProductAdmin(ModelAdmin):
         glance where a word in a column is not."""
         return obj.get_status_display()
 
+    @display(description="تخفیف", label={"تمام شد": "danger"})
+    def promo_left(self, obj: Product) -> str:
+        """How long the discount has. The catalogue's only real clock, and it
+        was invisible from the list: to learn a promotion ended tonight the
+        operator had to open the product and read two datetime fields.
+
+        Amber is spent here and nowhere else in this panel (ADR-0016). The
+        plan is the cheapest one, which is the price the row already shows.
+        """
+        plan = obj.cheapest_plan
+        if plan is None or not plan.promotion_is_active:
+            return "—"
+        left = plan.promo_seconds_left
+        if left is None:
+            return "بدون مهلت"
+        return format_countdown(left) if left else "تمام شد"
+
+    @action(description="انتشار", icon="visibility")
+    def publish(self, request: HttpRequest, object_id: int) -> HttpResponse:
+        """Status is the field that costs money when it goes unnoticed, and
+        changing it meant opening the form, scrolling, and saving. No confirm
+        dialog: this is one click to undo, and confirming reversible actions
+        is how an operator learns to click through the dialog that matters.
+        """
+        return self._set_status(request, object_id, Product.Status.ACTIVE)
+
+    @action(description="برداشتن از سایت", icon="visibility_off")
+    def unpublish(self, request: HttpRequest, object_id: int) -> HttpResponse:
+        return self._set_status(request, object_id, Product.Status.DRAFT)
+
+    def _set_status(self, request: HttpRequest, object_id: int, status: str) -> HttpResponse:
+        product = Product.objects.get(pk=object_id)
+        product.status = status
+        # update_fields so a row action cannot quietly rewrite a field the
+        # operator is editing in another tab.
+        product.save(update_fields=["status", "updated_at"])
+        messages.success(request, f"«{product.name}» {product.get_status_display()} شد.")
+        # The view must return a response: Unfold routes the action through
+        # never_cache, which calls has_header on whatever comes back.
+        return redirect(reverse("admin:catalog_product_changelist"))
+
     @admin.display(description="قیمت")
     def price_range(self, obj: Product) -> str:
         prices = [plan.effective_price for plan in obj.plans.all() if plan.is_available]
@@ -216,3 +277,64 @@ class ProductAdmin(ModelAdmin):
 
     def get_queryset(self, request: Any) -> Any:
         return super().get_queryset(request).prefetch_related("plans")
+
+
+@admin.register(Plan)
+class PlanAdmin(ModelAdmin):
+    """A read-across of every plan, which the product form cannot give.
+
+    Editing stays on the product, where a plan belongs next to the thing it
+    prices — this page exists for the two questions a product form can never
+    answer: which discounts are running right now, and where the margin is
+    thin. Both needed opening twelve forms before.
+    """
+
+    list_display = ["plan", "price", "margin", "promo_window", "is_available"]
+    list_filter = ["is_available", "product__category"]
+    search_fields = ["product__name", "title"]
+    list_select_related = ["product"]
+    list_fullwidth = True
+    ordering = ["product__name", "sort_order"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        # A plan with no product is meaningless; it is added on the product.
+        return False
+
+    @display(description="پلن", header=True, ordering="product__name")
+    def plan(self, obj: Plan) -> list[Any]:
+        mark = Thumbnail(obj.product.image.url) if obj.product.image else None
+        return [obj.product.name, obj.title, obj.product.name[:1], mark]
+
+    @admin.display(description="قیمت", ordering="sale_price")
+    def price(self, obj: Plan) -> str:
+        effective = obj.effective_price
+        if effective == obj.sale_price:
+            return format_toman(effective)
+        # The struck original matters here: this page is where a wrong
+        # promotion is spotted.
+        return format_html(
+            '<span style="text-decoration:line-through;opacity:.55">{}</span> {}',
+            format_toman(obj.sale_price, with_unit=False),
+            format_toman(effective),
+        )
+
+    @display(description="سود", label=True)
+    def margin(self, obj: Plan) -> str:
+        """What the plan actually earns at the price it is selling for today.
+
+        `cost_price`'s own help text says it is «برای حساب سود» and nothing in
+        the panel ever did that sum. Routed through `effective_price` so a
+        running discount is counted, rather than a second price rule.
+        """
+        profit = obj.effective_price - obj.cost_price
+        if obj.effective_price <= 0:
+            return "—"
+        share = round(profit / obj.effective_price * 100)
+        return f"{format_toman(profit)} ({to_persian_digits(share)}٪)"
+
+    @display(description="تخفیف")
+    def promo_window(self, obj: Plan) -> str:
+        if not obj.promotion_is_active:
+            return "—"
+        left = obj.promo_seconds_left
+        return format_countdown(left) if left is not None else "بدون مهلت"
