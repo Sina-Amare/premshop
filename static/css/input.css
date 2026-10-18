@@ -619,9 +619,12 @@
      shop will often have exactly one thing on offer, and one card in a
      four-column grid reads as a row that failed to load; inside a panel that
      names what it is, one card reads as a highlight. */
-  /* The text column takes the slack, not the card row. With one discount the
-     cards used to sit against the text with half the panel empty beside them. */
-  .deals { display: grid; grid-template-columns: minmax(15rem, 1fr) auto;
+  /* The text column is held to a readable measure and the cards take the rest,
+     so a single discount sits beside the words with the row's spare space
+     trailing off the end — a row with room for more, which is what it is.
+     Letting the text column take the slack instead (tried, reverted) stretched
+     two lines of prose across 667px and left the hole in the middle. */
+  .deals { display: grid; grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
            gap: var(--spacing-6); align-items: start;
            background: var(--color-fill-subtle);
            border: 1px solid var(--color-line); border-radius: var(--radius-lg);
@@ -631,7 +634,10 @@
   /* Flex, not a 1fr grid: with one offer on the shelf a grid stretches it
      across empty columns, which reads as a row that failed to load. */
   .deals__grid { display: flex; flex-wrap: wrap; gap: var(--spacing-4); }
-  .deals__grid > * { flex: 0 1 15rem; min-inline-size: 13rem; }
+  /* A lone deal grows into some of the row rather than sitting as one narrow
+     card against a long empty strip; the cap stops it becoming a billboard,
+     and four of them are back to their natural width. */
+  .deals__grid > * { flex: 1 1 15rem; min-inline-size: 13rem; max-inline-size: 20rem; }
   @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
                                        padding: var(--spacing-4); } }
 
