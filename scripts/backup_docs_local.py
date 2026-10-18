@@ -1,4 +1,4 @@
-"""Back up docs-local/, encrypted, to a branch of this repository and to the G: disk.
+"""Back up docs-local/, encrypted, to a branch of this repository and to a local disk.
 
 docs-local/ holds costs, margins and supplier notes and exists only on this laptop, while this
 repository is public. So what leaves the laptop is a git bundle of docs-local's whole history,
@@ -30,7 +30,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / "docs-local"
 PASSPHRASE = Path.home() / ".premshop-backup" / "passphrase"
-MIRROR = Path("G:/Backups/premshop")
+MIRROR_CONFIG = PASSPHRASE.parent / "mirror"
+DEFAULT_MIRROR = Path.home() / "premshop-backups"
 KEEP = 5
 MIN_PASSPHRASE = 20  # `setup` writes 39 characters; a shorter file is a truncated or empty one
 BRANCH = "docs-local-backup"
@@ -123,6 +124,28 @@ def _kill_agent(env: dict[str, str]) -> None:
     subprocess.run(  # noqa: S603
         [str(GIT_BIN / "usr/bin/gpgconf.exe"), "--kill", "gpg-agent"], env=env, capture_output=True
     )
+
+
+def _mirror() -> Path:
+    """Where the second, local copy of the snapshots goes.
+
+    A drive letter is a fact about one machine, not about this project, and
+    this was hardcoded to `G:` until a Windows reinstall left no such drive
+    and every backup failed its local half in silence. The path now lives
+    beside the passphrase, outside the repository, so a new machine states
+    where its own disk is rather than the repository pretending to know.
+
+    Put the second copy on a different physical disk from the project, or it
+    only protects you against deleting the folder, not against the disk dying.
+    """
+    if MIRROR_CONFIG.exists():
+        written = MIRROR_CONFIG.read_text(encoding="utf-8-sig").strip()
+        if written:
+            return Path(written)
+    return DEFAULT_MIRROR
+
+
+MIRROR = _mirror()
 
 
 def _normalise(passphrase: str) -> str:
@@ -233,7 +256,7 @@ def run() -> None:
             raise BackupError(
                 "the file opens without the passphrase: not encrypted; nothing copied"
             )
-        for name, copy in (("G: disk", _to_mirror), ("GitHub", _to_branch)):
+        for name, copy in ((str(MIRROR), _to_mirror), ("GitHub", _to_branch)):
             try:
                 print(f"docs-local {head[:7]} backed up to {copy(encrypted, head)}")
             except (BackupError, OSError) as error:
@@ -302,7 +325,7 @@ def verify(ask: bool = False) -> None:
         if copy is copies[-1] and expected not in heads:
             raise BackupError(f"the newest G: copy, {copy.name}, does not hold {expected[:7]}")
     print(
-        f"G: disk: all {len(copies)} copies decrypt, and the newest, {copies[-1].name},"
+        f"{MIRROR}: all {len(copies)} copies decrypt, and the newest, {copies[-1].name},"
         f" holds {expected[:7]}."
     )
     if stale:
