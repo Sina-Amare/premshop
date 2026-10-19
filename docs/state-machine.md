@@ -210,7 +210,7 @@ Full earlier draft: `git show 027c5d1:docs/state-machine.md` (§4.8). It is re-s
 
 ## 5. Test list
 
-Money/auth-path tests are non-negotiable (working agreement §11). `pytest` + `factory_boy`; freeze time where arithmetic matters.
+Money/auth-path tests are non-negotiable. `pytest` + `factory_boy`; freeze time where arithmetic matters.
 
 **OrderItem transitions — allowed (one test each, asserting: new status, side-effect fields, OrderItemEvent row written in-transaction, correct event emitted on commit via `django_capture_on_commit_callbacks`):**
 1. T-A1 creation → PP: snapshots (`price`, `product`, `cost_snapshot`) frozen; `customer_input` stored encrypted (ciphertext in DB ≠ plaintext); **money invariant asserted — `subtotal = Σ price_snapshot`, `total_amount = subtotal − discount_amount`, `total_amount ≥ 0`** including a percent code larger than the order (clamped to zero, never negative); a browser-supplied price/total in the POST is ignored entirely; two concurrent checkouts on a single-use code ⇒ exactly one order carries the discount, the other is refused (ADR-0020); a `DiscountRedemption` row is written for the winning order and none for an order with no code; **the cart is consumed — the CartItem rows are gone after commit, and a rollback (e.g. the discount guard raising) leaves the cart fully intact**; an input-requiring plan is refused at quantity 2 both in the cart and again at checkout (D-D), and `customer_inputs` is asserted to be a plan-id → single-string mapping.

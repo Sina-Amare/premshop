@@ -1,6 +1,6 @@
 """Persian display helpers.
 
-Convention (working agreement §10): Persian digits in prices and dates,
+Convention: Persian digits in prices and dates,
 Latin digits in inputs and technical identifiers. Money is stored in toman
 as an integer-valued Decimal (ADR-0005) and rendered with thousands
 separators. Datetimes are stored in UTC and displayed in Tehran time as a

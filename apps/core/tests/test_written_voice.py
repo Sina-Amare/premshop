@@ -1,4 +1,4 @@
-"""The repository reads as work by a person (working agreement §9).
+"""The repository reads as work by a person.
 
 Half of that rule is judgement and half is a word list. This is the word
 list: the register markers that give away a machine draft, checked over every
@@ -114,7 +114,7 @@ def test_no_tracked_file_carries_a_machine_register_marker():
             continue
         if found:
             bad[path.relative_to(ROOT).as_posix()] = found
-    assert not bad, f"working agreement §9: {bad}"
+    assert not bad, f"machine register in tracked files: {bad}"
 
 
 @pytest.mark.parametrize(
