@@ -5,14 +5,10 @@ nothing below the template is proof that it runs. And horizontal overflow is
 a layout result, not markup: the deadline badge shipped as one nowrap element
 too many in the buy box, which pushed the whole product page sideways at
 390px, and no assertion over HTML would have noticed.
-
-Skipped when Playwright's Chromium is not installed, so CI without a browser
-stays green and honest rather than red and ignored.
 """
 
 from __future__ import annotations
 
-import os
 from datetime import timedelta
 from decimal import Decimal
 
@@ -24,24 +20,6 @@ from apps.catalog.models import Category, Plan, Product
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 PHONE = {"width": 390, "height": 844}
-
-
-@pytest.fixture(scope="module")
-def browser():
-    playwright = pytest.importorskip("playwright.sync_api")
-    previous = os.environ.get("DJANGO_ALLOW_ASYNC_UNSAFE")
-    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-    with playwright.sync_playwright() as p:
-        try:
-            chromium = p.chromium.launch()
-        except Exception as exc:  # noqa: BLE001 — a missing browser is a skip, not a failure
-            pytest.skip(f"Chromium is not installed for Playwright: {exc}")
-        yield chromium
-        chromium.close()
-    if previous is None:
-        os.environ.pop("DJANGO_ALLOW_ASYNC_UNSAFE", None)
-    else:
-        os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = previous
 
 
 @pytest.fixture

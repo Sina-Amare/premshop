@@ -8,21 +8,27 @@ closes the first two gaps; the third is closed by checking the run on GitHub aft
 every push — a local pass is evidence, the workflow run is the verdict.
 
 `--no-audit` skips pip-audit, which needs the network and is the slow one.
+Installing packages is not mirrored: `npm ci` and Playwright's Chromium are set
+up once (docs/development.md), as `uv sync` is.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 
 PY = sys.executable
+# On Windows npm is npm.cmd, which a bare "npm" in an argv list does not find.
+NPM = shutil.which("npm") or "npm"
 
 # Keep in step with .github/workflows/ci.yml. If a step is added there, add it here.
 STEPS: list[tuple[str, list[str]]] = [
     ("ruff", [PY, "-m", "ruff", "check", "."]),
     ("black", [PY, "-m", "black", "--check", "."]),
     ("mypy", [PY, "-m", "mypy", "apps", "config"]),
+    ("css", [NPM, "run", "css"]),
     ("pytest", [PY, "-m", "pytest", "-q"]),
     ("pip-audit", [PY, "-m", "pip_audit", "--skip-editable"]),
     ("bandit", [PY, "-m", "bandit", "-q", "-r", "apps", "config", "-x", "*/tests/*"]),
@@ -33,7 +39,8 @@ def main() -> int:
     skip = {"pip-audit"} if "--no-audit" in sys.argv else set()
     # bandit prints the offending source line; on a cp1256 console a Persian string
     # crashes its reporter before it can report anything. UTF-8 mode avoids that.
-    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+    # REQUIRE_BROWSER as in CI: a browser test skipped here would pass here only.
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "REQUIRE_BROWSER": "1"}
     failed: list[str] = []
     for name, command in STEPS:
         if name in skip:

@@ -9,8 +9,9 @@ Requires Python 3.11+, Node 20+ (for the CSS build), a local PostgreSQL, and Red
 ```bash
 cp .env.example .env            # then fill SECRET_KEY, DATABASE_URL and the EMAIL_ values
 uv sync                         # Python dependencies, from uv.lock
-npm install                     # CSS toolchain, from package-lock.json
+npm ci                          # CSS toolchain and axe-core, exactly as package-lock.json pins them
 npm run css                     # build static/css/app.css
+python -m playwright install chromium   # the browser tests' Chromium
 python manage.py migrate
 python manage.py seed_catalog   # 12 mock products, development only
 python manage.py runserver      # http://127.0.0.1:8000
@@ -29,6 +30,7 @@ python manage.py runserver      # http://127.0.0.1:8000
 .venv/Scripts/python.exe -m pytest apps/catalog/tests/test_views.py::test_search_rate_limited -q
 .venv/Scripts/python.exe -m pytest -k promo -q         # by keyword
 .venv/Scripts/python.exe -m pytest -m "not browser" -q # skip the Playwright tests
+REQUIRE_BROWSER=1 .venv/Scripts/python.exe -m pytest -q  # as CI: no Chromium is a failure
 
 .venv/Scripts/python.exe manage.py runserver           # needs Redis up — see below
 .venv/Scripts/python.exe manage.py seed_catalog        # 12 mock products; --reset, --no-images
@@ -37,7 +39,7 @@ npm run css                                            # or css:watch
 .venv/Scripts/python.exe scripts/subset_fonts.py       # after replacing a font file only
 ```
 
-- **The gate is six steps**, in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`: `ruff check .`, `black --check .`, `mypy apps config`, `pytest -q`, `pip-audit`, `bandit -r apps config`. Keep the two files in step. `bandit` does not read ruff's `# noqa`; its marker is a bare `# nosec B###`, with the reason in an ordinary comment.
+- **The gate is seven steps**, in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`: `ruff check .`, `black --check .`, `mypy apps config`, `npm run css`, `pytest -q`, `pip-audit`, `bandit -r apps config`. Keep the two files in step. Before the tests CI also installs what `check.py` expects to find already installed: `npm ci` from the lockfile, then Chromium and its system libraries (`playwright install --with-deps chromium`). Both run pytest with `REQUIRE_BROWSER=1`, so a browser test that cannot launch Chromium fails instead of skipping. `bandit` does not read ruff's `# noqa`; its marker is a bare `# nosec B###`, with the reason in an ordinary comment.
 - **After a push**, the verdict is the run *for that commit*, not the newest run — that one may belong to an older commit or still be running. CI runs on every branch. With `gh` (installed 2026-10-12, already logged in as `Sina-Amare`):
 
   ```bash
@@ -70,13 +72,14 @@ npm run css                                            # or css:watch
 
 - They run against the real local PostgreSQL (`DATABASE_URL`), never SQLite. `apps/conftest.py` forces an in-memory cache for every test, so no test depends on a running Redis; the accounts tests switch to a fast password hasher (`apps/accounts/tests/conftest.py`).
 - They live under `apps/` because `testpaths = ["apps"]` — including the settings tests, in `apps/core/tests/`.
-- The three `browser` tests drive Chromium through Playwright (`python -m playwright install chromium` once) and skip themselves when it is absent, as they do in CI.
+- The `browser` tests drive Chromium through Playwright against pytest-django's live server, sharing one `browser` fixture in `apps/conftest.py`. Without Chromium they skip, unless `REQUIRE_BROWSER` is set, as it is in CI and in `scripts/check.py`: there, a skipped browser test is a gate that never ran. They load the built `static/css/app.css`, so a stale build is what they test.
+- `apps/core/tests/test_accessibility_browser.py` runs axe-core on the key pages at 390 and 1280px: the storefront pages as a visitor, the account page signed in, and the panel's product list and form. Any WCAG 2 A or AA violation of impact serious or critical fails it. axe-core is a pinned devDependency that only this test loads, from `node_modules/`; the site never serves it. `ALLOWED` lists the violations found when the scan arrived, one (rule, page, element) each, with the step that removes it; another element breaking an allowed rule still fails. An entry that stops occurring fails the test too, so the list only shrinks: fix the page, not the list. A page whose stylesheet did not load fails before it is scanned, since unstyled text passes every contrast check.
 - `time-machine` moves the clock in tests that depend on time, such as a login code expiring.
 
 ## Environment traps
 
 - **Redis** runs in Docker inside WSL and stops when WSL idles. Start it with `wsl -d Ubuntu-24.04 -u root -e bash -lc 'service docker start && docker start premshop-redis'` (as root, so no sudo password is asked). A login page showing «ورود فعلاً ممکن نیست» means Redis is down.
-- **`static/css/app.css` is a gitignored build artifact.** Tailwind v4 scans `templates/` only (`source(none)` in `input.css`), so a class used for the first time in a template does nothing until `npm run css` runs.
+- **`static/css/app.css` is a gitignored build artifact.** CI builds it from source before the tests. Tailwind v4 scans `templates/` only (`source(none)` in `input.css`) and skips the panel's `templates/admin/` and `templates/unfold/`, which Unfold styles. A class used for the first time in a template does nothing until `npm run css` runs.
 - **Never `runserver --noreload` while editing templates** — it serves the old ones, and a screenshot of a stale page looks like a fix that did not work.
 - **A wrapper that filters command output cannot be trusted for a check.** If anything on this machine sits between a command and its answer, prove it does not change exit codes or output before believing a result — a "nothing found" from a tool that refused the query looks exactly like a real empty answer. Local tooling notes are kept outside this repository.
 - **Writing files that mix Persian and quotes:** Git Bash heredocs break on them, and tool layers turn `\n` and `\uXXXX` escapes back into the characters. Use a file-writing tool or a script file; build a backslash with `chr(92)` when an escape must survive. The console is cp1256: set `PYTHONIOENCODING=utf-8` before printing Persian, and in PowerShell 5.1 pass `-Encoding utf8` to `Get-Content`.

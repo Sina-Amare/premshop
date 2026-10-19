@@ -4,6 +4,9 @@
 @import "tailwindcss" source(none);
 
 @source "../../templates/**/*.html";
+/* The panel's templates are styled by Unfold's stylesheet, never this one. */
+@source not "../../templates/admin";
+@source not "../../templates/unfold";
 
 /* ===========================================================================
    PremShop visual foundation — see docs/design-language.md and ADR-0016.

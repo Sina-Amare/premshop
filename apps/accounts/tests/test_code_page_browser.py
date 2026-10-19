@@ -6,9 +6,6 @@ clears, a countdown, a resend cooldown. None of it exists in the test client.
 So this runs the real page in a real browser against the live server, and it
 takes screenshots on the way — those are the artefacts reviewed before the
 owner is asked to look at anything visual.
-
-Skipped automatically when Playwright's Chromium is not installed, so CI without
-a browser stays green and honest rather than red and ignored.
 """
 
 from __future__ import annotations
@@ -38,27 +35,6 @@ PASTE_JS = """
   cell.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
 }
 """
-
-
-@pytest.fixture(scope="module")
-def browser():
-    playwright = pytest.importorskip("playwright.sync_api")
-    # Playwright's sync API drives an event loop under the hood, and Django then
-    # refuses ORM calls "from an async context". This is the flag Django's own
-    # documentation sets for exactly this case; scoped to the browser fixture.
-    previous = os.environ.get("DJANGO_ALLOW_ASYNC_UNSAFE")
-    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-    with playwright.sync_playwright() as p:
-        try:
-            chromium = p.chromium.launch()
-        except Exception as exc:  # noqa: BLE001 — a missing browser is a skip, not a failure
-            pytest.skip(f"Chromium is not installed for Playwright: {exc}")
-        yield chromium
-        chromium.close()
-    if previous is None:
-        os.environ.pop("DJANGO_ALLOW_ASYNC_UNSAFE", None)
-    else:
-        os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = previous
 
 
 @pytest.fixture
