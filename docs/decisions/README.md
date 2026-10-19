@@ -30,6 +30,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one flow for login+registration; no separate password reset *(amended 2026-09-21: two of its statements were untrue of the built code until that day's fix)* |
 | [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; region values; Persian CHECK messages; search folding; seeded shop; Unfold admin |
 | [0026](0026-storefront-composition.md) | Storefront: ink bands top and bottom, the shelf panel across the seam, two radii, one shadow, colour only from the brand marks; fonts subset |
+| [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` |
 
 ## Legacy shorthand map
 

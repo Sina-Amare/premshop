@@ -12,6 +12,8 @@ dependencies = [
     "jdatetime>=5.0",
     "pillow>=10.4",
     "django-unfold>=0.40",
+    "markdown-it-py>=4.2.0",
+    "nh3>=0.3.7",
 ]
 
 [dependency-groups]
