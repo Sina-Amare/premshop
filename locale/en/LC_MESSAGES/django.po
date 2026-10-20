@@ -349,3 +349,252 @@ msgstr "%(label)s, date"
 
 msgid "ساعت %(label)s"
 msgstr "%(label)s, time"
+
+# The content model: facts, sections, questions, publishing and freshness
+# (apps/catalog/models.py, apps/catalog/admin.py, templates/admin/catalog/).
+
+msgid "%(count)s بخش از «%(source)s» به «%(target)s» کپی شد."
+msgstr "%(count)s sections copied from “%(source)s” to “%(target)s”."
+
+msgid "%(kind)s «%(row)s»، "
+msgstr "%(kind)s “%(row)s”, "
+
+msgid "%(where)s%(field)s: جای خالی «%(marker)s» هنوز پر نشده است."
+msgstr "%(where)s%(field)s: the placeholder “%(marker)s” is still unfilled."
+
+msgid "Markdown ساده: **پررنگ**، فهرست با - یا ۱.، پیوند، جدول و تیتر ###."
+msgstr "Plain Markdown: **bold**, lists with - or 1., links, tables and ### headings."
+
+msgid "Markdown ساده: پاراگراف، **پررنگ**، پیوند و فهرست. تیتر به متن ساده تبدیل می‌شود."
+msgstr "Plain Markdown: paragraphs, **bold**, links and lists. A heading becomes plain text."
+
+msgid "PNG،‏ JPEG یا WebP. هیچ‌وقت اطلاعات ورود اکانت یا داده‌ی مشتری را نشان ندهد."
+msgstr "PNG, JPEG or WebP. Never show account login details or customer data."
+
+msgid "«%(product)s» منتشر نشد."
+msgstr "“%(product)s” was not published."
+
+msgid "بخش‌ها روی «%(target)s» کپی نشد، چون منتشر شده است. اول آن را از سایت بردارید."
+msgstr "No sections were copied onto “%(target)s”: it is published. Take it off the site first."
+
+msgid "«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد."
+msgstr "“Before you buy” was not copied: “%(target)s” already has one."
+
+msgid "آخرین بررسی"
+msgstr "Last checked"
+
+msgid "آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."
+msgstr "What the image shows, for someone who cannot see it. Required with an image."
+
+msgid "آنچه در پنج نوع بالا نمی‌گنجد."
+msgstr "Whatever fits none of the five kinds above."
+
+msgid "ابعاد تصویر بیشتر از ۲۵ مگاپیکسل است."
+msgstr "The image is larger than 25 megapixels."
+
+msgid "از محصول"
+msgstr "From product"
+
+msgid "استثنای بازگشت وجه"
+msgstr "Refund exception"
+
+msgid "اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."
+msgstr "The answer itself in the first sentence, usually one or two sentences."
+
+msgid "امکانات یا قیمت ارائه‌دهنده زود عوض می‌شود. انتشار، بررسی در ۷ روز اخیر را لازم دارد."
+msgstr "The provider’s features or prices change quickly. Publishing needs a check within the last 7 days."
+
+msgid "اول «این محصول برای شما نیست اگر…»، بعد موضع ارائه‌دهنده، محدودیت‌ها و آنچه شامل نیست. گارانتی، استثنای بازگشت وجه (اگر باشد) و موضع ایران را صفحه خودش از فیلدهایشان می‌آورد."
+msgstr "First “this product is not for you if…”, then the provider’s stance, the limits and what is not included. The page prints the warranty, a refund exception (if there is one) and the stance on Iran from their own fields."
+
+msgid "این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."
+msgstr "This product already has a “Before you buy” section. Edit that one."
+
+msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
+msgstr "This product is time-sensitive and its claims have not been checked in the last 7 days."
+
+msgid "با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."
+msgstr "In the buyer’s voice, as they would ask on Telegram."
+
+msgid "بخش محتوا"
+msgstr "content section"
+
+msgid "بخش‌ها به آخر این محصولات اضافه می‌شوند:"
+msgstr "The sections are added at the end of these products:"
+
+msgid "بخش‌های محتوا"
+msgstr "content sections"
+
+msgid "بررسی واقعیت‌ها"
+msgstr "Fact check"
+
+msgid "بعد از پرداخت"
+msgstr "After payment"
+
+msgid "بیش از ۷ روز پیش، یا هرگز"
+msgstr "Over 7 days ago, or never"
+
+msgid "تأیید قیمت"
+msgstr "Price confirmed"
+
+msgid "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود."
+msgstr "Not published until what this form is missing is filled in."
+
+msgid "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."
+msgstr "This file is not PNG, JPEG or WebP, or it is damaged."
+
+msgid "تصویر بدون متن جایگزین ذخیره نمی‌شود."
+msgstr "An image is not saved without its alternative text."
+
+msgid "تیتر"
+msgstr "Heading"
+
+msgid "جمع‌بندی یک‌خطی"
+msgstr "One-line summary"
+
+msgid "جمع‌بندی یک‌خطی خالی است."
+msgstr "The one-line summary is empty."
+
+msgid "حجم تصویر بیشتر از ۵ مگابایت است."
+msgstr "The image is larger than 5 MB."
+
+msgid "حساس به زمان"
+msgstr "Time-sensitive"
+
+msgid "منتشرشده، بدون موضع درباره‌ی ایران"
+msgstr "Published, with no stance on Iran"
+
+msgid "حساس به زمان، بیش از ۳۰ روز بررسی‌نشده"
+msgstr "Time-sensitive, unchecked for over 30 days"
+
+msgid "خالی بماند تا نام همین نوع تیتر شود. «متن آزاد» بی‌تیتر می‌ماند."
+msgstr "Leave empty to use the kind’s name as the heading. Free text has none."
+
+msgid "روز بررسی نمی‌تواند بعد از امروز باشد."
+msgstr "The check date cannot be after today."
+
+msgid "نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند."
+msgstr "Leave out the shop’s name. The site adds it to the end of the title itself."
+
+msgid "روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."
+msgstr "The day the text’s claims were last checked against the sources."
+
+msgid "سطر %(line)s نشانی کامل نیست، مثل https://openai.com/chatgpt/pricing"
+msgstr "Line %(line)s is not a full address, like https://openai.com/chatgpt/pricing"
+
+msgid "سه تا پنج فایده، هر کدام به زبان نتیجه و با یک کاربرد واقعی."
+msgstr "Three to five benefits, each as an outcome with one real use."
+
+msgid "شرط‌های انتشار برقرار است."
+msgstr "Ready to publish."
+
+msgid "فقط اگر این محصول با قاعده‌ی بازگشت وجه فروشگاه فرق دارد. یک جمله."
+msgstr "Only if this product differs from the shop’s refund rule. One sentence."
+
+msgid "فقط بخش‌هایی را بگذارید که به کار این محصول می‌آید و ترتیبشان را با کشیدن عوض کنید. متن سقف کلمه ندارد."
+msgstr "Add only the sections this product needs, and drag them into order. The text has no word limit."
+
+msgid "قالب بخش را تعیین می‌کند. هر محصول حداکثر یک «پیش از خرید» دارد."
+msgstr "Decides the section’s layout. A product has at most one “Before you buy”."
+
+msgid "قدم‌های شماره‌دار از تأیید پرداخت تا اولین استفاده: ما چه می‌کنیم و مشتری چه می‌کند و چه می‌بیند."
+msgstr "Numbered steps from payment to first use: what we do, and what the customer does and sees."
+
+msgid "قیمت %(count)s پلن تأیید شد."
+msgstr "Prices of %(count)s plans confirmed."
+
+msgid "قیمت‌ها را امروز بررسی کردم"
+msgstr "I checked these prices today"
+
+msgid "لوگوی محصول، PNG،‏ JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+msgstr "The product’s logo, PNG, JPEG or WebP. The site shows it at a fixed size."
+
+msgid "متن آزاد"
+msgstr "Free text"
+
+msgid "متن جایگزین تصویر"
+msgstr "Image alternative text"
+
+msgid "محصول منتشرشده با جای خالی پرنشده ذخیره نمی‌شود."
+msgstr "A published product is not saved with an unfilled placeholder."
+
+msgid "مزیت‌ها و کاربردها"
+msgstr "Benefits and uses"
+
+msgid "مقایسه"
+msgstr "Comparison"
+
+msgid "منبع‌ها"
+msgstr "Sources"
+
+msgid "موضع درباره‌ی ایران"
+msgstr "Stance on Iran"
+
+msgid "موضع درباره‌ی ایران منبعی ندارد. نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
+msgstr "The stance on Iran has no source. Add the provider’s official page under “Sources”."
+
+msgid "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+msgstr "The stance on Iran is empty. If the question never comes up, enter the Persian for “not applicable”."
+
+msgid "موضع رسمی ارائه‌دهنده، با عبارت خودش. اگر پیش نمی‌آید، «موضوعیت ندارد». برای انتشار لازم است."
+msgstr "The provider’s official stance, in its own words. If it never comes up, the Persian for “not applicable”. Required to publish."
+
+msgid "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
+msgstr "The official pages behind the text’s claims, one address per line. Not shown on the site."
+
+msgid "نوع"
+msgstr "Kind"
+
+msgid "نوع بخش معتبر نیست."
+msgstr "The section kind is not valid."
+
+msgid "نوع تحویل انتخاب نشده است."
+msgstr "No delivery type is chosen."
+
+msgid "هر امکان یک سطر، با عدد یا عبارت رسمی ارائه‌دهنده و تاریخ. آنچه نسخه‌ی رایگان دارد در پرانتز همان سطر."
+msgstr "One feature per line, with the provider’s own figure or wording and a date. What the free version has goes in brackets on the same line."
+
+msgid "هر محصول حداکثر یک بخش «پیش از خرید» دارد."
+msgstr "A product has at most one “Before you buy” section."
+
+msgid "هیچ محصول دیگری بخش محتوا ندارد."
+msgstr "No other product has content sections."
+
+msgid "هیچ پلن موجودی ندارد."
+msgstr "It has no available plan."
+
+msgid "واقعیت‌ها"
+msgstr "Facts"
+
+msgid "پاسخ"
+msgstr "Answer"
+
+msgid "پرسش"
+msgstr "question"
+
+msgid "پرسش‌های محصول"
+msgstr "product questions"
+
+msgid "پیش از انتشار"
+msgstr "Before publishing"
+
+msgid "پیش از خرید"
+msgstr "Before you buy"
+
+msgid "پیش‌نمایش"
+msgstr "Preview"
+
+msgid "چه چیزهایی می‌گیرید"
+msgstr "What you get"
+
+msgid "کپی بخش‌ها"
+msgstr "Copy sections"
+
+msgid "کپی بخش‌ها از محصول دیگر"
+msgstr "Copy sections from another product"
+
+msgid "یک جدول کوچک با تاریخ، فقط جایی که به همین تصمیم کمک می‌کند."
+msgstr "A small dated table, only where it helps this very decision."
+
+msgid "یک جمله: محصول برای خریدار چه می‌کند و به کار چه کسی می‌آید."
+msgstr "One sentence: what the product does for the buyer and who it suits."

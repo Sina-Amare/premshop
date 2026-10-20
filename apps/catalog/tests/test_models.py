@@ -4,12 +4,25 @@ from __future__ import annotations
 
 from datetime import timedelta
 from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
 
 import pytest
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from PIL import ExifTags, Image, PngImagePlugin
 
-from apps.catalog.models import FUZZY_THRESHOLD, Category, Plan, Product
+from apps.catalog.models import (
+    FUZZY_THRESHOLD,
+    Category,
+    Plan,
+    Product,
+    ProductQuestion,
+    ProductSection,
+    ProductSpec,
+)
 from apps.catalog.pricing import effective_price
 
 pytestmark = pytest.mark.django_db
@@ -307,6 +320,26 @@ def test_a_persian_slug_is_refused(product):
 
 
 @pytest.mark.parametrize(
+    "title", ["خرید Claude Pro | PremShop", "خرید Claude Pro — premshop", "PremShop: Claude Pro"]
+)
+def test_an_seo_title_leaves_the_shops_name_to_the_page(product, title):
+    """base.html adds « | PremShop» to every title, so a field that already
+    holds it puts the shop's name in the tab twice."""
+    for row in (product, product.category):
+        row.seo_title = title
+        with pytest.raises(ValidationError) as excinfo:
+            row.full_clean()
+        assert "seo_title" in excinfo.value.message_dict, type(row).__name__
+
+
+def test_an_seo_title_without_the_shops_name_is_kept(product):
+    product.seo_title = product.category.seo_title = "خرید اشتراک Claude Pro"
+
+    product.full_clean()
+    product.category.full_clean()
+
+
+@pytest.mark.parametrize(
     "fields, under",
     [
         ({"promo_price": Decimal("2000000")}, "promo_price"),
@@ -424,3 +457,352 @@ def test_the_fuzzy_threshold_separates_real_spellings_from_noise(chatgpt):
     # And the gap is wide enough that the threshold is not balanced on a knife
     # edge — if this shrinks, the two populations have started to overlap.
     assert min(real) - max(noise) > 0.1
+
+
+# --- Publishing ----------------------------------------------------------------
+
+
+@pytest.fixture
+def ready(product):
+    """A draft with every fact publishing asks for, and nothing left to decide."""
+    product.status = Product.Status.DRAFT
+    product.iran_stance = "پشتیبانی‌نشده"
+    product.sources = "https://help.openai.com/en/articles/7947663-chatgpt-supported-countries"
+    product.save()
+    plan(product)
+    return product
+
+
+def test_a_product_with_every_fact_may_publish(ready):
+    """The control: a rule that refuses everything passes every refusal below."""
+    assert ready.publish_problems() == []
+
+
+@pytest.mark.parametrize("stance", ["", "   "])
+def test_publishing_needs_the_stance_on_iran(ready, stance):
+    ready.iran_stance = stance
+
+    assert ready.publish_problems() == [
+        "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+    ]
+
+
+def test_not_applicable_is_a_stance(ready):
+    """A gift card has no Iran question to answer, and saying so is enough."""
+    ready.iran_stance = "موضوعیت ندارد"
+
+    assert ready.publish_problems() == []
+
+
+@pytest.mark.parametrize("stance", ["موضوعیت ندارد", "موضوعيت ندارد."])
+def test_a_stance_on_iran_needs_a_source_where_the_question_arises(ready, stance):
+    """The stance is a claim about the provider's own terms. «موضوعیت ندارد»
+    claims nothing the provider says, in either spelling of ی."""
+    ready.sources = ""
+
+    assert ready.publish_problems() == [
+        "موضع درباره‌ی ایران منبعی ندارد. نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
+    ]
+    ready.iran_stance = stance
+    assert ready.publish_problems() == []
+
+
+@pytest.mark.parametrize(
+    "field, problem",
+    [
+        ("delivery_type", "نوع تحویل انتخاب نشده است."),
+        ("short_description", "جمع‌بندی یک‌خطی خالی است."),
+    ],
+)
+def test_each_missing_fact_is_named(ready, field, problem):
+    setattr(ready, field, "")
+
+    assert ready.publish_problems() == [problem]
+
+
+def test_publishing_needs_a_plan_on_sale(ready):
+    ready.plans.update(is_available=False)
+
+    assert ready.publish_problems() == ["هیچ پلن موجودی ندارد."]
+
+
+MARKERS = ["[تصمیم مالک، تصمیم ۴: چند روز]", "[وابسته به تصمیم ۸: …]", "[از تحویل آزمایشی: …]"]
+
+
+@pytest.mark.parametrize("marker", MARKERS)
+@pytest.mark.parametrize("where", ["product", "section", "question", "spec", "plan"])
+def test_a_placeholder_anywhere_on_the_page_holds_publishing(ready, marker, where):
+    text = f"مبلغ را ظرف {marker} برمی‌گردانیم."
+    if where == "product":
+        ready.refund_note = text
+    elif where == "section":
+        ProductSection.objects.create(product=ready, kind="before_buying", body=text)
+    elif where == "question":
+        ProductQuestion.objects.create(product=ready, question="پول برمی‌گرده؟", answer=text)
+    elif where == "spec":
+        ProductSpec.objects.create(product=ready, title="بازگشت وجه", value=text)
+    else:
+        ready.plans.update(customer_input_label=text)
+
+    [problem] = ready.publish_problems()
+
+    assert marker in problem, problem
+
+
+def test_a_placeholder_is_named_with_its_section_and_field(ready):
+    ProductSection.objects.create(product=ready, kind="before_buying", body="[تصمیم مالک، تصمیم ۴]")
+
+    assert ready.publish_problems() == [
+        "بخش محتوا «\u2068پیش از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» هنوز پر نشده است."
+    ]
+
+
+def test_a_bracket_that_is_not_a_placeholder_publishes(ready):
+    ProductSection.objects.create(product=ready, kind="free", body="جدول [پایین] را ببینید.")
+
+    assert ready.publish_problems() == []
+
+
+@pytest.mark.parametrize("days_ago, fresh", [(0, True), (7, True), (8, False), (None, False)])
+def test_a_time_sensitive_product_needs_a_check_this_week(ready, days_ago, fresh):
+    ready.time_sensitive = True
+    if days_ago is not None:
+        ready.facts_checked_on = timezone.localdate() - timedelta(days=days_ago)
+
+    problems = ready.publish_problems()
+
+    if fresh:
+        assert problems == []
+    else:
+        assert len(problems) == 1 and "۷ روز" in problems[0], problems
+
+
+def test_a_product_that_is_not_time_sensitive_needs_no_check(ready):
+    assert ready.facts_checked_on is None
+    assert ready.publish_problems() == []
+
+
+def test_publishing_through_full_clean_names_the_field_to_fix(ready):
+    """The product form's path: a draft set to active is refused field by field."""
+    ready.iran_stance = ""
+    ready.status = Product.Status.ACTIVE
+
+    with pytest.raises(ValidationError) as excinfo:
+        ready.full_clean()
+
+    assert set(excinfo.value.message_dict) == {"iran_stance", "status"}
+
+
+def test_a_live_product_is_held_to_its_placeholders_only(product):
+    """A fact that went stale on a live product must not lock every other
+    edit; an unresolved placeholder must never reach the page."""
+    assert product.iran_stance == "", "the fixture is live and lacks the stance"
+    product.full_clean()
+
+    product.short_description = "[از تحویل آزمایشی: …]"
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert set(excinfo.value.message_dict) == {"short_description", "status"}
+
+
+def test_a_check_date_cannot_be_in_the_future(product):
+    product.facts_checked_on = timezone.localdate() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert list(excinfo.value.message_dict) == ["facts_checked_on"]
+
+
+def test_sources_are_one_address_a_line(product):
+    product.sources = "https://openai.com/chatgpt/pricing/\n\nhttps://help.openai.com/x"
+    product.full_clean()
+
+    product.sources = "https://openai.com/chatgpt/pricing/\nصفحه‌ی قیمت‌ها"
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert "سطر ۲" in excinfo.value.message_dict["sources"][0]
+
+
+# --- When a price was last confirmed ---------------------------------------------
+
+
+def test_a_new_plan_is_confirmed_as_it_is_created(product):
+    assert plan(product).price_confirmed_at is not None
+
+
+@pytest.mark.parametrize("field", ["cost_price", "sale_price", "promo_price"])
+def test_changing_a_price_confirms_it(product, field):
+    p = plan(product)
+    Plan.objects.filter(pk=p.pk).update(price_confirmed_at=NOW - timedelta(days=30))
+    p.refresh_from_db()
+
+    setattr(p, field, Decimal("1000000"))
+    p.save()
+    p.refresh_from_db()
+
+    assert p.price_confirmed_at > NOW
+
+
+def test_an_edit_that_leaves_the_prices_leaves_the_confirmation(product):
+    """Renaming a plan says nothing about whether its price is still right."""
+    p = plan(product)
+    old = NOW - timedelta(days=30)
+    Plan.objects.filter(pk=p.pk).update(price_confirmed_at=old)
+    p.refresh_from_db()
+
+    p.title = "یک ماهه"
+    p.save()
+    p.is_available = False
+    p.save(update_fields=["is_available"])
+    p.refresh_from_db()
+
+    assert p.price_confirmed_at == old
+
+
+def test_a_price_saved_with_update_fields_is_confirmed_too(product):
+    p = plan(product)
+    Plan.objects.filter(pk=p.pk).update(price_confirmed_at=None)
+    p.refresh_from_db()
+
+    p.sale_price = Decimal("1500000")
+    p.save(update_fields=["sale_price"])
+    p.refresh_from_db()
+
+    assert p.price_confirmed_at is not None
+
+
+# --- Sections ------------------------------------------------------------------
+
+
+def test_a_product_has_one_before_buying_section_at_most(product):
+    """The conditions of a sale are said once. Two would say them twice, or
+    disagree."""
+    ProductSection.objects.create(product=product, kind="before_buying")
+    second = ProductSection(product=product, kind="before_buying")
+
+    with pytest.raises(ValidationError) as excinfo:
+        second.full_clean()
+    assert list(excinfo.value.message_dict) == ["kind"]
+    with pytest.raises(IntegrityError), transaction.atomic():
+        second.save()
+    # Every other kind repeats freely.
+    ProductSection.objects.create(product=product, kind="free")
+    ProductSection.objects.create(product=product, kind="free")
+
+
+def test_a_section_kind_outside_the_six_is_refused_by_the_database(product):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ProductSection.objects.create(product=product, kind="hero")
+
+
+def test_an_image_needs_its_alternative_text(product):
+    section = ProductSection(product=product, kind="after_payment", image="sections/x.png")
+
+    with pytest.raises(ValidationError) as excinfo:
+        section.full_clean()
+    assert list(excinfo.value.message_dict) == ["image_alt"]
+    with pytest.raises(IntegrityError), transaction.atomic():
+        section.save()
+
+
+# --- Images ----------------------------------------------------------------------
+
+
+@pytest.fixture
+def media(settings, tmp_path) -> Path:
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def photo(kind: str = "JPEG", size: tuple[int, int] = (3000, 2000)) -> bytes:
+    """A picture carrying what a phone or an editor writes into one."""
+    image = Image.new("RGB", size, "teal")
+    out = BytesIO()
+    if kind == "PNG":
+        notes = PngImagePlugin.PngInfo()
+        notes.add_text("Author", "operator@example.test")
+        image.save(out, "PNG", pnginfo=notes)
+    elif kind in ("JPEG", "WEBP"):
+        exif = Image.Exif()
+        exif[ExifTags.Base.Model] = "Phone 15"
+        exif[ExifTags.Base.Orientation] = 6  # held sideways: turn a quarter to view
+        exif.get_ifd(ExifTags.IFD.GPSInfo)[ExifTags.GPS.GPSLatitude] = (35.0, 41.0, 0.0)
+        image.save(out, kind, exif=exif, comment="operator@example.test")
+    else:
+        image.save(out, kind)
+    return out.getvalue()
+
+
+def section_with(product, name: str, data: bytes) -> ProductSection:
+    section = ProductSection(product=product, kind="after_payment", image_alt="صفحه‌ی اشتراک")
+    section.image = SimpleUploadedFile(name, data)
+    section.full_clean()
+    section.save()
+    return section
+
+
+@pytest.mark.parametrize("kind, suffix", [("JPEG", ".jpg"), ("WEBP", ".webp")])
+def test_an_uploaded_photo_is_stored_redrawn_without_its_metadata(product, media, kind, suffix):
+    """A photo's EXIF can hold where it was taken. The stored file is a new
+    drawing at a capped size, and the upload itself never reaches MEDIA_ROOT,
+    which the proxy serves as it is."""
+    original = photo(kind)
+
+    section = section_with(product, f"IMG_2041{suffix}", original)
+
+    stored = Image.open(section.image.path)
+    assert stored.format == kind
+    assert stored.size == (1067, 1600), "turned upright by its EXIF, then capped at 1600"
+    assert not stored.getexif() and "exif" not in stored.info
+    assert "comment" not in stored.info
+    assert "IMG_2041" not in section.image.name
+    files = [path for path in media.rglob("*") if path.is_file()]
+    assert files == [Path(section.image.path)]
+    assert files[0].read_bytes() != original
+
+
+def test_a_png_loses_its_text_chunks(product, media):
+    section = section_with(product, "screenshot.png", photo("PNG", (800, 600)))
+
+    stored = Image.open(section.image.path)
+    assert stored.format == "PNG" and stored.size == (800, 600), "a small image is not enlarged"
+    assert stored.text == {}
+
+
+def test_a_logo_is_capped_smaller_than_a_section_image(product, media):
+    product.image = SimpleUploadedFile("logo.png", photo("PNG", (2000, 2000)))
+    product.save()
+
+    assert Image.open(product.image.path).size == (512, 512)
+
+
+@pytest.mark.parametrize(
+    "name, data",
+    [
+        ("logo.svg", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+        ("logo.gif", photo("GIF", (10, 10))),
+        ("logo.png", b"not an image at all"),
+    ],
+)
+def test_anything_but_png_jpeg_or_webp_is_refused(product, media, name, data):
+    section = ProductSection(product=product, kind="after_payment", image_alt="x")
+    section.image = SimpleUploadedFile(name, data)
+
+    with pytest.raises(ValidationError) as excinfo:
+        section.full_clean()
+
+    assert excinfo.value.message_dict["image"] == [
+        "این فایل PNG،\u200f JPEG یا WebP نیست، یا خراب است."
+    ]
+    assert not [path for path in media.rglob("*") if path.is_file()], "nothing was stored"
+
+
+def test_a_logo_stored_before_the_rule_is_left_alone(product):
+    """Every seeded logo is an SVG, and the format check runs on each save of
+    the product form. Applied to a stored file, it would lock every such form."""
+    product.image = "products/claude-pro.svg"
+
+    product.full_clean()

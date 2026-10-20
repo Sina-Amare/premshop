@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+The question the «کپی بخش‌ها از محصول دیگر» action asks before it copies
+(ProductAdmin.copy_sections). It posts back to the product list with the same
+action and selection, as Django's own delete confirmation does.
+{% endcomment %}
+{% load i18n l10n unfold %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }}{% endblock %}
+
+{% block content %}
+    <div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
+        <form method="post" class="p-4">
+            {% csrf_token %}
+
+            <p class="font-semibold mb-2 text-font-important-light dark:text-font-important-dark">
+                {% translate "بخش‌ها به آخر این محصولات اضافه می‌شوند:" %}
+            </p>
+
+            <ul class="leading-relaxed mb-4">
+                {% for target in targets %}
+                    <li><bdi>{{ target }}</bdi></li>
+                {% endfor %}
+            </ul>
+
+            {% if form.fields.source.queryset.exists %}
+                {% include "unfold/helpers/field.html" with field=form.source %}
+            {% else %}
+                <p class="mb-4">{% translate "هیچ محصول دیگری بخش محتوا ندارد." %}</p>
+            {% endif %}
+
+            {% for target in targets %}
+                <input type="hidden" name="_selected_action" value="{{ target.pk|unlocalize }}">
+            {% endfor %}
+            <input type="hidden" name="action" value="copy_sections">
+
+            {% if form.fields.source.queryset.exists %}
+                {% translate "کپی بخش‌ها" as label %}
+                {% component "unfold/components/button.html" with submit=1 variant="primary" %}{{ label }}{% endcomponent %}
+            {% endif %}
+        </form>
+    </div>
+{% endblock %}

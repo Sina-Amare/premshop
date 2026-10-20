@@ -1,0 +1,22 @@
+{% load i18n %}
+{% comment %}
+What each kind of section is for, above the sections of a product form. The
+field hints stay short; this is the longer guidance, and none of it is a cap.
+{% endcomment %}
+<div class="panel-guide leading-relaxed mb-6 px-3 text-sm">
+    <p>{% translate "فقط بخش‌هایی را بگذارید که به کار این محصول می‌آید و ترتیبشان را با کشیدن عوض کنید. متن سقف کلمه ندارد." %}</p>
+    <dl>
+        <dt>{% translate "مزیت‌ها و کاربردها" %}</dt>
+        <dd>{% translate "سه تا پنج فایده، هر کدام به زبان نتیجه و با یک کاربرد واقعی." %}</dd>
+        <dt>{% translate "چه چیزهایی می‌گیرید" %}</dt>
+        <dd>{% translate "هر امکان یک سطر، با عدد یا عبارت رسمی ارائه‌دهنده و تاریخ. آنچه نسخه‌ی رایگان دارد در پرانتز همان سطر." %}</dd>
+        <dt>{% translate "مقایسه" %}</dt>
+        <dd>{% translate "یک جدول کوچک با تاریخ، فقط جایی که به همین تصمیم کمک می‌کند." %}</dd>
+        <dt>{% translate "بعد از پرداخت" %}</dt>
+        <dd>{% translate "قدم‌های شماره‌دار از تأیید پرداخت تا اولین استفاده: ما چه می‌کنیم و مشتری چه می‌کند و چه می‌بیند." %}</dd>
+        <dt>{% translate "پیش از خرید" %}</dt>
+        <dd>{% translate "اول «این محصول برای شما نیست اگر…»، بعد موضع ارائه‌دهنده، محدودیت‌ها و آنچه شامل نیست. گارانتی، استثنای بازگشت وجه (اگر باشد) و موضع ایران را صفحه خودش از فیلدهایشان می‌آورد." %}</dd>
+        <dt>{% translate "متن آزاد" %}</dt>
+        <dd>{% translate "آنچه در پنج نوع بالا نمی‌گنجد." %}</dd>
+    </dl>
+</div>

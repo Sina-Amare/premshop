@@ -1,0 +1,26 @@
+{% load i18n admin_urls %}
+{% comment %}
+Unfold's tools above a product form, with the page link named for what it
+opens: a draft's own address shows staff a preview and everyone else a 404,
+so for a draft the link is «پیش‌نمایش». An unavailable product has no page for
+anyone, staff included, so it gets no link. Live is read from the database:
+after a refused save, `original` holds the status that was refused.
+{% endcomment %}
+
+{% block object-tools-items %}
+    {% if show_history %}
+        {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+        {% trans 'History' as title %}
+        {% add_preserved_filters history_url as link %}
+        {% include "unfold/helpers/tab_action.html" with title=title link=link icon="history" %}
+    {% endif %}
+
+    {% if has_absolute_url and original.status != "unavailable" %}
+        {% if original.is_live_in_db %}
+            {% trans 'View on site' as title %}
+        {% else %}
+            {% translate "پیش‌نمایش" as title %}
+        {% endif %}
+        {% include "unfold/helpers/tab_action.html" with title=title link=absolute_url blank=1 icon="open_in_new" %}
+    {% endif %}
+{% endblock %}

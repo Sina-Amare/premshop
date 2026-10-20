@@ -21,7 +21,14 @@ from django.utils import timezone
 from playwright.sync_api import Browser, Page
 
 from apps.accounts.models import User
-from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.models import (
+    Category,
+    Plan,
+    Product,
+    ProductQuestion,
+    ProductSection,
+    ProductSpec,
+)
 from apps.core.formatting import format_jalali, format_toman
 from apps.core.tests.test_accessibility_browser import RUN_AXE, contrast
 
@@ -41,8 +48,8 @@ def open_panel(browser: Browser, live_server) -> Iterator[Callable[..., Page]]:
     cookie = client.cookies[settings.SESSION_COOKIE_NAME].value
     contexts = []
 
-    def open_page(path: str, width: int = DESKTOP) -> Page:
-        context = browser.new_context(viewport={"width": width, "height": 900})
+    def open_page(path: str, width: int = DESKTOP, height: int = 900) -> Page:
+        context = browser.new_context(viewport={"width": width, "height": height})
         contexts.append(context)
         context.add_cookies(
             [{"name": settings.SESSION_COOKIE_NAME, "value": cookie, "url": live_server.url}]
@@ -81,6 +88,26 @@ def product() -> Product:
 
 def change_form(product: Product) -> str:
     return f"/admin/catalog/product/{product.pk}/change/"
+
+
+def with_sections_and_a_question(product: Product) -> None:
+    """The prose of a page as the operator writes it: Markdown, Latin names, a
+    placeholder still waiting for a decision."""
+    ProductSection.objects.create(
+        product=product,
+        kind=ProductSection.Kind.BENEFITS,
+        body="- **متن بلند را خلاصه کنید.** برای دانشجو و پژوهشگر، از جمله در Gemini.",
+        sort_order=0,
+    )
+    ProductSection.objects.create(
+        product=product,
+        kind=ProductSection.Kind.BEFORE_BUYING,
+        body="بازگشت وجه: [تصمیم مالک، تصمیم ۴: چند روز کاری]",
+        sort_order=1,
+    )
+    ProductQuestion.objects.create(
+        product=product, question="روی کدام ایمیل فعال می‌شه؟", answer="همان ایمیل اکانت Claude."
+    )
 
 
 def save(page: Page, button: str = "_continue") -> None:
@@ -128,6 +155,11 @@ def test_spec_order_survives_a_save(open_panel, product):
 def test_the_bulk_action_menu_can_be_clicked_at_desktop_width(open_panel, product):
     """The only way to publish several products at once sat under the RTL
     sidebar, so a click on it landed on the sidebar."""
+    Product.objects.filter(pk=product.pk).update(
+        short_description="اشتراک Claude Pro.",
+        iran_stance="پشتیبانی‌نشده",
+        sources="https://www.anthropic.com/supported-countries",
+    )
     page = open_panel("/admin/catalog/product/")
 
     page.check(f"input.action-select[value='{product.pk}']")
@@ -235,6 +267,12 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     page.fill("input[name=name]", "Spotify Premium")
     page.select_option("select[name=category]", str(category.pk))
     page.select_option("select[name=delivery_type]", Product.DeliveryType.ON_CUSTOMER_ACCOUNT)
+    page.fill("input[name=short_description]", "موسیقی بدون آگهی، روی اکانت خودتان.")
+    page.fill("input[name=iran_stance]", "پشتیبانی‌نشده")
+    page.fill(
+        "textarea[name=sources]",
+        "https://support.spotify.com/us/article/full-list-of-territories-where-spotify-is-available/",
+    )
     for row, (title, value) in enumerate([("ریجن", "آمریکا"), ("تحویل", "روی اکانت خودتان")]):
         page.fill(f"input[name=specs-{row}-title]", title)
         page.fill(f"input[name=specs-{row}-value]", value)
@@ -536,6 +574,7 @@ def test_no_panel_page_is_wider_than_a_small_phone(open_panel, product):
     content, so the whole page scrolled sideways."""
     product.image = "products/claude-pro.svg"
     product.save()
+    with_sections_and_a_question(product)
     wide = {}
     for path in [change_form(product), "/admin/catalog/product/", "/admin/catalog/plan/"]:
         page = open_panel(path, 320)
@@ -569,9 +608,12 @@ def test_no_panel_page_has_a_serious_accessibility_violation(open_panel, product
     """apps/core's scan covers the product list and form; the operator also
     works in these. WCAG 2.2 A and AA, serious and critical, nothing allowed."""
     plan = product.plans.get()
+    with_sections_and_a_question(product)
     pages = [
         "/admin/",
         "/admin/catalog/product/add/",
+        # A draft: the readiness list, the section guide and both new inlines.
+        change_form(product),
         f"/admin/catalog/product/{product.pk}/history/",
         f"/admin/catalog/product/{product.pk}/delete/",
         "/admin/catalog/plan/",
@@ -609,3 +651,76 @@ def test_the_sign_in_page_has_no_serious_accessibility_violation(browser, live_s
         assert not serious_violations(page)
     finally:
         context.close()
+
+
+# --- The content model in the panel ------------------------------------------------
+
+
+def test_section_order_survives_a_save(open_panel, product):
+    """The page prints sections in the order the operator drags them."""
+    with_sections_and_a_question(product)
+    # Tall enough for both rows: a stacked row is taller than a screen, and a
+    # synthetic drag does not scroll the page the way a person's does.
+    page = open_panel(change_form(product), DESKTOP, 3200)
+
+    handles = page.locator("#sections-group .form-group.original [x-sort\\:handle]")
+    handles.nth(1).drag_to(handles.nth(0))
+    kinds = page.locator("#sections-group .form-group.original select[name$=-kind]")
+    assert kinds.nth(0).input_value() == "before_buying", "the drag itself did not happen"
+    save(page)
+
+    assert list(product.sections.values_list("kind", flat=True)) == ["before_buying", "benefits"]
+
+
+@pytest.mark.parametrize("width", [DESKTOP, PHONE])
+def test_a_refused_publish_shows_its_reasons_at_both_widths(open_panel, product, width):
+    """The draft lacks its summary and its stance on Iran. Set to «فعال», the
+    form comes back with each reason under the field it is about, and all of
+    them listed at the top."""
+    page = open_panel(change_form(product), width)
+    assert page.locator(".panel-readiness li").count() >= 2, "the readiness list names them"
+
+    page.select_option("select[name=status]", Product.Status.ACTIVE)
+    save(page)
+
+    for field in ("status", "short_description", "iran_stance"):
+        assert page.locator(f"#id_{field}_error").is_visible(), field
+    # And together on the first screen, where the save lands.
+    reasons = page.locator(".panel-readiness li")
+    assert reasons.count() >= 2
+    assert reasons.last.evaluate("e => e.getBoundingClientRect().bottom") < 900
+    product.refresh_from_db()
+    assert product.status == Product.Status.DRAFT
+
+
+@pytest.mark.parametrize("width", [DESKTOP, PHONE])
+def test_sections_are_copied_from_the_list_at_both_widths(open_panel, product, width):
+    with_sections_and_a_question(product)
+    other = Product.objects.create(
+        category=product.category,
+        name="Claude Max",
+        slug="claude-max",
+        delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+    )
+    page = open_panel("/admin/catalog/product/", width)
+
+    page.check(f"input.action-select[value='{other.pk}']")
+    page.select_option("#changelist-actions select[name=action]", "copy_sections")
+    with page.expect_navigation():
+        page.click("#changelist-actions button[type=submit]")
+    assert not serious_violations(page)
+    page.select_option("select[name=source]", str(product.pk))
+    with page.expect_navigation():
+        page.click("form:has(select[name=source]) button[type=submit]")
+
+    assert list(other.sections.values_list("kind", flat=True)) == ["benefits", "before_buying"]
+    assert product.sections.count() == 2, "the original lost its sections"
+
+
+def test_source_addresses_read_left_to_right(open_panel, product):
+    """A URL in a right-to-left box shows its closing slash at the front."""
+    page = open_panel(change_form(product))
+
+    box = page.locator("textarea[name=sources]")
+
+    assert box.evaluate("e => getComputedStyle(e).direction") == "ltr"

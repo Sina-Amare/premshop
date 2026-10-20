@@ -425,6 +425,10 @@ msgstr "انتخاب کنید"
 msgid "Choose file to upload"
 msgstr "انتخاب فایل"
 
+# An SVG logo or any other file Pillow cannot read, at upload (catalog.ReencodedImageField).
+msgid "Upload a valid image. The file you uploaded was either not an image or a corrupted image."
+msgstr "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."
+
 msgid "Delete selected %(verbose_name_plural)s"
 msgstr "حذف %(verbose_name_plural)s انتخاب‌شده"
 

@@ -17,6 +17,7 @@ import re
 from datetime import timedelta
 from decimal import Decimal
 from html.parser import HTMLParser
+from io import BytesIO
 from typing import Any
 
 import pytest
@@ -24,12 +25,21 @@ import time_machine
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone, translation
+from PIL import Image
 
 from apps.accounts import services
 from apps.accounts.models import User
-from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.models import (
+    Category,
+    Plan,
+    Product,
+    ProductQuestion,
+    ProductSection,
+    ProductSpec,
+)
 from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
@@ -55,10 +65,13 @@ def catalogue():
         ("draft", Product.Status.DRAFT),
         ("gone", Product.Status.UNAVAILABLE),
     ]:
+        # Publishable as it stands, so a test of publishing tests publishing.
         product = Product.objects.create(
             category=category,
             name=slug,
             slug=slug,
+            short_description="اکانت آماده‌ی اختصاصی.",
+            iran_stance="موضوعیت ندارد",
             delivery_type=Product.DeliveryType.READY_ACCOUNT,
             status=status,
         )
@@ -1182,3 +1195,549 @@ def test_the_english_product_list_is_english(client, english, catalogue):
     assert not PERSIAN_LETTER.search(re.sub(r"<[^>]+>", "", options)), options
     badges = re.findall(r'<span class="[^"]*rounded-default[^"]*"[^>]*>\s*([^<]+?)\s*</span>', body)
     assert {"Active", "Draft", "Unavailable"} <= set(badges), badges
+
+
+# --- The content model on the product form -----------------------------------
+
+
+def add_row(data: dict[str, Any], prefix: str, **fields: str) -> str:
+    """Add a row to inline `prefix` the way «افزودن» does, and return its prefix."""
+    fields.setdefault("sort_order", "0")
+    n = int(data[f"{prefix}-TOTAL_FORMS"][0])
+    data[f"{prefix}-TOTAL_FORMS"] = [str(n + 1)]
+    data.update({f"{prefix}-{n}-{name}": [value] for name, value in fields.items()})
+    return f"{prefix}-{n}"
+
+
+def errors_under(body: str, field_id: str) -> str:
+    found = re.search(rf'<ul class="errorlist" id="id_{field_id}_error">(.*?)</ul>', body, re.S)
+    return found.group(1) if found else ""
+
+
+def test_the_form_refuses_to_publish_without_the_stance_on_iran(client, operator, catalogue):
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    data.update(status=["active"], iran_stance=[""])
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 200, "a product with no stance on Iran was published"
+    body = response.content.decode()
+    assert "موضع درباره‌ی ایران نوشته نشده است." in errors_under(body, "iran_stance")
+    assert "منتشر نمی‌شود" in errors_under(body, "status")
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.DRAFT
+    # The form holds the refused «فعال»; the page it links to is still a preview.
+    assert page_link(body, "پیش‌نمایش")
+
+
+def test_not_applicable_publishes_from_the_form(client, operator, catalogue):
+    """The control for the refusal above, on the same draft."""
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    data.update(status=["active"], iran_stance=["موضوعیت ندارد"])
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 302, response.content.decode()[:3000]
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.ACTIVE
+
+
+def test_the_form_refuses_to_publish_with_no_plan_on_sale(client, operator, catalogue):
+    """Read from the rows as submitted: the plan was on sale until this save."""
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    data.pop(f"{plan_prefix(data, draft.plans.get())}-is_available")
+    data["status"] = ["active"]
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 200
+    group = response.content.decode().split('id="plans-group"', 1)[1]
+    assert "هیچ پلن موجودی ندارد." in group
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.DRAFT
+
+
+def test_a_placeholder_in_a_new_section_keeps_a_live_product_as_it_was(client, operator, catalogue):
+    live = catalogue["live"]
+    data = form_of(client, change_url(live))
+    row = add_row(data, "sections", kind="before_buying", body="ظرف [تصمیم مالک، تصمیم ۴: …] روز")
+
+    response = client.post(change_url(live), data)
+
+    assert response.status_code == 200, "a live page took an unfilled placeholder"
+    assert "هنوز پر نشده است" in errors_under(response.content.decode(), f"{row}-body")
+    assert not live.sections.exists()
+
+
+def test_the_plans_own_form_holds_a_live_plan_to_its_placeholders(client, operator, catalogue):
+    """The rule lived in the product form's inlines only, and the plan list's
+    own form put an owner placeholder into a live buy box."""
+    plan = catalogue["live"].plans.get()
+    url = reverse("admin:catalog_plan_change", args=[plan.pk])
+    data = form_of(client, url, "plan_form")
+    data["title"] = ["[تصمیم مالک، تصمیم ۴: چند روز]"]
+
+    response = client.post(url, data)
+
+    assert response.status_code == 200, "a live plan took an unfilled placeholder"
+    assert "هنوز پر نشده است" in errors_under(response.content.decode(), "title")
+    plan.refresh_from_db()
+    assert plan.title == "۱ ماهه"
+
+
+def test_publishing_from_the_form_reads_the_rows_it_does_not_show(client, catalogue):
+    """Without the section permissions the form has no section rows, so no
+    formset asked about the stored ones before the draft went live."""
+    editor = User.objects.create_user("editor@example.test", "x", is_staff=True)
+    editor.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="catalog",
+            content_type__model__in=["product", "plan", "productspec"],
+        )
+    )
+    client.force_login(editor)
+    draft = catalogue["draft"]
+    ProductSection.objects.create(product=draft, kind="before_buying", body="[تصمیم مالک، تصمیم ۴]")
+    data = form_of(client, change_url(draft))
+    assert "sections-TOTAL_FORMS" not in data, "the form shows the sections after all"
+    data["status"] = ["active"]
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 200, "a stored placeholder went live"
+    assert "هنوز پر نشده است" in str(response.context["adminform"].form.non_field_errors())
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.DRAFT
+
+
+def test_a_draft_keeps_its_placeholders(client, operator, catalogue):
+    """A placeholder is how a draft waits for the owner's decision."""
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    add_row(data, "sections", kind="before_buying", body="[تصمیم مالک، تصمیم ۴: …]")
+    add_row(data, "questions", question="کد کجا میاد؟", answer="[از تحویل آزمایشی: …]")
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 302, response.content.decode()[:3000]
+    assert draft.sections.get().kind == ProductSection.Kind.BEFORE_BUYING
+    assert draft.questions.get().question == "کد کجا میاد؟"
+
+
+def test_a_stale_fact_does_not_lock_a_live_products_other_edits(client, operator, catalogue):
+    """Only placeholders hold a live product's form. A check that went stale
+    is the freshness list's business, not a reason to refuse a typo fix."""
+    live = catalogue["live"]
+    Product.objects.filter(pk=live.pk).update(iran_stance="", time_sensitive=True)
+    data = form_of(client, change_url(live))
+    data["name"] = ["live, renamed"]
+
+    response = client.post(change_url(live), data)
+
+    assert response.status_code == 302, response.content.decode()[:3000]
+
+
+def test_two_before_buying_sections_in_one_save_are_refused(client, operator, catalogue):
+    """The database refuses the second, but only as an IntegrityError: a crash
+    in place of a message, when both rows are new."""
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    add_row(data, "sections", kind="before_buying", body="یک")
+    add_row(data, "sections", kind="before_buying", body="دو")
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 200
+    assert "هر محصول حداکثر یک بخش «پیش از خرید» دارد." in response.content.decode()
+    assert not draft.sections.exists()
+
+
+def test_the_bulk_action_names_every_reason_and_publishes_the_rest(client, operator, catalogue):
+    draft = catalogue["draft"]
+    Product.objects.filter(pk=draft.pk).update(short_description="", iran_stance="")
+    ProductQuestion.objects.create(product=draft, question="پول برمی‌گرده؟", answer="[تصمیم مالک]")
+    ready = Product.objects.create(
+        category=draft.category,
+        name="ready",
+        slug="ready",
+        short_description="آماده.",
+        iran_stance="موضوعیت ندارد",
+        delivery_type=Product.DeliveryType.GIFT_CARD,
+    )
+    Plan.objects.create(product=ready, title="۱۰ دلاری", cost_price=1, sale_price=500000)
+
+    response = client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "publish", "_selected_action": [str(draft.pk), str(ready.pk)]},
+        follow=True,
+    )
+
+    [error] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
+    for reason in ("جمع‌بندی یک‌خطی خالی است.", "موضع درباره‌ی ایران", "پاسخ: جای خالی"):
+        assert reason in error, error
+    draft.refresh_from_db()
+    ready.refresh_from_db()
+    assert (draft.status, ready.status) == (Product.Status.DRAFT, Product.Status.ACTIVE)
+
+
+def test_each_reason_a_bulk_publish_gives_is_a_line_of_its_own(client, operator, catalogue):
+    """Joined by spaces, ChatGPT Plus's reasons were one red paragraph twelve
+    lines tall on a phone."""
+    draft = catalogue["draft"]
+    Product.objects.filter(pk=draft.pk).update(short_description="", iran_stance="")
+
+    response = client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "publish", "_selected_action": [str(draft.pk)]},
+        follow=True,
+    )
+
+    [error] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
+    headline, _, rest = error.partition('<ul class="panel-reasons">')
+    assert headline == "«\u2068draft\u2069» منتشر نشد.", error
+    reasons = re.findall(r"<li>(.*?)</li>", rest)
+    assert "جمع‌بندی یک‌خطی خالی است." in reasons
+    assert any(r.startswith("موضع درباره‌ی ایران نوشته نشده است.") for r in reasons), reasons
+    assert "&lt;li&gt;" not in response.content.decode()
+
+
+def test_a_refused_publish_lists_its_reasons_at_the_top(client, operator, catalogue):
+    """The reasons stood under their fields, thousands of pixels apart on a
+    phone, and the list that names them was hidden on a submitted form."""
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    data.update(status=["active"], iran_stance=[""], short_description=[""])
+    add_row(data, "questions", question="پول برمی‌گرده؟", answer="[تصمیم مالک، تصمیم ۴]")
+
+    body = client.post(change_url(draft), data).content.decode()
+
+    readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
+    assert readiness, "no list at the top of the refused form"
+    assert body.index("panel-readiness") < body.index('name="iran_stance"')
+    items = re.findall(r"<li>(.*?)</li>", readiness.group(0), re.S)
+    for reason in ("جمع‌بندی یک‌خطی خالی است.", "موضع درباره‌ی ایران", "پاسخ: جای خالی"):
+        assert any(reason in item for item in items), (reason, items)
+    assert not any("منتشر نمی‌شود" in item for item in items), "the summary is not a reason"
+
+
+def test_a_bulk_publish_that_publishes_nothing_reports_no_success(client, operator, catalogue):
+    """Every selected product refused, and a green «۰ محصول فعال شد.» stood
+    under the red reasons as if something had gone through."""
+    draft = catalogue["draft"]
+    Product.objects.filter(pk=draft.pk).update(iran_stance="")
+
+    response = client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "publish", "_selected_action": [str(draft.pk)]},
+        follow=True,
+    )
+
+    levels = [m.level_tag for m in response.context["messages"]]
+    assert levels == ["error"], levels
+
+
+def test_a_drafts_form_lists_what_it_still_lacks(client, operator, catalogue):
+    draft = catalogue["draft"]
+    Product.objects.filter(pk=draft.pk).update(iran_stance="")
+
+    body = client.get(change_url(draft)).content.decode()
+
+    readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
+    assert readiness, "no readiness list on the draft's form"
+    assert "پیش از انتشار" in readiness.group(0)
+    assert "موضع درباره‌ی ایران نوشته نشده است." in readiness.group(0)
+
+
+def test_a_ready_draft_says_so_and_a_live_product_says_nothing(client, operator, catalogue):
+    assert (
+        "شرط‌های انتشار برقرار است." in client.get(change_url(catalogue["draft"])).content.decode()
+    )
+    assert "panel-readiness" not in client.get(change_url(catalogue["live"])).content.decode()
+
+
+def page_link(body: str, label: str) -> str:
+    """The href of the link on `body` whose text ends with `label`."""
+    for href, text in re.findall(r'<a href="([^"]+)"[^>]*>(.*?)</a>', body, re.S):
+        if re.sub(r"<[^>]+>|\s+", " ", text).strip().endswith(label):
+            return href
+    raise AssertionError(f"no link reads {label}")
+
+
+@pytest.mark.parametrize("slug, label", [("draft", "پیش‌نمایش"), ("live", "دیدن روی سایت")])
+def test_the_product_form_links_to_the_page(client, operator, catalogue, slug, label):
+    """A draft's address shows staff a preview and everyone else a 404."""
+    body = client.get(change_url(catalogue[slug])).content.decode()
+
+    response = client.get(page_link(body, label))
+
+    assert response.status_code == 302
+    assert response["Location"].endswith(f"/p/{slug}/")
+    assert client.get(response["Location"]).status_code == 200
+
+
+def test_an_unavailable_product_offers_no_page_to_open(client, operator, catalogue):
+    """«ناموجود» is off the shop for staff as well, so a link to it opened a 404."""
+    body = client.get(change_url(catalogue["gone"])).content.decode()
+
+    for label in ("پیش‌نمایش", "دیدن روی سایت"):
+        with pytest.raises(AssertionError, match="no link reads"):
+            page_link(body, label)
+
+
+def copy_from(client, source: Product | None, *targets: Product, follow: bool = False):
+    data: dict[str, Any] = {
+        "action": "copy_sections",
+        "_selected_action": [str(target.pk) for target in targets],
+    }
+    if source is not None:
+        data["source"] = str(source.pk)
+    return client.post(reverse("admin:catalog_product_changelist"), data, follow=follow)
+
+
+def test_copying_sections_makes_rows_of_their_own(client, operator, catalogue):
+    source, target = catalogue["live"], catalogue["draft"]
+    ProductSection.objects.create(product=source, kind="benefits", body="- یک", sort_order=0)
+    ProductSection.objects.create(product=source, kind="before_buying", body="شرط", sort_order=1)
+    ProductSection.objects.create(product=target, kind="free", body="از قبل", sort_order=5)
+
+    question = copy_from(client, None, target)
+
+    assert question.status_code == 200, "the action copied before asking from where"
+    assert '<select name="source"' in question.content.decode()
+    assert target.sections.count() == 1
+
+    copy_from(client, source, target, follow=True)
+
+    copies = list(target.sections.all())
+    assert [(s.kind, s.body) for s in copies] == [
+        ("free", "از قبل"),
+        ("benefits", "- یک"),
+        ("before_buying", "شرط"),
+    ]
+    copies[1].body = "- دو"
+    copies[1].save()
+    assert source.sections.get(kind="benefits").body == "- یک", "the copy edited its original"
+    [entry] = history_of(target)
+    assert "بخش محتوا" in entry.get_change_message()
+
+
+def test_a_copy_never_gives_a_product_a_second_before_buying(client, operator, catalogue):
+    source, target = catalogue["live"], catalogue["draft"]
+    ProductSection.objects.create(product=source, kind="before_buying", body="منبع")
+    ProductSection.objects.create(product=target, kind="before_buying", body="خودش")
+
+    response = copy_from(client, source, target, follow=True)
+
+    assert list(target.sections.values_list("body", flat=True)) == ["خودش"]
+    assert any("کپی نشد" in str(m) for m in response.context["messages"])
+
+
+def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue):
+    """A copy writes rows straight into its target, past the publishing rule.
+    Onto a live product it printed another product's claims, and the
+    placeholders a draft waits on, on a page that takes payment."""
+    draft, live = catalogue["draft"], catalogue["live"]
+    ProductSection.objects.create(
+        product=draft, kind="before_buying", body="ظرف [تصمیم مالک، تصمیم ۴: …] روز"
+    )
+
+    response = copy_from(client, draft, live, follow=True)
+
+    assert not live.sections.exists()
+    [refused] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
+    assert "از سایت بردارید" in refused, refused
+    client.logout()
+    assert "تصمیم مالک" not in client.get(live.get_absolute_url()).content.decode()
+
+
+def test_copying_sections_needs_permission_to_add_them(client, catalogue):
+    clerk = User.objects.create_user("clerk@example.test", "x", is_staff=True)
+    clerk.user_permissions.add(
+        *Permission.objects.filter(codename__in=["view_product", "change_product"])
+    )
+    client.force_login(clerk)
+    ProductSection.objects.create(product=catalogue["live"], kind="free", body="متن")
+
+    copy_from(client, catalogue["live"], catalogue["draft"], follow=True)
+
+    assert not catalogue["draft"].sections.exists()
+
+
+def test_a_row_added_on_the_form_goes_last(client, operator, catalogue):
+    """A new row cannot be dragged until it is saved, so it arrived with the
+    default order and stood above the rows a copy had numbered from one."""
+    source, draft = catalogue["live"], catalogue["draft"]
+    ProductSection.objects.create(product=source, kind="benefits", body="- یک")
+    ProductSection.objects.create(product=source, kind="includes", body="- دو")
+    copy_from(client, source, draft, follow=True)
+    data = form_of(client, change_url(draft))
+    add_row(data, "sections", kind="free", body="آخر")
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 302, response.content.decode()[:3000]
+    assert list(draft.sections.values_list("kind", flat=True)) == ["benefits", "includes", "free"]
+
+
+def test_only_a_product_with_sections_is_offered_to_copy_from(client, operator, catalogue):
+    ProductSection.objects.create(product=catalogue["live"], kind="free", body="متن")
+
+    body = copy_from(client, None, catalogue["draft"]).content.decode()
+
+    select = re.search(r'<select name="source".*?</select>', body, re.S)
+    assert select and ">live<" in select.group(0) and ">gone<" not in select.group(0)
+
+
+# --- How fresh the prices and the claims are ------------------------------------
+
+
+def test_the_plan_list_finds_prices_not_confirmed_this_week(client, operator, catalogue):
+    now = timezone.now()
+    for slug, when in [("live", now - timedelta(days=8)), ("draft", None), ("gone", now)]:
+        Plan.objects.filter(product__slug=slug).update(price_confirmed_at=when)
+
+    response = client.get(reverse("admin:catalog_plan_changelist") + "?price_checked=stale")
+
+    assert {p.product.slug for p in response.context["cl"].result_list} == {"live", "draft"}
+
+
+def test_the_product_list_finds_time_sensitive_claims_unchecked_for_a_month(
+    client, operator, catalogue
+):
+    today = timezone.localdate()
+    Product.objects.filter(slug="live").update(
+        time_sensitive=True, facts_checked_on=today - timedelta(days=31)
+    )
+    Product.objects.filter(slug="draft").update(
+        time_sensitive=True, facts_checked_on=today - timedelta(days=29)
+    )
+
+    response = client.get(reverse("admin:catalog_product_changelist") + "?facts=stale")
+
+    assert [p.slug for p in response.context["cl"].result_list] == ["live"]
+
+
+def test_the_product_list_finds_live_pages_with_no_stance_on_iran(client, operator, catalogue):
+    """Every product that went live before publishing asked for the stance
+    has none, and the readiness list that would name it is on drafts only."""
+    Product.objects.filter(slug__in=["live", "draft"]).update(iran_stance="")
+
+    response = client.get(reverse("admin:catalog_product_changelist") + "?facts=no_stance")
+
+    assert [p.slug for p in response.context["cl"].result_list] == ["live"]
+
+
+def test_confirming_prices_dates_only_the_selected_plans(client, operator, catalogue):
+    Plan.objects.update(price_confirmed_at=None)
+    chosen = catalogue["live"].plans.get()
+
+    client.post(
+        reverse("admin:catalog_plan_changelist"),
+        {"action": "confirm_prices", "_selected_action": [str(chosen.pk)]},
+    )
+
+    confirmed = Plan.objects.exclude(price_confirmed_at=None)
+    assert list(confirmed.values_list("pk", flat=True)) == [chosen.pk]
+
+
+def test_saving_a_price_in_the_form_confirms_it(client, operator, catalogue):
+    live = catalogue["live"]
+    plan = live.plans.get()
+    Plan.objects.filter(pk=plan.pk).update(price_confirmed_at=None)
+    data = form_of(client, change_url(live))
+    data[f"{plan_prefix(data, plan)}-sale_price"] = ["250000"]
+
+    client.post(change_url(live), data)
+
+    plan.refresh_from_db()
+    assert plan.price_confirmed_at is not None
+
+
+def test_both_freshness_dates_are_jalali_in_their_lists(client, operator, catalogue):
+    Product.objects.filter(slug="live").update(facts_checked_on=timezone.localdate())
+    months = "فروردین|اردیبهشت|خرداد|تیر|مرداد|شهریور|مهر|آبان|آذر|دی|بهمن|اسفند"
+    day = rf'<span class="panel-date">[۰-۹]{{1,2}} ({months}) [۰-۹]{{4}}</span>'
+
+    products = client.get(reverse("admin:catalog_product_changelist")).content.decode()
+    plans = client.get(reverse("admin:catalog_plan_changelist")).content.decode()
+
+    assert re.search(
+        r'<td class="field-facts_checked[^"]*"[^>]*>\s*' + day, row_of(products, "live")
+    )
+    assert re.search(r'<td class="field-price_checked[^"]*"[^>]*>\s*' + day, plans)
+
+
+# --- Images from the panel -------------------------------------------------------
+
+
+def png(size: tuple[int, int]) -> bytes:
+    out = BytesIO()
+    Image.new("RGB", size, "teal").save(out, "PNG")
+    return out.getvalue()
+
+
+@pytest.fixture
+def media(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def test_a_logo_uploaded_in_the_panel_is_stored_redrawn(client, operator, catalogue, media):
+    live = catalogue["live"]
+    data = form_of(client, change_url(live))
+    data["image"] = SimpleUploadedFile("logo.png", png((1200, 1200)), content_type="image/png")
+
+    response = client.post(change_url(live), data)
+
+    assert response.status_code == 302, response.content.decode()[:3000]
+    live.refresh_from_db()
+    assert Image.open(live.image.path).size == (512, 512)
+
+
+def test_an_svg_logo_is_refused_in_persian(client, operator, catalogue, media):
+    """SVG can carry script, and a logo is served from the shop's own origin."""
+    live = catalogue["live"]
+    data = form_of(client, change_url(live))
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+    data["image"] = SimpleUploadedFile("logo.svg", svg, content_type="image/svg+xml")
+
+    response = client.post(change_url(live), data)
+
+    assert response.status_code == 200
+    error = errors_under(response.content.decode(), "image")
+    # Every logo the shop has is an SVG: the message names the formats, not "no image".
+    assert "این فایل PNG،\u200f JPEG یا WebP نیست، یا خراب است." in error, error
+    assert not [path for path in media.rglob("*") if path.is_file()]
+
+
+def test_a_photo_cut_off_in_transit_is_refused_in_persian(client, operator, catalogue, media):
+    """Pillow reads a JPEG's header without its body, so half an upload passed
+    the check and failed while it was redrawn: a server error, not a message."""
+    out = BytesIO()
+    Image.effect_noise((800, 600), 64).convert("RGB").save(out, "JPEG")
+    half = out.getvalue()[: len(out.getvalue()) // 2]
+    live = catalogue["live"]
+    data = form_of(client, change_url(live))
+    data["image"] = SimpleUploadedFile("logo.jpg", half, content_type="image/jpeg")
+
+    response = client.post(change_url(live), data)
+
+    assert response.status_code == 200
+    assert "خراب است" in errors_under(response.content.decode(), "image")
+    assert not [path for path in media.rglob("*") if path.is_file()]
+
+
+def test_a_section_image_without_its_description_is_refused(client, operator, catalogue, media):
+    draft = catalogue["draft"]
+    data = form_of(client, change_url(draft))
+    row = add_row(data, "sections", kind="after_payment", body="قدم اول")
+    data[f"{row}-image"] = SimpleUploadedFile("step.png", png((800, 500)), content_type="image/png")
+
+    response = client.post(change_url(draft), data)
+
+    assert response.status_code == 200
+    assert "متن جایگزین" in errors_under(response.content.decode(), f"{row}-image_alt")
+    assert not draft.sections.exists()

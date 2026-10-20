@@ -11,14 +11,17 @@ database can never disagree; models.ChecksNameTheirField files each message).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar, cast
 
 from django import forms
 from django.contrib import admin, messages
-from django.db.models import Q, QuerySet
+from django.core.exceptions import ValidationError
+from django.db.models import Max, Q, QuerySet
 from django.http import HttpRequest
 from django.template.loader import render_to_string
+from django.template.response import TemplateResponse
 from django.utils import timezone, translation
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
@@ -26,9 +29,25 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.decorators import display
-from unfold.widgets import UnfoldAdminTextInputWidget
+from unfold.forms import PaginationInlineFormSet
+from unfold.widgets import (
+    UnfoldAdminSelectWidget,
+    UnfoldAdminTextareaWidget,
+    UnfoldAdminTextInputWidget,
+)
 
-from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.models import (
+    NO_AVAILABLE_PLAN,
+    PRICE_FIELDS,
+    Category,
+    PageRow,
+    Plan,
+    Product,
+    ProductQuestion,
+    ProductSection,
+    ProductSpec,
+    placeholders_in,
+)
 from apps.core.formatting import (
     format_countdown,
     format_jalali,
@@ -36,7 +55,10 @@ from apps.core.formatting import (
     to_persian_digits,
 )
 
-PRICE_FIELDS = ("cost_price", "sale_price", "promo_price")
+# The two freshness lists. A toman price follows the exchange rate week by
+# week; a provider's features and terms move more slowly.
+STALE_PRICE_DAYS = 7
+STALE_FACTS_DAYS = 30
 
 # Unfold's badge variant per status, keyed off the stored value. A label is a
 # translated word, so a map keyed off labels greys every badge the moment the
@@ -92,11 +114,8 @@ class SuggestingTextInput(UnfoldAdminTextInputWidget):
         )
 
 
-class ProductSpecForm(forms.ModelForm):
-    class Meta:
-        model = ProductSpec
-        fields = ["title", "value", "is_key", "sort_order"]
-        widgets = {"title": SuggestingTextInput}
+class DraggedRowForm(forms.ModelForm):
+    """A row of a dragged inline, which a drag alone does not fill in."""
 
     def has_changed(self) -> bool:
         # Unfold numbers every row of the table on a drop, the blank extra
@@ -107,9 +126,79 @@ class ProductSpecForm(forms.ModelForm):
         return super().has_changed()
 
 
+class ProductSpecForm(DraggedRowForm):
+    class Meta:
+        model = ProductSpec
+        fields = ["title", "value", "is_key", "sort_order"]
+        widgets = {"title": SuggestingTextInput}
+
+
+class ProductRowsFormSet(PaginationInlineFormSet):
+    """The rows under one product on its form, checked as the submitted whole.
+
+    Each row checks itself, its placeholders included (models.PageRow). What
+    this adds is what only the rows together can say: going live needs an
+    available plan, and a second «پیش از خرید» is refused, which the database
+    refuses as well but cannot say so for two rows that are both new.
+    """
+
+    def clean(self) -> None:
+        super().clean()
+        rows = [form for form in self.forms if self.is_kept(form)]
+        if self.model is ProductSection:
+            kinds = [form.cleaned_data.get("kind") for form in rows]
+            if kinds.count(ProductSection.Kind.BEFORE_BUYING) > 1:
+                raise ValidationError(_("هر محصول حداکثر یک بخش «پیش از خرید» دارد."))
+        product = self.instance
+        if self.model is Plan and product.status == Product.Status.ACTIVE:
+            if not product.is_live_in_db() and not any(form.instance.is_available for form in rows):
+                raise ValidationError(NO_AVAILABLE_PLAN)
+
+    def save_new(self, form: forms.ModelForm, commit: bool = True) -> Any:
+        # A row added on the form cannot be dragged until it is saved, so it
+        # arrives with the default order, which put it first. It goes last.
+        if commit and "sort_order" not in form.changed_data:
+            last = self.model._default_manager.filter(product=self.instance).aggregate(
+                last=Max("sort_order")
+            )["last"]
+            form.instance.sort_order = 0 if last is None else last + 1
+        return super().save_new(form, commit)
+
+    def is_kept(self, form: forms.ModelForm) -> bool:
+        """Whether `form` is a row that will exist once this formset is saved."""
+        if getattr(form, "cleaned_data", {}).get("DELETE"):
+            return False
+        return form.instance.pk is not None or form.has_changed()
+
+
+class ProductForm(forms.ModelForm):
+    """The product's own fields; Product.clean() asks the publishing rule of them.
+
+    The rows are asked by their own forms, which exist only for an inline this
+    operator may change. Going live, the rows of any other inline are read as
+    stored, or they would reach the page unasked.
+    """
+
+    unseen: ClassVar[list[type[PageRow]]] = []
+
+    def clean(self) -> dict[str, Any] | None:
+        cleaned = super().clean()
+        product = self.instance
+        if self.cleaned_data.get("status") == Product.Status.ACTIVE and not product.is_live_in_db():
+            for model in self.unseen:
+                for row in cast(Any, model)._default_manager.filter(product_id=product.pk):
+                    for _field, message in placeholders_in(row):
+                        # Above the form: under «وضعیت» it would take the
+                        # status out of the instance, and the rest of the
+                        # rule would not be asked in this save.
+                        self.add_error(None, message)
+        return cleaned
+
+
 class ProductSpecInline(TabularInline):
     model = ProductSpec
     form = ProductSpecForm
+    formset = ProductRowsFormSet
     extra = 3
     show_title = False
     # `sort_order` has to be among the fields even though nobody types it:
@@ -148,6 +237,7 @@ class PlanForm(forms.ModelForm):
 class PlanInline(StackedInline):
     model = Plan
     form = PlanForm
+    formset = ProductRowsFormSet
     extra = 1
     show_title = False
     ordering = ["sort_order", "id"]
@@ -174,6 +264,156 @@ class PlanInline(StackedInline):
             {"fields": [("requires_customer_input", "customer_input_label"), "supplier_url"]},
         ),
     ]
+
+
+class ProductSectionForm(DraggedRowForm):
+    class Meta:
+        model = ProductSection
+        fields = ["kind", "title", "body", "image", "image_alt", "sort_order"]
+
+
+class ProductSectionInline(StackedInline):
+    """The page's prose, one row per section, in the order the operator drags.
+
+    No row until one is added: a product needs only the kinds that suit it,
+    and the guide above the rows says what each kind is for.
+    """
+
+    model = ProductSection
+    form = ProductSectionForm
+    formset = ProductRowsFormSet
+    extra = 0
+    show_title = False
+    ordering = ["sort_order", "id"]
+    ordering_field = "sort_order"
+    hide_ordering_field = True
+    template_before = "admin/catalog/product/section_guide.html"
+    # `sort_order` on a row of its own, as on PlanInline: Unfold hides the row
+    # that holds the ordering field.
+    fields = ["kind", "title", "body", ("image", "image_alt"), "sort_order"]
+
+    def formfield_for_choice_field(self, db_field: Any, request: HttpRequest, **kwargs: Any) -> Any:
+        if db_field.name == "kind":
+            # A blank first, as on delivery_type: with a kind chosen in
+            # advance, a row added and left empty would save as a section.
+            kwargs["choices"] = db_field.get_choices(
+                include_blank=True, blank_choice=[("", _("Select value"))]
+            )
+        return super().formfield_for_choice_field(db_field, request, **kwargs)
+
+
+class ProductQuestionForm(DraggedRowForm):
+    class Meta:
+        model = ProductQuestion
+        fields = ["question", "answer", "sort_order"]
+        # An answer is a sentence or two; the default box is ten lines.
+        widgets = {"answer": UnfoldAdminTextareaWidget(attrs={"rows": 4})}
+
+
+class ProductQuestionInline(StackedInline):
+    model = ProductQuestion
+    form = ProductQuestionForm
+    formset = ProductRowsFormSet
+    extra = 0
+    show_title = False
+    ordering = ["sort_order", "id"]
+    ordering_field = "sort_order"
+    hide_ordering_field = True
+    fields = ["question", "answer", "sort_order"]
+
+
+class StaleFactsFilter(admin.SimpleListFilter):
+    title = _("بررسی واقعیت‌ها")
+    parameter_name = "facts"
+
+    def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, Any]]:
+        return [
+            ("stale", _("حساس به زمان، بیش از ۳۰ روز بررسی‌نشده")),
+            ("no_stance", _("منتشرشده، بدون موضع درباره‌ی ایران")),
+        ]
+
+    def queryset(self, request: HttpRequest, queryset: QuerySet[Product]) -> QuerySet[Product]:
+        if self.value() == "no_stance":
+            # Live before publishing asked for it; the readiness list is on drafts only.
+            return queryset.filter(status=Product.Status.ACTIVE, iran_stance="")
+        if self.value() != "stale":
+            return queryset
+        cutoff = timezone.localdate() - timedelta(days=STALE_FACTS_DAYS)
+        return queryset.filter(time_sensitive=True).filter(
+            Q(facts_checked_on__isnull=True) | Q(facts_checked_on__lt=cutoff)
+        )
+
+
+class StalePriceFilter(admin.SimpleListFilter):
+    title = _("تأیید قیمت")
+    parameter_name = "price_checked"
+
+    def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, Any]]:
+        return [("stale", _("بیش از ۷ روز پیش، یا هرگز"))]
+
+    def queryset(self, request: HttpRequest, queryset: QuerySet[Plan]) -> QuerySet[Plan]:
+        if self.value() != "stale":
+            return queryset
+        cutoff = timezone.now() - timedelta(days=STALE_PRICE_DAYS)
+        return queryset.filter(
+            Q(price_confirmed_at__isnull=True) | Q(price_confirmed_at__lt=cutoff)
+        )
+
+
+class CopySectionsForm(forms.Form):
+    source = forms.ModelChoiceField(
+        queryset=Product.objects.none(),
+        label=_("از محصول"),
+        widget=UnfoldAdminSelectWidget,
+        empty_label=_("Select value"),
+    )
+
+    def __init__(self, *args: Any, targets: list[Product], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        others = Product.objects.exclude(pk__in=[target.pk for target in targets])
+        self.fields["source"].queryset = (  # type: ignore[attr-defined]
+            others.filter(sections__isnull=False).distinct().order_by("name")
+        )
+
+
+def copy_sections_onto(source: Product, target: Product) -> tuple[list[ProductSection], bool]:
+    """Every section of `source` as new rows at the end of `target`.
+
+    A copy is a row of its own, so editing it never changes the page it came
+    from. Its image is the same stored file, which nothing deletes; a new
+    upload on either row is a new file. A «پیش از خرید» is left out when
+    `target` already has one, and the second value says so.
+    """
+    existing = target.sections.all()
+    has_before_buying = existing.filter(kind=ProductSection.Kind.BEFORE_BUYING).exists()
+    start = (existing.aggregate(last=Max("sort_order"))["last"] or 0) + 1
+    copies = [
+        ProductSection(
+            product=target,
+            kind=section.kind,
+            title=section.title,
+            body=section.body,
+            image=section.image.name,
+            image_alt=section.image_alt,
+            sort_order=start + position,
+        )
+        for position, section in enumerate(source.sections.all())
+        if not (has_before_buying and section.kind == ProductSection.Kind.BEFORE_BUYING)
+    ]
+    skipped = len(copies) < source.sections.count()
+    return ProductSection.objects.bulk_create(copies), skipped
+
+
+def refusal_reasons(form: forms.ModelForm, formsets: list[Any]) -> list[str]:
+    """Every message a refused product form put under a field or a row, in order.
+
+    The line under «وضعیت» is left out: it is the summary this list explains.
+    """
+    reasons = [str(m) for name, errors in form.errors.items() if name != "status" for m in errors]
+    for formset in formsets:
+        reasons += [str(m) for m in formset.non_form_errors()]
+        reasons += [str(m) for row in formset.errors for errors in row.values() for m in errors]
+    return reasons
 
 
 def amount(value: Decimal) -> SafeString:
@@ -256,11 +496,13 @@ class CategoryAdmin(ModelAdmin):
     # showed a Latin «2», the sort priority of the name column.
     ordering = ["sort_order"]
     search_fields = ["name"]
+    # `intro_html` is off the form: 0020 converted it into `intro`, and the
+    # column stays only so that migration can be reversed.
     fields = [
         "name",
         "slug",
         "description",
-        "intro_html",
+        "intro",
         "sort_order",
         "seo_title",
         "seo_description",
@@ -273,23 +515,34 @@ class CategoryAdmin(ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(ModelAdmin):
-    list_display = ["product", "status_label", "price_range", "promo_left", "updated"]
-    # Status and department are the two ways this list gets sliced. Warranty
-    # and delivery type were filters too, and at a dozen products the filter
+    list_display = [
+        "product",
+        "status_label",
+        "price_range",
+        "promo_left",
+        "facts_checked",
+        "updated",
+    ]
+    # Status and department are the two ways this list gets sliced, and the
+    # third finds the pages whose claims have gone unchecked. Warranty and
+    # delivery type were filters too, and at a dozen products the filter
     # column stood taller than the result.
-    list_filter = ["status", "category"]
-    actions = ["publish", "unpublish"]
+    list_filter = ["status", "category", StaleFactsFilter]
+    actions = ["publish", "unpublish", "copy_sections"]
+    form = ProductForm
     # Only switches the search box on: get_search_results asks the shop's own
     # search, which ignores these fields.
     search_fields = ["name"]
     list_select_related = ["category"]
-    inlines = [ProductSpecInline, PlanInline]
+    inlines = [ProductSpecInline, PlanInline, ProductSectionInline, ProductQuestionInline]
     # The table is the operator's working surface; the centred container wasted
     # a third of a wide screen on margins.
     list_fullwidth = True
     # The product form is long enough to lose work in. The browser asks before
     # a half-finished product is abandoned.
     warn_unsaved_form = True
+    # What still stands between a draft and publishing, at the top of its form.
+    change_form_before_template = "admin/catalog/product/readiness.html"
     fieldsets = [
         (None, {"fields": ["name", "slug", "category", "status", "image"]}),
         (
@@ -303,7 +556,18 @@ class ProductAdmin(ModelAdmin):
                 ]
             },
         ),
-        (_("متن"), {"fields": ["short_description", "full_description"]}),
+        (_("متن"), {"fields": ["short_description"]}),
+        (
+            _("واقعیت‌ها"),
+            {
+                "fields": [
+                    "iran_stance",
+                    "refund_note",
+                    ("time_sensitive", "facts_checked_on"),
+                    "sources",
+                ]
+            },
+        ),
         (_("جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
         (_("سئو"), {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]}),
     ]
@@ -364,11 +628,92 @@ class ProductAdmin(ModelAdmin):
     # products at once is the commoner job anyway.
     @admin.action(description=_("انتشار"), permissions=["change"])
     def publish(self, request: HttpRequest, queryset: QuerySet[Product]) -> None:
-        self._set_status(request, queryset, Product.Status.ACTIVE)
+        """Publish each selected product the publishing rule allows, and name
+        every reason for each one it does not."""
+        ready = []
+        drafts = queryset.exclude(status=Product.Status.ACTIVE).prefetch_related(
+            "specs", "plans", "sections", "questions"
+        )
+        for product in drafts:
+            if problems := product.publish_problems():
+                headline = gettext("«%(product)s» منتشر نشد.") % {
+                    "product": f"\u2068{product}\u2069"
+                }
+                # A list, as on the form: run together, they were a paragraph nobody scans.
+                reasons = format_html_join("", "<li>{}</li>", ((problem,) for problem in problems))
+                messages.error(
+                    request, format_html('{}<ul class="panel-reasons">{}</ul>', headline, reasons)
+                )
+            else:
+                ready.append(product.pk)
+        # When every product was refused, the reasons are the whole answer: a
+        # green «۰ محصول فعال شد.» under them read as if one had gone through.
+        if ready or not drafts:
+            self._set_status(request, queryset.filter(pk__in=ready), Product.Status.ACTIVE)
 
     @admin.action(description=_("برداشتن از سایت"), permissions=["change"])
     def unpublish(self, request: HttpRequest, queryset: QuerySet[Product]) -> None:
         self._set_status(request, queryset, Product.Status.DRAFT)
+
+    def has_copy_sections_permission(self, request: HttpRequest) -> bool:
+        return self.has_change_permission(request) and request.user.has_perm(
+            "catalog.add_productsection"
+        )
+
+    @admin.action(description=_("کپی بخش‌ها از محصول دیگر"), permissions=["copy_sections"])
+    def copy_sections(
+        self, request: HttpRequest, queryset: QuerySet[Product]
+    ) -> TemplateResponse | None:
+        """Ask which product to copy from, then add its sections to each one
+        selected. The question is a page of its own, posted like the action.
+
+        Never onto a live product: the copies are written straight to the
+        page, past the publishing rule, and a draft's sections carry the
+        placeholders it is waiting on.
+        """
+        targets = []
+        for target in queryset:
+            if target.status != Product.Status.ACTIVE:
+                targets.append(target)
+                continue
+            messages.error(
+                request,
+                gettext(
+                    "بخش‌ها روی «%(target)s» کپی نشد، چون منتشر شده است. اول آن را از سایت بردارید."
+                )
+                % {"target": f"\u2068{target}\u2069"},
+            )
+        if not targets:
+            return None
+        form = CopySectionsForm(request.POST if "source" in request.POST else None, targets=targets)
+        if not form.is_valid():
+            context = {
+                **self.admin_site.each_context(request),
+                "title": _("کپی بخش‌ها از محصول دیگر"),
+                "form": form,
+                "targets": targets,
+                "opts": self.model._meta,
+            }
+            return TemplateResponse(request, "admin/catalog/product/copy_sections.html", context)
+        source = form.cleaned_data["source"]
+        for target in targets:
+            copies, skipped = copy_sections_onto(source, target)
+            with translation.override(None):
+                kind = str(ProductSection._meta.verbose_name)
+                added = [{"added": {"name": kind, "object": str(copy)}} for copy in copies]
+            self.log_change(request, target, added)
+            names = {
+                "count": to_persian_digits(len(copies)),
+                "source": f"\u2068{source}\u2069",
+                "target": f"\u2068{target}\u2069",
+            }
+            message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
+            if skipped:
+                message += " " + gettext("«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد.") % {
+                    "target": names["target"]
+                }
+            messages.success(request, message)
+        return None
 
     def _set_status(
         self, request: HttpRequest, queryset: QuerySet[Product], status: Product.Status
@@ -410,6 +755,14 @@ class ProductAdmin(ModelAdmin):
             format_toman(high),
         )
 
+    @admin.display(description=_("آخرین بررسی"), ordering="facts_checked_on")
+    def facts_checked(self, obj: Product) -> str:
+        if obj.facts_checked_on is None:
+            return "—"
+        return format_html(
+            '<span class="panel-date">{}</span>', format_jalali(obj.facts_checked_on)
+        )
+
     @admin.display(description=_("به‌روزرسانی"), ordering="updated_at")
     def updated(self, obj: Product) -> str:
         """Jalali, like every other date this shop shows. The admin was
@@ -419,6 +772,39 @@ class ProductAdmin(ModelAdmin):
 
     def get_queryset(self, request: Any) -> Any:
         return super().get_queryset(request).prefetch_related("plans")
+
+    def get_form(self, request: Any, obj: Any = None, change: bool = False, **kwargs: Any) -> Any:
+        form = super().get_form(request, obj, change=change, **kwargs)
+        changeable = {
+            inline.model
+            for inline in self.get_inline_instances(request, obj)
+            if inline.has_change_permission(request, obj)
+        }
+        inlines = self.get_inlines(request, obj)
+        form.unseen = [inline.model for inline in inlines if inline.model not in changeable]
+        return form
+
+    def render_change_form(
+        self,
+        request: HttpRequest,
+        context: dict[str, Any],
+        add: bool = False,
+        change: bool = False,
+        form_url: str = "",
+        obj: Product | None = None,
+    ) -> Any:
+        """The readiness list at the top of the form (readiness.html).
+
+        For a saved draft, what it still lacks; after a refused «فعال», every
+        reason the form gave, which otherwise stand under fields far apart.
+        """
+        form = context["adminform"].form
+        if not form.is_bound:
+            context["readiness"] = obj.publish_problems() if obj and not obj.is_public else None
+        elif form.data.get("status") == Product.Status.ACTIVE and not (obj and obj.is_live_in_db()):
+            formsets = [inline.formset for inline in context["inline_admin_formsets"]]
+            context["readiness"] = refusal_reasons(form, formsets) or None
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_search_results(
         self, request: HttpRequest, queryset: QuerySet[Product], search_term: str
@@ -431,6 +817,12 @@ class ProductAdmin(ModelAdmin):
         # The storefront's cap, before the trigram fallback runs on it.
         matches = Product.objects.search(search_term.strip()[:100]).values("pk")
         return queryset.filter(pk__in=matches), False
+
+    def formfield_for_dbfield(self, db_field: Any, request: HttpRequest, **kwargs: Any) -> Any:
+        if db_field.name == "sources":
+            # A few addresses, not prose: the default box is ten lines tall.
+            kwargs["widget"] = UnfoldAdminTextareaWidget(attrs={"rows": 4})
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def formfield_for_choice_field(self, db_field: Any, request: HttpRequest, **kwargs: Any) -> Any:
         if db_field.name == "delivery_type":
@@ -476,8 +868,9 @@ class PlanAdmin(ModelAdmin):
     """
 
     form = PlanForm
-    list_display = ["plan", "price", "margin", "promo_window", "is_available"]
-    list_filter = ["is_available", "product__category"]
+    list_display = ["plan", "price", "margin", "promo_window", "price_checked", "is_available"]
+    list_filter = ["is_available", "product__category", StalePriceFilter]
+    actions = ["confirm_prices"]
     search_fields = ["title"]
     list_select_related = ["product"]
     list_fullwidth = True
@@ -486,6 +879,24 @@ class PlanAdmin(ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         # A plan with no product is meaningless; it is added on the product.
         return False
+
+    @admin.action(description=_("قیمت‌ها را امروز بررسی کردم"), permissions=["change"])
+    def confirm_prices(self, request: HttpRequest, queryset: QuerySet[Plan]) -> None:
+        """The prices were compared with today's supplier price and rate and still
+        hold. Nothing else about the plans changes, so their history does not either."""
+        count = queryset.update(price_confirmed_at=timezone.now())
+        messages.success(
+            request,
+            gettext("قیمت %(count)s پلن تأیید شد.") % {"count": to_persian_digits(count)},
+        )
+
+    @admin.display(description=_("تأیید قیمت"), ordering="price_confirmed_at")
+    def price_checked(self, obj: Plan) -> str:
+        if obj.price_confirmed_at is None:
+            return "—"
+        return format_html(
+            '<span class="panel-date">{}</span>', format_jalali(obj.price_confirmed_at)
+        )
 
     @display(description=_("پلن"), header=True, ordering="product__name")
     def plan(self, obj: Plan) -> list[Any]:

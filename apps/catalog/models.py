@@ -1,10 +1,12 @@
-"""The catalog: what is on the shelf, and at what price.
+"""The catalog: what is on the shelf, at what price, and what its page says.
 
-Four tables, flat. A Category is a shelf; a Product is a thing on it; a Plan is
-one way to buy that thing («۱ ماهه», «۳ ماهه») with its own price; a ProductSpec
-is one row of the product's fact table. No category tree and no JSON specs —
-both were considered and cut (ADR-0014): a few dozen products do not need a
-hierarchy, and a spec you cannot query or edit in admin is not worth storing.
+Flat tables. A Category is a shelf; a Product is a thing on it; a Plan is one
+way to buy that thing («۱ ماهه», «۳ ماهه») with its own price; a ProductSpec is
+one row of the product's fact table. The page's prose is ProductSection rows,
+each of a fixed kind with a template of its own, and its questions are
+ProductQuestion rows. No category tree and no JSON specs — both were considered
+and cut (ADR-0014): a few dozen products do not need a hierarchy, and a spec you
+cannot query or edit in admin is not worth storing.
 
 Money is toman, whole units, as a DecimalField with no decimal places: there is
 no fractional toman, and Decimal keeps every arithmetic exact all the way to the
@@ -14,20 +16,26 @@ order snapshot. The same definition is used by every money column in the project
 from __future__ import annotations
 
 import re
+import secrets
 from collections.abc import Collection
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, ClassVar
+from io import BytesIO
+from typing import Any, ClassVar, cast
 
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
-from django.core.validators import validate_slug
+from django.core.files.base import ContentFile
+from django.core.validators import URLValidator, validate_slug
 from django.db import models
 from django.db.models import F, Q
+from django.urls import reverse
 from django.utils import timezone
-from django.utils.text import slugify
+from django.utils.text import Truncator, slugify
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
+from PIL import Image, ImageOps
 
 from apps.catalog.search import normalize_for_search
 from apps.core.formatting import to_persian_digits
@@ -40,6 +48,29 @@ FUZZY_THRESHOLD = 0.4
 
 # A Persian or Arabic letter. A name with one has no Latin slug to give.
 _PERSIAN = re.compile(r"[\u0600-\u06ff]")
+
+# What the content writers leave where only the owner's decision or the trial
+# delivery can fill in the text. A page that still holds one is not published.
+PLACEHOLDER = re.compile(r"\[(?:تصمیم مالک|وابسته به تصمیم|از تحویل آزمایشی)[^\]\n]*\]?")
+
+# A time-sensitive product's claims must have been checked this recently to publish.
+FACTS_FRESH_DAYS = 7
+
+# The stance of a product the Iran question never arises for. It claims nothing
+# the provider says, so it needs no source and the page prints nothing about Iran.
+IRAN_NOT_APPLICABLE = normalize_for_search("موضوعیت ندارد")
+
+# The fields whose change re-dates a plan's price confirmation.
+PRICE_FIELDS = ("cost_price", "sale_price", "promo_price")
+
+# Uploads are redrawn by Pillow before they are stored, so the file on disk is a
+# new encoding with no metadata, and the original never reaches MEDIA_ROOT,
+# which the proxy serves as it is. SVG is not on the list: it can carry script.
+IMAGE_SUFFIXES = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+# Decoding is what costs memory, at four bytes a pixel: 25 megapixels is a
+# phone photo with room to spare, and 100 MB of RAM at most.
+MAX_UPLOAD_PIXELS = 25_000_000
 
 
 def MoneyField(**kwargs: Any) -> models.DecimalField:  # noqa: N802 — reads as a type
@@ -79,6 +110,109 @@ def check_slug_is_latin(row: Category | Product) -> None:
         manager = type(row)._default_manager
         if row.pk is None or not manager.filter(pk=row.pk, slug=row.slug).exists():
             raise ValidationError({"slug": error.error_list}) from None
+
+
+def check_seo_title(row: Category | Product) -> None:
+    """base.html adds « | PremShop» to every title, so the field never holds it."""
+    if "premshop" in row.seo_title.casefold():
+        raise ValidationError(
+            {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
+        )
+
+
+def validate_image_upload(file: Any) -> None:
+    """PNG, JPEG or WebP, judged by what Pillow reads rather than by the name.
+
+    A file already stored is left alone. Every seeded logo is an SVG, and this
+    runs on each save of the product form: refusing it would lock the form.
+    """
+    if getattr(file, "_committed", True):
+        return
+    if file.size > MAX_UPLOAD_BYTES:
+        raise ValidationError(_("حجم تصویر بیشتر از ۵ مگابایت است."))
+    try:
+        with Image.open(file) as image:
+            kind, (width, height) = image.format, image.size
+            if kind in IMAGE_SUFFIXES and width * height <= MAX_UPLOAD_PIXELS:
+                # The header alone passes a file cut off in transit, which
+                # then failed in pre_save as a server error.
+                image.load()
+    except (OSError, SyntaxError, Image.DecompressionBombError):
+        kind, width, height = None, 0, 0
+    finally:
+        file.seek(0)
+    if kind not in IMAGE_SUFFIXES:
+        raise ValidationError(_("این فایل PNG،\u200f JPEG یا WebP نیست، یا خراب است."))
+    if width * height > MAX_UPLOAD_PIXELS:
+        raise ValidationError(_("ابعاد تصویر بیشتر از ۲۵ مگاپیکسل است."))
+
+
+def reencoded(file: Any, max_side: int) -> tuple[ContentFile[bytes], str]:
+    """The upload redrawn to fit `max_side`, in its own format, and a new name.
+
+    Only the colour profile is carried over; EXIF (a photo's location), XMP,
+    comments and text chunks stay behind with the original bytes. The name is
+    random because the uploaded one is the operator's, not the shop's.
+    """
+    file.seek(0)
+    with Image.open(file) as source:
+        kind = source.format or ""
+        profile = source.info.get("icc_profile")
+        # Turned by its EXIF orientation first, or a phone photo lies on its side.
+        image = ImageOps.exif_transpose(source)
+    image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    see_through = image.mode in {"RGBA", "LA", "PA"} or "transparency" in image.info
+    image = image.convert("RGBA" if see_through and kind != "JPEG" else "RGB")
+    image.info = {}
+    extra = {"icc_profile": profile} if profile else {}
+    out = BytesIO()
+    if kind == "PNG":
+        image.save(out, "PNG", optimize=True, **extra)
+    elif kind == "WEBP":
+        image.save(out, "WEBP", quality=85, method=6, **extra)
+    else:
+        image.save(out, "JPEG", quality=85, optimize=True, progressive=True, **extra)
+    return ContentFile(out.getvalue()), secrets.token_hex(8) + IMAGE_SUFFIXES[kind]
+
+
+class ReencodedImageField(models.ImageField):
+    """An ImageField whose upload is stored only as `reencoded` made it."""
+
+    default_validators = [validate_image_upload]
+
+    def __init__(self, *args: Any, max_side: int = 1600, **kwargs: Any) -> None:
+        self.max_side = max_side
+        super().__init__(*args, **kwargs)
+
+    def deconstruct(self) -> Any:
+        name, path, args, kwargs = super().deconstruct()
+        kwargs["max_side"] = self.max_side
+        return name, path, args, kwargs
+
+    def formfield(self, **kwargs: Any) -> Any:
+        field: Any = super().formfield(**kwargs)
+        field.widget.attrs["accept"] = "image/png,image/jpeg,image/webp"
+        return field
+
+    def pre_save(self, model_instance: models.Model, add: bool) -> Any:
+        file = getattr(model_instance, self.attname)
+        if file and not file._committed:
+            file.file, file.name = reencoded(file, self.max_side)
+        return super().pre_save(model_instance, add)
+
+
+def validate_source_lines(text: str) -> None:
+    """One http(s) address per line; blank lines are allowed."""
+    check = URLValidator(schemes=["http", "https"])
+    for number, line in enumerate(text.splitlines(), 1):
+        if line.strip():
+            try:
+                check(line.strip())
+            except ValidationError:
+                raise ValidationError(
+                    _("سطر %(line)s نشانی کامل نیست، مثل https://openai.com/chatgpt/pricing"),
+                    params={"line": to_persian_digits(number)},
+                ) from None
 
 
 class ChecksNameTheirField:
@@ -121,11 +255,23 @@ class Category(models.Model):
         blank=True,
         default="",
     )
+    # Kept, out of the form, until the restricted-Markdown `intro` that 0020
+    # converted it into has been live a while: reversing 0020 needs it intact.
     intro_html = models.TextField(
         _("متن معرفی"),
         blank=True,
         default="",
         help_text=_("برچسب HTML اجرا نمی‌شود و همان‌طور که نوشته شده دیده می‌شود."),
+    )
+    # Markdown through apps.core.richtext with no heading level free: the
+    # introduction sits directly under the page's h1.
+    intro = models.TextField(
+        _("متن معرفی"),
+        blank=True,
+        default="",
+        help_text=_(
+            "Markdown ساده: پاراگراف، **پررنگ**، پیوند و فهرست. تیتر به متن ساده تبدیل می‌شود."
+        ),
     )
     seo_title = models.CharField(
         _("عنوان سئو"),
@@ -158,6 +304,7 @@ class Category(models.Model):
 
     def clean(self) -> None:
         check_slug_is_latin(self)
+        check_seo_title(self)
 
 
 class ProductQuerySet(models.QuerySet["Product"]):
@@ -226,6 +373,16 @@ class Product(ChecksNameTheirField, models.Model):
         "product_delivery_hours_1_to_72": "delivery_hours",
         "product_status_valid": "status",
     }
+    # What a visitor reads of this row, and so where a placeholder must not be.
+    PAGE_TEXT: ClassVar[tuple[str, ...]] = (
+        "name",
+        "short_description",
+        "iran_stance",
+        "refund_note",
+        "delivery_note",
+        "seo_title",
+        "seo_description",
+    )
 
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products", verbose_name=_("دسته‌بندی")
@@ -245,22 +402,30 @@ class Product(ChecksNameTheirField, models.Model):
             "خالی بماند تا از نام لاتین ساخته شود."
         ),
     )
+    # Plain text, never Markdown: with no seo_description it is the meta description.
     short_description = models.CharField(
-        _("توضیح کوتاه"),
+        _("جمع‌بندی یک‌خطی"),
         max_length=300,
         blank=True,
         default="",
+        help_text=_("یک جمله: محصول برای خریدار چه می‌کند و به کار چه کسی می‌آید."),
     )
+    # Off the form and off the page: 0020 moved it into a «متن آزاد» section.
+    # The column stays until that migration no longer needs reversing.
     full_description = models.TextField(
         _("توضیح کامل"),
         blank=True,
         default="",
     )
-    image = models.ImageField(
+    image = ReencodedImageField(
         _("تصویر"),
         upload_to="products/",
         null=True,
         blank=True,
+        max_side=512,
+        help_text=_(
+            "لوگوی محصول، PNG،\u200f JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+        ),
     )
     delivery_type = models.CharField(
         _("نوع تحویل"),
@@ -313,6 +478,48 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         default="",
         help_text=_("یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."),
+    )
+    # Facts the page prints from their own fields. The sections never repeat
+    # them, so two parts of one page cannot disagree.
+    iran_stance = models.CharField(
+        _("موضع درباره‌ی ایران"),
+        max_length=200,
+        blank=True,
+        default="",
+        help_text=_(
+            "موضع رسمی ارائه‌دهنده، با عبارت خودش. اگر پیش نمی‌آید، «موضوعیت ندارد». "
+            "برای انتشار لازم است."
+        ),
+    )
+    refund_note = models.CharField(
+        _("استثنای بازگشت وجه"),
+        max_length=300,
+        blank=True,
+        default="",
+        help_text=_("فقط اگر این محصول با قاعده‌ی بازگشت وجه فروشگاه فرق دارد. یک جمله."),
+    )
+    sources = models.TextField(
+        _("منبع‌ها"),
+        blank=True,
+        default="",
+        validators=[validate_source_lines],
+        help_text=_(
+            "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
+        ),
+    )
+    facts_checked_on = models.DateField(
+        _("آخرین بررسی"),
+        null=True,
+        blank=True,
+        help_text=_("روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."),
+    )
+    time_sensitive = models.BooleanField(
+        _("حساس به زمان"),
+        default=False,
+        help_text=_(
+            "امکانات یا قیمت ارائه‌دهنده زود عوض می‌شود. "
+            "انتشار، بررسی در ۷ روز اخیر را لازم دارد."
+        ),
     )
     status = models.CharField(
         _("وضعیت"),
@@ -384,6 +591,9 @@ class Product(ChecksNameTheirField, models.Model):
         )
         super().save(*args, **kwargs)
 
+    def get_absolute_url(self) -> str:
+        return reverse("product", args=[self.slug])
+
     def clean(self) -> None:
         if not self.slug:
             self.slug = latin_slug(self.name)
@@ -396,6 +606,92 @@ class Product(ChecksNameTheirField, models.Model):
                     }
                 )
         check_slug_is_latin(self)
+        check_seo_title(self)
+        if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
+            raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
+        # The product form's half of the publishing rule: this row's own fields.
+        # The rows under it are checked by the admin's inline formsets, because
+        # Django validates this form before those. A product already live is
+        # held to the placeholders only, so a fact that went stale on it does
+        # not lock every other edit.
+        if self.status == self.Status.ACTIVE:
+            refused: dict[str, list[str]] = {}
+            live = self.is_live_in_db()
+            if not live:
+                for field, message in self.fact_problems().items():
+                    refused.setdefault(field, []).append(message)
+            for field, message in placeholders_in(self):
+                refused.setdefault(field, []).append(message)
+            if refused:
+                why = (
+                    gettext("محصول منتشرشده با جای خالی پرنشده ذخیره نمی‌شود.")
+                    if live
+                    else gettext("تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود.")
+                )
+                refused.setdefault("status", []).append(why)
+                raise ValidationError(refused)
+
+    def is_live_in_db(self) -> bool:
+        """Whether the stored row is published, whatever this instance now says."""
+        return (
+            self.pk is not None
+            and Product.objects.filter(pk=self.pk, status=self.Status.ACTIVE).exists()
+        )
+
+    @property
+    def iran_stance_shown(self) -> str:
+        """The stance as the page prints it: nothing where the question does not arise."""
+        if normalize_for_search(self.iran_stance).rstrip(".") == IRAN_NOT_APPLICABLE:
+            return ""
+        return self.iran_stance.strip()
+
+    @property
+    def facts_are_fresh(self) -> bool:
+        cutoff = timezone.localdate() - timedelta(days=FACTS_FRESH_DAYS)
+        return self.facts_checked_on is not None and self.facts_checked_on >= cutoff
+
+    def fact_problems(self) -> dict[str, str]:
+        """What publishing needs from this row's own fields, by the field to fix."""
+        problems: dict[str, str] = {}
+        if self.delivery_type not in self.DeliveryType.values:
+            problems["delivery_type"] = gettext("نوع تحویل انتخاب نشده است.")
+        if not self.short_description.strip():
+            problems["short_description"] = gettext("جمع‌بندی یک‌خطی خالی است.")
+        if not self.iran_stance.strip():
+            problems["iran_stance"] = gettext(
+                "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+            )
+        elif self.iran_stance_shown and not self.sources.strip():
+            problems["sources"] = gettext(
+                "موضع درباره‌ی ایران منبعی ندارد. "
+                "نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
+            )
+        if self.time_sensitive and not self.facts_are_fresh:
+            problems["facts_checked_on"] = gettext(
+                "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
+            )
+        return problems
+
+    def publish_problems(self) -> list[str]:
+        """Every reason this product may not go live, in Persian; empty when it may.
+
+        The rows under it are read as stored, which is what the bulk action and
+        the readiness list on the product form need. The form itself asks the
+        same questions of what the operator submitted: `clean()` above for this
+        row, the admin's inline formsets for the rows under it.
+        """
+        problems = list(self.fact_problems().values())
+        if not self.available_plans():
+            problems.append(str(NO_AVAILABLE_PLAN))
+        rows = [
+            self,
+            *self.specs.all(),
+            *self.plans.all(),
+            *self.sections.all(),
+            *self.questions.all(),
+        ]
+        problems += [message for row in rows for _field, message in placeholders_in(row)]
+        return problems
 
     @property
     def delivery_display(self) -> str:
@@ -436,7 +732,57 @@ class Product(ChecksNameTheirField, models.Model):
         return min(plans, key=lambda plan: plan.effective_price) if plans else None
 
 
-class ProductSpec(models.Model):
+NO_AVAILABLE_PLAN = _("هیچ پلن موجودی ندارد.")
+
+
+def placeholders_in(row: models.Model) -> list[tuple[str, str]]:
+    """(field, message) for each field in `row.PAGE_TEXT` that still holds a placeholder.
+
+    The message names the row and the field, and quotes the placeholder, so it
+    reads the same under the field on the form and in a list for the bulk action.
+    """
+    where = ""
+    if not isinstance(row, Product):
+        # Isolated, like Plan.__str__: a Latin title would otherwise pull the
+        # Persian around it out of order.
+        names = {"kind": row._meta.verbose_name, "row": f"\u2068{row}\u2069"}
+        where = gettext("%(kind)s «%(row)s»، ") % names
+    found = []
+    for name in row.PAGE_TEXT:  # type: ignore[attr-defined]
+        if match := PLACEHOLDER.search(getattr(row, name)):
+            message = gettext("%(where)s%(field)s: جای خالی «%(marker)s» هنوز پر نشده است.") % {
+                "where": where,
+                "field": cast(models.Field, row._meta.get_field(name)).verbose_name,
+                "marker": Truncator(match.group(0)).chars(60),
+            }
+            found.append((name, message))
+    return found
+
+
+class PageRow(models.Model):
+    """A row its product's page prints: on a live product it holds no placeholder.
+
+    Asked in clean(), so every form that saves a row asks it, the plan's own
+    form in the panel included. On the product form a row's product is the
+    form's instance, carrying the status as submitted.
+    """
+
+    class Meta:
+        abstract = True
+
+    def clean(self) -> None:
+        super().clean()
+        product = getattr(self, "product", None)
+        if product is None or product.status != Product.Status.ACTIVE:
+            return
+        refused: dict[str, list[str]] = {}
+        for field, message in placeholders_in(self):
+            refused.setdefault(field, []).append(message)
+        if refused:
+            raise ValidationError(refused)
+
+
+class ProductSpec(PageRow):
     """One fact about one product, written by the operator.
 
     This is deliberately free text rather than a column per fact. Whether an
@@ -450,6 +796,8 @@ class ProductSpec(models.Model):
     the title where a buyer scans, instead of only in the table further down.
     So the operator decides both the fact and its weight.
     """
+
+    PAGE_TEXT: ClassVar[tuple[str, ...]] = ("title", "value")
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="specs", verbose_name=_("محصول")
@@ -474,7 +822,7 @@ class ProductSpec(models.Model):
         return f"{self.title}: {self.value}"
 
 
-class Plan(ChecksNameTheirField, models.Model):
+class Plan(ChecksNameTheirField, PageRow):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="plans", verbose_name=_("محصول")
     )
@@ -548,7 +896,14 @@ class Plan(ChecksNameTheirField, models.Model):
     sort_order = models.SmallIntegerField(
         _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
     )
+    # When someone last stood behind this price: set by any change to a price
+    # and by the panel's «قیمت‌ها را امروز بررسی کردم». A toman price follows
+    # the exchange rate, so the page says how old the oldest one is.
+    price_confirmed_at = models.DateTimeField(
+        _("تأیید قیمت"), null=True, blank=True, editable=False
+    )
 
+    PAGE_TEXT: ClassVar[tuple[str, ...]] = ("title", "customer_input_label")
     # The field the operator would change to satisfy each CHECK.
     CHECK_FIELDS: ClassVar[dict[str, str]] = {
         "plan_promo_price_below_sale_price": "promo_price",
@@ -625,6 +980,21 @@ class Plan(ChecksNameTheirField, models.Model):
         # that used to stand between them read «۱ — Claude Pro ماهه».
         return f"{self.title}، \u2068{self.product}\u2069"
 
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        # A price someone has just typed is a price someone has just checked.
+        fields = kwargs.get("update_fields")
+        if (fields is None or set(fields) & set(PRICE_FIELDS)) and self._price_is_new():
+            self.price_confirmed_at = timezone.now()
+            if fields is not None:
+                kwargs["update_fields"] = {*fields, "price_confirmed_at"}
+        super().save(*args, **kwargs)
+
+    def _price_is_new(self) -> bool:
+        if self._state.adding:
+            return True
+        stored = Plan.objects.filter(pk=self.pk).values(*PRICE_FIELDS).first()
+        return stored is None or any(stored[name] != getattr(self, name) for name in PRICE_FIELDS)
+
     @property
     def effective_price(self) -> Decimal:
         from apps.catalog.pricing import effective_price
@@ -662,3 +1032,144 @@ class Plan(ChecksNameTheirField, models.Model):
         if self.promo_ends_at and moment >= self.promo_ends_at:
             return False
         return True
+
+
+class ProductSection(ChecksNameTheirField, PageRow):
+    """One part of a product page's prose, of a fixed kind.
+
+    The kind decides the template and the default title, so the operator
+    chooses which parts a product needs and in what order, never how one
+    looks. Facts with fields of their own (price, delivery, warranty, refunds,
+    the provider's stance on Iran) are not written here: «پیش از خرید» prints
+    them from those fields, even when its own text is empty.
+    """
+
+    class Kind(models.TextChoices):
+        BENEFITS = "benefits", _("مزیت‌ها و کاربردها")
+        INCLUDES = "includes", _("چه چیزهایی می‌گیرید")
+        COMPARISON = "comparison", _("مقایسه")
+        AFTER_PAYMENT = "after_payment", _("بعد از پرداخت")
+        BEFORE_BUYING = "before_buying", _("پیش از خرید")
+        FREE = "free", _("متن آزاد")
+
+    PAGE_TEXT: ClassVar[tuple[str, ...]] = ("title", "body", "image_alt")
+    CHECK_FIELDS: ClassVar[dict[str, str]] = {
+        "section_kind_valid": "kind",
+        "section_one_before_buying": "kind",
+        "section_image_has_alt": "image_alt",
+    }
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="sections", verbose_name=_("محصول")
+    )
+    kind = models.CharField(
+        _("نوع"),
+        max_length=16,
+        choices=Kind.choices,
+        help_text=_("قالب بخش را تعیین می‌کند. هر محصول حداکثر یک «پیش از خرید» دارد."),
+    )
+    title = models.CharField(
+        _("تیتر"),
+        max_length=120,
+        blank=True,
+        default="",
+        help_text=_("خالی بماند تا نام همین نوع تیتر شود. «متن آزاد» بی‌تیتر می‌ماند."),
+    )
+    # Restricted Markdown, through apps.core.richtext with h3 free: the
+    # section's own title is the h2.
+    body = models.TextField(
+        _("متن"),
+        blank=True,
+        default="",
+        help_text=_("Markdown ساده: **پررنگ**، فهرست با - یا ۱.، پیوند، جدول و تیتر ###."),
+    )
+    image = ReencodedImageField(
+        _("تصویر"),
+        upload_to="sections/",
+        blank=True,
+        max_side=1600,
+        help_text=_(
+            "PNG،\u200f JPEG یا WebP. هیچ‌وقت اطلاعات ورود اکانت یا داده‌ی مشتری را نشان ندهد."
+        ),
+    )
+    image_alt = models.CharField(
+        _("متن جایگزین تصویر"),
+        max_length=200,
+        blank=True,
+        default="",
+        help_text=_("آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."),
+    )
+    sort_order = models.SmallIntegerField(
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+    )
+
+    class Meta:
+        verbose_name = _("بخش محتوا")
+        verbose_name_plural = _("بخش‌های محتوا")
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    kind__in=[
+                        "benefits",
+                        "includes",
+                        "comparison",
+                        "after_payment",
+                        "before_buying",
+                        "free",
+                    ]
+                ),
+                name="section_kind_valid",
+                violation_error_message=_("نوع بخش معتبر نیست."),
+            ),
+            # The conditions of a sale are said once, in one place on the page.
+            models.UniqueConstraint(
+                fields=["product"],
+                condition=Q(kind="before_buying"),
+                name="section_one_before_buying",
+                violation_error_message=_("این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."),
+            ),
+            models.CheckConstraint(
+                condition=Q(image="") | ~Q(image_alt=""),
+                name="section_image_has_alt",
+                violation_error_message=_("تصویر بدون متن جایگزین ذخیره نمی‌شود."),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.title or self.get_kind_display()
+
+
+class ProductQuestion(PageRow):
+    """A question a buyer asks about this product, in the buyer's own words.
+
+    What «پیش از خرید» already answers (warranty, refunds, a restricted
+    account, the stance on Iran) is not asked again here.
+    """
+
+    PAGE_TEXT: ClassVar[tuple[str, ...]] = ("question", "answer")
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="questions", verbose_name=_("محصول")
+    )
+    question = models.CharField(
+        _("پرسش"),
+        max_length=200,
+        help_text=_("با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."),
+    )
+    # Restricted Markdown, like a section's text.
+    answer = models.TextField(
+        _("پاسخ"),
+        help_text=_("اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."),
+    )
+    sort_order = models.SmallIntegerField(
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+    )
+
+    class Meta:
+        verbose_name = _("پرسش")
+        verbose_name_plural = _("پرسش‌های محصول")
+        ordering = ["sort_order", "id"]
+
+    def __str__(self) -> str:
+        return self.question
