@@ -362,21 +362,39 @@ UNFOLD = {
             },
         ],
     },
-    # The brand's teal as the primary. Unfold's own default ramp is violet, and
-    # "R G B" triples are converted to rgb() for it (unfold/utils.convert_color).
+    # The storefront's tokens (static/css/input.css), so the panel and the
+    # shop read as one product. Unfold paints its buttons, checked boxes and
+    # current links with primary-600, so that step is the shop's turquoise
+    # accent, 700 and 800 its hover and press. Base is the shop's warm stone
+    # in place of Unfold's blue-grey: 50 the ground, 100 the subtle fill, 200
+    # and 300 the rules, 400 the control edge, 500 muted text, 900 ink. Every
+    # text step is at least as dark as Unfold's own, so no contrast is lost.
     "COLORS": {
+        "base": {
+            "50": "#F6F4EF",
+            "100": "#EFEBE4",
+            "200": "#E2DDD3",
+            "300": "#CEC7BA",
+            "400": "#857D70",
+            "500": "#655F56",
+            "600": "#46423B",
+            "700": "#36332E",
+            "800": "#262420",
+            "900": "#1C1A17",
+            "950": "#12110F",
+        },
         "primary": {
-            "50": "240 249 248",
-            "100": "204 236 233",
-            "200": "153 217 211",
-            "300": "102 198 190",
-            "400": "51 179 168",
-            "500": "15 118 110",
-            "600": "13 106 99",
-            "700": "11 89 83",
-            "800": "9 71 66",
-            "900": "6 47 44",
-            "950": "3 24 22",
+            "50": "#F1F8F7",
+            "100": "#E3F0EE",
+            "200": "#BCDCD8",
+            "300": "#8CC2BD",
+            "400": "#4E9FA0",
+            "500": "#167A7D",
+            "600": "#0A6A6E",
+            "700": "#085A5E",
+            "800": "#064A4E",
+            "900": "#053A3D",
+            "950": "#032426",
         },
     },
 }

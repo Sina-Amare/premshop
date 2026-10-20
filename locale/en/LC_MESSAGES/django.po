@@ -598,3 +598,15 @@ msgstr "A small dated table, only where it helps this very decision."
 
 msgid "یک جمله: محصول برای خریدار چه می‌کند و به کار چه کسی می‌آید."
 msgstr "One sentence: what the product does for the buyer and who it suits."
+
+msgid "اصلی"
+msgstr "Main"
+
+msgid "صفحه‌ی محصول"
+msgstr "Product page"
+
+msgid "تخفیف بی‌پایان"
+msgstr "Discount with no end date"
+
+msgid "این زمان گذشته است و تخفیف روی سایت نمی‌آید."
+msgstr "This time has passed, so the discount would never show on the site."

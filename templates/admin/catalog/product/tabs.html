@@ -1,0 +1,30 @@
+{% load fa %}
+{# Unfold's fieldset tabs (unfold/helpers/fieldsets_tabs.html), with each inline inside the tab its `form_tab` names and its errors counted on that tab: ProductAdmin.render_change_form. #}
+<div class="flex flex-col gap-6" x-data="{ formTab: {{ form_tab_open }} }">
+    <div class="border-b border-base-200 dark:border-base-800">
+        <nav class="panel-tabs flex flex-row items-center *:border-x *:border-transparent *:font-medium *:text-important *:first:border-l-0 *:cursor-pointer *:relative *:py-2 *:px-3.5 *:hover:text-primary-600 dark:*:hover:text-primary-500 dark:*:border-transparent [&>.active]:bg-white dark:[&>.active]:bg-base-900 [&>.active]:border-base-200 dark:[&>.active]:border-base-800  [&>.active]:text-primary-600 dark:[&>.active]:text-primary-500 [&>.active]:after:absolute [&>.active]:after:content-[''] [&>.active]:after:-bottom-px [&>.active]:after:left-0 [&>.active]:after:right-0 [&>.active]:after:h-px [&>.active]:after:bg-white dark:[&>.active]:after:bg-base-900" role="tablist">
+            {% for tab in form_tabs %}
+                <button type="button" role="tab" id="form-tab-{{ forloop.counter }}" aria-controls="form-panel-{{ forloop.counter }}"
+                        class="{% if forloop.counter0 == form_tab_open %}active{% endif %}" aria-selected="{% if forloop.counter0 == form_tab_open %}true{% else %}false{% endif %}"
+                        x-on:click="formTab = {{ forloop.counter0 }}" x-bind:class="{ active: formTab == {{ forloop.counter0 }} }" x-bind:aria-selected="String(formTab == {{ forloop.counter0 }})">
+                    {{ tab.fieldset.name }}
+                    {% with errors=tab.errors %}{% if errors %}
+                        <span data-testid="error-count" class="bg-red-500 inline-flex font-semibold items-center justify-center leading-none rounded-full w-4 h-4 text-white relative text-center text-[11px] whitespace-nowrap">{{ errors|fa_digits }}</span>
+                    {% endif %}{% endwith %}
+                </button>
+            {% endfor %}
+        </nav>
+    </div>
+
+    {% for tab in form_tabs %}
+        <div class="flex flex-col gap-6" role="tabpanel" id="form-panel-{{ forloop.counter }}" aria-labelledby="form-tab-{{ forloop.counter }}"
+             x-show="formTab == {{ forloop.counter0 }}" {% if forloop.counter0 != form_tab_open %}style="display: none"{% endif %}>
+            {% if tab.fieldset.fields %}
+                {% include "admin/includes/fieldset.html" with fieldset=tab.fieldset fieldset_tab=1 %}
+            {% endif %}
+            {% for inline_admin_formset in tab.inlines %}
+                {% include inline_admin_formset.opts.template %}
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>

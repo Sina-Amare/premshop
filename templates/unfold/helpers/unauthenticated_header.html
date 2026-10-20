@@ -4,7 +4,7 @@
 
 <div class="absolute flex flex-row items-center justify-between left-0 m-4 right-0 top-0">
     {% if site_url %}
-        <a href="{{ site_url }}" class="flex font-medium gap-2 group items-center text-sm text-primary-600 dark:text-primary-500">
+        <a href="{{ site_url }}" class="flex font-medium gap-2 group items-center text-sm panel-link">
             <span class="material-symbols-outlined text-sm" aria-hidden="true">{% if bidi %}arrow_forward{% else %}arrow_back{% endif %}</span> {% trans 'Return to site' %}
         </a>
     {% endif %}
