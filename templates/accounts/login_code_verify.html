@@ -1,38 +1,44 @@
-{% extends "accounts/_auth_base.html" %}{% load fa %}
+{% extends "accounts/_auth_base.html" %}
 
-{% block title %}کد ورود — PremShop{% endblock %}
+{% block title %}کد ورود | PremShop{% endblock %}
 {% block auth_title %}کد ورود را وارد کنید{% endblock %}
 
 {% block auth_intro %}
+  <p class="small" style="margin-block-end: var(--spacing-2)">
+    کد ۶ رقمی را به <bdi class="latin">{{ email }}</bdi> فرستادیم.
+  </p>
   <p class="small" style="margin-block-end: var(--spacing-5)">
-    کد ۶ رقمی را به <span class="latin">{{ email }}</span> فرستادیم.
+    ایمیل اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر ایمیل</a>
   </p>
 {% endblock %}
 
 {% block auth_body %}
 {% comment %}
 Progressive enhancement. The real field is the single <input name="code"> the
-server has always accepted — with JS off it is the only thing the customer sees
-and the form posts normally. With JS on, six cells drive that hidden field, the
-sixth digit submits by fetch so the cells can flash green before the page
-leaves, and a wrong code shakes, clears and refocuses. Nothing about the
-server contract changes; the 29 auth tests run against the hidden field.
+server has always accepted, and «ارسال دوباره» is a real form: with JS off
+those two are the page, and both post normally. With JS on, six cells drive
+that hidden field, the sixth digit submits by fetch so the cells can flash
+green before the page leaves, a wrong code shakes, clears and refocuses, and
+the resend form is sent by fetch too, so the countdown restarts in place.
 
-Countdown and cooldown are seeded from epoch seconds the server put in the
-session, so a reload never restarts a clock the server has not.
+The countdown starts from the seconds the server says the code has left, so a
+reload does not restart it. The resend cooldown does restart on a reload; it is
+a courtesy, and the server's limit on codes per address is the defence.
 {% endcomment %}
 <form method="post" novalidate id="code-form"
       data-expires-in="{{ expires_in }}"
-      data-resend-url="{% url 'login-code-resend' %}"
       data-resend-cooldown="{{ resend_cooldown }}">
   {% csrf_token %}
 
   <div class="field" id="code-field">
     <div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-3); margin-block-end: var(--spacing-2)">
       <label class="field__label" for="{{ form.code.id_for_label }}" style="margin: 0">{{ form.code.label }}</label>
-      {% comment %}Amber: a clock is running. The only amber on the page.{% endcomment %}
-      <span class="otp__clock badge badge--time" id="code-clock" aria-live="polite" hidden></span>
+      {% comment %}Amber while the clock runs, the only amber on the page. Hidden from
+      screen readers: read out every second it would talk over the typing, so
+      #code-status speaks instead, at one minute left and at expiry.{% endcomment %}
+      <span class="otp__clock badge badge--time" id="code-clock" aria-hidden="true" hidden></span>
     </div>
+    <p class="sr-only" id="code-status" role="status"></p>
 
     {{ form.code }}
 
@@ -46,16 +52,17 @@ session, so a reload never restarts a clock the server has not.
     </div>
 
     <p class="field__error" id="code-error" role="alert" hidden></p>
-    {% for error in form.code.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+    {% if form.code.errors %}<div id="{{ form.code.auto_id }}_error">{% for error in form.code.errors %}<p class="field__error">{{ error }}</p>{% endfor %}</div>{% endif %}
   </div>
 
   <button type="submit" class="btn btn--primary" style="inline-size: 100%" id="code-submit" data-busy="در حال بررسی…">ورود</button>
 </form>
 
-<div class="otp__resend">
+<form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="resend-form">
+  {% csrf_token %}
   <span class="small" id="resend-hint" style="margin: 0">کد نرسید؟ پوشه‌ی اسپم را هم ببینید.</span>
-  <button type="button" class="btn btn--ghost" id="resend" disabled>ارسال دوباره</button>
-</div>
+  <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
+</form>
 {% endblock %}
 
 {% block auth_after %}{% endblock %}
@@ -69,7 +76,9 @@ session, so a reload never restarts a clock the server has not.
   var cells = Array.prototype.slice.call(cellsBox.querySelectorAll('.otp__cell'));
   var errorBox = document.getElementById('code-error');
   var clock = document.getElementById('code-clock');
+  var status = document.getElementById('code-status');
   var submitButton = document.getElementById('code-submit');
+  var resendForm = document.getElementById('resend-form');
   var resendButton = document.getElementById('resend');
   var resendHint = document.getElementById('resend-hint');
 
@@ -90,6 +99,7 @@ session, so a reload never restarts a clock the server has not.
 
   var busy = false;
   var expired = false;
+  var warned = false;
 
   function value() { return cells.map(function (c) { return c.value; }).join(''); }
   function sync() { hidden.value = value(); }
@@ -205,26 +215,36 @@ session, so a reload never restarts a clock the server has not.
   // --- Countdown to the server's expiry, and the resend cooldown.
   // Deadlines are set from seconds-remaining the server sent, on this machine's
   // clock. Never from an absolute server time: a customer's clock may be wrong.
-  var expiresAt = Math.floor(Date.now() / 1000) + (parseInt(form.getAttribute('data-expires-in'), 10) || 0);
+  var expiresIn = parseInt(form.getAttribute('data-expires-in'), 10) || 0;
+  var expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
   var cooldownSeconds = parseInt(form.getAttribute('data-resend-cooldown'), 10) || 60;
-  var cooldownUntil = Math.floor(Date.now() / 1000) + cooldownSeconds;
+  // Never past the code's own end: a page reloaded with 30 seconds left sent
+  // focus, at expiry, to a button still cooling down. One reloaded after its
+  // code expired has nothing to wait for. The server's three-per-15-minutes
+  // limit stays the defence; this is a courtesy.
+  var cooldownUntil = Math.floor(Date.now() / 1000) + Math.min(cooldownSeconds, Math.max(expiresIn, 0));
 
   function tick() {
     var now = Math.floor(Date.now() / 1000);
     var left = expiresAt - now;
+    var justExpired = false;
     if (left > 0) {
       var m = Math.floor(left / 60), s = left % 60;
       clock.textContent = toFa(m) + ':' + toFa(s < 10 ? '0' + s : s) + ' مانده';
       clock.hidden = false;
+      if (left <= 60 && !warned) { warned = true; status.textContent = 'یک دقیقه از اعتبار کد مانده است.'; }
       if (expired) { expired = false; cells.forEach(function (c) { c.disabled = false; }); }
     } else if (!expired) {
       expired = true;
-      if (document.activeElement) document.activeElement.blur();
+      justExpired = true;
       clock.textContent = 'کد منقضی شد';
       clock.hidden = false;
+      clock.classList.replace('badge--time', 'badge--neutral');   // the clock has stopped
       cells.forEach(function (c) { c.disabled = true; });
       showError('');
-      resendHint.textContent = 'برای گرفتن کد تازه، «ارسال دوباره» را بزنید.';
+      resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      status.textContent = 'کد منقضی شد. برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      resendButton.classList.replace('btn--ghost', 'btn--primary');
     }
     var wait = cooldownUntil - now;
     if (wait > 0) {
@@ -234,29 +254,35 @@ session, so a reload never restarts a clock the server has not.
       resendButton.disabled = false;
       resendButton.textContent = 'ارسال دوباره';
     }
+    // The cells were just disabled under the customer's cursor; focus goes to
+    // the one thing left to do rather than falling to the page body.
+    if (justExpired) resendButton.focus();
   }
   tick();
   setInterval(tick, 1000);
 
-  resendButton.addEventListener('click', function () {
+  resendForm.addEventListener('submit', function (e) {
+    e.preventDefault();
     if (resendButton.disabled) return;
     resendButton.disabled = true;
     resendButton.textContent = 'در حال ارسال…';
-    var body = new FormData();
-    body.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
-    fetch(form.getAttribute('data-resend-url'), {
-      method: 'POST', body: body, credentials: 'same-origin',
+    fetch(resendForm.action, {
+      method: 'POST', body: new FormData(resendForm), credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     }).then(function (r) { return r.json(); }).then(function (data) {
       if (data.ok) {
         expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 0);
         cooldownUntil = Math.floor(Date.now() / 1000) + (data.cooldown || cooldownSeconds);
         expired = false;
+        warned = false;
+        clock.classList.replace('badge--neutral', 'badge--time');
+        resendButton.classList.replace('btn--primary', 'btn--ghost');
         showError('');
         clear();
         cells.forEach(function (c) { c.disabled = false; });
         cells[0].focus();
-        resendHint.textContent = 'کد تازه را فرستادیم.';
+        resendHint.textContent = 'کد جدید را فرستادیم.';
+        status.textContent = 'کد جدید را فرستادیم.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;

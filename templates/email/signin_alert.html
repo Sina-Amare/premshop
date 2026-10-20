@@ -1,7 +1,7 @@
 {% extends "email/base.html" %}{% load fa %}
 
 {% block title %}ورود جدید به حساب شما{% endblock %}
-{% block preheader %}با کد ورود وارد حساب شما شدند. اگر شما نبودید، رمز عبور را عوض کنید.{% endblock %}
+{% block preheader %}کسی با کد ورود وارد حساب شما شد. اگر شما نبودید، اول رمز ایمیلتان را عوض کنید.{% endblock %}
 
 {% comment %}
 C14, and it exists because the owner argued for it at review round 1 (ADR-0012):
@@ -12,23 +12,27 @@ visible, which is the difference between an incident and a silent loss.
 Sent ONLY when the account has a usable password, because an OTP-only account
 has no second factor for this mail to protect and the notice would just be noise
 on every ordinary login.
+
+The mailbox comes first in the advice because whoever reads it can ask for a
+new code and sign straight back in after the shop password changes.
 {% endcomment %}
 
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">ورود جدید به حساب شما</h1>
 
-<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">در تاریخ {{ signed_in_at|jalali }} با کد ورود وارد حساب شما شدند.</p>
+<p style="margin:0 0 12px 0;font-size:16px;line-height:1.95;color:#57534E;">در {{ signed_in_at|jalali }}، ساعت {{ signed_in_at|time:"H:i"|fa_digits }}، کسی با کد ورود وارد حساب شما شد.</p>
 
-<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان بودید، این ایمیل فقط برای اطلاع شماست.</p>
+<p style="margin:0 0 24px 0;font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان بودید، این ایمیل فقط برای اطلاع شماست.</p>
 
-{% include "email/_button.html" with url=account_url label="تغییر رمز عبور" %}
-
-<div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
+{% comment %}Neutral, not amber: amber means a clock is running, and nothing here is timed.{% endcomment %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
   <tr>
-    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">اگر شما نبودید، همین حالا رمز عبور را عوض کنید.</td>
+    <td bgcolor="#FAFAF9" style="background-color:#FAFAF9;border:1px solid #E7E5E4;border-radius:10px;padding:14px 18px 12px 18px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.9;color:#1C1917;">اگر شما نبودید، همین حالا اول رمز ایمیلتان و بعد رمز عبور PremShop را عوض کنید و به پشتیبانی خبر بدهید. با عوض کردن رمز عبور PremShop از همه‌ی دستگاه‌های دیگر خارج می‌شوید.</td>
   </tr>
 </table>
+
+<div style="height:24px;font-size:0;line-height:0;">&nbsp;</div>
+{% include "email/_button.html" with url=password_url label="تغییر رمز عبور" %}
 
 <div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
 

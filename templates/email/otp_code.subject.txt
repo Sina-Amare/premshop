@@ -1,1 +1,1 @@
-{% load fa %}{{ code|fa_digits }} — کد ورود PremShop
+{% load fa %}{{ code|fa_digits }}، کد ورود PremShop

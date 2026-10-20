@@ -160,6 +160,63 @@ def test_resend_refuses_get(waiting):
     assert waiting.get(reverse("login-code-resend")).status_code == 405
 
 
+# --- Without JavaScript, and with the wrong address -------------------------
+
+
+def test_resend_is_a_form_a_browser_can_submit_on_its_own(waiting):
+    """It was a disabled type=button outside any form, enabled only by script:
+    with JavaScript off there was no way to ask for a second code."""
+    body = waiting.get(reverse("login-code-verify")).content.decode()
+
+    form = re.search(r"<form[^>]*>(?:(?!</form>).)*?id=\"resend\".*?</form>", body, re.S)
+    assert form, "the resend button is not inside a form"
+    assert f'action="{reverse("login-code-resend")}"' in form.group(0)
+    assert 'method="post"' in form.group(0)
+    button = re.search(r"<button[^>]*id=\"resend\"[^>]*>", form.group(0)).group(0)
+    assert 'type="submit"' in button
+    assert "disabled" not in button
+
+
+def test_a_plain_resend_comes_back_to_the_page_with_a_new_code(waiting, user):
+    response = waiting.post(reverse("login-code-resend"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("login-code-verify")
+    assert len(mail.outbox) == 2
+    assert "کد جدید را فرستادیم." in waiting.get(response["Location"]).content.decode()
+    assert otp.verify(user.email, code_from(mail.outbox[1]))
+
+
+def test_a_refused_plain_resend_says_why_and_sends_nothing(waiting):
+    for _ in range(ratelimit.OTP_REQUESTS_PER_EMAIL.times - 1):
+        waiting.post(reverse("login-code-resend"))
+    sent_before = len(mail.outbox)
+
+    response = waiting.post(reverse("login-code-resend"), follow=True)
+
+    assert len(mail.outbox) == sent_before
+    assert response.redirect_chain[-1][0] == reverse("login-code-verify")
+    assert "پشت سر هم" in response.content.decode()
+
+
+def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
+    response = client.post(reverse("login-code-resend"), follow=True)
+
+    assert response.redirect_chain[-1][0] == reverse("login-code")
+    # Printed on the email page, so it names the page that ran out.
+    assert "زمان صفحه‌ی کد ورود تمام شده است." in response.content.decode()
+
+
+def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):
+    """The page named the address and offered no way back from it; Back could
+    land on the browser's «Confirm form resubmission» page."""
+    body = waiting.get(reverse("login-code-verify")).content.decode()
+
+    assert "ایمیل اشتباه است؟" in body
+    assert f'href="{reverse("login-code")}?next=' in body
+    assert f'value="{user.email}"' in waiting.get(reverse("login-code")).content.decode()
+
+
 # --- The account page additions --------------------------------------------
 
 
@@ -178,9 +235,18 @@ def test_the_password_hint_names_the_rules(client, user):
     [
         ("09123456789", "09123456789"),
         ("۰۹۱۲۳۴۵۶۷۸۹", "09123456789"),
+        ("٠٩١٢٣٤٥٦٧٨٩", "09123456789"),
         ("+98 912 345 6789", "09123456789"),
+        ("0098 912 345 6789", "09123456789"),
         ("0912-345-6789", "09123456789"),
+        ("(0912) 345 6789", "09123456789"),
         ("", ""),
+        # Copied from a contact card or a chat on a right-to-left phone, a
+        # number arrives wrapped in invisible direction marks.
+        ("‪+98 912 345 6789‬", "09123456789"),
+        ("‎09123456789", "09123456789"),
+        ("09123456789‏", "09123456789"),
+        ("‪+98 (912) 345-67-89‬", "09123456789"),
     ],
 )
 def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
@@ -190,6 +256,36 @@ def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
 
     user.refresh_from_db()
     assert user.phone == stored
+
+
+@pytest.mark.parametrize("typed", ["abc", "0912abc3456789", "0912345678²"])
+def test_anything_but_a_number_is_refused_and_the_stored_one_kept(client, user, typed):
+    """Letters used to be dropped in silence: «abc» blanked the stored number
+    under a green «saved», letters inside digits vanished, and a superscript
+    two passed str.isdigit() and was stored as typed."""
+    user.phone = "09351112233"
+    user.save()
+    client.force_login(user)
+
+    response = client.post(reverse("account"), {"phone": typed})
+
+    user.refresh_from_db()
+    assert user.phone == "09351112233"
+    assert "۱۱ رقم" in response.content.decode()
+
+
+def test_emptying_the_field_removes_the_number_and_says_so(client, user):
+    """An empty field is the one way to remove a number on purpose, and the
+    message names what happened rather than calling it a save."""
+    user.phone = "09351112233"
+    user.save()
+    client.force_login(user)
+
+    body = client.post(reverse("account"), {"phone": ""}, follow=True).content.decode()
+
+    user.refresh_from_db()
+    assert user.phone == ""
+    assert "شماره‌ی موبایل حذف شد." in body
 
 
 def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
@@ -248,6 +344,28 @@ def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
 
     assert response.status_code == 200
     assert heading in response.content.decode()
+
+
+@pytest.mark.parametrize("name", ["account", "account-password"])
+def test_an_account_page_has_one_main_landmark(client, user, name):
+    """The section used a <main> inside the page's own <main>: two landmarks,
+    invalid nesting, and an ambiguous «jump to content»."""
+    client.force_login(user)
+
+    assert client.get(reverse(name)).content.decode().count("<main") == 1
+
+
+def test_a_first_password_is_reported_as_set_not_changed(client):
+    """Under the heading «ثبت رمز عبور» the confirmation said «تغییر کرد»."""
+    client.force_login(User.objects.create_user("first@example.test"))
+
+    body = client.post(
+        reverse("account-password"),
+        {"new_password1": "Str0ng-enough-pass", "new_password2": "Str0ng-enough-pass"},
+        follow=True,
+    ).content.decode()
+
+    assert "رمز عبور ثبت شد." in body
 
 
 def test_the_old_profile_address_still_goes_somewhere(client, user):

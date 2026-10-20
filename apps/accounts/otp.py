@@ -40,6 +40,11 @@ def _key(email: str) -> str:
     return f"otp:{email.lower().strip()}"
 
 
+def _attempts_key(email: str) -> str:
+    # Its own prefix, so no address can spell its way into the other key.
+    return f"otp-attempts:{email.lower().strip()}"
+
+
 def _digest(code: str) -> str:
     """Keyed hash, so a cache dump alone does not read as a live code."""
     return salted_hmac("premshop.accounts.otp", code, secret=settings.SECRET_KEY).hexdigest()
@@ -58,20 +63,26 @@ def issue(email: str) -> Issued:
     code = f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
     expires_at = int(time.time()) + CODE_TTL_SECONDS
     # The deadline travels WITH the code. Django's cache API cannot read an entry's
-    # remaining lifetime back — on Redis included — so anything that re-saves this
-    # record must compute what is left from here, never guess it. Guessing it is the
-    # bug this replaced: every wrong guess reset a code's life to five minutes.
-    record = {"digest": _digest(code), "attempts": 0, "expires_at": expires_at}
+    # remaining lifetime back, on Redis included, so the attempt counter takes its
+    # lifetime from here rather than guessing it.
+    record = {"digest": _digest(code), "expires_at": expires_at}
     cache.set(_key(email), record, timeout=CODE_TTL_SECONDS)
+    cache.delete(_attempts_key(email))  # a new code starts with a full budget
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
 def verify(email: str, code: str) -> bool:
     """Check a code and consume it. A correct code is single-use.
 
-    Wrong guesses are counted, and the code is BURNED at MAX_ATTEMPTS rather than
-    merely refused — otherwise the per-request rate limit is the only thing
-    between an attacker and a million tries at a six-digit number.
+    Every attempt is counted before it is compared, and the wrong guess that
+    spends MAX_ATTEMPTS deletes the code: otherwise the per-request rate limit
+    is the only thing between an attacker and a million tries at a six-digit
+    number, and a counter lost on its own would revive a guessed-out code.
+    Requests arriving together read the same record, so nothing here is decided
+    by what they read: the count is an atomic increment in its own key, and only
+    the request whose delete removed the record has spent the code. The record
+    is written by issue() alone, so a guess can never save a stale copy over a
+    newer code.
     """
     key = _key(email)
     record = cache.get(key)
@@ -82,22 +93,36 @@ def verify(email: str, code: str) -> bool:
     # (fail closed) rather than guess — the customer simply asks for a new code.
     remaining = record.get("expires_at", 0) - int(time.time())
     if remaining <= 0:
-        cache.delete(key)
         return False
 
-    submitted = (code or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
-    if constant_time_compare(record["digest"], _digest(submitted)):
-        cache.delete(key)
-        return True
+    attempt = _count_attempt(email, remaining)
+    if attempt > MAX_ATTEMPTS:
+        return False
 
-    record["attempts"] += 1
-    if record["attempts"] >= MAX_ATTEMPTS:
+    matches = constant_time_compare(record["digest"], _digest(normalize_digits(code)))
+    if not matches and attempt == MAX_ATTEMPTS:
         cache.delete(key)
-    else:
-        # Re-save with exactly the time the code had left: a wrong guess must
-        # neither buy time nor cost it.
-        cache.set(key, record, timeout=remaining)
-    return False
+    return matches and cache.delete(key)
+
+
+def _count_attempt(email: str, ttl: int) -> int:
+    """This attempt's number. Two requests at the same instant get two numbers."""
+    key = _attempts_key(email)
+    if cache.add(key, 1, timeout=ttl):
+        return 1
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        # The counter expires with the code it counts, so one that vanished
+        # mid-check means the code's life is over: fail closed.
+        return MAX_ATTEMPTS + 1
+    if count == 1:
+        # It expired inside incr() instead, between Django's EXISTS and INCR
+        # (ratelimit.hit), and Redis made it again with no expiry. The same end
+        # of life, so the same answer.
+        cache.touch(key, ttl)
+        return MAX_ATTEMPTS + 1
+    return count
 
 
 def normalize_digits(value: str) -> str:

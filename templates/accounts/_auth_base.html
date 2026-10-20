@@ -6,12 +6,19 @@ desktop viewport reads as an internal admin tool, and the measure is far too
 long for Persian at 17px.
 {% endcomment %}
 
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
+
 {% block content %}
 <div class="wrap page">
 <div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
-  <div class="card" style="padding: var(--spacing-7) var(--spacing-6)">
+  <div class="card auth-card">
     <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
     {% block auth_intro %}{% endblock %}
+
+    {% comment %}Set by a redirect after a plain form post, such as a code resent without JavaScript.{% endcomment %}
+    {% for message in messages %}
+      {% if message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
+    {% endfor %}
 
     {% if form.non_field_errors %}
       <div class="form-error" role="alert">

@@ -6,7 +6,11 @@ Two sections, not three: «پیشخوان» was a word that described nothing an
 page that listed the same phone number as the one next to it. سفارش‌ها (S4b)
 and اشتراک‌ها (S9) are sections that will be genuinely different, and each
 costs one entry here. Nothing is listed before it exists.
+
+The section is a <div>: base.html already holds the page's one <main>.
 {% endcomment %}
+
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
 <div class="wrap page">
@@ -25,11 +29,11 @@ costs one entry here. Nothing is listed before it exists.
     </form>
   </nav>
 
-  <main class="acct__main">
+  <div class="acct__main">
     {% for message in messages %}<div class="form-ok" role="status">{{ message }}</div>{% endfor %}
     <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
     {% block section %}{% endblock %}
-  </main>
+  </div>
 </div>
 </div>
 {% endblock %}

@@ -44,6 +44,10 @@ RESEND_COOLDOWN_SECONDS = 60
 
 WRONG_CREDENTIALS = "ایمیل یا رمز عبور اشتباه است."
 WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
+CODE_RESENT = "کد جدید را فرستادیم."
+# Shown on the code page by its script and on the email page without one, so
+# it names the page that ran out.
+PAGE_EXPIRED = "زمان صفحه‌ی کد ورود تمام شده است. دوباره ایمیلتان را وارد کنید."
 
 # A real hash of a value nobody knows. Comparing a submitted password against it
 # when there is no live account to check makes the miss cost the same work as a
@@ -81,11 +85,8 @@ def login_password(request: HttpRequest) -> HttpResponse:
     form = PasswordLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
-        ip = ratelimit.client_ip(request)
-        if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email) or not ratelimit.hit(
-            ratelimit.LOGIN_ATTEMPTS_PER_IP, ip
-        ):
-            form.add_error(None, services.TOO_MANY_ATTEMPTS)
+        if refusal := services.password_attempt_refusal(request, email):
+            form.add_error(None, refusal)
         else:
             user = User.objects.filter(email__iexact=email).first()
             # Exactly ONE password hash per attempt, whatever the outcome. Any
@@ -119,7 +120,11 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect(_safe_next(request))
 
-    form = EmailForm(request.POST or None)
+    # Back from «ایمیل اشتباه است؟» on the code page: the address the code went
+    # to is already in the field, so a typo is corrected rather than retyped.
+    form = EmailForm(
+        request.POST or None, initial={"email": request.session.get(PENDING_EMAIL_KEY)}
+    )
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
         try:
@@ -182,6 +187,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
             "email": email,
             "expires_in": _seconds_left(request.session.get(PENDING_EXPIRES_KEY, 0)),
             "resend_cooldown": RESEND_COOLDOWN_SECONDS,
+            "next": request.session.get(PENDING_NEXT_KEY) or reverse("account"),
         },
     )
 
@@ -201,22 +207,30 @@ def _seconds_left(expires_at: int) -> int:
 def login_code_resend(request: HttpRequest) -> HttpResponse:
     """Send a fresh code to the address already waiting in the session.
 
-    Replaces the outstanding code (otp.issue always does) and hands back the new
-    expiry so the page restarts its countdown. The same rate limit as the first
-    request applies — three per address per fifteen minutes — so the button's
-    60-second cooldown is a courtesy, not the defence.
+    Replaces the outstanding code (otp.issue always does). The page's script asks
+    for JSON and restarts its countdown from the new expiry; a plain form post,
+    from a browser with JavaScript off, is sent back to the page with a message.
+    The same rate limit as the first request applies — three per address per
+    fifteen minutes — so the button's 60-second cooldown is a courtesy, not the
+    defence, and without JavaScript there is no cooldown at all.
     """
     email = request.session.get(PENDING_EMAIL_KEY)
     if not email:
-        return JsonResponse(
-            {"ok": False, "error": "نشست شما تمام شده است. دوباره ایمیل‌تان را وارد کنید."},
-            status=400,
-        )
+        if _wants_json(request):
+            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
+        messages.error(request, PAGE_EXPIRED)
+        return redirect("login-code")
     try:
         issued = services.request_login_code(request, email)
     except services.RateLimited as exc:
-        return JsonResponse({"ok": False, "error": exc.message}, status=429)
+        if _wants_json(request):
+            return JsonResponse({"ok": False, "error": exc.message}, status=429)
+        messages.error(request, exc.message)
+        return redirect("login-code-verify")
     request.session[PENDING_EXPIRES_KEY] = issued.expires_at
+    if not _wants_json(request):
+        messages.success(request, CODE_RESENT)
+        return redirect("login-code-verify")
     return JsonResponse(
         {
             "ok": True,
@@ -249,7 +263,8 @@ def account(request: HttpRequest) -> HttpResponse:
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, "شماره تماس ذخیره شد.")
+        saved = "ذخیره شد" if user.phone else "حذف شد"
+        messages.success(request, f"شماره‌ی موبایل {saved}.")
         return redirect(reverse("account"))
     return render(request, "accounts/account.html", {"profile_form": form, "section": "profile"})
 
@@ -261,13 +276,14 @@ def account_password(request: HttpRequest) -> HttpResponse:
     # An OTP-only account has no current password to ask for, and asking anyway
     # would be an unanswerable question on the page that is supposed to fix it.
     user = cast(User, request.user)
-    form_class = StyledPasswordChangeForm if user.has_usable_password() else StyledSetPasswordForm
+    had_password = user.has_usable_password()
+    form_class = StyledPasswordChangeForm if had_password else StyledSetPasswordForm
     form = form_class(user, request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
-        # Changing a password rotates the session hash, which would log the user
-        # out of the tab they are looking at. Re-issue it so it does not.
+        # Changing a password rotates the session hash, which signs out every
+        # other device and would sign out this tab too. Re-issue it here only.
         django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(request, "رمز عبور تغییر کرد.")
+        messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
         return redirect(reverse("account-password"))
     return render(request, "accounts/account_password.html", {"form": form, "section": "password"})

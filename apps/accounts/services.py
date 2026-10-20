@@ -33,8 +33,33 @@ class RateLimited(Exception):
         self.message = message
 
 
-TOO_MANY_CODES = "چند بار پشت سر هم کد خواسته‌اید. چند دقیقه دیگر دوباره تلاش کنید."
-TOO_MANY_ATTEMPTS = "چند بار پشت سر هم اشتباه وارد کرده‌اید. چند دقیقه دیگر دوباره تلاش کنید."
+# One message per budget, each with its wait. A budget per IP never blames the
+# visitor: a mobile carrier puts many customers behind one address.
+TOO_MANY_CODES = (
+    "برای این ایمیل چند بار پشت سر هم کد خواسته شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+)
+TOO_MANY_CODES_FROM_NETWORK = (
+    "از این شبکه کد ورود زیادی خواسته شده است. یک ساعت دیگر دوباره امتحان کنید."
+)
+TOO_MANY_WRONG_CODES = (
+    "برای این ایمیل چند بار پشت سر هم کد اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+)
+TOO_MANY_WRONG_PASSWORDS = (
+    "برای این ایمیل چند بار پشت سر هم رمز اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+)
+TOO_MANY_FROM_NETWORK = "از این شبکه تلاش ورود زیادی شده است. یک ساعت دیگر دوباره امتحان کنید."
+
+
+def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
+    """Count a password attempt; the message to show when a budget is spent.
+
+    The storefront's sign-in and the panel's share these budgets under the same
+    keys, so an account has one budget wherever it is guessed at."""
+    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
+        return TOO_MANY_WRONG_PASSWORDS
+    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
+        return TOO_MANY_FROM_NETWORK
+    return None
 
 
 def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
@@ -61,7 +86,7 @@ def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
     if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL, email):
         raise RateLimited(TOO_MANY_CODES)
     if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ip):
-        raise RateLimited(TOO_MANY_CODES)
+        raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
 
     return otp.send_login_code(email)
 
@@ -72,9 +97,9 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     ip = ratelimit.client_ip(request)
 
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
-        raise RateLimited(TOO_MANY_ATTEMPTS)
+        raise RateLimited(TOO_MANY_WRONG_CODES)
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ip):
-        raise RateLimited(TOO_MANY_ATTEMPTS)
+        raise RateLimited(TOO_MANY_FROM_NETWORK)
 
     if not otp.verify(email, code):
         return None
@@ -129,7 +154,7 @@ def _send_signin_alert(request: HttpRequest, user: User) -> None:
             to=[user.email],
             context={
                 "signed_in_at": timezone.now(),
-                "account_url": request.build_absolute_uri(reverse("account")),
+                "password_url": request.build_absolute_uri(reverse("account-password")),
             },
         )
     except Exception as error:  # noqa: BLE001 — any mail failure; the login already happened

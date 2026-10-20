@@ -74,6 +74,39 @@ def test_a_mismatched_repeat_speaks_the_shops_words(client, user):
     assert "گذرواژه" not in body
 
 
+@pytest.mark.parametrize("has_password", [True, False], ids=["change", "first-time"])
+def test_a_rule_error_sits_under_the_password_it_is_about(client, user, has_password):
+    """Django checks the rules while cleaning the repeat field, so «too short»
+    appeared under «تکرار رمز عبور», red border and all, while the hint that
+    states the rule sat under the field above it."""
+    if not has_password:
+        user.set_unusable_password()
+        user.save()
+    client.force_login(user)
+
+    form = client.post(
+        reverse("account-password"),
+        {"old_password": PASSWORD, "new_password1": "Ab1!", "new_password2": "Ab1!"},
+    ).context["form"]
+
+    assert form.errors == {"new_password1": ["رمز عبور باید حداقل ۸ کاراکتر باشد."]}
+
+
+def test_a_mismatch_stays_under_the_repeat(client, user):
+    client.force_login(user)
+
+    form = client.post(
+        reverse("account-password"),
+        {
+            "old_password": PASSWORD,
+            "new_password1": "Str0ng-enough-pass",
+            "new_password2": "Str0ng-enough-pasS",
+        },
+    ).context["form"]
+
+    assert form.errors == {"new_password2": ["تکرار رمز عبور یکسان نیست."]}
+
+
 @pytest.mark.parametrize("name", ["login", "login-code"])
 def test_no_page_says_gozarvazheh(client, name):
     assert "گذرواژه" not in client.get(reverse(name)).content.decode()

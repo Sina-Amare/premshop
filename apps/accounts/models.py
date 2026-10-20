@@ -73,12 +73,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Collected at checkout, never at registration: asking for a phone number
     # before a purchase is friction on a base already unsure about the shop (D6).
     # blank string rather than NULL so "no phone" has exactly one representation.
-    phone = models.CharField("شماره تماس", max_length=20, blank=True, default="")
+    phone = models.CharField("شماره‌ی موبایل", max_length=20, blank=True, default="")
 
     # Reserved for S8. Present in 0001 because adding a column later is a trivial
     # migration, but these are part of the identity shape and belong in the table
     # that must not be redesigned. Unused until the linking flow exists.
-    telegram_id = models.BigIntegerField("شناسه تلگرام", null=True, blank=True, unique=True)
+    telegram_id = models.BigIntegerField("شناسه‌ی تلگرام", null=True, blank=True, unique=True)
     telegram_username = models.CharField("نام کاربری تلگرام", max_length=64, blank=True, default="")
     telegram_linked_at = models.DateTimeField("زمان اتصال تلگرام", null=True, blank=True)
 

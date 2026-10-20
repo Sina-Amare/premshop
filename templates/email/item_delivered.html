@@ -6,11 +6,11 @@
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">سفارش شما آماده است</h1>
 
-<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اطلاعات {{ product_name }} آماده است. برای دیدن آن روی دکمه‌ی زیر بزنید.</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اطلاعات ورود {{ product_name }} آماده است.</p>
 
 {% comment %}The ledger line — used once, here, where the money and the order number are.{% endcomment %}
 <div style="border-top:1px solid #E7E5E4;border-bottom:1px solid #E7E5E4;padding:6px 0;margin:0 0 28px 0;">
-  {% include "email/_fact.html" with k="شماره سفارش" v=order_number %}
+  {% include "email/_fact.html" with k="شماره‌ی سفارش" v=order_number %}
   {% include "email/_fact.html" with k="محصول" v=product_name %}
   {% include "email/_fact.html" with k="مبلغ پرداختی" v=amount|toman %}
 </div>
@@ -32,5 +32,5 @@ sanctioned convenience, and its constraints are stated where they are felt.
 
 <div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
 
-<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اطلاعات حساب را هیچ‌وقت داخل ایمیل نمی‌فرستیم؛ فقط از همین لینک می‌توانید ببینید. اگر مشکلی بود، به همین ایمیل جواب بدهید.</p>
+<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اطلاعات ورود اکانت را هیچ‌وقت در ایمیل نمی‌فرستیم. آن را با همین لینک یا از حساب کاربری می‌بینید. اگر مشکلی بود، به همین ایمیل پاسخ بدهید.</p>
 {% endblock %}

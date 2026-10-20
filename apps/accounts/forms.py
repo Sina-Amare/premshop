@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Any
 
 from django import forms
@@ -81,7 +83,19 @@ PASSWORD_HINT = (
 )
 
 
-class StyledPasswordChangeForm(auth_forms.PasswordChangeForm):
+class RuleErrorsOnTheFirstField(auth_forms.SetPasswordMixin):
+    """Django checks the password rules while cleaning the repeat field, so their
+    errors landed under «تکرار رمز عبور». They belong under the password they are
+    about, beside the hint that states the rules; a mismatch stays on the repeat."""
+
+    # A field name, not a password; bandit reads the parameter's name.
+    def validate_password_for_user(
+        self, user: User, password_field_name: str = ""  # nosec B107
+    ) -> None:
+        super().validate_password_for_user(user, "new_password1")
+
+
+class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordChangeForm):
     """Django's PasswordChangeForm with this project's field styling and wording.
 
     Two reasons this subclass has to exist rather than the template patching it:
@@ -118,7 +132,7 @@ class StyledPasswordChangeForm(auth_forms.PasswordChangeForm):
             field.widget.attrs["class"] = "field__input"
 
 
-class StyledSetPasswordForm(auth_forms.SetPasswordForm):
+class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordForm):
     """The same, for an account that has no password yet — an OTP-only customer
     setting one for the first time. Django's SetPasswordForm asks for no current
     password, which is correct: there isn't one to ask for."""
@@ -141,14 +155,16 @@ class ProfileForm(forms.ModelForm):
 
     An Iranian mobile number only, normalised to the eleven-digit 09 form — the
     shop is Iran-only, and one canonical spelling means the operator can search
-    for it. Persian digits, +98, spaces and dashes are all accepted on the way in
-    and never stored.
+    for it. Persian or Arabic digits, +98 or 0098, spaces, dashes and brackets
+    are accepted on the way in and never stored. Anything else is refused, never
+    dropped: an empty field is the only way to remove a number.
     """
 
     phone = forms.CharField(
-        label="شماره تماس",
+        label="شماره‌ی موبایل",
         required=False,
-        max_length=20,
+        # Room for what clean_phone strips; the column keeps the 11 digits.
+        max_length=32,
         help_text="برای پیگیری سفارش‌ها، مثلاً ۰۹۱۲۳۴۵۶۷۸۹",
         widget=forms.TextInput(
             attrs={
@@ -165,14 +181,15 @@ class ProfileForm(forms.ModelForm):
         fields = ["phone"]
 
     def clean_phone(self) -> str:
-        raw = otp.normalize_digits(self.cleaned_data.get("phone") or "")
-        digits = "".join(ch for ch in raw if ch.isdigit())
-        if not digits:
+        # Direction marks and other invisible format characters come along with
+        # a number copied from a contact card or a chat on a right-to-left phone.
+        typed = otp.normalize_digits(self.cleaned_data.get("phone") or "")
+        value = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
+        if not value:
             return ""
-        if digits.startswith("98") and len(digits) == 12:
-            digits = "0" + digits[2:]
-        if digits.startswith("9") and len(digits) == 10:
-            digits = "0" + digits
-        if not (len(digits) == 11 and digits.startswith("09")):
-            raise forms.ValidationError("شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.")
-        return digits
+        # [0-9], not \d or isdigit(): both accept digits from other scripts, and
+        # isdigit() accepts «²».
+        mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", value))
+        if not mobile:
+            raise forms.ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
+        return "0" + mobile.group(1)

@@ -75,15 +75,15 @@ gives everyone else the real brand face.
       </table>
 
       {% comment %}Footer sits outside the card: it is the letterhead, not part of the message.
-         Label and address are on separate lines rather than joined by a colon —
+         Label and address are on separate lines rather than joined by a colon:
          a colon between a Persian word and a Latin address flips sides under bidi
-         and renders as «support@premshop.ir :پشتیبانی».{% endcomment %}
+         and lands on the far side of the address.{% endcomment %}
       <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;">
         <tr>
-          <td class="pad" align="center" style="padding:28px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:12px;line-height:2;color:#A8A29E;">
+          <td class="pad" align="center" style="padding:28px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:12px;line-height:2;color:#78716C;">
             {% block footer %}
               <div style="color:#78716C;">پشتیبانی PremShop</div>
-              <div dir="ltr"><a href="mailto:{{ support_email }}" style="color:#0F766E;text-decoration:none;">{{ support_email }}</a></div>
+              <div dir="ltr"><a href="mailto:{{ support.email }}" style="color:#0F766E;text-decoration:none;">{{ support.email }}</a></div>
               <div dir="ltr" style="margin-top:2px;">premshop.ir</div>
             {% endblock %}
           </td>

@@ -19,13 +19,16 @@ from django.core import mail
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
+from django.test import Client
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
 from apps.accounts import otp, services, views
 from apps.accounts.models import User
 from apps.core import ratelimit
+from apps.core.email import render_email
 from apps.core.observability import sentry_options
+from apps.core.views import EMAIL_PREVIEWS
 
 pytestmark = pytest.mark.django_db
 
@@ -246,6 +249,25 @@ def test_otp_rate_limit_locks_after_n_attempts(client, user):
     assert "پشت سر هم" in response.content.decode()
 
 
+@pytest.mark.parametrize(
+    ("url", "limit", "message"),
+    [
+        ("login-code", ratelimit.OTP_REQUESTS_PER_IP, services.TOO_MANY_CODES_FROM_NETWORK),
+        ("login", ratelimit.LOGIN_ATTEMPTS_PER_IP, services.TOO_MANY_FROM_NETWORK),
+    ],
+)
+def test_a_spent_network_budget_says_so_without_blaming_the_visitor(client, url, limit, message):
+    """A mobile carrier puts many customers behind one address. The message for
+    the budget per IP said «you have asked several times in a row» to whoever
+    came next, and gave no number for the wait."""
+    for n in range(limit.times):
+        client.post(reverse(url), {"email": f"c{n}@example.test", "password": "wrong"})
+
+    body = client.post(reverse(url), {"email": "next@example.test", "password": "x"})
+
+    assert message in body.content.decode()
+
+
 def test_the_code_is_burned_after_too_many_wrong_guesses(client, user):
     client.post(reverse("login-code"), {"email": user.email})
     code = code_from(mail.outbox[0])
@@ -256,6 +278,69 @@ def test_the_code_is_burned_after_too_many_wrong_guesses(client, user):
     client.post(reverse("login-code-verify"), {"code": code})
 
     assert "_auth_user_id" not in client.session, "the real code must die with the budget"
+
+
+def test_a_guessed_out_code_stays_dead_when_its_counter_is_lost(user):
+    """The count lives in a key of its own. Lost alone, to eviction or to a
+    restore taken between the two writes, it gave a guessed-out code a fresh
+    budget of guesses."""
+    issued = otp.issue(user.email)
+    wrong = f"{(int(issued.code) + 1) % 10**otp.CODE_LENGTH:0{otp.CODE_LENGTH}d}"
+    for _ in range(otp.MAX_ATTEMPTS):
+        otp.verify(user.email, wrong)
+
+    cache.delete(otp._attempts_key(user.email))
+
+    assert not otp.verify(user.email, issued.code)
+
+
+class WindowExpiredInsideIncr:
+    """The real cache, except that a window's key expires between the EXISTS
+    and the INCR inside Django's RedisCache.incr(): Redis then creates the key
+    again at 1 and gives it no expiry."""
+
+    def __init__(self) -> None:
+        self.touched: list[tuple[str, int]] = []
+
+    def add(self, key: str, value: object, timeout: int) -> bool:
+        return False
+
+    def incr(self, key: str) -> int:
+        cache.set(key, 1, timeout=None)
+        return 1
+
+    def touch(self, key: str, timeout: int) -> bool:
+        self.touched.append((key, timeout))
+        return cache.touch(key, timeout)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(cache, name)
+
+
+def test_a_rate_limit_window_recreated_by_incr_still_expires(monkeypatch):
+    """A budget with no expiry never comes back: behind one proxy address,
+    every sign-in on the shop and the panel would be refused for good."""
+    window = WindowExpiredInsideIncr()
+    monkeypatch.setattr(ratelimit, "cache", window)
+
+    assert ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, "203.0.113.9")
+
+    assert window.touched == [("rl:login:ip:203.0.113.9", ratelimit.LOGIN_ATTEMPTS_PER_IP.seconds)]
+
+
+def test_a_code_counter_recreated_by_incr_still_expires_and_fails_closed(monkeypatch, user):
+    """The counter expires with the code it counts, so one that came back from
+    INCR means the code's life is over; left without an expiry it would also
+    count against every later code until the next one was issued."""
+    issued = otp.issue(user.email)
+    window = WindowExpiredInsideIncr()
+    monkeypatch.setattr(otp, "cache", window)
+
+    assert not otp.verify(user.email, issued.code)
+
+    [(key, timeout)] = window.touched
+    assert key == otp._attempts_key(user.email)
+    assert 0 < timeout <= otp.CODE_TTL_SECONDS
 
 
 def test_a_wrong_guess_does_not_extend_the_codes_life(user):
@@ -405,6 +490,75 @@ def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
     assert not broken, f"broken promises: {broken}"
 
 
+def test_the_alert_takes_the_customer_to_the_password_page(client, user):
+    """The button and the text version's link went to /account/, which for an
+    account with a password has no password form on it: a worried customer had
+    to find «رمز عبور» in the menu themselves."""
+    client.post(reverse("login-code"), {"email": user.email})
+    client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[0])})
+
+    alert = mail.outbox[1]
+    password_page = "http://testserver" + reverse("account-password")
+    assert f'href="{password_page}"' in alert.alternatives[0][0], "the button"
+    assert password_page in alert.body, "the text version's link"
+
+
+def test_the_alert_preview_shows_the_same_destination():
+    _, text, html = render_email("signin_alert", EMAIL_PREVIEWS["signin_alert"])
+
+    assert 'href="https://premshop.ir/account/password/"' in html
+    assert "https://premshop.ir/account/password/" in text
+
+
+def visible(html: str) -> str:
+    return " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+
+def test_the_alert_says_when_and_what_to_do_in_order():
+    """Someone who can read the mailbox can ask for a code and sign straight back
+    in after the shop password changes, so the mailbox comes first. And «which
+    day» alone cannot tell a customer whether it was their own sign-in an hour
+    ago."""
+    _, text, html = render_email("signin_alert", EMAIL_PREVIEWS["signin_alert"])
+
+    for part in (" ".join(text.split()), visible(html)):
+        assert "۲۷ شهریور ۱۴۰۵، ساعت ۱۴:۳۲" in part, "11:02 UTC is 14:32 in Tehran"
+        steps = [part.find(step) for step in STEPS]
+        assert -1 not in steps and steps == sorted(steps), dict(zip(STEPS, steps, strict=True))
+        assert "از همه‌ی دستگاه‌های دیگر خارج می‌شوید" in part
+
+
+STEPS = ("اول رمز ایمیلتان", "بعد رمز عبور PremShop", "به پشتیبانی خبر بدهید")
+
+
+def test_the_alert_carries_no_amber():
+    """Amber means a clock is running, and nothing in this mail is timed."""
+    _, _, html = render_email("signin_alert", EMAIL_PREVIEWS["signin_alert"])
+
+    for amber in ("#FDF6EC", "#F0DFC4", "#92400E"):
+        assert amber not in html.upper()
+
+
+def test_changing_the_password_signs_out_every_other_device(client, user):
+    """The alert promises this, so it is checked rather than assumed. Django
+    keys each session to a hash of the password; the view re-signs in only the
+    tab that made the change."""
+    elsewhere = Client()
+    elsewhere.force_login(user)
+    client.force_login(user)
+
+    client.post(
+        reverse("account-password"),
+        {"old_password": PASSWORD, "new_password1": NEW_PASSWORD, "new_password2": NEW_PASSWORD},
+    )
+
+    assert client.get(reverse("account")).status_code == 200, "this tab stays signed in"
+    assert elsewhere.get(reverse("account")).status_code == 302, "the other device is signed out"
+
+
+NEW_PASSWORD = "Another-Horse!2027"  # noqa: S105 — a fixture value, not a credential
+
+
 def test_no_signin_alert_for_an_account_with_no_password(client):
     """An OTP-only account has no second factor for the notice to protect, so it
     would be noise on every ordinary login."""
@@ -459,6 +613,23 @@ def test_every_public_auth_page_renders(client, name):
     assert (
         "PremShop" in response.content.decode()
     ), "the wordmark is the brand ruling: Latin, everywhere"
+
+
+@pytest.mark.parametrize(
+    "name", ["login", "login-code", "login-code-verify", "account", "account-password"]
+)
+def test_sign_in_and_account_pages_ask_not_to_be_indexed(client, user, name):
+    """Nothing on them is worth a search result, and a results page that lands
+    a stranger on a code-entry form is a phishing kit's favourite shape."""
+    if name.startswith("account"):
+        client.force_login(user)
+    elif name == "login-code-verify":
+        client.post(reverse("login-code"), {"email": user.email})
+
+    response = client.get(reverse(name))
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex">' in response.content.decode()
 
 
 def test_the_account_page_renders_for_a_signed_in_user(client, user):

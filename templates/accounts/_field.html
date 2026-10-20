@@ -3,10 +3,14 @@ One field: label, input, and its error. The CSS class lives on the widget in
 forms.py rather than being passed here — a template filter that injects classes
 means the markup and the form disagree about what the field looks like, and the
 form is the one that also renders in the admin. Param: field.
+
+The two ids are the ones Django already names in the input's aria-describedby
+(<id>_helptext, and <id>_error while the field is invalid); without them that
+reference points at nothing and a screen reader reads neither.
 {% endcomment %}
 <div class="field">
   <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
   {{ field }}
-  {% if field.help_text %}<p class="field__hint">{{ field.help_text }}</p>{% endif %}
-  {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  {% if field.help_text %}<p class="field__hint" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+  {% if field.errors %}<div id="{{ field.auto_id }}_error">{% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}</div>{% endif %}
 </div>

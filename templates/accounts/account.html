@@ -1,6 +1,6 @@
 {% extends "accounts/_account_base.html" %}{% load fa %}
 
-{% block title %}اطلاعات حساب — PremShop{% endblock %}
+{% block title %}اطلاعات حساب | PremShop{% endblock %}
 {% block heading %}اطلاعات حساب{% endblock %}
 
 {% block section %}
@@ -21,11 +21,11 @@ below.
 {% endcomment %}
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
-  <div class="fact"><span class="fact__k">عضو از</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
+  <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
 {# The field carries its own label; a heading above it says the same word twice. #}
-<form method="post" class="acct__form acct__form--spaced">
+<form method="post" class="acct__form acct__form--spaced" novalidate>
   {% csrf_token %}
   {% include "accounts/_field.html" with field=profile_form.phone %}
   <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
@@ -35,7 +35,7 @@ below.
   <div class="acct__next">
     <div>
       <h2 class="acct__next-t">رمز عبور</h2>
-      <p class="small" style="margin: 0">ورود بدون منتظرماندن برای کد.</p>
+      <p class="small" style="margin: 0">با رمز عبور، بدون منتظر ماندن برای کد وارد می‌شوید.</p>
     </div>
     <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
   </div>
@@ -43,8 +43,8 @@ below.
 
 <h2 class="acct__h2">پشتیبانی</h2>
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">@premshop</bdi></span></div>
-  <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">هر روز {{ SUPPORT_HOURS }}</span></div>
+  <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>
+  <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
 </div>
 <p class="small acct__hint"><a href="{% url 'faq' %}">پرسش‌های متداول</a></p>
 {% endblock %}

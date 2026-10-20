@@ -98,21 +98,21 @@ def styleguide(request: HttpRequest) -> HttpResponse:
             "now": timezone.now(),
             "table_rows": [
                 {
-                    "product": "اشتراک یک‌ماهه Claude Pro",
+                    "product": "اشتراک یک‌ماهه‌ی Claude Pro",
                     "duration": 30,
                     "price": Decimal("1200000"),
                     "status": "تحویل شد",
                     "kind": "ok",
                 },
                 {
-                    "product": "گیفت‌کارت ۱۰ دلاری",
+                    "product": "گیفت کارت ۱۰ دلاری",
                     "duration": 0,
                     "price": Decimal("890000"),
                     "status": "در صف انجام",
                     "kind": "accent",
                 },
                 {
-                    "product": "اشتراک سه‌ماهه ابزار توسعه",
+                    "product": "اشتراک سه‌ماهه‌ی ابزار توسعه",
                     "duration": 90,
                     "price": Decimal("3150000"),
                     "status": "۳ ساعت تا مهلت",
@@ -140,7 +140,9 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
     },
     "item_delivered": {
         "order_number": "PS-1405-0217",
-        "product_name": "اشتراک Claude Pro — یک‌ماهه",
+        # A ready account: Claude Pro is activated on the customer's own and
+        # has no login details to deliver, which this mail says it has.
+        "product_name": "اکانت یک‌ماهه‌ی Netflix",
         "amount": Decimal("1450000"),
         "delivery_url": "https://premshop.ir/d/preview-token",
         "link_ttl_hours": 72,  # ADR-0008 settles this; the first draft invented 48
@@ -149,7 +151,8 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
     "signin_alert": {
         # 11:02 UTC is 14:32 in Tehran — the template must render local time.
         "signed_in_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
-        "account_url": "https://premshop.ir/account/",
+        # The page where a password is changed, not a password.
+        "password_url": "https://premshop.ir/account/password/",  # nosec B105
     },
 }
 
