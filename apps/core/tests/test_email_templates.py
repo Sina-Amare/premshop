@@ -8,6 +8,7 @@ development-only preview route staying reachable in production.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -44,11 +45,29 @@ def test_every_template_renders_all_three_parts(name):
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_no_template_leaks_an_unrendered_placeholder(name):
     """A misspelled context key renders as empty, not as an error. Catch the shape."""
-    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    subject, text, html = render_email(name, EMAIL_PREVIEWS[name])
 
-    for part in (text, html):
+    for part in (subject, text, html):
         for token in ("{{", "}}", "{%", "%}", "{#", "#}"):
             assert token not in part, f"{token} survived rendering in {name}"
+
+
+def test_the_plain_text_half_is_not_html_escaped():
+    """Escaped, «Tom & Jerry's» reached the text part as «Tom &amp; Jerry&#x27;s»
+    and a link's query string broke at «&amp;». The HTML half still escapes."""
+    context = {
+        **EMAIL_PREVIEWS["item_delivered"],
+        "order_number": "PS-1&2'3",
+        "product_name": "Tom & Jerry's <Pro>",
+        "delivery_url": "https://premshop.ir/d/a?b=1&c=2",
+    }
+
+    subject, text, html = render_email("item_delivered", context)
+
+    assert "PS-1&2'3" in subject
+    assert "محصول: Tom & Jerry's <Pro>" in text
+    assert "https://premshop.ir/d/a?b=1&c=2" in text
+    assert "<Pro>" not in html and "Jerry&#x27;s" in html
 
 
 def test_the_message_is_multipart_with_both_halves():
@@ -67,11 +86,18 @@ def test_the_message_is_multipart_with_both_halves():
 
 
 def test_the_code_reaches_both_halves_in_persian_digits():
-    """A customer reading either part must see the same code they have to type."""
+    """A customer reading either part must see the same code they have to type.
+
+    The HTML prints it as two groups of three parted by padding, with nothing
+    between them, so the box itself is read: the preview line also carries the
+    code and would pass for it."""
     _, text, html = render_email("otp_code", EMAIL_PREVIEWS["otp_code"])
+    box = re.search(r'<div class="code"[^>]*>(.*?)</div>', html, re.S)
 
     assert "۴۱۸۳۰۵" in text
-    assert "۴۱۸۳۰۵" in html
+    assert box, "the code box is missing"
+    assert re.sub(r"<[^>]+>", "", box.group(1)) == "۴۱۸۳۰۵"
+    assert re.findall(r"<span[^>]*>([^<]*)</span>", box.group(1)) == ["۴۱۸", "۳۰۵"]
     assert "418305" not in text
 
 
@@ -136,7 +162,8 @@ def test_no_template_anywhere_uses_a_multiline_hash_comment():
     templates = Path(settings.BASE_DIR, "templates")
     offenders = [
         f"{path.relative_to(templates)}: {match.group(0)[:60]!r}"
-        for path in templates.rglob("*.html")
+        for path in templates.rglob("*")
+        if path.is_file()
         for match in re.finditer(r"\{#.*?#\}", path.read_text(encoding="utf-8"), re.S)
         if "\n" in match.group(0)
     ]
@@ -169,23 +196,26 @@ def test_every_font_stack_survives_gmail_dropping_the_web_font(name):
             assert faces.index("Tahoma") >= len(faces) - 3, f"Tahoma too early: {stack}"
 
 
+LETTER_SPACING = re.compile(r'letter-spacing:\s*([^;"\']+)')
+
+
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
-def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
+def test_no_message_tracks_its_text(name):
     """Arabic is cursive: tracking breaks the joins, so letter-spacing is banned.
 
-    Persian digits ۰-۹ never join, so the rule's reason does not reach them and the
-    OTP code carries 3px. That is the only exception, and this pins it — a stray
-    letter-spacing on Persian prose is invisible in review and wrong on screen.
+    The OTP code once carried 3px, the one place the rule's reason did not reach;
+    it is now grouped by a gap instead, so no value but 0 is left anywhere. A
+    stray letter-spacing on Persian prose is invisible in review and wrong on
+    screen.
     """
-    import re
-
     _, _, html = render_email(name, EMAIL_PREVIEWS[name])
-    spaced = re.findall(r'letter-spacing:\s*([^;"\']+)', html)
 
-    for value in spaced:
-        assert value.strip() in {"0", "3px"}, f"unexpected tracking on Persian text: {value}"
-    if name == "otp_code":
-        assert "3px" in spaced, "the code lost its tracking"
+    for value in LETTER_SPACING.findall(html):
+        assert value.strip() == "0", f"unexpected tracking on Persian text: {value}"
+
+
+def test_the_tracking_scan_sees_a_declaration():
+    assert LETTER_SPACING.findall('<div style="letter-spacing:3px;">') == ["3px"]
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))

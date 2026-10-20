@@ -153,6 +153,7 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "signed_in_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
         # The page where a password is changed, not a password.
         "password_url": "https://premshop.ir/account/password/",  # nosec B105
+        "account_email": "customer@example.com",
     },
 }
 

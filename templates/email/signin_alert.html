@@ -1,15 +1,15 @@
-{% extends "email/base.html" %}{% load fa %}
+{% extends "email/base.html" %}{% load fa head %}
 
-{% block title %}ورود جدید به حساب شما{% endblock %}
-{% block preheader %}کسی با کد ورود وارد حساب شما شد. اگر شما نبودید، اول رمز ایمیلتان را عوض کنید.{% endblock %}
+{% block title %}ورود جدید به حساب کاربری شما{% endblock %}
+{% block preheader %}کسی با کد ورود وارد حساب کاربری شما شد. اگر شما نبودید، همین حالا رمزها را عوض کنید.{% endblock %}
 
 {% comment %}
 C14, and it exists because the owner argued for it at review round 1 (ADR-0012):
 an attacker holding the mailbox can request a code and sign in, and without this
-the real owner never learns. It does not prevent the break-in — it makes it
+the real owner never learns. It does not prevent the break-in; it makes it
 visible, which is the difference between an incident and a silent loss.
 
-Sent ONLY when the account has a usable password, because an OTP-only account
+Sent only when the account has a usable password, because an OTP-only account
 has no second factor for this mail to protect and the notice would just be noise
 on every ordinary login.
 
@@ -18,23 +18,31 @@ new code and sign straight back in after the shop password changes.
 {% endcomment %}
 
 {% block content %}
-<h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">ورود جدید به حساب شما</h1>
+<h1 style="margin:0 0 14px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:22px;font-weight:bold;line-height:1.5;color:#1C1A17;">ورود جدید به حساب کاربری شما</h1>
+<div style="height:0;border-top:2px solid #1C1A17;font-size:0;line-height:0;">&nbsp;</div>
+<p style="margin:20px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;color:#1C1A17;">کسی با کد ورود وارد حساب کاربری شما شد.</p>
+<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>
 
-<p style="margin:0 0 12px 0;font-size:16px;line-height:1.95;color:#57534E;">در {{ signed_in_at|jalali }}، ساعت {{ signed_in_at|time:"H:i"|fa_digits }}، کسی با کد ورود وارد حساب شما شد.</p>
-
-<p style="margin:0 0 24px 0;font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان بودید، این ایمیل فقط برای اطلاع شماست.</p>
-
-{% comment %}Neutral, not amber: amber means a clock is running, and nothing here is timed.{% endcomment %}
+{% capture when %}{{ signed_in_at|jalali }}، ساعت {{ signed_in_at|time:"H:i"|fa_digits }} به وقت تهران{% endcapture %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
-  <tr>
-    <td bgcolor="#FAFAF9" style="background-color:#FAFAF9;border:1px solid #E7E5E4;border-radius:10px;padding:14px 18px 12px 18px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.9;color:#1C1917;">اگر شما نبودید، همین حالا اول رمز ایمیلتان و بعد رمز عبور PremShop را عوض کنید و به پشتیبانی خبر بدهید. با عوض کردن رمز عبور PremShop از همه‌ی دستگاه‌های دیگر خارج می‌شوید.</td>
-  </tr>
+{% include "email/_fact.html" with k="زمان" v=when %}
+{% include "email/_fact.html" with k="روش ورود" v="کد ورود به ایمیل" %}
+{% if account_email %}{% include "email/_fact.html" with k="حساب کاربری" v=account_email ltr=True %}{% endif %}
 </table>
+
+<p style="margin:20px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;color:#46423B;">اگر خودتان بودید، کاری لازم نیست.</p>
+<div style="height:16px;font-size:0;line-height:0;">&nbsp;</div>
+
+{% comment %}Neutral, not amber: amber means a clock is running, and nothing here is
+timed. The ink edge on the start side is what marks it as the instruction.{% endcomment %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;"><tr>
+<td bgcolor="#F6F4EF" style="background-color:#F6F4EF;border-right:4px solid #1C1A17;padding:14px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.9;color:#1C1A17;"><strong>اگر شما نبودید،</strong> همین حالا اول رمز ایمیلتان و بعد رمز عبور <span dir="ltr" style="unicode-bidi:isolate;">PremShop</span> را عوض کنید و به پشتیبانی خبر بدهید. با عوض کردن رمز عبور <span dir="ltr" style="unicode-bidi:isolate;">PremShop</span> از همه‌ی دستگاه‌های دیگر خارج می‌شوید.</td>
+</tr></table>
 
 <div style="height:24px;font-size:0;line-height:0;">&nbsp;</div>
 {% include "email/_button.html" with url=password_url label="تغییر رمز عبور" %}
 
-<div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
-
-<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">چون حساب شما رمز عبور دارد، هر ورود با کد را به شما خبر می‌دهیم. <span dir="ltr" style="unicode-bidi:isolate;">PremShop</span> هیچ‌وقت رمز عبور یا کد شما را نمی‌پرسد.</p>
+<div style="height:28px;font-size:0;line-height:0;">&nbsp;</div>
+<div style="height:0;border-top:2px solid #1C1A17;font-size:0;line-height:0;">&nbsp;</div>
+<p style="margin:16px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.9;color:#655F56;">چون حساب کاربری شما رمز عبور دارد، هر ورود با کد را به شما خبر می‌دهیم. <span dir="ltr" style="unicode-bidi:isolate;">PremShop</span> هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌پرسد.</p>
 {% endblock %}

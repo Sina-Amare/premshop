@@ -1,18 +1,11 @@
 {% comment %}
-The ledger line — label · dotted leader · value. The design's signature: the
-visual grammar of an invoice, against a buyer's fear of paying into a void.
+One row of a facts table: the label at the start, the value at the end. The
+caller supplies the <table>, so the rows share one label column.
 
-Three cells rather than a CSS leader, because the middle cell's dotted bottom
-border is the one leader technique Outlook renders. That middle cell carries
-width:100% so it absorbs the remaining space; without it the table shrinks to
-fit and the leader collapses to a few stray dots.
-
-Params: k, v.
+Params: k, v, and ltr for a Latin value (an order number, an address), which
+then keeps its own order beside the Persian label.
 {% endcomment %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
-  <tr>
-    <td valign="bottom" style="font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.6;color:#78716C;white-space:nowrap;padding:9px 0 7px 0;">{{ k }}</td>
-    <td valign="bottom" width="100%" style="width:100%;padding:0 10px 11px 10px;"><div style="border-bottom:1px dotted #D6D3D1;font-size:0;line-height:0;height:1px;">&nbsp;</div></td>
-    <td valign="bottom" align="left" style="font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:14px;line-height:1.6;color:#1C1917;white-space:nowrap;padding:9px 0 7px 0;">{{ v }}</td>
-  </tr>
-</table>
+<tr>
+<td valign="top" style="padding:10px 0 10px 16px;border-bottom:1px solid #E2DDD3;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.7;color:#655F56;white-space:nowrap;">{{ k }}</td>
+<td valign="top" align="left" style="padding:10px 0;border-bottom:1px solid #E2DDD3;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.7;color:#1C1A17;font-weight:bold;">{% if ltr %}<span dir="ltr" style="unicode-bidi:isolate;">{{ v }}</span>{% else %}{{ v }}{% endif %}</td>
+</tr>
