@@ -33,3 +33,5 @@
 **Assumptions.** One operator, entering a few dozen products. The sections' text is short enough to render on every request. The owner's undecided policies are written into the text as placeholders rather than guessed.
 
 **Revisit when.** The source re-read script exists: `ProductSource` arrives with it and `facts_checked_on` is set only by a re-read that accepts every source. Three products need something none of the six kinds covers: a seventh kind with its own template, never a free block. A second person edits content: versions and an approval step. The same text is kept identical on five or more products and an edit is missed on one of the copies: shared text linked from each product.
+
+**Amendment — 2026-10-20, evening.** «پیش از خرید» is printed only when it says more than the warranty beside the title: a row with text or an image, a refund note, or a stance on Iran. Printed regardless, it was a section on every product of the real catalogue that repeated the warranty a third time, and on a gift card a whole section saying «گارانتی: ندارد». When it is left out, so are the links to it from the warranty row and the buy box.

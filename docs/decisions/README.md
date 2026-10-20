@@ -31,7 +31,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; region values; Persian CHECK messages; search folding; seeded shop; Unfold admin |
 | [0026](0026-storefront-composition.md) | Storefront: ink bands top and bottom, the shelf panel across the seam, two radii, one shadow, colour only from the brand marks; fonts subset |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
-| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» on every page; questions in `catalog`; one publishing rule; staff preview of a draft at its own address |
+| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address |
 
 ## Legacy shorthand map
 
