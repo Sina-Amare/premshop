@@ -140,8 +140,15 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             request.session[PENDING_NEXT_KEY] = _safe_next(request)
             return redirect("login-code-verify")
 
+    # Under a rate limit the page offers the code page only while a code sent from
+    # this session is still alive; the per-network limit refuses visitors never sent one.
+    code_waiting = bool(request.session.get(PENDING_EMAIL_KEY)) and (
+        _seconds_left(request.session.get(PENDING_EXPIRES_KEY, 0)) > 0
+    )
     return render(
-        request, "accounts/login_code_request.html", {"form": form, "next": _safe_next(request)}
+        request,
+        "accounts/login_code_request.html",
+        {"form": form, "next": _safe_next(request), "code_waiting": code_waiting},
     )
 
 

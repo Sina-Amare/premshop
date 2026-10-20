@@ -1,34 +1,33 @@
 {% extends "base.html" %}
 
 {% comment %}
-The shell every auth page sits in. Narrow on purpose: a login form spanning a
-desktop viewport reads as an internal admin tool, and the measure is far too
-long for Persian at 17px.
+The shell every sign-in page sits in: one narrow sheet, no art, no motion. A page
+returned with an error says so first in its title, and focus starts on the error:
+the notice when the whole form failed, the first invalid field otherwise.
 {% endcomment %}
+
+{% block title %}{% if form.errors %}خطا: {% else %}{% for message in messages %}{% if forloop.first and message.level_tag == "error" %}خطا: {% endif %}{% endfor %}{% endif %}{% block auth_page_title %}{% endblock %}{% endblock %}
 
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
-<div class="wrap page">
-<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
-  <div class="card auth-card">
-    <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
-    {% block auth_intro %}{% endblock %}
-
-    {% comment %}Set by a redirect after a plain form post, such as a code resent without JavaScript.{% endcomment %}
-    {% for message in messages %}
-      {% if message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
-    {% endfor %}
-
-    {% if form.non_field_errors %}
-      <div class="form-error" role="alert">
-        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-      </div>
-    {% endif %}
-
-    {% block auth_body %}{% endblock %}
-  </div>
-  {% block auth_after %}{% endblock %}
+<div class="wrap plain-page">
+<div class="auth">
+  <section class="sheet" aria-labelledby="auth-h">
+    <header class="sheet__head auth__head">
+      <h1 class="auth__title" id="auth-h">{% block auth_title %}{% endblock %}</h1>
+      {% block auth_intro %}{% endblock %}
+    </header>
+    <div class="sheet__body auth__body">
+      {% block auth_body %}{% endblock %}
+    </div>
+    {% block auth_foot %}{% endblock %}
+  </section>
+  <p class="auth__help">در ورود مشکلی دارید؟ در تلگرام <a href="{{ support.telegram_url }}" rel="noopener"><bdi lang="en">{{ support.telegram }}</bdi></a> بپرسید، {{ support.hours }}.</p>
 </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if form.errors and not form.non_field_errors %}<script>document.querySelector('main [aria-invalid="true"]').focus();</script>{% endif %}
 {% endblock %}

@@ -1,50 +1,57 @@
 {% extends "accounts/_account_base.html" %}{% load fa %}
 
-{% block title %}اطلاعات حساب{% endblock %}
-{% block heading %}اطلاعات حساب{% endblock %}
+{% block title %}حساب کاربری{% endblock %}
 
 {% block section %}
 {% comment %}
-Every value here is a field the User model holds. There is no order table
-yet (S4b), no subscription table (S9) and no ticket system (ADR-0014), so
-there is nothing here shaped like one — and no completion meter, because
-three of the four things such a meter would count can never be completed
-today. «آخرین ورود» is absent for the same reason: Django writes last_login
-at the moment of login, so it would read «لحظاتی پیش» every single time.
+Every value here is a field the User model holds. Orders are taken in Telegram until
+S4b, so the orders sheet says so instead of listing anything. There is no completion
+meter, because three of the four things it would count can never be completed today,
+and no «آخرین ورود»: Django writes last_login at the moment of login, so it would read
+«لحظاتی پیش» every single time.
 
-The phone number appears once, in the field that edits it. It used to be
-printed on an overview page as well, which meant one fact in two places and
-no way to tell which one was authoritative. «روش ورود» is gone for a
-related reason: it described the login system rather than the account, and
-the only part of it the customer can act on is the «ثبت رمز عبور» card
-below.
+The phone number appears once, in the field that edits it. One next step at most: an
+account without a password is offered one; an account with both ways in is left alone.
 {% endcomment %}
-<div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
-  <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
-</div>
-
-{# The field carries its own label; a heading above it says the same word twice. #}
-<form method="post" class="acct__form acct__form--spaced" novalidate>
-  {% csrf_token %}
-  {% include "accounts/_field.html" with field=profile_form.phone %}
-  <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
-</form>
-
-{% if not request.user.has_usable_password %}
-  <div class="acct__next">
-    <div>
-      <h2 class="acct__next-t">رمز عبور</h2>
-      <p class="small" style="margin: 0">با رمز عبور، بدون منتظر ماندن برای کد وارد می‌شوید.</p>
+<section class="sheet acct-sec acct-orders" aria-labelledby="orders-h">
+  <header class="sheet__head"><h2 class="sheet__title" id="orders-h">سفارش‌ها</h2></header>
+  <div class="sheet__body">
+    <div class="empty">
+      <div class="empty__art">{% include "svg/empty.svg" %}</div>
+      <p class="empty__text">هنوز سفارشی ثبت نکرده‌اید.</p>
+      <p class="empty__note">فعلاً سفارش را در تلگرام می‌گیریم: <a href="{{ support.telegram_url }}" rel="noopener"><bdi lang="en">{{ support.telegram }}</bdi></a>، {{ support.hours }}.</p>
+      <a class="btn btn--secondary" href="{% url 'home' %}#rates">دیدن نرخ‌نامه</a>
     </div>
-    <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
   </div>
-{% endif %}
+</section>
 
-<h2 class="acct__h2">پشتیبانی</h2>
-<div class="card acct__card">
-  <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>
-  <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
+<div class="{% if request.user.has_usable_password %}acct-single{% else %}acct-grid{% endif %}">
+  <section class="sheet acct-sec" aria-labelledby="me-h">
+    <header class="sheet__head"><h2 class="sheet__title" id="me-h">مشخصات</h2></header>
+    <div class="sheet__body">
+      <dl class="kv">
+        <div class="kv__row"><dt>ایمیل</dt><dd><bdi lang="en">{{ request.user.email }}</bdi></dd></div>
+        <div class="kv__row"><dt>تاریخ عضویت</dt><dd>{{ request.user.date_joined|jalali }}</dd></div>
+      </dl>
+      {# The field carries its own label; a heading above it would say the same word twice. #}
+      <form class="form" method="post" novalidate>
+        {% csrf_token %}
+        {% include "accounts/_field.html" with field=profile_form.phone %}
+        <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره‌ی شماره</button>
+      </form>
+    </div>
+  </section>
+
+  {% if not request.user.has_usable_password %}
+  <section class="sheet acct-sec" aria-labelledby="pw-h">
+    <header class="sheet__head"><h2 class="sheet__title" id="pw-h">رمز عبور</h2></header>
+    <div class="sheet__body">
+      <div class="acct__next">
+        <p>با رمز عبور، بدون منتظر ماندن برای کد وارد می‌شوید.</p>
+        <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 </div>
-<p class="small acct__hint"><a href="{% url 'faq' %}">پرسش‌های متداول</a></p>
 {% endblock %}

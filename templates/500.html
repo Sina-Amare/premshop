@@ -5,17 +5,25 @@
 {% comment %}
 Rendered by apps.core.errors.server_error without a request context: the
 database or the session may be what failed. `support` is passed in, and
-nothing on this page or in base.html may need a query.
+nothing on this page or in base.html may need a query. The empty href reloads
+the address that failed.
 {% endcomment %}
+
 {% block content %}
-<div class="wrap page">
-<div class="notfound">
-  <p class="notfound__code notfound__code--bad">۵۰۰</p>
-  <h1 class="page-head__title">مشکلی در سرور پیش آمد</h1>
-  <p class="prose">خطا ثبت شد و پیگیری می‌کنیم. اگر در حال پرداخت بودید، دوباره پرداخت نکنید و اول در تلگرام بپرسید: <bdi class="latin">{{ support.telegram }}</bdi></p>
-  <div class="notfound__act">
-    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
+<div class="wrap">
+<div class="errorpage">
+  <div>
+    <p class="errorpage__code">خطای&nbsp;۵۰۰</p>
+    <h1 class="errorpage__title">مشکل از ماست</h1>
+    <p class="errorpage__text">صفحه باز نشد. چند دقیقه‌ی دیگر دوباره امتحان کنید.</p>
+    <p class="notice errorpage__note">اگر در حال پرداخت بودید، دوباره پرداخت نکنید. اول در تلگرام بپرسید تا پرداختتان را بررسی کنیم.</p>
+    <div class="errorpage__actions">
+      <a class="btn btn--primary" href="">دوباره امتحان کنید</a>
+      <a href="{{ support.telegram_url }}" rel="noopener">تلگرام <bdi lang="en">{{ support.telegram }}</bdi></a>
+      <span class="small muted">{{ support.hours }}</span>
+    </div>
   </div>
+  <div class="errorpage__art">{% include "svg/500.svg" %}</div>
 </div>
 </div>
 {% endblock %}

@@ -553,7 +553,7 @@ def test_the_alert_carries_no_amber():
     """Amber means a clock is running, and nothing in this mail is timed."""
     _, _, html = render_email("signin_alert", EMAIL_PREVIEWS["signin_alert"])
 
-    for amber in ("#FDF6EC", "#F0DFC4", "#92400E"):
+    for amber in ("#F4E5D8", "#EFCBAD", "#FDF6EC", "#F0DFC4", "#92400E"):
         assert amber not in html.upper()
 
 
@@ -673,7 +673,7 @@ def test_an_otp_only_user_is_not_asked_for_a_current_password(client):
 
 def test_no_password_input_is_ever_rendered_without_the_field_class(client, user):
     """Tailwind's preflight sets border-width: 0 on every element, so an input
-    without field__input has NO BORDER — invisible on screen, still focusable and
+    without the input class has NO BORDER — invisible on screen, still focusable and
     submittable. Nothing errors; the page silently becomes unusable. This shipped
     on the account page and was caught by looking at a screenshot, not a test."""
     client.force_login(user)
@@ -681,7 +681,7 @@ def test_no_password_input_is_ever_rendered_without_the_field_class(client, user
     body = client.get(reverse("account-password")).content.decode()
 
     for match in re.finditer(r"<input[^>]*type=\"password\"[^>]*>", body):
-        assert "field__input" in match.group(0), match.group(0)
+        assert re.search(r'class="(?:[^"]* )?input[ "]', match.group(0)), match.group(0)
 
 
 # --- Where you land after signing in --------------------------------------

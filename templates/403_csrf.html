@@ -9,19 +9,20 @@ left open in one tab while the customer signed in from another, which rotates
 the token, or a browser that refuses cookies. Django's own page is English
 and talks about referers. Rendered by apps.core.errors.csrf_failure.
 {% endcomment %}
+
 {% block content %}
-<div class="wrap page">
-<div class="notfound">
-  <p class="notfound__code">۴۰۳</p>
-  <h1 class="page-head__title">این فرم دیگر معتبر نیست</h1>
-  <p class="prose">صفحه را دوباره باز کنید و فرم را از نو بفرستید. اگر باز همین پیام را دیدید، کوکی‌های مرورگر را برای این سایت روشن کنید.</p>
-  <div class="notfound__act">
-    {% if in_panel %}
-    <a class="btn btn--primary" href="{% url 'admin:index' %}">بازگشت به پنل مدیریت</a>
-    {% else %}
-    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
-    {% endif %}
+<div class="wrap">
+<div class="errorpage">
+  <div>
+    <p class="errorpage__code">خطای&nbsp;۴۰۳</p>
+    <h1 class="errorpage__title">این فرم دیگر معتبر نیست</h1>
+    <p class="errorpage__text">صفحه را دوباره باز کنید و فرم را از نو بفرستید. اگر باز همین پیام را دیدید، کوکی‌های مرورگر را برای این سایت روشن کنید.</p>
+    <div class="errorpage__actions">
+      {% if in_panel %}<a class="btn btn--primary" href="{% url 'admin:index' %}">بازگشت به پنل مدیریت</a>
+      {% else %}<a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>{% endif %}
+    </div>
   </div>
+  <div class="errorpage__art">{% include "svg/500.svg" %}</div>
 </div>
 </div>
 {% endblock %}

@@ -13,6 +13,7 @@ import time
 
 import pytest
 from django.core import mail
+from django.test import Client
 from django.urls import reverse
 
 from apps.accounts import otp
@@ -149,6 +150,37 @@ def test_resend_is_rate_limited_like_a_first_request(waiting):
     assert len(mail.outbox) == sent_before
 
 
+def test_a_refused_request_offers_the_code_page_only_while_a_code_waits(waiting, user):
+    """The rate-limit notice promised the last code a typed ten minutes, and kept
+    offering it after the code had died."""
+    for _ in range(ratelimit.OTP_REQUESTS_PER_EMAIL.times - 1):
+        waiting.post(reverse("login-code"), {"email": user.email})
+
+    refused = waiting.post(reverse("login-code"), {"email": user.email}).content.decode()
+
+    assert "پشت سر هم" in refused, "the control: this request was refused"
+    assert reverse("login-code-verify") in refused, "a code sent minutes ago still works"
+    session = waiting.session
+    session[PENDING_EXPIRES_KEY] = int(time.time()) - 1
+    session.save()
+    refused = waiting.post(reverse("login-code"), {"email": user.email}).content.decode()
+    assert "پشت سر هم" in refused
+    assert reverse("login-code-verify") not in refused, "a dead code is not a way in"
+
+
+def test_a_refused_request_offers_no_code_to_a_visitor_never_sent_one(client):
+    """The network's budget refuses an address that was never sent a code, and
+    the notice offered «the last code we sent» to it all the same."""
+    other = Client()
+    for n in range(ratelimit.OTP_REQUESTS_PER_IP.times):
+        other.post(reverse("login-code"), {"email": f"c{n}@example.test"})
+
+    refused = client.post(reverse("login-code"), {"email": "next@example.test"}).content.decode()
+
+    assert "از این شبکه" in refused, "the control: this request was refused"
+    assert reverse("login-code-verify") not in refused
+
+
 def test_resend_without_a_pending_address_is_refused(client):
     response = client.post(reverse("login-code-resend"), **JSON)
 
@@ -168,13 +200,18 @@ def test_resend_is_a_form_a_browser_can_submit_on_its_own(waiting):
     with JavaScript off there was no way to ask for a second code."""
     body = waiting.get(reverse("login-code-verify")).content.decode()
 
-    form = re.search(r"<form[^>]*>(?:(?!</form>).)*?id=\"resend\".*?</form>", body, re.S)
-    assert form, "the resend button is not inside a form"
-    assert f'action="{reverse("login-code-resend")}"' in form.group(0)
-    assert 'method="post"' in form.group(0)
-    button = re.search(r"<button[^>]*id=\"resend\"[^>]*>", form.group(0)).group(0)
+    # The button sits beside the code's validity, inside the code form, and
+    # belongs to the resend form through its form attribute: forms cannot nest.
+    button = re.search(r"<button[^>]*id=\"resend\"[^>]*>", body).group(0)
     assert 'type="submit"' in button
     assert "disabled" not in button
+    owner = re.search(r'\sform="([^"]+)"', button)
+    assert owner, "the resend button is not tied to a form"
+    form = re.search(rf'<form[^>]*id="{owner.group(1)}"[^>]*>.*?</form>', body, re.S)
+    assert form, "the resend button names a form that is not on the page"
+    assert f'action="{reverse("login-code-resend")}"' in form.group(0)
+    assert 'method="post"' in form.group(0)
+    assert "csrfmiddlewaretoken" in form.group(0)
 
 
 def test_a_plain_resend_comes_back_to_the_page_with_a_new_code(waiting, user):
@@ -315,7 +352,7 @@ def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
 def test_the_header_account_link_goes_to_login_when_signed_out(client):
     body = client.get(reverse("login")).content.decode()
 
-    assert f'href="{reverse("login-code")}" class="hdr__account"' in body
+    assert f'href="{reverse("login-code")}" class="hlink"' in body
     # Labelled, not a bare pictogram: a first-time visitor has to be able to
     # see where signing up happens without decoding a glyph.
     assert "ورود یا ثبت‌نام" in body
@@ -326,7 +363,7 @@ def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user
 
     body = client.get(reverse("account")).content.decode()
 
-    assert f'href="{reverse("account")}" class="hdr__account"' in body
+    assert f'href="{reverse("account")}" class="hlink"' in body
     assert "ورود یا ثبت‌نام" not in body
 
 

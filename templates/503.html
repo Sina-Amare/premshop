@@ -3,18 +3,23 @@
 {% block title %}ورود فعلاً ممکن نیست{% endblock %}
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
+{% comment %}Sign-in needs the cache, and the cache is down (apps.core.middleware).{% endcomment %}
+
 {% block content %}
-<div class="wrap page">
-<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
-  <div class="card auth-card">
-    <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-4)">ورود فعلاً ممکن نیست</h1>
-    <p class="prose" style="margin: 0 0 var(--spacing-5)">ورود به حساب چند دقیقه‌ای در دسترس نیست. کمی بعد دوباره تلاش کنید.</p>
-    <p class="small" style="margin: 0 0 var(--spacing-6)">این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.</p>
-    <a class="btn btn--secondary" href="{% url 'login-code' %}">تلاش دوباره</a>
+<div class="wrap">
+<div class="errorpage">
+  <div>
+    <p class="errorpage__code">خطای&nbsp;۵۰۳</p>
+    <h1 class="errorpage__title">ورود فعلاً ممکن نیست</h1>
+    <p class="errorpage__text">ورود به حساب چند دقیقه‌ای در دسترس نیست. کمی بعد دوباره امتحان کنید.</p>
+    <p class="errorpage__note small muted">این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.</p>
+    <div class="errorpage__actions">
+      <a class="btn btn--primary" href="{% url 'login-code' %}">دوباره امتحان کنید</a>
+      <a href="{{ support.telegram_url }}" rel="noopener">تلگرام <bdi lang="en">{{ support.telegram }}</bdi></a>
+      <span class="small muted">{{ support.hours }}</span>
+    </div>
   </div>
-  <p class="micro" style="text-align: center; margin-block-start: var(--spacing-4)">
-    اگر ادامه داشت، به <span class="latin">{{ support.email }}</span> ایمیل بزنید.
-  </p>
+  <div class="errorpage__art">{% include "svg/500.svg" %}</div>
 </div>
 </div>
 {% endblock %}
