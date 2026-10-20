@@ -1090,6 +1090,18 @@ def test_the_breadcrumb_keeps_data_as_it_was_written(client, operator):
     assert "<bdi>customer@example.test</bdi>" in body
 
 
+def test_a_latin_name_in_the_breadcrumb_is_cut_at_its_end(client, operator, catalogue):
+    """The crumb took the page's right-to-left direction, so on a phone the
+    ellipsis ate a Latin name's start and both gift cards read «…Gift Card»."""
+    live = catalogue["live"]
+    Product.objects.filter(pk=live.pk).update(name="Google Play Gift Card")
+
+    body = client.get(change_url(live)).content.decode()
+
+    [crumb] = re.findall(r"<(?:a|span) ([^>]*)>\s*<bdi>Google Play Gift Card</bdi>", body)
+    assert "truncate" in crumb and 'dir="auto"' in crumb, crumb
+
+
 def test_the_paths_arrows_point_the_way_a_persian_reader_moves(client, operator, catalogue):
     body = client.get(change_url(catalogue["live"])).content.decode()
 
@@ -1449,6 +1461,42 @@ def test_a_drafts_form_lists_what_it_still_lacks(client, operator, catalogue):
     assert readiness, "no readiness list on the draft's form"
     assert "پیش از انتشار" in readiness.group(0)
     assert "موضع درباره‌ی ایران نوشته نشده است." in readiness.group(0)
+
+
+def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, operator, catalogue):
+    """The owner's live products predate the stance on Iran. Taken down, each
+    was refused on the way back up, and nothing had said so beforehand."""
+    live = catalogue["live"]
+    Product.objects.filter(pk=live.pk).update(iran_stance="")
+
+    body = client.get(change_url(live)).content.decode()
+
+    readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
+    assert readiness, "no readiness list on the live product's form"
+    assert "دوباره منتشر نمی‌شود" in readiness.group(0)
+    assert "پیش از انتشار" not in readiness.group(0)
+    assert "موضع درباره‌ی ایران نوشته نشده است." in readiness.group(0)
+
+
+def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operator, catalogue):
+    live, gone = catalogue["live"], catalogue["gone"]
+    Product.objects.filter(pk=live.pk).update(iran_stance="")
+
+    response = client.post(
+        reverse("admin:catalog_product_changelist"),
+        {"action": "unpublish", "_selected_action": [str(live.pk), str(gone.pk)]},
+        follow=True,
+    )
+
+    live.refresh_from_db()
+    assert live.status == Product.Status.DRAFT
+    # Blue like the same list on the form: orange is too close to the amber kept for time.
+    [note] = [str(m) for m in response.context["messages"] if m.level_tag == "info"]
+    headline, _, rest = note.partition('<ul class="panel-reasons">')
+    assert headline == "«⁨live⁩» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.", note
+    assert re.findall(r"<li>(.*?)</li>", rest) == [
+        "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+    ]
 
 
 def test_a_ready_draft_says_so_and_a_live_product_says_nothing(client, operator, catalogue):

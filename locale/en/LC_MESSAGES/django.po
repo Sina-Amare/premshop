@@ -174,8 +174,8 @@ msgstr "1 to 72 hours. Err on the long side."
 
 # Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
 # isolates, so the bidi algorithm keeps it in order inside the sentence.
-msgid "اگر پر کنید، مشتری این متن را به‌جای «تا … ساعت» می‌بیند. عبارت کوتاه بنویسید، نه جمله."
-msgstr "If filled in, the customer sees this instead of ⁨«تا … ساعت»⁩. A short phrase, not a sentence."
+msgid "اگر پر کنید، مشتری همین متن را همان‌طور که نوشته‌اید به‌جای «تحویل تا … ساعت» می‌بیند."
+msgstr "If filled in, the customer sees this text exactly as written, in place of ⁨«تحویل تا … ساعت»⁩."
 
 msgid "روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."
 msgstr "The product page says it can be renewed."
@@ -598,3 +598,12 @@ msgstr "A small dated table, only where it helps this very decision."
 
 msgid "یک جمله: محصول برای خریدار چه می‌کند و به کار چه کسی می‌آید."
 msgstr "One sentence: what the product does for the buyer and who it suits."
+
+msgid "«%(product)s» تا این‌ها درست نشود، دوباره منتشر نمی‌شود."
+msgstr "“%(product)s” cannot be published again until these are fixed."
+
+msgid "اگر از سایت برداشته شود"
+msgstr "If it is taken off the shop"
+
+msgid "تا این‌ها درست نشود، دوباره منتشر نمی‌شود."
+msgstr "Until these are fixed, it cannot be published again."

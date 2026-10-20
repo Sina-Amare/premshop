@@ -334,7 +334,7 @@ class StaleFactsFilter(admin.SimpleListFilter):
 
     def queryset(self, request: HttpRequest, queryset: QuerySet[Product]) -> QuerySet[Product]:
         if self.value() == "no_stance":
-            # Live before publishing asked for it; the readiness list is on drafts only.
+            # Live before publishing asked for it; taken down, it cannot go back up.
             return queryset.filter(status=Product.Status.ACTIVE, iran_stance="")
         if self.value() != "stale":
             return queryset
@@ -414,6 +414,12 @@ def refusal_reasons(form: forms.ModelForm, formsets: list[Any]) -> list[str]:
         reasons += [str(m) for m in formset.non_form_errors()]
         reasons += [str(m) for row in formset.errors for errors in row.values() for m in errors]
     return reasons
+
+
+def reasons_message(headline: str, problems: list[str]) -> SafeString:
+    # A list, as on the form: run together, they were a paragraph nobody scans.
+    reasons = format_html_join("", "<li>{}</li>", ((problem,) for problem in problems))
+    return format_html('{}<ul class="panel-reasons">{}</ul>', headline, reasons)
 
 
 def amount(value: Decimal) -> SafeString:
@@ -639,11 +645,7 @@ class ProductAdmin(ModelAdmin):
                 headline = gettext("«%(product)s» منتشر نشد.") % {
                     "product": f"\u2068{product}\u2069"
                 }
-                # A list, as on the form: run together, they were a paragraph nobody scans.
-                reasons = format_html_join("", "<li>{}</li>", ((problem,) for problem in problems))
-                messages.error(
-                    request, format_html('{}<ul class="panel-reasons">{}</ul>', headline, reasons)
-                )
+                messages.error(request, reasons_message(headline, problems))
             else:
                 ready.append(product.pk)
         # When every product was refused, the reasons are the whole answer: a
@@ -653,7 +655,21 @@ class ProductAdmin(ModelAdmin):
 
     @admin.action(description=_("برداشتن از سایت"), permissions=["change"])
     def unpublish(self, request: HttpRequest, queryset: QuerySet[Product]) -> None:
+        """Take the selected products down, and name what each one lacks
+        before the publishing rule lets it back up: a live product is exempt
+        from the rule only while it stays live (ADR-0028)."""
+        taken = list(
+            queryset.exclude(status=Product.Status.DRAFT).prefetch_related(
+                "specs", "plans", "sections", "questions"
+            )
+        )
         self._set_status(request, queryset, Product.Status.DRAFT)
+        for product in taken:
+            if problems := product.publish_problems():
+                headline = gettext("«%(product)s» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.") % {
+                    "product": f"\u2068{product}\u2069"
+                }
+                messages.info(request, reasons_message(headline, problems))
 
     def has_copy_sections_permission(self, request: HttpRequest) -> bool:
         return self.has_change_permission(request) and request.user.has_perm(
@@ -795,12 +811,16 @@ class ProductAdmin(ModelAdmin):
     ) -> Any:
         """The readiness list at the top of the form (readiness.html).
 
-        For a saved draft, what it still lacks; after a refused «فعال», every
-        reason the form gave, which otherwise stand under fields far apart.
+        For a saved draft, what it still lacks; for a live product, what it
+        would need to go back up once taken down; after a refused «فعال»,
+        every reason the form gave, which otherwise stand under fields far apart.
         """
         form = context["adminform"].form
-        if not form.is_bound:
-            context["readiness"] = obj.publish_problems() if obj and not obj.is_public else None
+        if not form.is_bound and obj and obj.is_public:
+            context["readiness"] = obj.publish_problems() or None
+            context["readiness_live"] = True
+        elif not form.is_bound:
+            context["readiness"] = obj.publish_problems() if obj else None
         elif form.data.get("status") == Product.Status.ACTIVE and not (obj and obj.is_live_in_db()):
             formsets = [inline.formset for inline in context["inline_admin_formsets"]]
             context["readiness"] = refusal_reasons(form, formsets) or None
