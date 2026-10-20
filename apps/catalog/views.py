@@ -133,6 +133,7 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     ceilings = [p.max_quantity for p in available] or [1]
     related = _related_to(obj)
     sections = sorted(obj.sections.all(), key=lambda s: (s.sort_order, s.pk))
+    before_buying = next((s for s in sections if s.kind == "before_buying"), None)
     response = render(
         request,
         "catalog/product.html",
@@ -150,9 +151,15 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             # has not thought about shows exactly what it showed before.
             "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
             "sections": sections,
-            # At most one, by a constraint; the page prints it whether or not
-            # it exists, because its facts are not the operator's narrative.
-            "before_buying": next((s for s in sections if s.kind == "before_buying"), None),
+            # At most one, by a constraint. Its facts come from their own fields,
+            # so it is printed without a row too, but only when it says more than
+            # the warranty, which the badge and the answers already give.
+            "before_buying": before_buying,
+            "before_buying_shown": bool(
+                (before_buying and (before_buying.body or before_buying.image))
+                or obj.refund_note
+                or obj.iran_stance_shown
+            ),
             "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
             "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
             "price_checked_since": _prices_checked_since([obj]),

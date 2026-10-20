@@ -520,6 +520,7 @@ def test_delivery_time_falls_back_to_the_hours(client, category, product):
 
     assert "تا ۱۲ ساعت" in body
     assert product.delivery_display == "تا ۱۲ ساعت"
+    assert product.delivery_sentence == "تحویل تا ۱۲ ساعت"
 
 
 def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, category, product):
@@ -527,7 +528,7 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
     The note replaces the display on every surface at once — the card, the
     badge, the facts table, the buy box and the page's own question — because
     they all read one property rather than formatting the field themselves."""
-    note = "۴۸ تا ۷۲ ساعت"
+    note = "به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت)"
     product.delivery_note = note
     product.save()
 
@@ -537,8 +538,8 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
     assert page.count(note) >= 4, "the badge, the facts row, the question and the buy box"
     assert note in listing, "and the card on the listing"
     assert "تا ۱۲ ساعت" not in page, "the hours must not survive beside the note"
-    # The panel asks for a phrase, not a sentence; standing alone it needs its word.
-    assert page.count(f"تحویل {note}") >= 2 and f"تحویل {note}" in listing
+    # The note is the operator's own sentence: printed as written, nothing in front of it.
+    assert f"تحویل {note}" not in page and f"تحویل {note}" not in listing
 
 
 def test_the_note_never_touches_the_real_deadline(product):

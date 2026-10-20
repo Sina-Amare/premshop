@@ -141,6 +141,33 @@ def test_before_buying_prints_its_facts_with_no_section_at_all(client, product):
     assert "<dt>ایران</dt><dd>پشتیبانی‌نشده</dd>" in part
 
 
+def test_before_buying_is_left_out_when_it_would_only_repeat_the_warranty(client, product):
+    """The warranty is already beside the title and in the answers. A section
+    holding nothing else reads as a placeholder, and nothing may link to it."""
+    product.iran_stance = ""
+    product.save()
+
+    body = page(client, product)
+
+    assert "پیش از خرید" not in body
+    assert "#before-buying" not in body
+    assert '<dt class="fact__k">گارانتی</dt><dd class="fact__v">تا پایان دوره</dd>' in body
+
+
+@pytest.mark.parametrize("says", ["refund", "text"])
+def test_before_buying_is_printed_when_it_says_more_than_the_warranty(client, product, says):
+    product.iran_stance = ""
+    product.refund_note = "پس از فعال‌سازی، مبلغ برنمی‌گردد." if says == "refund" else ""
+    product.save()
+    if says == "text":
+        section(product, Kind.BEFORE_BUYING, "برای کار با API نیست.")
+
+    body = page(client, product)
+
+    assert body.count('id="before-buying"') == 1
+    assert '<a href="#before-buying">گارانتی و شرط‌های خرید</a>' in body
+
+
 def test_before_buying_puts_the_operators_text_after_the_facts_once(client, product):
     section(
         product,

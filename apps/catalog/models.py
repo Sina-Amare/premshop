@@ -458,8 +458,8 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         default="",
         help_text=_(
-            "اگر پر کنید، مشتری این متن را به‌جای «تا … ساعت» می‌بیند. "
-            "عبارت کوتاه بنویسید، نه جمله."
+            "اگر پر کنید، مشتری همین متن را همان‌طور که نوشته‌اید "
+            "به‌جای «تحویل تا … ساعت» می‌بیند."
         ),
     )
     # Claimed, never assumed. Renewal depends on the upstream provider and on
@@ -711,11 +711,11 @@ class Product(ChecksNameTheirField, models.Model):
     def delivery_sentence(self) -> str:
         """The same fact where it stands alone, on a badge or under the buy box.
 
-        The panel asks for the note as a phrase in place of «تا … ساعت», so it
-        takes the same word: «تحویل ۴۸ تا ۷۲ ساعت». Bare, it said nothing about
-        what the hours were.
+        A note is the operator's own sentence, so nothing can be prefixed to it:
+        «تحویل» in front of «به‌علت مشکلات پرداخت…» reads as a typo. The default
+        carries its own word instead, and the note is printed exactly as written.
         """
-        return f"تحویل {self.delivery_display}"
+        return self.delivery_note or f"تحویل تا {to_persian_digits(self.delivery_hours)} ساعت"
 
     @property
     def is_public(self) -> bool:

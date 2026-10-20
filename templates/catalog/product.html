@@ -51,7 +51,7 @@
       {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{% if after_payment %}<a href="#section-{{ after_payment.pk }}">{{ product.get_delivery_type_display }}</a>{% else %}{{ product.get_delivery_type_display }}{% endif %}</dd></div>{% endif %}
       {% if iran_stance %}<div class="fact"><dt class="fact__k">از ایران</dt><dd class="fact__v"><a href="#before-buying">{{ iran_stance|bdi }}</a></dd></div>{% endif %}
       <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v"><a href="#delivery">{{ product.delivery_display }}</a></dd></div>
-      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v"><a href="#before-buying">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</a></dd></div>
+      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if before_buying_shown %}<a href="#before-buying">{% endif %}{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}{% if before_buying_shown %}</a>{% endif %}</dd></div>
       {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}
     </dl>
 
@@ -69,7 +69,7 @@
     {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
     {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
 
-    {% include "catalog/sections/before_buying.html" with section=before_buying %}
+    {% if before_buying_shown %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
 
     {% comment %}
     The product's own questions, then the shop's: when it arrives and, where it
@@ -150,7 +150,7 @@
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
       </form>
-      <p class="micro buybox__note">{{ product.delivery_sentence }}<br><a href="#before-buying">گارانتی و شرط‌های خرید</a></p>
+      <p class="micro buybox__note">{{ product.delivery_sentence }}{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرط‌های خرید</a>{% endif %}</p>
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>

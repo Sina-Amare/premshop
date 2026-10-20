@@ -1,9 +1,9 @@
 {% load fa richtext %}{% comment %}
-«پیش از خرید», printed on every product page whether or not the operator has
-written one: the warranty, a refund exception and the stance on Iran come from
-their own fields, so forgetting a section cannot take them off the page. The
-operator's text follows them. `section` is the product's one section of this
-kind, or None.
+«پیش از خرید», printed whether or not the operator has written one: the
+warranty, a refund exception and the stance on Iran come from their own fields,
+so forgetting a section cannot take them off the page. The operator's text
+follows them. `section` is the product's one section of this kind, or None. The
+view leaves it out when it would hold the warranty and nothing else.
 {% endcomment %}<section class="pdp__section" id="before-buying" aria-labelledby="before-buying-title">
   <h2 class="pdp__h2" id="before-buying-title">{% if section.title %}{{ section.title|bdi }}{% else %}پیش از خرید{% endif %}</h2>
   <dl class="card faq essentials">
