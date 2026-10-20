@@ -6,6 +6,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django.templatetags.static import static as static_url
 from django.urls import include, path
 
 from apps.core import views as core_views
@@ -23,7 +25,13 @@ def staff_or_debug(view: Callable[..., HttpResponse]) -> Callable[..., HttpRespo
     return guarded
 
 
+def favicon(request: HttpRequest) -> HttpResponse:
+    """Browsers and crawlers ask for /favicon.ico whatever the page links to."""
+    return redirect(static_url("img/favicon.ico"))
+
+
 urlpatterns = [
+    path("favicon.ico", favicon),
     path("", include("apps.catalog.urls")),
     # set_language, which the operator panel's language switch posts to. Unfold
     # reverses this name on every sidebar render, so without it the whole admin

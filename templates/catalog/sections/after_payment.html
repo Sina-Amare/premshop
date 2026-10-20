@@ -1,0 +1,5 @@
+{% load fa richtext %}{% comment %}«بعد از پرداخت»: numbered steps from a confirmed payment to first use.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
+  <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
+  <div class="prose rich rich--steps">{{ section.body|markdown }}</div>
+  {% include "catalog/sections/_image.html" %}
+</section>

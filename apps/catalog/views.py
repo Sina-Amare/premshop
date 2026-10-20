@@ -3,14 +3,19 @@
 Every visitor-facing query goes through `Product.objects.public()`. A draft
 product must never leak — not through a category listing, not through a search,
 not through a guessed URL — and one filter used everywhere is how that stays
-true when the fourth and fifth views are added.
+true when the fourth and fifth views are added. The one exception is the
+operator's preview of a draft on its own address, in `product`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from datetime import datetime
+
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.cache import patch_cache_control
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.catalog.search import without_filler
@@ -20,7 +25,7 @@ SEARCH_RESULT_CAP = 50
 HOME_PRODUCT_CAP = 24
 
 
-def _for_cards() -> ProductQuerySet:
+def _for_cards(products: ProductQuerySet | None = None) -> ProductQuerySet:
     """Products with everything a card needs, in two queries however many rows.
 
     The plans prefetch is what keeps the grid at a fixed query count: the card
@@ -28,10 +33,22 @@ def _for_cards() -> ProductQuerySet:
     the database per product.
     """
     return (
-        Product.objects.public()
+        (Product.objects.public() if products is None else products)
         .select_related("category")
         .prefetch_related(Prefetch("plans", queryset=Plan.objects.order_by("sort_order", "id")))
     )
+
+
+def _prices_checked_since(products: Iterable[Product]) -> datetime | None:
+    """When the stalest price on the page was last confirmed, or None if one never was.
+
+    The oldest and not the newest: one plan confirmed this morning must not make
+    a list of week-old prices look fresh.
+    """
+    stamps = [plan.price_confirmed_at for product in products for plan in product.available_plans()]
+    if not stamps or None in stamps:
+        return None
+    return min(stamp for stamp in stamps if stamp is not None)
 
 
 def home(request: HttpRequest) -> HttpResponse:
@@ -76,6 +93,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "shelf": shelf,
             "discounted": discounted,
             "by_category": by_category,
+            "prices_checked_since": _prices_checked_since(featured),
         },
     )
 
@@ -86,12 +104,27 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
     return render(
         request,
         "catalog/category.html",
-        {"category": cat, "current_category": cat.slug, "products": products},
+        {
+            "category": cat,
+            "current_category": cat.slug,
+            "products": products,
+            "prices_checked_since": _prices_checked_since(products),
+        },
     )
 
 
 def product(request: HttpRequest, slug: str) -> HttpResponse:
-    obj = get_object_or_404(_for_cards().prefetch_related("specs"), slug=slug)
+    # The operator previews a draft at the address it will be published on. For
+    # anyone else a draft does not exist, and «ناموجود» stays hidden for everyone.
+    may_preview = request.user.is_staff and request.user.has_perm("catalog.view_product")
+    shown = (
+        Product.objects.filter(status__in=[Product.Status.ACTIVE, Product.Status.DRAFT])
+        if may_preview
+        else Product.objects.public()
+    )
+    obj = get_object_or_404(
+        _for_cards(shown).prefetch_related("specs", "sections", "questions"), slug=slug
+    )
     plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
     available = [p for p in plans if p.is_available]
     # The quantity control is rendered server-side only when some plan can
@@ -99,11 +132,13 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     # a stepper that cannot do anything.
     ceilings = [p.max_quantity for p in available] or [1]
     related = _related_to(obj)
-    return render(
+    sections = sorted(obj.sections.all(), key=lambda s: (s.sort_order, s.pk))
+    response = render(
         request,
         "catalog/product.html",
         {
             "product": obj,
+            "preview": not obj.is_public,
             "plans": plans,
             "available_plans": available,
             "any_plan_takes_more_than_one": max(ceilings) > 1,
@@ -114,8 +149,21 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             # the title. Nothing is key by default, so a product the operator
             # has not thought about shows exactly what it showed before.
             "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
+            "sections": sections,
+            # At most one, by a constraint; the page prints it whether or not
+            # it exists, because its facts are not the operator's narrative.
+            "before_buying": next((s for s in sections if s.kind == "before_buying"), None),
+            "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
+            "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
+            "price_checked_since": _prices_checked_since([obj]),
+            "iran_stance": obj.iran_stance_shown,
         },
     )
+    if not obj.is_public:
+        # The preview is on the public address, so nothing between here and the
+        # browser may keep it for whoever asks for that address next.
+        patch_cache_control(response, private=True, no_store=True)
+    return response
 
 
 RELATED_COUNT = 4
@@ -130,24 +178,22 @@ def _related_to(product: Product) -> list[Product]:
     so any claim about what is popular would be invented. These three signals
     are all true today, which is the whole bar.
 
-    One query, or two when a department is too small to fill the row.
+    Two queries however many products. The candidates used to be cut to the
+    first four by name before this ranking ever saw them, so a discount in
+    another department lost its place to whatever sorted first.
+    shortcut: ranks every public product in Python, right for a few dozen; at a
+    few hundred, move the department and discount tests into the query.
     """
-    same = list(
-        _for_cards().filter(category=product.category).exclude(pk=product.pk)[:RELATED_COUNT]
-    )
-    if len(same) < RELATED_COUNT:
-        seen = {product.pk, *(p.pk for p in same)}
-        same += list(_for_cards().exclude(pk__in=seen)[: RELATED_COUNT - len(same)])
 
-    def rank(other: Product) -> tuple[int, int, str]:
+    def rank(other: Product) -> tuple[bool, bool, float]:
         plan = other.cheapest_plan
         return (
-            0 if other.category_id == product.category_id else 1,
-            0 if plan and plan.promotion_is_active else 1,
-            other.name,
+            other.category_id != product.category_id,
+            not (plan and plan.promotion_is_active),
+            -other.created_at.timestamp(),
         )
 
-    return sorted(same, key=rank)[:RELATED_COUNT]
+    return sorted(_for_cards().exclude(pk=product.pk), key=rank)[:RELATED_COUNT]
 
 
 def faq(request: HttpRequest) -> HttpResponse:

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}اجازه‌ی دیدن این صفحه را ندارید | PremShop{% endblock %}
+{% block title %}اجازه‌ی دیدن این صفحه را ندارید{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% comment %}Django's own 403 is an English line on a blank page.{% endcomment %}
 {% block content %}

@@ -13,10 +13,11 @@ from html.parser import HTMLParser
 
 import pytest
 from django.template import Context, Template
+from django.utils.html import escape
 from django.utils.safestring import SafeData
 
 from apps.core import richtext
-from apps.core.richtext import EXTERNAL_REL, render_markdown
+from apps.core.richtext import EXTERNAL_REL, isolate_latin, render_markdown
 
 TAGS = set("p br strong a ul ol li table thead tbody tr th td bdi h3".split())
 ATTRIBUTES = {"a": {"href", "rel"}, "ol": {"start"}}
@@ -213,6 +214,33 @@ def test_any_other_link_is_external_and_opens_in_place(url):
 
 
 @pytest.mark.parametrize(
+    "url", ["https://premshop.ir/p/chatgpt-plus/", "http://premshop.ir/faq/", "https://premshop.ir"]
+)
+def test_a_full_address_on_the_shops_own_host_is_an_internal_link(settings, url):
+    """Guides link to products by full address, and a product page is not a
+    stranger's site to be marked nofollow."""
+    settings.SITE_URL = "https://premshop.ir"
+
+    assert render_markdown(f"[پیوند]({url})") == f'<p><a href="{url}">پیوند</a></p>\n'
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://premshop.ir.example.com/",
+        "https://premshop.ir@example.com/",
+        "https://example.com/premshop.ir",
+        "https://www.premshop.ir/",
+        "mailto:support@premshop.ir",
+    ],
+)
+def test_an_address_that_only_resembles_the_shops_host_stays_external(settings, url):
+    settings.SITE_URL = "https://premshop.ir"
+
+    assert f'rel="{EXTERNAL_REL}"' in render_markdown(f"[پیوند]({url})")
+
+
+@pytest.mark.parametrize(
     "source, expected",
     [
         ("### تیتر", "<h3>تیتر</h3>\n"),
@@ -234,6 +262,20 @@ def test_a_page_can_leave_two_levels_free():
     assert render_markdown("# یک\n### سه\n#### چهار", heading_levels=(2, 3)) == (
         "<h2>یک</h2>\n<h3>سه</h3>\n<p>چهار</p>\n"
     )
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("### سه\n#### چهار", "<h2>سه</h2>\n<h3>چهار</h3>\n"),
+        ("### سه\n## دو", "<h2>سه</h2>\n<h2>دو</h2>\n"),
+        ("#### چهار", "<p>چهار</p>\n"),
+    ],
+)
+def test_a_text_that_opens_below_the_first_free_level_moves_up(source, expected):
+    """Under no title of its own, «###» as the help teaches it opened the text
+    with an h3 straight after the page's h1."""
+    assert render_markdown(source, heading_levels=(2, 3)) == expected
 
 
 @pytest.mark.parametrize("levels", [(1,), (1, 3), (7,)])
@@ -373,6 +415,48 @@ def test_latin_names_keep_their_order_in_a_persian_line(browser, source, left_to
         page.close()
     assert None not in xs
     assert [word for _, word in sorted(zip(xs, in_text_order, strict=True))] == left_to_right
+
+
+PLAIN_LINES = [
+    ("از جمله VS Code، Cursor", ["Cursor", "VS", "Code"]),
+    ("Google Photos. ۱۵ گیگابایت", ["۱۵", "Google", "Photos"]),
+]
+
+
+def words_on_screen(browser, html: str, words: list[str]) -> list[str]:
+    page = browser.new_page(viewport={"width": 390, "height": 300})
+    try:
+        page.set_content(READING_PAGE.format(f"<p>{html}</p>"))
+        xs = page.evaluate(ON_SCREEN, words)
+    finally:
+        page.close()
+    assert None not in xs
+    return [word for _, word in sorted(zip(xs, words, strict=True))]
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("source, left_to_right", PLAIN_LINES)
+def test_a_one_line_field_keeps_latin_names_in_order(browser, source, left_to_right):
+    in_text_order = sorted(left_to_right, key=source.index)
+
+    assert words_on_screen(browser, isolate_latin(source), in_text_order) == left_to_right
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("source, left_to_right", PLAIN_LINES)
+def test_without_isolation_the_same_lines_read_out_of_order(browser, source, left_to_right):
+    """The control: the order test above would pass on lines that need no help."""
+    in_text_order = sorted(left_to_right, key=source.index)
+
+    assert words_on_screen(browser, escape(source), in_text_order) != left_to_right
+
+
+def test_a_one_line_field_is_escaped_and_reads_no_markdown():
+    assert isolate_latin("**ChatGPT** و <script>x</script>") == (
+        "**<bdi>ChatGPT</bdi>** و &lt;<bdi>script</bdi>&gt;<bdi>x</bdi>&lt;/<bdi>script</bdi>&gt;"
+    )
+    assert isinstance(isolate_latin("x"), SafeData)
+    assert isolate_latin("فقط فارسی، ۱۲ ماهه") == "فقط فارسی، ۱۲ ماهه"
 
 
 @pytest.mark.parametrize(

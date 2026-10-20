@@ -359,12 +359,17 @@ def test_catalog_card_and_product_page_render_struck_through_original(client, pr
     page for `badge--time`, which read as "a promotion is not a countdown" and
     was wrong twice over: amber is exactly what a countdown is for
     (design-language.md, Colour), and the rule it meant to pin is only that the
-    *figure* is never amber."""
+    *figure* is never amber.
+
+    `<del>` and not `<s>`: to a crawler that runs no CSS the two figures read
+    as one impossible number unless the markup says the first was removed."""
     listing = client.get(reverse("category", args=[product.category.slug])).content.decode()
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
     for body in (listing, page):
-        assert '<s class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</s>' in body
+        assert (
+            '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in body
+        )
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
         assert any("price__was" in markup for markup in prices), "the discounted one was read"
@@ -484,6 +489,27 @@ def test_suggestions_are_capped_and_cost_a_fixed_number_of_queries(client, categ
 
     assert len(response.context["related"]) == 4
     assert len(queries) <= PRODUCT_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
+
+
+def test_the_places_a_department_leaves_go_to_a_discount_and_then_to_the_newest(
+    client, category, product
+):
+    """Topping up a thin department took whichever products sorted first by
+    name, so a discount elsewhere lost its place to an older product called «a…»."""
+    for i in range(3):
+        make_product(category, f"sibling-{i}")
+    gifts = Category.objects.create(name="گیفت کارت", slug="gift")
+    make_product(gifts, "a-plain")
+    make_product(gifts, "z-discounted", promo_price=Decimal("100000"))
+
+    related = client.get(reverse("product", args=[product.slug])).context["related"]
+    assert [p.slug for p in related][3] == "z-discounted"
+
+    Product.objects.filter(slug="z-discounted").update(status=Product.Status.DRAFT)
+    make_product(gifts, "z-newest")
+
+    related = client.get(reverse("product", args=[product.slug])).context["related"]
+    assert [p.slug for p in related][3] == "z-newest"
 
 
 # --- When a product arrives ------------------------------------------------
@@ -710,16 +736,21 @@ def test_a_plan_title_on_a_card_is_isolated(client, category):
     assert '<span class="pcard__from"><bdi>12 Months Family Plan</bdi>' in body
 
 
-def test_a_category_intro_is_printed_as_text_never_as_markup(client, category, product):
+def test_a_category_intro_is_restricted_markdown_never_markup(client, category, product):
     """Anyone who could edit a category could put a script on a page customers
-    pay on. Until the restricted renderer exists, the stored text is escaped."""
-    category.intro_html = "<script>alert(1)</script><b>پررنگ</b>"
+    pay on. The intro goes through the restricted renderer, with no heading
+    level free: it sits directly under the page's h1."""
+    category.intro = "<script>alert(1)</script> **پررنگ**\n\n### تیتر"
+    category.intro_html = "<b>the old column</b>"
     category.save()
 
     body = client.get(reverse("category", args=[category.slug])).content.decode()
 
-    assert "<script>alert(1)</script>" not in body
-    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+    assert "<script>alert" not in body
+    assert "&lt;<bdi>script</bdi>&gt;" in body
+    assert "<strong>پررنگ</strong>" in body
+    assert "<p>تیتر</p>" in body and "<h3>تیتر" not in body
+    assert "the old column" not in body
 
 
 def test_a_discount_carries_the_price_it_falls_back_to(client, category):

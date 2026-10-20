@@ -10,39 +10,14 @@ crash at boot, so each one gets a test rather than a comment.
 from __future__ import annotations
 
 import importlib
-import os
-import sys
 
 import pytest
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-import config.settings.base as base
-
 # SMTP2GO speaks STARTTLS on these and implicit TLS on the rest (its own panel text).
 STARTTLS_PORTS = (2525, 8025, 587, 80, 25)
 IMPLICIT_TLS_PORTS = (465, 8465, 443)
-
-
-@pytest.fixture
-def reload_base():
-    """Re-import base.py under a patched environment, then put the world back.
-
-    monkeypatch is not usable here: its teardown runs after this fixture's, so the
-    restoring reload would still see the patched environment.
-    """
-    original = dict(os.environ)
-
-    def _reload(**overrides: str):
-        os.environ.update(overrides)
-        return importlib.reload(base)
-
-    yield _reload
-
-    os.environ.clear()
-    os.environ.update(original)
-    sys.modules.pop("config.settings.prod", None)
-    importlib.reload(base)
 
 
 @pytest.mark.parametrize("port", STARTTLS_PORTS)

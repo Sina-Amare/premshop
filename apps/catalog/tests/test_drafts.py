@@ -3,9 +3,10 @@
 Every visitor-facing query goes through `Product.objects.public()`. These
 tests hold each road a product can take onto a page: the home page, its
 department, a search for it, a search miss, the suggestions under
-another product, and its own URL. An operator preview, when it comes, will
-take a parameter; `?preview=1` is tried on every road now, so a preview
-cannot open one by accident.
+another product, and its own URL. The one exception is the operator's
+preview: a draft's own address opens for staff who may view products, marked
+as a draft, kept out of the index and out of every cache. `?preview=1` is
+tried on every road, so no parameter opens one for anyone else.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 
 from apps.accounts.models import User
@@ -70,13 +72,21 @@ ROADS = {
 }
 
 
-@pytest.fixture(params=["anonymous", "customer", "staff"])
+def operator() -> User:
+    user = User.objects.create_user("op@example.test", is_staff=True)
+    user.user_permissions.add(Permission.objects.get(codename="view_product"))
+    return user
+
+
+@pytest.fixture(params=["anonymous", "customer", "staff", "operator"])
 def visitor(request, client):
     if request.param == "customer":
         client.force_login(User.objects.create_user("buyer@example.test", is_verified=True))
     if request.param == "staff":
-        # The panel's staff are visitors too until a preview exists.
-        client.force_login(User.objects.create_user("op@example.test", is_staff=True))
+        # Staff who may not view products in the panel see no more of them here.
+        client.force_login(User.objects.create_user("staff@example.test", is_staff=True))
+    if request.param == "operator":
+        client.force_login(operator())
     return client
 
 
@@ -95,10 +105,46 @@ def test_a_draft_is_on_no_page(visitor, shop, road, preview):
     assert "Hiddendept" not in body, url
 
 
+@pytest.mark.parametrize("visitor", ["anonymous", "customer", "staff"], indirect=True)
 @pytest.mark.parametrize("preview", ["", "?preview=1"])
 @pytest.mark.parametrize("slug", ["draft", "draft-two"])
 def test_a_draft_has_no_address(visitor, shop, slug, preview):
     assert visitor.get(reverse("product", args=[slug]) + preview).status_code == 404
+
+
+def test_the_operator_previews_a_draft_at_its_own_address(client, shop):
+    draft = Product.objects.get(slug="draft")
+    client.force_login(operator())
+
+    response = client.get(draft.get_absolute_url())
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert DRAFT_NAME in body
+    assert 'class="badge badge--key">پیش‌نویس</span>' in body
+    assert '<meta name="robots" content="noindex">' in body
+    assert 'rel="canonical"' not in body
+    # The same address will be the public page: no cache may keep this one.
+    assert {"private", "no-store"} <= {
+        part.strip() for part in response["Cache-Control"].split(",")
+    }
+
+
+def test_a_published_page_is_not_a_preview_even_for_the_operator(client, shop):
+    client.force_login(operator())
+
+    response = client.get(reverse("product", args=["live"]))
+
+    assert "پیش‌نویس" not in response.content.decode()
+    assert "no-store" not in response.get("Cache-Control", "")
+
+
+def test_an_unavailable_product_stays_hidden_even_from_the_operator(client, shop):
+    """Only a draft is previewed; «ناموجود» is a product taken off the shelf."""
+    Product.objects.filter(slug="draft").update(status=Product.Status.UNAVAILABLE)
+    client.force_login(operator())
+
+    assert client.get(reverse("product", args=["draft"])).status_code == 404
 
 
 def test_the_same_roads_carry_a_published_product(client, shop):

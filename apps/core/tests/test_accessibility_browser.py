@@ -335,6 +335,14 @@ def test_no_email_has_a_serious_accessibility_violation(browser, live_server, se
     settings.DEBUG = True
     context = browser.new_context(viewport={"width": 600, "height": 900})
     page = context.new_page()
+    # The emails link a web font for the clients that load one; the scan must
+    # not wait on the network, so every request off the test server is refused.
+    page.route(
+        "**/*",
+        lambda route: (
+            route.continue_() if route.request.url.startswith(live_server.url) else route.abort()
+        ),
+    )
     try:
         response = page.goto(f"{live_server.url}/dev/emails/{name}/")
         assert response.status == 200

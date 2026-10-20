@@ -7,6 +7,7 @@ from `apps.core.support`, their one definition.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.db.models import Count, Q
 from django.http import HttpRequest
 
@@ -38,4 +39,8 @@ def shell(request: HttpRequest) -> dict[str, object]:
         # be the reason the error page itself fails to render, or a database
         # outage turns into a blank response with no explanation in it.
         categories = []
-    return {"nav_categories": categories, "support": support.details()}
+    return {
+        "nav_categories": categories,
+        "support": support.details(),
+        "site_url": settings.SITE_URL,
+    }

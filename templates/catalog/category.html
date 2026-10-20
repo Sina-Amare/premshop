@@ -1,6 +1,6 @@
-{% extends "base.html" %}{% load fa %}
+{% extends "base.html" %}{% load fa richtext %}
 
-{% block title %}{{ category.seo_title|default:category.name }} | PremShop{% endblock %}
+{% block title %}{{ category.seo_title|default:category.name }}{% endblock %}
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
 {% block content %}
@@ -9,10 +9,10 @@
 
 <header class="page-head">
   <h1 class="page-head__title">{{ category.name }}</h1>
-  {% comment %}Escaped, as text: whoever can edit a category must not be able to
-  put markup on a page customers pay on. The restricted Markdown renderer in
-  apps/core/richtext.py is what will format it.{% endcomment %}
-  {% if category.intro_html %}<div class="prose page-head__intro">{{ category.intro_html|linebreaks }}</div>
+  {% comment %}Through the restricted renderer, never as markup: whoever can edit a
+  category must not be able to put a script on a page customers pay on. It sits
+  straight under the h1, so it takes no heading of its own.{% endcomment %}
+  {% if category.intro %}<div class="prose rich page-head__intro">{{ category.intro|markdown:"" }}</div>
   {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
   {% comment %}
   The count and nothing else. A filter over three products returns everything
@@ -24,6 +24,8 @@
 </header>
 
 {% if products %}
+  {# Each card's name is an h3; without this the outline jumps from the h1. #}
+  <h2 class="sr-only">محصولات {{ category.name }}</h2>
   <div class="grid">
     {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
   </div>

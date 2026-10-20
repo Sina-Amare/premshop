@@ -10,6 +10,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from apps.core import formatting
+from apps.core.richtext import isolate_latin
 
 register = template.Library()
 
@@ -48,6 +49,12 @@ def price_html(value: Decimal | int | None) -> str:
         '<span class="price__cur">تومان</span></span>',
         formatting.format_toman(value, with_unit=False),
     )
+
+
+@register.filter(name="bdi")
+def bdi(value: str | None) -> str:
+    """Operator-written plain text with each Latin run isolated (`isolate_latin`)."""
+    return isolate_latin(value or "")
 
 
 @register.filter(name="jalali")

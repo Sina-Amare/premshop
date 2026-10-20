@@ -2,8 +2,10 @@
 
 Development only: the owner has no product list yet (open-questions #2), and a
 catalog page with one product tells you nothing about how the grid, the
-prices, the search or the empty states behave. Idempotent — run it twice and
-you get the same shop. `--reset` wipes what it made first.
+prices, the search or the empty states behave. It only adds what is missing: a
+category or product whose slug already exists is left exactly as it is, with
+its plans, specs and image, because the operator may have edited it and an
+order line holds its plan by PROTECT. `--reset` wipes what it made first.
 
 Brand marks are downloaded once into MEDIA_ROOT, which is not committed, and
 served from there — the running site never reaches a CDN, because most of them
@@ -285,19 +287,19 @@ class Command(BaseCommand):
 
         categories = {}
         for order, (name, slug, description) in enumerate(CATEGORIES):
-            categories[slug], _ = Category.objects.update_or_create(
+            categories[slug], _ = Category.objects.get_or_create(
                 slug=slug, defaults={"name": name, "description": description, "sort_order": order}
             )
 
         now = timezone.now()
+        added = 0
         for spec in PRODUCTS:
-            product, _ = Product.objects.update_or_create(
+            product, created = Product.objects.get_or_create(
                 slug=spec["slug"],
                 defaults={
                     "name": spec["name"],
                     "category": categories[spec["category"]],
                     "short_description": spec["short"],
-                    "full_description": spec.get("long", spec["short"]),
                     "delivery_type": spec["delivery"],
                     "aliases": spec.get("aliases", ""),
                     "warranty": spec["warranty"],
@@ -308,7 +310,9 @@ class Command(BaseCommand):
                     "seo_description": spec["short"][:160],
                 },
             )
-            product.specs.all().delete()
+            if not created:
+                continue
+            added += 1
             for order, row in enumerate(spec["specs"]):
                 title, value, *key = row
                 ProductSpec.objects.create(
@@ -318,7 +322,6 @@ class Command(BaseCommand):
                     is_key=bool(key and key[0]),
                     sort_order=order,
                 )
-            product.plans.all().delete()
             for order, (title, days, cost, sale, promo) in enumerate(spec["plans"]):
                 Plan.objects.create(
                     product=product,
@@ -341,7 +344,9 @@ class Command(BaseCommand):
                 self._attach_icon(product, *MARKS[spec["slug"]])
             self.stdout.write(f"  {product.name}: {product.plans.count()} plans")
         self.stdout.write(
-            self.style.SUCCESS(f"seeded {len(PRODUCTS)} products in {len(CATEGORIES)} categories")
+            self.style.SUCCESS(
+                f"added {added} of {len(PRODUCTS)} products; the rest were already there"
+            )
         )
 
     def _attach_icon(self, product: Product, url: str, pad: float) -> None:

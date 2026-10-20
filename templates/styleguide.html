@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load fa %}
 
-{% block title %}زبان طراحی | PremShop{% endblock %}
+{% block title %}زبان طراحی{% endblock %}
 
 {% block content %}
 <div class="wrap page">
@@ -51,7 +51,7 @@
     <div>
       <span class="label">با تخفیف</span>
       <div style="margin-block-start: var(--spacing-2)">
-        <span class="price"><s class="price__was"><span class="sr-only">قیمت قبلی </span>{{ sample_was|toman_plain }}</s></span>
+        <span class="price"><del class="price__was"><span class="sr-only">قیمت قبلی </span>{{ sample_was|toman_plain }}</del></span>
         {{ sample_price|price_html }}
       </div>
     </div>

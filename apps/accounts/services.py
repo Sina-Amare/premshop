@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth import login as django_login
 from django.http import HttpRequest
 from django.urls import reverse
@@ -126,11 +127,11 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
 
     if had_password:
-        _send_signin_alert(request, user)
+        _send_signin_alert(user)
     return user
 
 
-def _send_signin_alert(request: HttpRequest, user: User) -> None:
+def _send_signin_alert(user: User) -> None:
     """C14. Only for accounts that HAVE a password: an OTP-only account has no
     second factor for this notice to protect, so it would be noise on every login.
 
@@ -154,7 +155,8 @@ def _send_signin_alert(request: HttpRequest, user: User) -> None:
             to=[user.email],
             context={
                 "signed_in_at": timezone.now(),
-                "password_url": request.build_absolute_uri(reverse("account-password")),
+                # SITE_URL and not the Host header, which the client chooses.
+                "password_url": settings.SITE_URL + reverse("account-password"),
             },
         )
     except Exception as error:  # noqa: BLE001 — any mail failure; the login already happened

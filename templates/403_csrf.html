@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}این فرم دیگر معتبر نیست | PremShop{% endblock %}
+{% block title %}این فرم دیگر معتبر نیست{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% comment %}
 A form whose CSRF token no longer matches. Here that is nearly always a form

@@ -490,17 +490,35 @@ def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
     assert not broken, f"broken promises: {broken}"
 
 
-def test_the_alert_takes_the_customer_to_the_password_page(client, user):
+def test_the_alert_takes_the_customer_to_the_password_page(client, user, settings):
     """The button and the text version's link went to /account/, which for an
     account with a password has no password form on it: a worried customer had
     to find «رمز عبور» in the menu themselves."""
+    settings.SITE_URL = "https://premshop.ir"
     client.post(reverse("login-code"), {"email": user.email})
     client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[0])})
 
     alert = mail.outbox[1]
-    password_page = "http://testserver" + reverse("account-password")
+    password_page = "https://premshop.ir" + reverse("account-password")
     assert f'href="{password_page}"' in alert.alternatives[0][0], "the button"
     assert password_page in alert.body, "the text version's link"
+
+
+def test_the_alert_link_is_the_shops_address_whatever_host_the_request_named(
+    client, user, settings
+):
+    """The Host header is the client's to choose. Built on it, the link in a
+    security notice pointed wherever the request said the site was."""
+    settings.SITE_URL = "https://premshop.ir"
+    settings.ALLOWED_HOSTS = ["*"]
+    elsewhere = {"HTTP_HOST": "attacker.example"}
+    client.post(reverse("login-code"), {"email": user.email}, **elsewhere)
+    client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[0])}, **elsewhere)
+
+    alert = mail.outbox[1]
+    sent = alert.body + alert.alternatives[0][0]
+    assert "https://premshop.ir" + reverse("account-password") in sent
+    assert "attacker.example" not in sent
 
 
 def test_the_alert_preview_shows_the_same_destination():

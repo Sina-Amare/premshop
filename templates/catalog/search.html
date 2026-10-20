@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}جستجو{% if query %}: {{ query }}{% endif %} | PremShop{% endblock %}
+{% block title %}جستجو{% if query %}: {{ query }}{% endif %}{% endblock %}
 {# A results page per query is an endless set of thin pages to a crawler. #}
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
@@ -38,6 +38,8 @@ behind one, so the message reports what happened and accuses nobody.
     {% if everything %}<p class="small page-head__intro">همه‌ی محصولات ما:</p>{% endif %}
   </header>
   {% if everything %}
+    {# Each card's name is an h3; without this the outline jumps from the h1. #}
+    <h2 class="sr-only">همه‌ی محصولات</h2>
     <div class="grid">
       {% for product in everything %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
     </div>
@@ -57,6 +59,7 @@ behind one, so the message reports what happened and accuses nobody.
     {% endif %}
   </header>
   {% if results %}
+    <h2 class="sr-only">نتایج</h2>
     <div class="grid">
       {% for product in results %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
     </div>

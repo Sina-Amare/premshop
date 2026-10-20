@@ -221,6 +221,26 @@
 
   .prose { font-size: 17px; line-height: 1.85; max-inline-size: 32rem; }
   .prose + .prose { margin-block-start: 1.6rem; }
+  /* Operator-written text from the restricted renderer (ADR-0027). The reset
+     takes list markers away, so the container gives them back. */
+  .rich > * { margin-block: 0; }
+  .rich > * + * { margin-block-start: var(--spacing-3); }
+  .rich ul, .rich ol { padding-inline-start: 1.4em; }
+  .rich ul { list-style-type: disc; }
+  .rich ol { list-style-type: persian; }
+  .rich li + li { margin-block-start: var(--spacing-2); }
+  .rich > h2, .rich > h3 { margin-block: var(--spacing-5) var(--spacing-2); }
+  .rich table { border-collapse: collapse; }
+  .rich th, .rich td { padding: 9px var(--spacing-3) 7px; border-block-end: 1px solid var(--color-line);
+                       font-size: 15px; line-height: 1.6; text-align: start; vertical-align: top; }
+  .rich th { font-weight: 500; color: var(--color-secondary); border-block-end-color: var(--color-line-strong); }
+  .rich__scroll { overflow-x: auto; }
+  .rich__scroll:focus-visible { outline-offset: 0; }
+  /* A draft seen by the operator on its public address. Ink, not amber:
+     amber means time and nothing else. */
+  .preview-bar { background: var(--color-fill-subtle); border-block-end: 1px solid var(--color-line-strong);
+                 padding-block: var(--spacing-3); font-size: 15px; line-height: 1.7; color: var(--color-ink); }
+  .preview-bar .badge { margin-inline-end: var(--spacing-2); }
   .small { font-size: 13px; line-height: 1.7; color: var(--color-muted); max-inline-size: 32rem; }
   .micro { font-size: 12px; line-height: 1.9; color: var(--color-muted); max-inline-size: 32rem; }
   /* The only place weight 500 appears: labels, table headers, eyebrows. */
@@ -871,9 +891,19 @@
   .faq dt { font-weight: 500; color: var(--color-ink); margin-block-start: var(--spacing-4); }
   .faq dd { margin: var(--spacing-1) 0 0; color: var(--color-secondary); font-size: 15px; line-height: 1.8; }
   .faq dt:first-child { margin-block-start: 0; }
+  /* The ledger as a <dl>: a <div> in a <dl> may hold only <dt> and <dd>, so the
+     dotted leader is the row's own ::after, placed between them by `order`. */
+  .answers dd { margin: 0; order: 2; }
+  .answers .fact::after { content: ""; order: 1; border-block-end: 1px dotted var(--color-line-strong);
+                          transform: translateY(-0.28em); }
+  .essentials { margin: 0; padding: var(--spacing-4) var(--spacing-5) var(--spacing-5); }
+  .rich + .rich, .essentials + .rich { margin-block-start: var(--spacing-5); }
+  .pdp__checked { margin: var(--spacing-6) 0 0; }
+  .pdp__img { display: block; max-inline-size: 100%; block-size: auto; margin-block-start: var(--spacing-4);
+              border: 1px solid var(--color-line); border-radius: var(--radius-sm); }
   .pdp__buy { position: sticky; top: calc(var(--hdr-h) + var(--spacing-5)); }
   @media (max-width: 900px) {
-    .pdp { grid-template-columns: 1fr; grid-template-areas: "head" "buy" "main"; }
+    .pdp { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "buy" "main"; }
     .pdp__buy { position: static; }
   }
 
@@ -917,6 +947,7 @@
   .stepper__input[disabled] { color: var(--color-muted); background: var(--color-fill-subtle); }
   .stepper__input::-webkit-inner-spin-button { -webkit-appearance: none; }
   .stepper__btn:focus-visible, .stepper__input:focus-visible { outline-offset: -2px; }
+  .buybox__checked { margin: 0 0 var(--spacing-3); }
   .buybox__cta { inline-size: 100%; }
   .buybox__hint { margin: var(--spacing-3) 0 0; }
   .buybox__note { margin: var(--spacing-4) 0 0; text-align: center; }

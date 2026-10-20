@@ -56,6 +56,22 @@ def env_list(key: str, default: str = "") -> list[str]:
     return [item.strip() for item in env(key, default).split(",") if item.strip()]
 
 
+def site_url(value: str) -> str:
+    """SITE_URL as scheme and host, with no trailing slash for a path to follow."""
+    parsed = urlparse(value.strip())
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.path.strip("/")
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ImproperlyConfigured(
+            f"SITE_URL must be a scheme and a host, like https://premshop.ir; got {value!r}"
+        )
+    return f"{parsed.scheme}://{parsed.netloc.lower()}"
+
+
 def database_from_url(url: str) -> dict[str, Any]:
     """Parse postgres://user:password@host:port/name into Django's DATABASES entry."""
     parsed = urlparse(url)
@@ -77,6 +93,10 @@ _load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY", required=True)
 DEBUG = env_bool("DEBUG")
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
+# The shop's own address. Canonical links, Open Graph tags and the links in emails
+# are built on it, never on the request's Host header, which is whatever the client
+# sent. Required in production (prod.py).
+SITE_URL = site_url(env("SITE_URL") or "http://127.0.0.1:8000")
 
 INSTALLED_APPS = [
     # unfold must precede django.contrib.admin: it overrides the admin templates,

@@ -1,9 +1,15 @@
-{% extends "base.html" %}{% load fa %}
+{% extends "base.html" %}{% load fa richtext %}
 
-{% block title %}{{ product.seo_title|default:product.name }} | PremShop{% endblock %}
+{% block title %}{{ product.seo_title|default:product.name }}{% endblock %}
 {% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
+{% block meta_robots %}{% if preview %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
 
 {% block content %}
+{% if preview %}
+<div class="preview-bar" role="status">
+  <div class="wrap"><span class="badge badge--key">پیش‌نویس</span> این صفحه منتشر نشده است و فقط کارکنان فروشگاه آن را می‌بینند. <a href="{% url 'admin:catalog_product_change' product.pk %}">ویرایش در پنل</a></div>
+</div>
+{% endif %}
 <div class="wrap page">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span><bdi>{{ product.name }}</bdi></span></nav>
 
@@ -26,21 +32,28 @@
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">{{ product.delivery_sentence }}</span>
+          {% if iran_stance %}<span class="badge badge--key">ایران: {{ iran_stance|bdi }}</span>{% endif %}
           {% for spec in key_specs %}<span class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
         </div>
       </div>
   </header>
 
   <div class="pdp__main">
-    {% if product.short_description %}<p class="prose pdp__lead">{{ product.short_description }}</p>{% endif %}
+    {% if product.short_description %}<p class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
 
-    {% comment %}The product's facts as the ledger — the signature, once on this page.{% endcomment %}
-    <div class="card pdp__facts">
-      <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
-      <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</span></div>
-      <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.delivery_display }}</span></div>
-      {% if product.renewable %}<div class="fact"><span class="fact__k">تمدید</span><span class="fact__lead"></span><span class="fact__v">روی همین اکانت، با قیمت روز</span></div>{% endif %}
-    </div>
+    {% comment %}
+    The ledger is also the index of answers: each row is the short answer and
+    a jump to the long one. Iran is left out where the question never arises,
+    and renewal where the product does not renew, because absence claims
+    nothing and «قابل تمدید نیست» would.
+    {% endcomment %}
+    <dl class="card pdp__facts answers">
+      {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{% if after_payment %}<a href="#section-{{ after_payment.pk }}">{{ product.get_delivery_type_display }}</a>{% else %}{{ product.get_delivery_type_display }}{% endif %}</dd></div>{% endif %}
+      {% if iran_stance %}<div class="fact"><dt class="fact__k">از ایران</dt><dd class="fact__v"><a href="#before-buying">{{ iran_stance|bdi }}</a></dd></div>{% endif %}
+      <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v"><a href="#delivery">{{ product.delivery_display }}</a></dd></div>
+      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v"><a href="#before-buying">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</a></dd></div>
+      {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}
+    </dl>
 
     {% if specs %}
     <section class="pdp__section">
@@ -53,30 +66,33 @@
     </section>
     {% endif %}
 
-    {% if product.full_description and product.full_description != product.short_description %}
-    <section class="pdp__section">
-      <h2 class="pdp__h2">توضیحات</h2>
-      <div class="prose">{{ product.full_description|linebreaks }}</div>
-    </section>
-    {% endif %}
+    {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
+    {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
+
+    {% include "catalog/sections/before_buying.html" with section=before_buying %}
 
     {% comment %}
-    The operator's delivery note, when there is one, is the whole answer: a
-    sentence cannot have the hours appended to it. «وسط دوره پرید، چی می‌شه؟»
-    is off the page until the shop has defined what a warranty replaces and
-    what it refunds; the warranty itself is in the ledger above.
+    The product's own questions, then the shop's: when it arrives and, where it
+    applies, whether the buyer's password is needed. The operator's delivery
+    note, when there is one, is the whole answer: a sentence cannot have the
+    hours appended to it. A question is the buyer talking, so it is a <dt>.
     {% endcomment %}
-    <section class="pdp__section">
-      <h2 class="pdp__h2">پرسش‌های متداول</h2>
+    <section class="pdp__section" aria-labelledby="questions-title">
+      <h2 class="pdp__h2" id="questions-title">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کِی تحویل می‌گیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت. اگر این زمان بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.{% endif %}</dd>
+        {% for question in questions %}<dt>{{ question.question|bdi }}</dt><dd class="rich">{{ question.answer|markdown:"" }}</dd>{% endfor %}
+        <dt id="delivery">کِی تحویل می‌گیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت. اگر این زمان بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.{% endif %}</dd>
         {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} را می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
+
+    {% if product.facts_checked_on %}<p class="small pdp__checked">آخرین بررسی: {{ product.facts_checked_on|jalali }}</p>{% endif %}
   </div>
 
   <aside class="pdp__buy">
     <div class="card buybox">
+      {% comment %}The stalest confirmation among this product's plans, never the freshest.{% endcomment %}
+      {% if price_checked_since %}<p class="micro buybox__checked">قیمت‌ها بررسی‌شده از {{ price_checked_since|jalali }}</p>{% endif %}
       {% comment %}
       The add-to-cart control, complete: plan selector, quantity, one primary
       button. The cart itself arrives at S4b, which sets this form's action and
@@ -134,7 +150,7 @@
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
       </form>
-      <p class="micro buybox__note">{{ product.delivery_sentence }}</p>
+      <p class="micro buybox__note">{{ product.delivery_sentence }}<br><a href="#before-buying">گارانتی و شرط‌های خرید</a></p>
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>

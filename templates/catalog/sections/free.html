@@ -1,0 +1,8 @@
+{% load fa richtext %}{% comment %}
+«متن آزاد» has no default heading. Untitled, its own headings stand at the
+section's level, so the page's outline does not jump from the title to an h3.
+{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
+  {% if section.title %}<h2 class="pdp__h2">{{ section.title|bdi }}</h2>{% endif %}
+  <div class="rich__scroll" tabindex="0"><div class="prose rich">{% if section.title %}{{ section.body|markdown }}{% else %}{{ section.body|markdown:"23" }}{% endif %}</div></div>
+  {% include "catalog/sections/_image.html" %}
+</section>

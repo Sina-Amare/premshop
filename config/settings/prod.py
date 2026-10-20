@@ -8,7 +8,7 @@ with an insecure default.
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
-from .base import env, env_list
+from .base import env, env_list, site_url
 
 DEBUG = False
 
@@ -47,6 +47,12 @@ if not DEFAULT_FROM_EMAIL.strip().rstrip(">").endswith("@premshop.ir"):  # noqa:
         "DEFAULT_FROM_EMAIL must be a mailbox at premshop.ir, the SMTP2GO-verified "
         f"sender domain. Got: {DEFAULT_FROM_EMAIL!r}"  # noqa: F405
     )
+
+# Without it every canonical link, preview image and email link would be built on a
+# development address, and nothing on the page would look broken.
+SITE_URL = site_url(env("SITE_URL", required=True))
+if not SITE_URL.startswith("https://"):
+    raise ImproperlyConfigured(f"SITE_URL must be https in production. Got: {SITE_URL!r}")
 
 # Error reporting: sentry-sdk speaking to self-hosted GlitchTip (ADR-0015).
 # No DSN configured means no reporting — never a crash at startup.

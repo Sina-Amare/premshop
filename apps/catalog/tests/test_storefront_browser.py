@@ -15,7 +15,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.catalog.models import Category, Plan, Product
+from apps.catalog.models import Category, Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.core.formatting import format_toman
 from apps.core.tests.test_accessibility_browser import STYLED
@@ -273,5 +273,28 @@ def test_the_sticky_buy_box_stays_below_the_header(browser, live_server, discoun
         assert header_bottom(page) > 0, "positive control: the header is pinned"
         top = box.evaluate("e => e.getBoundingClientRect().top")
         assert top >= header_bottom(page), (top, header_bottom(page))
+    finally:
+        context.close()
+
+
+COMPARISON = """| | Go | Plus | Pro |
+|---|---|---|---|
+| قیمت در OpenAI | ۸ دلار در ماه | ۲۰ دلار در ماه | از ۱۰۰ دلار در ماه |
+| Codex | محدود | ترمینال، ویرایشگر کد، اپ دسکتاپ، وب، iOS و Android (پیش‌نمایش) | جلسه‌های طولانی‌تر از Plus، فعلاً بدون سقف ۵ ساعته |
+"""
+
+
+def test_a_wide_table_scrolls_inside_its_section_on_a_small_phone(browser, live_server, discounted):
+    """One column of `1fr` is as wide as its widest table, so at 320px the
+    whole page scrolled sideways while the table's own box had nothing to do."""
+    ProductSection.objects.create(product=discounted, kind="comparison", body=COMPARISON)
+    context = browser.new_context(viewport={"width": 320, "height": 700}, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        assert page.evaluate(STYLED)
+        assert page.evaluate("document.documentElement.scrollWidth") <= 320
+        box = page.locator(".rich__scroll")
+        assert box.evaluate("e => e.scrollWidth > e.clientWidth"), "the table fits: nothing tested"
     finally:
         context.close()

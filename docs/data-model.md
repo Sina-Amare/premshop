@@ -1,7 +1,7 @@
 # PremShop — Phase 1 ERD
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
-> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
+> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
 > **Contract, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — the documents disagree; listed for the owner in `docs-local/progress.md`).
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
@@ -23,6 +23,8 @@ erDiagram
     User ||--o{ Order : places
     Category ||--o{ Product : contains
     Product ||--o{ ProductSpec : describes
+    Product ||--o{ ProductSection : "its prose"
+    Product ||--o{ ProductQuestion : "asked about"
     Product ||--o{ Plan : offers
     User |o--o| Cart : "owns (UNIQUE when set)"
     Cart ||--o{ CartItem : holds
@@ -117,7 +119,7 @@ erDiagram
     }
 ```
 
-**Not drawn (beyond S4b):** `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, `CredentialAccessLog`, `Page`, `FAQ`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
+**Not drawn (beyond S4b):** `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, `CredentialAccessLog`, `Page`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
 
 ---
 
@@ -158,6 +160,11 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 - **`Product.renewable` (added 2026-10-14), default false.** Claimed, never assumed: renewal depends on the upstream provider and on the operator getting the same account back, so a product that has not been thought about says nothing. Rendered only when true — there is no negative state, and none on a gift card, which has no period to renew.
 - **`ProductSpec.is_key` (added 2026-10-14)** marks a fact important enough to print beside the title as well as in the table. Shared-or-private, capacity, device count, region and any one-off condition live here as free rows rather than as columns, for the reason that deleted `Product.region` in 0003: a column blank on most rows is a column the form asks about anyway.
 - **`Plan.max_quantity` (added 2026-10-14) decides whether a quantity control is offered at all.** Default 1, and at 1 the product page renders no stepper — not a disabled one, none. Most of this shop is a subscription activated on one person's account, where "how many" is not a question the buyer has; gift cards are the case that wants it. Two `CHECK`s hold it: `1..10`, and `max_quantity = 1` whenever `requires_customer_input` is true. That second one *is* a CHECK, unlike the cart rule below, because both columns live on the same row — the cart's version still has to exist separately, since a plan's `requires_customer_input` can be flipped on after a line was created.
+- **The product page is facts in fields and prose in sections (added 2026-10-20, catalog 0019, ADR-0028).** A fact the shop commits to, or a buyer decides on, has a field and is printed only from it: `Product.iran_stance` (the provider's own words; «موضوعیت ندارد» is a value, and the page then prints nothing about Iran), `Product.refund_note` (only a per-product exception to the shop's refund rule), the existing `warranty`. The prose is `ProductSection` rows, each one of six kinds, whose kind picks its template; «پیش از خرید» is printed on every page whether or not a row of that kind exists, and a product has at most one such row (§3). The questions are `ProductQuestion` rows in `catalog`, not in `cms`. Section bodies and answers are restricted Markdown (ADR-0027); `ProductSection.image` requires `image_alt` (§3), and both image fields store only the redrawn upload.
+- **Publishing is one rule, `Product.publish_problems()`.** It needs a delivery type, an available plan, the one-line summary and `iran_stance` (with at least one line in `sources` unless the stance is «موضوعیت ندارد»), no owner placeholder (`[تصمیم مالک…]`, `[وابسته به تصمیم…]`, `[از تحویل آزمایشی…]`) in any text the page prints, and, for a `time_sensitive` product, a `facts_checked_on` no more than seven days old. The schema does not enforce it: the form, the bulk action and the readiness list call it, and a product already live is held to the placeholders only.
+- **`Product.sources` and `facts_checked_on` are typed by the operator** until a source re-read exists to fill them (ADR-0028). `sources` is one http(s) address per line and is never printed; `facts_checked_on` may not be in the future.
+- **`Plan.price_confirmed_at` is set on every save that changes `cost_price`, `sale_price` or `promo_price`, and by the bulk action «قیمت‌ها را امروز بررسی کردم».** It is not on the form. A page prints the oldest value among the plans it shows, and none while any of them is null — which every plan saved before 2026-10-20 is until it is confirmed.
+- **`Product.full_description` and `Category.intro_html` are retired but not dropped.** Catalog 0020 moved a full description into a «متن آزاد» section wherever the page printed it, and a category's HTML introduction into the Markdown `Category.intro` (no headings: it sits under the page's `h1`). Both old columns are off every form and page and stay only so 0020 can be reversed.
 
 ### `cart` — persistent, cross-device (ADR-0018, rewritten)
 
@@ -292,7 +299,7 @@ Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `notifications`).
 
 ### `cms`
 
-The operator-editable content: the legal and information pages Enamad requires (terms, refund policy, privacy, about/contact) and the FAQ, either site-wide or attached to one product. No ADR fixes their shape yet.
+The operator-editable content: the legal and information pages Enamad requires (terms, refund policy, privacy, about/contact). A product's own questions are not here: they are `catalog.ProductQuestion` (ADR-0028), since `cms` may not import a domain app. No ADR fixes the pages' shape yet.
 
 Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `cms`). It is re-specified when S11 is planned.
 
@@ -321,7 +328,7 @@ The unique constraints of the tables beyond S4b (`Payment`, `Notification`, `Sit
 
 ### Partial unique (exact predicates)
 
-None in the built or S4a/S4b tables. The one drafted so far is on `Payment`: at most one *live* payment attempt per order, so a failed or abandoned attempt leaves room for a retry. It only stops two live attempts; it is not what makes confirmation idempotent (ADR-0019). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Partial unique). It is re-specified when S6b is planned.
+One in the built tables: `ProductSection (product) WHERE kind = 'before_buying'` (`section_one_before_buying`, catalog 0019), so the conditions of a sale are said once per product. The admin's formset also refuses two such rows added in one save: model validation compares each new row with what is stored, so two new ones would both pass it and meet the constraint as an error page. The one drafted beyond that is on `Payment`: at most one *live* payment attempt per order, so a failed or abandoned attempt leaves room for a retry. It only stops two live attempts; it is not what makes confirmation idempotent (ADR-0019). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Partial unique). It is re-specified when S6b is planned.
 
 ### Check constraints
 
@@ -329,6 +336,7 @@ None in the built or S4a/S4b tables. The one drafted so far is on `Payment`: at 
 |---|---|
 | Product (built: catalog 0002) | `delivery_hours BETWEEN 1 AND 72` (`product_delivery_hours_1_to_72`, raised from 48 on 2026-10-18 — ADR-0009 amended); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
 | Plan (built: catalog 0001, 0002) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`) |
+| ProductSection (built: catalog 0019) | `kind IN ('benefits','includes','comparison','after_payment','before_buying','free')` (`section_kind_valid`); `image = '' OR image_alt <> ''` (`section_image_has_alt`) — a picture without its alternative text is not stored |
 | Cart | `(user_id IS NULL) <> (session_key IS NULL)` — exactly one owner |
 | CartItem | `quantity BETWEEN 1 AND 10`; **service-enforced, not a CHECK:** `quantity = 1` when the plan has `requires_customer_input=true` (the condition lives on `Plan`, one join away — refused in the cart, re-validated at checkout) |
 | Order | `subtotal >= 0`; `discount_amount >= 0`; `total_amount >= 0`; `total_amount = subtotal - discount_amount` — the money invariant enforced by the DB, not only by the service; `channel IN ('web','bot','legacy')` |
@@ -347,10 +355,10 @@ Transition legality (the matrix itself) is service-enforced with `select_for_upd
 | Order.user, Order.discount_code, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
 | OrderItem.plan, **CartItem.plan** | **PROTECT** | a sold plan row must exist forever; retire with `is_available=false`. Snapshot covers display, the FK keeps the profit/re-buy/renewal link live. A plan sitting in a live cart is protected for the same reason a sold one is: deleting it would silently empty someone's cart |
 | Product.category | **PROTECT** | no orphan products; empty the category first |
-| OrderItem.order; OrderItemEvent.order_item; ProductSpec / Plan .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
+| OrderItem.order; OrderItemEvent.order_item; ProductSpec / Plan / ProductSection / ProductQuestion .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
 | DiscountCode.products (M2M) | — | plain join table; unlinking a product narrows the scope of a live code and touches no order, because scope is read at checkout and the outcome is frozen in `discount_amount` |
 
-The foreign keys of the tables beyond S4b (`Payment`, `Refund`, `DeliveryField`, `CredentialAccessLog`, `Notification`, `FAQ`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; the rule they follow is the one above, that anything in the money or audit chain is PROTECT.
+The foreign keys of the tables beyond S4b (`Payment`, `Refund`, `DeliveryField`, `CredentialAccessLog`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; the rule they follow is the one above, that anything in the money or audit chain is PROTECT.
 
 ---
 

@@ -1,4 +1,4 @@
-{% load static %}{% load fa %}<!DOCTYPE html>
+{% load static %}{% load fa head %}<!DOCTYPE html>
 {% comment %}lang="fa" is load-bearing: both faces register locl only under arab/URD, and
    an Urdu guess silently changes the shape of ی/ک.{% endcomment %}
 <html lang="fa" dir="rtl" translate="no">
@@ -7,10 +7,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google" content="notranslate">
   <meta name="theme-color" content="#131313">
-  <link rel="icon" href="{% static 'icon.svg' %}" type="image/svg+xml">
-  <title>{% block title %}PremShop{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
-  {% block meta_robots %}{% endblock %}
+  <link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  {% comment %}A page's title block holds its own part only: « | PremShop» is added
+  here, once. Title and description are each printed twice, for the tab and for a
+  link preview, and a block can appear only once.{% endcomment %}
+  {% capture page_title %}{% block title %}{% endblock %}{% endcapture %}
+  {% capture page_description %}{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}{% endcapture %}
+  <title>{{ page_title|shop_title }}</title>
+  <meta name="description" content="{{ page_description }}">
+  {% comment %}An indexed page names its own address, built on SITE_URL and without
+  the query string a utm link carries. A page that fills this block with noindex
+  has no canonical address.{% endcomment %}
+  {% block meta_robots %}{% if request %}{% with here=request.path|urlencode %}
+  <link rel="canonical" href="{{ site_url }}{{ here }}">
+  <meta property="og:url" content="{{ site_url }}{{ here }}">
+  {% endwith %}{% endif %}{% endblock %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PremShop">
+  <meta property="og:locale" content="fa_IR">
+  <meta property="og:title" content="{{ page_title|shop_title }}">
+  <meta property="og:description" content="{{ page_description }}">
+  <meta property="og:image" content="{{ site_url }}{% static 'img/share.png' %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
 
   {% comment %}
   Four faces paint above the fold and all four are preloaded. Until 2026-10-14

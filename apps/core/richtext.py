@@ -13,8 +13,11 @@ import re
 from collections import defaultdict
 from collections.abc import Collection, Sequence
 from itertools import pairwise
+from urllib.parse import urlsplit
 
 import nh3
+from django.conf import settings
+from django.utils.html import escape, format_html_join
 from django.utils.safestring import SafeString, mark_safe
 from markdown_it import MarkdownIt
 from markdown_it.renderer import RendererHTML
@@ -147,11 +150,25 @@ def _without_nested_links(children: list[Token]) -> list[Token]:
     return out
 
 
+def _is_internal(href: str) -> bool:
+    """A path on this site, or a full address on SITE_URL's host."""
+    if _SITE_PATH.match(href):
+        return True
+    try:
+        parts = urlsplit(href)
+    except ValueError:
+        return False
+    return (
+        parts.scheme.lower() in ("http", "https")
+        and parts.netloc.lower() == urlsplit(settings.SITE_URL).netloc
+    )
+
+
 def _link_open(
     self: RendererHTML, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
 ) -> str:
     token = tokens[idx]
-    if not _SITE_PATH.match(str(token.attrGet("href") or "")):
+    if not _is_internal(str(token.attrGet("href") or "")):
         token.attrSet("rel", EXTERNAL_REL)
     return self.renderToken(tokens, idx, options, env)
 
@@ -200,21 +217,40 @@ def _sanitize(html: str, headings: set[str]) -> str:
     )
 
 
+def isolate_latin(text: str) -> SafeString:
+    """Plain text, escaped, with each Latin run inside one <bdi>. No Markdown is read.
+
+    For the operator's one-line fields, which are not Markdown but carry the same
+    names: «از جمله VS Code، Cursor» reads «Cursor ،VS Code» without it.
+    """
+    pieces: list[tuple[str, str]] = []
+    at = 0
+    for run in _LATIN_RUN.finditer(text):
+        if _LATIN_LETTER.search(run[0]):
+            pieces.append((text[at : run.start()], run[0]))
+            at = run.end()
+    return format_html_join("", "{}<bdi>{}</bdi>", pieces) + escape(text[at:])
+
+
 def render_markdown(text: str, heading_levels: Collection[int] = (3,)) -> SafeString:
     """Operator-written Markdown as HTML that is safe on any page.
 
     `heading_levels` are the levels the calling page leaves free below its own
     headings. A heading above them moves down to the nearest one; a heading below
-    them, or any heading where none is free, becomes a paragraph.
+    them, or any heading where none is free, becomes a paragraph. A text whose
+    first heading is free but below the first free level moves every heading up
+    by the difference first, so it cannot open with a jump in the outline.
     """
     levels = sorted(set(heading_levels))
     if any(n not in range(2, 7) for n in levels):
         raise ValueError(f"heading levels run from 2 to 6, not {levels}: h1 is the page's title")
     source = _PERSIAN_LIST_NUMBER.sub(lambda m: m[1] + to_latin_digits(m[2]), text)
     tokens = _parser.parse(source)
+    first = next((int(t.tag[1]) for t in tokens if t.type == "heading_open"), 0)
+    lift = first - levels[0] if levels and levels[0] < first <= levels[-1] else 0
     for token in tokens:
         if token.type in ("heading_open", "heading_close"):
-            token.tag = next((f"h{n}" for n in levels if n >= int(token.tag[1])), "p")
+            token.tag = next((f"h{n}" for n in levels if n >= int(token.tag[1]) - lift), "p")
         elif token.type == "inline" and token.children:
             token.children = _isolated(_without_nested_links(token.children))
     headings = {f"h{n}" for n in levels}
