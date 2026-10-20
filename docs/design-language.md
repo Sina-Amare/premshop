@@ -1,6 +1,125 @@
 # Design Language
 
-The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
+The visual system in force is the 2026-10-20 amendment directly below (decisions: [ADR-0016](decisions/0016-brand-and-type.md), [ADR-0029](decisions/0029-storefront-commercial-paper.md)). The sections after it are kept as they were written and stand wherever it does not replace them. Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
+
+## Amendment — 2026-10-20: «نرخ‌نامه‌ی فیروزه‌ای»
+
+The storefront becomes a set of the commercial papers an Iranian buyer already trusts: a dated rate sheet, a پیش‌فاکتور with the total in words, the questions as a ledger under «ردیف». Beside the papers, never under them, stands a tile of turquoise and lapis, and the site's colour, its pictures and its one self-starting motion all come from that tile. Wherever money or a decision is, there is only paper and figures. Decision and alternatives: [ADR-0029](decisions/0029-storefront-commercial-paper.md); the palette: [ADR-0016](decisions/0016-brand-and-type.md), amended the same day. These clauses supersede the amendments of 2026-10-14b, 2026-10-14 and 2026-10-13 and the matching parts of the sections after them; what they do not mention stands. The two Voice sections are untouched.
+
+### Colour
+
+| Token | Value | Role | Measured contrast |
+|---|---|---|---|
+| `--color-ground` (paper) | `#F6F4EF` | the page | ink 15.80:1 |
+| `--color-surface` (sheet) | `#FFFFFF` | the rate sheet, the پیش‌فاکتور, forms | ink 17.36:1 |
+| `--color-fill-subtle` | `#EFEBE4` | a row under the pointer, a disabled control | ink 14.61:1, muted 5.32:1 |
+| `--color-line`, `--color-line-strong` | `#E2DDD3`, `#CEC7BA` | hairlines and dotted leaders; decoration, never the only edge of a control | 1.23:1 and 1.53:1 on paper |
+| `--color-control` | `#857D70` | the edge of anything a person operates: search, a field, a plan, the stepper | 3.70:1 on paper, 4.07:1 on a sheet, 3.42:1 on a hovered row |
+| `--color-muted` | `#655F56` | labels, the struck price, the total in words | 5.75:1 on paper, 6.32:1 on a sheet, 5.40:1 on a chosen plan |
+| `--color-secondary` | `#46423B` | second-level text | 9.09:1 on paper, 9.99:1 on a sheet |
+| `--color-ink` | `#1C1A17` | text and the heavy rules | as above |
+| `--color-deep` | `#171614` | the top strip and the footer | `--color-on-deep` 16.01:1, `--color-on-deep-muted` 8.33:1 |
+| `--color-accent` (turquoise) | `#0A6A6E` | the primary action, the chosen plan, the current category | white text 6.36:1; as text on paper 5.79:1; as an edge on its tint 5.44:1 |
+| `--color-accent-hover`, `--color-accent-active` | `#085A5E`, `#064A4E` | pointer and press on the primary action | white text 7.97:1 and 10.01:1 |
+| `--color-accent-tint` | `#E3F0EE` | behind a chosen plan; the tint cells of the art | ink 14.85:1 |
+| `--color-lapis` | `#233D86` | a document's band, the double rule under the amount paid, text links, the focus ring, the lines of the art | 9.17:1 on paper, 10.08:1 on a sheet, 8.62:1 on a chosen plan |
+| `--color-lapis-underline` | `#7786B0` | a link's underline at rest; on hover it takes the link's own lapis | 3.28:1 on paper, 3.61:1 on a sheet |
+| `--color-glaze` | `#34A7A9` | the illustrations, and nothing else | 2.64:1 on paper: never text, never an edge |
+| `--color-time`, `--color-time-text` | `#D97706`, `#92400E` | time left, and nothing else | text 5.76:1 on its tint, 6.45:1 on paper; the bright amber is 2.90:1 and never carries text |
+| status green and red | `#16A34A` / `#166534`, `#DC2626` / `#991B1B` | delivered or confirmed; overdue, failed, destructive | red text 7.56:1 on paper and 6.68:1 on its tint; green text 5.88:1 on its tint |
+
+Measured with the WCAG 2.2 formula on the values in `static/css/input.css`: text needs 4.5:1, a control's edge and a focus ring 3:1, and every pair above that carries text or an edge passes. The tints (`--color-time-tint`, `--color-time-edge`, `--color-ok-tint`, `--color-selection`) are `color-mix(in oklab, X n%, paper)` worked out to hex so older browsers get them too; a changed base colour means recomputing them. `--color-danger-tint` is the exception, `#F9E1E1` set by hand: mixed into the warm paper, the red came out 3/255 from the time tint in every channel, so a refused code or an unavailable plan read as a deadline.
+
+- **Turquoise is what you do and what you chose.** The budget stands: at most three times in a view, never on a heading, an icon or a rule.
+- **Lapis is the record.** It is never a broad background, a button or a fill. Links in running text carry the underline at rest. The focus ring is lapis, 2px at a 2px offset, so focus is never mistaken for a turquoise choice; on the ink strip, the footer and the skip link it is white.
+- **Glaze lives only in the illustrations**, and the illustrations hold no yellow or ochre, so nothing on a page comes near amber.
+- **Colour is no longer only the goods.** Brand marks keep their own colours beside a product's name; the interface around them now has the tile's two colours as well, each with one job.
+
+### Paper and frame
+
+- **Rules of the paper.** 2px ink opens and closes a document, 1px ink sits under column heads, hairlines run between rows, and dotted leaders join a label to its value. A 4px lapis band tops a document the shop issues, and a double lapis rule sits only under the amount paid.
+- **Corners:** 2px on paper (`--radius-sheet`), 6px on a control (`--radius-sm`), 0 on anything that meets the viewport edge. This replaces 2026-10-14's 14px surface radius.
+- **No shadow.** `--shadow-lift` is gone with the shelf it served. `box-shadow` appears only inset: to double the edge of a chosen plan or a field in error, and to draw a chosen plan's dot.
+- **A list of goods is a rate sheet**, one row per plan under its product's name, never a grid of cards; the related products at the end of a product page are rows too. This replaces the product card under "The catalog".
+- **The buy box is a پیش‌فاکتور**: a sheet under the lapis band, its total in Estedad 800 over the double rule with the amount in words beneath, every figure built on the server. This replaces the buy box under "The catalog".
+- **Ink frames the page.** The top strip and the footer are `--color-deep`, full-bleed. The strip says only what is true of every product, the support hours and the Telegram handle, from the one source the footer reads too. The header and the category row stick together from 761px, and every in-page jump and sticky column clears them (`--frame-h`).
+- **Spacing** keeps its nine values. The column is 1120px, with 24px gutters, 16px on a phone.
+
+### Type
+
+| Role | Face | Size, desktop / phone (760px and under) | Token |
+|---|---|---|---|
+| Home headline | Estedad 800 | 34 to 60px with the viewport | `--text-poster` |
+| Total of a پیش‌فاکتور | Estedad 800 | 44 / 36px | `--text-total` |
+| Price on a rate sheet or a plan | Estedad 800 | 24px from 1024px, 20px below | `--text-price` |
+| Step number | Estedad 800 | 28px | `--text-step` |
+| Page title | Estedad 600 | 34 / 30px | `--text-h1` |
+| Section, subsection | Estedad 600 | 25px, 22px | `--text-h2`, `--text-h3` |
+| One-line summary, the line under a title | Vazirmatn 400 | 19 / 17px | `--text-lead` |
+| Text, line-height 1.85 | Vazirmatn 400 | 17px | `--text-body` |
+| Buttons and interface | Vazirmatn 500 | 15px | `--text-ui` |
+| Labels, the total in words, footnotes | Vazirmatn 400 and 500 | 13px, 12px | `--text-small`, `--text-micro` |
+
+- **Estedad 800 is for figures.** Prices, totals and step numbers are the darkest marks on a page, and the home headline is the one heading that shares their weight. Other headings stay 600 so they do not compete with the figures; Vazirmatn 700 is emphasis.
+- **Heading sizes are set for what Estedad draws.** At `size-adjust: 82%` a 25px h2 draws like 21px of Vazirmatn and a 22px h3 like 18px, so a heading never reads smaller than the 17px text under it, and a phone's 30px page title draws 1.2 times its h2s. This replaces the type table below.
+- **The home headline is one line** in the web face at every width: its size is capped at 9.6% of its column, which «اشتراک دلاری، پرداخت تومانی» fills to at most 95%. In a wider fallback it breaks into two balanced lines rather than pushing the page sideways.
+- **Digits are proportional everywhere**, prices, totals and deadline badges included: tabular digits space the dot-like Persian zero so wide that `۱,۳۹۰,۰۰۰` reads letter-spaced. Money in a column aligns on its units digit, which in a right-to-left table is the start side (`.num`). The sign-in code's cells are the one tabular run. This replaces "`tabular-nums` on every price, count and code".
+- **The struck price** is muted and one step down, inside `<del>` with a hidden «قیمت قبل» for a screen reader, and its line runs above the dot-like Persian zero, not through it.
+
+### Faces and their fallbacks
+
+- **The same five files**, subset and self-hosted: Vazirmatn 400, 500 and 700, Estedad 600 and 800. `base.html` preloads all five on every page, because each paints in the first screen.
+- **`font-display: optional`.** A face that has not arrived by the first paint stays out for that page view, so text never moves once it shows. The cost: a slow first visit reads in the fallback, and the next page has the faces in cache. The measurements behind it are in ADR-0029.
+- **Fifteen fitted fallbacks**, one for each web face and weight on each platform: Tahoma on Windows («Vazirmatn Fallback», «Estedad Fallback»), Noto Naskh Arabic UI («Vazirmatn Naskh», «Estedad Naskh») and Noto Sans Arabic UI («Vazirmatn Noto», «Estedad Noto») on Android. Each `size-adjust` is the width of the shop's own Persian text in the web face over its width in the fallback, weight by weight, and the ascent and descent overrides give every fallback the web face's line, so a page in the fallback wraps as it would in the web face. `local()` matches a font's full or PostScript name only («Noto Naskh Arabic UI Regular», `NotoNaskhArabicUI-Regular`); a name that matches nothing skips the face without a word. iOS's SF Arabic is not fitted, and the Android names have not been checked on a real phone.
+- This replaces 2026-10-14's metric fallback and the `swap` in the implementation notes.
+
+### Tile illustrations
+
+- **Geometry.** An eight-pointed star and a cross from tilework, on a square lattice. Lines in the tables' weights: a 2px lapis key line and 1px inner lines. Fills are paper, the turquoise tint and glaze; lapis is never a fill. Stars carry the glaze, and a cross is tinted only where it sets a glaze star, so no cross stands alone as a plus sign.
+- **Walls**, on the home page's top and a category's head: one lattice, hung from the top edge and from the edge beside the text through star centres, so every cut ends on star tips, standing on a lapis line (on the home page, the rate sheet's band carried out to the viewport edge). Below 900px on the home page and 761px on a category, the wall becomes a close-up of itself, half a period tall and two to two and a half stars across: never a frieze of small repeats.
+- **Spot art** for an empty state that has no list to show, and for the error pages; on the 404 a star has fallen out of the pattern. The top band of an email is drawn in table cells, never an image, and the 1200×630 Telegram preview carries a cut of the pattern and never a price.
+- **Never** under any text; never inside a rate sheet, a پیش‌فاکتور, a receipt or anywhere else money is; never in a form, in search or in the panel; never under a control; never in place of a brand mark. An empty search and an empty category have no picture: the full rate sheet under their one line is the answer.
+- **Made in house**, by hand, as SVG partials in `templates/svg/`, included inline. No `<style>`, filter, gradient, bitmap or text inside; `aria-hidden="true"`; each under 8 KB gzipped. Colour comes from the `.tile-*` rules in `input.css`, which read the tokens, so a palette change redraws nothing. A change to one is reviewed like code and shot at every width.
+- **Neither a souvenir nor generated.** No arabesque, calligraphy, dome, arch or minaret, carpet or miniature, gold or aged texture: the pattern is seen large and cut, like the wall of a building, never small and repeated like wrapping paper. No generated image, stock photo or trace, no blurred blob, glow, glass, 3D or noise. Only the tile's two colours and paper.
+
+### Motion
+
+- **Feedback**, with three durations: `--dur-xs` 90ms for a press, `--dur` 140ms for colour and state, `--dur-lg` 220ms with `--ease-out` for what moves or reveals. A changed total travels 4px (`--shift`) and is announced politely, after the buyer's own action or when a discount ends on an open page. The total is the پیش‌فاکتور's one live region, so a change is announced once.
+- **The one motion that starts by itself** is the home page's glint. Over three whole glaze stars of the row that carries the headline, a tint copy rises to half opacity and falls back, one star at a time toward the headline, one every 6s (`--dur-ambient`, 18s for the round). Opacity only; nothing travels. It runs from 900px, only when the visitor has not asked for reduced motion, and only while the hero is on screen (`frame.js` pauses it off screen).
+- **The pause control**, «توقف حرکت», sits on paper at the top of the text column, against the wall's edge, never on the art. Its checkbox covers the whole label and stops the glint through `:has()`, without script (WCAG 2.2.2). A browser without `:has()` gets no glint at all, so the motion can always be stopped, and the control exists only where the motion runs.
+- **Reduced motion:** no glint and no control; every animation and transition cut to 0.01ms, with an infinite one capped at a single run; a changed total swaps without travelling; an in-page jump is not glided.
+- **Never:** an entrance or scroll animation, parallax, a lift or scale on hover, anything floating, a ticking number, `scroll-behavior: smooth` (the browser's own scroll to a focused control would race `frame.js` and leave the control under the sticky header). This replaces 2026-10-14's drafting grid and 2026-10-14b's drifting constellation.
+
+### Amber means time pressure
+
+- **Amber marks time left and nothing else:** a promotion's deadline, a sign-in code's validity, and in the panel the time remaining. A warning that is not about time, a stale price and a struck price are never amber. Nor is an error's ground: the danger tint is a cool pink, apart from the time tint, so the two never share a fill.
+- **A deadline never ticks.** The server writes its text, days and hours, or under a day hours and minutes, never seconds, each number joined to its unit by a no-break space, and prints the fixed end time beside it; the page writes it again only when the tab is shown again. At the end the badge goes, its line says «تخفیف تمام شد.», and every price with that end becomes the figure the server built for after it. Discounts that share one end show one deadline, not one per row. This replaces the clock described under "Numbers and RTL".
+
+### The panel
+
+The panel is a tool for daily work. It takes the tokens, not the paper or the tile.
+
+- **Colour:** Unfold's primary is built from turquoise; saving is turquoise and deleting is red. Unfold's own neutral ground stays, and no lapis band, illustration or poster size enters the panel.
+- **Amber** is time remaining and the only loud thing on a panel page; a promotion's countdown is amber. A stale price or claim is never amber, only heavier.
+- **Figures:** price columns in Estedad 800 with proportional digits, aligned on the units digit, as in the shop.
+- **Density:** compact rows and no decorative space.
+
+### Checklist, as of this date
+
+It replaces the anti-generic checklist at the end of this document:
+
+- [ ] No colour, size, space, radius, border or duration outside the token block; logical properties only
+- [ ] Turquoise at most three times in a view, never on a heading, icon or rule; lapis never a background, button or fill; glaze only in the art; amber only on time
+- [ ] 2px corners on paper, 6px on a control, none at the viewport edge; no shadow
+- [ ] 2px ink opens and closes a document; the double lapis rule only under the amount paid
+- [ ] Estedad 800 only for figures and the home headline; other headings 600
+- [ ] Proportional digits, money columns aligned on the units digit
+- [ ] Every Latin run in `<bdi lang="en">` (`|bdi`, `|isolate`), and text that mixes Persian and a `<bdi>` in one box, never loose in a flex or grid container
+- [ ] A name never wraps inside itself in running text: an address under a heading moves to the next line whole
+- [ ] No tile under text, near money, in a form, search or the panel, or in place of a brand mark
+- [ ] Nothing moves by itself but the home glint, nothing ticks, and reduced motion stops both
+- [ ] Focus visible everywhere and never under the sticky header
+- [ ] No three feature cards, no emoji; every promise, badge and section head a noun phrase
 
 ## Voice — 2026-10-20: plain written Persian
 
