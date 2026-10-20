@@ -1,0 +1,20 @@
+{% load admin_list i18n %}
+{% comment %}
+Unfold pins the bulk-action bar to the right edge and offsets it from the left
+by the sidebar's width. In RTL the sidebar is on the right, so the bar sat
+under it and its menu could not be clicked at desktop width: the one
+way to publish several products at once. The sides follow the direction here.
+{% endcomment %}
+{% get_current_language_bidi as bidi %}
+
+{% if actions_on_top %}
+    {% if cl.search_fields or action_form or cl.has_filters %}
+        <div class="bottom-0 {% if bidi %}left-0{% else %}right-0{% endif %} hidden group-has-[input.action-select:checked]:flex fixed gap-3 lg:bottom-0 lg:h-[64px] items-center p-3 z-50 lg:flex-row" {% if not is_popup %}x-bind:style="{ {% if bidi %}right{% else %}left{% endif %}: sidebarOpen ? sidebarWidth + 'px' : '0px' }"{% endif %}>
+            <div id="changelist-actions-wrapper" class="grow group changelist-actions">
+                {% if action_form %}
+                    {% admin_actions %}
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% endif %}

@@ -1,0 +1,17 @@
+{% load i18n %}
+{% comment %}Unfold's header for the sign-in page, with the back arrow pointing back in RTL.{% endcomment %}
+{% get_current_language_bidi as bidi %}
+
+<div class="absolute flex flex-row items-center justify-between left-0 m-4 right-0 top-0">
+    {% if site_url %}
+        <a href="{{ site_url }}" class="flex font-medium gap-2 group items-center text-sm text-primary-600 dark:text-primary-500">
+            <span class="material-symbols-outlined text-sm" aria-hidden="true">{% if bidi %}arrow_forward{% else %}arrow_back{% endif %}</span> {% trans 'Return to site' %}
+        </a>
+    {% endif %}
+
+    {% if not theme %}
+        <div class="ml-auto">
+            {% include "unfold/helpers/theme_switch_dropdown.html" %}
+        </div>
+    {% endif %}
+</div>

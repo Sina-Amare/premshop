@@ -1,11 +1,12 @@
-/* The operator panel's type and direction.
+/* The operator panel's type, direction and the few colours it means.
  *
- * Loaded from templates/admin/base_site.html through {% block extrastyle %},
- * which is the only hook that lands AFTER unfold/css/styles.css. The UNFOLD
- * "STYLES" setting loads before it, so a font set there is silently overridden
- * and appears to do nothing.
+ * Loaded on every panel page, the sign-in page and the dashboard included,
+ * through UNFOLD["STYLES"] in config/settings/base.py. That list is printed
+ * before Unfold's own stylesheet, which does not matter: Unfold declares its
+ * rules inside CSS layers, and an unlayered rule beats a layered one whatever
+ * the source order.
  *
- * Two problems are fixed here.
+ * Two problems are fixed first.
  *
  * The font. Unfold ships Inter, which has no Persian glyphs at all, so every
  * Persian character in the panel fell through to whatever the operating system
@@ -73,15 +74,26 @@ table, .tabular-nums, input[type="number"] {
 /* A Latin run inside an RTL line — a slug, a file path, an email — is
    reordered by the bidi algorithm unless it is isolated. The change form
    showed "media/products/claude-pro.svg/" with the slash migrated to the
-   front for exactly this reason. */
+   front for exactly this reason; the path is in the file widget's read-only
+   text box, which the first version of this rule did not reach. Aligned
+   with the Persian around it only in RTL: on the English side the same
+   alignment pushed a date's placeholder under its calendar icon. */
 .field-slug input,
 .field-image a,
+.field-image input[type="text"],
 input[type="email"],
 input[type="url"],
 .readonly code {
   direction: ltr;
-  text-align: right;
   unicode-bidi: isolate;
+}
+[dir="rtl"] .field-slug input,
+[dir="rtl"] .field-image a,
+[dir="rtl"] .field-image input[type="text"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="url"],
+[dir="rtl"] .readonly code {
+  text-align: right;
 }
 
 /* --- RTL corrections for Unfold's physical-only layout -------------------- */
@@ -140,6 +152,17 @@ input[type="url"],
 }
 
 /* --- The product image on the change form --------------------------------- */
+/* The file widget's path box sits in a flex label that could not shrink below
+   the input's intrinsic width, and a fieldset never narrows below its
+   content: at 320px the whole first section was 374px wide and the page
+   scrolled sideways. */
+.field-image label {
+  min-width: 0;
+}
+#content fieldset {
+  min-inline-size: 0;
+}
+
 /* Unfold renders the current image at its natural size, so a 512px logo
    became the tallest thing on the form and pushed every field below the
    fold. It is a confirmation that the right file is attached, not a preview. */
@@ -160,7 +183,16 @@ input[type="url"],
 
    An earlier version of this file styled `.deletelink`, which is Django's
    class and does not exist in Unfold's markup. It matched nothing and was
-   removed rather than left looking load-bearing. */
+   removed rather than left looking load-bearing.
+
+   Under 1024px Unfold stacks the row in reverse, which put a full-width red
+   «حذف» first and «ذخیره» last, under the thumb's reach. The stack follows the
+   markup instead: save first, delete last. */
+@media (max-width: 63.99rem) {
+  #submit-row .flex-col-reverse {
+    flex-direction: column;
+  }
+}
 
 /* --- The date and time shortcuts ------------------------------------------ */
 /* Django injects «امروز |» and «اکنون |» into the date and time inputs and
@@ -186,7 +218,6 @@ input[type="url"],
 input.vDateField,
 input.vTimeField {
   direction: ltr;
-  text-align: right;
   unicode-bidi: isolate;
 }
 [dir="rtl"] input.vDateField,
@@ -235,4 +266,270 @@ input.vTimeField {
   height: auto;
   min-block-size: 42px;
   line-height: 1.9;
+}
+
+/* A closed section's chevron is pinned 12px from the right edge, which in
+   RTL is where the heading's first letter sits: «جستجو» and «سئو» read as
+   struck through. */
+[dir="rtl"] fieldset details > summary::after {
+  right: auto;
+  left: 0.75rem;
+}
+
+/* The warning glyph before a field's error keeps its gap on the physical
+   right, which in RTL is the outside, so it touched the first word. */
+[dir="rtl"] .errorlist > *::before {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+
+/* --- What the figures mean ------------------------------------------------ */
+/* Time, the one loud thing in this panel and the only amber (ADR-0016): the
+   storefront's .badge--time, at the panel's density. */
+.panel-time {
+  display: inline-block;
+  border: 1px solid color-mix(in oklab, #d97706 34%, #fff);
+  border-radius: 4px;
+  background: color-mix(in oklab, #d97706 12%, #fff);
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dark .panel-time {
+  border-color: rgb(217 119 6 / 0.45);
+  background: rgb(217 119 6 / 0.18);
+  color: #fbbf24;
+}
+
+/* A plan sold under its cost. Text in the danger colour, not a badge: a
+   badge here would be the second-loudest thing on the page, after time. */
+.panel-loss {
+  color: #b91c1c;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dark .panel-loss {
+  color: #f87171;
+}
+
+/* A figure and its «تومان» are one unit. In a narrow column the range broke
+   over four lines with the unit alone on the last, and a date broke in two. */
+.panel-amount,
+.panel-date {
+  white-space: nowrap;
+}
+/* The struck original keeps the cell's own colour: faded to 0.55 it was 2.57:1,
+   on the page where a wrong discount is meant to be spotted. */
+.panel-was {
+  white-space: nowrap;
+}
+
+/* The amount a money field holds, as the shop prints it, and the Jalali day
+   a date field holds, under the field. Written by static/js/admin.js;
+   display only. */
+.money-preview,
+.date-preview {
+  margin-block-start: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The history table and its pages. Unfold aligned both to the physical left. */
+.panel-history th,
+.panel-history td {
+  text-align: start;
+}
+.panel-page {
+  padding-inline-end: 1rem;
+}
+
+/* --- Tables on a phone ---------------------------------------------------- */
+/* At 390px the product table is 561px in a 356px frame and three columns
+   show: the name, its status and the first digits of a price. The status
+   and price move under the name, where they are always on screen, and their
+   own columns go. */
+.panel-narrow {
+  display: none;
+}
+@media (max-width: 47.99rem) {
+  .panel-narrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin-block-start: 0.25rem;
+  }
+  #result_list .column-status_label,
+  #result_list .field-status_label,
+  #result_list .column-price_range,
+  #result_list .field-price_range {
+    display: none;
+  }
+}
+
+/* What is left can still be wider than the screen, and nothing said so. The
+   far edge fades while there is more to scroll to and stops fading at the
+   end. Where scroll-driven animations are not supported the edge simply does
+   not fade; nothing depends on it. */
+@property --panel-scroll-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes panel-scroll-fade {
+  0%,
+  92% {
+    --panel-scroll-fade: 2.5rem;
+  }
+  100% {
+    --panel-scroll-fade: 0px;
+  }
+}
+@media (max-width: 63.99rem) {
+  #changelist .overflow-x-auto {
+    animation: panel-scroll-fade linear both;
+    animation-timeline: scroll(self inline);
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - var(--panel-scroll-fade)), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - var(--panel-scroll-fade)), transparent);
+  }
+  [dir="ltr"] #changelist .overflow-x-auto {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--panel-scroll-fade)), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--panel-scroll-fade)), transparent);
+  }
+}
+
+/* --- The specs table ------------------------------------------------------ */
+/* Unfold names a tabular inline's columns in a header row it hides under
+   1024px, and its inputs carried no label (templates/unfold/helpers/
+   edit_inline/tabular_field.html adds one per cell). Where the header shows,
+   the cell's label and help are for screen readers only; where it is hidden
+   they are on screen. */
+.panel-cell-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-block-end: 0.375rem;
+}
+.panel-cell-help {
+  font-size: 0.75rem;
+  margin-block-start: 0.375rem;
+}
+@media (min-width: 64rem) {
+  .panel-cell-label,
+  .panel-cell-help {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Under 1024px a spec's three cells sat side by side in a 356px row and the
+   value box shrank to about 80px. Each cell takes the full width instead.
+   Not the template row Unfold keeps hidden for «افزودن»: shown, it took Tab
+   into boxes the formset never reads, and what was typed there was lost. */
+@media (max-width: 63.99rem) {
+  [data-inline-type="tabular"] table,
+  [data-inline-type="tabular"] tbody.form-group:not(.empty-form),
+  [data-inline-type="tabular"] tr.form-row {
+    display: block;
+  }
+  [data-inline-type="tabular"] tr.form-row > td {
+    display: block;
+    border-bottom-width: 0;
+    padding-block: 0.375rem;
+  }
+  [data-inline-type="tabular"] tbody.form-group:not(.empty-form) {
+    border-bottom: 1px solid var(--color-base-200, #e5e7eb);
+    padding-block: 0.5rem;
+  }
+}
+
+/* --- Where the keyboard is ------------------------------------------------- */
+/* Unfold draws its switches and the list's search button with
+   `focus:outline-none` and nothing in its place, so Tab moved through the
+   product form's toggles without a mark. Unlayered, this beats the utility. */
+#content input[type="checkbox"]:focus-visible,
+#searchbar-submit:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+/* A field Tab scrolls into view must clear what is pinned over the page: the
+   save row, sticky from 1024px, and the bulk-action bar a ticked row opens on
+   a phone. Both covered the focused field whole. */
+@media (min-width: 64rem) {
+  html {
+    scroll-padding-block-end: 5rem;
+  }
+}
+html:has(input.action-select:checked) {
+  scroll-padding-block-end: 7rem;
+}
+/* With the page scrolled to its end there was no room left to lift the last
+   rows above the bar. */
+html:has(input.action-select:checked) body {
+  padding-block-end: 7rem;
+}
+
+/* Icon controls Unfold draws at 18px, under the 24px minimum target
+   (WCAG 2.5.8): the list's search button and its column sort links. */
+#searchbar-submit,
+#result_list thead a.toggle,
+#result_list thead a.sortremove {
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  justify-content: center;
+}
+
+/* A screen reader reads an icon's ligature as a word: «check_small» on every
+   box, «expand_more» after a section's name, «warning» before every error.
+   The ones Unfold draws in CSS get an empty alternative text, the same glyph
+   with nothing to say; the icons in the markup are hidden by
+   static/js/admin.js. */
+input[type="checkbox"]::after {
+  content: var(--tw-content) / "";
+}
+/* These Unfold rules sit outside its layers and its stylesheet loads after
+   this one, so `html` gives each the one step of specificity it needs. */
+html fieldset details > summary::after {
+  content: "expand_more" / "";
+}
+html .errorlist > *::before,
+html .timezonewarning::before {
+  content: "warning" / "";
+}
+html .datetimeshortcuts a:first-child::after,
+html .datetimeshortcuts button:first-child::after {
+  content: "update" / "";
+}
+html .calendarnav-previous::after {
+  content: "navigate_before" / "";
+}
+html .calendarnav-next::after {
+  content: "navigate_next" / "";
+}
+
+/* --- The dashboard's recent actions --------------------------------------- */
+/* The timeline's thread is drawn 17px from the physical left, through the
+   middle of the icons in LTR. In RTL the icons are on the right. */
+[dir="rtl"] .actionlist::after {
+  left: auto;
+  right: 17px;
+}
+
+/* On a phone the history's date column keeps its one line and the action,
+   the column worth reading, was squeezed to a word per line. It keeps a
+   readable width and the table scrolls instead. */
+.panel-history td:last-child {
+  min-inline-size: 14rem;
 }

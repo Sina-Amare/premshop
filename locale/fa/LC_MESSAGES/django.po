@@ -6,14 +6,17 @@
 # says «گذرواژه» where this shop has said «رمز عبور» everywhere since S2, and
 # a test enforces that on the storefront.
 #
+# The project's own strings are written in Persian in the code and need no
+# entry here; locale/en translates them for the panel's English side.
+#
 # Compile with scripts/compile_messages.py (no gettext needed); a test fails
-# if the .mo on disk does not match this file.
+# if the .mo on disk does not match this file
+# (apps/catalog/tests/test_panel_translations.py).
 msgid ""
 msgstr ""
-"Content-Type: text/plain; charset=UTF-8
-"
-"Language: fa
-"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: fa\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 msgid "Add"
 msgstr "افزودن"
@@ -55,7 +58,7 @@ msgid "Clear selection"
 msgstr "برداشتن انتخاب"
 
 msgid "Click here to select the objects across all pages"
-msgstr "همه‌ی موردها در همه‌ی صفحه‌ها را انتخاب کن"
+msgstr "انتخاب همه‌ی موردها در همه‌ی صفحه‌ها"
 
 msgid "Click to cancel"
 msgstr "برای لغو کلیک کنید"
@@ -70,7 +73,7 @@ msgid "Command tool shortcuts"
 msgstr "میان‌برهای جستجوی سریع"
 
 msgid "Create new record"
-msgstr "ساختن رکورد تازه"
+msgstr "افزودن مورد جدید"
 
 msgid "Dark"
 msgstr "تاریک"
@@ -133,7 +136,7 @@ msgid "Nothing matched your search"
 msgstr "جستجو نتیجه‌ای نداشت"
 
 msgid "Objects"
-msgstr "مورد"
+msgstr "موردها"
 
 msgid "Old password"
 msgstr "رمز عبور فعلی"
@@ -145,7 +148,7 @@ msgid "Open selection"
 msgstr "باز کردن انتخاب‌شده‌ها"
 
 msgid "Open selection in new tab"
-msgstr "باز کردن در تب تازه"
+msgstr "باز کردن در تب جدید"
 
 msgid "Open shortcuts list"
 msgstr "فهرست میان‌برها"
@@ -154,7 +157,7 @@ msgid "Password"
 msgstr "رمز عبور"
 
 msgid "Please enter your old password, for security’s sake, and then enter your new password twice so we can verify you typed it in correctly."
-msgstr "برای امنیت، اول رمز عبور فعلی و بعد رمز تازه را دو بار وارد کنید."
+msgstr "برای امنیت، اول رمز عبور فعلی و بعد رمز جدید را دو بار وارد کنید."
 
 msgid "Previous"
 msgstr "قبلی"
@@ -166,7 +169,7 @@ msgid "Recent searches"
 msgstr "جستجوهای اخیر"
 
 msgid "Record picture"
-msgstr "تصویر رکورد"
+msgstr "تصویر"
 
 msgid "Remove from sorting"
 msgstr "حذف از ترتیب"
@@ -184,7 +187,7 @@ msgid "Save"
 msgstr "ذخیره"
 
 msgid "Save and add another"
-msgstr "ذخیره و ایجاد یکی دیگر"
+msgstr "ذخیره و افزودن یکی دیگر"
 
 msgid "Save and continue editing"
 msgstr "ذخیره و ادامه‌ی ویرایش"
@@ -193,7 +196,7 @@ msgid "Save and view"
 msgstr "ذخیره و مشاهده"
 
 msgid "Save as new"
-msgstr "ذخیره به‌عنوان مورد تازه"
+msgstr "ذخیره به‌عنوان مورد جدید"
 
 msgid "Select"
 msgstr "انتخاب"
@@ -208,7 +211,7 @@ msgid "Select currency"
 msgstr "انتخاب واحد پول"
 
 msgid "Select record"
-msgstr "انتخاب رکورد"
+msgstr "انتخاب مورد"
 
 msgid "Show all"
 msgstr "نمایش همه"
@@ -232,7 +235,7 @@ msgid "This item will be deleted."
 msgstr "این مورد حذف می‌شود."
 
 msgid "This page yielded into no results. Create a new item or reset your filters."
-msgstr "این صفحه نتیجه‌ای ندارد. مورد تازه‌ای بسازید یا فیلترها را بردارید."
+msgstr "این صفحه نتیجه‌ای ندارد. مورد جدیدی بیفزایید یا فیلترها را بردارید."
 
 msgid "Time"
 msgstr "ساعت"
@@ -307,7 +310,7 @@ msgid "Toggle theme"
 msgstr "تغییر پوسته"
 
 msgid "Account"
-msgstr "حساب"
+msgstr "حساب کاربری"
 
 msgid "Profile"
 msgstr "پروفایل"
@@ -331,7 +334,7 @@ msgid "Password reset"
 msgstr "بازنشانی رمز عبور"
 
 msgid "Enter new password"
-msgstr "رمز عبور تازه"
+msgstr "رمز عبور جدید"
 
 msgid "Confirm password"
 msgstr "تکرار رمز عبور"
@@ -370,10 +373,10 @@ msgid "Forgotten your login credentials?"
 msgstr "مشخصات ورودتان یادتان رفته؟"
 
 msgid "Password reset confirmation"
-msgstr "تأیید رمز عبور تازه"
+msgstr "تأیید رمز عبور جدید"
 
 msgid "New password:"
-msgstr "رمز عبور تازه:"
+msgstr "رمز عبور جدید:"
 
 msgid "Confirm password:"
 msgstr "تکرار رمز عبور:"
@@ -388,10 +391,10 @@ msgid "Your password has been set.  You may go ahead and log in now."
 msgstr "رمز عبورتان ثبت شد. حالا وارد شوید."
 
 msgid "Please enter your new password twice so we can verify you typed it in correctly."
-msgstr "رمز عبور تازه را دو بار بنویسید تا از درستی‌اش مطمئن شویم."
+msgstr "رمز عبور جدید را دو بار بنویسید تا از درستی‌اش مطمئن شویم."
 
 msgid "Please go to the following page and choose a new password:"
-msgstr "به این صفحه بروید و رمز عبور تازه‌ای انتخاب کنید:"
+msgstr "به این صفحه بروید و رمز عبور جدیدی انتخاب کنید:"
 
 msgid "There’s been an error. It’s been reported to the site administrators via email and should be fixed shortly. Thanks for your patience."
 msgstr "خطایی رخ داد. گزارشش ایمیل شد و به‌زودی درست می‌شود."
@@ -406,10 +409,136 @@ msgid "We’ve emailed you instructions for setting your password, if an account
 msgstr "اگر حسابی با این ایمیل باشد، راهنمای ساختن رمز عبور را فرستادیم. به‌زودی می‌رسد."
 
 msgid "You're receiving this email because you requested a password reset for your user account at %(site_name)s."
-msgstr "این ایمیل را فرستادیم چون برای حسابتان در %(site_name)s درخواست رمز عبور تازه دادید."
+msgstr "این ایمیل را فرستادیم چون برای حسابتان در %(site_name)s درخواست رمز عبور جدید دادید."
 
 msgid "Forgotten your password? Enter your email address below, and we’ll email instructions for setting a new one."
-msgstr "رمز عبورتان یادتان رفته؟ ایمیلتان را بنویسید تا راهنمای ساختن رمز تازه را بفرستیم."
+msgstr "رمز عبورتان یادتان رفته؟ ایمیلتان را بنویسید تا راهنمای ساختن رمز جدید را بفرستیم."
 
 msgid "Please enter the correct %(username)s and password for a staff account. Note that both fields may be case-sensitive."
 msgstr "%(username)s و رمز عبور یک حساب مدیر را درست بنویسید. هر دو به بزرگی و کوچکی حروف حساس‌اند."
+
+# Leaks found 2026-10-19: Unfold's own words, and Django's Persian where it
+# breaks this shop's spelling («گذرواژه», «لطفاً», «اشیای», a stray «·»).
+msgid "Select value"
+msgstr "انتخاب کنید"
+
+msgid "Choose file to upload"
+msgstr "انتخاب فایل"
+
+msgid "Delete selected %(verbose_name_plural)s"
+msgstr "حذف %(verbose_name_plural)s انتخاب‌شده"
+
+msgid "Are you sure you want to delete the selected %(objects_name)s? All of the following objects and their related items will be deleted:"
+msgstr "%(objects_name)s انتخاب‌شده حذف شود؟ همه‌ی موردهای زیر حذف می‌شوند:"
+
+msgid "Deleting the selected %(objects_name)s would require deleting the following protected related objects:"
+msgstr "تا وقتی این موردهای وابسته هستند، %(objects_name)s انتخاب‌شده حذف نمی‌شود:"
+
+msgid "Deleting the selected %(objects_name)s would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
+msgstr "حذف %(objects_name)s انتخاب‌شده این موردها را هم حذف می‌کند و حساب شما اجازه‌ی حذفشان را ندارد:"
+
+msgid "Cannot delete %(name)s"
+msgstr "%(name)s حذف نمی‌شود"
+
+msgid "Add %s"
+msgstr "افزودن %s"
+
+msgid "Add another %(verbose_name)s"
+msgstr "افزودن %(verbose_name)s"
+
+msgid "Change history: %s"
+msgstr "تاریخچه‌ی تغییر: %s"
+
+msgid " By %(filter_title)s "
+msgstr " بر اساس %(filter_title)s "
+
+msgid "Your old password was entered incorrectly. Please enter it again."
+msgstr "رمز عبور فعلی اشتباه است."
+
+msgid "The two password fields didn’t match."
+msgstr "تکرار رمز عبور یکسان نیست."
+
+msgid "Enter the same password as before, for verification."
+msgstr "همان رمز عبور جدید را دوباره بنویسید."
+
+msgid "Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
+msgstr "نامک فقط حرف لاتین، رقم، «-» و «_» می‌پذیرد، مثل «chatgpt-plus»."
+
+# The slug fields accept Unicode only for the slugs saved before slugs were
+# Latin (catalog.models.check_slug_is_latin), so this says the same.
+msgid "Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or hyphens."
+msgstr "نامک فقط حرف لاتین، رقم، «-» و «_» می‌پذیرد، مثل «chatgpt-plus»."
+
+# The history page and the message after every save.
+msgid "Changed {fields}."
+msgstr "{fields} عوض شد."
+
+msgid "Changed {fields} for {name} “{object}”."
+msgstr "در {name} «{object}»، {fields} عوض شد."
+
+msgid "Added {name} “{object}”."
+msgstr "{name} «{object}» افزوده شد."
+
+msgid "Added."
+msgstr "افزوده شد."
+
+msgid "Deleted {name} “{object}”."
+msgstr "{name} «{object}» حذف شد."
+
+msgid "No fields changed."
+msgstr "چیزی عوض نشد."
+
+msgid "The {name} “{obj}” was added successfully."
+msgstr "{name} «{obj}» افزوده شد."
+
+msgid "The {name} “{obj}” was changed successfully."
+msgstr "{name} «{obj}» ذخیره شد."
+
+msgid "The {name} “{obj}” was added successfully. You may edit it again below."
+msgstr "{name} «{obj}» افزوده شد. همین‌جا می‌توانید دوباره ویرایشش کنید."
+
+msgid "The {name} “{obj}” was changed successfully. You may edit it again below."
+msgstr "{name} «{obj}» ذخیره شد. همین‌جا می‌توانید دوباره ویرایشش کنید."
+
+msgid "The {name} “{obj}” was added successfully. You may add another {name} below."
+msgstr "{name} «{obj}» افزوده شد. حالا می‌توانید {name} دیگری بیفزایید."
+
+msgid "The {name} “{obj}” was changed successfully. You may add another {name} below."
+msgstr "{name} «{obj}» ذخیره شد. حالا می‌توانید {name} دیگری بیفزایید."
+
+msgid "The %(name)s “%(obj)s” was deleted successfully."
+msgstr "%(name)s «%(obj)s» حذف شد."
+
+# Ctrl+K's count under its results. The msgid is Unfold's template text as it
+# stands, indentation included. The timing is left out: it tells an operator
+# nothing.
+msgid ""
+"\n"
+"            Found <span class=\"font-medium text-important\">%(counter)s</span> "
+"result in %(time)s seconds\n"
+"        "
+msgid_plural ""
+"\n"
+"            Found <span class=\"font-medium text-important\">%(counter)s</span> "
+"results in %(time)s seconds\n"
+"        "
+msgstr[0] "<span class=\"font-medium text-important\">%(counter)s</span> نتیجه"
+msgstr[1] "<span class=\"font-medium text-important\">%(counter)s</span> نتیجه"
+
+# Django joins a list of changed fields with this. Its own Persian has no
+# space after the comma: «نام،توضیح کوتاه و قیمت فروش».
+msgid ", "
+msgstr "، "
+
+# On the panel's sign-in page, for a customer already signed in. Django's own
+# Persian ran words together («نداریدو»). The address is Latin, so it is isolated.
+msgid "You are authenticated as %(username)s, but are not authorized to access this page. Would you like to login to a different account?"
+msgstr "با ⁨%(username)s⁩ وارد شده‌اید و این حساب به پنل مدیریت دسترسی ندارد. با حساب دیگری وارد شوید."
+
+# The panel's icon-only controls are named by these (static/js/admin.js reads
+# the add link's title). Django's own Persian says «اضافه‌کردن».
+msgid "Add %(name)s"
+msgstr "افزودن %(name)s"
+
+msgid "Image preview"
+msgstr "پیش‌نمایش تصویر"

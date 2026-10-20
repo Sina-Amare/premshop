@@ -1,0 +1,55 @@
+{% extends 'unfold/layouts/unauthenticated.html' %}
+{% comment %}
+Unfold's sign-in page with three changes. The form carries Django's hidden
+`next`, which Unfold's dropped, so a direct visit to /admin/login/ sent the
+operator to the customer's /account/. The title says what the page is. And the
+arrow points the way a Persian reader moves.
+{% endcomment %}
+{% load i18n static unfold %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {{ form.media }}
+{% endblock %}
+
+{% block title %}
+    {{ title }} | {{ site_title }}
+{% endblock %}
+
+{% block content %}
+    {% get_current_language_bidi as bidi %}
+    {% translate "ورود به پنل مدیریت" as heading %}
+    {% include "unfold/helpers/unauthenticated_title.html" with title=heading subtitle=site_title %}
+
+    {% include "unfold/helpers/messages.html" %}
+
+    {% if form.non_field_errors %}
+        <div class="flex flex-col gap-4 mb-8 *:mb-0">
+            {% include "unfold/helpers/messages/error.html" with errors=form.non_field_errors %}
+
+            {% if user.is_authenticated %}
+                {% blocktranslate trimmed asvar message %}
+                    You are authenticated as {{ username }}, but are not authorized to
+                    access this page. Would you like to login to a different account?
+                {% endblocktranslate %}
+
+                {% include "unfold/helpers/messages/error.html" with error=message %}
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <form action="{{ app_path }}" method="post" id="login-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        {% include "unfold/helpers/field.html" with field=form.username %}
+
+        {% include "unfold/helpers/field.html" with field=form.password %}
+
+        <div class="flex flex-col gap-3 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                {% translate 'Log in' %} <span class="material-symbols-outlined text-sm" aria-hidden="true">{% if bidi %}arrow_back{% else %}arrow_forward{% endif %}</span>
+            {% endcomponent %}
+        </div>
+    </form>
+{% endblock %}

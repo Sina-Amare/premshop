@@ -262,19 +262,92 @@ def test_aliases_never_reach_the_visitor(client, chatgpt):
     assert "openai" not in body.lower()
 
 
-def test_slug_is_filled_from_the_name_when_blank():
-    category = Category.objects.create(name="ابزار توسعه")
-    assert category.slug == "ابزار-توسعه"
+def test_a_latin_name_fills_an_empty_slug():
+    category = Category.objects.create(name="ابزار توسعه", slug="dev")
     product = Product.objects.create(
         category=category, name="GitHub Copilot", delivery_type="on_customer_account"
     )
     assert product.slug == "github-copilot"
 
 
+def test_a_persian_name_never_becomes_a_slug():
+    """Slugs are Latin. A Persian one is percent-encoded into a line of %D8
+    wherever the address is pasted, so a Persian name asks for its slug."""
+    from django.core.exceptions import ValidationError
+
+    category = Category.objects.create(name="ابزار توسعه", slug="dev")
+    product = Product(category=category, name="گیت‌هاب کوپایلت", delivery_type="code_license")
+
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert "slug" in excinfo.value.message_dict
+
+
+@pytest.mark.parametrize("name", ["ابزار توسعه", "!!!"])
+def test_a_save_with_no_slug_to_give_is_refused(name):
+    """Outside a form, from the shell or a script, save() made «ابزار-توسعه»
+    out of a Persian name, and later an empty slug. An empty slug reverses to no
+    page: one category with it broke the header on every page."""
+    with pytest.raises(ValueError, match="slug"):
+        Category.objects.create(name=name)
+    category = Category.objects.create(name="ابزار توسعه", slug="dev")
+    with pytest.raises(ValueError, match="slug"):
+        Product.objects.create(category=category, name=name, delivery_type="code_license")
+
+
+def test_a_persian_slug_is_refused(product):
+    from django.core.exceptions import ValidationError
+
+    product.slug = "کلاود-پرو"
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert "slug" in excinfo.value.message_dict
+
+
+@pytest.mark.parametrize(
+    "fields, under",
+    [
+        ({"promo_price": Decimal("2000000")}, "promo_price"),
+        ({"sale_price": Decimal("-1")}, "sale_price"),
+        ({"duration_days": 0}, "duration_days"),
+        ({"max_quantity": 11}, "max_quantity"),
+        ({"requires_customer_input": True, "max_quantity": 2}, "max_quantity"),
+        (
+            {"promo_price": Decimal("1000"), "promo_starts_at": NOW, "promo_ends_at": NOW},
+            "promo_starts_at",
+        ),
+    ],
+)
+def test_a_check_is_reported_under_the_field_it_is_about(product, fields, under):
+    """A CheckConstraint names no field, so Django filed every one of these
+    above the form, where Unfold's plan inline prints nothing."""
+    from django.core.exceptions import ValidationError
+
+    p = Plan(product=product, title="x", **{"cost_price": 1, "sale_price": 1450000, **fields})
+    with pytest.raises(ValidationError) as excinfo:
+        p.full_clean()
+
+    assert list(excinfo.value.message_dict) == [under]
+
+
+def test_the_delivery_cap_is_reported_under_delivery_hours(product):
+    from django.core.exceptions import ValidationError
+
+    product.delivery_hours = 73
+    with pytest.raises(ValidationError) as excinfo:
+        product.full_clean()
+
+    assert list(excinfo.value.message_dict) == ["delivery_hours"]
+
+
 def test_str(product):
+    """«۱ ماهه، Claude Pro»: the Latin name isolated, so the bidi algorithm
+    cannot carry the plan's words to the far side of it."""
     p = plan(product)
     assert str(product) == "Claude Pro"
-    assert str(p) == "Claude Pro — ۱ ماهه"
+    assert str(p) == "۱ ماهه، \u2068Claude Pro\u2069"
     assert str(product.category) == "هوش مصنوعی"
 
 

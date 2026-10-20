@@ -1,0 +1,88 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Unfold's delete confirmation with its three sentences in this panel's Persian.
+Django's read «آیا مطمئنید که می‌خواهید محصول·"Claude Pro" را حذف کنید؟ کلیهٔ
+اشیای مرتبط زیر حذف خواهند شد», and Unfold's English for the first carries
+straight quotes, which scripts/compile_messages.py cannot read inside a msgid.
+{% endcomment %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {{ media }}
+    <script src="{% static 'admin/js/cancel.js' %}" async></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} delete-confirmation{% endblock %}
+
+{% block content %}
+    {% if perms_lacking %}
+        <div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
+            <p class="font-semibold p-4 text-font-important-light dark:text-font-important-dark">
+                {% blocktranslate with escaped_object=object %}حذف {{ object_name }} «{{ escaped_object }}» این موردها را هم حذف می‌کند و حساب شما اجازه‌ی حذفشان را ندارد:{% endblocktranslate %}
+            </p>
+
+            <div class="border-base-200 border-t p-4 dark:border-base-800">
+                <ul class="leading-relaxed">
+                    {% for obj in perms_lacking %}
+                        <li>
+                            {{ obj }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% elif protected %}
+        <div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
+            <p class="font-semibold p-4 text-font-important-light dark:text-font-important-dark">
+                {% blocktranslate with escaped_object=object %}{{ object_name }} «{{ escaped_object }}» حذف نمی‌شود، چون این موردها به آن وابسته‌اند:{% endblocktranslate %}
+            </p>
+
+            <div class="border-t border-base-200 p-4 dark:border-base-800">
+                <ul class="leading-relaxed">
+                    {% for obj in protected %}
+                        <li>
+                            {{ obj }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% else %}
+        <div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
+            <p class="font-semibold p-4 text-font-important-light dark:text-font-important-dark">
+                {% blocktranslate with escaped_object=object %}{{ object_name }} «{{ escaped_object }}» حذف شود؟ همه‌ی موردهای زیر حذف می‌شوند:{% endblocktranslate %}
+            </p>
+
+            {% include "admin/includes/object_delete_summary.html" %}
+
+            <div class="border-base-200 border-t p-4 dark:border-base-800">
+                <h2 class="font-semibold mb-2 text-font-important-light dark:text-font-important-dark">
+                    {% translate "Objects" %}
+                </h2>
+
+                <ul class="leading-relaxed text-sm">
+                    {{ deleted_objects|unordered_list }}
+                </ul>
+            </div>
+
+            <form method="post" class="border-base-200 border-t px-4 py-3 dark:border-base-800">
+                {% csrf_token %}
+
+                <div class="flex items-center">
+                    <input type="hidden" name="post" value="yes">
+
+                    {% if is_popup %}
+                        <input type="hidden" name="{{ is_popup_var }}" value="1">
+                    {% endif %}
+
+                    {% if to_field %}
+                        <input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">
+                    {% endif %}
+
+                    {% include "unfold/helpers/delete_submit_line.html" %}
+                </div>
+            </form>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,351 @@
+# English for the operator panel's language switch.
+#
+# This project writes its own interface strings in Persian, in the code: the
+# model labels and help, the panel's columns and actions, a few templates. This
+# file is their English, so the switch the owner asked for turns the whole
+# panel English rather than Django's half of it. Django and Unfold bring their
+# own English.
+#
+# Compile with scripts/compile_messages.py. A test fails if a Persian string
+# the panel hands to gettext has no entry here, or if the .mo on disk does not
+# match this file (apps/catalog/tests/test_panel_translations.py).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "نام"
+msgstr "Name"
+
+msgid "نامک"
+msgstr "Slug"
+
+msgid "توضیح کوتاه"
+msgstr "Short description"
+
+msgid "متن معرفی"
+msgstr "Introduction"
+
+msgid "عنوان سئو"
+msgstr "SEO title"
+
+msgid "توضیح سئو"
+msgstr "SEO description"
+
+msgid "ترتیب نمایش"
+msgstr "Display order"
+
+msgid "دسته‌بندی"
+msgstr "category"
+
+msgid "دسته‌بندی‌ها"
+msgstr "categories"
+
+msgid "توضیح کامل"
+msgstr "Full description"
+
+msgid "تصویر"
+msgstr "Image"
+
+msgid "نوع تحویل"
+msgstr "Delivery type"
+
+msgid "نام‌های دیگر"
+msgstr "Other names"
+
+msgid "گارانتی"
+msgstr "Warranty"
+
+msgid "مهلت تحویل (ساعت)"
+msgstr "Delivery deadline (hours)"
+
+msgid "متن دلخواه مهلت"
+msgstr "Custom delivery text"
+
+msgid "قابل تمدید"
+msgstr "Renewable"
+
+msgid "قالب تحویل"
+msgstr "Delivery template"
+
+msgid "وضعیت"
+msgstr "Status"
+
+msgid "محصول"
+msgstr "product"
+
+msgid "محصولات"
+msgstr "products"
+
+msgid "عنوان"
+msgstr "Title"
+
+msgid "مقدار"
+msgstr "Value"
+
+msgid "مهم"
+msgstr "Key"
+
+msgid "مشخصه"
+msgstr "spec"
+
+msgid "مشخصات"
+msgstr "specs"
+
+msgid "مدت (روز)"
+msgstr "Duration (days)"
+
+msgid "شروع تخفیف"
+msgstr "Discount starts"
+
+msgid "پایان تخفیف"
+msgstr "Discount ends"
+
+msgid "موجود"
+msgstr "Available"
+
+msgid "حداکثر تعداد در هر سفارش"
+msgstr "Most per order"
+
+msgid "نیاز به اطلاعات مشتری"
+msgstr "Needs customer details"
+
+msgid "چه چیزی از مشتری بپرسیم؟"
+msgstr "What to ask the customer"
+
+msgid "لینک تأمین‌کننده"
+msgstr "Supplier link"
+
+msgid "پلن"
+msgstr "plan"
+
+msgid "پلن‌ها"
+msgstr "plans"
+
+msgid "در نشانی صفحه می‌آید و لاتین است، مثل «ai»."
+msgstr "Part of the page address, in Latin letters, like “ai”."
+
+msgid "برچسب HTML اجرا نمی‌شود و همان‌طور که نوشته شده دیده می‌شود."
+msgstr "HTML tags do not run; they show exactly as typed."
+
+msgid "عدد کوچک‌تر، بالاتر."
+msgstr "Smaller numbers come first."
+
+msgid "پیش‌نویس"
+msgstr "Draft"
+
+msgid "فعال"
+msgstr "Active"
+
+msgid "ناموجود"
+msgstr "Unavailable"
+
+msgid "اکانت آماده"
+msgstr "Ready-made account"
+
+msgid "فعال‌سازی روی اکانت شخصی"
+msgstr "Activation on the customer’s own account"
+
+msgid "کد لایسنس"
+msgstr "Licence code"
+
+msgid "کد گیفت کارت"
+msgstr "Gift card code"
+
+msgid "بدون گارانتی"
+msgstr "No warranty"
+
+msgid "۷ روز"
+msgstr "7 days"
+
+msgid "تا پایان دوره"
+msgstr "Until the period ends"
+
+msgid "در نشانی صفحه می‌آید و لاتین است، مثل «chatgpt-plus». خالی بماند تا از نام لاتین ساخته شود."
+msgstr "Part of the page address, in Latin letters, like “chatgpt-plus”. Leave it empty to make it from a Latin name."
+
+# Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
+# isolates, so the bidi algorithm keeps it in order inside the sentence.
+msgid "شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"
+msgstr "Spellings a customer might type, separated by commas: ⁨چت جی‌پی‌تی، چت جیپت، gpt⁩"
+
+msgid "بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."
+msgstr "1 to 72 hours. Err on the long side."
+
+# Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
+# isolates, so the bidi algorithm keeps it in order inside the sentence.
+msgid "اگر پر کنید، مشتری این متن را به‌جای «تا … ساعت» می‌بیند. عبارت کوتاه بنویسید، نه جمله."
+msgstr "If filled in, the customer sees this instead of ⁨«تا … ساعت»⁩. A short phrase, not a sentence."
+
+msgid "روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."
+msgstr "The product page says it can be renewed."
+
+msgid "یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."
+msgstr "Your own note. Not sent anywhere yet."
+
+msgid "پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."
+msgstr "Draft and unavailable products are not shown on the site."
+
+msgid "کنار نام محصول، بالای صفحه‌ی محصول می‌آید."
+msgstr "Shown beside the product name, at the top of the product page."
+
+msgid "برای گیفت کارت خالی بگذارید."
+msgstr "Leave empty for a gift card."
+
+msgid "قیمت خرید"
+msgstr "Cost price"
+
+msgid "مشتری این را نمی‌بیند."
+msgstr "The customer does not see this."
+
+msgid "قیمت فروش"
+msgstr "Sale price"
+
+msgid "قیمت تخفیفی"
+msgstr "Discount price"
+
+msgid "باید از قیمت فروش کمتر باشد."
+msgstr "Must be lower than the sale price."
+
+msgid "خالی یعنی همین حالا."
+msgstr "Empty means now."
+
+msgid "با تعیین تاریخ، روی سایت شمارش معکوس نمایش داده می‌شود. خالی یعنی بدون پایان."
+msgstr "With a date, the site shows a countdown. Empty means no end."
+
+msgid "تیک را بردارید تا خریدنی نباشد. پاکش نکنید."
+msgstr "Untick to stop selling it. Do not delete it."
+
+msgid "۱ یعنی مشتری تعداد نمی‌بیند."
+msgstr "1 means the customer sees no quantity."
+
+msgid "برای فعال‌سازی چیزی از مشتری لازم است؟"
+msgstr "Does activation need anything from the customer?"
+
+# Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
+# isolates, so the bidi algorithm keeps it in order inside the sentence.
+msgid "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. مثل: ایمیل اکانت Spotify"
+msgstr "A short phrase, not a sentence. The site prints: ⁨برای فعال‌سازی، … را می‌پرسیم.⁩ Like: ⁨ایمیل اکانت Spotify⁩"
+
+msgid "مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."
+msgstr "The delivery deadline must be between 1 and 72 hours."
+
+msgid "وضعیت محصول معتبر نیست."
+msgstr "The product status is not valid."
+
+msgid "قیمت تخفیفی باید بیشتر از صفر و کمتر از قیمت فروش باشد."
+msgstr "The discount price must be above zero and below the sale price."
+
+msgid "شروع تخفیف باید قبل از پایان آن باشد."
+msgstr "A discount must start before it ends."
+
+msgid "قیمت خرید و قیمت فروش نمی‌توانند منفی باشند."
+msgstr "The cost price and the sale price cannot be negative."
+
+msgid "مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان."
+msgstr "A plan lasts at least one day, or leave it empty for no end."
+
+msgid "حداکثر تعداد باید بین ۱ تا ۱۰ باشد."
+msgstr "The most per order must be between 1 and 10."
+
+msgid "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
+msgstr "A plan that needs customer details can be bought only once per order."
+
+msgid "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
+msgstr "The product name is not in Latin letters, so write the slug yourself, like “chatgpt-plus”."
+
+msgid "تخفیف"
+msgstr "Discount"
+
+msgid "اطلاعات مشتری و تأمین"
+msgstr "Customer details and supply"
+
+msgid "تعداد محصول"
+msgstr "Products"
+
+msgid "تحویل"
+msgstr "Delivery"
+
+msgid "متن"
+msgstr "Text"
+
+msgid "جستجو"
+msgstr "Search"
+
+msgid "سئو"
+msgstr "SEO"
+
+msgid "بدون پایان"
+msgstr "No end date"
+
+msgid "انتشار"
+msgstr "Publish"
+
+msgid "برداشتن از سایت"
+msgstr "Take off the site"
+
+msgid "تا"
+msgstr "to"
+
+msgid "قیمت"
+msgstr "Price"
+
+msgid "به‌روزرسانی"
+msgstr "Updated"
+
+msgid "سود"
+msgstr "Margin"
+
+msgid "پلن «%(plan)s» زیر قیمت خرید فروخته می‌شود: %(loss)s زیان در هر فروش."
+msgstr "The plan “%(plan)s” sells below its cost: a loss of %(loss)s on every sale."
+
+msgid "%(count)s محصول %(status)s شد."
+msgstr "%(count)s products set to %(status)s."
+
+msgid "زیان"
+msgstr "Loss"
+
+msgid "حذف %(object_name)s «%(escaped_object)s» این موردها را هم حذف می‌کند و حساب شما اجازه‌ی حذفشان را ندارد:"
+msgstr "Deleting the %(object_name)s “%(escaped_object)s” would also delete these, and your account may not delete them:"
+
+msgid "%(object_name)s «%(escaped_object)s» حذف نمی‌شود، چون این موردها به آن وابسته‌اند:"
+msgstr "The %(object_name)s “%(escaped_object)s” cannot be deleted while these depend on it:"
+
+msgid "%(object_name)s «%(escaped_object)s» حذف شود؟ همه‌ی موردهای زیر حذف می‌شوند:"
+msgstr "Delete the %(object_name)s “%(escaped_object)s”? Everything below will be deleted:"
+
+msgid "ورود به پنل مدیریت"
+msgstr "Sign in to the admin panel"
+
+msgid "%(total)s مورد"
+msgstr "%(total)s entries"
+
+msgid "ذخیره نشد. خطاهای زیر را درست کنید."
+msgstr "Not saved. Correct the errors below."
+
+msgid "تاریخ عضویت"
+msgstr "Joined"
+
+msgid "آخرین ورود"
+msgstr "Last sign-in"
+
+# The sidebar's sections (settings) and the apps' names, for when they are
+# marked for translation.
+msgid "فروشگاه"
+msgstr "Shop"
+
+msgid "مشتریان"
+msgstr "Customers"
+
+msgid "کاربران"
+msgstr "Users"
+
+msgid "پنل مدیریت"
+msgstr "Admin panel"
+
+# Names for a discount's date box and time box (PlanForm in apps/catalog/admin.py).
+msgid "تاریخ %(label)s"
+msgstr "%(label)s, date"
+
+msgid "ساعت %(label)s"
+msgstr "%(label)s, time"

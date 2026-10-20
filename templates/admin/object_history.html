@@ -1,0 +1,70 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Unfold's history page with Jalali dates in Tehran time and Persian digits.
+Unfold printed `DATETIME_FORMAT`, a Gregorian date, and its entry count is a
+plural string Django's Persian leaves empty, so it read «۳ entries».
+{% endcomment %}
+{% load i18n admin_urls fa %}
+
+{% block content %}
+    {% if action_list %}
+        <div class="border border-base-200 mb-3 overflow-auto scrollbar-default w-full rounded-default shadow-xs dark:border-base-800">
+            <table class="panel-history border-spacing-none border-separate w-full">
+                <thead class="text-important whitespace-nowrap">
+                    <tr class="*:font-semibold *:px-3 *:py-2">
+                        <th>
+                            {% trans 'Date/time' %}
+                        </th>
+
+                        <th>
+                            {% trans 'User' %}
+                        </th>
+
+                        <th>
+                            {% trans 'Action' %}
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for action in action_list %}
+                        <tr class="data-row {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %} *:border-t *:border-base-200 *:font-normal *:px-3 *:py-2 *:dark:border-base-800">
+                            <td class="h-[45px] whitespace-nowrap">
+                                {{ action.action_time|jalali }}، {{ action.action_time|time:"H:i"|fa_digits }}
+                            </td>
+
+                            <td>
+                                <bdi>{{ action.user.get_username }}</bdi>{% if action.user.get_full_name %} ({{ action.user.get_full_name }}){% endif %}
+                            </td>
+
+                            <td>
+                                {{ action.get_change_message }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-base-50 flex my-4 items-center p-3 rounded-default dark:bg-base-800">
+            {% if pagination_required %}
+                {% for i in page_range %}
+                    <span class="panel-page">
+                        {% if i == action_list.paginator.ELLIPSIS %}
+                            {{ action_list.paginator.ELLIPSIS }}
+                        {% elif i == action_list.number %}
+                            <span class="font-medium text-primary-600">{{ i|fa_digits }}</span>
+                        {% else %}
+                            <a href="?{{ page_var }}={{ i }}" {% if i == action_list.paginator.num_pages %} class="end" {% endif %}>{{ i|fa_digits }}</a>
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            {% endif %}
+
+            {% blocktranslate with total=action_list.paginator.count|fa_digits %}{{ total }} مورد{% endblocktranslate %}
+        </div>
+    {% else %}
+        {% trans 'This object doesn’t have a change history. It probably wasn’t added via this admin site.' as message %}
+        {% include "unfold/helpers/messages/info.html" with message=message %}
+    {% endif %}
+{% endblock %}

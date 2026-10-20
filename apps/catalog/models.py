@@ -13,16 +13,21 @@ order snapshot. The same definition is used by every money column in the project
 
 from __future__ import annotations
 
+import re
+from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar
 
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import TrigramWordSimilarity
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.validators import validate_slug
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
 
 from apps.catalog.search import normalize_for_search
 from apps.core.formatting import to_persian_digits
@@ -33,52 +38,114 @@ from apps.core.formatting import to_persian_digits
 # this. Raise it if a search starts answering the wrong question.
 FUZZY_THRESHOLD = 0.4
 
+# A Persian or Arabic letter. A name with one has no Latin slug to give.
+_PERSIAN = re.compile(r"[\u0600-\u06ff]")
+
 
 def MoneyField(**kwargs: Any) -> models.DecimalField:  # noqa: N802 — reads as a type
     """Toman, whole units. One definition so every money column agrees."""
     return models.DecimalField(max_digits=12, decimal_places=0, **kwargs)
 
 
+def latin_slug(name: str) -> str:
+    """The slug a name gives on its own, or "" when it is not a Latin name.
+
+    Slugs are Latin: a Persian slug is percent-encoded into a line of
+    %D8%A7 wherever the address is pasted.
+    """
+    return "" if _PERSIAN.search(name) else slugify(name)
+
+
+def slug_for_save(name: str) -> str:
+    """latin_slug, for a save with no slug given. An empty slug reverses to no
+    page, and one category with it broke the header on every page."""
+    if slug := latin_slug(name):
+        return slug
+    raise ValueError(f"{name!r} gives no Latin slug; set the slug explicitly")
+
+
+def check_slug_is_latin(row: Category | Product) -> None:
+    """A new or changed slug must be Latin.
+
+    The field still accepts a Persian slug saved before slugs were Latin, and
+    such a slug stays until someone changes it: rewriting it moves an address
+    that links already point at, and refusing it made the row unsaveable.
+    """
+    if not row.slug:
+        return  # the field's own "required", or clean() fills it
+    try:
+        validate_slug(row.slug)
+    except ValidationError as error:
+        manager = type(row)._default_manager
+        if row.pk is None or not manager.filter(pk=row.pk, slug=row.slug).exists():
+            raise ValidationError({"slug": error.error_list}) from None
+
+
+class ChecksNameTheirField:
+    """File each CHECK's message under the field it is about.
+
+    A CheckConstraint names no field, so Django reports its violation above
+    the form. Unfold's stacked inline prints nothing there, and a promotion
+    above the price came back as an English banner with nothing below it to
+    correct.
+    """
+
+    CHECK_FIELDS: ClassVar[dict[str, str]] = {}
+
+    def validate_constraints(self, exclude: Collection[str] | None = None) -> None:
+        errors: dict[str, list[ValidationError]] = {}
+        for constraint in self._meta.constraints:  # type: ignore[attr-defined]
+            try:
+                constraint.validate(type(self), self, exclude=exclude)
+            except ValidationError as error:
+                field = self.CHECK_FIELDS.get(constraint.name, NON_FIELD_ERRORS)
+                errors.setdefault(field, []).append(error)
+        if errors:
+            raise ValidationError(errors)
+
+
 class Category(models.Model):
-    name = models.CharField("نام", max_length=100)
+    name = models.CharField(_("نام"), max_length=100)
+    # allow_unicode for the slugs saved before slugs were Latin; a new or
+    # changed slug is held to Latin by clean() (check_slug_is_latin).
     slug = models.SlugField(
-        "آدرس در لینک",
+        _("نامک"),
         max_length=100,
         unique=True,
         allow_unicode=True,
-        help_text="خالی بگذارید تا خودش ساخته شود.",
+        help_text=_("در نشانی صفحه می‌آید و لاتین است، مثل «ai»."),
     )
     description = models.CharField(
-        "توضیح کوتاه",
+        _("توضیح کوتاه"),
         max_length=300,
         blank=True,
         default="",
     )
     intro_html = models.TextField(
-        "متن معرفی",
+        _("متن معرفی"),
         blank=True,
         default="",
-        help_text="کد HTML اینجا اجرا می‌شود.",
+        help_text=_("برچسب HTML اجرا نمی‌شود و همان‌طور که نوشته شده دیده می‌شود."),
     )
     seo_title = models.CharField(
-        "عنوان سئو",
+        _("عنوان سئو"),
         max_length=70,
         blank=True,
         default="",
     )
     seo_description = models.CharField(
-        "توضیح سئو",
+        _("توضیح سئو"),
         max_length=160,
         blank=True,
         default="",
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
     )
 
     class Meta:
-        verbose_name = "دسته‌بندی"
-        verbose_name_plural = "دسته‌بندی‌ها"
+        verbose_name = _("دسته‌بندی")
+        verbose_name_plural = _("دسته‌بندی‌ها")
         ordering = ["sort_order", "name"]
 
     def __str__(self) -> str:
@@ -86,8 +153,11 @@ class Category(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = slugify(self.name, allow_unicode=True)
+            self.slug = slug_for_save(self.name)
         super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        check_slug_is_latin(self)
 
 
 class ProductQuerySet(models.QuerySet["Product"]):
@@ -135,53 +205,65 @@ class ProductQuerySet(models.QuerySet["Product"]):
         )
 
 
-class Product(models.Model):
+class Product(ChecksNameTheirField, models.Model):
     class Status(models.TextChoices):
-        DRAFT = "draft", "پیش‌نویس"
-        ACTIVE = "active", "فعال"
-        UNAVAILABLE = "unavailable", "ناموجود"
+        DRAFT = "draft", _("پیش‌نویس")
+        ACTIVE = "active", _("فعال")
+        UNAVAILABLE = "unavailable", _("ناموجود")
 
     class DeliveryType(models.TextChoices):
-        READY_ACCOUNT = "ready_account", "اکانت آماده"
-        ON_CUSTOMER_ACCOUNT = "on_customer_account", "روی اکانت شخصی شما"
-        CODE_LICENSE = "code_license", "کد / لایسنس"
-        GIFT_CARD = "gift_card", "گیفت کارت"
+        READY_ACCOUNT = "ready_account", _("اکانت آماده")
+        ON_CUSTOMER_ACCOUNT = "on_customer_account", _("فعال‌سازی روی اکانت شخصی")
+        CODE_LICENSE = "code_license", _("کد لایسنس")
+        GIFT_CARD = "gift_card", _("کد گیفت کارت")
 
     class Warranty(models.TextChoices):
-        NONE = "none", "بدون گارانتی"
-        DAYS_7 = "days_7", "۷ روز"
-        FULL_PERIOD = "full_period", "تا پایان دوره"
+        NONE = "none", _("بدون گارانتی")
+        DAYS_7 = "days_7", _("۷ روز")
+        FULL_PERIOD = "full_period", _("تا پایان دوره")
+
+    CHECK_FIELDS: ClassVar[dict[str, str]] = {
+        "product_delivery_hours_1_to_72": "delivery_hours",
+        "product_status_valid": "status",
+    }
 
     category = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name="products", verbose_name="دسته‌بندی"
+        Category, on_delete=models.PROTECT, related_name="products", verbose_name=_("دسته‌بندی")
     )
-    name = models.CharField("نام", max_length=150)
+    name = models.CharField(_("نام"), max_length=150)
+    # Optional on the form: a Latin name gives its own (see clean()). Unicode
+    # is allowed only for the slugs saved before slugs were Latin, as on
+    # Category.slug.
     slug = models.SlugField(
-        "آدرس در لینک",
+        _("نامک"),
         max_length=150,
         unique=True,
+        blank=True,
         allow_unicode=True,
-        help_text="خالی بگذارید تا خودش ساخته شود.",
+        help_text=_(
+            "در نشانی صفحه می‌آید و لاتین است، مثل «chatgpt-plus». "
+            "خالی بماند تا از نام لاتین ساخته شود."
+        ),
     )
     short_description = models.CharField(
-        "توضیح کوتاه",
+        _("توضیح کوتاه"),
         max_length=300,
         blank=True,
         default="",
     )
     full_description = models.TextField(
-        "توضیح کامل",
+        _("توضیح کامل"),
         blank=True,
         default="",
     )
     image = models.ImageField(
-        "تصویر",
+        _("تصویر"),
         upload_to="products/",
         null=True,
         blank=True,
     )
     delivery_type = models.CharField(
-        "نوع تحویل",
+        _("نوع تحویل"),
         max_length=24,
         choices=DeliveryType.choices,
     )
@@ -189,28 +271,31 @@ class Product(models.Model):
     # Persian shopper writes «چت جیپت» for ChatGPT, and no amount of character
     # folding turns one transliteration into another — only this list does.
     aliases = models.TextField(
-        "املاهای دیگر",
+        _("نام‌های دیگر"),
         blank=True,
         default="",
-        help_text="غلط‌های رایجی که مشتری سرچ می‌کند، با ویرگول: چت جیپت، gpt",
+        help_text=_("شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"),
     )
     warranty = models.CharField(
-        "گارانتی",
+        _("گارانتی"),
         max_length=24,
         choices=Warranty.choices,
         default=Warranty.NONE,
     )
     delivery_hours = models.SmallIntegerField(
-        "مهلت تحویل (ساعت)",
+        _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text="بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید.",
+        help_text=_("بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."),
     )
     delivery_note = models.CharField(
-        "متن دلخواه مهلت",
+        _("متن دلخواه مهلت"),
         max_length=120,
         blank=True,
         default="",
-        help_text="پرش کنید تا به‌جای «تا ۲۴ ساعت» همین را ببینند.",
+        help_text=_(
+            "اگر پر کنید، مشتری این متن را به‌جای «تا … ساعت» می‌بیند. "
+            "عبارت کوتاه بنویسید، نه جمله."
+        ),
     )
     # Claimed, never assumed. Renewal depends on the upstream provider and on
     # the operator being able to get the same account back, so an untouched
@@ -219,33 +304,33 @@ class Product(models.Model):
     # چطوریه؟» with "when the product says so", which is only honest while the
     # default is off.
     renewable = models.BooleanField(
-        "قابل تمدید",
+        _("قابل تمدید"),
         default=False,
-        help_text="روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود.",
+        help_text=_("روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."),
     )
     delivery_template = models.TextField(
-        "قالب تحویل",
+        _("قالب تحویل"),
         blank=True,
         default="",
-        help_text="یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود.",
+        help_text=_("یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."),
     )
     status = models.CharField(
-        "وضعیت",
+        _("وضعیت"),
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text="پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند.",
+        help_text=_("پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."),
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")
     seo_title = models.CharField(
-        "عنوان سئو",
+        _("عنوان سئو"),
         max_length=70,
         blank=True,
         default="",
     )
     seo_description = models.CharField(
-        "توضیح سئو",
+        _("توضیح سئو"),
         max_length=160,
         blank=True,
         default="",
@@ -256,8 +341,8 @@ class Product(models.Model):
     objects: ClassVar[ProductQuerySet] = ProductQuerySet.as_manager()  # type: ignore[assignment]
 
     class Meta:
-        verbose_name = "محصول"
-        verbose_name_plural = "محصولات"
+        verbose_name = _("محصول")
+        verbose_name_plural = _("محصولات")
         ordering = ["name"]
         # Serves the trigram fallback in `search()`. It does nothing at a
         # dozen rows and everything at a thousand; declared here so the model
@@ -278,13 +363,13 @@ class Product(models.Model):
             models.CheckConstraint(
                 condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=72),
                 name="product_delivery_hours_1_to_72",
-                violation_error_message="مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد.",
+                violation_error_message=_("مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."),
             ),
             # `choices=` binds only the admin form; the database binds everything.
             models.CheckConstraint(
                 condition=Q(status__in=["draft", "active", "unavailable"]),
                 name="product_status_valid",
-                violation_error_message="وضعیت محصول معتبر نیست.",
+                violation_error_message=_("وضعیت محصول معتبر نیست."),
             ),
         ]
 
@@ -293,11 +378,24 @@ class Product(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = slugify(self.name, allow_unicode=True)
+            self.slug = slug_for_save(self.name)
         self.search_text = normalize_for_search(
             f"{self.name} {self.short_description} {self.aliases}"
         )
         super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        if not self.slug:
+            self.slug = latin_slug(self.name)
+            if not self.slug:
+                raise ValidationError(
+                    {
+                        "slug": _(
+                            "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
+                        )
+                    }
+                )
+        check_slug_is_latin(self)
 
     @property
     def delivery_display(self) -> str:
@@ -317,11 +415,11 @@ class Product(models.Model):
     def delivery_sentence(self) -> str:
         """The same fact where it stands alone, on a badge or under the buy box.
 
-        A note is a sentence, so nothing can be prefixed to it — «تحویل» in
-        front of «به‌علت مشکلات پرداخت…» reads as a typo. The default carries
-        its own word instead, and the note is printed exactly as written.
+        The panel asks for the note as a phrase in place of «تا … ساعت», so it
+        takes the same word: «تحویل ۴۸ تا ۷۲ ساعت». Bare, it said nothing about
+        what the hours were.
         """
-        return self.delivery_note or f"تحویل تا {to_persian_digits(self.delivery_hours)} ساعت"
+        return f"تحویل {self.delivery_display}"
 
     @property
     def is_public(self) -> bool:
@@ -353,60 +451,66 @@ class ProductSpec(models.Model):
     So the operator decides both the fact and its weight.
     """
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specs")
-    title = models.CharField("عنوان", max_length=100)
-    value = models.CharField("مقدار", max_length=255)
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="specs", verbose_name=_("محصول")
+    )
+    title = models.CharField(_("عنوان"), max_length=100)
+    value = models.CharField(_("مقدار"), max_length=255)
     is_key = models.BooleanField(
-        "مهم",
+        _("مهم"),
         default=False,
-        help_text="کنار اسم محصول و روی کارت هم می‌آید.",
+        help_text=_("کنار نام محصول، بالای صفحه‌ی محصول می‌آید."),
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
     )
 
     class Meta:
-        verbose_name = "مشخصه"
-        verbose_name_plural = "مشخصات"
+        verbose_name = _("مشخصه")
+        verbose_name_plural = _("مشخصات")
         ordering = ["sort_order", "id"]
 
     def __str__(self) -> str:
         return f"{self.title}: {self.value}"
 
 
-class Plan(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="plans")
-    title = models.CharField("عنوان", max_length=100)
+class Plan(ChecksNameTheirField, models.Model):
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="plans", verbose_name=_("محصول")
+    )
+    title = models.CharField(_("عنوان"), max_length=100)
     duration_days = models.IntegerField(
-        "مدت (روز)",
+        _("مدت (روز)"),
         null=True,
         blank=True,
-        help_text="برای گیفت کارت خالی بگذارید.",
+        help_text=_("برای گیفت کارت خالی بگذارید."),
     )  # null: never expires
     cost_price = MoneyField(
-        verbose_name="قیمت خرید",
-        help_text="مشتری این را نمی‌بیند.",
+        verbose_name=_("قیمت خرید"),
+        help_text=_("مشتری این را نمی‌بیند."),
     )  # operator-only; snapshotted at order time
-    sale_price = MoneyField(verbose_name="قیمت فروش")
+    sale_price = MoneyField(verbose_name=_("قیمت فروش"))
     promo_price = MoneyField(
-        verbose_name="قیمت تخفیفی",
+        verbose_name=_("قیمت تخفیفی"),
         null=True,
         blank=True,
-        help_text="باید از قیمت فروش کمتر باشد.",
+        help_text=_("باید از قیمت فروش کمتر باشد."),
     )
     promo_starts_at = models.DateTimeField(
-        "شروع تخفیف", null=True, blank=True, help_text="خالی یعنی همین حالا."
+        _("شروع تخفیف"), null=True, blank=True, help_text=_("خالی یعنی همین حالا.")
     )
     promo_ends_at = models.DateTimeField(
-        "پایان تخفیف",
+        _("پایان تخفیف"),
         null=True,
         blank=True,
-        help_text="تاریخ بگذارید تا روی سایت شمارش معکوس بیفتد.",
+        help_text=_(
+            "با تعیین تاریخ، روی سایت شمارش معکوس نمایش داده می‌شود. خالی یعنی بدون پایان."
+        ),
     )
     is_available = models.BooleanField(
-        "موجود",
+        _("موجود"),
         default=True,
-        help_text="تیک را بردارید تا خریدنی نباشد. پاکش نکنید.",
+        help_text=_("تیک را بردارید تا خریدنی نباشد. پاکش نکنید."),
     )  # soft delete: sold plans are never removed
     # Default 1, so a quantity control appears only where the operator has
     # said it makes sense. Most of this shop is subscriptions activated on one
@@ -414,35 +518,50 @@ class Plan(models.Model):
     # a stepper on every product invites an order nobody can deliver. Gift
     # cards are the case that wants it.
     max_quantity = models.PositiveSmallIntegerField(
-        "حداکثر تعداد در هر سفارش",
+        _("حداکثر تعداد در هر سفارش"),
         default=1,
-        help_text="۱ یعنی مشتری تعداد نمی‌بیند.",
+        help_text=_("۱ یعنی مشتری تعداد نمی‌بیند."),
     )
     requires_customer_input = models.BooleanField(
-        "نیاز به اطلاعات مشتری",
+        _("نیاز به اطلاعات مشتری"),
         default=False,
-        help_text="برای فعال‌سازی چیزی از مشتری لازم است؟",
+        help_text=_("برای فعال‌سازی چیزی از مشتری لازم است؟"),
     )
+    # The page prints it inside «برای فعال‌سازی، … را می‌پرسیم.», so a whole
+    # sentence here broke that sentence on the product page.
     customer_input_label = models.CharField(
-        "چه چیزی از مشتری بپرسیم؟",
+        _("چه چیزی از مشتری بپرسیم؟"),
         max_length=200,
         blank=True,
         default="",
-        help_text="همین جمله را از مشتری می‌پرسیم. مثل: ایمیل حساب Spotify",
+        help_text=_(
+            "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. "
+            "مثل: ایمیل اکانت Spotify"
+        ),
     )
     supplier_url = models.URLField(
-        "لینک تأمین‌کننده",
+        _("لینک تأمین‌کننده"),
         blank=True,
         default="",
-        help_text="مشتری این را نمی‌بیند.",
+        help_text=_("مشتری این را نمی‌بیند."),
     )
     sort_order = models.SmallIntegerField(
-        "ترتیب نمایش", default=0, help_text="عدد کوچک‌تر، بالاتر."
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
     )
 
+    # The field the operator would change to satisfy each CHECK.
+    CHECK_FIELDS: ClassVar[dict[str, str]] = {
+        "plan_promo_price_below_sale_price": "promo_price",
+        "plan_promo_window_starts_before_it_ends": "promo_starts_at",
+        "plan_prices_not_negative": "sale_price",
+        "plan_duration_positive_or_unlimited": "duration_days",
+        "plan_max_quantity_1_to_10": "max_quantity",
+        "plan_customer_input_is_one_per_order": "max_quantity",
+    }
+
     class Meta:
-        verbose_name = "پلن"
-        verbose_name_plural = "پلن‌ها"
+        verbose_name = _("پلن")
+        verbose_name_plural = _("پلن‌ها")
         ordering = ["sort_order", "id"]
         constraints = [
             # A promotion is a lower price or it is nothing. Zero, negative, or
@@ -453,33 +572,37 @@ class Plan(models.Model):
                 condition=Q(promo_price__isnull=True)
                 | (Q(promo_price__gt=0) & Q(promo_price__lt=F("sale_price"))),
                 name="plan_promo_price_below_sale_price",
-                violation_error_message="قیمت تخفیفی باید بیشتر از صفر و کمتر از قیمت فروش باشد.",
+                violation_error_message=_(
+                    "قیمت تخفیفی باید بیشتر از صفر و کمتر از قیمت فروش باشد."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(promo_starts_at__isnull=True)
                 | Q(promo_ends_at__isnull=True)
                 | Q(promo_starts_at__lt=F("promo_ends_at")),
                 name="plan_promo_window_starts_before_it_ends",
-                violation_error_message="شروع تخفیف باید قبل از پایان آن باشد.",
+                violation_error_message=_("شروع تخفیف باید قبل از پایان آن باشد."),
             ),
             # Zero stays allowed — data-model §3 says `>= 0`, and whether a
             # zero-priced plan may be sold is a checkout question for S4b.
             models.CheckConstraint(
                 condition=Q(cost_price__gte=0) & Q(sale_price__gte=0),
                 name="plan_prices_not_negative",
-                violation_error_message="قیمت خرید و قیمت فروش نمی‌توانند منفی باشند.",
+                violation_error_message=_("قیمت خرید و قیمت فروش نمی‌توانند منفی باشند."),
             ),
             # NULL means the plan never expires; zero or less would date the expiry
             # on or before delivery, and the renewal reminder would fire at once.
             models.CheckConstraint(
                 condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
                 name="plan_duration_positive_or_unlimited",
-                violation_error_message="مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان.",
+                violation_error_message=_(
+                    "مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(max_quantity__gte=1) & Q(max_quantity__lte=10),
                 name="plan_max_quantity_1_to_10",
-                violation_error_message="حداکثر تعداد باید بین ۱ تا ۱۰ باشد.",
+                violation_error_message=_("حداکثر تعداد باید بین ۱ تا ۱۰ باشد."),
             ),
             # One input per credential. A plan that needs the customer's own
             # account details cannot be ordered twice on one line: there is
@@ -490,14 +613,17 @@ class Plan(models.Model):
             models.CheckConstraint(
                 condition=Q(requires_customer_input=False) | Q(max_quantity=1),
                 name="plan_customer_input_is_one_per_order",
-                violation_error_message=(
+                violation_error_message=_(
                     "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
                 ),
             ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.product} — {self.title}"
+        # «۱ ماهه، Claude Pro». The name is isolated: unisolated, a Latin name
+        # beside Persian is reordered by the bidi algorithm, and the em dash
+        # that used to stand between them read «۱ — Claude Pro ماهه».
+        return f"{self.title}، \u2068{self.product}\u2069"
 
     @property
     def effective_price(self) -> Decimal:

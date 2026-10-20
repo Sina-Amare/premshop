@@ -1,0 +1,35 @@
+{% comment %}
+Unfold's cell in a tabular inline, with the label and help the cell lacked.
+The table names its columns in a header row that Unfold hides under 1024px,
+and no input had a label of its own, so on a phone the spec rows were three
+unnamed boxes and a screen reader heard none of their names. The label and
+help are on screen where the header is hidden and for screen readers only
+where it shows (admin.css).
+{% endcomment %}
+<div class="flex flex-row gap-3 items-center">
+    {% if forloop.parentloop.counter == 1 and forloop.counter == 1 %}
+        {% include "unfold/helpers/edit_inline/inline_drag.html" with tabular=1 %}
+    {% endif %}
+
+    {% if field.is_readonly %}
+        {% include "unfold/helpers/field_readonly_value.html" with tabular=1 %}
+    {% else %}
+        <div class="flex flex-col grow">
+            <label class="panel-cell-label" for="{{ field.field.auto_id }}">{{ field.field.label }}</label>
+
+            {{ field.field }}
+
+            {% if field.field.help_text %}
+                <div class="panel-cell-help" id="{{ field.field.auto_id }}_helptext">{{ field.field.help_text }}</div>
+            {% endif %}
+
+            {% if field.field.errors|length > 0 %}
+                <div class="mt-2 text-red-600 text-xs dark:text-red-500" id="{{ field.field.auto_id }}_error">
+                    {% for error in field.field.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>

@@ -1,0 +1,19 @@
+{% load i18n %}
+{% comment %}
+Unfold's breadcrumb. Its labels are capitalised as before; the object itself
+is data and keeps its own case, where Unfold turned a customer's email into
+«Customer@…» and iCloud into «ICloud». The separator points the way a
+reader moves through the path, which in RTL is left.
+{% endcomment %}
+{% get_current_language_bidi as bidi %}
+{% spaceless %}
+    {% for part in parts %}
+        <{% if part.link %}a href="{{ part.link }}"{% else %}span{% endif %} class="align-middle inline-block leading-5 min-w-0 truncate tracking-tight">
+        {% if part.title.pk %}<bdi>{{ part.title }}</bdi>{% else %}{{ part.title|capfirst }}{% endif %}
+        </{% if part.link %}a{% else %}span{% endif %} >
+
+        {% if not forloop.last %}
+            <span class="material-symbols-outlined inline-block align-middle leading-5 mx-2 text-base-400 dark:text-base-500" aria-hidden="true">{% if bidi %}chevron_left{% else %}chevron_right{% endif %}</span>
+        {% endif %}
+    {% endfor %}
+{% endspaceless %}

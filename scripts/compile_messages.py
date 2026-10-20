@@ -22,28 +22,69 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 LOCALE = REPO / "locale"
 
-# A .po entry is a msgid/msgstr pair, each possibly continued over several
-# quoted lines. Only what this project writes is parsed: no plural forms, no
-# contexts, no fuzzy flags. Anything else is a silent no-op, so the test that
-# compares .po to .mo is what keeps this honest.
-ENTRY = re.compile(
-    r'^msgid\s+((?:"[^"]*"\s*)+)^msgstr\s+((?:"[^"]*"\s*)+)', re.MULTILINE | re.DOTALL
-)
+# One keyword and one quoted string per line, continued by bare quoted lines.
+# The first version read only msgid/msgstr pairs with no quote inside them and
+# skipped anything else without a word, so a plural entry vanished from the .mo
+# while the test that compiles the .po again agreed with it. A line this cannot
+# read is now an error.
+KEYWORD = re.compile(r'^(msgctxt|msgid|msgid_plural|msgstr(?:\[\d+\])?)\s+(".*")$')
+ESCAPES = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}
 
 
-def _unquote(block: str) -> str:
-    return "".join(re.findall(r'"([^"]*)"', block)).replace("\\n", "\n").replace('\\"', '"')
+def _unquote(quoted: str) -> str:
+    return re.sub(r"\\(.)", lambda m: ESCAPES[m.group(1)], quoted[1:-1])
+
+
+def _key_and_value(entry: dict[str, str]) -> tuple[str, str | None]:
+    """An entry as the .mo stores it: a plural's two forms and its translations
+    are each joined by NUL, and a context goes before the key with EOT."""
+    key = entry["msgid"]
+    if "msgid_plural" in entry:
+        key += "\x00" + entry["msgid_plural"]
+        count = sum(name.startswith("msgstr[") for name in entry)
+        forms = [entry[f"msgstr[{n}]"] for n in range(count)]
+        if not forms or (any(forms) and not all(forms)):
+            raise ValueError(f"{key!r}: a plural needs every form translated, or none")
+        value = "\x00".join(forms) if all(forms) else None
+    else:
+        # An empty msgstr means "not translated"; gettext falls through to the
+        # msgid, and so must we. Shipping "" would blank the label.
+        value = entry["msgstr"] if entry["msgstr"] or not key else None
+    if "msgctxt" in entry:
+        key = entry["msgctxt"] + "\x04" + key
+    return key, value
 
 
 def parse_po(path: Path) -> dict[str, str]:
-    text = path.read_text(encoding="utf-8")
-    catalog = {}
-    for msgid, msgstr in ENTRY.findall(text):
-        key, value = _unquote(msgid), _unquote(msgstr)
-        # An empty msgstr means "not translated"; gettext falls through to the
-        # msgid, and so must we — shipping "" would blank the label.
-        if value or key == "":
-            catalog[key] = value
+    catalog: dict[str, str] = {}
+    entry: dict[str, str] = {}
+    field, fuzzy = "", False
+
+    def close() -> None:
+        nonlocal entry, field, fuzzy
+        if entry and not fuzzy:  # msgfmt leaves fuzzy entries out as well
+            key, value = _key_and_value(entry)
+            if value is not None:
+                catalog[key] = value
+        entry, field, fuzzy = {}, "", False
+
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        translated = any(name.startswith("msgstr") for name in entry)
+        if not line or line.startswith("#"):
+            if translated:
+                close()
+            fuzzy = fuzzy or (line.startswith("#,") and "fuzzy" in line)
+        elif match := KEYWORD.match(line):
+            if translated and match.group(1) in {"msgctxt", "msgid"}:
+                close()
+            field = match.group(1)
+            entry[field] = _unquote(match.group(2))
+        elif field and line.startswith('"') and line.endswith('"'):
+            entry[field] += _unquote(line)
+        else:
+            raise ValueError(f"{path.name}:{number}: cannot read {raw!r}")
+    close()
     return catalog
 
 

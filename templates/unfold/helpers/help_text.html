@@ -1,0 +1,16 @@
+{% comment %}
+Unfold printed field help with no id, while Django points every input at
+`<id>_helptext`, so a screen reader was sent to nothing. The include passes
+the field under `field`: an admin wrapper on change forms (the bound field is
+`field.field`), the bound field itself on the sign-in page. `firstof` because
+it resolves quietly; a missing attribute in a filter argument raises.
+
+Escaped, unlike Unfold's `|safe`: help text that is meant as markup, like the
+password rules, arrives already marked safe.
+{% endcomment %}
+{% if help_text %}
+    {% firstof field.field.auto_id field.auto_id as field_id %}
+    <div class="leading-relaxed mt-2 text-xs"{% if field_id %} id="{{ field_id }}_helptext"{% endif %}>
+        {{ help_text }}
+    </div>
+{% endif %}
