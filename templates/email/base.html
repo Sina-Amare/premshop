@@ -1,11 +1,10 @@
 {% comment %}
 Email layout, not a web page. Outlook on Windows renders with Word's engine,
-so layout is <table> and every colour is a hex value on the element: a mail
-client reads no stylesheet tokens. Gmail and Outlook drop @font-face, and
-Gmail's app drops <style> for accounts it does not host, so the message must
-read as intended with neither: everything it needs is inline, the <style>
-below only tightens the margins on a phone, and the letterhead is type and two
-table cells rather than an image a client might block.
+so layout is <table>; Gmail and Outlook strip @font-face, so the brand faces
+cannot travel and the stack below names every Persian family an Iranian
+machine plausibly carries, Tahoma last; most clients block remote images, so
+the wordmark is set in type. Critical styles are inline because Gmail's
+mobile app strips <style> for accounts it does not host.
 
 The font stack is the one thing here that is not obvious from the markup: a
 family name that matches nothing falls through in silence, and this stack
@@ -22,65 +21,77 @@ Reasoning and the audit behind it: ADR-0023, amendment 2026-09-18.
 <title>{% block title %}PremShop{% endblock %}</title>
 {% comment %}
 Vazirmatn for the clients that honour a web font: Apple Mail (macOS + iOS),
-Outlook.com and Samsung Mail. Gmail supports no @font-face at all, so it falls
-through the stack below. Reachable from inside Iran: the CSS answers in about
-1.8s and the Arabic woff2 is 46KB.
+Outlook.com and Samsung Mail. Gmail supports NO @font-face at all — web, Android
+or iOS (caniemail.com/features/css-at-font-face) — so it ignores this and falls
+through the stack below. Verified reachable from inside Iran: the CSS answers in
+~1.8s and the Arabic woff2 is 46KB. Declaring it costs Gmail readers nothing and
+gives everyone else the real brand face.
 {% endcomment %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap">
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
   body { margin:0 !important; padding:0 !important; width:100% !important; }
   table { border-collapse:collapse; }
+  img { border:0; outline:none; text-decoration:none; }
   /* Gmail and Apple Mail linkify bare numbers and addresses in their own blue. */
   a[x-apple-data-detectors], .unstyle-auto-detected-links a, .aBn {
     color:inherit !important; text-decoration:none !important; border-bottom:0 !important;
   }
   @media only screen and (max-width:600px) {
-    .pad  { padding-left:20px !important; padding-right:20px !important; }
-    .padh { padding-left:21px !important; padding-right:21px !important; }
-    .code { font-size:34px !important; }
+    .container { width:100% !important; }
+    .pad       { padding-left:24px !important; padding-right:24px !important; }
+    .code      { font-size:30px !important; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#F6F4EF;">
+<body style="margin:0;padding:0;background-color:#FAFAF9;">
 
 {# Inbox preview line: shown beside the subject before the message is opened. #}
-<div style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F6F4EF;">
+<div style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#FAFAF9;">
   {% block preheader %}{% endblock %}
   &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847; &#8199;&#65279;&#847;
 </div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" bgcolor="#F6F4EF" style="background-color:#F6F4EF;">
-<tr><td align="center" style="padding:32px 12px 40px 12px;">
-<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;max-width:600px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="background-color:#FAFAF9;">
+  <tr>
+    <td align="center" style="padding:48px 12px 32px 12px;">
 
-  {% comment %}The letterhead: the wordmark over a 4px band, lapis for the first 70%
-  and glaze for the rest. 41px is the card's border plus its padding, so the band
-  starts and ends on the text's edge.{% endcomment %}
-  <tr><td class="padh" style="padding:0 41px 20px 41px;">
-    <div style="padding:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:20px;font-weight:bold;line-height:1.4;color:#1C1A17;"><span dir="ltr" style="unicode-bidi:isolate;">PremShop</span></div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;border-collapse:collapse;"><tr>
-      <td width="70%" bgcolor="#233D86" height="4" style="height:4px;font-size:0;line-height:0;mso-line-height-rule:exactly;width:70%;background-color:#233D86;">&nbsp;</td>
-      <td width="30%" bgcolor="#34A7A9" height="4" style="height:4px;font-size:0;line-height:0;mso-line-height-rule:exactly;width:30%;background-color:#34A7A9;">&nbsp;</td>
-    </tr></table>
-  </td></tr>
+      <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;background-color:#FFFFFF;border:1px solid #E7E5E4;border-radius:10px;">
 
-  <tr><td class="pad" bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #E2DDD3;border-radius:2px;padding:32px 40px 28px 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;color:#46423B;">
-{% block content %}{% endblock %}
-  </td></tr>
+        {# Masthead. The teal rule is the accent's first of at most three appearances. #}
+        <tr>
+          <td class="pad" style="padding:36px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;">
+            <div style="font-size:17px;font-weight:bold;line-height:1.5;color:#1C1917;direction:ltr;unicode-bidi:isolate;">PremShop</div>
+            <div style="height:2px;width:26px;background-color:#0F766E;border-radius:2px;font-size:0;line-height:0;margin-top:10px;">&nbsp;</div>
+          </td>
+        </tr>
 
-  {% comment %}Outside the card: the letterhead's foot, not part of the message. The
-  handle's mark keeps «@» on its left where a client drops the isolate, and the
-  hours never break inside their range.{% endcomment %}
-  <tr><td class="pad" align="center" style="padding:24px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:2;color:#655F56;">
-    <div>پشتیبانی در تلگرام <a href="{{ support.telegram_url }}" style="color:#233D86;text-decoration:underline;"><span dir="ltr" style="unicode-bidi:isolate;">&lrm;{{ support.telegram }}</span></a>، <span style="white-space:nowrap;">{{ support.hours }}</span></div>
-    <div dir="ltr"><a href="mailto:{{ support.email }}" style="color:#233D86;text-decoration:underline;">{{ support.email }}</a></div>
-    <div dir="ltr">premshop.ir</div>
-  </td></tr>
+        <tr>
+          <td class="pad" style="padding:26px 40px 40px 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.95;color:#57534E;">
+            {% block content %}{% endblock %}
+          </td>
+        </tr>
 
+      </table>
+
+      {% comment %}Footer sits outside the card: it is the letterhead, not part of the message.
+         Label and address are on separate lines rather than joined by a colon:
+         a colon between a Persian word and a Latin address flips sides under bidi
+         and lands on the far side of the address.{% endcomment %}
+      <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;">
+        <tr>
+          <td class="pad" align="center" style="padding:28px 40px 0 40px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:12px;line-height:2;color:#78716C;">
+            {% block footer %}
+              <div style="color:#78716C;">پشتیبانی PremShop</div>
+              <div dir="ltr"><a href="mailto:{{ support.email }}" style="color:#0F766E;text-decoration:none;">{{ support.email }}</a></div>
+              <div dir="ltr" style="margin-top:2px;">premshop.ir</div>
+            {% endblock %}
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
 </table>
-<!--[if mso]></td></tr></table><![endif]-->
-</td></tr></table>
 </body>
 </html>

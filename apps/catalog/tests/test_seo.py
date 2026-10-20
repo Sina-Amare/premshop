@@ -88,7 +88,7 @@ def test_absolute_addresses_come_from_site_url_whatever_host_was_asked(
 
     assert canonical(body).startswith(SITE + "/")
     assert meta(body, "og:url").startswith(SITE + "/")
-    assert meta(body, "og:image").startswith(SITE + "/static/img/og-")
+    assert meta(body, "og:image") == SITE + "/static/img/share.png"
     assert "attacker.example" not in body
 
 
@@ -145,7 +145,7 @@ def test_the_preview_card_and_the_icons_are_pngs_of_the_size_they_claim(client):
     linked = re.findall(r'<link rel="(?:icon|apple-touch-icon)" href="/static/([^"]+)"', body)
 
     sizes = {}
-    for name in [*linked, "img/og-default.png"]:
+    for name in [*linked, "img/share.png"]:
         path = finders.find(name)
         assert path, f"{name} is linked but not in static/"
         with Image.open(path) as image:
@@ -154,7 +154,7 @@ def test_the_preview_card_and_the_icons_are_pngs_of_the_size_they_claim(client):
     assert sizes == {
         "img/favicon-32.png": ("PNG", (32, 32)),
         "img/apple-touch-icon.png": ("PNG", (180, 180)),
-        "img/og-default.png": ("PNG", (1200, 630)),
+        "img/share.png": ("PNG", (1200, 630)),
     }
     assert meta(body, "og:image:width") == "1200" and meta(body, "og:image:height") == "630"
 
@@ -189,14 +189,3 @@ def test_no_page_skips_a_heading_level(client, shop, page):
     )
 
     assert heading_jumps(client.get(ALL_PAGES[page](shop)).content.decode()) == []
-
-
-def test_a_product_shares_its_own_preview_and_otherwise_the_shops(client, shop):
-    """scripts/render_og.py draws og-<slug>.png for public products only."""
-    own = meta(client.get(reverse("product", args=[shop.slug])).content.decode(), "og:image")
-    shop.slug = "never-drawn"
-    shop.save()
-    fallback = meta(client.get(reverse("product", args=[shop.slug])).content.decode(), "og:image")
-
-    assert own == SITE + "/static/img/og-claude-pro.png"
-    assert fallback == SITE + "/static/img/og-default.png"

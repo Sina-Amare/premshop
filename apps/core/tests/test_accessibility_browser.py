@@ -214,12 +214,12 @@ def test_every_field_has_an_edge_a_low_vision_reader_can_find(browser, live_serv
             const cell = document.createElement('input');
             cell.className = 'otp__cell';
             document.querySelector('main').append(cell);
-            const field = document.querySelector('main .input');
-            const search = document.querySelector('.search__input');
+            const field = document.querySelector('main .field__input');
+            const search = document.querySelector('.hdr__search-input');
             return {
                 field: [css(field).borderTopColor, css(field).backgroundColor],
                 cell: [css(cell).borderTopColor, css(cell).backgroundColor],
-                search: [css(search).borderTopColor, css(search.closest('.site-header')).backgroundColor],
+                search: [css(search).borderTopColor, css(search.closest('.hdr')).backgroundColor],
                 placeholder: [css(search, '::placeholder').color, css(search).backgroundColor],
             };
         }""")
@@ -231,12 +231,10 @@ def test_every_field_has_an_edge_a_low_vision_reader_can_find(browser, live_serv
     assert ratios["placeholder"] >= 4.5, ratios
 
 
-# The focus ring each control draws, as a shadow or an outline: its colour,
-# spread and blur, and what surrounds it. A shadow whose spread is zero, or
-# that is blurred, is a halo.
+# The focus ring each control draws: its colour, spread and blur, and what
+# surrounds it. A shadow whose spread is zero, or that is blurred, is a halo.
 RING = """e => {
     const s = getComputedStyle(e);
-    const outline = s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0;
     const shadow = s.boxShadow.match(/(rgba?\\([^)]*\\)) (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px/);
     let ground = 'rgb(255, 255, 255)';
     for (let n = e.parentElement; n; n = n.parentElement) {
@@ -245,9 +243,7 @@ RING = """e => {
     }
     return {
         visible: e.matches(':focus-visible'),
-        colour: shadow ? shadow[1] : outline ? s.outlineColor : null,
-        blur: shadow ? +shadow[4] : 0,
-        spread: shadow ? +shadow[5] : outline ? parseFloat(s.outlineWidth) : 0,
+        colour: shadow && shadow[1], blur: shadow && +shadow[4], spread: shadow && +shadow[5],
         border: s.borderTopColor, ground,
     };
 }"""
@@ -268,7 +264,7 @@ def test_a_focused_field_is_ringed_at_three_to_one(browser, live_server, shop):
             document.querySelector('main').append(cell);
         }""")
         rings = {}
-        for selector in ("main .input", "main .otp__cell", ".search__input"):
+        for selector in ("main .field__input", "main .otp__cell", ".hdr__search-input"):
             field = page.locator(selector).first
             field.focus()
             page.wait_for_timeout(400)  # the border's colour is a transition
@@ -313,12 +309,11 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
     found = {}
     try:
         for path, selector in [
-            # The questions are plain headings now; the page's link sits under them.
-            ("/faq/", ".askline a"),
-            # At one, «−» is aria-disabled and keeps its focus, so both take a ring.
+            ("/faq/", ".qa__q"),
+            # «+»: at one, «−» is disabled and takes no focus.
             ("/p/chatgpt-plus/", ".stepper__btn[data-step='1']"),
-            ("/p/chatgpt-plus/", ".stepper__btn[data-step='-1']"),
-            ("/", ".catnav__link"),
+            ("/p/chatgpt-plus/", ".stepper__input"),
+            ("/", ".cats__row a"),
         ]:
             page.goto(f"{live_server.url}{path}")
             assert page.evaluate(STYLED)

@@ -4,33 +4,33 @@
 {% block preheader %}اطلاعات سفارش {{ order_number }} آماده‌ی دریافت است.{% endblock %}
 
 {% block content %}
-<h1 style="margin:0 0 14px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:22px;font-weight:bold;line-height:1.5;color:#1C1A17;">سفارش شما آماده است</h1>
-<div style="height:0;border-top:2px solid #1C1A17;font-size:0;line-height:0;">&nbsp;</div>
-<p style="margin:20px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;color:#1C1A17;">اطلاعات ورود {{ product_name|bdi }} آماده است.</p>
-<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>
+<h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">سفارش شما آماده است</h1>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
-{% include "email/_fact.html" with k="شماره‌ی سفارش" v=order_number ltr=True %}
-{% include "email/_fact.html" with k="محصول" v=product_name|bdi %}
-{% include "email/_fact.html" with k="مبلغ پرداختی" v=amount|toman %}
-</table>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اطلاعات ورود {{ product_name }} آماده است.</p>
 
-<div style="height:24px;font-size:0;line-height:0;">&nbsp;</div>
+{% comment %}The ledger line — used once, here, where the money and the order number are.{% endcomment %}
+<div style="border-top:1px solid #E7E5E4;border-bottom:1px solid #E7E5E4;padding:6px 0;margin:0 0 28px 0;">
+  {% include "email/_fact.html" with k="شماره‌ی سفارش" v=order_number %}
+  {% include "email/_fact.html" with k="محصول" v=product_name %}
+  {% include "email/_fact.html" with k="مبلغ پرداختی" v=amount|toman %}
+</div>
+
 {% include "email/_button.html" with url=delivery_url label="مشاهده‌ی اطلاعات سفارش" %}
-<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>
 
+<div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
 {% comment %}
 ADR-0008: the credentials themselves never travel by email. The link is the
 sanctioned convenience, and its constraints are stated where they are felt.
-Its lifetime is a running clock, so it is the one amber thing here.
 {% endcomment %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;"><tr>
-<td bgcolor="#F4E5D8" style="background-color:#F4E5D8;border:1px solid #EFCBAD;border-radius:6px;padding:10px 14px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:14px;line-height:1.8;color:#92400E;">این لینک تا {{ link_ttl_hours|fa_digits }} ساعت اعتبار دارد و فقط یک بار باز می‌شود.</td>
-</tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
+  <tr>
+    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">این لینک تا {{ link_ttl_hours|fa_digits }} ساعت اعتبار دارد و فقط یک بار باز می‌شود.</td>
+  </tr>
+</table>
 
-<p style="margin:16px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:14px;line-height:1.9;color:#46423B;">یا از حساب کاربری: <a href="{{ order_url }}" style="color:#233D86;text-decoration:underline;">سفارش <span dir="ltr" style="unicode-bidi:isolate;">{{ order_number }}</span></a></p>
+<p style="margin:18px 0 0 0;font-size:13px;line-height:1.9;color:#78716C;">یا از حساب کاربری: <a href="{{ order_url }}" style="color:#0F766E;text-decoration:none;">سفارش {{ order_number }}</a></p>
 
-<div style="height:28px;font-size:0;line-height:0;">&nbsp;</div>
-<div style="height:0;border-top:2px solid #1C1A17;font-size:0;line-height:0;">&nbsp;</div>
-<p style="margin:16px 0 0 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.9;color:#655F56;">اطلاعات ورود اکانت را هیچ‌وقت در ایمیل نمی‌فرستیم. آن را با همین لینک یا از حساب کاربری می‌بینید. اگر مشکلی بود، به همین ایمیل پاسخ بدهید.</p>
+<div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
+
+<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اطلاعات ورود اکانت را هیچ‌وقت در ایمیل نمی‌فرستیم. آن را با همین لینک یا از حساب کاربری می‌بینید. اگر مشکلی بود، به همین ایمیل پاسخ بدهید.</p>
 {% endblock %}

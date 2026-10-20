@@ -34,7 +34,7 @@ def test_no_template_spells_out_a_support_detail():
     found = [
         f"{path.relative_to(TEMPLATES).as_posix()}: {literal}"
         for path in TEMPLATES.rglob("*")
-        if path.is_file()
+        if path.suffix in {".html", ".txt"}
         for literal in literals
         if literal in path.read_text(encoding="utf-8")
     ]
@@ -67,10 +67,7 @@ def test_the_support_link_has_a_name_at_every_width(client):
     the one way to reach a person with no name to a screen reader."""
     body = client.get(reverse("home")).content.decode()
 
-    link = re.search(r'<a href="https://t\.me/[^"]+" class="hlink"[^>]*>(.*?)</a>', body, re.S)
-    assert link, "the header's support link"
-    # Below 761px the words are visually hidden, never removed, so the name stays.
-    assert '<span class="hlink__label">پشتیبانی</span>' in link.group(1)
+    assert re.search(r'class="hdr__support"[^>]*aria-label="پشتیبانی در تلگرام"', body)
 
 
 def test_every_email_gets_the_same_details():

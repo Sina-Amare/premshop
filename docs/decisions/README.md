@@ -19,7 +19,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0013](0013-payment-provider-interface-deferred.md) | One payment implementation, no interface; extract only if a real second gateway arrives |
 | [0014](0014-deliberate-simplifications.md) | The simple-over-flexible verdicts, each with its flip condition |
 | [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
-| [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal on stone; amber means time *(amended 2026-10-20: the teal deepens, warm paper returns, lapis and glaze join, red's tint moves off amber)* |
+| [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal on stone; amber means time |
 | [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production |
 | [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent `Cart`/`CartItem` in their own `cart` app, plan+quantity only, guest cart merges on login; anonymous browsing, identity inside checkout |
 | [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
@@ -29,10 +29,9 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0023](0023-email-templates.md) | Email templates: tables, wordmark in type *(amended: the font stack grew and a web-font link was added)*; three files per message; amber still only means time |
 | [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one flow for login+registration; no separate password reset *(amended 2026-09-21: two of its statements were untrue of the built code until that day's fix)* |
 | [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; region values; Persian CHECK messages; search folding; seeded shop; Unfold admin |
-| [0026](0026-storefront-composition.md) | ~~Storefront: ink bands top and bottom, the shelf panel across the seam, two radii, one shadow, colour only from the brand marks; fonts subset~~ — **superseded by [0029](0029-storefront-commercial-paper.md)**, which carries its note on compression and secrets |
+| [0026](0026-storefront-composition.md) | Storefront: ink bands top and bottom, the shelf panel across the seam, two radii, one shadow, colour only from the brand marks; fonts subset |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» on every page; questions in `catalog`; one publishing rule; staff preview of a draft at its own address |
-| [0029](0029-storefront-commercial-paper.md) | Storefront as commercial paper: a dated rate sheet and a پیش‌فاکتور on warm paper; turquoise for action, lapis for the record; tile art beside text, never under it or near money; one motion, pausable; fonts `optional` over fitted fallbacks *(amended 2026-10-20: as built)* |
 
 ## Legacy shorthand map
 

@@ -19,7 +19,6 @@ from typing import Any
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.template import Context, Engine
 from django.template.loader import render_to_string
 
 from apps.core import support
@@ -33,17 +32,11 @@ def render_email(name: str, context: dict[str, Any]) -> tuple[str, str, str]:
     # newline in a header is the classic header-injection vector: everything after
     # it is parsed as a new header. Django would raise, but a subject is assembled
     # from context, so the value is normalised before it can ever get there.
-    subject = " ".join(_plain(f"email/{name}.subject.txt", full_context).split())
+    subject = " ".join(render_to_string(f"email/{name}.subject.txt", full_context).split())
 
-    text = _plain(f"email/{name}.txt", full_context).strip() + "\n"
+    text = render_to_string(f"email/{name}.txt", full_context).strip() + "\n"
     html = render_to_string(f"email/{name}.html", full_context)
     return subject, text, html
-
-
-def _plain(template_name: str, context: dict[str, Any]) -> str:
-    # Plain text is not HTML: escaped, «&» arrives as «&amp;» and a link's query breaks.
-    template = Engine.get_default().get_template(template_name)
-    return template.render(Context(context, autoescape=False))
 
 
 def send_templated_email(name: str, *, to: list[str], context: dict[str, Any]) -> int:

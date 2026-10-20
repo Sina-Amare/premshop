@@ -1,10 +1,22 @@
 {% load fa %}{% comment %}
-When a discount ends: the fixed time, and beside it how long is left. Both are the
-server's (core.formatting.format_deadline, format_countdown), and nothing ticks: a
-clock rewriting itself is moving content nobody can stop (WCAG 2.2.2). The seconds
-travel in data-left rather than the deadline, so a visitor's wrong clock cannot move
-the end. countdown.js hides the badge at zero, and the caller's line (.invoice__promo,
-.plan__clock, .sheet__note, .rs__clock) then reads its data-over or «تخفیف تمام شد.».
-Amber means time and only time.
-Params: plan. The caller writes the line and its lead, «تخفیف تا».
-{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left is not None %}<time datetime="{{ plan.promo_ends_at|date:'Y-m-d\TH:iO' }}">{{ plan.promo_ends_at|deadline }}</time> <span class="badge badge--time countdown" data-left="{{ left }}"><span class="countdown__left">{{ left|countdown }}</span> مانده</span>{% endif %}{% endwith %}
+How long a discount has left. Amber, which on this site means time and only
+time (design-language.md, ADR-0016).
+
+The server renders the text and sends the seconds beside it, so the badge is
+right with JavaScript off and ticks with it on. It never sends the deadline
+itself: a countdown measured against an absolute server time is wrong by
+however much the visitor's own clock is wrong.
+
+Under a day it counts seconds, because that is the hour someone decides in.
+Above a day it says days and hours, because a clock reading 412:06:55 is a
+number, not a deadline.
+
+At zero the script in base.html says so and the badge turns neutral, while
+`_price.html` swaps in the price that follows.
+
+The ticking badge is hidden from screen readers. It sits inside a plan's
+label and a card's link, so it changed their names every second; what is
+read instead is the day the discount ends, once, and «تخفیف تمام شد» at zero.
+
+Params: plan.
+{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}" aria-hidden="true">{{ left|countdown }} مانده</span><span class="sr-only deadline__said">تخفیف تا {{ plan.promo_ends_at|jalali }}</span>{% endif %}{% endwith %}

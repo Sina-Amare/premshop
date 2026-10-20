@@ -45,9 +45,7 @@ def section(product, kind, body="", **fields) -> ProductSection:
 
 
 def headings(body: str) -> list[str]:
-    """The page's own h2s: the footer's headings come after main and end every page."""
-    main = body.split("<main", 1)[1].split("</main>", 1)[0]
-    return [re.sub(r"<[^>]+>", "", h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main)]
+    return [re.sub(r"<[^>]+>", "", h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", body)]
 
 
 # --- Sections ---------------------------------------------------------------
@@ -75,8 +73,8 @@ def test_a_section_is_restricted_markdown_with_h3_free(client, product):
     body = page(client, product)
 
     assert "<h3>زیرتیتر</h3>" in body
-    assert '<th><bdi lang="en">Plus</bdi></th>' in body
-    assert "<script>alert" not in body and '&lt;<bdi lang="en">script</bdi>&gt;' in body
+    assert "<th><bdi>Plus</bdi></th>" in body
+    assert "<script>alert" not in body and "&lt;<bdi>script</bdi>&gt;" in body
 
 
 def test_free_text_has_no_heading_unless_the_operator_writes_one(client, product):
@@ -119,7 +117,7 @@ def test_a_section_image_carries_its_alt_text(client, product, settings, tmp_pat
     body = page(client, product)
 
     assert re.search(
-        r'<img class="sec__img" src="/media/sections/settings.png" alt="صفحه‌ی تنظیمات ChatGPT"',
+        r'<img class="pdp__img" src="/media/sections/settings.png" alt="صفحه‌ی تنظیمات ChatGPT"',
         body,
     )
 
@@ -138,12 +136,9 @@ def test_before_buying_prints_its_facts_with_no_section_at_all(client, product):
     part = before_buying(page(client, product))
 
     assert "پیش از خرید" in part
-    assert '<dt class="terms__k">گارانتی</dt><dd class="terms__v">تا پایان دوره</dd>' in part
-    assert (
-        '<dt class="terms__k">بازگشت وجه</dt><dd class="terms__v">پس از فعال‌سازی، مبلغ برنمی‌گردد.</dd>'
-        in part
-    )
-    assert '<dt class="terms__k">ایران</dt><dd class="terms__v">پشتیبانی‌نشده</dd>' in part
+    assert "<dt>گارانتی</dt><dd>تا پایان دوره</dd>" in part
+    assert "<dt>بازگشت وجه</dt><dd>پس از فعال‌سازی، مبلغ برنمی‌گردد.</dd>" in part
+    assert "<dt>ایران</dt><dd>پشتیبانی‌نشده</dd>" in part
 
 
 def test_before_buying_puts_the_operators_text_after_the_facts_once(client, product):
@@ -157,13 +152,13 @@ def test_before_buying_puts_the_operators_text_after_the_facts_once(client, prod
     body = page(client, product)
     part = before_buying(body)
 
-    assert part.index('<dt class="terms__k">گارانتی</dt>') < part.index(
+    assert part.index("<dt>گارانتی</dt>") < part.index(
         "<strong>این محصول برای شما نیست اگر</strong>"
     )
     assert body.count('id="before-buying"') == 1
     assert headings(body).count("پیش از خرید") == 1
     # Fixed below the other sections whatever its sort order.
-    assert headings(body)[-2:] == ["پیش از خرید", "پرسش‌ها"]
+    assert headings(body)[-2:] == ["پیش از خرید", "پرسش‌های متداول"]
 
 
 @pytest.mark.parametrize("stance", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
@@ -182,25 +177,19 @@ def test_a_product_the_iran_question_does_not_concern_says_nothing_about_iran(
 def test_the_stance_on_iran_is_beside_the_title_in_the_answers_and_before_buying(client, product):
     body = page(client, product)
 
+    assert 'class="badge badge--key">ایران: پشتیبانی‌نشده</span>' in body
     assert (
-        '<span class="badge badge--key"><span class="badge__k">ایران</span>پشتیبانی‌نشده</span>'
+        '<dt class="fact__k">از ایران</dt><dd class="fact__v"><a href="#before-buying">پشتیبانی‌نشده</a></dd>'
         in body
     )
-    assert (
-        '<a class="facts__row" href="#before-buying"><span class="facts__k">از ایران</span>'
-        '<span class="facts__v">پشتیبانی‌نشده</span></a>' in answers(body)
-    )
-    assert (
-        '<dt class="terms__k">ایران</dt><dd class="terms__v">پشتیبانی‌نشده</dd>'
-        in before_buying(body)
-    )
+    assert "<dt>ایران</dt><dd>پشتیبانی‌نشده</dd>" in before_buying(body)
 
 
 # --- The answers index ---------------------------------------------------------
 
 
 def answers(body: str) -> str:
-    return body.split('class="facts product__facts"', 1)[1].split("</nav>", 1)[0]
+    return body.split('class="card pdp__facts answers"', 1)[1].split("</dl>", 1)[0]
 
 
 def test_each_answer_jumps_to_where_it_is_said_in_full(client, product):
@@ -209,16 +198,12 @@ def test_each_answer_jumps_to_where_it_is_said_in_full(client, product):
     index = answers(page(client, product))
 
     assert (
-        f'<a class="facts__row" href="#section-{steps.pk}"><span class="facts__k">اکانت</span>'
+        f'<dt class="fact__k">اکانت</dt><dd class="fact__v"><a href="#section-{steps.pk}">' in index
+    )
+    assert '<a href="#delivery">تا ۱۲ ساعت</a>' in index
+    assert (
+        '<dt class="fact__k">گارانتی</dt><dd class="fact__v"><a href="#before-buying">تا پایان دوره</a>'
         in index
-    )
-    assert (
-        '<a class="facts__row" href="#delivery"><span class="facts__k">تحویل</span>'
-        '<span class="facts__v">تا ۱۲ ساعت</span></a>' in index
-    )
-    assert (
-        '<a class="facts__row" href="#before-buying"><span class="facts__k">گارانتی</span>'
-        '<span class="facts__v">تا پایان دوره</span></a>' in index
     )
     assert "تمدید" not in index
 
@@ -229,10 +214,7 @@ def test_a_code_is_not_called_an_account(client, product):
 
     index = answers(page(client, product))
 
-    assert (
-        '<span class="facts__row facts__row--static"><span class="facts__k">نوع تحویل</span>'
-        '<span class="facts__v">کد گیفت کارت</span></span>' in index
-    )
+    assert '<dt class="fact__k">نوع تحویل</dt><dd class="fact__v">کد گیفت کارت</dd>' in index
     assert "اکانت" not in index
 
 
@@ -253,10 +235,8 @@ def test_the_products_questions_come_before_the_shops_own(client, product):
     body = page(client, product)
     faq = body.split('id="questions-title"', 1)[1]
 
-    assert faq.index("چندماهه هم دارید؟") < faq.index(
-        '<bdi lang="en">Codex</bdi> روی <bdi lang="en">Android</bdi>'
-    )
-    assert faq.index('<bdi lang="en">Android</bdi>') < faq.index('id="delivery"')
+    assert faq.index("چندماهه هم دارید؟") < faq.index("<bdi>Codex</bdi> روی <bdi>Android</bdi>")
+    assert faq.index("<bdi>Android</bdi>") < faq.index('<dt id="delivery">')
     assert "<strong>پیش‌نمایش</strong>" in faq
 
 
@@ -278,8 +258,7 @@ def test_the_price_date_is_the_oldest_confirmation_among_available_plans(client,
 
     oldest = now - timedelta(days=9)
     assert response.context["price_checked_since"] == oldest
-    said = re.sub(r"<[^>]+>", "", response.content.decode())  # the date sits in a <time>
-    assert f"قیمت‌ها بررسی‌شده از {format_jalali(oldest)}" in said
+    assert f"قیمت‌ها بررسی‌شده از {format_jalali(oldest)}" in response.content.decode()
 
 
 def test_a_price_nobody_has_confirmed_leaves_the_date_off(client, product):
@@ -309,18 +288,18 @@ def test_the_listings_carry_the_oldest_date_of_the_plans_they_show(client, produ
 
 
 def test_the_last_check_of_the_facts_is_dated(client, product):
-    assert "اطلاعات این صفحه" not in page(client, product)
+    assert "آخرین بررسی" not in page(client, product)
 
     product.facts_checked_on = date(2026, 10, 19)
     product.save()
 
-    assert "اطلاعات این صفحه بررسی‌شده در ۲۷ مهر ۱۴۰۵" in page(client, product)
+    assert "آخرین بررسی: ۲۷ مهر ۱۴۰۵" in page(client, product)
 
 
 def test_the_buy_box_links_to_the_conditions(client, product):
     body = page(client, product)
 
     assert (
-        '<a class="invoice__terms" href="#before-buying">گارانتی و شرط‌های خرید</a>'
-        in body.split('id="invoice"', 1)[1]
+        '<a href="#before-buying">گارانتی و شرط‌های خرید</a>'
+        in body.split('class="pdp__buy"', 1)[1]
     )

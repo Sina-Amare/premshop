@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google" content="notranslate">
-  <meta name="theme-color" content="#171614">
+  <meta name="theme-color" content="#131313">
   <link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
   {% comment %}A page's title block holds its own part only: « | PremShop» is added
@@ -28,94 +28,230 @@
   <meta property="og:locale" content="fa_IR">
   <meta property="og:title" content="{{ page_title|shop_title }}">
   <meta property="og:description" content="{{ page_description }}">
-  <meta property="og:image" content="{{ site_url }}{% block og_image %}{% static 'img/og-default.png' %}{% endblock %}">
+  <meta property="og:image" content="{{ site_url }}{% static 'img/share.png' %}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
 
-  {% comment %}All five faces paint in the first screen, so all five are preloaded on
-  every page. Under font-display: optional a face that is not in hand at the first
-  paint is left out for that page view, and one discovered only after the stylesheet
-  parses misses even a fast first visit.{% endcomment %}
-  <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
+  {% comment %}
+  Four faces paint above the fold and all four are preloaded. Until 2026-10-14
+  this list named Estedad-ExtraBold — which only the price numeral uses — and
+  left Estedad-SemiBold, the face behind every heading on the site, to be
+  discovered after the stylesheet parsed, one round trip late on exactly the
+  connections that can least afford it.
+  {% endcomment %}
   <link rel="preload" href="{% static 'fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/Vazirmatn-Medium.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/Estedad-SemiBold.woff2' %}" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="{% static 'fonts/Vazirmatn-Bold.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
-  <script src="{% static 'js/frame.js' %}" defer></script>
-  <script src="{% static 'js/countdown.js' %}" defer></script>
   {% block head_extra %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
-  <a class="skip" href="#main">رفتن به محتوای اصلی</a>
+<body>
+  <a href="#main" class="skip">رفتن به محتوای اصلی</a>
 
-  {% comment %}Hours and the handle only. Under 420px the handle stands alone and the
-  strip keeps one line in any font, so it never changes height when the web font
-  arrives; the link's name stays the whole sentence.{% endcomment %}
-  <aside class="strip" aria-label="پشتیبانی"><div class="wrap strip__in">
-    <span>پاسخ‌گویی {{ support.hours }}</span>
-    <a href="{{ support.telegram_url }}" rel="noopener" aria-label="پشتیبانی در تلگرام: {{ support.telegram }}"><span class="strip__long">پشتیبانی در تلگرام: </span><bdi lang="en">{{ support.telegram }}</bdi></a>
-  </div></aside>
-
-  {% comment %}From 761px the header sticks, the category row with it: --frame-h is the
-  pair, and every in-page jump and sticky column clears it.{% endcomment %}
-  <header class="site-header">
-    <div class="wrap site-header__in">
-      <a class="brand" href="{% url 'home' %}"><svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10.59 8.16L27.01 1.24Q28.30 0.70 29.32 1.66L30.98 3.24Q32.00 4.20 32.00 5.60L32.00 26.00Q32.00 27.40 31.16 28.52L30.14 29.88Q29.30 31.00 28.05 30.37L23.05 27.83Q21.80 27.20 21.80 25.80L21.80 16.90Q21.80 15.50 20.58 14.81L13.82 10.99Q12.60 10.30 12.60 11.70L12.60 23.90Q12.60 25.30 11.33 25.90L2.09 30.24Q0.90 30.80 0.52 29.54L0.38 29.06Q0.00 27.80 0.00 26.48L0.00 10.30Q0.00 8.90 1.40 8.87L7.90 8.73Q9.30 8.70 10.59 8.16Z"/></svg><bdi class="brand__name" lang="en">PremShop</bdi></a>
-      <form class="search" role="search" action="{% url 'search' %}" method="get">
-        <label class="visually-hidden" for="q">جستجوی سرویس</label>
-        <input class="search__input" id="q" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="جستجوی سرویس، مثلاً اسپاتیفای" autocomplete="off">
-        <button class="search__btn" type="submit" aria-label="جستجو"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/></svg></button>
-      </form>
-      {% comment %}Both links print their words from 761px; below it the words are
-      visually hidden, so each keeps its name for a screen reader.{% endcomment %}
-      <nav class="hlinks" aria-label="حساب کاربری و پشتیبانی">
-        <a href="{{ support.telegram_url }}" class="hlink" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z"/></svg><span class="hlink__label">پشتیبانی</span></a>
-        <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hlink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg><span class="hlink__label">{% if request.user.is_authenticated %}حساب کاربری{% else %}ورود یا ثبت‌نام{% endif %}</span></a>
-      </nav>
+  {% comment %}
+  The header sticks, and it is <header> itself that does it: a sticky element
+  can only travel inside its own parent, so wrapping the bar in another div
+  inside the header would pin it for the height of the header and no further.
+  The negative offset is the strip's height, so the strip scrolls away and the
+  bar lands at the top of the viewport. The shelves row is a sibling, outside
+  the sticky box, and scrolls off with the page.
+  {% endcomment %}
+  <header class="hdr">
+    <div class="hdr__promise">
+      {% comment %}The hours on every width, the promises from apps/catalog/promises.py
+      only where they fit on one line: on a phone the strip would cut a promise
+      off halfway, and the footer row carries it in full.{% endcomment %}
+      <div class="wrap">پشتیبانی <b>{{ support.hours }}</b>{% for promise in promises %}<span class="strip__wide"> · {{ promise.text }}</span>{% endfor %}</div>
     </div>
-    {% if nav_categories %}
-    {% comment %}A category is current on its own page only; nothing is current on the
-    home page, the account or search, so a screen reader is never told the visitor
-    is somewhere they are not.{% endcomment %}
-    <nav class="catnav" aria-label="دسته‌ها"><div class="wrap"><ul class="catnav__list">
-      <li><a class="catnav__link" href="{% url 'home' %}#rates">همه‌ی سرویس‌ها</a></li>
-      {% for cat in nav_categories %}<li><a class="catnav__link" href="{% url 'category' cat.slug %}"{% if cat.slug == current_category %} aria-current="page"{% endif %}>{{ cat.name }}</a></li>
-      {% endfor %}<li><a class="catnav__link" href="{% url 'faq' %}"{% if current_category == 'faq' %} aria-current="page"{% endif %}>پرسش‌ها</a></li>
-    </ul></div></nav>
-    {% endif %}
+    <div class="wrap hdr__main">
+      <a href="{% url 'home' %}" class="hdr__brand" aria-label="PremShop، خانه">
+        <svg class="hdr__mark" width="22" height="22" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M10.59 8.16L27.01 1.24Q28.30 0.70 29.32 1.66L30.98 3.24Q32.00 4.20 32.00 5.60L32.00 26.00Q32.00 27.40 31.16 28.52L30.14 29.88Q29.30 31.00 28.05 30.37L23.05 27.83Q21.80 27.20 21.80 25.80L21.80 16.90Q21.80 15.50 20.58 14.81L13.82 10.99Q12.60 10.30 12.60 11.70L12.60 23.90Q12.60 25.30 11.33 25.90L2.09 30.24Q0.90 30.80 0.52 29.54L0.38 29.06Q0.00 27.80 0.00 26.48L0.00 10.30Q0.00 8.90 1.40 8.87L7.90 8.73Q9.30 8.70 10.59 8.16Z"/></svg>
+        <span class="hdr__word">PremShop</span>
+      </a>
+      <form class="hdr__search" action="{% url 'search' %}" method="get" role="search">
+        <input class="hdr__search-input" type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="جستجوی محصول" aria-label="جستجو در محصولات" autocomplete="off">
+        <button class="hdr__search-btn" type="submit" aria-label="جستجو">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </button>
+      </form>
+      {% comment %}
+      Labelled, not a bare pictogram. Every Iranian shop measured prints the
+      words, and a first-time buyer arriving from a Telegram link should not
+      have to decode a glyph to find out where ثبت‌نام lives. The icon trails
+      the label, which is the side a Persian line ends on.
+      {% endcomment %}
+      {% comment %}
+      Support sits in the header, not only in the footer. On a shop with no
+      نماد اعتماد, a reachable human is the trust signal that is actually
+      available, and a buyer who cannot find one leaves rather than asks.
+      {% endcomment %}
+      {% comment %}Named for the screen reader: on a phone the label is hidden and
+      the icon is aria-hidden.{% endcomment %}
+      <a href="{{ support.telegram_url }}" class="hdr__support" rel="noopener" aria-label="پشتیبانی در تلگرام">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
+        <span>پشتیبانی</span>
+      </a>
+      <a href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}" class="hdr__account">
+        <span>{% if request.user.is_authenticated %}حساب کاربری{% else %}ورود یا ثبت‌نام{% endif %}</span>
+        {# Non-directional icon: it must not mirror in RTL. #}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </a>
+    </div>
   </header>
+
+  {% if nav_categories %}
+  <nav class="cats" aria-label="دسته‌بندی‌ها">
+    <div class="wrap cats__row">
+      {% comment %}
+      Current only on the home page itself. Keyed on the absence of a category
+      it also lit up on /account/ and /faq/, which told a screen reader the
+      visitor was somewhere they were not.
+      {% endcomment %}
+      <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page"{% endif %}>همه‌ی محصولات</a>
+      {% for cat in nav_categories %}
+        <a href="{% url 'category' cat.slug %}"{% if cat.slug == current_category %} aria-current="page"{% endif %}>{{ cat.name }}</a>
+      {% endfor %}
+      <a href="{% url 'faq' %}"{% if current_category == 'faq' %} aria-current="page"{% endif %}>پرسش‌های متداول</a>
+    </div>
+  </nav>
+  {% endif %}
 
   {# tabindex: the skip link moves focus here, not only the scroll position. #}
   <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    <div class="wrap site-footer__grid">
-      <div>
-        <a class="site-footer__brand" href="{% url 'home' %}"><svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10.59 8.16L27.01 1.24Q28.30 0.70 29.32 1.66L30.98 3.24Q32.00 4.20 32.00 5.60L32.00 26.00Q32.00 27.40 31.16 28.52L30.14 29.88Q29.30 31.00 28.05 30.37L23.05 27.83Q21.80 27.20 21.80 25.80L21.80 16.90Q21.80 15.50 20.58 14.81L13.82 10.99Q12.60 10.30 12.60 11.70L12.60 23.90Q12.60 25.30 11.33 25.90L2.09 30.24Q0.90 30.80 0.52 29.54L0.38 29.06Q0.00 27.80 0.00 26.48L0.00 10.30Q0.00 8.90 1.40 8.87L7.90 8.73Q9.30 8.70 10.59 8.16Z"/></svg><bdi class="brand__name" lang="en">PremShop</bdi></a>
-        {% comment %}The promise comes from apps/catalog/promises.py, which checks it
-        against every public product; a line typed here would not be checked.{% endcomment %}
-        <p class="site-footer__about">اشتراک و اکانت سرویس‌های خارجی، با پرداخت تومانی.{% block footer_promise %}{% for promise in promises %} <span class="site-footer__promise">{{ promise.text }}</span>.{% endfor %}{% endblock %}</p>
+  <footer class="ftr">
+    <div class="wrap">
+      {% comment %}
+      The promise row: what the shop commits to on every product, from
+      apps/catalog/promises.py, and when a person answers. It used to carry a
+      bank gateway nobody had built, a warranty four products did not have
+      and a refund policy nobody had written.
+      {% endcomment %}
+      {% block footer_promise %}{% if promises %}<div class="ftr__promise">
+        {% for promise in promises %}<div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/></svg>
+          <span>{{ promise.text }}</span>
+        </div>{% endfor %}
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
+          <span>پشتیبانی {{ support.hours }}</span>
+        </div>
+      </div>{% endif %}{% endblock %}
+
+      <div class="ftr__grid">
+        <div>
+          <div class="hdr__brand"><svg class="hdr__mark" width="22" height="22" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M10.59 8.16L27.01 1.24Q28.30 0.70 29.32 1.66L30.98 3.24Q32.00 4.20 32.00 5.60L32.00 26.00Q32.00 27.40 31.16 28.52L30.14 29.88Q29.30 31.00 28.05 30.37L23.05 27.83Q21.80 27.20 21.80 25.80L21.80 16.90Q21.80 15.50 20.58 14.81L13.82 10.99Q12.60 10.30 12.60 11.70L12.60 23.90Q12.60 25.30 11.33 25.90L2.09 30.24Q0.90 30.80 0.52 29.54L0.38 29.06Q0.00 27.80 0.00 26.48L0.00 10.30Q0.00 8.90 1.40 8.87L7.90 8.73Q9.30 8.70 10.59 8.16Z"/></svg><span class="hdr__word">PremShop</span></div>
+          <p class="micro" style="margin-block-start: var(--spacing-4)">
+            اشتراک و اکانت سرویس‌های هوش مصنوعی، ابزارهای توسعه، سرگرمی و گیفت کارت.
+          </p>
+        </div>
+
+        <nav class="ftr__links" aria-label="پیوندهای مهم">
+          <span class="label">راهنما</span>
+          <a href="{% url 'faq' %}">پرسش‌های متداول</a>
+          <a href="{% url 'home' %}">همه‌ی محصولات</a>
+        </nav>
+
+        <div>
+          <span class="label">ارتباط با ما</span>
+          {# Selectable text, not images: a phone number you cannot copy is decoration. #}
+          <div class="fact" style="margin-block-start: var(--spacing-3)">
+            <span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span>
+            <span class="fact__v"><bdi class="latin">{{ support.telegram }}</bdi></span>
+          </div>
+          <div class="fact">
+            <span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span>
+            <span class="fact__v">{{ support.hours }}</span>
+          </div>
+        </div>
       </div>
-      <nav aria-labelledby="f-guide"><h2 class="site-footer__title" id="f-guide">راهنما</h2>
-        <ul class="site-footer__list"><li><a href="{% url 'home' %}#rates">نرخ‌نامه</a></li><li><a href="{% url 'faq' %}">پرسش‌ها</a></li></ul>
-      </nav>
-      <div><h2 class="site-footer__title">ارتباط با ما</h2>
-        {# Selectable text, not an image: a handle you cannot copy is decoration. #}
-        <ul class="site-footer__list"><li><a href="{{ support.telegram_url }}" rel="noopener">تلگرام <bdi lang="en">{{ support.telegram }}</bdi></a></li><li>{{ support.hours }}</li></ul>
+
+      <div class="ftr__bottom">
+        {% block footer_bottom %}همه‌ی حقوق برای <bdi>PremShop</bdi> محفوظ است.{% endblock %}
       </div>
     </div>
-    <div class="wrap site-footer__base">{% block footer_bottom %}همه‌ی حقوق برای <bdi lang="en">PremShop</bdi> محفوظ است.{% endblock %}</div>
   </footer>
 
   {% block scripts %}{% endblock %}
 <script>
-// Every password field gains a reveal toggle, here rather than in each form so a field
-// rendered by Django's own auth forms gets it too. With script off the field still
-// works, always masked.
+// Discount deadlines tick. The server rendered the text already, so a visitor
+// with JavaScript off sees the time that was left when the page was built;
+// this only keeps it moving. The remaining seconds come from the server and
+// the deadline is computed against this machine's clock, never against an
+// absolute server time — a customer whose clock is a day out would otherwise
+// see a countdown that is a day wrong.
+//
+// At zero the badge says the discount is over and stops being amber, and each
+// price under a deadline swaps in the one the server rendered for that moment
+// (data-after, from effective_price), so the page never shows a price that has
+// run out; a card swaps the title of the plan it leads with as well. The cart
+// and the checkout re-read every price regardless.
+(function () {
+  var timed = [].slice.call(document.querySelectorAll('[data-left]'));
+  if (!timed.length) return;
+
+  var FA = '۰۱۲۳۴۵۶۷۸۹';
+  var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
+  var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+
+  function text(left) {
+    if (left >= 86400) {
+      var days = Math.floor(left / 86400), hours = Math.floor((left % 86400) / 3600);
+      return hours
+        ? toFa(days) + ' روز و ' + toFa(hours) + ' ساعت'
+        : toFa(days) + ' روز';
+    }
+    return toFa(pad(Math.floor(left / 3600))) + ':' + toFa(pad(Math.floor((left % 3600) / 60))) + ':' + toFa(pad(left % 60));
+  }
+
+  var start = Math.floor(Date.now() / 1000);
+  timed.forEach(function (el) {
+    el.endsAt = start + (parseInt(el.getAttribute('data-left'), 10) || 0);
+  });
+
+  function end(el) {
+    if (el.classList.contains('deadline')) {
+      el.textContent = 'تخفیف تمام شد';
+      el.classList.add('deadline--done');
+      var said = el.nextElementSibling;
+      if (said && said.classList.contains('deadline__said')) said.textContent = 'تخفیف تمام شد';
+      return;
+    }
+    if (!el.classList.contains('price')) {
+      el.textContent = el.getAttribute('data-after');
+      return;
+    }
+    el.querySelector('.price__num').textContent = el.getAttribute('data-after');
+    el.querySelectorAll('.price__was, .price__now').forEach(function (node) { node.remove(); });
+  }
+
+  function tick() {
+    var now = Math.floor(Date.now() / 1000);
+    timed = timed.filter(function (el) {
+      var left = el.endsAt - now;
+      if (left <= 0) { end(el); return false; }
+      if (el.classList.contains('deadline')) el.textContent = text(left) + ' مانده';
+      return true;
+    });
+    if (!timed.length) clearInterval(timer);
+  }
+  var timer = setInterval(tick, 1000);
+  tick();
+})();
+</script>
+<script>
+// Progressive enhancement: every password field gains a reveal toggle. Done here
+// rather than in each form so the next step's forms inherit it, and so a field
+// rendered by Django's own auth forms gets it too without subclassing anything.
+// With JS off the field still works — it is just always masked, which is the
+// behaviour before this existed.
 (function () {
   var EYE = '<svg data-eye-on viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>'
            + '<svg data-eye-off viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A8.9 8.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17 17 0 0 1-3.5 4.1"/><path d="M6.4 7.6A16.8 16.8 0 0 0 1.5 12S5 18 12 18a9.6 9.6 0 0 0 3.5-.65"/><path d="M9.9 9.9a3.2 3.2 0 0 0 4.3 4.3"/></svg>';

@@ -1,6 +1,6 @@
 # ADR-0026 — The storefront: an ink band, a shelf across its edge, colour only from the goods
 
-**Status:** Superseded by [ADR-0029](0029-storefront-commercial-paper.md) · superseded 2026-10-20 (accepted 2026-10-14 after the owner's review, "the site is very raw")
+**Status:** Accepted (owner's review, "the site is very raw") · 2026-10-14
 
 **Context.** The shop was built on a white canvas ruled with hairlines, and the system worked exactly as written: one radius, no shadow anywhere, a strict accent budget, no hero. The owner reviewed it and rejected it — *«هیچ استایل و داینامیک بودنی نداریم … سایت خیلی خامه»* — and supplied three reference systems (Brex, Airbnb, monday.com) with the instruction to understand them rather than copy them. The common structure across all three is not decoration: a white body, one saturated accent, one elevated signature element, and a hero whose subject is the product itself. The previous build had none of those four, and the clause that was meant to supply the colour — "colour belongs to the goods" — had never actually executed, because the goods rendered as grey monochrome glyphs in grey boxes.
 

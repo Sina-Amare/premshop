@@ -1,30 +1,39 @@
 {% extends "base.html" %}{% comment %}
-The account shell: one title, the way out beside it, and the two sections as tabs.
-سفارش‌ها (S4b) and اشتراک‌ها (S9) will be sections that are genuinely different, and
-each costs one entry here. Nothing is listed before it exists.
+The account shell. Navigation on the inline-start, which in this right-to-left
+page puts it on the right, where every Persian dashboard keeps it.
 
-The sections are <section>s inside a <div>: base.html already holds the page's one <main>.
+Two sections, not three: «پیشخوان» was a word that described nothing and a
+page that listed the same phone number as the one next to it. سفارش‌ها (S4b)
+and اشتراک‌ها (S9) are sections that will be genuinely different, and each
+costs one entry here. Nothing is listed before it exists.
+
+The section is a <div>: base.html already holds the page's one <main>.
 {% endcomment %}
 
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
-<div class="wrap plain-page">
-  <header class="acct-head">
-    <h1 class="acct-head__title">حساب کاربری</h1>
-    <form method="post" action="{% url 'logout' %}">
+<div class="wrap page">
+<div class="acct">
+  <nav class="acct__nav" aria-label="بخش‌های حساب کاربری">
+    <div class="acct__who">
+      <span class="acct__avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>
+      {# The address is one unbroken token; it gets the whole row and an ellipsis. #}
+      <span class="acct__email" title="{{ request.user.email }}"><bdi>{{ request.user.email }}</bdi></span>
+    </div>
+    <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
+    <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
+    <form method="post" action="{% url 'logout' %}" class="acct__out">
       {% csrf_token %}
-      <button type="submit" class="btn btn--secondary btn--sm">خروج از حساب</button>
+      <button type="submit" class="btn btn--ghost">خروج از حساب</button>
     </form>
-  </header>
-  <nav class="acct-tabs" aria-label="بخش‌های حساب کاربری">
-    <ul class="acct-tabs__list" role="list">
-      <li><a class="acct-tabs__link" href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a></li>
-      <li><a class="acct-tabs__link" href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a></li>
-    </ul>
   </nav>
-  {% for message in messages %}<p class="notice notice--ok acct-msg" role="status">{{ message }}</p>{% endfor %}
-  {% block section %}{% endblock %}
-  <p class="acct-note">پرسشی دارید؟ در تلگرام <a href="{{ support.telegram_url }}" rel="noopener"><bdi lang="en">{{ support.telegram }}</bdi></a> بپرسید، {{ support.hours }}. <a href="{% url 'faq' %}">پرسش‌های متداول</a></p>
+
+  <div class="acct__main">
+    {% for message in messages %}<div class="form-ok" role="status">{{ message }}</div>{% endfor %}
+    <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
+    {% block section %}{% endblock %}
+  </div>
+</div>
 </div>
 {% endblock %}

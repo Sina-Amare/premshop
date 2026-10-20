@@ -23,7 +23,7 @@ from django.conf import settings
 
 ROOT = Path(settings.BASE_DIR)
 
-SCANNED = {".py", ".html", ".svg", ".css", ".js", ".md", ".toml", ".yml", ".yaml", ".txt", ".cfg"}
+SCANNED = {".py", ".html", ".css", ".js", ".md", ".toml", ".yml", ".yaml", ".txt", ".cfg"}
 
 # Each entry is (name, pattern). Word boundaries where the term is a word;
 # the tutorial openers are anchored to a line or sentence start so that a

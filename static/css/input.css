@@ -1,1017 +1,1200 @@
-/* The storefront's stylesheet, «نرخ‌نامه‌ی فیروزه‌ای» (ADR-0016, docs/design-language.md):
-   tokens, the base layer and every shared component. A page's own layout lives in
-   areas/, in a layer after this one, so it overrides a component without a fight
-   over specificity. Logical properties only: the page is rtl and nothing here assumes
-   a side. Every colour, size, space, radius, border and duration is a token. */
+/* source(none) disables Tailwind's automatic project-wide scanning: it was
+   reading our own documentation and generating utilities from the class names
+   the docs exist to ban. Scan only where markup actually lives. */
 @import "tailwindcss" source(none);
-@import "./areas/home.css" layer(areas);
-@import "./areas/product.css" layer(areas);
-@import "./areas/account.css" layer(areas);
-@import "./areas/lists.css" layer(areas);
-@import "./areas/buybox.css" layer(areas);
 
-/* source(none) stops Tailwind scanning the whole project, documentation included,
-   for class names; it reads only the templates the storefront renders. */
 @source "../../templates/**/*.html";
 /* The panel's templates are styled by Unfold's stylesheet, never this one. */
 @source not "../../templates/admin";
 @source not "../../templates/unfold";
 
+/* ===========================================================================
+   PremShop visual foundation — see docs/design-language.md and ADR-0016.
+
+   The stance: this shop should read like a small business that keeps records.
+   The buyer's fear is paying into a void, so the antidote is visible
+   bookkeeping — hairlines, aligned figures, stated hours, exact amounts.
+   Structure is carried by borders and background steps, never by shadow:
+   deleting every shadow from this file would change nothing about hierarchy.
+   =========================================================================== */
+
 /* --- Fonts -----------------------------------------------------------------
-   Self-hosted: Iranian visitors cannot reach foreign font CDNs. base.html preloads all
-   five faces, because every one of them paints in the first screen. optional, not swap:
-   a face that is not in hand at the first paint stays out for that page view, so text
-   never moves after it shows (with swap a late face moved the invoice up to 45px on a
-   throttled phone). A slow first visit reads in the fallback; the next page has the
-   faces in cache.
-   Fallbacks per platform, each fitted to the web face it stands in for: Tahoma on
-   Windows, Noto Naskh Arabic UI and Noto Sans Arabic UI on Android. local() matches a
-   font's full or PostScript name only, and a name that matches nothing skips the face,
-   so each stack falls through to the next. size-adjust is the width of the shop's own
-   Persian text in the web face over its width in the fallback, weight by weight; the
-   overrides give every fallback the web face's line. iOS's SF Arabic is not fitted. */
-@font-face { font-family: "Vazirmatn"; src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
-             font-weight: 400; font-style: normal; font-display: optional; }
-@font-face { font-family: "Vazirmatn"; src: url("/static/fonts/Vazirmatn-Medium.woff2") format("woff2");
-             font-weight: 500; font-style: normal; font-display: optional; }
-@font-face { font-family: "Vazirmatn"; src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
-             font-weight: 700; font-style: normal; font-display: optional; }
-/* Estedad draws larger than Vazirmatn at the same size; 82% sets them on one scale. */
-@font-face { font-family: "Estedad"; src: url("/static/fonts/Estedad-SemiBold.woff2") format("woff2");
-             font-weight: 600; font-style: normal; font-display: optional; size-adjust: 82%; }
-@font-face { font-family: "Estedad"; src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
-             font-weight: 800; font-style: normal; font-display: optional; size-adjust: 82%; }
+   Self-hosted only: Iranian visitors cannot reach foreign font CDNs.
+   size-adjust on Estedad normalises it against Vazirmatn — Estedad's Arabic
+   body height runs larger at the same nominal size, so without this a heading
+   reads louder than the type scale intends.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap; size-adjust: 82%;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
+  font-weight: 800; font-style: normal; font-display: swap; size-adjust: 82%;
+}
+/* Metric-matched fallbacks: keep layout from shifting while fonts load.
+   Estedad had none until 2026-10-14, and it was the whole of the page's 0.027
+   CLS: the hero h1 measured 109px in Tahoma against 73px in Estedad, so the
+   headline wrapped to a third line and dropped everything below it by 45px
+   the moment the real face arrived. 76.5% was measured against that day's
+   headline, where Tahoma matched Estedad's width to within a pixel; on the
+   headline since 2026-10-19 Tahoma runs 4 to 7px narrower, and with the
+   fonts held back 800ms the home page measured CLS 0.015 at 390px and 0.021
+   at 1440px on 2026-10-20. Re-fit when the hero changes again, and if either
+   face is replaced. */
+@font-face {
+  font-family: "Vazirmatn Fallback";
+  src: local("Tahoma");
+  size-adjust: 97%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Estedad Fallback";
+  src: local("Tahoma");
+  size-adjust: 76.5%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%;
+}
 
-@font-face { font-family: "Vazirmatn Fallback"; src: local("Tahoma"); font-weight: 400;
-             size-adjust: 93.9%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Fallback"; src: local("Tahoma"); font-weight: 500;
-             size-adjust: 94.5%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Fallback"; src: local("Tahoma Bold"), local("Tahoma-Bold"), local("Tahoma"); font-weight: 700;
-             size-adjust: 85.3%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Fallback"; src: local("Tahoma"); font-weight: 600;
-             size-adjust: 81%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Fallback"; src: local("Tahoma Bold"), local("Tahoma-Bold"), local("Tahoma"); font-weight: 800;
-             size-adjust: 71%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Naskh"; src: local("Noto Naskh Arabic UI Regular"), local("NotoNaskhArabicUI-Regular"); font-weight: 400;
-             size-adjust: 110%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Naskh"; src: local("Noto Naskh Arabic UI Regular"), local("NotoNaskhArabicUI-Regular"); font-weight: 500;
-             size-adjust: 110.6%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Naskh"; src: local("Noto Naskh Arabic UI Bold"), local("NotoNaskhArabicUI-Bold"); font-weight: 700;
-             size-adjust: 107%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Naskh"; src: local("Noto Naskh Arabic UI Bold"), local("NotoNaskhArabicUI-Bold"); font-weight: 600;
-             size-adjust: 89.9%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Naskh"; src: local("Noto Naskh Arabic UI Bold"), local("NotoNaskhArabicUI-Bold"); font-weight: 800;
-             size-adjust: 103.2%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Noto"; src: local("Noto Sans Arabic UI Regular"), local("NotoSansArabicUI-Regular"); font-weight: 400;
-             size-adjust: 99.2%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Noto"; src: local("Noto Sans Arabic UI Medium"), local("NotoSansArabicUI-Medium"); font-weight: 500;
-             size-adjust: 96.7%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Vazirmatn Noto"; src: local("Noto Sans Arabic UI Bold"), local("NotoSansArabicUI-Bold"); font-weight: 700;
-             size-adjust: 91.5%; ascent-override: 102.5%; descent-override: 53.7%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Noto"; src: local("Noto Sans Arabic UI SemiBold"), local("NotoSansArabicUI-SemiBold"); font-weight: 600;
-             size-adjust: 80%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-@font-face { font-family: "Estedad Noto"; src: local("Noto Sans Arabic UI ExtraBold"), local("NotoSansArabicUI-ExtraBold"); font-weight: 800;
-             size-adjust: 93.8%; ascent-override: 125%; descent-override: 66%; line-gap-override: 0%; }
-
-/* --- Tokens ---------------------------------------------------------------- */
 @theme {
-  --font-body: "Vazirmatn", "Vazirmatn Fallback", "Vazirmatn Naskh", "Vazirmatn Noto", Tahoma, sans-serif;
-  --font-head: "Estedad", "Estedad Fallback", "Estedad Naskh", "Estedad Noto", "Vazirmatn", Tahoma, sans-serif;
-
-  /* Estedad: 600 headings, 800 numerals. Vazirmatn: 400 text, 500 UI, 700 emphasis. */
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
-
-  /* The type scale. Estedad is drawn at 82%, so its sizes are set for what they draw:
-     a 25px h2 draws like 21px of Vazirmatn and a 22px h3 like 18px, so a heading never
-     reads smaller than the 17px text under it. Sizes that change with the screen are
-     in :root below. */
-  --text-poster: clamp(34px, 22.86px + 2.857vw, 60px);
-  --text-step: 28px;
-  --text-h2: 25px;
-  --text-h3: 22px;
-  --text-body: 17px;
-  --text-ui: 15px;
-  --text-small: 13px;
-  --text-micro: 12px;
-  --leading-body: 1.85;
-  --leading-head: 1.45;
-  --leading-tight: 1.25;
+  --font-body: "Vazirmatn", "Vazirmatn Fallback", Tahoma, sans-serif;
+  --font-head: "Estedad", "Estedad Fallback", "Vazirmatn", Tahoma, sans-serif;
 
   /* Nine spacing values. Nothing outside this set appears in the stylesheet. */
   --spacing-1: 4px;  --spacing-2: 8px;  --spacing-3: 12px;
   --spacing-4: 16px; --spacing-5: 24px; --spacing-6: 32px;
   --spacing-7: 48px; --spacing-8: 64px; --spacing-9: 96px;
 
-  /* Paper and ink. */
-  --color-ground: #F6F4EF;
-  --color-surface: #FFFFFF;
-  --color-fill-subtle: #EFEBE4;
-  /* Hairlines and leaders are decoration, never the only edge of a control. */
-  --color-line: #E2DDD3;
-  --color-line-strong: #CEC7BA;
-  /* The edge of anything you operate: 3.70:1 on paper, 4.07:1 on a sheet (WCAG 1.4.11). */
-  --color-control: #857D70;
-  --color-muted: #655F56;
-  --color-secondary: #46423B;
-  --color-ink: #1C1A17;
+  /* Eight neutrals carry all structure. White canvas and a neutral ramp since
+     2026-10-13: the page is a printed sheet ruled with hairlines, and the only
+     colour in it belongs to the brands on the shelf and to the one action the
+     customer came to take. The ninth, --color-field, is only the edge of a
+     control a person types into: ruled as a hairline at 1.48:1, the fields and
+     code cells nearly vanished, where WCAG 1.4.11 asks 3:1. */
+  --color-ground: #ffffff;
+  --color-surface: #ffffff;
+  --color-fill-subtle: #f5f5f4;
+  --color-line: #e7e5e4;
+  --color-line-strong: #d4d4d4;
+  --color-field: #8c8c8c;
+  --color-muted: #737373;
+  --color-secondary: #525252;
+  --color-ink: #171717;
 
-  /* The strip and the footer. Text on it has its own ramp: the body's fails there. */
-  --color-deep: #171614;
+  /* Ink as a surface. The page opens on a band of it and closes on another,
+     and the white between them reads as deliberate instead of unfinished —
+     which is the whole complaint the 2026-10-14 round answers. Neutral, not
+     blue-black: twelve brand colours sit on top of it and must read true.
+     Text on ink gets its own ramp; the body ramp fails contrast there. */
+  --color-deep: #131313;
   --color-on-deep: rgba(255, 255, 255, 0.94);
   --color-on-deep-muted: rgba(255, 255, 255, 0.66);
   --color-on-deep-line: rgba(255, 255, 255, 0.14);
 
-  /* Turquoise is what you do and what you chose: the primary action, the chosen plan,
-     the current category. At most three in a view. */
-  --color-accent: #0A6A6E;
-  --color-accent-hover: #085A5E;
-  --color-accent-active: #064A4E;
-  --color-accent-tint: #E3F0EE;
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d6560;
+  --color-accent-active: #0b5450;
+  --color-accent-tint: #eef5f4;
 
-  /* Lapis is the record: a document's band, the double rule under the amount paid,
-     text links, the focus ring, the lines of the tile art. Never a broad background,
-     never a button, never a fill. */
-  --color-lapis: #233D86;
-  --color-lapis-underline: #7786B0;
-
-  /* Glaze is for illustrations only: 2.64:1 on paper, so never text and never an edge. */
-  --color-glaze: #34A7A9;
-
-  --color-ok: #16A34A;
+  --color-ok: #16a34a;
   --color-ok-text: #166534;
-  /* Amber is time left and nothing else. */
-  --color-time: #D97706;
-  --color-time-text: #92400E;
-  --color-danger: #DC2626;
-  --color-danger-text: #991B1B;
+  --color-time: #d97706;     /* reserved: deadlines and countdowns only */
+  --color-time-text: #92400e;
+  --color-danger: #dc2626;
+  --color-danger-text: #991b1b;
 
-  /* Tints, color-mix(in oklab, X n%, ground) worked out to hex so older browsers get
-     them too; recompute them if a base colour changes. The danger tint is the
-     exception, set by hand: mixed into the warm paper, red came out 3/255 from the
-     time tint, and an error read as a deadline. */
-  --color-time-tint: #F4E5D8;
-  --color-time-edge: #EFCBAD;
-  --color-ok-tint: #E3ECDE;
-  --color-danger-tint: #F9E1E1;
-  --color-selection: #CFDAD7;
-
-  /* Two corners: 2px is paper, 6px is a control. A full-bleed band keeps 0. */
-  --radius-sheet: 2px;
+  /* Two radii, and the step between them is the information: 6px is a control
+     you act on, 14px is a surface that holds goods. One value for everything
+     read as utilitarian — the 2026-10-13 single-radius clause is amended, not
+     drifted from. Anything touching a viewport edge keeps 0: a rounded corner
+     on a full-bleed band is a lie about where the page ends. */
   --radius-sm: 6px;
-
-  /* 2px ink opens and closes a document, 1px sits under column heads, hairlines run
-     between rows, a 4px lapis band tops a document the shop issues, and a double lapis
-     rule sits only under the amount you pay. */
-  --border-hair: 1px;
-  --border-rule: 2px;
-  --border-band: 4px;
-  --border-double: 4px;
+  --radius-lg: 14px;
 }
 
-/* Outside @theme: values that change at a breakpoint (@theme cannot hold a media query),
-   and frame, size and motion names Tailwind also defines, so its defaults never win. */
 :root {
-  --text-total: 44px;
-  --text-price: 20px;
-  --text-h1: 34px;
-  --text-lead: 19px;
-
-  /* Sizes of things, not gaps between them. */
-  --logo-sm: 28px;
-  --logo-md: 40px;
-  --logo-lg: 56px;
-  --control-h-sm: 36px;
-  --control-h: 44px;
-  --control-h-lg: 52px;
-  --input-h: 48px;
-  --mark: 18px;
-
-  --gutter: 24px;
-  --container: 1120px;
-  --strip-h: 36px;
-  --header-h: 64px;
-  --sticky-top: calc(var(--header-h) + var(--spacing-4));
-  /* The whole sticky frame: the header row and the category row under it. */
-  --frame-h: calc(var(--header-h) + 2 * var(--spacing-3) + var(--text-ui) * var(--leading-tight) + 2 * var(--border-hair));
-
-  /* Focus is lapis, so it is never mistaken for the turquoise of a choice. */
-  --focus-width: 2px;
-  --focus-offset: 2px;
-  --focus-color: var(--color-lapis);
-
-  --dur-xs: 90ms;      /* press */
-  --dur: 140ms;        /* colour and state */
-  --dur-lg: 220ms;     /* anything that moves or reveals */
-  --dur-ambient: 18s;  /* the home glint: one star every 6s */
+  --gutter: 18px;
+  --container: 1100px;
+  --strip-h: 38px;   /* the ink promise strip; the header sticks past it */
+  /* The bar that stays pinned once the strip has scrolled away: .hdr__main
+     plus the header's hairline, measured. The sticky buy box and every
+     in-page jump clear it by this, so they cannot disagree about it. On a
+     phone the search has a row of its own, and 118px is that two-row bar. */
+  --hdr-h: 69px;
+  --dur-xs: 90ms;    /* press: contact has to feel instant */
+  --dur: 140ms;      /* colour, border, small state changes */
+  --dur-lg: 220ms;   /* anything that moves or reveals: longer, still quiet */
   --ease: cubic-bezier(0.2, 0, 0, 1);
-  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --shift: 4px;        /* how far a changed total travels */
-}
-@media (min-width: 1024px) { :root { --text-price: 24px; } }
-@media (max-width: 760px) {
-  :root {
-    --text-total: 36px;
-    --text-h1: 30px;  /* draws about 24.6px, 1.2 times the h2 */
-    --text-lead: 17px;
-    --gutter: 16px;
-    --strip-h: 34px;
-    --header-h: 56px;
-  }
-}
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);   /* enters fast, lands slowly */
 
-/* --- Base ------------------------------------------------------------------ */
+  /* The only shadow in the stylesheet, and it has exactly one consumer: the
+     shelf panel that crosses the seam between the ink band and the page. Two
+     layers, tinted from ink rather than black, no bloom. Everywhere else
+     structure is still carried by a hairline — delete this token and only the
+     shelf changes. */
+  --shadow-lift: 0 1px 2px rgba(19, 19, 19, 0.04), 0 18px 40px -22px rgba(19, 19, 19, 0.3);
+}
+@media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; --hdr-h: 118px; } }
+
 @layer base {
-  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
-         font-synthesis: none;  /* never a faked weight or slant */
-         accent-color: var(--color-accent); }
-  body {
-    margin: 0; background: var(--color-ground); color: var(--color-ink);
-    font-family: var(--font-body); font-size: var(--text-body); font-weight: var(--font-weight-normal);
-    line-height: var(--leading-body); text-align: start;
+  html {
+    /* The header pins at the top, so an in-page jump has to stop short of it
+       or it lands behind the bar. The hero's own «مشاهده‌ی محصولات» link is
+       the one that would do it. */
+    scroll-padding-block-start: calc(var(--hdr-h) + var(--spacing-3));
+    font-size: 16px;
+    font-synthesis: none;      /* never let the browser fake a weight or slant */
+    text-rendering: optimizeLegibility;
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    accent-color: var(--color-accent);
   }
-  /* Arabic script is cursive: any tracking splits the joins between letters. Neither
-     family ships an italic, and Persian has no capitals. */
+
+  body {
+    font-family: var(--font-body);
+    font-size: 17px;           /* Persian carries finer detail than Latin at the same size */
+    line-height: 1.6;
+    text-align: start;
+  }
+
+  /* Arabic script is cursive: any tracking splits the joins between letters.
+     Neither family ships an italic, and uppercase does not exist in Persian. */
   * { letter-spacing: 0 !important; font-style: normal; text-transform: none; }
 
-  h1, h2, h3, h4 { margin: 0; font-family: var(--font-head); font-weight: var(--font-weight-semibold);
-                   line-height: var(--leading-head); text-wrap: balance; color: var(--color-ink); }
-  h1 { font-size: var(--text-h1); }
-  h2 { font-size: var(--text-h2); }
-  h3 { font-size: var(--text-h3); }
-  h4 { font-size: var(--text-body); }
-  p, ul, ol, dl, dd, figure, blockquote { margin: 0; }
-  ul, ol { padding: 0; }
-  img, svg { max-inline-size: 100%; }
-  img { block-size: auto; }
-  button, input, select, textarea { font: inherit; color: inherit; }
-  fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
-  legend { padding: 0; }
-  bdi { unicode-bidi: isolate; }
-  [hidden] { display: none !important; }
-  /* An in-page jump lands below the sticky frame (sticky from 761px). Keyboard focus
-     needs js/frame.js as well: Chromium ignores this padding when it decides whether
-     to scroll a focused control. */
-  html { scroll-padding-block-start: var(--spacing-4); }
-  @media (min-width: 761px) { html:has(.site-header) { scroll-padding-block-start: calc(var(--frame-h) + var(--spacing-4)); } }
-  main:focus, .sec[tabindex="-1"]:focus, .invoice[tabindex="-1"]:focus { outline: none; }
+  h1, h2, h3, h4 { font-family: var(--font-head); color: var(--color-ink); text-wrap: balance; }
+  /* Space belongs to what follows a heading, never split evenly around it. */
+  h1 { font-size: 30px; font-weight: 600; line-height: 1.3;  margin-block: 0 var(--spacing-4); }
+  h2 { font-size: 21px; font-weight: 600; line-height: 1.4;  margin-block: var(--spacing-7) var(--spacing-3); }
+  h3 { font-size: 18px; font-weight: 600; line-height: 1.45; margin-block: var(--spacing-5) var(--spacing-3); }
+  h4 { font-size: 17px; font-weight: 600; line-height: 1.5;  margin-block: var(--spacing-4) var(--spacing-2); }
+
+  p { max-inline-size: 32rem; }
 
   a {
-    color: var(--color-lapis);
-    text-decoration-line: underline; text-decoration-thickness: 1px;
-    text-underline-offset: 0.34em; text-decoration-color: var(--color-lapis-underline);
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    text-decoration-color: color-mix(in oklab, var(--color-accent) 35%, var(--color-ground));
     transition: text-decoration-color var(--dur) var(--ease);
   }
-  a:hover { text-decoration-color: currentColor; }
+  a:hover { text-decoration-color: var(--color-accent); }
 
-  :focus-visible { outline: var(--focus-width) solid var(--focus-color); outline-offset: var(--focus-offset); }
-  .strip :focus-visible, .site-footer :focus-visible { outline-color: var(--color-on-deep); }
-  ::selection { background: var(--color-selection); color: var(--color-ink); }
-  input, textarea { caret-color: var(--color-lapis); }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  ::selection { background: color-mix(in oklab, var(--color-accent) 18%, var(--color-ground)); color: var(--color-ink); }
+  input, textarea { caret-color: var(--color-accent); }
   [disabled] { cursor: not-allowed; }
 
-  /* Motion is feedback, plus one ambient motif on the home page.
-     Reduced motion stops everything; an infinite animation also needs its iteration
-     count capped, or it runs forever 0.01ms at a time. Scrolling is never smooth in
-     CSS: the browser's own scroll to a focused control would race js/frame.js and
-     leave the control under the sticky header (WCAG 2.4.11). */
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
       animation-duration: 0.01ms !important;
+      /* Without this an infinite animation still runs forever, 0.01ms at a
+         time — it burns the same battery and never settles. Zeroing the
+         duration is only half of switching motion off. */
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
   }
-  /* A hero whose pause box is checked stops moving, without script (WCAG 2.2.2). */
-  @supports selector(:has(*)) { .hero:has(.motion-pause:checked) * { animation: none !important; } }
 }
 
-/* --- Components ------------------------------------------------------------ */
 @layer components {
-  /* Skip link: off screen until a keyboard reaches it, then over the dark strip. */
-  .skip { position: absolute; inset-block-start: var(--spacing-1); inset-inline-start: var(--spacing-4); z-index: 30;
-          padding: var(--spacing-1) var(--spacing-3); background: var(--color-surface); color: var(--color-ink);
-          border: var(--border-hair) solid var(--color-control); border-radius: var(--radius-sm);
-          font-size: var(--text-ui); line-height: var(--leading-tight); }
-  .skip:focus-visible { outline-color: var(--color-on-deep); }
-  .skip:not(:focus) { clip-path: inset(50%); inline-size: 1px; block-size: 1px; padding: 0; border: 0;
-                      overflow: hidden; white-space: nowrap; }
+  .wrap { inline-size: min(100% - (var(--gutter) * 2), var(--container)); margin-inline: auto; }
+  /* <main> is full-width now so a band can bleed to the viewport edge; the
+     column lives on the content inside each template instead. */
+  .page { padding-block: var(--spacing-7); }
+  .page--flush { padding-block-start: 0; }
+  .acct__main { min-inline-size: 0; }
 
-  .visually-hidden {
-    position: absolute !important; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0;
-    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  .prose { font-size: 17px; line-height: 1.85; max-inline-size: 32rem; }
+  .prose + .prose { margin-block-start: 1.6rem; }
+  /* Operator-written text from the restricted renderer (ADR-0027). The reset
+     takes list markers away, so the container gives them back. */
+  .rich > * { margin-block: 0; }
+  .rich > * + * { margin-block-start: var(--spacing-3); }
+  .rich ul, .rich ol { padding-inline-start: 1.4em; }
+  .rich ul { list-style-type: disc; }
+  .rich ol { list-style-type: persian; }
+  .rich li + li { margin-block-start: var(--spacing-2); }
+  .rich > h2, .rich > h3 { margin-block: var(--spacing-5) var(--spacing-2); }
+  .rich table { border-collapse: collapse; }
+  .rich th, .rich td { padding: 9px var(--spacing-3) 7px; border-block-end: 1px solid var(--color-line);
+                       font-size: 15px; line-height: 1.6; text-align: start; vertical-align: top; }
+  .rich th { font-weight: 500; color: var(--color-secondary); border-block-end-color: var(--color-line-strong); }
+  .rich__scroll { overflow-x: auto; }
+  .rich__scroll:focus-visible { outline-offset: 0; }
+  /* A draft seen by the operator on its public address. Ink, not amber:
+     amber means time and nothing else. */
+  .preview-bar { background: var(--color-fill-subtle); border-block-end: 1px solid var(--color-line-strong);
+                 padding-block: var(--spacing-3); font-size: 15px; line-height: 1.7; color: var(--color-ink); }
+  .preview-bar .badge { margin-inline-end: var(--spacing-2); }
+  .small { font-size: 13px; line-height: 1.7; color: var(--color-muted); max-inline-size: 32rem; }
+  .micro { font-size: 12px; line-height: 1.9; color: var(--color-muted); max-inline-size: 32rem; }
+  /* The only place weight 500 appears: labels, table headers, eyebrows. */
+  .label { font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--color-muted); }
+  .latin { unicode-bidi: isolate; direction: ltr; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr;
+          unicode-bidi: isolate; font-size: 15px; overflow-wrap: anywhere; }
+
+  /* --- Header --------------------------------------------------------------
+     Three bands, the Iranian shape: an ink promise strip, the white bar that
+     carries the brand, the search and the account, and a row of shelves.
+     Only the first two stick. `position: sticky` can only travel inside its
+     own parent, so the sticky box is <header> itself — a child of <body>, and
+     therefore free for the whole page — with the strip's height as a negative
+     offset so the strip scrolls away and the bar pins at the top. The shelves
+     row sits outside the header and scrolls off with the page.
+     -------------------------------------------------------------------------- */
+  .hdr {
+    position: sticky; inset-block-start: calc(-1 * var(--strip-h)); z-index: 30;
+    background: var(--color-surface);
+    border-block-end: 1px solid var(--color-line);
   }
-  .wrap { inline-size: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; }
-  .nowrap { white-space: nowrap; }
-  .lead { font-size: var(--text-lead); color: var(--color-secondary); }
-  .small { font-size: var(--text-small); }
-  .micro { font-size: var(--text-micro); }
-  .muted { color: var(--color-muted); }
-  .latin { direction: ltr; unicode-bidi: isolate; }
-  /* Money in a column aligns on its units digit. Persian digits run left to right, so
-     the units digit is on the right: the start side of an rtl table. */
-  .num { text-align: start; white-space: nowrap; }
-
-  /* Text that mixes Persian and a <bdi> sits in one block or inline box: as direct
-     children of a flex container each run becomes its own item and the sentence falls
-     apart. Hence block badges, notices and errors below. */
-  p, .notice { text-wrap: pretty; }
-  .prose bdi, .gets__desc bdi, .benefit__claim bdi, .benefit__use bdi, .qa__a bdi, .step bdi, .terms__v bdi,
-  .notfor bdi, .rs__summary bdi, .table thead bdi { white-space: nowrap; }
-
-  /* Items separated by a dot drawn in CSS: «·» is not in the font subset. The dot hangs
-     on the end of the item before it, so a wrapped line never starts with one. */
-  .inline-list { display: flex; flex-wrap: wrap; list-style: none; }
-  .inline-list > li { white-space: nowrap; }
-  .inline-list > li:not(:last-child)::after {
-    content: ""; display: inline-block; inline-size: 3px; block-size: 3px; border-radius: 50%;
-    background: currentColor; vertical-align: middle; margin-inline: var(--spacing-2);
+  .hdr__promise {
+    min-block-size: var(--strip-h); display: flex; align-items: center;
+    background: var(--color-deep); color: var(--color-on-deep-muted);
+    font-size: 13px; line-height: 1.75;
   }
-
-  /* Breadcrumb. The slash is in the font subset; its spoken text is none. */
-  .crumbs ol { display: flex; flex-wrap: wrap; list-style: none; font-size: var(--text-small); color: var(--color-muted); }
-  .crumbs li + li::before { content: "/"; content: "/" / ""; margin-inline: var(--spacing-2); color: var(--color-muted); }
-  .crumbs a { color: var(--color-secondary); text-decoration-color: var(--color-line-strong); }
-  .crumbs [aria-current="page"] { color: var(--color-ink); }
-
-  /* --- Frame: strip, header, category row, footer --- */
-  .strip { background: var(--color-deep); color: var(--color-on-deep-muted); font-size: var(--text-small); }
-  .strip__in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--spacing-4);
-               min-block-size: var(--strip-h); }
-  .strip a { color: var(--color-on-deep); text-decoration-color: var(--color-on-deep-line); }
-  .strip a:hover { text-decoration-color: currentColor; }
-  /* Under 420px only the handle shows: the strip keeps one line in any font, so it never
-     changes height when the web font arrives. The link's name stays the full sentence. */
-  @media (max-width: 420px) { .strip__in { flex-wrap: nowrap; } .strip__long { display: none; } }
-
-  .site-header { background: var(--color-ground); border-block-end: var(--border-hair) solid var(--color-line); }
-  @media (min-width: 761px) { .site-header { position: sticky; inset-block-start: 0; z-index: 10; } }
-  .site-header__in { display: flex; align-items: center; gap: var(--spacing-5); min-block-size: var(--header-h); }
-  .brand { display: inline-flex; align-items: center; gap: var(--spacing-2); flex: none;
-           color: var(--color-ink); text-decoration: none; }
-  .brand__mark { inline-size: var(--logo-sm); block-size: var(--logo-sm); fill: currentColor; }
-  .brand__name { font-family: var(--font-head); font-weight: var(--font-weight-extrabold); font-size: var(--text-h2); }
-
-  .search { position: relative; flex: 1 1 auto; max-inline-size: 440px; }
-  .search__input {
-    inline-size: 100%; block-size: var(--control-h); padding-block: 0;
-    padding-inline: calc(var(--control-h) - var(--spacing-1)) var(--spacing-3);
-    background: var(--color-surface); border: var(--border-hair) solid var(--color-control);
-    border-radius: var(--radius-sm); font-size: var(--text-ui); color: var(--color-ink);
-    transition: border-color var(--dur) var(--ease);
+  .hdr__promise b { color: var(--color-on-deep); font-weight: 500; }
+  .hdr__promise .wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hdr__main { min-block-size: 68px; display: flex; align-items: center; gap: var(--spacing-5); }
+  .hdr__brand { display: flex; align-items: center; gap: 11px; text-decoration: none; flex: none; }
+  .hdr__word { font-family: var(--font-head); font-size: 20px; font-weight: 600;
+               line-height: 1.2; color: var(--color-ink); }
+  /* Inline rather than an <img>, and explicitly ink rather than currentColor:
+     the brand is a link, and a link inherits the accent — a teal mark beside
+     an ink wordmark is two colours in one lockup, and it would take colour
+     this system reserves for the goods. */
+  .hdr__mark { flex: none; color: var(--color-ink); }
+  .ftr .hdr__mark, .ftr .hdr__word { color: var(--color-on-deep); }
+  /* The account affordance is a labelled control, not a bare glyph: every
+     Iranian shop measured prints the words, and a first-time buyer arriving
+     from Telegram should not have to decode a pictogram to find ثبت‌نام. */
+  .hdr__account {
+    display: inline-flex; align-items: center; gap: var(--spacing-2); flex: none;
+    font-size: 15px; font-weight: 500; line-height: 1.5; color: var(--color-ink);
+    text-decoration: none; padding: 9px 14px 7px;
+    border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
-  .search__input::placeholder { color: var(--color-muted); opacity: 1; }
-  .search__input:hover { border-color: var(--color-ink); }
-  .search__input:focus-visible { border-color: var(--color-lapis); }
-  .search__input::-webkit-search-cancel-button { display: none; }
-  .search__btn { position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: var(--control-h);
-                 display: grid; place-items: center; border: 0; background: none; color: var(--color-secondary);
-                 border-radius: var(--radius-sm); cursor: pointer; }
-  .search__btn svg, .hlink svg { inline-size: var(--mark); block-size: var(--mark); }
+  .hdr__account:hover { background: var(--color-fill-subtle); border-color: var(--color-muted); }
+  .hdr__account svg { inline-size: 18px; block-size: 18px; color: var(--color-muted); }
+  .hdr__support { display: inline-flex; align-items: center; gap: var(--spacing-2); flex: none;
+                  font-size: 15px; line-height: 1.5; color: var(--color-secondary);
+                  text-decoration: none; padding: 9px 4px 7px;
+                  transition: color var(--dur) var(--ease); }
+  .hdr__support:hover { color: var(--color-ink); }
+  .hdr__support svg { color: var(--color-muted); }
 
-  .hlinks { display: flex; align-items: center; gap: var(--spacing-2); margin-inline-start: auto; }
-  .hlink { display: inline-flex; align-items: center; gap: var(--spacing-2); min-block-size: var(--control-h);
-           padding-inline: var(--spacing-3); border-radius: var(--radius-sm);
-           color: var(--color-ink); text-decoration: none; font-size: var(--text-ui); font-weight: var(--font-weight-medium);
-           white-space: nowrap; transition: background-color var(--dur) var(--ease); }
-  .hlink:hover { background: var(--color-fill-subtle); }
-
-  .catnav { border-block-start: var(--border-hair) solid var(--color-line); }
-  /* On a phone the row scrolls sideways; js/frame.js brings a focused link wholly into
-     view (Chromium leaves one that is partly visible where it is), clear of the edge. */
-  .catnav__list { display: flex; gap: var(--spacing-5); list-style: none; overflow-x: auto; scrollbar-width: none;
-                  scroll-padding-inline: var(--spacing-4); }
-  .catnav__list::-webkit-scrollbar { display: none; }
-  .catnav__link { display: block; padding-block: var(--spacing-3) calc(var(--spacing-3) - var(--border-rule));
-                  border-block-end: var(--border-rule) solid transparent; white-space: nowrap;
-                  color: var(--color-secondary); text-decoration: none; font-size: var(--text-ui);
-                  font-weight: var(--font-weight-medium); line-height: var(--leading-tight);
-                  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-  .catnav__link:hover { color: var(--color-ink); border-block-end-color: var(--color-line-strong); }
-  .catnav__link[aria-current="page"] { color: var(--color-accent); border-block-end-color: var(--color-accent); }
-  /* The row clips, so the ring is drawn inside the link. */
-  .catnav__link:focus-visible { outline-offset: calc(-1 * var(--focus-width)); }
-  /* A product page's breadcrumb links its category, so a phone drops the row. */
-  @media (max-width: 600px) { .page--product .catnav { display: none; } }
+  /* The shelves. A shop with four departments does not need a mega-menu; it
+     needs its departments legible in one row. The current one is marked by a
+     keyline under the label, which is where an Iranian shop puts it. */
+  .cats { background: var(--color-surface); border-block-end: 1px solid var(--color-line); }
+  .cats__row { display: flex; align-items: stretch; gap: var(--spacing-5);
+               overflow-x: auto; scrollbar-width: none; }
+  .cats__row::-webkit-scrollbar { display: none; }
+  .cats__row a {
+    display: inline-flex; align-items: center; white-space: nowrap;
+    font-size: 15px; line-height: 1.5; color: var(--color-secondary); text-decoration: none;
+    padding-block: 11px 9px; border-block-end: 2px solid transparent; margin-block-end: -1px;
+    transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .cats__row a:hover { color: var(--color-ink); }
+  /* The row scrolls, so it clips: a ring outside the link showed only its
+     two sides. Inside the link it shows whole, as in the stepper and the
+     FAQ's questions, whose boxes clip too. */
+  .cats__row a:focus-visible { outline-offset: -2px; }
+  .cats__row a[aria-current] { color: var(--color-ink); border-block-end-color: var(--color-accent); }
 
   @media (max-width: 760px) {
-    .site-header__in { flex-wrap: wrap; row-gap: 0; column-gap: var(--spacing-3); }
-    .search { order: 3; flex-basis: 100%; max-inline-size: none; margin-block-end: var(--spacing-3); }
-    .hlink { padding-inline: var(--spacing-2); }
-    .hlink__label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .hdr__promise { font-size: 12px; }
+    /* One fact on a phone, not a promise cut off at the ellipsis. */
+    .strip__wide { display: none; }
+    .hdr__main { min-block-size: 58px; gap: var(--spacing-3); flex-wrap: wrap;
+                 padding-block: var(--spacing-3); }
+    .hdr__account { padding: 7px 10px 5px; font-size: 14px; }
+    /* On a phone the header has room for one labelled control; support is a
+       tap away in the footer and on every product page. */
+    .hdr__support span { display: none; }
+    .hdr__support { padding-inline: 8px; }
+    .hdr__word { font-size: 18px; }
   }
 
-  .site-footer { margin-block-start: var(--spacing-9); background: var(--color-deep); color: var(--color-on-deep-muted);
-                 font-size: var(--text-ui); }
-  .site-footer a { color: var(--color-on-deep); text-decoration-color: var(--color-on-deep-line); }
-  .site-footer a:hover { text-decoration-color: currentColor; }
-  .site-footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--spacing-6); padding-block: var(--spacing-7); }
-  .site-footer__brand { display: inline-flex; align-items: center; gap: var(--spacing-2); color: var(--color-on-deep); text-decoration: none; }
-  .site-footer a.site-footer__brand { text-decoration: none; }
-  .site-footer__about { margin-block-start: var(--spacing-3); max-inline-size: 36ch; }
-  .site-footer__title { margin-block-end: var(--spacing-3); font-family: var(--font-body); font-size: var(--text-small);
-                        font-weight: var(--font-weight-bold); line-height: var(--leading-body); color: var(--color-on-deep); }
-  .site-footer__list { display: grid; gap: var(--spacing-2); list-style: none; }
-  .site-footer__base { padding-block: var(--spacing-4); border-block-start: var(--border-hair) solid var(--color-on-deep-line);
-                       font-size: var(--text-small); }
-  @media (max-width: 760px) { .site-footer__grid { grid-template-columns: 1fr 1fr; } .site-footer__grid > :first-child { grid-column: 1 / -1; } }
+  /* --- Surfaces --------------------------------------------------------- */
+  .card {
+    background: var(--color-surface); border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    /* Asymmetric: Persian descenders eat optical space at the block end. */
+    padding: var(--spacing-4) var(--spacing-4) var(--spacing-5);
+    transition: border-color var(--dur) var(--ease);
+  }
+  .card:hover { border-color: var(--color-line-strong); }  /* colour only, never width */
 
-  /* --- Buttons --- */
+  /* A list of things is one bordered container with hairlines — not N cards. */
+  .list { background: var(--color-surface); border: 1px solid var(--color-line);
+          border-radius: var(--radius-lg); overflow: hidden; }
+  .list > * { padding: var(--spacing-4); }
+  .list > * + * { border-block-start: 1px solid var(--color-line); }
+
+  hr { border: 0; border-block-start: 1px solid var(--color-line); margin-block: var(--spacing-6); }
+
+  /* --- Buttons: all three variants carry a border so heights match ------ */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-2);
-    min-block-size: var(--control-h); padding: 0 var(--spacing-5);
-    border: var(--border-hair) solid transparent; border-radius: var(--radius-sm);
-    font-family: var(--font-body); font-size: var(--text-ui); font-weight: var(--font-weight-medium); line-height: var(--leading-tight);
-    text-decoration: none; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
-    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+    font-family: var(--font-body); font-size: 15px; font-weight: 500; line-height: 1.5;
+    border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer;
+    padding: 11px 20px 9px;   /* optical: Persian ink sits low in the line box */
+    text-decoration: none;
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease),
+                color var(--dur) var(--ease);
   }
-  .btn:active { transition-duration: var(--dur-xs); }
-  .btn--primary { background: var(--color-accent); color: var(--color-surface); }
-  .btn--primary:hover { background: var(--color-accent-hover); }
-  .btn--primary:active { background: var(--color-accent-active); }
-  .btn--secondary { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-control); }
-  .btn--secondary:hover { border-color: var(--color-ink); background: var(--color-fill-subtle); }
+  .btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  .btn--primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+  .btn--primary:active { background: var(--color-accent-active); border-color: var(--color-accent-active); }
+  /* The ring needs a ground-coloured gap to stay visible on a filled button. */
+  .btn--primary:focus-visible { outline: none;
+    box-shadow: 0 0 0 2px var(--color-ground), 0 0 0 4px var(--color-accent); }
+  .btn--secondary { background: var(--color-surface); border-color: var(--color-line-strong); color: var(--color-ink); }
+  .btn--secondary:hover { background: var(--color-fill-subtle); border-color: var(--color-muted); }
   .btn--secondary:active { background: var(--color-line); }
-  .btn--quiet { background: transparent; color: var(--color-ink); padding-inline: var(--spacing-3); }
-  .btn--quiet:hover { background: var(--color-fill-subtle); }
-  .btn--quiet:active { background: var(--color-line); }
-  .btn--danger { background: var(--color-surface); color: var(--color-danger-text); border-color: var(--color-danger); }
-  .btn--danger:hover { background: var(--color-danger-tint); }
-  /* A dashed edge means an open owner decision (.pending) and nothing else. */
-  .btn:disabled, .btn[aria-disabled="true"] {
-    background: var(--color-fill-subtle); color: var(--color-muted); border-color: var(--color-line); cursor: not-allowed;
+  .btn--pill { border-radius: 999px; padding: 13px 26px 11px; font-size: 16px; }
+  .btn--ghost { background: transparent; color: var(--color-secondary); }
+  .btn--ghost:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
+  /* On ink, the primary action is paper. Teal-700 against #131313 is a 2.4:1
+     failure, and brightening the teal until it passed would hand the page the
+     acid accent on near-black that every generated dark hero already has. */
+  .btn--invert { background: var(--color-ground); border-color: var(--color-ground);
+                 color: var(--color-ink); }
+  .btn--invert:hover { background: #e9e9e8; border-color: #e9e9e8; }
+  .btn--invert:active { background: #dcdcda; border-color: #dcdcda; }
+  .btn--invert:focus-visible { outline: none;
+    box-shadow: 0 0 0 2px var(--color-deep), 0 0 0 4px var(--color-ground); }
+  /* Contact is instant and release is not: nothing in the interface should
+     take longer to answer a press than the press itself. */
+  .btn:active { transform: translateY(1px); transition-duration: 0ms; }
+  .btn[disabled] { background: var(--color-fill-subtle); border-color: var(--color-line);
+                   color: #a8a29e; cursor: not-allowed; }
+
+  /* --- Fields: a hairline box, no shadow, no fill ---------------------- */
+  /* Inputs are where a shop is judged for competence, so they follow the same
+     rules as everything else: structure by line, one accent, nothing glowing.
+     The block padding is asymmetric for the same optical reason as .btn —
+     Persian ink sits low in the line box. */
+  .field { display: block; margin-block-end: var(--spacing-5); }
+  .field__label { display: block; font-size: 13px; font-weight: 500; line-height: 1.5;
+                  color: var(--color-secondary); margin-block-end: var(--spacing-2); }
+  .field__input {
+    inline-size: 100%; font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+    color: var(--color-ink); background: var(--color-surface);
+    border: 1px solid var(--color-field); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px;
+    transition: border-color var(--dur) var(--ease);
   }
-  .btn--sm { min-block-size: var(--control-h-sm); padding-inline: var(--spacing-3); font-size: var(--text-small); }
-  .btn--lg { min-block-size: var(--control-h-lg); font-size: var(--text-body); }
-  .btn--block { display: flex; inline-size: 100%; }
+  .field__input::placeholder { color: #a8a29e; }
+  .field__input:hover { border-color: var(--color-muted); }
+  /* Focus is a 2px ring in the accent, the border and one pixel outside it:
+     5.47:1 on white. The tint halo it replaces was 1.08:1, and the border's
+     own change of hue 1.63:1. Code cells and the header search do the same. */
+  .field__input:focus-visible { outline: none; border-color: var(--color-accent);
+                                box-shadow: 0 0 0 1px var(--color-accent); }
+  .field__input[aria-invalid="true"] { border-color: var(--color-danger); }
+  .field__hint { font-size: 12px; line-height: 1.9; color: var(--color-muted);
+                 margin-block-start: var(--spacing-2); }
+  .field__error { font-size: 13px; line-height: 1.7; color: var(--color-danger-text);
+                  margin-block-start: var(--spacing-2); }
 
-  /* --- Badges --- */
-  .badge {
-    display: inline-block; max-inline-size: 100%; vertical-align: baseline;
-    padding: 0 var(--spacing-2); border: var(--border-hair) solid; border-radius: var(--radius-sm);
-    font-size: var(--text-small); font-weight: var(--font-weight-medium); line-height: 1.75;
-  }
-  .badge--key { background: var(--color-surface); border-color: var(--color-control); color: var(--color-ink); }
-  .badge__k { margin-inline-end: var(--spacing-1); color: var(--color-muted); font-weight: var(--font-weight-normal); white-space: nowrap; }
-  .badge__k::after { content: ":"; }
-  .badge--time { background: var(--color-time-tint); border-color: var(--color-time-edge); color: var(--color-time-text);
-                 white-space: nowrap; }
-  .badge--ok { background: var(--color-ok-tint); border-color: var(--color-ok-tint); color: var(--color-ok-text); }
-  .badge--danger { background: var(--color-danger-tint); border-color: var(--color-danger-tint); color: var(--color-danger-text); }
-  .badge--quiet { background: var(--color-fill-subtle); border-color: var(--color-fill-subtle); color: var(--color-secondary); }
-
-  /* --- Price ---
-     Estedad 800, the strongest mark on any page. Proportional digits everywhere, columns
-     included: both fonts' tabular figures space the dot-like Persian zero so wide that
-     «۱,۳۹۰,۰۰۰» reads letter-spaced. Columns align on the units digit instead. */
-  .price { display: inline-flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end;
-           column-gap: var(--spacing-2); white-space: nowrap; }
-  .price__num { font-family: var(--font-head); font-size: var(--text-price); font-weight: var(--font-weight-extrabold);
-                line-height: var(--leading-tight); color: var(--color-ink); }
-  .price__cur { font-size: var(--text-small); color: var(--color-muted); }
-  /* A line-through at the default height runs through the dot-like Persian zero and turns
-     «۳۹۰,۰۰۰» into a dotted rule; this line sits above the zeros and still crosses ۳ ۴ ۹. */
-  .price__was { position: relative; font-size: var(--text-small); line-height: 1.6; color: var(--color-muted);
-                text-decoration: none; }
-  .price__was::after { content: ""; position: absolute; inset-inline: -2px; inset-block-start: 0.56em;
-                       border-block-start: var(--border-hair) solid currentColor; }
-  .price--free .price__num { font-family: var(--font-body); font-weight: var(--font-weight-bold); }
-
-  /* --- Sheet: white paper on the paper ground ---
-     .sheet--doc is a document the shop issues: a lapis band on top, a 2px ink rule under
-     its head and another closing its body. */
-  .sheet { background: var(--color-surface); border: var(--border-hair) solid var(--color-line);
-           border-radius: var(--radius-sheet); padding: 0 var(--spacing-5) var(--spacing-5); }
-  .sheet--doc { border-block-start: var(--border-band) solid var(--color-lapis); }
-  .sheet__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
-                 gap: var(--spacing-1) var(--spacing-5); padding-block: var(--spacing-5) var(--spacing-3);
-                 border-block-end: var(--border-rule) solid var(--color-ink); }
-  .sheet__title { font-size: var(--text-h2); line-height: var(--leading-tight); }
-  .sheet__sub { margin-block-start: var(--spacing-1); font-size: var(--text-small); color: var(--color-muted); }
-  .sheet__date { font-size: var(--text-small); color: var(--color-muted); line-height: var(--leading-head); }
-  .sheet__date time { color: var(--color-ink); font-weight: var(--font-weight-medium); white-space: nowrap; }
-  /* The date and, under it, the one deadline every discount on the sheet shares, in the
-     corner where an Iranian invoice dates itself. */
-  .sheet__meta { display: grid; justify-items: start; }
-  .sheet__note { font-size: var(--text-small); color: var(--color-secondary); line-height: 2; }
-  .sheet__body { border-block-end: var(--border-rule) solid var(--color-ink); }
-  .sheet__foot { padding-block-start: var(--spacing-3); font-size: var(--text-small); color: var(--color-muted); text-wrap: pretty; }
-  @media (max-width: 760px) { .sheet { padding-inline: var(--spacing-4); } }
-  /* On a phone the date takes its own line in any font: beside a two-line title it fits in
-     one face and not the other, and the sheet would jump. */
-  @media (max-width: 600px) { .sheet__head > div + :is(.sheet__date, .sheet__meta) { flex-basis: 100%; } }
-  @media (max-width: 360px) { .sheet { padding-inline: var(--spacing-3); } }
-
-  /* --- Rate sheet (نرخ‌نامه) ---
-     One table per category. A product is a <tbody>: its name row, then one row per plan.
-     Column widths come from content, never from a fixed number. */
-  .ratesheet__groups { column-gap: var(--spacing-7); }
-  @media (min-width: 1024px) {
-    .ratesheet__groups--2col { column-count: 2; column-rule: var(--border-hair) solid var(--color-line); }
-  }
-  .rs-group { break-inside: avoid; container-type: inline-size; padding-block-end: var(--spacing-3); }
-  .rs-group__title { padding-block: var(--spacing-5) var(--spacing-2); font-size: var(--text-h3); }
-  .rs { inline-size: 100%; border-collapse: collapse; font-size: var(--text-ui); }
-  .rs thead th { padding-block: var(--spacing-1); border-block-end: var(--border-hair) solid var(--color-ink);
-                 font-size: var(--text-small); font-weight: var(--font-weight-medium); color: var(--color-muted);
-                 text-align: start; white-space: nowrap; }
-  .rs th, .rs td { padding-inline: 0 var(--spacing-4); vertical-align: baseline; }
-  .rs th:last-child, .rs td:last-child { padding-inline-end: 0; }
-  .rs__product { transition: background-color var(--dur) var(--ease); }
-  .rs__product + .rs__product { border-block-start: var(--border-hair) solid var(--color-line); }
-  .rs__product:hover { background: var(--color-fill-subtle); }
-  .rs__name-cell { padding-block: var(--spacing-3) 0; text-align: start; font-weight: var(--font-weight-normal); }
-  .rs__link { display: inline-flex; align-items: center; gap: var(--spacing-3); color: var(--color-ink);
-              text-decoration: none; line-height: var(--leading-head); }
-  /* A name heads its plans in a price list; it is not a link inside running text, so it
-     is ink at rest and takes the lapis underline on hover and focus. */
-  .rs__name { font-weight: var(--font-weight-bold); text-decoration: underline var(--border-hair) transparent;
-              text-underline-offset: 0.34em; transition: text-decoration-color var(--dur) var(--ease); }
-  .rs__link:is(:hover, :focus-visible) .rs__name { text-decoration-color: var(--color-lapis); }
-  .rs__logo { inline-size: var(--logo-sm); block-size: var(--logo-sm); flex: none; object-fit: contain; }
-  /* contain: the sentence must not widen the price columns through the colspan. */
-  .rs__summary { display: block; contain: inline-size; max-inline-size: calc(60ch + var(--logo-sm) + var(--spacing-3));
-                 padding-inline-start: calc(var(--logo-sm) + var(--spacing-3));
-                 font-size: var(--text-small); color: var(--color-secondary); line-height: 1.7; text-wrap: pretty; }
-  .rs__plan { position: relative; }
-  .rs__plan > * { padding-block: var(--spacing-1); font-weight: var(--font-weight-normal); }
-  .rs__plan > th { padding-inline-start: calc(var(--logo-sm) + var(--spacing-3)); text-align: start; }
-  /* A price list's dotted leader, from the plan to its delivery time. */
-  .rs__line { display: flex; align-items: baseline; gap: var(--spacing-2); }
-  .rs__line::after { content: ""; flex: 1 1 var(--spacing-5); min-inline-size: var(--spacing-5); align-self: center;
-                     border-block-end: var(--border-rule) dotted var(--color-line-strong); }
-  /* Each plan links to its product with that plan chosen; the link covers the row. */
-  .rs__plan-link { color: inherit; text-decoration: none; }
-  .rs__plan-link::after { content: ""; position: absolute; inset: 0 calc(-1 * var(--spacing-2)); }
-  .rs__plan:hover .rs__plan-link { text-decoration: underline; text-decoration-color: var(--color-ink); text-underline-offset: 0.3em; }
-  .rs__plan-link:focus-visible { outline: none; }
-  .rs__plan-link:focus-visible::after { outline: var(--focus-width) solid var(--focus-color); outline-offset: calc(-1 * var(--focus-width)); }
-  .rs__plan:last-child > * { padding-block-end: var(--spacing-3); }
-  /* The duration takes what the other two columns leave. */
-  .rs thead th + th, .rs__eta, .rs__price { inline-size: 1%; }
-  .rs__eta { color: var(--color-secondary); white-space: nowrap; }
-  /* The charged price on the plan's line, the struck one under it, both on the units side. */
-  .rs__price { white-space: nowrap; }
-  .rs__price .price { row-gap: 0; justify-content: flex-start; }
-  .rs__price .price__num { order: -1; flex-basis: 100%; text-align: start; }
-  .rs__off { font-size: var(--text-small); color: var(--color-muted); }
-  /* A plan's own deadline, when promotions end at different times. One shared end goes to
-     .sheet__note instead. */
-  .rs__clock { display: block; margin-block: var(--spacing-1); font-size: var(--text-small); color: var(--color-secondary); }
-  .rs__clock .badge--time { white-space: normal; }
-  @container (max-width: 380px) { .rs__plan > th, .rs__summary { padding-inline-start: 0; } }
-  @supports not (container-type: inline-size) {
-    @media (max-width: 480px) { .rs__plan > th, .rs__summary { padding-inline-start: 0; } }
-  }
-
-  /* --- Product card --- */
-  .pcard { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start;
-           gap: var(--spacing-1) var(--spacing-3); padding: var(--spacing-4);
-           background: var(--color-surface); border: var(--border-hair) solid var(--color-line);
-           border-radius: var(--radius-sheet); transition: border-color var(--dur) var(--ease); }
-  .pcard:hover { border-color: var(--color-control); }
-  .pcard__logo { grid-row: span 2; inline-size: var(--logo-md); block-size: var(--logo-md); object-fit: contain; }
-  .pcard__name { font-family: var(--font-body); font-size: var(--text-body); font-weight: var(--font-weight-bold); line-height: var(--leading-head); }
-  .pcard__link { color: var(--color-ink); text-decoration: none; }
-  .pcard__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-sheet); }
-  .pcard__link:focus-visible { outline: none; }
-  .pcard__link:focus-visible::after { outline: var(--focus-width) solid var(--focus-color); outline-offset: var(--focus-offset); }
-  .pcard__summary { font-size: var(--text-small); color: var(--color-muted); line-height: 1.7; }
-  .pcard__specs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--spacing-1); margin-block-start: var(--spacing-2); }
-  .pcard__foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-                 gap: var(--spacing-2); margin-block-start: var(--spacing-3); padding-block-start: var(--spacing-3);
-                 border-block-start: var(--border-hair) solid var(--color-line); font-size: var(--text-small); color: var(--color-muted); }
-
-  /* --- Product head and answers index --- */
-  .phead { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3) var(--spacing-4); }
-  .phead__logo { inline-size: var(--logo-lg); block-size: var(--logo-lg); object-fit: contain; }
-  .phead__title { font-size: var(--text-h1); line-height: var(--leading-tight); }
-  .phead__lead { grid-column: 1 / -1; font-size: var(--text-lead); color: var(--color-secondary); line-height: 1.75; }
-  .phead__badges { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
-  /* On a phone each badge has its own line: how many share a line would depend on which
-     font has arrived, and the invoice under them would jump when it changes. */
-  @media (max-width: 600px) { .phead__badges { flex-direction: column; align-items: flex-start; } }
-
-  /* Dotted ledger lines, each a plain jump to its full answer: no arrow, nothing opens. */
-  .facts { border-block: var(--border-hair) solid var(--color-ink); }
-  .facts__list { list-style: none; }
-  .facts__list > li + li { border-block-start: var(--border-hair) solid var(--color-line); }
-  .facts__row { display: grid; grid-template-columns: auto minmax(var(--spacing-5), 1fr) auto; align-items: baseline;
-                gap: var(--spacing-2); min-block-size: var(--control-h); padding: var(--spacing-2);
-                margin-inline: calc(-1 * var(--spacing-2));
-                color: var(--color-ink); text-decoration: none; transition: background-color var(--dur) var(--ease); }
-  .facts__row::before { content: ""; grid-column: 2; grid-row: 1; align-self: center;
-                        border-block-end: var(--border-rule) dotted var(--color-line-strong); }
-  .facts__k { grid-column: 1; grid-row: 1; font-size: var(--text-small); color: var(--color-muted); }
-  .facts__v { grid-column: 3; grid-row: 1; max-inline-size: 26ch; text-align: end; font-size: var(--text-ui);
-              font-weight: var(--font-weight-medium); color: var(--color-lapis); line-height: var(--leading-head);
-              text-decoration: underline; text-decoration-color: var(--color-lapis-underline); text-underline-offset: 0.34em; }
-  .facts__row:hover { background: var(--color-fill-subtle); }
-  .facts__row:hover .facts__v { text-decoration-color: currentColor; }
-  .facts__row:focus-visible { outline-offset: 0; }
-
-  /* --- Invoice (پیش‌فاکتور) ---
-     The S4b form contract holds: radios name=plan with data-max and data-asks, the
-     quantity posted as name=quantity, data-cart-pending on the form. */
-  .invoice__row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-                  gap: var(--spacing-1) var(--spacing-4); padding-block: var(--spacing-3);
-                  border-block-end: var(--border-hair) solid var(--color-line); }
-  .invoice__row--stack { display: block; }
-  /* A short desktop screen: the title beside the invoice names the service already. */
-  @media (min-width: 1024px) and (max-height: 800px) { .invoice__row--service { display: none; } }
-  /* Phones: the total and the top of the button inside the first 844px. The h1 names the
-     service right above, so this row goes, and the rows tighten. */
-  @media (max-width: 600px) {
-    .invoice__row--service { display: none; }
-    .invoice .sheet__head { padding-block: var(--spacing-4) var(--spacing-2); }
-    .invoice__row { padding-block: var(--spacing-2); }
-    /* The options name themselves («۱ ماهه»); the legend stays for screen readers. */
-    .invoice__row--stack > .invoice__k { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;
-                                         clip-path: inset(50%); white-space: nowrap; }
-    .plan__permonth, .plan__clock { line-height: 1.5; }
-  }
-  .invoice__qty { align-items: center; }
-  .invoice__k { font-size: var(--text-small); color: var(--color-muted); }
-  .invoice__hint { display: block; font-size: var(--text-micro); color: var(--color-muted); }
-  .invoice__row--stack > .invoice__k { display: block; margin-block-end: var(--spacing-2); }
-  .invoice__v { font-size: var(--text-ui); font-weight: var(--font-weight-medium); text-align: end; }
-  /* A condition of the row's value, under both, across the row. */
-  .invoice__fine { flex-basis: 100%; font-size: var(--text-micro); color: var(--color-muted); line-height: 1.6; }
-
-  .plans { display: grid; gap: var(--spacing-2); }
-  .plan { display: block; position: relative; cursor: pointer; }
-  /* The radio covers its card: a browser scrolls what it focuses into view, and a 1px
-     radio at a card's corner counts as in view while the card is still off screen. */
-  .plan__input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: pointer; }
-  .plan__body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
-                gap: 0 var(--spacing-3); min-block-size: var(--control-h-lg); padding: var(--spacing-2) var(--spacing-3);
-                background: var(--color-surface); border: var(--border-hair) solid var(--color-control);
-                border-radius: var(--radius-sm);
-                transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
-  .plan__mark { inline-size: var(--mark); block-size: var(--mark); border-radius: 50%;
-                border: var(--border-rule) solid var(--color-control); background: var(--color-surface);
-                transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-  .plan__title { font-size: var(--text-ui); font-weight: var(--font-weight-medium); }
-  .plan__price { justify-self: end; }
-  @media (max-width: 600px) { .plan__body { min-block-size: var(--control-h); padding-block: var(--spacing-1); } }
-  .plan__permonth, .plan__clock { grid-column: 2 / -1; font-size: var(--text-small); color: var(--color-muted); }
-  .plan__off { justify-self: end; font-size: var(--text-small); color: var(--color-muted); }
-  .plan:hover .plan__body { border-color: var(--color-ink); }
-  .plan__input:checked + .plan__body { border-color: var(--color-accent); background: var(--color-accent-tint);
-                                       box-shadow: inset 0 0 0 var(--border-hair) var(--color-accent); }
-  .plan__input:checked + .plan__body .plan__mark { border-color: var(--color-accent); background: var(--color-accent);
-                                                   box-shadow: inset 0 0 0 3px var(--color-surface); }
-  .plan__input:focus-visible + .plan__body { outline: var(--focus-width) solid var(--focus-color); outline-offset: var(--focus-offset); }
-  .plan__input:disabled + .plan__body { border-color: var(--color-line); background: var(--color-fill-subtle);
-                                        color: var(--color-muted); cursor: not-allowed; }
-  .plan__input:disabled + .plan__body .plan__mark { border-color: var(--color-line); background: var(--color-fill-subtle); }
-  /* Forced colours drop the tint, the inset ring and the filled mark: keep the choice visible. */
-  @media (forced-colors: active) {
-    .plan__input:checked + .plan__body { border-width: 3px; }
-    .plan__input:checked + .plan__body .plan__mark { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
-    /* Marks drawn as a background would vanish: give them a system colour. */
-    .stepper__btn::before, .stepper__btn[data-step="1"]::after { forced-color-adjust: none; background: ButtonText; }
-    .stepper__btn[aria-disabled="true"]::before, .stepper__btn[aria-disabled="true"]::after { background: GrayText; }
-    .ambient__control:has(.motion-pause:checked) .ambient__glyph { border-width: 3px; }
-  }
-
-  .stepper { display: inline-grid; grid-template-columns: var(--control-h) var(--input-h) var(--control-h);
-             block-size: var(--control-h); background: var(--color-surface);
-             border: var(--border-hair) solid var(--color-control); border-radius: var(--radius-sm); }
-  .stepper__btn { position: relative; border: 0; background: none; cursor: pointer; color: var(--color-ink);
-                  border-radius: var(--radius-sm); transition: background-color var(--dur) var(--ease); }
-  .stepper__btn::before, .stepper__btn[data-step="1"]::after {
-    content: ""; position: absolute; inset-block-start: calc(50% - 1px); inset-inline-start: calc(50% - 6px);
-    inline-size: 12px; block-size: 2px; background: currentColor; }
-  .stepper__btn[data-step="1"]::after { rotate: 90deg; }
-  .stepper__btn:hover { background: var(--color-fill-subtle); }
-  /* At a limit the button stays focusable (aria-disabled), so focus never drops to the page. */
-  .stepper__btn[aria-disabled="true"] { color: var(--color-line-strong); background: none; cursor: not-allowed; }
-  .stepper__value { display: grid; place-items: center; border-inline: var(--border-hair) solid var(--color-line);
-                    font-size: var(--text-ui); font-weight: var(--font-weight-bold); }
-
-  .invoice__total { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end;
-                    gap: var(--spacing-2) var(--spacing-3); padding-block: var(--spacing-5) 0; }
-  @media (max-width: 600px) { .invoice__total { padding-block-start: var(--spacing-4); } }
-  .invoice__total-k { font-size: var(--text-ui); font-weight: var(--font-weight-bold); padding-block-end: var(--spacing-2); }
-  .invoice__sum { justify-self: end; display: inline-flex; align-items: baseline; gap: var(--spacing-2);
-                  padding-block-end: var(--spacing-1); border-block-end: var(--border-double) double var(--color-lapis); }
-  .invoice__amount { font-family: var(--font-head); font-size: var(--text-total); font-weight: var(--font-weight-extrabold);
-                     line-height: 1.15; font-variant-numeric: proportional-nums; white-space: nowrap; }
-  .invoice__cur { font-size: var(--text-small); color: var(--color-muted); }
-  .invoice__words { grid-column: 1 / -1; text-align: end; font-size: var(--text-small); color: var(--color-muted); line-height: 1.7; }
-  /* One deadline for every discounted plan; per-plan deadlines only when the ends differ. */
-  .invoice__promo { margin-block-start: var(--spacing-2); font-size: var(--text-small); color: var(--color-secondary); line-height: 2; }
-  .invoice__cta { margin-block-start: var(--spacing-5); }
-  .invoice__alt { margin-block-start: var(--spacing-2); font-size: var(--text-small); color: var(--color-secondary); line-height: 1.8; }
-  .invoice__note { margin-block-start: var(--spacing-1); font-size: var(--text-small); color: var(--color-muted); }
-  .invoice__terms { display: block; inline-size: fit-content; margin-block-start: var(--spacing-3); font-size: var(--text-small); }
-  /* Without script a changed plan would leave the first plan's total on screen: it hides
-     instead, and the plan's own price stays beside it. */
-  .invoice__form:not(.is-live):has(.plan__input:checked:not([checked])) .invoice__total { visibility: hidden; }
-  /* A changed total arrives from 4px below. */
-  .swap { display: inline-block; transition: transform var(--dur-lg) var(--ease-out), opacity var(--dur-lg) var(--ease-out); }
-  .swap.is-from { transform: translateY(var(--shift)); opacity: 0; transition: none; }
-  /* invoice.js measures the invoice and sets --inv-top: under the frame when it fits, else
-     anchored by its bottom so the total and the button stay in view. No script, no sticking. */
-  @media (min-width: 1024px) { .invoice--sticky.is-sticky { position: sticky; inset-block-start: var(--inv-top, var(--sticky-top)); } }
-
-  /* --- A product page's sections --- */
-  .sec { container-type: inline-size; margin-block-start: var(--spacing-7); }
-  .sec__title { margin-block-end: var(--spacing-4); font-size: var(--text-h2); }
-  .sec__note { margin-block-start: var(--spacing-3); font-size: var(--text-small); color: var(--color-muted); }
-
-  /* مزیت‌ها و کاربردها: each benefit a bold line, its use under it. */
-  .benefits { display: grid; gap: var(--spacing-5); list-style: none; }
-  .benefit { position: relative; padding-inline-start: var(--spacing-5); }
-  .benefit::before { content: ""; position: absolute; inset-inline-start: 1px; inset-block-start: 0.78em;
-                     inline-size: 7px; block-size: 7px; background: var(--color-ink); transform: rotate(45deg); }
-  .benefit__claim { font-weight: var(--font-weight-bold); }
-  .benefit__use { margin-block-start: var(--spacing-1); color: var(--color-secondary); }
-
-  /* چه چیزهایی می‌گیرید: numbered lines, the free tier's value in the same row. */
-  .gets { list-style: none; counter-reset: gets; }
-  .gets__head, .gets__item { display: grid; grid-template-columns: var(--spacing-6) minmax(0, 1fr); column-gap: var(--spacing-3); }
-  .gets__head { padding-block: var(--spacing-1); border-block-end: var(--border-hair) solid var(--color-ink);
-                font-size: var(--text-small); font-weight: var(--font-weight-medium); color: var(--color-muted); }
-  .gets__head > :nth-child(3) { display: none; }
-  .gets__item { counter-increment: gets; padding-block: var(--spacing-3); border-block-end: var(--border-hair) solid var(--color-line); }
-  .gets__item::before { content: counter(gets, persian); grid-row: span 2; font-family: var(--font-head);
-                        font-weight: var(--font-weight-extrabold); font-size: var(--text-ui); color: var(--color-muted); }
-  .gets__free { font-size: var(--text-small); color: var(--color-muted); }
-  @container (min-width: 560px) {
-    .gets__head, .gets__item { grid-template-columns: var(--spacing-6) minmax(0, 1fr) minmax(0, 32%); }
-    .gets__head > :nth-child(3) { display: block; }
-    .gets__item::before { grid-row: auto; }
-    .gets__free-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  }
-
-  /* مقایسه and every other table: ruled like a ledger. */
-  .table-scroll { overflow-x: auto; }
-  .table, .prose table { inline-size: 100%; border-collapse: collapse; font-size: var(--text-ui);
-                         border-block: var(--border-rule) solid var(--color-ink); }
-  .table caption, .table__caption { caption-side: top; padding-block-end: var(--spacing-2); text-align: start;
-                                    font-size: var(--text-small); color: var(--color-muted); }
-  .table th, .table td, .prose th, .prose td { padding: var(--spacing-2) var(--spacing-3); text-align: start; vertical-align: top;
-                                               border-block-end: var(--border-hair) solid var(--color-line); line-height: 1.7; }
-  .table :is(th, td):first-child, .prose :is(th, td):first-child { padding-inline-start: 0; }
-  .table :is(th, td):last-child, .prose :is(th, td):last-child { padding-inline-end: 0; }
-  .table thead th, .prose thead th { border-block-end: var(--border-hair) solid var(--color-ink); white-space: nowrap;
-                                     font-size: var(--text-small); font-weight: var(--font-weight-medium); color: var(--color-muted); }
-  .table tbody th, .prose tbody th { font-weight: var(--font-weight-medium); }
-  .table tbody tr:last-child > *, .prose tbody tr:last-child > * { border-block-end: 0; }
-
-  /* بعد از پرداخت: numbered steps, the numbers in Estedad 800. */
-  .steps { list-style: none; counter-reset: step; }
-  .step { counter-increment: step; display: grid; grid-template-columns: var(--spacing-7) minmax(0, 1fr);
-          gap: var(--spacing-3); padding-block: var(--spacing-4); }
-  .step + .step { border-block-start: var(--border-hair) solid var(--color-line); }
-  .step::before { content: counter(step, persian); font-family: var(--font-head); font-size: var(--text-step);
-                  font-weight: var(--font-weight-extrabold); line-height: 1.1; color: var(--color-ink); }
-  .step__who { display: inline-block; margin-inline-end: var(--spacing-2); padding-inline: var(--spacing-2);
-               border: var(--border-hair) solid var(--color-line-strong); border-radius: var(--radius-sm);
-               font-size: var(--text-micro); font-weight: var(--font-weight-medium); color: var(--color-secondary); line-height: 1.8;
-               vertical-align: 0.1em; }
-
-  /* پیش از خرید: three structured facts in a ruled box, printed even when the operator
-     wrote nothing; then «not for you if», then the operator's text. */
-  .terms { margin-block-end: var(--spacing-5); border-block: var(--border-rule) solid var(--color-ink); }
-  .terms__row { display: grid; grid-template-columns: var(--spacing-9) minmax(0, 1fr); gap: var(--spacing-3); padding-block: var(--spacing-3); }
-  .terms__row + .terms__row { border-block-start: var(--border-hair) solid var(--color-line); }
-  .terms__k { font-size: var(--text-small); font-weight: var(--font-weight-medium); color: var(--color-muted); line-height: 2.2; }
-  .terms__v { font-size: var(--text-ui); }
-  .notfor { margin-block-end: var(--spacing-5); padding-inline-start: var(--spacing-4);
-            border-inline-start: var(--border-rule) solid var(--color-ink); }
-  .notfor strong { font-weight: var(--font-weight-bold); }
-
-  /* The operator's text anywhere, from the restricted Markdown renderer (ADR-0027).
-     Preflight takes list markers away; this gives them back. */
-  .prose > * + * { margin-block-start: var(--spacing-4); }
-  .prose h3 { margin-block-start: var(--spacing-6); }
-  .prose ul, .prose ol { padding-inline-start: var(--spacing-5); }
-  .prose ul { list-style: disc; }
-  .prose ol { list-style: persian; }
-  .prose li + li { margin-block-start: var(--spacing-2); }
-  .prose li::marker { color: var(--color-muted); }
-  .prose strong { font-weight: var(--font-weight-bold); }
-
-  /* Questions: open answers, no accordion. */
-  .qa { container-type: inline-size; border-block-start: var(--border-hair) solid var(--color-ink); }
-  .qa__item { padding-block: var(--spacing-4); border-block-end: var(--border-hair) solid var(--color-line); }
-  .qa__q { font-size: var(--text-h3); }
-  .qa__a { margin-block-start: var(--spacing-2); color: var(--color-secondary); }
-  @container (min-width: 720px) {
-    .qa__item { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--spacing-6); }
-    .qa__a { margin-block-start: 0; }
-  }
-  .checked { margin-block-start: var(--spacing-6); font-size: var(--text-small); color: var(--color-muted); }
-
-  /* --- Forms --- */
-  .form { display: grid; gap: var(--spacing-5); }
-  .field { display: grid; gap: var(--spacing-2); }
-  .field__label { font-size: var(--text-ui); font-weight: var(--font-weight-medium); }
-  .field__help { font-size: var(--text-small); color: var(--color-muted); }
-  .field__error { font-size: var(--text-small); font-weight: var(--font-weight-medium); color: var(--color-danger-text); }
-  .field__error::before { content: ""; display: inline-block; inline-size: 8px; block-size: 8px; border-radius: 50%;
-                          margin-inline-end: var(--spacing-2); background: var(--color-danger); vertical-align: 0.05em; }
-  .input { inline-size: 100%; min-block-size: var(--input-h); padding: var(--spacing-2) var(--spacing-3);
-           background: var(--color-surface); color: var(--color-ink); font-size: var(--text-body);
-           border: var(--border-hair) solid var(--color-control); border-radius: var(--radius-sm);
-           transition: border-color var(--dur) var(--ease); }
-  .input::placeholder { color: var(--color-muted); opacity: 1; }
-  .input:hover { border-color: var(--color-ink); }
-  .input:focus-visible { border-color: var(--color-lapis); }
-  .input[aria-invalid="true"] { border-color: var(--color-danger); box-shadow: inset 0 0 0 var(--border-hair) var(--color-danger); }
-  .input:disabled { background: var(--color-fill-subtle); color: var(--color-muted); border-color: var(--color-line); }
-  .input--ltr { direction: ltr; text-align: end; }
-
-  /* A password field gains a reveal toggle (base.html), at the inline end, away from
-     where rtl text begins, so it never sits under the caret. */
+  /* A password field carries a reveal toggle. Placed at the inline-END — the far
+     side from where RTL text begins — so it never sits under the caret. The
+     button is a real <button>, not a span with a click handler: it has to be
+     reachable by keyboard and announce its state to a screen reader. */
   .field__wrap { position: relative; display: block; }
-  .field__wrap .input { padding-inline-end: calc(var(--control-h) + var(--spacing-1)); }
-  .field__eye { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: var(--control-h);
-                display: grid; place-items: center; padding: 0; border: 0; background: none;
-                border-radius: var(--radius-sm); color: var(--color-secondary); cursor: pointer; }
-  .field__eye:hover { color: var(--color-ink); }
-  .field__eye:focus-visible { outline-offset: calc(-1 * var(--focus-width)); }
-  .field__eye svg { inline-size: var(--mark); block-size: var(--mark); }
+  .field__wrap .field__input { padding-inline-end: 44px; }
+  .field__eye {
+    position: absolute; inset-inline-end: 6px; inset-block-start: 50%;
+    transform: translateY(-50%);
+    inline-size: 32px; block-size: 32px; padding: 0;
+    display: grid; place-items: center;
+    background: transparent; border: 1px solid transparent;
+    border-radius: var(--radius-sm); color: var(--color-muted);
+    cursor: pointer;
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  }
+  .field__eye:hover { color: var(--color-ink); background: var(--color-fill-subtle); }
+  .field__eye svg { inline-size: 18px; block-size: 18px; display: block; }
+  /* Only one of the two icons is ever shown; the script flips which. */
   .field__eye [data-eye-off] { display: none; }
   .field__eye[aria-pressed="true"] [data-eye-on] { display: none; }
   .field__eye[aria-pressed="true"] [data-eye-off] { display: block; }
 
-  .check { position: relative; display: inline-flex; align-items: center; gap: var(--spacing-2); cursor: pointer;
-           font-size: var(--text-small); color: var(--color-secondary); }
-  .check__box { position: relative; flex: none; inline-size: var(--mark); block-size: var(--mark);
-                background: var(--color-surface); border: var(--border-hair) solid var(--color-control);
-                border-radius: var(--radius-sheet); transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-  .check__box::after { content: ""; position: absolute; inset: 2px 5px 5px; border: solid var(--color-surface);
-                       border-width: 0 var(--border-rule) var(--border-rule) 0; transform: rotate(45deg); opacity: 0; }
-  .check__input:checked + .check__box { background: var(--color-ink); border-color: var(--color-ink); }
-  .check__input:checked + .check__box::after { opacity: 1; }
-  .check__input:focus-visible + .check__box { outline: var(--focus-width) solid var(--focus-color); outline-offset: var(--focus-offset); }
-  .check__input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  /* The code input: six isolated digits, so tracking is allowed here and only
+     here (see design-language.md). Centred because there is nothing to align to. */
+  .field__input--code {
+    text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 6px;
+    padding: 16px 14px 14px; font-variant-numeric: tabular-nums;
+  }
 
-  /* The sign-in code keeps Latin digits, and only its cells are tabular. */
-  .otp { display: flex; gap: var(--spacing-2); justify-content: center; direction: ltr; }
-  .otp__cell { inline-size: var(--input-h); block-size: calc(var(--input-h) + var(--spacing-2)); padding: 0; text-align: center;
-               font-size: var(--text-step); font-weight: var(--font-weight-bold); line-height: 1; font-variant-numeric: tabular-nums;
-               background: var(--color-surface); border: var(--border-hair) solid var(--color-control); border-radius: var(--radius-sm);
-               transition: border-color var(--dur-lg) var(--ease), background-color var(--dur-lg) var(--ease); }
-  .otp__cell:hover { border-color: var(--color-ink); }
-  .otp__cell:focus-visible { border-color: var(--color-lapis); }
+  /* --- The six-cell code input -------------------------------------------
+     Six isolated digits, so tracking is not a concern here: each cell is its
+     own box. dir="ltr" on the row because a code reads left-to-right even in
+     Persian. Feedback is by border colour through the system's own tokens —
+     success green, danger red — with one short shake on a wrong code. Nothing
+     glows, nothing bounces; prefers-reduced-motion zeroes it all globally. */
+  .otp { display: flex; gap: var(--spacing-2); justify-content: center; }
+  .otp__cell {
+    inline-size: 3rem; block-size: 3.5rem; text-align: center;
+    font-family: var(--font-body); font-size: 26px; font-weight: 700; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--color-ink);
+    background: var(--color-surface); border: 1px solid var(--color-field);
+    border-radius: var(--radius-sm); padding: 0; caret-color: var(--color-accent);
+    /* Narrower rather than past the card's padding on a 320px phone. */
+    flex: 0 1 auto; min-inline-size: 0;
+    transition: border-color var(--dur-lg) var(--ease), box-shadow var(--dur) var(--ease),
+                background-color var(--dur-lg) var(--ease);
+  }
+  .otp__cell:hover { border-color: var(--color-muted); }
+  .otp__cell:focus-visible { outline: none; border-color: var(--color-accent);
+                             box-shadow: 0 0 0 1px var(--color-accent); }
   .otp__cell.is-filled { border-color: var(--color-ink); }
-  .otp__cell.is-ok { border-color: var(--color-ok); background: var(--color-ok-tint); color: var(--color-ok-text); }
-  .otp__cell.is-error { border-color: var(--color-danger); background: var(--color-danger-tint); color: var(--color-danger-text); }
-  /* :not() rather than source order: submit() disables every cell before the fetch, and a
-     later rule of equal weight once repainted the confirmed cells grey. */
-  .otp__cell[disabled]:not(.is-ok):not(.is-error) { background: var(--color-fill-subtle); color: var(--color-muted); border-color: var(--color-line-strong); }
-  .otp.is-shaking { animation: otp-shake calc(var(--dur-lg) + var(--dur)) var(--ease); }
-  @keyframes otp-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(calc(-1 * var(--shift))); } 40%, 80% { transform: translateX(var(--shift)); } }
-  @media (max-width: 400px) { .otp { gap: var(--spacing-1); } .otp__cell { inline-size: calc(var(--input-h) - var(--spacing-2)); } }
-  .otp__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-3);
-               margin-block-start: var(--spacing-4); font-size: var(--text-small); color: var(--color-muted); }
-
-  .notice { padding: var(--spacing-3) var(--spacing-4);
-            background: var(--color-surface); border: var(--border-hair) solid var(--color-line);
-            border-inline-start: var(--border-band) solid var(--color-ink); border-radius: var(--radius-sheet);
-            font-size: var(--text-ui); line-height: 1.7; }
-  .notice--error { background: var(--color-danger-tint); border-color: var(--color-danger-tint);
-                   border-inline-start-color: var(--color-danger); color: var(--color-danger-text); }
-  .notice--ok { background: var(--color-ok-tint); border-color: var(--color-ok-tint);
-                border-inline-start-color: var(--color-ok); color: var(--color-ok-text); }
-
-  /* An owner decision still open. Inline, so it wraps like the sentence around it and a
-     «.» after it never starts a line. A dashed edge means this and nothing else. */
-  .pending { display: inline; padding-inline: var(--spacing-1);
-             border: var(--border-hair) dashed var(--color-control); border-radius: var(--radius-sm);
-             background: var(--color-fill-subtle); color: var(--color-secondary);
-             font-size: var(--text-small); font-weight: var(--font-weight-normal); line-height: 1.7;
-             -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-
-  /* --- Empty and error states --- */
-  .empty { display: grid; justify-items: center; gap: var(--spacing-4); padding: var(--spacing-7) var(--spacing-5); text-align: center; }
-  .empty__art { inline-size: 200px; block-size: 160px; }
-  .empty__text { font-size: var(--text-lead); }
-  /* A search or a category with nothing in it: one line, then the whole rate sheet. The
-     list is the answer, so no picture. */
-  .empty-line { padding-block: var(--spacing-5); font-size: var(--text-lead); }
-
-  .errorpage { display: grid; gap: var(--spacing-6); align-items: center; padding-block: var(--spacing-8); }
-  .errorpage__code { font-size: var(--text-small); color: var(--color-muted); }
-  .errorpage__title { margin-block: var(--spacing-2) var(--spacing-3); font-size: var(--text-h1); }
-  .errorpage__text { font-size: var(--text-lead); color: var(--color-secondary); }
-  .errorpage__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); margin-block-start: var(--spacing-5); }
-  .errorpage__art { inline-size: 100%; max-inline-size: 480px; block-size: auto; aspect-ratio: 4 / 3; }
-  @media (min-width: 900px) { .errorpage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-
-  /* --- Countdown ---
-     Proportional digits: the server writes the text once and it never ticks. */
-  .countdown.is-done { display: none; }
-
-  /* --- Tile art: the home hero and the category heads ---
-     Inline SVG from static/img, never behind text, money, forms or the panel. A wall is
-     drawn in lattice periods (12 wide, 2 tall) and sized here by --tile, one period on
-     screen. It hangs from its top edge and from the edge beside the text, both through
-     star centres, so every cut ends on star tips; the bottom ends on a lapis line. */
-  .tile-k { fill: none; stroke: var(--color-lapis); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .tile-i { fill: none; stroke: var(--color-lapis); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .tile-d { fill: none; stroke: var(--color-lapis); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
-  .tile-p { fill: var(--color-ground); }
-  .tile-t { fill: var(--color-accent-tint); }
-  .tile-g { fill: var(--color-glaze); }
-  .tile-glint { opacity: 0; }
-  @keyframes tile-glint { 0%, 25%, 100% { opacity: 0; } 8.33%, 16.67% { opacity: 0.5; } }
-  @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
-    .tile-glint { animation: tile-glint var(--dur-ambient) ease-in-out infinite both; }
-    .tile-glint--2 { animation-delay: calc(var(--dur-ambient) / 3); }
-    .tile-glint--3 { animation-delay: calc(var(--dur-ambient) * 2 / 3); }
-    .is-offscreen .tile-glint { animation-play-state: paused; }
+  .otp__cell.is-ok { border-color: var(--color-ok); background: color-mix(in oklab, var(--color-ok) 8%, var(--color-surface)); color: var(--color-ok-text); }
+  .otp__cell.is-error { border-color: var(--color-danger); background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface)); color: var(--color-danger-text); }
+  /* `:not()` rather than ordering, because the bug this fixes was ordering.
+     submit() disables every cell before the fetch so the code cannot be sent
+     twice — and this rule, declared after .is-ok with identical specificity,
+     then repainted the confirmed cells grey. The class was applied, the
+     stagger ran, and on the paste path (which is how almost everyone enters
+     a code) the green was never seen. The browser test asserts the painted
+     colour now, not the class name. */
+  .otp__cell[disabled]:not(.is-ok):not(.is-error) {
+    background: var(--color-fill-subtle); color: var(--color-muted);
   }
-  .wall { position: relative; overflow: hidden; }
-  .wall > svg { position: absolute; inset-block-start: 0; inset-inline-start: 0; max-inline-size: none;
-                inline-size: calc(12 * var(--tile)); block-size: calc(2 * var(--tile)); }
-
-  /* Home: the wall is one and a half periods tall and stands on the rate sheet's band,
-     which its own bottom border carries out to the viewport edge. Its row of whole glaze
-     stars is the headline's axis. On a screen taller than 960px it is 240px a period,
-     so at 1440px it is two and a half periods wide and all four edges run through centres. */
-  .hero { --tile: 240px;
-          display: grid; align-items: start;
-          grid-template-columns: minmax(var(--gutter), 1fr) minmax(0, calc(var(--container) - var(--spacing-7) - 440px))
-                                 var(--spacing-7) minmax(0, 440px) minmax(var(--gutter), 1fr); }
-  /* Narrower, the lead takes two lines, and the wall grows so it still ends below the text. */
-  @media (max-width: 1125px) { .hero { --tile: 272px; } }
-  /* Laptop screens: the period follows the height too, so the first prices are in the
-     first view at 1440x900, 1536x864 and 1366x768. */
-  @media (min-width: 1126px) and (max-height: 960px) { .hero { --tile: 192px; } }
-  @media (min-width: 1126px) and (max-height: 800px) { .hero { --tile: 176px; } }
-  .hero__text { position: relative; grid-column: 2; grid-row: 1; padding-block-end: var(--spacing-4); container-type: inline-size; }
-  /* One line in the web face at every width (it fills at most 95% of its column). A wider
-     fallback breaks it into two even lines instead of pushing the page sideways: Android's
-     fitted Noto Naskh runs 10% over. */
-  .hero__title { margin-block-start: calc(var(--tile) - 0.6em); font-size: var(--text-poster);
-                 font-weight: var(--font-weight-extrabold); line-height: 1.2; text-wrap: balance; }
-  @supports (font-size: 1cqi) { .hero__title { font-size: min(var(--text-poster), 9.6cqi); } }
-  .hero__lead { margin-block-start: var(--spacing-4); font-size: var(--text-lead); color: var(--color-secondary); }
-  /* Beside the wall the text stays inside the wall's height, so the wall sets the hero's. */
-  @media (min-width: 900px) { .hero__text { padding-block-end: var(--spacing-2); } .hero__lead { margin-block-start: var(--spacing-2); } }
-  /* The lead's two clauses each stay whole, so a wrapped lead breaks before «یا». */
-  .hero__lead > span { white-space: nowrap; }
-  .hero__art { grid-column: 4 / 6; grid-row: 1; align-self: stretch; min-block-size: calc(1.5 * var(--tile) + var(--border-band));
-               border-block-end: var(--border-band) solid var(--color-lapis); }
-  /* Below 900px the wall is a close-up between the lead and the sheet, never a frieze:
-     the upper halves of its whole stars standing on the lapis line, two to two and a half
-     stars across. */
-  @media (max-width: 899px) {
-    .hero { --tile: clamp(160px, 44vw, 360px); grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter); }
-    .hero__text { padding-block: var(--spacing-5) var(--spacing-4); }
-    .hero__title { margin-block-start: 0; }
-    .hero__art { grid-column: 1 / -1; grid-row: 2; min-block-size: calc(0.5 * var(--tile) + var(--border-band)); }
-    .hero__art > svg { inset-block-start: calc(-0.5 * var(--tile)); }
+  .otp__cell[disabled] { cursor: not-allowed; }
+  .otp.is-shaking { animation: otp-shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+  @keyframes otp-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+  @media (max-width: 400px) {
+    .otp { gap: 6px; }
+    .otp__cell { inline-size: 2.6rem; block-size: 3.2rem; font-size: 22px; }
+  }
+  .otp__clock { font-variant-numeric: tabular-nums; }
+  /* The card the sign-in pages sit in. 32px a side left the code cells
+     too little room on a small phone. */
+  .auth-card { padding: var(--spacing-7) var(--spacing-6); }
+  @media (max-width: 360px) { .auth-card { padding-inline: var(--spacing-4); } }
+  .otp__resend { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--spacing-3); margin-block-start: var(--spacing-5); }
+  @media (max-width: 440px) {
+    .otp__resend { flex-direction: column; align-items: stretch; }
+    .otp__resend .btn { inline-size: 100%; }
   }
 
-  /* The rate sheet's band lies on the wall's bottom border. */
-  .sheet-overlap { position: relative; margin-block-start: calc(-1 * var(--border-band)); }
+  /* A form-level error belongs above the fields, not beside one of them: it is
+     usually about the pair (email + password), and blaming one field is a lie. */
+  .form-error {
+    background: color-mix(in oklab, var(--color-danger) 8%, var(--color-ground));
+    border: 1px solid color-mix(in oklab, var(--color-danger) 28%, var(--color-ground));
+    color: var(--color-danger-text); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px; font-size: 14px; line-height: 1.7;
+    margin-block-end: var(--spacing-5);
+  }
+  .form-ok {
+    background: color-mix(in oklab, var(--color-ok) 8%, var(--color-ground));
+    border: 1px solid color-mix(in oklab, var(--color-ok) 28%, var(--color-ground));
+    color: var(--color-ok-text); border-radius: var(--radius-sm);
+    padding: 11px 14px 9px; font-size: 14px; line-height: 1.7;
+    margin-block-end: var(--spacing-5);
+  }
 
-  /* The pause control exists only where the motion runs: 900px and wider, motion welcome.
-     Its checkbox covers the label's whole box (WCAG 2.2.2, no script). It sits on paper at
-     the top of the text column, against the wall's edge, never on the art. */
-  .ambient__control { display: none; position: absolute; inset-block-start: var(--spacing-4); inset-inline-end: 0;
-                      align-items: center; gap: var(--spacing-2); padding: var(--spacing-1) var(--spacing-2);
-                      background: var(--color-ground); border: var(--border-hair) solid var(--color-line); border-radius: var(--radius-sm);
-                      font-size: var(--text-micro); color: var(--color-muted); line-height: var(--leading-tight); cursor: pointer;
-                      transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-  .motion-pause { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: pointer; }
-  .ambient__control:hover { color: var(--color-ink); border-color: var(--color-control); }
-  .ambient__glyph { display: grid; place-items: center; inline-size: var(--spacing-4); block-size: var(--spacing-4);
-                    border: var(--border-hair) solid currentColor; border-radius: var(--radius-sheet); }
-  .ambient__glyph::before { content: ""; inline-size: 6px; block-size: 8px; border-inline: var(--border-rule) solid currentColor; }
-  .ambient__control:has(.motion-pause:checked) { color: var(--color-ink); }
-  .ambient__control:has(.motion-pause:checked) .ambient__glyph { background: var(--color-ink); }
-  .ambient__control:has(.motion-pause:checked) .ambient__glyph::before { border-color: var(--color-surface); }
-  .ambient__control:has(.motion-pause:focus-visible) { outline: var(--focus-width) solid var(--focus-color); outline-offset: var(--focus-offset); }
-  @media (min-width: 900px) and (prefers-reduced-motion: no-preference) { .ambient__control { display: flex; } }
-  /* Without :has the control could not stop the glint, so there is no glint. */
-  @supports not selector(:has(*)) { .ambient__control { display: none; } .tile-glint { animation: none !important; } }
-
-  /* Category head: the same wall at one and a half periods, closed by a lapis line. */
-  .cathead { --tile: 144px; display: grid; align-items: center;
-             grid-template-columns: minmax(var(--gutter), 1fr) minmax(0, calc(var(--container) * 0.58)) var(--spacing-7)
-                                    minmax(0, calc(var(--container) * 0.42 - var(--spacing-7))) minmax(var(--gutter), 1fr); }
-  .cathead__text { grid-column: 2; grid-row: 1; padding-block: var(--spacing-5); }
-  .cathead__art { grid-column: 4 / 6; grid-row: 1; align-self: stretch; min-block-size: calc(1.5 * var(--tile) + var(--border-hair));
-                  border-block-end: var(--border-hair) solid var(--color-lapis); }
-  /* Narrower, the lead takes three lines: a longer period keeps the wall one and a half
-     periods tall beside it, so its bottom still runs through the crosses' centres. */
-  @media (max-width: 1023px) { .cathead { --tile: 160px; } }
-  /* Stacked, the band above the head is the hero's close-up. */
+  /* --- Header search --------------------------------------------------------
+     A fat field, never an icon. Every Iranian shop measured gives search a
+     44px well across the width the layout can spare, with the magnifier at
+     the reading edge — it is the control a returning customer uses first.
+     -------------------------------------------------------------------------- */
+  .hdr__search { position: relative; display: flex; align-items: center;
+                 flex: 1 1 auto; inline-size: auto; max-inline-size: 34rem; }
+  .hdr__search-input {
+    inline-size: 100%; min-inline-size: 0; font-family: var(--font-body);
+    font-size: 16px; line-height: 1.5;
+    /* Ruled like every other field rather than a grey well: the well was
+       1.09:1 against the bar and its placeholder, the only visible label,
+       4.35:1. */
+    color: var(--color-ink); background: var(--color-surface);
+    border: 1px solid var(--color-field); border-radius: var(--radius-sm);
+    /* Inline-start is the right edge here, which is where the magnifier sits. */
+    padding-block: 11px 9px; padding-inline: 44px 14px;
+    transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  }
+  .hdr__search-input::placeholder { color: var(--color-muted); }
+  .hdr__search-input:hover { border-color: var(--color-muted); }
+  .hdr__search-input:focus-visible { outline: none; background: var(--color-surface);
+                                     border-color: var(--color-accent);
+                                     box-shadow: 0 0 0 1px var(--color-accent); }
+  .hdr__search-btn {
+    position: absolute; inset-inline-start: 4px; inset-block-start: 50%;
+    transform: translateY(-50%);
+    inline-size: 34px; block-size: 34px; display: grid; place-items: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-muted); cursor: pointer;
+    transition: color var(--dur) var(--ease);
+  }
+  .hdr__search-btn:hover { color: var(--color-ink); }
+  /* A row of its own on a phone. It sits after the rule above because it
+     lost to it on order when it lived with the other phone rules, and from
+     521px to 760px the field went back beside the brand. */
   @media (max-width: 760px) {
-    .cathead { --tile: clamp(160px, 44vw, 360px); grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter); }
-    .cathead__art { grid-column: 1 / -1; grid-row: 1; min-block-size: calc(0.5 * var(--tile) + var(--border-hair)); }
-    .cathead__art > svg { inset-block-start: calc(-0.5 * var(--tile)); }
-    .cathead__text { grid-row: 2; padding-block: var(--spacing-5) var(--spacing-4); }
+    .hdr__search { order: 9; flex-basis: 100%; max-inline-size: none; }
   }
+
+  /* --- Page furniture ------------------------------------------------------- */
+  .crumbs { display: flex; flex-wrap: wrap; gap: var(--spacing-2); font-size: 13px;
+            color: var(--color-muted); margin-block-end: var(--spacing-5); }
+  .crumbs a { color: var(--color-secondary); text-decoration: none; }
+  .crumbs a:hover { color: var(--color-ink); text-decoration: underline; }
+  .crumbs__sep { color: var(--color-line-strong); }
+  .page-head { margin-block-end: var(--spacing-6); }
+  .page-head__title { font-family: var(--font-head); font-size: 30px; font-weight: 600;
+                      line-height: 1.25; margin: 0; }
+  .page-head__intro { margin-block-start: var(--spacing-3); }
+  .section { margin-block-start: var(--spacing-8); }
+  /* The rule under a section title is the page's structure, the way a printed
+     column rule is. It replaces boxing a region to say it is a region. */
+  .section__head, .section > .section__title {
+    border-block-end: 1px solid var(--color-line); padding-block-end: var(--spacing-3); }
+  .section__head { display: flex; align-items: baseline; justify-content: space-between;
+                   gap: var(--spacing-4); }
+  .section__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
+                    line-height: 1.35; margin: 0 0 var(--spacing-5); }
+
+  /* A department heading inside a list the visitor is already reading, so it
+     is deliberately quieter than .section__title: no rule, smaller type, and
+     a link out to the full department. The chevron points to the start of the
+     line and nudges that way on hover, matching .dept__go. */
+  .shelf + .shelf { margin-block-start: var(--spacing-7); }
+  /* Wider cards inside a department than in the flat grid. Departments here
+     hold two or three products, and four narrow columns left every row with
+     a hole in it; three wide ones fill the row at three and look deliberate
+     at two. */
+  .shelf .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  /* The department is the heading above these cards. Printing it again on
+     every card says the same word three times across one row. */
+  .shelf .pcard__cat { display: none; }
+  .shelf__n { font-family: var(--font-body); font-size: 13px; font-weight: 400;
+              color: var(--color-muted); }
+  .shelf__head { display: flex; align-items: baseline; justify-content: space-between;
+                 gap: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .shelf__title { font-family: var(--font-head); font-size: 17px; font-weight: 600;
+                  line-height: 1.4; margin: 0; }
+  .shelf__all { display: inline-flex; align-items: center; gap: var(--spacing-1);
+                font-size: 14px; color: var(--color-secondary); text-decoration: none;
+                white-space: nowrap;
+                transition: color var(--dur) var(--ease); }
+  .shelf__all svg { inline-size: 16px; block-size: 16px;
+                    transition: transform var(--dur-lg) var(--ease-out); }
+  .shelf__all:hover { color: var(--color-ink); }
+  .shelf__all:hover svg { transform: translateX(-3px); }
+
+  /* --- Home: the opening composition ----------------------------------------
+     The only colour the site allows is the goods', so the field behind the
+     headline is four soft radial washes in real brand hues at a fraction of
+     their saturation, and over it the marks themselves as linked tiles. Their
+     drift is the page's entire ambient motion; it stops below 900px and under
+     prefers-reduced-motion. Why this and not a photograph: ADR-0026.
+     -------------------------------------------------------------------------- */
+  .hero { position: relative; isolation: isolate; overflow: hidden;
+          background: var(--color-ground);
+          padding-block: var(--spacing-9) var(--spacing-8); }
+  .hero::before {
+    content: ""; position: absolute; z-index: -1; inset: -30% -5% auto -5%; block-size: 170%;
+    background:
+      radial-gradient(34rem 22rem at 64% 30%, color-mix(in oklab, #1ed760 30%, transparent), transparent 66%),
+      radial-gradient(30rem 20rem at 86% 12%, color-mix(in oklab, #e50914 20%, transparent), transparent 64%),
+      radial-gradient(40rem 26rem at 70% 86%, color-mix(in oklab, #4285f4 24%, transparent), transparent 68%),
+      radial-gradient(26rem 18rem at 18% 22%, color-mix(in oklab, #d97757 18%, transparent), transparent 64%);
+    opacity: 0.62;
+  }
+  .hero__inner { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+                 gap: var(--spacing-7); align-items: center; }
+  .hero__said { grid-column: 2; grid-row: 1; }
+  .hero__title { font-family: var(--font-head); font-size: 44px; font-weight: 600; line-height: 1.26;
+                 color: var(--color-ink); margin: 0; max-inline-size: 17ch; text-wrap: balance; }
+  .hero__lead { color: var(--color-secondary); font-size: 19px; line-height: 1.8;
+                margin: var(--spacing-4) 0 0; max-inline-size: 42ch; }
+  .hero__lead b { color: var(--color-ink); font-weight: 500; }
+  .hero__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-4);
+               margin-block-start: var(--spacing-6); }
+
+  /* The constellation: three sizes on offset rows, so it reads as an
+     arrangement rather than a grid that lost a column. */
+  .nebula { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap;
+            gap: var(--spacing-4); justify-content: center; align-content: center; }
+  .nebula__item { display: grid; place-items: center; text-decoration: none;
+                  inline-size: 86px; block-size: 86px; flex: none;
+                  background: var(--color-surface);
+                  border: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent);
+                  border-radius: 22px; box-shadow: var(--shadow-lift);
+                  animation: nebula-float 9s ease-in-out infinite;
+                  transition: transform var(--dur-lg) var(--ease-out),
+                              box-shadow var(--dur-lg) var(--ease-out); }
+  .nebula__item img { inline-size: auto; block-size: auto;
+                      max-inline-size: 42px; max-block-size: 42px; }
+  .nebula__mono { font-family: var(--font-head); font-size: 26px; font-weight: 600;
+                  line-height: 1; color: var(--color-secondary); }
+  .nebula__item:nth-child(3n + 2) { inline-size: 70px; block-size: 70px; border-radius: 18px;
+                                    animation-delay: -3s; }
+  .nebula__item:nth-child(3n + 2) img { max-inline-size: 34px; max-block-size: 34px; }
+  .nebula__item:nth-child(4n + 3) { inline-size: 100px; block-size: 100px; border-radius: 26px;
+                                    animation-delay: -6s; }
+  .nebula__item:nth-child(4n + 3) img { max-inline-size: 50px; max-block-size: 50px; }
+  .nebula__item:hover, .nebula__item:focus-visible {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 2px 4px rgba(19, 19, 19, 0.05), 0 26px 50px -24px rgba(19, 19, 19, 0.38);
+  }
+  .nebula__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  @keyframes nebula-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+
+  /* --- The discounts panel --------------------------------------------------
+     A tinted surface holding the cards, rather than a bare row of them. The
+     shop will often have exactly one thing on offer, and one card in a
+     four-column grid reads as a row that failed to load; inside a panel that
+     names what it is, one card reads as a highlight. */
+  /* The text column is held to a readable measure and the cards take the rest,
+     so a single discount sits beside the words with the row's spare space
+     trailing off the end — a row with room for more, which is what it is.
+     Letting the text column take the slack instead (tried, reverted) stretched
+     two lines of prose across 667px and left the hole in the middle. */
+  .deals { display: grid; grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+           gap: var(--spacing-6); align-items: start;
+           background: var(--color-fill-subtle);
+           border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+           padding: var(--spacing-5); }
+  .deals__title { font-family: var(--font-head); font-size: 21px; font-weight: 600;
+                  line-height: 1.35; margin: 0 0 var(--spacing-2); }
+  /* Flex, not a 1fr grid: with one offer on the shelf a grid stretches it
+     across empty columns, which reads as a row that failed to load. */
+  .deals__grid { display: flex; flex-wrap: wrap; gap: var(--spacing-4); }
+  /* A lone deal grows into some of the row rather than sitting as one narrow
+     card against a long empty strip; the cap stops it becoming a billboard,
+     and four of them are back to their natural width. */
+  .deals__grid > * { flex: 1 1 15rem; min-inline-size: 13rem; max-inline-size: 20rem; }
+  @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
+                                       padding: var(--spacing-4); } }
+
+  /* --- The promise strip, where an Iranian buyer looks first ----------------
+     Items at their own width rather than four columns: it holds only what is
+     true of every product, which is fewer than four things today. */
+  .promises { background: var(--color-fill-subtle);
+              border-block: 1px solid var(--color-line); }
+  .promises__row { display: flex; flex-wrap: wrap;
+                   gap: var(--spacing-3) var(--spacing-7); padding-block: var(--spacing-5); }
+  .promises__row > div { display: flex; align-items: center; gap: var(--spacing-3);
+                         font-size: 14px; line-height: 1.6; color: var(--color-ink); }
+  .promises__row svg { inline-size: 26px; block-size: 26px; flex: none; color: var(--color-accent); }
+
+  @media (max-width: 1000px) {
+    .hero { padding-block: var(--spacing-7); }
+    .hero__inner { grid-template-columns: 1fr; gap: var(--spacing-6); }
+    .hero__said { grid-column: 1; grid-row: 1; }
+    .nebula { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+    .hero__title { font-size: 34px; }
+    .hero__lead { font-size: 17px; }
+  }
+  @media (max-width: 520px) {
+    .hero { padding-block: var(--spacing-6); }
+    .hero__title { font-size: 28px; }
+    .hero__act { gap: var(--spacing-3); }
+    .hero__act .btn { inline-size: 100%; }
+    .nebula { gap: var(--spacing-3); }
+    .nebula__item,
+    .nebula__item:nth-child(3n + 2),
+    .nebula__item:nth-child(4n + 3) { inline-size: 64px; block-size: 64px; border-radius: 16px; }
+    .nebula__item img,
+    .nebula__item:nth-child(3n + 2) img,
+    .nebula__item:nth-child(4n + 3) img { max-inline-size: 32px; max-block-size: 32px; }
+    .promises__row { padding-block: var(--spacing-4); }
+  }
+  /* Ambient motion is a desktop affordance: on a phone it sits under the thumb
+     during the first scroll and costs battery nobody asked to spend. */
+  @media (max-width: 900px), (prefers-reduced-motion: reduce) {
+    .nebula__item { animation: none; }
+  }
+
+  /* --- Grids and cards ------------------------------------------------------ */
+  .grid { display: grid; gap: var(--spacing-4);
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  .grid--cats { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+
+  /* --- Departments, as shelves ----------------------------------------------
+     Four rows in one ruled container, each showing the actual marks it holds.
+     Not four identical tinted cards: that shape is the most-copied layout on
+     the web, and it forces each department to *describe* its contents in a
+     sentence when it could simply show them. The tint survives as a hover
+     wash, which is where a colour earns its place — it answers a gesture.
+
+     The marks lift one after another on hover, 40ms apart. It is the same
+     idea as the code cells confirming one digit at a time: a cascade reads as
+     a thing responding, where six at once reads as a state flipping.
+     -------------------------------------------------------------------------- */
+  .depts { border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+           overflow: hidden; background: var(--color-surface); }
+  .dept { display: grid; align-items: center; gap: var(--spacing-4);
+          grid-template-columns: minmax(7rem, auto) 1fr auto auto;
+          padding: var(--spacing-4) var(--spacing-5);
+          text-decoration: none; color: inherit;
+          transition: background-color var(--dur) var(--ease); }
+  .dept + .dept { border-block-start: 1px solid var(--color-line); }
+  .dept:hover { background: var(--dept-tint, var(--color-fill-subtle)); }
+  .dept:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  .dept__name { font-family: var(--font-head); font-size: 19px; font-weight: 600;
+                line-height: 1.4; color: var(--color-ink); }
+  .dept__marks { display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
+  .dept__mark { inline-size: 38px; block-size: 38px; flex: none; display: grid; place-items: center;
+                background: var(--color-surface); border: 1px solid var(--color-line);
+                border-radius: 11px;
+                transition: transform var(--dur-lg) var(--ease-out),
+                            border-color var(--dur) var(--ease); }
+  .dept__mark img { inline-size: auto; block-size: auto;
+                    max-inline-size: 21px; max-block-size: 21px; }
+  .dept__mono { font-family: var(--font-head); font-size: 15px; font-weight: 600;
+                color: var(--color-muted); line-height: 1; }
+  .dept:hover .dept__mark { transform: translateY(-3px); border-color: var(--color-line-strong); }
+  .dept__mark:nth-child(2) { transition-delay: 40ms; }
+  .dept__mark:nth-child(3) { transition-delay: 80ms; }
+  .dept__mark:nth-child(4) { transition-delay: 120ms; }
+  .dept__mark:nth-child(5) { transition-delay: 160ms; }
+  .dept__count { font-size: 14px; line-height: 1.5; color: var(--color-muted);
+                 font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* The page is RTL unconditionally, so forward is left and the glyph is
+     drawn that way. A ‹ character would not do: it is Bidi_Mirrored and the
+     renderer would turn it round. */
+  .dept__go { inline-size: 20px; block-size: 20px; color: var(--color-line-strong);
+              transition: color var(--dur) var(--ease), transform var(--dur-lg) var(--ease-out); }
+  .dept:hover .dept__go { color: var(--color-ink); transform: translateX(-3px); }
+  .dept--a { --dept-tint: #eef6f4; }
+  .dept--b { --dept-tint: #eef2fb; }
+  .dept--c { --dept-tint: #fdf0ef; }
+  .dept--d { --dept-tint: #f6f1fb; }
+  @media (max-width: 760px) {
+    .dept { grid-template-columns: 1fr auto; gap: var(--spacing-2) var(--spacing-3);
+            padding: var(--spacing-4); }
+    .dept__name { grid-column: 1; }
+    .dept__count { grid-column: 2; grid-row: 1; }
+    .dept__marks { grid-column: 1 / -1; grid-row: 2; }
+    .dept__go { display: none; }
+  }
+
+  /* The product card. The brand mark and the name share the top line, because
+     a Persian shopper scans the logo first and reads the name to confirm it.
+     Under them, the one line the buyer is actually afraid about — when it
+     arrives and what happens if it breaks — then the price at the reading
+     edge of the foot, which is where digikala, basalam and irpremium all put
+     it. A label at the start and a figure at the end is an English invoice
+     row mirrored, and it reads as one. */
+  .pcard { display: flex; flex-direction: column; text-decoration: none; color: inherit;
+           background: var(--color-surface); border: 1px solid var(--color-line);
+           border-radius: var(--radius-lg); overflow: hidden;
+           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+  .pcard:hover { border-color: var(--color-line-strong); }
+  .pcard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .pcard__top { display: flex; align-items: center; gap: var(--spacing-3);
+                padding: var(--spacing-4) var(--spacing-4) 0; }
+  .pcard__body { padding: var(--spacing-3) var(--spacing-4) var(--spacing-4); flex: 1; }
+  .pcard__cat { display: block; font-size: 13px; color: var(--color-muted); }
+  .pcard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; line-height: 1.45;
+                 color: var(--color-ink); margin: 0; }
+  .pcard__terms { display: flex; flex-wrap: wrap; gap: var(--spacing-1) var(--spacing-3);
+                  font-size: 13px; line-height: 1.75; color: var(--color-secondary);
+                  margin: var(--spacing-3) 0 0; }
+  .pcard__terms span { display: inline-flex; align-items: center; gap: 6px; }
+  .pcard__terms svg { inline-size: 15px; block-size: 15px; color: var(--color-muted); flex: none; }
+  .pcard__foot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+                 padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
+                 border-block-start: 1px solid var(--color-line); }
+  .pcard__from { font-size: 13px; line-height: 1.6; color: var(--color-muted);
+                 display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2); }
+
+  /* The deadline on a discount. Amber and tabular, so the figure does not
+     jog sideways as the seconds roll over. Once it reaches zero it stops
+     being time pressure, so it stops being amber: `.deadline--done` sits
+     after `.badge--time`, below, because the same specificity goes to
+     whichever comes last. */
+  .deadline { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pcard__price { display: inline-flex; align-items: baseline; gap: 6px; }
+  .pcard__pre { font-size: 14px; color: var(--color-muted); }
+  .pcard__foot .price__num { font-size: 21px; }
+  .pcard:hover .tile { border-color: var(--color-line-strong); }
+
+  /* The tile: the brand's own mark, or a monogram when there is no image.
+     Both are the same shape, so a grid with and without pictures stays even.
+     White rather than tinted — a containerised mark (the Spotify circle, the
+     YouTube rectangle) on a grey field reads as a sticker stuck on a box. */
+  .tile { inline-size: 48px; block-size: 48px; display: grid; place-items: center;
+          background: var(--color-surface); border: 1px solid var(--color-line);
+          border-radius: var(--radius-lg); flex: none;
+          transition: border-color var(--dur) var(--ease); }
+  .tile img { inline-size: auto; block-size: auto;
+              max-inline-size: 28px; max-block-size: 28px; object-fit: contain; }
+  .tile--mono { font-family: var(--font-head); font-size: 20px; font-weight: 600;
+                color: var(--color-secondary); background: var(--color-fill-subtle); }
+  .tile--lg { inline-size: 72px; block-size: 72px; }
+  .tile--lg img { max-inline-size: 42px; max-block-size: 42px; }
+  .tile--lg.tile--mono { font-size: 28px; }
+
+  /* --- Filter chips ---------------------------------------------------------- */
+  .chips { display: flex; flex-wrap: wrap; gap: var(--spacing-2); margin-block-end: var(--spacing-5); }
+  .chip { font-size: 13px; line-height: 1.4; padding: 6px 12px 4px; border-radius: var(--radius-sm);
+          border: 1px solid var(--color-line-strong); color: var(--color-secondary);
+          text-decoration: none; background: var(--color-surface);
+          transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .chip:hover { border-color: var(--color-muted); color: var(--color-ink); }
+  .chip.is-active { border-color: var(--color-accent); color: var(--color-accent);
+                    background: var(--color-accent-tint); }
+
+  /* --- Product page ---------------------------------------------------------- */
+  .pdp { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--spacing-5) var(--spacing-7);
+         grid-template-areas: "head buy" "main buy"; align-items: start; }
+  .pdp__head { grid-area: head; }
+  .pdp__main { grid-area: main; }
+  .pdp__buy { grid-area: buy; align-self: start; }
+  .pdp__head { display: flex; gap: var(--spacing-4); align-items: flex-start; }
+  .pdp__title { font-family: var(--font-head); font-size: 30px; font-weight: 600; line-height: 1.3; margin: 0; }
+  .pdp__meta { display: flex; flex-wrap: wrap; gap: var(--spacing-2); margin-block-start: var(--spacing-3); }
+  .pdp__lead { margin: var(--spacing-5) 0 0; }
+  .pdp__facts { margin-block-start: var(--spacing-6); padding: var(--spacing-3) var(--spacing-5); }
+  .pdp__facts .fact { padding-block: var(--spacing-3); }
+  .pdp__facts .fact + .fact { border-block-start: 1px solid var(--color-line); }
+  .pdp__section { margin-block-start: var(--spacing-7); }
+  .pdp__h2 { font-family: var(--font-head); font-size: 20px; font-weight: 600; line-height: 1.45;
+             margin: 0 0 var(--spacing-4); }
+  .spec th, .spec td { padding: 10px 0 8px; border-block-end: 1px solid var(--color-line);
+                       font-size: 15px; line-height: 1.6; vertical-align: top; }
+  .spec th { text-align: start; font-weight: 400; color: var(--color-muted); inline-size: 34%;
+             padding-inline-end: var(--spacing-4); }
+  .spec td { color: var(--color-ink); }
+  .faq dt { font-weight: 500; color: var(--color-ink); margin-block-start: var(--spacing-4); }
+  .faq dd { margin: var(--spacing-1) 0 0; color: var(--color-secondary); font-size: 15px; line-height: 1.8; }
+  .faq dt:first-child { margin-block-start: 0; }
+  /* The ledger as a <dl>: a <div> in a <dl> may hold only <dt> and <dd>, so the
+     dotted leader is the row's own ::after, placed between them by `order`. */
+  .answers dd { margin: 0; order: 2; }
+  .answers .fact::after { content: ""; order: 1; border-block-end: 1px dotted var(--color-line-strong);
+                          transform: translateY(-0.28em); }
+  .essentials { margin: 0; padding: var(--spacing-4) var(--spacing-5) var(--spacing-5); }
+  .rich + .rich, .essentials + .rich { margin-block-start: var(--spacing-5); }
+  .pdp__checked { margin: var(--spacing-6) 0 0; }
+  .pdp__img { display: block; max-inline-size: 100%; block-size: auto; margin-block-start: var(--spacing-4);
+              border: 1px solid var(--color-line); border-radius: var(--radius-sm); }
+  .pdp__buy { position: sticky; top: calc(var(--hdr-h) + var(--spacing-5)); }
+  @media (max-width: 900px) {
+    .pdp { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "buy" "main"; }
+    .pdp__buy { position: static; }
+  }
+
+  /* The buy box: plan selector, quantity, one primary button. Structure by
+     hairline; the selected plan is the accent's one appearance in the box. */
+  .buybox { padding: var(--spacing-5) var(--spacing-5) var(--spacing-5); }
+  .buybox__label { font-size: 13px; font-weight: 500; color: var(--color-secondary); }
+  .plans { border: 0; padding: 0; margin: 0 0 var(--spacing-5); }
+  .plans legend { padding: 0; margin-block-end: var(--spacing-2); }
+  /* Wraps, because the row can carry a title, a struck original, a figure,
+     a currency word and a deadline, and at 390px that is wider than the
+     screen. Before this the row pushed the whole page sideways. */
+  .plan { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2) var(--spacing-3);
+          cursor: pointer;
+          padding: 11px 12px 9px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+          transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+  .plan + .plan { margin-block-start: var(--spacing-2); }
+  .plan:hover { border-color: var(--color-muted); }
+  .plan:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-tint); }
+  .plan:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--color-accent-tint); }
+  .plan input { accent-color: var(--color-accent); margin: 0; }
+  /* Grows, never shrinks: from flex-basis 0 it was squeezed to «۱» over «ماهه»
+     whenever a badge fitted beside it. The badge wraps instead. */
+  .plan__title { flex: 1 0 auto; font-size: 15px; color: var(--color-ink); }
+  .plan .price__num { font-size: 17px; }
+  .plan--off { cursor: not-allowed; color: var(--color-muted); background: var(--color-fill-subtle);
+               border-color: var(--color-line); }
+  .plan--off .plan__title { color: var(--color-muted); }
+  .plan__off { font-size: 13px; color: var(--color-muted); }
+  .buybox__row { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--spacing-3); margin-block-end: var(--spacing-4); }
+  .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--color-line-strong);
+             border-radius: var(--radius-sm); overflow: hidden; }
+  .stepper__btn { inline-size: 36px; background: var(--color-surface); border: 0; color: var(--color-secondary);
+                  font-size: 18px; cursor: pointer; }
+  .stepper__btn:hover { background: var(--color-fill-subtle); color: var(--color-ink); }
+  .stepper__btn[disabled] { color: var(--color-line-strong); cursor: not-allowed; }
+  .stepper__input { inline-size: 48px; text-align: center; border: 0;
+                    border-inline: 1px solid var(--color-line-strong); font-size: 15px;
+                    font-variant-numeric: tabular-nums; padding: 8px 0 6px; }
+  .stepper__input[disabled] { color: var(--color-muted); background: var(--color-fill-subtle); }
+  .stepper__input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .stepper__btn:focus-visible, .stepper__input:focus-visible { outline-offset: -2px; }
+  .buybox__checked { margin: 0 0 var(--spacing-3); }
+  .buybox__cta { inline-size: 100%; }
+  .buybox__hint { margin: var(--spacing-3) 0 0; }
+  .buybox__note { margin: var(--spacing-4) 0 0; text-align: center; }
+  .buybox__help { margin: var(--spacing-4) auto 0; text-align: center; }
+
+  /* --- Search page and steps ------------------------------------------------- */
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--spacing-4);
+           grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .steps__item { display: flex; flex-direction: column; gap: var(--spacing-2);
+                 padding: var(--spacing-5) var(--spacing-5) var(--spacing-6); }
+  .steps__n { font-family: var(--font-head); font-size: 24px; font-weight: 600; color: var(--color-muted);
+              line-height: 1; }
+  .steps__t { font-family: var(--font-head); font-size: 17px; font-weight: 600; color: var(--color-ink); }
+  .steps__d { font-size: 14px; line-height: 1.8; color: var(--color-secondary); }
+  .empty .btn { margin-block-start: var(--spacing-2); }
+
+  /* --- Questions and answers -------------------------------------------
+     <details>, so it opens with JavaScript off and announces its own state.
+     The marker is ours because the browser's triangle is directional and
+     mirrors wrongly in RTL on some engines; this one is a plus that becomes
+     a minus, which has no handedness at all. */
+  .qa { border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow: hidden; }
+  .qa__item + .qa__item { border-block-start: 1px solid var(--color-line); }
+  .qa__q { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--spacing-4); cursor: pointer; list-style: none;
+           font-size: 17px; font-weight: 500; line-height: 1.6; color: var(--color-ink);
+           padding: var(--spacing-4) var(--spacing-5);
+           transition: background-color var(--dur) var(--ease); }
+  .qa__q::-webkit-details-marker { display: none; }
+  .qa__q:hover { background: var(--color-fill-subtle); }
+  .qa__q:focus-visible { outline-offset: -2px; }
+  /* A plus whose upright stroke retracts into a minus. Rotating the plus 45°
+     makes an ✕, which means dismiss, not collapse — two different promises. */
+  .qa__q::after {
+    content: ""; inline-size: 13px; block-size: 13px; flex: none; color: var(--color-muted);
+    background:
+      linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
+    transition: background-size var(--dur-lg) var(--ease-out);
+  }
+  .qa__item[open] .qa__q::after {
+    background-size: 100% 1.5px, 1.5px 0;
+  }
+  .qa__item[open] .qa__q { color: var(--color-ink); }
+  .qa__a { padding: 0 var(--spacing-5) var(--spacing-5); }
+  .qa__a .prose { margin: 0; max-inline-size: 46rem; }
+
+  /* --- Badges: tint + border + dark text, never a saturated fill -------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: var(--spacing-1);
+    font-size: 13px; font-weight: 500; line-height: 1.4;
+    padding: 3px 10px; border-radius: var(--radius-sm); border: 1px solid;
+    font-variant-numeric: tabular-nums;
+  }
+  .badge--neutral { background: var(--color-fill-subtle); border-color: var(--color-line-strong); color: var(--color-secondary); }
+  /* A fact the operator marked important. Ink rather than tinted: it is not
+     a status, it is a property of the thing being sold, and the colour
+     budget belongs to the brand marks. */
+  .badge--key { background: var(--color-surface); border-color: var(--color-ink); color: var(--color-ink); }
+  .badge--accent  { background: var(--color-accent-tint); border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-ground)); color: var(--color-accent); }
+  .badge--ok      { background: color-mix(in oklab, var(--color-ok) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-ok) 28%, var(--color-ground)); color: var(--color-ok-text); }
+  .badge--danger  { background: color-mix(in oklab, var(--color-danger) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-danger) 28%, var(--color-ground)); color: var(--color-danger-text); }
+  /* Amber lives here and nowhere else on the site. */
+  .badge--time    { background: color-mix(in oklab, var(--color-time) 12%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-time) 34%, var(--color-ground)); color: var(--color-time-text); }
+  /* A discount whose clock reached zero reads as the neutral badge. After
+     `.badge--time`, or amber wins; secondary rather than muted text, which is
+     4.34:1 on this fill. */
+  .deadline--done { background: var(--color-fill-subtle); border-color: var(--color-line-strong);
+                    color: var(--color-secondary); }
+
+  /* --- Price: the most carefully set type on the site ------------------- */
+  .price { white-space: nowrap; direction: rtl; display: inline-flex; align-items: baseline; }
+  .price__num { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1.2;
+                color: var(--color-ink); font-variant-numeric: tabular-nums; }
+  /* The currency word is never the numeral's weight — that is the amateur tell. */
+  .price__cur { font-family: var(--font-body); font-size: 0.72em; font-weight: 400; line-height: 1;
+                color: var(--color-muted); margin-inline-start: 0.28em; }
+  .price--lg .price__num { font-size: 32px; }
+  .price--xl .price__num { font-size: 40px; }
+  /* Secondary, not muted: on the selected plan's tint muted is 4.29:1. */
+  .price__was { font-size: 0.78em; color: var(--color-secondary); text-decoration: line-through;
+                text-decoration-thickness: 1px; margin-inline-end: var(--spacing-3);
+                font-variant-numeric: tabular-nums; }
+
+  /* --- Account dashboard ----------------------------------------------------
+     Navigation on the inline-start — the right, in this page's direction, where
+     every Persian dashboard keeps it. The current section is marked by a keyline
+     rather than a filled pill: one accent, spent on the action, not on the menu. */
+  .acct { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: var(--spacing-7);
+          align-items: start; }
+  .acct__nav { display: grid; gap: 2px; position: sticky;
+               inset-block-start: calc(var(--hdr-h) + var(--spacing-4)); }
+  /* Who is signed in, at the top of their own menu — an account page that
+     never names the account is the one place a shared-device customer most
+     needs it named. */
+  .acct__who { display: flex; align-items: center; gap: var(--spacing-3);
+               min-inline-size: 0;
+               padding-block-end: var(--spacing-4); margin-block-end: var(--spacing-3);
+               border-block-end: 1px solid var(--color-line); }
+  .acct__avatar { inline-size: 36px; block-size: 36px; flex: none; display: grid; place-items: center;
+                  border-radius: var(--radius-lg); background: var(--color-accent-tint);
+                  color: var(--color-accent); font-family: var(--font-head); font-size: 16px;
+                  font-weight: 600; line-height: 1; }
+  /* An address breaks in the middle of the domain if you let it wrap, which
+     looks like a rendering fault rather than a long address. One line, LTR,
+     and the end goes to an ellipsis with the whole value in the title. */
+  .acct__email { font-size: 13px; line-height: 1.5; color: var(--color-secondary);
+                 min-inline-size: 0; direction: ltr; text-align: start;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acct__h2 { font-family: var(--font-head); font-size: 18px; font-weight: 600; line-height: 1.45;
+              margin: var(--spacing-7) 0 var(--spacing-3); }
+  /* The single next step, if there is one. A bordered row rather than a card:
+     it is an instruction, not a record. */
+  .acct__next { display: flex; align-items: center; justify-content: space-between;
+                gap: var(--spacing-4); flex-wrap: wrap;
+                border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+                background: var(--color-fill-subtle);
+                padding: var(--spacing-4) var(--spacing-5); }
+  .acct__next-t { font-family: var(--font-head); font-size: 16px; font-weight: 600;
+                  line-height: 1.5; margin: 0 0 var(--spacing-1); }
+  .acct__next .btn { flex: none; }
+  /* Muted grey on this fill is 4.34:1, under the 4.5 small text needs. */
+  .acct__next .small { color: var(--color-secondary); }
+  .acct__nav a { font-size: 15px; line-height: 1.5; color: var(--color-secondary);
+                 text-decoration: none; padding: 10px var(--spacing-3) 8px;
+                 border-inline-start: 2px solid transparent;
+                 transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+                             border-color var(--dur) var(--ease); }
+  .acct__nav a:hover { color: var(--color-ink); background: var(--color-fill-subtle); }
+  .acct__nav a[aria-current] { color: var(--color-ink); border-inline-start-color: var(--color-accent);
+                               background: var(--color-fill-subtle); }
+  .acct__out { margin-block-start: var(--spacing-4); padding-block-start: var(--spacing-4);
+               border-block-start: 1px solid var(--color-line); }
+  .acct__title { font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.4;
+                 margin: 0 0 var(--spacing-5); padding-block-end: var(--spacing-3);
+                 border-block-end: 1px solid var(--color-line); }
+  .acct__card { padding: var(--spacing-4) var(--spacing-5); margin-block-end: var(--spacing-5); }
+  .acct__hint { color: var(--color-muted); margin-block: 0 var(--spacing-5); }
+  .acct__form { max-inline-size: 26rem; display: grid; gap: var(--spacing-4); }
+  /* A submit that spans its form reads as a phone layout stranded on a
+     desktop; the button is as wide as its label and starts where the labels do. */
+  .acct__form > .btn { justify-self: start; }
+  .acct__form--spaced { margin-block-start: var(--spacing-6); }
+  @media (max-width: 860px) {
+    .acct { grid-template-columns: 1fr; gap: var(--spacing-5); }
+    /* Wrapping, not scrolling: a menu item parked off the edge of a phone is a
+       menu item nobody finds. */
+    .acct__who { inline-size: 100%; padding-block-end: var(--spacing-3);
+                 margin-block-end: 0; border: 0; }
+    .acct__nav { position: static; display: flex; flex-wrap: wrap; align-items: center;
+                 gap: var(--spacing-2) var(--spacing-3); padding-block-end: var(--spacing-2);
+                 border-block-end: 1px solid var(--color-line); }
+    .acct__nav a { border-inline-start: 0; border-block-end: 2px solid transparent;
+                   white-space: nowrap; }
+    .acct__nav a[aria-current] { border-block-end-color: var(--color-accent); background: none; }
+    .acct__out { margin: 0; padding: 0; border: 0; }
+    .acct__out .btn { white-space: nowrap; }
+  }
+
+  /* --- The signature: the ledger line -----------------------------------
+     Every fact-value pair is a ledger row. The dotted leader is the grammar
+     of an invoice — a document that exists because someone keeps records.
+     Used once per page region, never twice.
+     -------------------------------------------------------------------- */
+  .fact { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline;
+          gap: var(--spacing-2); padding-block: 10px; }
+  .fact__k { font-size: 15px; color: var(--color-muted); }
+  /* Lifted off the Persian baseline so it clears the ج descender. */
+  .fact__lead { border-block-end: 1px dotted var(--color-line-strong); transform: translateY(-0.28em); }
+  .fact__v { font-size: 15px; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+  .fact + .fact { border-block-start: 1px solid var(--color-line); }
+
+  /* --- Tables: hairlines only, no zebra, no filled header --------------- */
+  .table { inline-size: 100%; border-collapse: separate; border-spacing: 0; }
+  .table th, .table td { padding: 12px var(--spacing-4); text-align: start;
+                         border-block-end: 1px solid var(--color-line); }
+  .table th { font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--color-muted); }
+  .table tbody tr:last-child td { border-block-end: 0; }
+  .table tbody tr:hover td { background: var(--color-fill-subtle); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* --- Empty state: inside the container, start-aligned, names the step -- */
+  .empty { min-block-size: 180px; padding: var(--spacing-5); display: flex; flex-direction: column;
+           justify-content: center; align-items: flex-start; gap: var(--spacing-3); }
+
+  /* --- Error pages ------------------------------------------------------
+     Start-aligned, like every other page: a centred Persian column is the
+     clearest sign a layout was built for Latin and translated afterwards.
+     The numeral is the one loud thing, and it is muted, not red-on-white. */
+  .notfound { padding-block: var(--spacing-8) var(--spacing-9); max-inline-size: 36rem; }
+  /* Muted, and still 3:1 or better, which text this large needs: the hairline
+     grey it used was 1.48:1. */
+  .notfound__code { font-family: var(--font-head); font-size: 64px; font-weight: 800;
+                    line-height: 1; color: var(--color-muted);
+                    font-variant-numeric: tabular-nums; margin: 0 0 var(--spacing-5); }
+  .notfound__code--bad { color: color-mix(in oklab, var(--color-danger) 80%, var(--color-ground)); }
+  .notfound__act { display: flex; flex-wrap: wrap; gap: var(--spacing-3);
+                   margin-block-start: var(--spacing-6); }
+
+  /* --- Footer ---------------------------------------------------------------
+     The second ink band, and the one an Iranian buyer actually scans before
+     paying a stranger. It gets its own ramp: the body's #525252 on #131313 is
+     about 2:1 and fails outright, so links and muted text are white at a set
+     opacity instead. Above the columns, the promise row — the shape digikala
+     and basalam both use to answer "what happens if this goes wrong".
+     -------------------------------------------------------------------------- */
+  .ftr { margin-block-start: var(--spacing-9); padding-block: var(--spacing-7) var(--spacing-5);
+         background: var(--color-deep); color: var(--color-on-deep-muted); }
+  .ftr .hdr__word, .ftr .label { color: var(--color-on-deep); }
+  .ftr .micro, .ftr .small { color: var(--color-on-deep-muted); }
+  .ftr .fact { padding-block: 8px; }
+  .ftr .fact + .fact { border-block-start-color: var(--color-on-deep-line); }
+  .ftr .fact__k { color: var(--color-on-deep-muted); }
+  .ftr .fact__v { color: var(--color-on-deep); }
+  .ftr .fact__lead { border-block-end-color: var(--color-on-deep-line); }
+
+  .ftr__promise { display: flex; flex-wrap: wrap; gap: var(--spacing-3) var(--spacing-7);
+                  padding-block-end: var(--spacing-7);
+                  margin-block-end: var(--spacing-7);
+                  border-block-end: 1px solid var(--color-on-deep-line); }
+  .ftr__promise div { display: flex; align-items: flex-start; gap: var(--spacing-3);
+                      font-size: 14px; line-height: 1.7; color: var(--color-on-deep); }
+  .ftr__promise svg { inline-size: 22px; block-size: 22px; flex: none;
+                      color: var(--color-on-deep-muted); margin-block-start: 2px; }
+
+  .ftr__grid { display: grid; gap: var(--spacing-7) var(--spacing-6); align-items: start;
+               grid-template-columns: minmax(280px, 1.25fr) minmax(180px, 0.7fr) minmax(260px, 1fr); }
+  @media (max-width: 1020px) { .ftr__grid { grid-template-columns: 1.2fr 0.8fr; } }
+  @media (max-width: 680px)  { .ftr__grid { grid-template-columns: 1fr; gap: var(--spacing-6); } }
+  .ftr__links { display: flex; flex-direction: column; gap: var(--spacing-3); font-size: 14px; }
+  .ftr__links a { color: var(--color-on-deep-muted); text-decoration: none;
+                  transition: color var(--dur) var(--ease); }
+  .ftr__links a:hover { color: var(--color-on-deep); text-decoration: underline; }
+  .ftr__bottom { margin-block-start: var(--spacing-6); padding-block-start: var(--spacing-4);
+                 border-block-start: 1px solid var(--color-on-deep-line);
+                 font-size: 13px; color: var(--color-on-deep-muted); }
+
+  .sr-only, .skip:not(:focus) { position: absolute; inline-size: 1px; block-size: 1px; padding: 0;
+             margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  /* The first stop for a keyboard: hidden until it has focus, then over the
+     strip where it can be read. */
+  .skip { position: absolute; z-index: 40; inset-block-start: var(--spacing-2);
+          inset-inline-start: var(--spacing-2); padding: var(--spacing-2) var(--spacing-4);
+          background: var(--color-surface); color: var(--color-ink); font-size: 15px;
+          border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+          text-decoration: none; }
+  /* The skip link's target is a container, not a control; it takes focus so
+     the next Tab starts inside it, and a ring round the whole page says nothing. */
+  #main:focus { outline: none; }
 }

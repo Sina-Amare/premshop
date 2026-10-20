@@ -3,19 +3,23 @@
 {% block title %}این صفحه را پیدا نکردیم{% endblock %}
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
+{% comment %}
+Written in the system's own classes. The previous version reached for Tailwind
+utilities and asked for `--font-display`, a token that is defined nowhere — so
+the numeral silently rendered in the body face instead of the display one, and
+nothing failed. It also centred Persian body text, which is the first thing on
+the list of marks of a translated layout.
+{% endcomment %}
 {% block content %}
-<div class="wrap">
-<div class="errorpage">
-  <div>
-    <p class="errorpage__code">خطای&nbsp;۴۰۴</p>
-    <h1 class="errorpage__title">این صفحه را پیدا نکردیم</h1>
-    <p class="errorpage__text">شاید نشانی اشتباه باشد یا این محصول را دیگر نفروشیم.</p>
-    <div class="errorpage__actions">
-      <a class="btn btn--primary" href="{% url 'home' %}#rates">رفتن به نرخ‌نامه</a>
-      <a href="#q">جستجوی سرویس</a>
-    </div>
+<div class="wrap page">
+<div class="notfound">
+  <p class="notfound__code">۴۰۴</p>
+  <h1 class="page-head__title">این صفحه را پیدا نکردیم</h1>
+  <p class="prose">شاید نشانی اشتباه باشد یا این محصول را دیگر نفروشیم.</p>
+  <div class="notfound__act">
+    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
+    <a class="btn btn--secondary" href="{% url 'faq' %}">پرسش‌های متداول</a>
   </div>
-  <div class="errorpage__art">{% include "svg/404.svg" %}</div>
 </div>
 </div>
 {% endblock %}

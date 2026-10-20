@@ -1,37 +1,52 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}پرسش‌ها{% endblock %}
+{% block title %}پرسش‌های متداول{% endblock %}
 {% block meta_description %}اکانت اشتراکی یا اختصاصی، رمز اکانت، زمان تحویل و تمدید: پاسخ پرسش‌هایی که پیش از خرید اشتراک می‌پرسید.{% endblock %}
 
 {% block content %}
-<div class="wrap">
-<header class="pagehead">
-  <nav class="crumbs" aria-label="مسیر"><ol><li><a href="{% url 'home' %}">خانه</a></li><li aria-current="page">پرسش‌ها</li></ol></nav>
-  <h1 class="pagehead__title">پرسش‌ها</h1>
-  <p class="pagehead__lead">نوع اکانت، زمان تحویل، گارانتی و تمدید.</p>
+<div class="wrap page">
+<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>پرسش‌های متداول</span></nav>
+
+<header class="page-head">
+  <h1 class="page-head__title">پرسش‌های متداول</h1>
+  <p class="prose page-head__intro">پاسخ پرسشتان اینجا نیست؟ در تلگرام بپرسید: <bdi class="latin">{{ support.telegram }}</bdi>، {{ support.hours }}.</p>
 </header>
 
 {% comment %}
-The questions Iranian buyers of foreign subscriptions actually ask, in their own
-words, taken from the FAQ and rules pages of shops already in this market.
-Answers are capped at two sentences and 25 words, and the test for whether a
-second sentence survives is in design-language.md §Voice.
+The questions Iranian buyers of foreign subscriptions actually ask, taken
+from the FAQ and rules pages of shops already in this market. Answers are
+capped at two sentences and 25 words, and the test for whether a second
+sentence survives is in design-language.md §Voice — both measured over 126
+real answers, both easy to drift back out of.
 
-Open answers under plain headings: nothing to open, so nothing needs JavaScript.
-What the shop has not yet decided to commit to prints as the open decision it
-is, never as a promise; a question whose words would make a claim (a refund)
-stays off the page until the owner rules on it.
+Two are off the page until the shop has decided what it commits to: what
+happens when a subscription stops mid-period, which promised a replacement
+and a refund nobody had defined, and «از کجا مطمئن باشم پولم نمی‌پره؟»,
+which promised a bank gateway S5 has not built.
+
+details/summary, so it opens with JavaScript off.
 {% endcomment %}
-<div class="qa qa--ledger">
-  <div class="qa__head" aria-hidden="true"><span>ردیف</span><span>پرسش</span><span>پاسخ</span></div>
-  <div class="qa__item" id="q-account"><h2 class="qa__q">اکانت اشتراکیه یا مال خودمه؟</h2><p class="qa__a">به محصول بستگی دارد. نوع هر محصول در مشخصاتش آمده است: روی اکانت خودتان، اکانت آماده‌ی اختصاصی یا اکانت آماده‌ی اشتراکی.</p></div>
-  <div class="qa__item" id="q-password"><h2 class="qa__q">رمز اکانتم رو باید بدم؟</h2><p class="qa__a">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانتتان را می‌پرسیم.</p></div>
-  <div class="qa__item" id="q-iran"><h2 class="qa__q">از ایران کار می‌کنه؟</h2><p class="qa__a">موضع رسمی هر ارائه‌دهنده درباره‌ی ایران در بخش «پیش از خرید» صفحه‌ی همان محصول آمده است.</p></div>
-  <div class="qa__item" id="q-delivery"><h2 class="qa__q">تحویل چقدر طول می‌کشه؟</h2><p class="qa__a">{% include "catalog/_delivery_answer.html" %}</p></div>
-  <div class="qa__item" id="q-warranty"><h2 class="qa__q">اگه وسط دوره‌ی اشتراک قطع بشه، چی می‌شه؟</h2><p class="qa__a">در مدت گارانتی، <span class="pending">[تصمیم مالک، تصمیم ۴: اکانت جایگزین یا فعال‌سازی دوباره، بسته به نوع تحویل]</span>. مدت گارانتی هر سرویس روی صفحه‌ی خودش آمده است.</p></div>
-  <div class="qa__item" id="q-renew"><h2 class="qa__q">تمدید چطوریه؟</h2><p class="qa__a">سرویسی که تمدید دارد، روی همان اکانت و با قیمت روز تمدید می‌شود. اینکه هر سرویس تمدید دارد یا نه، روی صفحه‌ی خودش آمده است.</p></div>
+<div class="qa">
+  <details class="qa__item">
+    <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
+    <div class="qa__a"><p class="prose">به محصول بستگی دارد. نوع هر محصول در مشخصاتش آمده است: روی اکانت خودتان، اکانت آماده‌ی اختصاصی یا اکانت آماده‌ی اشتراکی.</p></div>
+  </details>
+  <details class="qa__item">
+    <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
+    <div class="qa__a"><p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانتتان را می‌پرسیم.</p></div>
+  </details>
+  <details class="qa__item">
+    <summary class="qa__q">تحویل چقدر طول می‌کشه؟</summary>
+    <div class="qa__a"><p class="prose">{% include "catalog/_delivery_answer.html" %}</p></div>
+  </details>
+  <details class="qa__item">
+    <summary class="qa__q">با آی‌پی ایران کار می‌کنه؟</summary>
+    <div class="qa__a"><p class="prose">بعضی‌هاش نه. <bdi>Netflix</bdi> و <bdi>Spotify</bdi> و <bdi>ChatGPT</bdi> فیلترشکن می‌خوان.</p></div>
+  </details>
+  <details class="qa__item">
+    <summary class="qa__q">تمدید چطوریه؟</summary>
+    <div class="qa__a"><p class="prose">اگر محصولی تمدید داشته باشد، در مشخصاتش آمده است. همان اکانت را با قیمت روز تمدید می‌کنیم.</p></div>
+  </details>
 </div>
-<p class="askline">جوابتان اینجا نیست؟ در تلگرام بپرسید: <a href="{{ support.telegram_url }}" rel="noopener"><bdi lang="en">{{ support.telegram }}</bdi></a>، {{ support.hours }}.</p>
-<p class="afterline">همه‌ی سرویس‌ها و قیمت‌ها در <a href="{% url 'home' %}#rates">نرخ‌نامه</a> است.</p>
 </div>
 {% endblock %}

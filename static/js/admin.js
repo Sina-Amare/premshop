@@ -39,36 +39,14 @@
     return `${part("day")} ${part("month")} ${part("year")}`;
   };
 
-  // A split date-time's day, and its time once both boxes hold one, as
-  // apps.core.formatting.format_deadline writes the time: «۲۶ مهر ۱۴۰۵، ساعت ۲۳:۳۹».
-  const timeBox = (dateBox) => dateBox.closest(".datetime")?.querySelector("input.vTimeField");
-  const jalaliDateTime = (dateBox) => {
-    const day = jalali(dateBox.value);
-    const time = toLatin(timeBox(dateBox)?.value || "")
-      .trim()
-      .match(/^([01]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/);
-    if (!day || !time) return day;
-    return `${day}، ساعت\u00a0${toPersian(time[1].padStart(2, "0"))}:${toPersian(time[2])}`;
-  };
-
   // Every money column is a `*_price` (ADR-0005). A price typed without
   // separators is one missing zero away from selling at a tenth, so
-  // the amount is shown under the field as the shop will print it; the
-  // cost price never reaches the shop, so it gets the amount alone. The
+  // the amount is shown under the field as the shop will print it. The
   // discount window is typed in the Gregorian calendar the date picker
   // speaks, by an operator who plans in Jalali, so its date gets the same.
   const PREVIEWS = [
-    {
-      selector: 'input[name$="sale_price"], input[name$="promo_price"]',
-      show: (input) => (toman(input.value) ? `در فروشگاه: ${toman(input.value)}` : ""),
-      className: "money-preview",
-    },
-    {
-      selector: 'input[name$="cost_price"]',
-      show: (input) => toman(input.value),
-      className: "money-preview",
-    },
-    { selector: "input.vDateField", show: jalaliDateTime, className: "date-preview" },
+    { selector: 'input[name$="_price"]', show: toman, className: "money-preview" },
+    { selector: "input.vDateField", show: jalali, className: "date-preview" },
   ];
 
   const showUnder = (input, { show, className }) => {
@@ -79,18 +57,14 @@
       preview.className = className;
       input.after(preview);
     }
-    preview.textContent = show(input);
+    preview.textContent = show(input.value);
     preview.hidden = preview.textContent === "";
   };
 
   const refresh = (event) => {
     if (!(event.target instanceof HTMLInputElement)) return;
-    // A time typed changes the line under its date.
-    const target = event.target.matches("input.vTimeField")
-      ? event.target.closest(".datetime")?.querySelector("input.vDateField") || event.target
-      : event.target;
     for (const kind of PREVIEWS) {
-      if (target.matches(kind.selector)) showUnder(target, kind);
+      if (event.target.matches(kind.selector)) showUnder(event.target, kind);
     }
   };
 

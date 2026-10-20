@@ -157,7 +157,6 @@ def _send_signin_alert(user: User) -> None:
                 "signed_in_at": timezone.now(),
                 # SITE_URL and not the Host header, which the client chooses.
                 "password_url": settings.SITE_URL + reverse("account-password"),
-                "account_email": user.email,
             },
         )
     except Exception as error:  # noqa: BLE001 — any mail failure; the login already happened

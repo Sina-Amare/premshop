@@ -47,32 +47,33 @@ def shop():
     return product
 
 
-# --- The rate sheet ----------------------------------------------------------
+# --- The shelf ---------------------------------------------------------------
 
 
-def test_the_rate_sheet_lists_every_service_and_each_name_is_a_link(client, shop):
-    """The home's rate sheet is the catalogue: it answers «do you have it» and
-    «what does it cost» in one place, so every active product is on it and
-    every name goes to that product."""
+def test_the_hero_shows_every_service_and_each_mark_is_a_link(client, shop):
+    """The constellation in the hero is the catalogue, not decoration: it
+    answers «do you have it» in a glance, so every active product is in it and
+    every tile goes to that product."""
     body = client.get(reverse("home")).content.decode()
 
-    assert 'id="rates"' in body, "the category row and the footer link to /#rates"
-    assert body.count('class="rs__link"') == Product.objects.public().count()
-    assert f'class="rs__link" href="{reverse("product", args=[shop.slug])}"' in body
+    assert body.count('class="nebula__item"') == Product.objects.public().count()
+    assert f'class="nebula__item" href="{reverse("product", args=[shop.slug])}"' in body
 
 
-def test_every_link_on_the_rate_sheet_has_a_name(client, shop):
-    """A link whose only content is an image has no name. A name row's link
-    carries the product's name as text beside its mark; a plan row shows only
-    «۱ ماهه», so its link is named for the product, the plan and the price."""
+def test_every_mark_in_the_hero_has_an_accessible_name(client, shop):
+    """A link whose only content is an image has no name without one. These
+    tiles are the first ten links on the page; empty alt text would make the
+    whole hero unreadable to a screen reader and invisible to search."""
     body = client.get(reverse("home")).content.decode()
 
-    name_link = re.search(r'<a class="rs__link"[^>]*>(.*?)</a>', body)
-    assert name_link and shop.name in name_link[1], "the service is unnamed to a screen reader"
-    assert f'aria-label="{shop.name}، ۱ ماهه، ۱,۳۹۰,۰۰۰ تومان"' in body
+    hero = body[body.index("nebula") : body.index("promises")]
+
+    assert f'title="{shop.name}"' in hero, "no hover name on the tile"
+    # With a mark it is the image's alt; without one it is visually hidden text.
+    assert shop.name in hero, "the service is unnamed to a screen reader"
 
 
-def test_a_draft_product_is_not_on_the_rate_sheet(client, shop):
+def test_a_draft_product_is_not_in_the_hero(client, shop):
     Product.objects.create(
         category=shop.category,
         name="Secret",
@@ -85,7 +86,7 @@ def test_a_draft_product_is_not_on_the_rate_sheet(client, shop):
     body = client.get(reverse("home")).content.decode()
 
     assert "Secret" not in body
-    assert body.count('class="rs__link"') == 1
+    assert body.count('class="nebula__item"') == 1
 
 
 def test_the_shelves_row_lists_only_departments_that_have_something_in_them(client, shop):
@@ -121,7 +122,7 @@ def test_the_footer_links_somewhere_that_exists(client, shop):
     """Every footer link used to point at `/`. A buyer who clicks «شرایط
     بازگشت وجه» and lands back on the home page has been told something."""
     body = client.get(reverse("home")).content.decode()
-    footer = body[body.index('aria-labelledby="f-guide"') :]
+    footer = body[body.index('class="ftr__links"') :]
     hrefs = re.findall(r'href="([^"]+)"', footer[: footer.index("</nav>")])
 
     assert hrefs
@@ -132,9 +133,7 @@ def test_the_footer_links_somewhere_that_exists(client, shop):
 def test_the_faq_answers_the_questions_a_buyer_asks_before_paying(client, shop):
     body = client.get(reverse("faq")).content.decode()
 
-    # Open answers under plain headings: nothing to open, so nothing needs JavaScript.
-    assert "<details" not in body
-    assert body.count('<p class="qa__a">') >= 5, "the answers are on the page"
+    assert "<details" in body, "it must open without JavaScript"
     # The questions buyers in this market actually ask, from the FAQ pages of
     # shops already selling these products. «باید حساب بسازم؟» and «پرداخت
     # چطور انجام می‌شود؟» were here and are not questions anyone has. This
@@ -157,8 +156,8 @@ BIDI_PAGES = ["home", "search", "faq"]
 # the card's isolation deleted — the shelf's copy of the same name satisfied
 # it. A guard that another element can satisfy is not guarding anything.
 ISOLATED = [
-    ("home", 'class="rs__name"><bdi lang="en">{name}</bdi>'),
-    ("product", 'class="phead__title"><bdi lang="en">{name}</bdi>'),
+    ("home", 'class="pcard__name"><bdi>{name}</bdi>'),
+    ("product", 'class="pdp__title"><bdi>{name}</bdi>'),
 ]
 
 
@@ -183,7 +182,7 @@ def test_a_mixed_name_is_isolated_too(client, shop):
 
     body = client.get(reverse("home")).content.decode()
 
-    assert 'class="rs__name"><bdi>اشتراک <bdi lang="en">Netflix</bdi></bdi>' in body
+    assert 'class="pcard__name"><bdi>اشتراک Netflix</bdi>' in body
 
 
 # --- Empty states and the length of an answer --------------------------------
@@ -196,7 +195,7 @@ def test_a_search_miss_shows_the_shelf_instead_of_advice(client, shop):
     body = client.get(reverse("search"), {"q": "zzzqqq"}).content.decode()
 
     assert shop.name in body, "the shelf is not on the page"
-    assert 'class="rs__product"' in body, "as the rate sheet"
+    assert 'class="pcard"' in body
 
 
 @pytest.mark.parametrize("scolding", ["املا", "اشتباه تایپ", "دوباره بنویس"])
@@ -223,7 +222,7 @@ def test_every_faq_answer_is_short(client, shop):
     61% are one sentence and 87% are two or fewer, median 25 words. A third
     sentence puts this shop in the worst-written 12% of its market."""
     body = client.get(reverse("faq")).content.decode()
-    answers = re.findall(r'<p class="qa__a">(.*?)</p>', body, re.S)
+    answers = re.findall(r'<div class="qa__a"><p class="prose">(.*?)</p>', body, re.S)
 
     assert len(answers) >= 5, "the FAQ lost its answers"
     for answer in answers:

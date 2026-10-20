@@ -2,8 +2,7 @@
 
 Everything on that page that matters is JavaScript: cells that advance, paste
 that fills all six, a sixth digit that submits, a wrong code that shakes and
-stays red until the next digit, a validity that ends, a resend cooldown. None of it
-exists in the test client.
+clears, a countdown, a resend cooldown. None of it exists in the test client.
 So this runs the real page in a real browser against the live server, and it
 takes screenshots on the way — those are the artefacts reviewed before the
 owner is asked to look at anything visual.
@@ -62,11 +61,11 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     SHOTS.mkdir(parents=True, exist_ok=True)
     request_code(page, live_server, user.email)
 
-    # Fresh: six cells, the plain field hidden, the validity printed, resend cooling down.
+    # Fresh: six cells, the plain field hidden, the clock running, resend cooling down.
     cells = page.locator(".otp__cell")
     assert cells.count() == 6
     assert not page.locator("input[name=code]").is_visible()
-    assert "معتبر تا ساعت" in page.locator("#code-clock").inner_text()
+    assert "مانده" in page.locator("#code-clock").inner_text()
     assert page.locator("#resend").is_disabled()
     assert cells.first.evaluate("el => document.activeElement === el"), "focus starts in cell 1"
     page.screenshot(path=str(SHOTS / "01-fresh.png"))
@@ -78,22 +77,14 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     page.screenshot(path=str(SHOTS / "02-typing.png"))
     page.keyboard.type("0")
 
-    # Wrong: the row stays on screen in red with an error line, focus goes back to
-    # the first cell, and the page does not change.
+    # Wrong: red, an error line, then cleared and refocused — no page change.
     page.wait_for_selector("#code-error:not([hidden])")
     page.screenshot(path=str(SHOTS / "03-wrong.png"))
     error = page.locator("#code-error").inner_text()
     assert error
-    assert page.locator(".otp__cell.is-error").count() == 6
-    assert cells.nth(5).input_value() == "0", "the slip stays visible"
-    page.wait_for_function("() => document.activeElement === document.querySelector('.otp__cell')")
+    page.wait_for_function("() => document.querySelector('.otp__cell').value === ''")
+    assert cells.first.evaluate("el => document.activeElement === el")
     assert "/login/code/verify/" in page.url
-
-    # The next digit starts the row over.
-    page.keyboard.type("1")
-    assert page.locator(".otp__cell.is-error").count() == 0
-    assert [cells.nth(i).input_value() for i in range(6)] == ["1", "", "", "", "", ""]
-    assert page.locator("#code-error").is_hidden()
 
     # Paste the real code, in Persian digits, exactly as the email shows it.
     persian = code_from(mail.outbox[0]).translate(ASCII_TO_PERSIAN)
@@ -109,9 +100,7 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     # thing: submit() disables the cells before the fetch, and for a while the
     # disabled rule repainted confirmed cells grey at equal specificity — so
     # the stagger ran correctly and invisibly, on the paste path, which is how
-    # a code is almost always entered. Read the colour, not the class, once
-    # its background transition has run.
-    page.wait_for_timeout(300)
+    # a code is almost always entered. Read the colour, not the class.
     red, green, blue = page.evaluate(
         r"""() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
                  .backgroundColor.match(/\d+/g).slice(0, 3).map(Number)"""
@@ -123,9 +112,7 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     assert user.email in page.content()
 
 
-def test_the_code_ends_at_a_printed_time_and_resend_brings_a_new_code(page, live_server, user):
-    """Nothing on the page counts down (WCAG 2.2.2): the validity is a clock time,
-    printed once. A status line speaks a minute before the end and at the end."""
+def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user):
     SHOTS.mkdir(parents=True, exist_ok=True)
     page.clock.install()
     request_code(page, live_server, user.email)
@@ -133,17 +120,18 @@ def test_the_code_ends_at_a_printed_time_and_resend_brings_a_new_code(page, live
     # it shows colours no real user sees (measured: values strictly between the
     # focused and disabled states). Settle them for this test's captures only.
     page.add_style_tag(content="* { transition: none !important; animation: none !important; }")
-    printed = page.locator("#code-clock").inner_text()
-    assert re.fullmatch("معتبر تا ساعت\u00a0[۰-۹]{2}:[۰-۹]{2}", printed), printed
+    assert re.search(r"[۰-۹]+:[۰-۹]{2} مانده", page.locator("#code-clock").inner_text())
+    # The clock changes every second, so it is not what a screen reader hears;
+    # the status line speaks at one minute left and at expiry, and not before.
+    assert page.get_attribute("#code-clock", "aria-hidden") == "true"
     assert page.get_attribute("#code-clock", "aria-live") is None
     status = page.locator("#code-status")
     assert status.text_content() == ""
 
-    # A minute in: the resend cooldown is over, the code is still live, and the
-    # printed time has not moved.
+    # A minute in: the resend cooldown is over, the code is still live.
     page.clock.fast_forward("01:01")
     page.wait_for_function("() => !document.querySelector('#resend').disabled")
-    assert page.locator("#code-clock").inner_text() == printed, "the validity ticked"
+    assert "مانده" in page.locator("#code-clock").inner_text()
     assert status.text_content() == "", "nine minutes left is nothing to announce"
     page.screenshot(path=str(SHOTS / "05-resend-ready.png"))
 
@@ -151,7 +139,6 @@ def test_the_code_ends_at_a_printed_time_and_resend_brings_a_new_code(page, live
     page.wait_for_function(
         "() => document.querySelector('#code-status').textContent.includes('یک دقیقه')"
     )
-    assert page.locator("#code-clock").inner_text() == printed
 
     # Ten minutes in: the code is dead on screen, the cells refuse input, and
     # focus lands on the one thing left to do instead of the page body.
@@ -164,18 +151,17 @@ def test_the_code_ends_at_a_printed_time_and_resend_brings_a_new_code(page, live
     assert "منقضی" in status.text_content()
     assert "badge--time" not in page.get_attribute(
         "#code-clock", "class"
-    ), "amber is time still left"
+    ), "amber is a running clock"
     page.screenshot(path=str(SHOTS / "06-expired.png"))
 
-    # Resend: a new mail, a new validity, cells alive again, and the new code works.
+    # Resend: a new mail, a new clock, cells alive again, and the new code works.
     sent_before = len(mail.outbox)
     page.click("#resend")
     page.wait_for_function("() => document.querySelectorAll('.otp__cell')[0].disabled === false")
     assert len(mail.outbox) == sent_before + 1
-    assert "معتبر تا ساعت" in page.locator("#code-clock").inner_text()
+    assert "مانده" in page.locator("#code-clock").inner_text()
     assert "badge--time" in page.get_attribute("#code-clock", "class")
     assert page.locator("#resend").is_disabled(), "the cooldown restarts after a resend"
-    assert "کد جدید را فرستادیم" in page.locator("#code-ok").inner_text()
     page.screenshot(path=str(SHOTS / "07-after-resend.png"))
 
     page.evaluate(PASTE_JS, code_from(mail.outbox[-1]))
@@ -273,25 +259,18 @@ def test_the_page_at_phone_width(browser, live_server, user):
 
 def test_the_code_cells_stay_inside_the_card_on_a_small_phone(browser, live_server, user):
     """At 320px the six cells ran into the card's padding on both sides and
-    ended 6px from its border. The sheet's padding narrows on a small phone, so
-    the edge is read from the page rather than assumed."""
+    ended 6px from its border."""
     context = browser.new_context(viewport={"width": 320, "height": 700}, device_scale_factor=1)
     page = context.new_page()
     try:
         request_code(page, live_server, user.email)
-        sheet = page.locator(".sheet", has=page.locator(".otp"))
-        card = sheet.bounding_box()
-        inset = sheet.evaluate(
-            "e => parseFloat(getComputedStyle(e).paddingLeft)"
-            " + parseFloat(getComputedStyle(e).borderLeftWidth)"
-        )
-        assert inset >= 12, inset
+        card = page.locator(".card", has=page.locator(".otp")).bounding_box()
         cells = page.locator(".otp__cell")
         assert cells.count() == 6
         for i in range(6):
             cell = cells.nth(i).bounding_box()
-            assert cell["x"] - card["x"] >= inset, (i, cell, card)
-            assert card["x"] + card["width"] - (cell["x"] + cell["width"]) >= inset, (i, cell, card)
+            assert cell["x"] - card["x"] >= 16, (i, cell, card)
+            assert card["x"] + card["width"] - (cell["x"] + cell["width"]) >= 16, (i, cell, card)
     finally:
         context.close()
 
@@ -324,13 +303,12 @@ def shelves(db):
     return product
 
 
-def test_the_header_pins_itself_while_the_support_strip_scrolls_away(browser, live_server, shelves):
+def test_the_header_pins_itself_while_the_promise_strip_scrolls_away(browser, live_server, shelves):
     """`position: sticky` fails silently — one `overflow: hidden` on an
     ancestor and it simply stops sticking, with no error anywhere. It also
     only travels inside its own parent, which is why the sticky box here is
     <header> itself rather than a wrapper inside it: wrapped, it would pin
-    for the height of the header and then leave with it. The category row
-    is inside the header and pins with it.
+    for the height of the header and then leave with it.
 
     A shop whose search box disappears the moment you scroll the catalogue
     is a shop that is harder to buy from, so this is worth a browser test.
@@ -340,18 +318,21 @@ def test_the_header_pins_itself_while_the_support_strip_scrolls_away(browser, li
     try:
         page.goto(f"{live_server.url}/")
         assert (
-            page.evaluate("() => document.querySelector('.strip').getBoundingClientRect().top") == 0
+            page.evaluate(
+                "() => document.querySelector('.hdr__promise').getBoundingClientRect().top"
+            )
+            == 0
         )
 
         page.evaluate("() => window.scrollTo(0, 900)")
         geometry = page.evaluate("""() => ({
-                bar: Math.round(document.querySelector('.site-header').getBoundingClientRect().top),
-                cats: Math.round(document.querySelector('.catnav').getBoundingClientRect().top),
+                bar: Math.round(document.querySelector('.hdr__main').getBoundingClientRect().top),
+                cats: Math.round(document.querySelector('.cats').getBoundingClientRect().top),
                 overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             })""")
 
         assert geometry["bar"] == 0, f"the header did not pin: {geometry}"
-        assert geometry["cats"] > 0, f"the category row should pin with the header: {geometry}"
+        assert geometry["cats"] < 0, "the shelves row should scroll away, not pin"
         assert (
             geometry["overflow"] <= 0
         ), f"the full-bleed bands overflow by {geometry['overflow']}px"

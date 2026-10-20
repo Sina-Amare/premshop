@@ -22,10 +22,6 @@
  */
 
 /* --- The faces, the same files the storefront serves ---------------------- */
-/* `swap` where the shop has `optional`: the shop preloads its faces, and
-   Unfold's head takes no preload without a copy of its whole skeleton. Under
-   `optional` with no preload a cold visit keeps the fallback for the page
-   view; in a working tool a late face costs less. */
 @font-face {
   font-family: "Vazirmatn";
   src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
@@ -41,17 +37,15 @@
   src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
   font-weight: 700; font-style: normal; font-display: swap;
 }
-/* Estedad draws larger than Vazirmatn at the same size; 82% sets them on one
-   scale, as in the shop. */
 @font-face {
   font-family: "Estedad";
   src: url("/static/fonts/Estedad-SemiBold.woff2") format("woff2");
-  font-weight: 600; font-style: normal; font-display: swap; size-adjust: 82%;
+  font-weight: 600; font-style: normal; font-display: swap;
 }
 @font-face {
   font-family: "Estedad";
   src: url("/static/fonts/Estedad-ExtraBold.woff2") format("woff2");
-  font-weight: 800; font-style: normal; font-display: swap; size-adjust: 82%;
+  font-weight: 800; font-style: normal; font-display: swap;
 }
 
 /* Unfold declares --font-sans inside @layer theme. Unlayered CSS beats a
@@ -60,87 +54,21 @@
    the Persian around it are set in one family. */
 :root {
   --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
-  --font-head: "Estedad", "Vazirmatn", Tahoma, sans-serif;
-}
-
-/* --- The shop's tokens the panel paints with ------------------------------ */
-/* The same names and values as static/css/input.css; Unfold's own ramps come
-   from UNFOLD["COLORS"] in config/settings/base.py. Lapis is links and the
-   focus ring, turquoise the primary action and the current place, amber time
-   left and nothing else. */
-:root {
-  --color-surface: #FFFFFF;
-  --color-fill-subtle: #EFEBE4;
-  --color-line: #E2DDD3;
-  --color-line-strong: #CEC7BA;
-  --color-muted: #655F56;
-  --color-secondary: #46423B;
-  --color-ink: #1C1A17;
-  --color-accent: #0A6A6E;
-  --color-accent-tint: #E3F0EE;
-  --color-lapis: #233D86;
-  --color-lapis-underline: #7786B0;
-  --color-time-text: #92400E;
-  --color-time-tint: #F4E5D8;
-  --color-time-edge: #EFCBAD;
-  --color-ok-text: #166534;
-  --color-ok-tint: #E3ECDE;
-  --color-danger-text: #991B1B;
-  --color-danger-tint: #F9E1E1;
 }
 
 /* --- Persian typography (docs/design-language.md) ------------------------- */
-/* Persian is never letter-spaced: the glyphs join, and spacing breaks the
-   join. Unfold sets `tracking-tight` on the page title, so a rule on body
-   alone was not enough. */
-* {
-  letter-spacing: 0 !important;
+body {
+  /* Persian is never letter-spaced: the glyphs join, and spacing breaks the
+     join. Unfold's Tailwind reset does not set it, but browsers and pasted
+     styles sometimes do. */
+  letter-spacing: 0;
 }
 
-/* Figures are proportional, as in the shop: tabular Persian figures space the
-   dot-like zero so wide that ۱,۳۹۰,۰۰۰ reads letter-spaced. An amount is set
-   like the shop's prices, in Estedad 800, and a money column aligns on its
-   units digit, which in a right-to-left cell is its start. */
-.panel-amount {
-  font-family: var(--font-head);
-  font-size: 0.9375rem;
-  font-weight: 800;
-  color: var(--color-ink);
-}
-.dark .panel-amount {
-  color: inherit;
-}
-
-/* The page title and the section heads in the shop's heading face, sized up
-   for Estedad's 82%: at Unfold's 14px a section's name drew at 11px. */
-#header-inner h1,
-[dir="rtl"] .module h2,
-[dir="rtl"] fieldset h2 {
-  font-family: var(--font-head);
-  font-weight: 600;
-}
-[dir="rtl"] .module h2,
-[dir="rtl"] fieldset h2 {
-  font-size: 1.125rem;
-}
-
-/* Paper has no shadow and nothing is frosted glass: boxes and fields keep
-   their hairline, the sticky paginator its rule on an opaque ground. Menus
-   and dialogs, which float, keep their larger shadow. */
-.shadow-xs {
-  --tw-shadow: 0 0 #0000;
-}
-[class*="backdrop-blur"] {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-@media (min-width: 64rem) {
-  .lg\:bg-white\/80 {
-    background-color: var(--color-surface);
-  }
-  .dark .lg\:dark\:bg-base-900\/80 {
-    background-color: var(--color-base-900);
-  }
+/* Figures line up in a column only if they are tabular. Vazirmatn's ۱ and ۳
+   differ in width by over 2x, which makes any price column ragged without
+   this — the same rule the storefront applies to every price. */
+table, .tabular-nums, input[type="number"] {
+  font-variant-numeric: tabular-nums;
 }
 
 /* A Latin run inside an RTL line — a slug, a file path, an email, a
@@ -167,26 +95,6 @@ input[type="url"],
 [dir="rtl"] input[type="email"],
 [dir="rtl"] input[type="url"],
 [dir="rtl"] .readonly code {
-  text-align: right;
-}
-
-/* An ellipsis goes at the end of its box's direction, so a Latin name cut in
-   a right-to-left box lost its first letters: «...de Pro». The breadcrumb's
-   object (header_title.html) is cut by its own <bdi>, which takes the name's
-   direction, Persian or Latin; the account lines under the sidebar (Unfold's
-   navigation_user.html) take theirs from their text, and when they fit they
-   still line up with the Persian. */
-#header-inner h1 bdi {
-  display: inline-block;
-  max-inline-size: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
-}
-#nav-sidebar .select-none.min-w-0 > div {
-  unicode-bidi: plaintext;
-}
-[dir="rtl"] #nav-sidebar .select-none.min-w-0 > div {
   text-align: right;
 }
 
@@ -378,44 +286,20 @@ input.vTimeField {
 }
 
 /* --- What the figures mean ------------------------------------------------ */
-/* Unfold's labels in the shop's badges (templates/unfold/helpers/label.html):
-   green for live, red for refused or unavailable, the neutral fill for the
-   rest, and never blue or orange. */
-.panel-badge {
-  display: inline-block;
-  padding-inline: 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.75;
-  white-space: nowrap;
-}
-.panel-badge--ok { background: var(--color-ok-tint); color: var(--color-ok-text); }
-.panel-badge--danger { background: var(--color-danger-tint); color: var(--color-danger-text); }
-.panel-badge--quiet,
-.panel-badge--info { background: var(--color-fill-subtle); color: var(--color-secondary); }
-.panel-badge--accent { background: var(--color-accent-tint); color: var(--color-accent); }
-.panel-badge__icon {
-  font-size: 1em;
-  vertical-align: -0.15em;
-  margin-inline-end: 0.125rem;
-}
-
 /* Time, the one loud thing in this panel and the only amber (ADR-0016): the
-   storefront's .badge--time, at the panel's density. Its figures are
-   proportional like every other: the text never ticks. */
+   storefront's .badge--time, at the panel's density. */
 .panel-time {
   display: inline-block;
-  border: 1px solid var(--color-time-edge);
-  border-radius: 6px;
-  background: var(--color-time-tint);
-  color: var(--color-time-text);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.75;
+  border: 1px solid color-mix(in oklab, #d97706 34%, #fff);
+  border-radius: 4px;
+  background: color-mix(in oklab, #d97706 12%, #fff);
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
   padding-inline: 0.5rem;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .dark .panel-time {
   border-color: rgb(217 119 6 / 0.45);
@@ -426,8 +310,8 @@ input.vTimeField {
 /* A plan sold under its cost. Text in the danger colour, not a badge: a
    badge here would be the second-loudest thing on the page, after time. */
 .panel-loss {
-  color: var(--color-danger-text);
-  font-weight: 700;
+  color: #b91c1c;
+  font-weight: 600;
   white-space: nowrap;
 }
 .dark .panel-loss {
@@ -452,9 +336,9 @@ input.vTimeField {
 .money-preview,
 .date-preview {
   margin-block-start: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The history table and its pages. Unfold aligned both to the physical left. */
@@ -487,11 +371,6 @@ input.vTimeField {
   #result_list .column-price_range,
   #result_list .field-price_range {
     display: none;
-  }
-  /* A name does not break inside itself: «Adobe Creative Cloud» took three
-     lines in a column squeezed by the ones that scroll. */
-  #result_list tbody th > a strong {
-    white-space: nowrap;
   }
 }
 
@@ -578,64 +457,13 @@ input.vTimeField {
 }
 
 /* --- Where the keyboard is ------------------------------------------------- */
-/* The shop's ring: lapis, 2px, 2px clear of the control. Unfold draws its
-   switches and the list's search button with `focus:outline-none` and nothing
-   in its place, so Tab moved through the product form's toggles without a
-   mark; unlayered, these beat the utility. A text field keeps Unfold's inset
-   ring, which no clipping cell can cut, in lapis. */
-a:focus-visible,
-button:focus-visible,
-summary:focus-visible,
+/* Unfold draws its switches and the list's search button with
+   `focus:outline-none` and nothing in its place, so Tab moved through the
+   product form's toggles without a mark. Unlayered, this beats the utility. */
 #content input[type="checkbox"]:focus-visible,
 #searchbar-submit:focus-visible {
-  outline: 2px solid var(--color-lapis);
+  outline: 2px solid #0f766e;
   outline-offset: 2px;
-}
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline-color: var(--color-lapis);
-}
-
-/* --- Lists ------------------------------------------------------------------ */
-/* Column heads on the shop's subtle fill, as in a rate sheet's head. */
-#result_list thead th {
-  background: var(--color-fill-subtle);
-  color: var(--color-secondary);
-  font-weight: 500;
-}
-.dark #result_list thead th {
-  background: transparent;
-  color: inherit;
-}
-/* The row's name is a link in lapis, underlined like every link in text; the
-   mark and the line under it are part of the target but not underlined. */
-#result_list tbody th > a {
-  color: var(--color-lapis);
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: var(--color-lapis-underline);
-  text-underline-offset: 0.3em;
-}
-#result_list tbody th > a:has(strong) {
-  color: inherit;
-  font-weight: inherit;
-  text-decoration: none;
-}
-#result_list tbody th > a strong {
-  color: var(--color-lapis);
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: var(--color-lapis-underline);
-  text-underline-offset: 0.3em;
-}
-#result_list tbody th > a:hover strong,
-#result_list tbody th > a:not(:has(strong)):hover {
-  text-decoration-color: currentColor;
-}
-.dark #result_list tbody th > a,
-.dark #result_list tbody th > a strong {
-  color: inherit;
 }
 
 /* A field Tab scrolls into view must clear what is pinned over the page: the
@@ -738,43 +566,4 @@ html .calendarnav-next::after {
   .panel-guide dd {
     margin-block-end: 0.5rem;
   }
-}
-
-/* --- Links outside the tables --------------------------------------------- */
-/* Lapis, as every link in the shop; turquoise stays with the primary action. */
-.panel-link {
-  color: var(--color-lapis);
-}
-.dark .panel-link {
-  color: inherit;
-}
-
-/* --- The product form's tabs (admin/catalog/product/tabs.html) ----------- */
-/* A label never breaks inside itself: at 390px «صفحه‌ی محصول» took two
-   lines. Five fit one row there at this padding; narrower, the row wraps. */
-nav.panel-tabs {
-  flex-wrap: wrap;
-}
-nav.panel-tabs > button {
-  white-space: nowrap;
-}
-@media (max-width: 29.99rem) {
-  nav.panel-tabs > button {
-    padding-inline: 0.5rem;
-  }
-}
-
-/* A saved plan's head (admin.plan_summary): the price stands out, the day it
-   was confirmed is secondary and moves to the next line whole. */
-.panel-plan {
-  margin-inline-end: 0.5rem;
-}
-.panel-checked {
-  margin-inline-start: 0.5rem;
-  font-weight: 400;
-  color: var(--color-secondary);
-  white-space: nowrap;
-}
-.dark .panel-checked {
-  color: inherit;
 }

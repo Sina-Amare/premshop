@@ -71,24 +71,21 @@ PATTERNS = [
 
 class _Said(HTMLParser):
     """The text the shop itself says: no script or style, and no FAQ question,
-    which is the buyer talking (a `.qa__q` heading, or the older summary and dt)."""
+    which is the buyer talking."""
 
     SKIP = {"script", "style", "summary", "dt"}
 
     def __init__(self) -> None:
         super().__init__()
         self.depth, self.parts, self.title, self.in_title = 0, [], "", False
-        self.skipped: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in self.SKIP or "qa__q" in (dict(attrs).get("class") or "").split():
+        if tag in self.SKIP:
             self.depth += 1
-            self.skipped.append(tag)
         self.in_title = tag == "title"
 
     def handle_endtag(self, tag: str) -> None:
-        if self.skipped and tag == self.skipped[-1]:
-            self.skipped.pop()
+        if tag in self.SKIP and self.depth:
             self.depth -= 1
         self.in_title = False
 
@@ -232,7 +229,7 @@ def script_strings() -> list[tuple[str, str]]:
 
 def test_the_scripts_write_written_persian_too():
     strings = script_strings()
-    assert ("countdown.js", "تخفیف تمام شد.") in strings, "positive control: the walk read a script"
+    assert ("base.html", "تخفیف تمام شد") in strings, "positive control: the walk read a script"
 
     assert not [(where, s, offences(s)) for where, s in strings if offences(s)]
 
@@ -248,7 +245,6 @@ def test_the_scan_leaves_the_buyers_questions_and_good_persian_alone():
     body = (
         "<title>پرسش‌های متداول | PremShop</title>"
         "<summary>رمز اکانت خودم رو باید بدم؟</summary>"
-        '<h2 class="qa__q">رمز اکانتم <bdi lang="en">Netflix</bdi> رو باید بدم؟</h2>'
         "<p>روی اکانت خودتان فعال می‌کنیم. ۱۳ روز مانده. روزهای باقی‌مانده.</p>"
     )
     text, title = said(body)

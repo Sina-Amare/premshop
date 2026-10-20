@@ -23,7 +23,7 @@ class EmailForm(forms.Form):
         },
         widget=forms.EmailInput(
             attrs={
-                "class": "input input--ltr",
+                "class": "field__input",
                 "autocomplete": "email",
                 "dir": "ltr",
                 "inputmode": "email",
@@ -41,7 +41,7 @@ class PasswordLoginForm(EmailForm):
         strip=False,
         error_messages={"required": "رمز عبور را وارد کنید."},
         widget=forms.PasswordInput(
-            attrs={"class": "input input--ltr", "autocomplete": "current-password"}
+            attrs={"class": "field__input", "autocomplete": "current-password"}
         ),
     )
 
@@ -52,7 +52,7 @@ class CodeForm(forms.Form):
         error_messages={"required": "کد را وارد کنید."},
         widget=forms.TextInput(
             attrs={
-                "class": "input input--ltr",
+                "class": "field__input field__input--code",
                 "autocomplete": "one-time-code",
                 "inputmode": "numeric",
                 "dir": "ltr",
@@ -101,7 +101,7 @@ class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordCha
     Two reasons this subclass has to exist rather than the template patching it:
 
     - Tailwind's preflight sets `border-width: 0` on every element, so an input
-      that does not carry `input` renders with NO BORDER AT ALL. Django's
+      that does not carry `field__input` renders with NO BORDER AT ALL. Django's
       own widgets carry no class, so the two new-password boxes were invisible on
       screen while still being focusable and submittable. Nothing errors; the page
       just silently becomes unusable.
@@ -129,7 +129,7 @@ class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordCha
             # One line, matching the four validators in settings exactly, on the
             # field where the rule bites; nothing on the confirmation field.
             field.help_text = PASSWORD_HINT if name == "new_password1" else ""
-            field.widget.attrs["class"] = "input input--ltr"
+            field.widget.attrs["class"] = "field__input"
 
 
 class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordForm):
@@ -147,7 +147,7 @@ class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordFor
         for name, field in self.fields.items():
             field.label = labels.get(name, field.label)
             field.help_text = PASSWORD_HINT if name == "new_password1" else ""
-            field.widget.attrs["class"] = "input input--ltr"
+            field.widget.attrs["class"] = "field__input"
 
 
 class ProfileForm(forms.ModelForm):
@@ -168,7 +168,7 @@ class ProfileForm(forms.ModelForm):
         help_text="برای پیگیری سفارش‌ها، مثلاً ۰۹۱۲۳۴۵۶۷۸۹",
         widget=forms.TextInput(
             attrs={
-                "class": "input input--ltr",
+                "class": "field__input",
                 "inputmode": "tel",
                 "autocomplete": "tel",
                 "dir": "ltr",

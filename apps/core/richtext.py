@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 import nh3
 from django.conf import settings
-from django.utils.html import escape, format_html, format_html_join
+from django.utils.html import escape, format_html_join
 from django.utils.safestring import SafeString, mark_safe
 from markdown_it import MarkdownIt
 from markdown_it.renderer import RendererHTML
@@ -98,8 +98,7 @@ def _isolated(children: list[Token]) -> list[Token]:
         # splits misnested formatting: one <bdi> cannot hold half an element.
         outer = [cells[partner[i]][0] for i in tags if partner[i] < lo]
         inner = [cells[i][0] for i in tags if partner[i] >= hi]
-        bdi = Token("bdi_open", "bdi", 1, attrs={"lang": "en"})
-        inserts[lo] += [*map(_closing, outer), bdi, *reversed(outer)]
+        inserts[lo] += [*map(_closing, outer), Token("bdi_open", "bdi", 1), *reversed(outer)]
         inserts[hi] += [*map(_closing, reversed(inner)), Token("bdi_close", "bdi", -1), *inner]
     out: list[Token] = []
     for i, (token, _) in enumerate(cells):
@@ -211,7 +210,7 @@ def _sanitize(html: str, headings: set[str]) -> str:
         tags=_TAGS | headings,
         # "*" replaces nh3's default lang and title on every tag.
         attributes={"*": set(), "a": {"href"}, "ol": {"start"}},
-        tag_attribute_values={"a": {"rel": {EXTERNAL_REL}}, "bdi": {"lang": {"en"}}},
+        tag_attribute_values={"a": {"rel": {EXTERNAL_REL}}},
         url_schemes=_SCHEMES,
         url_relative=_site_path_or_none,
         link_rel=None,
@@ -219,11 +218,10 @@ def _sanitize(html: str, headings: set[str]) -> str:
 
 
 def isolate_latin(text: str) -> SafeString:
-    """Plain text, escaped, with each Latin run inside one <bdi lang="en">. No Markdown is read.
+    """Plain text, escaped, with each Latin run inside one <bdi>. No Markdown is read.
 
     For the operator's one-line fields, which are not Markdown but carry the same
-    names: «از جمله VS Code، Cursor» reads «Cursor ،VS Code» without it. The lang
-    gives a screen reader the voice for the name.
+    names: «از جمله VS Code، Cursor» reads «Cursor ،VS Code» without it.
     """
     pieces: list[tuple[str, str]] = []
     at = 0
@@ -231,18 +229,7 @@ def isolate_latin(text: str) -> SafeString:
         if _LATIN_LETTER.search(run[0]):
             pieces.append((text[at : run.start()], run[0]))
             at = run.end()
-    return format_html_join("", '{}<bdi lang="en">{}</bdi>', pieces) + escape(text[at:])
-
-
-def isolate(text: str) -> SafeString:
-    """A whole value, such as a name, a plan title or a search query, as one <bdi>.
-
-    `lang="en"` goes on it when the value is one Latin run, and on its Latin runs
-    when it mixes them with Persian, so the isolate never claims Persian is English.
-    """
-    if _LATIN_RUN.fullmatch(text) and _LATIN_LETTER.search(text):
-        return format_html('<bdi lang="en">{}</bdi>', text)
-    return format_html("<bdi>{}</bdi>", isolate_latin(text))
+    return format_html_join("", "{}<bdi>{}</bdi>", pieces) + escape(text[at:])
 
 
 def render_markdown(text: str, heading_levels: Collection[int] = (3,)) -> SafeString:

@@ -1,125 +1,143 @@
 {% extends "accounts/_auth_base.html" %}
 
-{% block auth_page_title %}کد ورود{% endblock %}
+{% block title %}کد ورود{% endblock %}
 {% block auth_title %}کد ورود را وارد کنید{% endblock %}
-{% block auth_intro %}<p class="auth__sub">کد ۶&nbsp;رقمی را به <bdi lang="en">{{ email }}</bdi> فرستادیم. ایمیل اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر ایمیل</a></p>{% endblock %}
+
+{% block auth_intro %}
+  <p class="small" style="margin-block-end: var(--spacing-2)">
+    کد ۶ رقمی را به <bdi class="latin">{{ email }}</bdi> فرستادیم.
+  </p>
+  <p class="small" style="margin-block-end: var(--spacing-5)">
+    ایمیل اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر ایمیل</a>
+  </p>
+{% endblock %}
 
 {% block auth_body %}
 {% comment %}
-Progressive enhancement. The real field is the single <input name="code"> the server
-has always accepted, and «ارسال دوباره‌ی کد» submits a real form: with script off
-those two are the page. With script on, six cells drive that field, the sixth digit
-submits by fetch so the cells can turn green before the page leaves, a wrong code
-stays on screen in red until the next digit, and a resend is sent by fetch too.
+Progressive enhancement. The real field is the single <input name="code"> the
+server has always accepted, and «ارسال دوباره» is a real form: with JS off
+those two are the page, and both post normally. With JS on, six cells drive
+that hidden field, the sixth digit submits by fetch so the cells can flash
+green before the page leaves, a wrong code shakes, clears and refocuses, and
+the resend form is sent by fetch too, so the countdown restarts in place.
 
-Nothing on the page counts down (WCAG 2.2.2): the code's validity is printed once as
-a clock time, worked out from the seconds the server says are left, on this
-machine's clock. A status line speaks a minute before the end and at the end.
-The resend button sits beside it and belongs to the form after this one, through
-its form attribute, because forms cannot nest.
+The countdown starts from the seconds the server says the code has left, so a
+reload does not restart it. The resend cooldown does restart on a reload; it is
+a courtesy, and the server's limit on codes per address is the defence.
 {% endcomment %}
-<form class="form" method="post" novalidate id="code-form"
+<form method="post" novalidate id="code-form"
       data-expires-in="{{ expires_in }}"
       data-resend-cooldown="{{ resend_cooldown }}">
   {% csrf_token %}
-  {% include "accounts/_notices.html" with skip_form_errors=True %}
 
-  <div class="field">
-    <label class="field__label" for="{{ form.code.id_for_label }}" id="code-label">{{ form.code.label }}</label>
-    <p class="field__help" id="code-auto" hidden>با وارد کردن رقم ششم، کد خودکار بررسی می‌شود.</p>
+  <div class="field" id="code-field">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-3); margin-block-end: var(--spacing-2)">
+      <label class="field__label" for="{{ form.code.id_for_label }}" style="margin: 0">{{ form.code.label }}</label>
+      {% comment %}Amber while the clock runs, the only amber on the page. Hidden from
+      screen readers: read out every second it would talk over the typing, so
+      #code-status speaks instead, at one minute left and at expiry.{% endcomment %}
+      <span class="otp__clock badge badge--time" id="code-clock" aria-hidden="true" hidden></span>
+    </div>
+    <p class="sr-only" id="code-status" role="status"></p>
+
     {{ form.code }}
-    <div class="otp" id="code-cells" role="group" aria-labelledby="code-label" aria-describedby="code-auto code-error" hidden>
-      <input type="text" class="otp__cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="رقم&nbsp;۱">
-      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم&nbsp;۲">
-      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم&nbsp;۳">
-      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم&nbsp;۴">
-      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم&nbsp;۵">
-      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم&nbsp;۶">
+
+    <div class="otp" id="code-cells" dir="ltr" hidden aria-hidden="true">
+      <input type="text" class="otp__cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="رقم ۱">
+      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم ۲" tabindex="-1">
+      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم ۳" tabindex="-1">
+      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم ۴" tabindex="-1">
+      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم ۵" tabindex="-1">
+      <input type="text" class="otp__cell" inputmode="numeric" maxlength="1" aria-label="رقم ۶" tabindex="-1">
     </div>
-    <p class="field__error" id="code-error" role="alert"{% if form.non_field_errors %} tabindex="-1" autofocus{% else %} hidden{% endif %}>{% for error in form.non_field_errors %}{{ error }}{% endfor %}</p>
+
+    <p class="field__error" id="code-error" role="alert" hidden></p>
     {% if form.code.errors %}<div id="{{ form.code.auto_id }}_error">{% for error in form.code.errors %}<p class="field__error">{{ error }}</p>{% endfor %}</div>{% endif %}
-    <p class="notice notice--ok" id="code-ok" role="status" hidden></p>
-    <div class="otp__meta">
-      <span class="badge badge--time" id="code-clock" hidden></span>
-      <button type="submit" class="btn btn--secondary btn--sm" form="resend-form" id="resend">ارسال دوباره‌ی کد</button>
-    </div>
   </div>
-  <p class="visually-hidden" id="code-status" role="status"></p>
-  <button type="submit" class="btn btn--primary btn--lg btn--block" id="code-submit">ورود</button>
+
+  <button type="submit" class="btn btn--primary" style="inline-size: 100%" id="code-submit" data-busy="در حال بررسی…">ورود</button>
 </form>
-<form method="post" action="{% url 'login-code-resend' %}" id="resend-form" hidden>{% csrf_token %}</form>
+
+<form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="resend-form">
+  {% csrf_token %}
+  <span class="small" id="resend-hint" style="margin: 0">کد نرسید؟ پوشه‌ی اسپم را هم ببینید.</span>
+  <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
+</form>
 {% endblock %}
 
-{% block auth_foot %}
-  <p class="sheet__foot">کد نرسید؟ پوشه‌ی اسپم را هم ببینید. هر کد جدید جای کد قبلی را می‌گیرد.</p>
-{% endblock %}
+{% block auth_after %}{% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
   var form = document.getElementById('code-form');
-  var plain = document.getElementById('{{ form.code.id_for_label }}');
-  var box = document.getElementById('code-cells');
-  var cells = Array.prototype.slice.call(box.querySelectorAll('.otp__cell'));
-  var err = document.getElementById('code-error');
-  var ok = document.getElementById('code-ok');
-  var status = document.getElementById('code-status');
+  var hidden = document.getElementById('{{ form.code.id_for_label }}');
+  var cellsBox = document.getElementById('code-cells');
+  var cells = Array.prototype.slice.call(cellsBox.querySelectorAll('.otp__cell'));
+  var errorBox = document.getElementById('code-error');
   var clock = document.getElementById('code-clock');
+  var status = document.getElementById('code-status');
   var submitButton = document.getElementById('code-submit');
   var resendForm = document.getElementById('resend-form');
-  var resend = document.getElementById('resend');
+  var resendButton = document.getElementById('resend');
+  var resendHint = document.getElementById('resend-hint');
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
   var toAscii = function (s) {
     return (s || '').replace(/[۰-۹]/g, function (d) { return String(FA.indexOf(d)); })
                     .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
   };
-  var fa = function (s) { return String(s).replace(/\d/g, function (d) { return FA[+d]; }); };
-  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
 
-  // Enhance: hide the plain input, show the cells. Without script none of this runs.
-  plain.hidden = true;
-  plain.setAttribute('tabindex', '-1');
-  box.hidden = false;
-  document.getElementById('code-auto').hidden = false;
+  // --- Enhance: hide the plain input, show the cells. Without JS none of this runs.
+  hidden.hidden = true;
+  hidden.setAttribute('tabindex', '-1');
+  cellsBox.hidden = false;
+  cellsBox.removeAttribute('aria-hidden');
+  submitButton.hidden = true;               // the sixth digit submits
   cells[0].focus();
 
   var busy = false;
   var expired = false;
+  var warned = false;
+
+  function value() { return cells.map(function (c) { return c.value; }).join(''); }
+  function sync() { hidden.value = value(); }
+  function clear() {
+    cells.forEach(function (c) { c.value = ''; c.classList.remove('is-filled', 'is-ok', 'is-error'); });
+    sync();
+  }
+  function setState(cls) {
+    cells.forEach(function (c) { c.classList.remove('is-ok', 'is-error'); if (cls) c.classList.add(cls); });
+  }
   // Someone who asked for less motion gets none: the CSS already zeroes every
-  // transition, and these timers would otherwise hold the page still for nothing.
+  // transition, and these timers would otherwise hold the page still for no
+  // reason the viewer can see.
   var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var STEP = still ? 0 : 70;    // between one cell turning green and the next
   var HOLD = still ? 0 : 260;   // the finished row, held, before the page moves
-
-  function value() { return cells.map(function (c) { return c.value; }).join(''); }
-  function sync() { plain.value = value(); }
-  function say(el, text) { el.textContent = text; el.hidden = !text; }
-  function mark(cls) {
-    cells.forEach(function (c) {
-      c.classList.remove('is-ok', 'is-error');
-      if (cls) c.classList.add(cls);
-      c.setAttribute('aria-invalid', cls === 'is-error' ? 'true' : 'false');
+  function confirmCells(done) {
+    // Checked one digit at a time, left to right, the way a person reads them
+    // back. The row finishing is the signal that the code was accepted.
+    cells.forEach(function (c, i) {
+      c.classList.remove('is-error');
+      setTimeout(function () { c.classList.add('is-ok'); }, i * STEP);
     });
+    setTimeout(done, (cells.length - 1) * STEP + HOLD);
   }
-  function clearCells() {
-    cells.forEach(function (c) { c.value = ''; c.classList.remove('is-filled'); });
-    mark(null);
-    sync();
+  function showError(text) {
+    errorBox.textContent = text;
+    errorBox.hidden = !text;
   }
-  function wrong() { return cells[0].classList.contains('is-error'); }
-
-  // A wrong code stays on screen in red, so the slip can be seen; the next digit
-  // starts the row over.
-  function put(digits, from) {
-    if (wrong()) { clearCells(); say(err, ''); from = 0; }
-    say(ok, '');
+  function fill(digits, from) {
+    from = from || 0;
     for (var i = 0; i < digits.length && from + i < cells.length; i++) {
       cells[from + i].value = digits[i];
       cells[from + i].classList.add('is-filled');
     }
     sync();
-    cells[Math.min(from + digits.length, cells.length - 1)].focus();
+    var next = Math.min(from + digits.length, cells.length - 1);
+    cells[next].focus();
     if (value().length === cells.length) submit();
   }
 
@@ -128,7 +146,9 @@ its form attribute, because forms cannot nest.
       var digits = toAscii(cell.value).replace(/\D/g, '');
       cell.value = '';
       if (!digits) { cell.classList.remove('is-filled'); sync(); return; }
-      put(digits, i);                         // a single key and an autofill burst alike
+      showError('');
+      setState(null);
+      fill(digits, i);                         // handles a single key and an autofill burst alike
     });
     cell.addEventListener('keydown', function (e) {
       if (e.key === 'Backspace' && !cell.value && i > 0) {
@@ -142,141 +162,136 @@ its form attribute, because forms cannot nest.
     });
     cell.addEventListener('focus', function () { cell.select(); });
     cell.addEventListener('paste', function (e) {
-      // Copied from the email is the main path: take the digits, wherever the
-      // cursor was, and always start from the first cell.
+      // Gmail → copy → paste is the main path. Take the digits, wherever the
+      // cursor happened to be, and always start from the first cell.
       var text = (e.clipboardData || window.clipboardData).getData('text');
       var digits = toAscii(text).replace(/\D/g, '').slice(0, cells.length);
-      if (digits) { e.preventDefault(); clearCells(); say(err, ''); put(digits, 0); }
+      if (digits) { e.preventDefault(); showError(''); setState(null); clear(); fill(digits, 0); }
     });
   });
 
-  // Submitted by fetch so the cells can answer before the page changes.
+  // --- Submit by fetch so the cells can answer before the page changes.
   function submit() {
     if (busy || expired) return;
     busy = true;
     sync();
-    // Drop the selection before disabling: a disabled input still paints its last
-    // selection, and it would sit under the green.
+    // Drop the text selection before disabling: a disabled input still paints
+    // its last selection, and it would sit under the green flash.
     cells.forEach(function (c) { try { c.setSelectionRange(0, 0); } catch (e) {} c.blur(); c.disabled = true; });
+    var body = new FormData(form);
     fetch(form.action || location.href, {
-      method: 'POST', body: new FormData(form), credentials: 'same-origin',
+      method: 'POST', body: body, credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     }).then(function (r) {
       var isJson = (r.headers.get('content-type') || '').indexOf('application/json') === 0;
       return isJson ? r.json() : Promise.reject(new Error('non-json'));
     }).then(function (data) {
-      if (!data.ok) { fail(data.error); return; }
-      say(status, 'کد درست است. وارد حساب کاربری می‌شوید.');
-      // One digit at a time, the way a person reads a code back; the row
-      // finishing is the sign the code was accepted.
-      cells.forEach(function (c, i) {
-        setTimeout(function () { c.classList.add('is-ok'); }, i * STEP);
-      });
-      setTimeout(function () { location.href = data.next; }, (cells.length - 1) * STEP + HOLD);
+      if (data.ok) {
+        confirmCells(function () { location.href = data.next; });
+        return;
+      }
+      fail(data.error);
     }).catch(function () {
-      // Anything that is not a JSON answer (the 503 page, a dropped connection)
-      // falls back to a plain submit, so the server renders what it renders.
+      // Anything that is not a JSON answer — the 503 page, a network drop —
+      // falls back to a plain submit so the server renders what it renders.
       form.submit();
     });
   }
   function fail(message) {
     // Wrong is one event, not six: the whole row turns at once and shakes once.
-    mark('is-error');
-    say(err, message || 'کد ورود درست نیست یا منقضی شده است.');
-    box.classList.remove('is-shaking');
-    void box.offsetWidth;
-    box.classList.add('is-shaking');
-    cells.forEach(function (c) { c.disabled = false; });
-    busy = false;
-    cells[0].focus();
+    setState('is-error');
+    showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
+    cellsBox.classList.add('is-shaking');
+    setTimeout(function () {
+      cellsBox.classList.remove('is-shaking');
+      cells.forEach(function (c) { c.disabled = false; });
+      clear();
+      cells[0].focus();
+      busy = false;
+    }, still ? 0 : 380);
   }
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (expired) return;
-    if (value().length === cells.length && !wrong()) { submit(); return; }
-    if (!wrong()) { mark('is-error'); say(err, 'کد ورود ۶ رقم دارد. هر شش خانه را پر کنید.'); }
-    cells[0].focus();
-  });
+  form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
 
-  // The code's validity and the resend cooldown, from the seconds the server sent,
-  // on this machine's clock: never from an absolute server time, since a
-  // customer's clock may be wrong.
+  // --- Countdown to the server's expiry, and the resend cooldown.
+  // Deadlines are set from seconds-remaining the server sent, on this machine's
+  // clock. Never from an absolute server time: a customer's clock may be wrong.
+  var expiresIn = parseInt(form.getAttribute('data-expires-in'), 10) || 0;
+  var expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
   var cooldownSeconds = parseInt(form.getAttribute('data-resend-cooldown'), 10) || 60;
-  var cooldownUntil = 0;
-  var waitLabel = '';
-  var timers = [];
+  // Never past the code's own end: a page reloaded with 30 seconds left sent
+  // focus, at expiry, to a button still cooling down. One reloaded after its
+  // code expired has nothing to wait for. The server's three-per-15-minutes
+  // limit stays the defence; this is a courtesy.
+  var cooldownUntil = Math.floor(Date.now() / 1000) + Math.min(cooldownSeconds, Math.max(expiresIn, 0));
 
-  function cool() {
-    var waiting = Date.now() < cooldownUntil;
-    resend.disabled = waiting;
-    resend.textContent = waiting && waitLabel ? waitLabel : 'ارسال دوباره‌ی کد';
+  function tick() {
+    var now = Math.floor(Date.now() / 1000);
+    var left = expiresAt - now;
+    var justExpired = false;
+    if (left > 0) {
+      var m = Math.floor(left / 60), s = left % 60;
+      clock.textContent = toFa(m) + ':' + toFa(s < 10 ? '0' + s : s) + ' مانده';
+      clock.hidden = false;
+      if (left <= 60 && !warned) { warned = true; status.textContent = 'یک دقیقه از اعتبار کد مانده است.'; }
+      if (expired) { expired = false; cells.forEach(function (c) { c.disabled = false; }); }
+    } else if (!expired) {
+      expired = true;
+      justExpired = true;
+      clock.textContent = 'کد منقضی شد';
+      clock.hidden = false;
+      clock.classList.replace('badge--time', 'badge--neutral');   // the clock has stopped
+      cells.forEach(function (c) { c.disabled = true; });
+      showError('');
+      resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      status.textContent = 'کد منقضی شد. برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      resendButton.classList.replace('btn--ghost', 'btn--primary');
+    }
+    var wait = cooldownUntil - now;
+    if (wait > 0) {
+      resendButton.disabled = true;
+      resendButton.textContent = 'ارسال دوباره (' + toFa(wait) + ')';
+    } else {
+      resendButton.disabled = false;
+      resendButton.textContent = 'ارسال دوباره';
+    }
+    // The cells were just disabled under the customer's cursor; focus goes to
+    // the one thing left to do rather than falling to the page body.
+    if (justExpired) resendButton.focus();
   }
-  function holdResend(seconds, label) {
-    cooldownUntil = Date.now() + seconds * 1000;
-    waitLabel = label;
-    cool();
-    timers.push(setTimeout(cool, seconds * 1000));
-  }
-  function expire() {
-    expired = true;
-    cool();
-    // The time has passed, so it is no longer amber.
-    clock.classList.replace('badge--time', 'badge--quiet');
-    clock.textContent = 'کد منقضی شد';
-    clock.hidden = false;
-    cells.forEach(function (c) { c.disabled = true; });
-    submitButton.disabled = true;
-    say(err, '');
-    say(ok, '');
-    say(status, 'کد منقضی شد. کد جدید بخواهید.');
-    resend.classList.replace('btn--secondary', 'btn--primary');
-    // The cells just went dead under the cursor: focus goes to the one thing left to do.
-    if (!resend.disabled) resend.focus();
-  }
-  function start(seconds) {
-    timers.forEach(clearTimeout);
-    timers = [];
-    expired = false;
-    // Never past the code's own end: a page reloaded with 30 seconds left would send
-    // focus, at expiry, to a button still cooling down. The server's limit on codes
-    // per address is the defence; this is a courtesy.
-    holdResend(Math.min(cooldownSeconds, Math.max(seconds, 0)), 'ارسال دوباره، یک دقیقه‌ی دیگر');
-    if (seconds <= 0) { expire(); return; }
-    var end = new Date(Date.now() + seconds * 1000);
-    clock.classList.replace('badge--quiet', 'badge--time');
-    clock.textContent = 'معتبر تا ساعت ' + fa(pad(end.getHours()) + ':' + pad(end.getMinutes()));
-    clock.hidden = false;
-    timers.push(setTimeout(function () {
-      if (!expired) say(status, 'یک دقیقه از اعتبار کد مانده است.');
-    }, Math.max(seconds - 60, 0) * 1000));
-    timers.push(setTimeout(expire, seconds * 1000));
-  }
-  start(parseInt(form.getAttribute('data-expires-in'), 10) || 0);
+  tick();
+  setInterval(tick, 1000);
 
   resendForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (resend.disabled) return;
-    resend.disabled = true;
-    resend.textContent = 'در حال ارسال…';
+    if (resendButton.disabled) return;
+    resendButton.disabled = true;
+    resendButton.textContent = 'در حال ارسال…';
     fetch(resendForm.action, {
       method: 'POST', body: new FormData(resendForm), credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     }).then(function (r) { return r.json(); }).then(function (data) {
-      if (!data.ok) { say(err, data.error); holdResend(5, ''); return; }
-      cooldownSeconds = data.cooldown || cooldownSeconds;
-      resend.classList.replace('btn--primary', 'btn--secondary');
-      start(data.expires_in || 0);
-      clearCells();
-      cells.forEach(function (c) { c.disabled = false; });
-      submitButton.disabled = false;
-      busy = false;
-      say(err, '');
-      say(status, '');
-      say(ok, 'کد جدید را فرستادیم. کد قبلی دیگر کار نمی‌کند.');
-      cells[0].focus();
+      if (data.ok) {
+        expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 0);
+        cooldownUntil = Math.floor(Date.now() / 1000) + (data.cooldown || cooldownSeconds);
+        expired = false;
+        warned = false;
+        clock.classList.replace('badge--neutral', 'badge--time');
+        resendButton.classList.replace('btn--primary', 'btn--ghost');
+        showError('');
+        clear();
+        cells.forEach(function (c) { c.disabled = false; });
+        cells[0].focus();
+        resendHint.textContent = 'کد جدید را فرستادیم.';
+        status.textContent = 'کد جدید را فرستادیم.';
+      } else {
+        showError(data.error);
+        cooldownUntil = Math.floor(Date.now() / 1000) + 5;
+      }
+      tick();
     }).catch(function () {
-      say(err, 'کد فرستاده نشد. دوباره امتحان کنید.');
-      holdResend(5, '');
+      showError('کد فرستاده نشد. دوباره تلاش کنید.');
+      cooldownUntil = Math.floor(Date.now() / 1000) + 5;
+      tick();
     });
   });
 })();

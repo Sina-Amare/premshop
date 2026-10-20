@@ -17,10 +17,10 @@ from django.utils.html import escape
 from django.utils.safestring import SafeData
 
 from apps.core import richtext
-from apps.core.richtext import EXTERNAL_REL, isolate, isolate_latin, render_markdown
+from apps.core.richtext import EXTERNAL_REL, isolate_latin, render_markdown
 
 TAGS = set("p br strong a ul ol li table thead tbody tr th td bdi h3".split())
-ATTRIBUTES = {"a": {"href", "rel"}, "ol": {"start"}, "bdi": {"lang"}}
+ATTRIBUTES = {"a": {"href", "rel"}, "ol": {"start"}}
 # What a browser may follow from here: http, https, mailto, or a path on this site.
 SAFE_HREF = re.compile(r"(?i)(https?|mailto):|/(?![/\\])")
 
@@ -55,8 +55,6 @@ def live_markup(html: str) -> list[str]:
                 found.append(f"{name} on <{tag}>")
             elif name == "rel" and value != EXTERNAL_REL:
                 found.append(f"rel={value!r}")
-            elif name == "lang" and value != "en":
-                found.append(f"lang={value!r}")
             elif name == "href" and (
                 not SAFE_HREF.match(value) or re.search(r"[\x00-\x20]", value)
             ):
@@ -85,7 +83,6 @@ RAW_HTML = [
     '<a href="/\\evil.example">x</a>',
     '<a href="/\t/evil.example">x</a>',
     '<a href="https://ok.example" target="_blank" rel="opener">x</a>',
-    '<bdi lang="fa" dir="ltr">x</bdi>',
     "<svg onload=alert(1)>",
     "<svg><script>alert(1)</script></svg>",
     '<svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg>',
@@ -316,13 +313,13 @@ def test_syntax_outside_the_subset_prints_as_typed(source, expected):
     [
         (
             "از جمله VS Code،\u200f Cursor",
-            '<p>از جمله <bdi lang="en">VS Code</bdi>،\u200f <bdi lang="en">Cursor</bdi></p>\n',
+            "<p>از جمله <bdi>VS Code</bdi>،\u200f <bdi>Cursor</bdi></p>\n",
         ),
-        ("Google Photos. ۱۵ گیگابایت", '<p><bdi lang="en">Google Photos</bdi>. ۱۵ گیگابایت</p>\n'),
-        ("پلن 12 Months Family Plan", '<p>پلن <bdi lang="en">12 Months Family Plan</bdi></p>\n'),
+        ("Google Photos. ۱۵ گیگابایت", "<p><bdi>Google Photos</bdi>. ۱۵ گیگابایت</p>\n"),
+        ("پلن 12 Months Family Plan", "<p>پلن <bdi>12 Months Family Plan</bdi></p>\n"),
         (
             "C++، iCloud+ و GPT-4o.",
-            '<p><bdi lang="en">C++</bdi>، <bdi lang="en">iCloud+</bdi> و <bdi lang="en">GPT-4o</bdi>.</p>\n',
+            "<p><bdi>C++</bdi>، <bdi>iCloud+</bdi> و <bdi>GPT-4o</bdi>.</p>\n",
         ),
     ],
 )
@@ -337,29 +334,29 @@ def test_persian_text_and_bare_numbers_are_left_alone():
 
 def test_a_run_is_escaped_before_it_is_wrapped():
     assert render_markdown("AT&T و a<b") == (
-        '<p><bdi lang="en">AT&amp;T</bdi> و <bdi lang="en">a</bdi>&lt;<bdi lang="en">b</bdi></p>\n'
+        "<p><bdi>AT&amp;T</bdi> و <bdi>a</bdi>&lt;<bdi>b</bdi></p>\n"
     )
 
 
 @pytest.mark.parametrize(
     "source, expected",
     [
-        ("**Chat**GPT", '<p><bdi lang="en"><strong>Chat</strong>GPT</bdi></p>\n'),
-        ("ChatGPT **Plus**", '<p><bdi lang="en">ChatGPT <strong>Plus</strong></bdi></p>\n'),
+        ("**Chat**GPT", "<p><bdi><strong>Chat</strong>GPT</bdi></p>\n"),
+        ("ChatGPT **Plus**", "<p><bdi>ChatGPT <strong>Plus</strong></bdi></p>\n"),
         (
             "[Google One](https://one.google.com/) AI Premium",
-            f'<p><bdi lang="en"><a href="https://one.google.com/" rel="{EXTERNAL_REL}">Google One</a>'
+            f'<p><bdi><a href="https://one.google.com/" rel="{EXTERNAL_REL}">Google One</a>'
             " AI Premium</bdi></p>\n",
         ),
         (
             "ChatGPT **Plus ماهانه**",
-            '<p><bdi lang="en">ChatGPT <strong>Plus</strong></bdi><strong> ماهانه</strong></p>\n',
+            "<p><bdi>ChatGPT <strong>Plus</strong></bdi><strong> ماهانه</strong></p>\n",
         ),
         (
             "**ماهانه Chat**GPT",
-            '<p><strong>ماهانه </strong><bdi lang="en"><strong>Chat</strong>GPT</bdi></p>\n',
+            "<p><strong>ماهانه </strong><bdi><strong>Chat</strong>GPT</bdi></p>\n",
         ),
-        ("*Gem*ini", '<p><bdi lang="en">Gemini</bdi></p>\n'),
+        ("*Gem*ini", "<p><bdi>Gemini</bdi></p>\n"),
     ],
 )
 def test_a_run_split_by_bold_or_a_link_is_isolated_once(source, expected):
@@ -456,20 +453,10 @@ def test_without_isolation_the_same_lines_read_out_of_order(browser, source, lef
 
 def test_a_one_line_field_is_escaped_and_reads_no_markdown():
     assert isolate_latin("**ChatGPT** و <script>x</script>") == (
-        '**<bdi lang="en">ChatGPT</bdi>** و &lt;<bdi lang="en">script</bdi>&gt;<bdi lang="en">x</bdi>&lt;/<bdi lang="en">script</bdi>&gt;'
+        "**<bdi>ChatGPT</bdi>** و &lt;<bdi>script</bdi>&gt;<bdi>x</bdi>&lt;/<bdi>script</bdi>&gt;"
     )
     assert isinstance(isolate_latin("x"), SafeData)
     assert isolate_latin("فقط فارسی، ۱۲ ماهه") == "فقط فارسی، ۱۲ ماهه"
-
-
-def test_a_whole_value_is_one_isolate_marked_english_only_when_it_is():
-    """Names, titles and a search query stay one isolate; `lang` tells a screen
-    reader which voice to use, so it goes only on Latin."""
-    assert isolate("Claude Pro") == '<bdi lang="en">Claude Pro</bdi>'
-    assert isolate("اشتراک Netflix") == '<bdi>اشتراک <bdi lang="en">Netflix</bdi></bdi>'
-    assert isolate("۱ ماهه") == "<bdi>۱ ماهه</bdi>"
-    assert "<b>" not in isolate("<b>x</b>")
-    assert isinstance(isolate("x"), SafeData)
 
 
 @pytest.mark.parametrize(
@@ -477,11 +464,11 @@ def test_a_whole_value_is_one_isolate_marked_english_only_when_it_is():
     [
         (
             "[<https://x.example>Plus](/a)",
-            '<p><a href="/a"><bdi lang="en">https://x.examplePlus</bdi></a></p>\n',
+            '<p><a href="/a"><bdi>https://x.examplePlus</bdi></a></p>\n',
         ),
         (
             "[x <https://x.example> y](/a)",
-            '<p><a href="/a"><bdi lang="en">x https://x.example y</bdi></a></p>\n',
+            '<p><a href="/a"><bdi>x https://x.example y</bdi></a></p>\n',
         ),
     ],
 )
@@ -493,13 +480,13 @@ def test_an_autolink_inside_link_text_does_not_nest_links(source, expected):
 def test_link_text_is_isolated_and_the_href_is_not():
     assert render_markdown("[ChatGPT Plus](https://openai.com/chatgpt/)") == (
         f'<p><a href="https://openai.com/chatgpt/" rel="{EXTERNAL_REL}">'
-        '<bdi lang="en">ChatGPT Plus</bdi></a></p>\n'
+        "<bdi>ChatGPT Plus</bdi></a></p>\n"
     )
 
 
 def test_headings_and_table_cells_isolate_too():
-    assert render_markdown("### Google AI Pro") == '<h3><bdi lang="en">Google AI Pro</bdi></h3>\n'
-    assert '<td><bdi lang="en">Gemini</bdi></td>' in render_markdown("| مدل |\n|---|\n| Gemini |")
+    assert render_markdown("### Google AI Pro") == "<h3><bdi>Google AI Pro</bdi></h3>\n"
+    assert "<td><bdi>Gemini</bdi></td>" in render_markdown("| مدل |\n|---|\n| Gemini |")
 
 
 @pytest.mark.parametrize("source", ["", "  \n\n"])

@@ -1,7 +1,14 @@
 {% comment %}
-A department's wall, keyed on the slug the operator chose: each department has
-its own composed run of the same lattice. Anything the operator adds later
-falls through to the last wall until it is named here; an include built from
-the slug would fail the page for a department with no file.
+One line glyph per department, keyed on the slug the operator chose. Four
+shops' worth of departments is not a taxonomy worth a database column, and a
+cycled icon would eventually put a gift box on the AI shelf. Anything the
+operator adds later falls through to the last glyph until it is named here.
 Param: slug.
-{% endcomment %}{% if slug == "ai" %}{% include "svg/cat-ai.svg" %}{% elif slug == "dev" %}{% include "svg/cat-dev.svg" %}{% elif slug == "media" %}{% include "svg/cat-media.svg" %}{% else %}{% include "svg/cat-gift.svg" %}{% endif %}
+{% endcomment %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{% if slug == "ai" %}<path d="M12 3.5 13.9 9l5.6 2-5.6 2-1.9 5.5L10.1 13l-5.6-2 5.6-2Z"/><path d="M18.5 3.5v3M20 5h-3"/>
+{% elif slug == "dev" %}<path d="m8.5 8-4.5 4 4.5 4"/><path d="m15.5 8 4.5 4-4.5 4"/><path d="M13.5 5.5 10.5 18.5"/>
+{% elif slug == "media" %}<circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.8 15.5 12l-5.3 3.2Z"/>
+{% elif slug == "gift" %}<rect x="3.5" y="9" width="17" height="11.5" rx="2"/><path d="M3.5 13.5h17M12 9v11.5"/><path d="M12 9S10.5 4 8 4a2.2 2.2 0 0 0 0 5Zm0 0s1.5-5 4-5a2.2 2.2 0 0 1 0 5Z"/>
+{% else %}<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/>
+{% endif %}
+</svg>

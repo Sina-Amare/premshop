@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from datetime import timedelta
 from decimal import Decimal
@@ -15,8 +14,7 @@ from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
 from apps.catalog.pricing import effective_price
-from apps.core import ratelimit, support
-from apps.core.formatting import format_toman, toman_in_words
+from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
 
@@ -100,9 +98,7 @@ def test_home_renders_categories_and_products(client, product):
 
     assert "Claude Pro" in body
     assert "هوش مصنوعی" in body
-    assert (
-        'class="dept__meta"><span>۱ سرویس</span>' in body
-    ), "category counts render in Persian digits"
+    assert "۱ محصول" in body, "category counts render in Persian digits"
 
 
 def test_home_empty_state_is_designed_not_blank(client):
@@ -114,11 +110,11 @@ def test_home_empty_state_is_designed_not_blank(client):
 def test_category_page_and_its_empty_state(client, category, product):
     body = client.get(reverse("category", args=[category.slug])).content.decode()
     assert "Claude Pro" in body
-    assert "۱ سرویس" in body
+    assert "۱ محصول" in body
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "در این دسته فعلاً سرویسی نداریم" in body
+    assert "فعلاً محصولی در این دسته نداریم" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):
@@ -187,12 +183,8 @@ def test_draft_product_hidden_everywhere(client, category):
 def test_product_page_shows_warranty_and_delivery_in_the_title_area(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    # The answers index under the title states each fact once.
-    index = body.split('class="facts product__facts"', 1)[1].split("</nav>", 1)[0]
-    assert (
-        '<span class="facts__k">گارانتی</span><span class="facts__v">تا پایان دوره</span>' in index
-    )
-    assert '<span class="facts__k">تحویل</span><span class="facts__v">تا ۱۲ ساعت</span>' in index
+    assert "تا پایان دوره" in body
+    assert "تحویل تا ۱۲ ساعت" in body
 
 
 def test_region_is_not_a_property_of_every_product(client, product):
@@ -242,12 +234,12 @@ def test_add_to_cart_control_disabled_for_unavailable_plan(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
     assert body.count('name="plan"') == 5, "every plan renders, available or not"
-    assert '<span class="plan__off">ناموجود</span>' in body
+    assert "فعلاً ناموجود" in body
     old_plan = product.plans.get(title="قدیمی")
     assert re.search(
         rf'value="{old_plan.id}"\s+disabled', body
     ), "the unavailable plan's radio is disabled"
-    assert "سفارش در تلگرام" in body
+    assert "افزودن به سبد" in body
 
 
 # --- Quantity and what the plan asks for, both set by the operator ----------
@@ -277,22 +269,6 @@ def test_the_quantity_control_appears_when_a_plan_takes_more_than_one(client, pr
     assert 'name="quantity"' in body
     assert 'max="5"' in body, "the ceiling is the operator's, not a hard-coded 10"
     assert f'data-max="{plan.max_quantity}"' in body
-
-
-def test_the_invoice_announces_through_its_total_alone(client, product):
-    """The quantity was an <output>, a live region of its own, so one press of
-    «+» was announced twice: the quantity, then the total."""
-    plan = product.plans.filter(is_available=True, requires_customer_input=False).first()
-    plan.max_quantity = 5
-    plan.save()
-
-    body = client.get(reverse("product", args=[product.slug])).content.decode()
-    invoice = body.split('id="invoice"', 1)[1].split("</section>", 1)[0]
-
-    assert 'name="quantity"' in invoice, "the control: the quantity row is on the page"
-    assert "<output" not in invoice and 'role="status"' not in invoice
-    assert invoice.count("aria-live=") == 1
-    assert '<div class="invoice__total" aria-live="polite" aria-atomic="true">' in invoice
 
 
 def test_each_plan_carries_its_own_ceiling_and_its_own_question(client, product):
@@ -337,10 +313,7 @@ def test_a_key_spec_is_printed_beside_the_title_and_still_in_the_table(client, p
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert (
-        '<span class="badge badge--key"><span class="badge__k">نوع اکانت</span>'
-        "<bdi>اشتراکی، ۴ نفره</bdi></span>" in body
-    )
+    assert 'class="badge badge--key">نوع اکانت: <bdi>اشتراکی، ۴ نفره</bdi>' in body
     # And it has not left the specification table, which is still the full list.
     assert body.count("اشتراکی، ۴ نفره") == 2
 
@@ -352,7 +325,7 @@ def test_a_key_spec_value_is_isolated(client, product):
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert '<bdi lang="en">US</bdi>' in body
+    assert "<bdi>US</bdi>" in body
 
 
 @pytest.mark.parametrize("bad", [0, 11])
@@ -370,11 +343,8 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
 
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
-    assert re.search(r'<button type="button" class="[^"]*invoice__cta" disabled[ >]', body)
-    assert ">خرید فعلاً ممکن نیست</button>" in body
-    assert "این محصول موجود نیست." in body
-    assert f'href="{reverse("category", args=[category.slug])}"' in body.split('id="invoice"')[1]
-    assert "invoice__total" not in body, "no total for nothing to buy"
+    assert ">ناموجود</button>" in body
+    assert "این محصول فعلاً موجود نیست" in body
 
 
 # Attributes allowed after the class: a discount with an end carries data-left.
@@ -398,8 +368,7 @@ def test_catalog_card_and_product_page_render_struck_through_original(client, pr
 
     for body in (listing, page):
         assert (
-            '<del class="price__was"><span class="visually-hidden">قیمت قبل: </span>۱,۴۵۰,۰۰۰</del>'
-            in body
+            '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in body
         )
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
@@ -430,8 +399,8 @@ def test_seo_fields_render_when_set(client, product):
 # --- Grouping on the home page, and what to show next on a product page ----
 
 
-def sheet_groups(body: str) -> list[str]:
-    return [h.strip() for h in re.findall(r'class="rs-group__title"[^>]*>([^<]+)<', body)]
+def shelf_headings(body: str) -> list[str]:
+    return [h.strip() for h in re.findall(r'class="shelf__title">([^<]+)<', body)]
 
 
 def test_home_groups_products_under_their_department(client, category, product):
@@ -440,10 +409,10 @@ def test_home_groups_products_under_their_department(client, category, product):
 
     body = client.get(reverse("home")).content.decode()
 
-    assert sheet_groups(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
-    assert "۲ سرویس در ۲ دسته" in body, "with a count that has its unit, not a bare digit"
-    assert body.count('class="dept__link"') == 2, "each department links to its own page"
-    assert 'class="dept__link" href="/c/gift/"' in body
+    assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
+    assert "۲ محصول" in body, "with a count that has its unit, not a bare digit"
+    assert body.count('class="shelf__all"') == 2, "each group links to its own department"
+    assert 'href="/c/gift/"' in body
 
 
 def test_every_product_on_the_home_page_lands_in_a_group(client, category, product):
@@ -482,8 +451,7 @@ def test_a_department_the_cap_cut_off_gets_no_heading(client, category, product,
 
     shown = list(response.context["featured"])
     assert len(shown) == 1
-    assert sheet_groups(body) == [shown[0].category.name]
-    assert body.count('class="dept__link"') == 1, "nor a place in the departments index"
+    assert shelf_headings(body) == [shown[0].category.name]
 
 
 def test_product_page_suggests_other_products(client, category, product):
@@ -556,8 +524,8 @@ def test_delivery_time_falls_back_to_the_hours(client, category, product):
 
 def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, category, product):
     """A number cannot say «slower this week because the gateway is flaky».
-    The note replaces the display on every surface at once — the rate sheet's
-    row, the answers index, the invoice and the page's own question — because
+    The note replaces the display on every surface at once — the card, the
+    badge, the facts table, the buy box and the page's own question — because
     they all read one property rather than formatting the field themselves."""
     note = "۴۸ تا ۷۲ ساعت"
     product.delivery_note = note
@@ -566,33 +534,11 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
     page = client.get(reverse("product", args=[product.slug])).content.decode()
     listing = client.get(reverse("category", args=[category.slug])).content.decode()
 
-    shown = {
-        "the answers index": page.split('class="facts product__facts"', 1)[1].split("</nav>", 1)[0],
-        "the question": page.split('id="delivery"', 1)[1].split("</div>", 1)[0],
-        "the invoice": page.split('id="invoice"', 1)[1].split("</section>", 1)[0],
-    }
-    for where, part in shown.items():
-        assert note in part, where
-    assert f'<td class="rs__eta">{note}</td>' in listing, "and the rate sheet's row"
+    assert page.count(note) >= 4, "the badge, the facts row, the question and the buy box"
+    assert note in listing, "and the card on the listing"
     assert "تا ۱۲ ساعت" not in page, "the hours must not survive beside the note"
-    assert "تا ۱۲ ساعت" not in listing
-
-
-def test_a_latin_name_in_the_note_keeps_its_place_wherever_it_is_shown(client, category, product):
-    """The answers index and the question isolated «Gmail» in the note while the
-    invoice, the rate sheet and the comparison printed it bare, so on one page
-    the same phrase read in two orders."""
-    make_product(category, "second")
-    product.delivery_note = "تا ۲ ساعت برای Gmail"
-    product.save()
-
-    page = client.get(reverse("product", args=[product.slug])).content.decode()
-    listing = client.get(reverse("category", args=[category.slug])).content.decode()
-
-    shown = 'تا ۲ ساعت برای <bdi lang="en">Gmail</bdi>'
-    assert shown in page.split('id="invoice"', 1)[1].split("</section>", 1)[0], "the invoice"
-    assert f'<td class="rs__eta">{shown}</td>' in listing, "the rate sheet"
-    assert f'<td class="cmp__eta">{shown}</td>' in listing, "the comparison"
+    # The panel asks for a phrase, not a sentence; standing alone it needs its word.
+    assert page.count(f"تحویل {note}") >= 2 and f"تحویل {note}" in listing
 
 
 def test_the_note_never_touches_the_real_deadline(product):
@@ -617,12 +563,11 @@ def test_a_discount_with_a_deadline_shows_how_long_is_left(client, category):
         body = client.get(url).content.decode()
         assert "badge--time" in body, url
         assert "مانده" in body, url
-        # Rendered by the server, so it is right with JavaScript off and never
-        # ticks; the seconds travel beside it so the end does not depend on the
-        # visitor's clock. The fixed end time stands beside the badge.
+        # Rendered by the server, so it is right with JavaScript off, and the
+        # seconds travel beside it so the browser can tick without trusting
+        # its own clock against the server's.
         assert re.search(r'data-left="(\d+)"', body), url
-        assert "۵\u00a0ساعت و ۲۹\u00a0دقیقه" in body or "۵\u00a0ساعت و ۳۰\u00a0دقیقه" in body, url
-        assert "<time datetime=" in body, url
+        assert "۰۵:۲۹:" in body or "۰۵:۳۰:" in body, url
 
 
 def test_a_discount_without_a_deadline_shows_no_clock(client, category):
@@ -657,7 +602,7 @@ def test_the_clock_counts_days_once_a_clock_would_be_absurd(client, category):
 
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
-    assert "۱۷\u00a0روز و ۴\u00a0ساعت</span> مانده" in body
+    assert "۱۷ روز و ۴ ساعت مانده" in body
     assert "۴۱۲:" not in body, "a clock reading 412 hours is a number, not a deadline"
 
 
@@ -668,7 +613,7 @@ def test_search_finds_sloppy_arabic_keyboard_input(client, product):
     body = client.get(reverse("search") + "?q=كلاود").content.decode()  # arabic kaf
 
     assert "Claude Pro" in body
-    assert "۱ سرویس" in body
+    assert "۱ محصول" in body
 
 
 def test_search_miss_is_a_designed_empty_state(client, product):
@@ -712,8 +657,8 @@ def test_the_words_around_a_product_name_do_not_sink_the_search(client, category
 def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product):
     body = client.get(reverse("search"), {"q": "xbox"}).content.decode()
 
-    assert 'برای «<bdi lang="en">xbox</bdi>» محصولی پیدا نکردیم' in body
-    assert "همه‌ی سرویس‌های ما در نرخ‌نامه‌ی زیر است." in body
+    assert "برای «<bdi>xbox</bdi>» محصولی پیدا نکردیم" in body
+    assert "همه‌ی محصولات ما:" in body
 
 
 def test_the_search_page_is_not_indexed(client, product):
@@ -770,74 +715,25 @@ def test_the_first_available_plan_is_selected(client, category):
     assert checked == [str(second.id)]
 
 
-def test_until_there_is_a_cart_the_order_goes_to_telegram(client, product):
-    """A disabled cart button looked live and did nothing. Until S4b the
-    invoice's one action is a working link to the support channel, the line
-    under it says why, and the form has nothing to submit."""
+def test_the_cart_button_is_off_until_there_is_a_cart(client, product):
+    """It looked live and did nothing when pressed. The cart arrives at S4b;
+    until then the button says so instead of pretending."""
     body = client.get(reverse("product", args=[product.slug])).content.decode()
-    form = body.split('class="invoice__form"', 1)[1].split("</form>", 1)[0]
 
-    assert 'class="invoice__form" method="post" action="#" data-cart-pending>' in body
-    telegram = support.details()["telegram_url"]
-    assert re.search(rf'<a class="[^"]*invoice__cta" href="{telegram}"', form)
-    assert "فعلاً سفارش را در تلگرام می‌گیریم" in form
-    assert 'type="submit"' not in form and "<button" not in form
+    assert re.search(
+        r'<button type="submit" class="btn btn--primary buybox__cta" disabled[ >]', body
+    )
+    assert "خرید از سایت هنوز فعال نشده است." in body
 
 
-def test_a_rate_sheet_row_opens_the_page_with_its_plan_chosen(client, product):
-    """`?plan=` is honoured only for an available plan of this product;
-    anything else falls back to the first available plan."""
-    plans = list(product.plans.order_by("sort_order"))
-    third, sold_out = plans[2], product.plans.get(is_available=False)
-    other = make_product(product.category, "other").plans.get()
-    url = reverse("product", args=[product.slug])
-
-    def checked(query: str) -> list[str]:
-        body = client.get(url + query).content.decode()
-        return re.findall(r'value="(\d+)"[^>]*\schecked', body)
-
-    assert checked(f"?plan={third.pk}") == [str(third.pk)]
-    for junk in (f"?plan={sold_out.pk}", f"?plan={other.pk}", "?plan=x", ""):
-        assert checked(junk) == [str(plans[0].pk)], junk
-
-
-def test_the_invoice_has_a_server_total_for_every_plan_and_quantity(client, product):
-    """The script picks a figure and computes none, so the server must have
-    built one for every pair it can be asked for, now and after the discount."""
-    gift = product.plans.get(title="۳ ماهه")
-    gift.max_quantity = 3
-    gift.save()
-
-    body = client.get(reverse("product", args=[product.slug])).content.decode()
-    data = json.loads(re.search(r'<script type="application/json">(.*?)</script>', body, re.S)[1])
-
-    available = product.plans.filter(is_available=True)
-    assert set(data) == {str(plan.pk) for plan in available}
-    for plan in available:
-        moments = {"now": None, "after": plan.promo_ends_at}
-        for phase, at in moments.items():
-            price = effective_price(plan, at=at) if at else effective_price(plan)
-            figures = data[str(plan.pk)][phase]
-            assert set(figures) == {str(n) for n in range(1, plan.max_quantity + 1)}
-            for n, figure in figures.items():
-                total = price * int(n)
-                assert figure == {
-                    "amount": format_toman(total, with_unit=False),
-                    "words": toman_in_words(total),
-                }
-    discounted = data[str(product.plans.get(title="۱ ماهه").pk)]
-    assert discounted["now"]["1"]["amount"] == "۱,۲۰۰,۰۰۰"
-    assert discounted["after"]["1"]["amount"] == "۱,۴۵۰,۰۰۰", "positive control: the two differ"
-
-
-def test_a_plan_title_on_the_rate_sheet_is_isolated(client, category):
+def test_a_plan_title_on_a_card_is_isolated(client, category):
     """«12 Months Family Plan» inside a Persian line reorders without bdi."""
     obj = make_product(category, "family")
     obj.plans.update(title="12 Months Family Plan")
 
     body = client.get(reverse("category", args=[category.slug])).content.decode()
 
-    assert '"><bdi lang="en">12 Months Family Plan</bdi></a></span>' in body
+    assert '<span class="pcard__from"><bdi>12 Months Family Plan</bdi>' in body
 
 
 def test_a_category_intro_is_restricted_markdown_never_markup(client, category, product):
@@ -851,35 +747,10 @@ def test_a_category_intro_is_restricted_markdown_never_markup(client, category, 
     body = client.get(reverse("category", args=[category.slug])).content.decode()
 
     assert "<script>alert" not in body
-    assert '&lt;<bdi lang="en">script</bdi>&gt;' in body
+    assert "&lt;<bdi>script</bdi>&gt;" in body
     assert "<strong>پررنگ</strong>" in body
     assert "<p>تیتر</p>" in body and "<h3>تیتر" not in body
     assert "the old column" not in body
-
-
-def test_one_shared_end_prints_once_and_ends_that_differ_print_on_their_plans(client, category):
-    obj = make_product(category, "ends", promo_price=Decimal("90000"))
-    first = obj.plans.get()
-    first.promo_ends_at = timezone.now() + timedelta(hours=3)
-    first.save()
-    second = Plan.objects.create(
-        product=obj,
-        title="۳ ماهه",
-        cost_price=Decimal("1"),
-        sale_price=Decimal("500000"),
-        promo_price=Decimal("400000"),
-        promo_ends_at=first.promo_ends_at,
-        sort_order=1,
-    )
-    url = reverse("product", args=[obj.slug])
-
-    shared = client.get(url).content.decode()
-    assert shared.count('class="invoice__promo"') == 1 and 'class="plan__clock"' not in shared
-
-    second.promo_ends_at += timedelta(days=2)
-    second.save()
-    apart = client.get(url).content.decode()
-    assert 'class="invoice__promo"' not in apart and apart.count('class="plan__clock"') == 2
 
 
 def test_a_discount_carries_the_price_it_falls_back_to(client, category):

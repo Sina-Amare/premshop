@@ -110,16 +110,6 @@ def with_sections_and_a_question(product: Product) -> None:
     )
 
 
-def open_tab(page: Page, name: str) -> None:
-    """The product form shows one tab at a time (ProductAdmin.fieldsets)."""
-    page.get_by_role("tab", name=name).click()
-    # Alpine shows the panel on its next tick, after the click has returned.
-    page.get_by_role("tabpanel", name=name).wait_for()
-
-
-FORM_TABS = ["اصلی", "تحویل", "صفحه‌ی محصول", "پلن‌ها", "جستجو"]
-
-
 def save(page: Page, button: str = "_continue") -> None:
     with page.expect_navigation():
         page.click(f"#submit-row button[name={button}]")
@@ -138,7 +128,6 @@ def test_a_plan_can_be_added_from_the_product_form(open_panel, product, width):
     ordering field, and that row held the title and the duration too."""
     page = open_panel(change_form(product), width)
 
-    open_tab(page, "پلن‌ها")
     page.click("#plans-group a.add-row")
     page.fill("input[name=plans-1-title]", "۳ ماهه")
     page.fill("input[name=plans-1-duration_days]", "90")
@@ -155,7 +144,6 @@ def test_spec_order_survives_a_save(open_panel, product):
     not on the page."""
     page = open_panel(change_form(product))
 
-    open_tab(page, "صفحه‌ی محصول")
     drag_second_spec_above_the_first(page)
     titles = page.locator("#specs-group .form-group.original input[name$=-title]")
     assert titles.nth(0).input_value() == "تحویل", "the drag itself did not happen"
@@ -190,26 +178,20 @@ def test_the_amount_under_a_price_is_what_the_shop_prints(open_panel, product, t
     145000 does not look wrong. The amount under the field is printed the way
     the shop prints it, by apps.core.formatting, which this compares against."""
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
     field = page.locator("input[name=plans-0-sale_price]")
 
     field.fill(typed)
 
     preview = page.locator("input[name=plans-0-sale_price] + .money-preview")
-    assert preview.inner_text() == "در فروشگاه: " + format_toman(Decimal(typed))
+    assert preview.inner_text() == format_toman(Decimal(typed))
 
 
 def test_every_price_field_shows_its_amount_on_load(open_panel, product):
-    """The cost price never reaches the shop, so it shows the amount alone."""
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
 
-    for name, shown in [
-        ("cost_price", format_toman(Decimal("900000"))),
-        ("sale_price", "در فروشگاه: " + format_toman(Decimal("1450000"))),
-    ]:
+    for name, value in [("cost_price", "900000"), ("sale_price", "1450000")]:
         preview = page.locator(f"input[name=plans-0-{name}] + .money-preview")
-        assert preview.inner_text() == shown
+        assert preview.inner_text() == format_toman(Decimal(value))
     assert page.locator("input[name=plans-0-promo_price] + .money-preview").is_hidden()
 
 
@@ -227,7 +209,6 @@ def test_a_discount_date_shows_its_jalali_day(open_panel, product, typed, day):
     Aban. The day is shown under the field as the shop prints dates, by
     apps.core.formatting, across the turn of the Jalali year."""
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
     field = page.locator("input[name=plans-0-promo_ends_at_0]")
 
     field.fill(typed)
@@ -236,24 +217,8 @@ def test_a_discount_date_shows_its_jalali_day(open_panel, product, typed, day):
     assert preview.inner_text() == format_jalali(day)
 
 
-@pytest.mark.parametrize(("typed", "clock"), [("23:39", "۲۳:۳۹"), ("7:05:00", "۰۷:۰۵")])
-def test_a_discount_end_reads_as_its_jalali_day_and_time(open_panel, product, typed, clock):
-    """The end is the moment the shop's price changes back, so the line under
-    it gives the hour as well, written as format_deadline writes it."""
-    page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
-
-    page.locator("input[name=plans-0-promo_ends_at_0]").fill("2026-11-02")
-    page.locator("input[name=plans-0-promo_ends_at_1]").fill(typed)
-
-    preview = page.locator("input[name=plans-0-promo_ends_at_0] ~ .date-preview")
-    assert preview.text_content() == f"{format_jalali(date(2026, 11, 2))}، ساعت\u00a0{clock}"
-    assert format_jalali(date(2026, 11, 2)) == "۱۱ آبان ۱۴۰۵", "positive control"
-
-
 def test_an_impossible_date_shows_no_jalali_day(open_panel, product):
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
 
     page.locator("input[name=plans-0-promo_ends_at_0]").fill("2026-02-31")
 
@@ -265,7 +230,6 @@ def test_leaving_after_a_failed_save_still_warns(open_panel, product):
     comes back from a failed save has had none, so everything typed into it
     could be lost by one click on the sidebar."""
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
     page.fill("input[name=plans-0-promo_price]", "99999999")
     save(page)
     assert page.locator(".errornote").count(), "the save was meant to fail"
@@ -302,9 +266,7 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
 
     page.fill("input[name=name]", "Spotify Premium")
     page.select_option("select[name=category]", str(category.pk))
-    open_tab(page, "تحویل")
     page.select_option("select[name=delivery_type]", Product.DeliveryType.ON_CUSTOMER_ACCOUNT)
-    open_tab(page, "صفحه‌ی محصول")
     page.fill("input[name=short_description]", "موسیقی بدون آگهی، روی اکانت خودتان.")
     page.fill("input[name=iran_stance]", "پشتیبانی‌نشده")
     page.fill(
@@ -314,7 +276,6 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     for row, (title, value) in enumerate([("ریجن", "آمریکا"), ("تحویل", "روی اکانت خودتان")]):
         page.fill(f"input[name=specs-{row}-title]", title)
         page.fill(f"input[name=specs-{row}-value]", value)
-    open_tab(page, "پلن‌ها")
     page.fill("input[name=plans-0-title]", "۱ ماهه")
     page.fill("input[name=plans-0-duration_days]", "30")
     page.fill("input[name=plans-0-cost_price]", "100000")
@@ -327,7 +288,6 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     page.fill("input[name=plans-1-promo_price]", "1490000")
     save(page)
 
-    open_tab(page, "صفحه‌ی محصول")
     drag_second_spec_above_the_first(page)
     save(page)
 
@@ -368,7 +328,6 @@ def test_the_spec_template_row_stays_hidden_below_desktop_width(open_panel, prod
     template row as well: Tab entered boxes named `__prefix__`, which the
     formset never reads, so whatever was typed there was dropped on save."""
     page = open_panel(change_form(product), width)
-    open_tab(page, "صفحه‌ی محصول")
 
     assert page.locator("#id_specs-0-title").is_visible(), "positive control"
     assert page.locator("#id_specs-__prefix__-title").is_hidden()
@@ -385,38 +344,20 @@ def test_a_price_range_under_the_name_stays_in_one_piece_on_a_phone(open_panel, 
     narrow = page.locator(".panel-narrow").first
     assert narrow.is_visible(), "positive control: the line under the name is shown"
     assert narrow.evaluate("e => e.children.length") == 2, "the badge and one range"
-    # Each figure is unbreakable, and «تا» and «تومان» are held to the second
-    # by no-break spaces: a range too wide for the cell breaks before «تا» and
-    # nowhere else.
-    text = narrow.locator(".panel-range").text_content()
-    assert text.count(" ") == 1 and text.split(" ")[1].startswith("تا\u00a0"), text
+    # Each part is unbreakable, and «تا» is part of the second: a range too
+    # wide for the cell breaks before «تا» and nowhere else.
+    parts = narrow.locator(".panel-amount").all_inner_texts()
+    assert len(parts) == 2 and parts[1].startswith("تا "), parts
     assert narrow.locator(".panel-amount").evaluate_all(
         "es => es.every(e => getComputedStyle(e).whiteSpace === 'nowrap')"
     )
-
-
-def test_a_single_price_under_the_name_keeps_its_toman_on_its_line(open_panel, product):
-    """«تومان» left the bold figure, and under the name, where each piece is a
-    flex item, it fell to a line of its own."""
-    page = open_panel("/admin/catalog/product/", 320)
-
-    figure = page.locator(".panel-narrow .panel-amount").first
-    assert figure.is_visible(), "positive control: the price under the name is shown"
-    same_line = figure.evaluate("""e => {
-        const unit = document.createRange();
-        unit.selectNodeContents(e.nextSibling);
-        return Math.abs(unit.getBoundingClientRect().top - e.getBoundingClientRect().top) < 4;
-    }""")
-    assert same_line
 
 
 def test_after_a_failed_save_the_rows_show_the_order_that_saves(open_panel, product):
     """The page came back in the stored order while each row's `sort_order`
     still held the drag, so saving again published an order nobody saw."""
     page = open_panel(change_form(product))
-    open_tab(page, "صفحه‌ی محصول")
     drag_second_spec_above_the_first(page)
-    open_tab(page, "پلن‌ها")
     page.fill("input[name=plans-0-promo_price]", "99999999")
     save(page)
     assert page.locator(".errornote").count(), "the save was meant to fail"
@@ -446,7 +387,6 @@ def test_the_panel_numbers_its_rows_and_results_in_persian_digits(open_panel, pr
         delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
     )
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
     counters = page.locator("#plans-group .form-group:not(.empty-form) .stacked-counter")
     assert counters.all_inner_texts() == ["۲"]
     page.click("#plans-group a.add-row")
@@ -475,8 +415,7 @@ def test_the_english_panel_keeps_its_own_digits_and_names(open_panel, product, l
     assert page.get_by_role("button", name="Search").count() >= 1
 
 
-# The shop's focus ring, lapis (--color-lapis).
-LAPIS = "rgb(35, 61, 134)"
+TEAL = "rgb(15, 118, 110)"
 
 
 @pytest.mark.parametrize(
@@ -493,8 +432,6 @@ def test_a_toggle_and_the_search_button_show_the_keyboards_place(
     """Unfold draws both with `focus:outline-none` and nothing in its place:
     on the product form a keyboard user could not see where they were."""
     page = open_panel(change_form(product) if path == "change" else path)
-    if path == "change":
-        open_tab(page, "تحویل")
     page.locator(start).focus()
     page.keyboard.press(key)
 
@@ -504,7 +441,7 @@ def test_a_toggle_and_the_search_button_show_the_keyboards_place(
         "e => { const s = getComputedStyle(e); return [s.outlineStyle, s.outlineWidth, s.outlineColor]; }"
     )
     assert style != "none" and float(width.removesuffix("px")) >= 2, (style, width)
-    assert colour == LAPIS, colour
+    assert colour == TEAL, colour
 
 
 # A bar pinned over the lower part of the page that overlaps the focused
@@ -590,12 +527,6 @@ def test_no_icon_is_read_aloud_as_its_english_name(open_panel, product):
             {m.group(0) for m in ICON_WORDS.finditer(spoken(page.locator("body").aria_snapshot()))}
         )
         if path == change_form(product):
-            # A closed tab is not read; each is opened in turn.
-            for tab in FORM_TABS:
-                open_tab(page, tab)
-                snapshot = spoken(page.locator("body").aria_snapshot())
-                found[tab] = sorted({m.group(0) for m in ICON_WORDS.finditer(snapshot)})
-            open_tab(page, "اصلی")
             # A failed save puts «warning» before each error.
             page.fill("input[name=name]", "")
             save(page)
@@ -613,7 +544,6 @@ def test_no_icon_is_read_aloud_as_its_english_name(open_panel, product):
     assert page.get_by_role("button", name="جستجو").count() >= 1
     assert page.get_by_role("link", name="افزودن محصول").count() == 1
     page = open_panel(change_form(product))
-    open_tab(page, "پلن‌ها")
     assert page.get_by_role("link", name="انتخاب تاریخ").count() >= 2
 
 
@@ -648,12 +578,9 @@ def test_no_panel_page_is_wider_than_a_small_phone(open_panel, product):
     wide = {}
     for path in [change_form(product), "/admin/catalog/product/", "/admin/catalog/plan/"]:
         page = open_panel(path, 320)
-        for tab in FORM_TABS if path == change_form(product) else [None]:
-            if tab:
-                open_tab(page, tab)
-            width = page.evaluate("document.documentElement.scrollWidth")
-            if width > 320:
-                wide[f"{path} {tab or ''}"] = width
+        width = page.evaluate("document.documentElement.scrollWidth")
+        if width > 320:
+            wide[path] = width
         page.close()
 
     assert not wide, wide
@@ -703,11 +630,6 @@ def test_no_panel_page_has_a_serious_accessibility_violation(open_panel, product
         page.close()
 
     page = open_panel(change_form(product), width)
-    # axe reads only what is shown, and the form shows one tab at a time.
-    for tab in FORM_TABS[1:]:
-        open_tab(page, tab)
-        found[tab] = serious_violations(page)
-    open_tab(page, "پلن‌ها")
     page.fill("input[name=plans-0-promo_price]", "99999999")
     save(page)
     found["a failed save"] = serious_violations(page)
@@ -740,7 +662,6 @@ def test_section_order_survives_a_save(open_panel, product):
     # Tall enough for both rows: a stacked row is taller than a screen, and a
     # synthetic drag does not scroll the page the way a person's does.
     page = open_panel(change_form(product), DESKTOP, 3200)
-    open_tab(page, "صفحه‌ی محصول")
 
     handles = page.locator("#sections-group .form-group.original [x-sort\\:handle]")
     handles.nth(1).drag_to(handles.nth(0))
@@ -762,12 +683,7 @@ def test_a_refused_publish_shows_its_reasons_at_both_widths(open_panel, product,
     page.select_option("select[name=status]", Product.Status.ACTIVE)
     save(page)
 
-    # The first tab with an error is open, and the closed one says it has some.
-    assert page.locator("#id_status_error").is_visible()
-    page_tab = page.get_by_role("tab", name="صفحه‌ی محصول")
-    assert page_tab.locator("[data-testid=error-count]").is_visible()
-    open_tab(page, "صفحه‌ی محصول")
-    for field in ("short_description", "iran_stance"):
+    for field in ("status", "short_description", "iran_stance"):
         assert page.locator(f"#id_{field}_error").is_visible(), field
     # And together on the first screen, where the save lands.
     reasons = page.locator(".panel-readiness li")
@@ -808,35 +724,3 @@ def test_source_addresses_read_left_to_right(open_panel, product):
     box = page.locator("textarea[name=sources]")
 
     assert box.evaluate("e => getComputedStyle(e).direction") == "ltr"
-
-
-# Whether the box cuts its text, and whether the first letter is inside it.
-FIRST_LETTER_SHOWN = """e => {
-    const box = e.getBoundingClientRect();
-    const text = document.createTreeWalker(e, NodeFilter.SHOW_TEXT, {
-        acceptNode: n => n.data.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
-    }).nextNode();
-    const from = text.data.search(/\\S/);
-    const range = document.createRange();
-    range.setStart(text, from);
-    range.setEnd(text, text.data.trimEnd().length);
-    const cut = range.getBoundingClientRect().width > box.width;
-    range.setEnd(text, from + 1);
-    const first = range.getBoundingClientRect();
-    return [cut, first.left >= box.left - 1 && first.right <= box.right + 1];
-}"""
-
-
-def test_a_cut_latin_name_keeps_its_beginning(open_panel, product):
-    """An ellipsis goes at the end of its box's direction, so a Latin name in
-    a right-to-left box lost its first letters: «...de Pro»."""
-    User.objects.filter(email="operator@example.test").update(
-        email="operator.with.a.long.address@example.test"
-    )
-    crumb = open_panel(change_form(product), PHONE).locator("#header-inner h1 > :has(bdi)")
-    account = open_panel("/admin/").locator("#nav-sidebar .select-none.min-w-0 > div").first
-
-    for name in (crumb, account):
-        cut, first_shown = name.evaluate(FIRST_LETTER_SHOWN)
-        assert cut, "positive control: the name fits, so nothing is cut"
-        assert first_shown, f"{name.inner_text()!r} is cut at its beginning"

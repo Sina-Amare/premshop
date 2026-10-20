@@ -59,72 +59,26 @@ def format_toman(amount: Decimal | int, *, with_unit: bool = True) -> str:
     return f"{rendered} تومان" if with_unit else rendered
 
 
-NBSP = "\u00a0"
-
-
-def _count(number: int, unit: str) -> str:
-    return f"{to_persian_digits(number)}{NBSP}{unit}"
-
-
 def format_countdown(seconds: int) -> str:
-    """Time left on a discount: «۱۳ روز و ۲۲ ساعت», under a day «۳ ساعت و ۳۹ دقیقه».
+    """How much time is left, at the granularity the reader can act on.
 
-    Never seconds: the text does not tick, because a clock rewriting itself every
-    second is moving content nobody can stop (WCAG 2.2.2), and the fixed end time
-    is printed beside it. A zero second unit is dropped, since «۳ روز و ۰ ساعت»
-    reads as a bug. `static/js/countdown.js` writes the same text when a tab
-    comes back, so the two must change together.
+    Under a day: a clock, down to the second. Above it: days and hours — a
+    clock reading ۴۱۲:۰۶:۵۵ is a number, not a deadline. The hour is dropped
+    from «۳ روز» when it is zero, because «۳ روز و ۰ ساعت» reads as a bug.
+
+    The hour field is padded even at zero. «۰۸:۴۰» alone could be read as
+    eight hours and forty minutes, and «۰:۰۸:۴۰» reads as a stray digit;
+    «۰۰:۰۸:۴۰» is unambiguous and is the shape Iranian shops use.
     """
     seconds = max(0, int(seconds))
-    days, rest = divmod(seconds, 86400)
-    hours, minutes = rest // 3600, rest % 3600 // 60
-    if days:
-        return _count(days, "روز") + (f" و {_count(hours, 'ساعت')}" if hours else "")
-    if hours:
-        return _count(hours, "ساعت") + (f" و {_count(minutes, 'دقیقه')}" if minutes else "")
-    return _count(minutes, "دقیقه") if minutes else f"کمتر از یک{NBSP}دقیقه"
-
-
-def format_deadline(value: datetime) -> str:
-    """When a discount ends, in Tehran time: «۱۱ آبان، ساعت ۲۳:۳۹»."""
-    local = timezone.localtime(value)
-    day = to_jalali(local)
-    month = JALALI_MONTHS[day.month - 1]
-    return to_persian_digits(f"{day.day}{NBSP}{month}، ساعت{NBSP}{local:%H:%M}")
-
-
-_ONES = ("", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه")
-_TEENS = ("ده", "یازده", "دوازده", "سیزده", "چهارده", "پانزده", "شانزده", "هفده", "هجده", "نوزده")
-_TENS = ("", "", "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود")
-_HUNDREDS = ("", "صد", "دویست", "سیصد", "چهارصد", "پانصد", "ششصد", "هفتصد", "هشتصد", "نهصد")
-_SCALES = ("", "هزار", "میلیون", "میلیارد")
-
-
-def _below_thousand(n: int) -> str:
-    hundreds, rest = divmod(n, 100)
-    tens, ones = divmod(rest, 10)
-    if tens == 1:
-        parts = [_HUNDREDS[hundreds], _TEENS[ones]]
-    else:
-        parts = [_HUNDREDS[hundreds], _TENS[tens], _ONES[ones]]
-    return " و ".join(part for part in parts if part)
-
-
-def toman_in_words(amount: Decimal | int) -> str:
-    """An amount as an invoice writes it out: «یک میلیون و صد و هشتاد هزار تومان».
-
-    «هزار» stands without «یک», as it is said; a million keeps it.
-    """
-    n = int(amount)
-    if not 0 < n < 1000 ** len(_SCALES):
-        raise ValueError(f"no words for {n} toman")
-    groups = []
-    for scale in _SCALES:
-        n, group = divmod(n, 1000)
-        if group:
-            words = "" if (group == 1 and scale == "هزار") else _below_thousand(group)
-            groups.append(f"{words} {scale}".strip())
-    return " و ".join(reversed(groups)) + " تومان"
+    if seconds >= 86400:
+        days, hours = divmod(seconds // 3600, 24)
+        if not hours:
+            return f"{to_persian_digits(days)} روز"
+        return f"{to_persian_digits(days)} روز و {to_persian_digits(hours)} ساعت"
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    return to_persian_digits(f"{hours:02d}:{minutes:02d}:{secs:02d}")
 
 
 def to_jalali(value: datetime | date) -> jdatetime.date:
