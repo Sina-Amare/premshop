@@ -27,7 +27,8 @@ TEMPLATE_COMMENT = re.compile(r"{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#[^\n]
 
 
 def templates() -> list[Path]:
-    return [p for p in (ROOT / "templates").rglob("*") if p.suffix in {".html", ".txt"}]
+    # Every file, not a list of suffixes: the .svg partials are templates too.
+    return [p for p in (ROOT / "templates").rglob("*") if p.is_file()]
 
 
 def python_files() -> list[Path]:
@@ -55,6 +56,7 @@ def offenders(paths: list[Path], pattern: re.Pattern[str]) -> list[str]:
 def test_the_scan_walks_real_files():
     """A scan over nothing passes. These are the controls for both walks."""
     assert any(p.name == "category.html" for p in templates())
+    assert any(p.as_posix().endswith("svg/hero.svg") for p in templates())
     assert any(p.as_posix().endswith("apps/core/templatetags/fa.py") for p in python_files())
 
 
