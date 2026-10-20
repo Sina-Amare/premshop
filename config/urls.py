@@ -1,9 +1,27 @@
+from collections.abc import Callable
+from functools import wraps
+from typing import Any
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
 from apps.core import views as core_views
+
+
+def staff_or_debug(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
+    """A review page, not part of the shop: a 404 for anyone else in production."""
+
+    @wraps(view)
+    def guarded(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        if not (settings.DEBUG or request.user.is_staff):
+            raise Http404
+        return view(request, *args, **kwargs)
+
+    return guarded
+
 
 urlpatterns = [
     path("", include("apps.catalog.urls")),
@@ -12,7 +30,7 @@ urlpatterns = [
     # raises NoReverseMatch the moment SHOW_LANGUAGES is on.
     path("i18n/", include("django.conf.urls.i18n")),
     # The design system rendered, for review. Not linked from the shop.
-    path("styleguide/", core_views.styleguide, name="styleguide"),
+    path("styleguide/", staff_or_debug(core_views.styleguide), name="styleguide"),
     path("healthz", core_views.healthz, name="healthz"),
     # Development-only email previews; the view itself 404s when DEBUG is off.
     path("dev/emails/", core_views.email_preview, name="email-previews"),
@@ -20,6 +38,8 @@ urlpatterns = [
     path("", include("apps.accounts.urls")),
     path("admin/", admin.site.urls),
 ]
+
+handler500 = "apps.core.errors.server_error"
 
 # Product images in development only. In production the reverse proxy serves
 # MEDIA_ROOT directly and this list is empty because DEBUG is False.

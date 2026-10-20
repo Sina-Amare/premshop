@@ -11,5 +11,12 @@ Under a day it counts seconds, because that is the hour someone decides in.
 Above a day it says days and hours, because a clock reading 412:06:55 is a
 number, not a deadline.
 
+At zero the script in base.html says so and the badge turns neutral, while
+`_price.html` swaps in the price that follows.
+
+The ticking badge is hidden from screen readers. It sits inside a plan's
+label and a card's link, so it changed their names every second; what is
+read instead is the day the discount ends, once, and «تخفیف تمام شد» at zero.
+
 Params: plan.
-{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}">{{ left|countdown }} مونده</span>{% endif %}{% endwith %}
+{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}" aria-hidden="true">{{ left|countdown }} مانده</span><span class="sr-only deadline__said">تخفیف تا {{ plan.promo_ends_at|jalali }}</span>{% endif %}{% endwith %}

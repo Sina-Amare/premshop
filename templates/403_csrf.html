@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}این فرم دیگر معتبر نیست | PremShop{% endblock %}
+
+{% comment %}
+A form whose CSRF token no longer matches. Here that is nearly always a form
+left open in one tab while the customer signed in from another, which rotates
+the token, or a browser that refuses cookies. Django's own page is English
+and talks about referers. Rendered by apps.core.errors.csrf_failure.
+{% endcomment %}
+{% block content %}
+<div class="wrap page">
+<div class="notfound">
+  <p class="notfound__code">۴۰۳</p>
+  <h1 class="page-head__title">این فرم دیگر معتبر نیست</h1>
+  <p class="prose">صفحه را دوباره باز کنید و فرم را از نو بفرستید. اگر باز همین پیام را دیدید، کوکی‌های مرورگر را برای این سایت روشن کنید.</p>
+  <div class="notfound__act">
+    {% if in_panel %}
+    <a class="btn btn--primary" href="{% url 'admin:index' %}">بازگشت به پنل مدیریت</a>
+    {% else %}
+    <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}

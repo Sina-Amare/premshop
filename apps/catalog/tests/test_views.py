@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.pricing import effective_price
 from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
@@ -103,7 +104,7 @@ def test_home_renders_categories_and_products(client, product):
 def test_home_empty_state_is_designed_not_blank(client):
     body = client.get(reverse("home")).content.decode()
 
-    assert "هنوز محصولی ثبت نشده است" in body
+    assert "فعلاً محصولی برای فروش نداریم" in body
 
 
 def test_category_page_and_its_empty_state(client, category, product):
@@ -136,7 +137,8 @@ def test_a_category_page_offers_no_filter(client, category, product):
 
 def test_no_page_describes_the_buyer_in_the_third_person(client, product):
     """«روی اکانت خود مشتری» is how an operator describes a buyer to
-    themselves. The market writes «روی اکانت شخصی شما»."""
+    themselves. The label reads «فعال‌سازی روی اکانت شخصی», which also reads
+    right in the panel, where «شما» would be the operator."""
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
     assert "خود مشتری" not in body
@@ -345,7 +347,8 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
     assert "این محصول فعلاً موجود نیست" in body
 
 
-PRICE_COMPONENT = re.compile(r'<span class="price[^"]*">.*?</span></span>', re.S)
+# Attributes allowed after the class: a discount with an end carries data-left.
+PRICE_COMPONENT = re.compile(r'<span class="price[^"]*"[^>]*>.*?</span></span>', re.S)
 
 
 def test_catalog_card_and_product_page_render_struck_through_original(client, product):
@@ -361,10 +364,10 @@ def test_catalog_card_and_product_page_render_struck_through_original(client, pr
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
     for body in (listing, page):
-        assert '<span class="price__was">۱,۴۵۰,۰۰۰</span>' in body
+        assert '<s class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</s>' in body
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
-        assert prices
+        assert any("price__was" in markup for markup in prices), "the discounted one was read"
         for markup in prices:
             assert "badge--time" not in markup, "the figure itself is never amber"
 
@@ -384,7 +387,7 @@ def test_seo_fields_render_when_set(client, product):
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert "<title>خرید اشتراک کلاود پرو — PremShop</title>" in body
+    assert "<title>خرید اشتراک کلاود پرو | PremShop</title>" in body
     assert 'content="کلاود پرو با تحویل ۱۲ ساعته"' in body
 
 
@@ -451,7 +454,7 @@ def test_product_page_suggests_other_products(client, category, product):
     elsewhere = make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
-    suggested = body.split("اینا رو هم داریم", 1)[1]
+    suggested = body.split("محصولات دیگر", 1)[1]
 
     assert f'href="/p/{sibling.slug}/"' in suggested
     assert f'href="/p/{elsewhere.slug}/"' in suggested, "a thin department is topped up"
@@ -498,7 +501,7 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
     The note replaces the display on every surface at once — the card, the
     badge, the facts table, the buy box and the page's own question — because
     they all read one property rather than formatting the field themselves."""
-    note = "به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت)"
+    note = "۴۸ تا ۷۲ ساعت"
     product.delivery_note = note
     product.save()
 
@@ -508,10 +511,12 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
     assert page.count(note) >= 4, "the badge, the facts row, the question and the buy box"
     assert note in listing, "and the card on the listing"
     assert "تا ۱۲ ساعت" not in page, "the hours must not survive beside the note"
+    # The panel asks for a phrase, not a sentence; standing alone it needs its word.
+    assert page.count(f"تحویل {note}") >= 2 and f"تحویل {note}" in listing
 
 
 def test_the_note_never_touches_the_real_deadline(product):
-    """The operator panel counts down from `delivery_hours`, and the 48-hour
+    """The operator panel counts down from `delivery_hours`, and the 72-hour
     promise is a database CHECK on it. A note is display only, so the number
     it overrides stays exactly where the deadline arithmetic will look."""
     product.delivery_note = "هر وقت رسید"
@@ -531,7 +536,7 @@ def test_a_discount_with_a_deadline_shows_how_long_is_left(client, category):
     for url in (reverse("home"), reverse("product", args=[obj.slug])):
         body = client.get(url).content.decode()
         assert "badge--time" in body, url
-        assert "مونده" in body, url
+        assert "مانده" in body, url
         # Rendered by the server, so it is right with JavaScript off, and the
         # seconds travel beside it so the browser can tick without trusting
         # its own clock against the server's.
@@ -571,7 +576,7 @@ def test_the_clock_counts_days_once_a_clock_would_be_absurd(client, category):
 
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
-    assert "۱۷ روز و ۴ ساعت مونده" in body
+    assert "۱۷ روز و ۴ ساعت مانده" in body
     assert "۴۱۲:" not in body, "a clock reading 412 hours is a number, not a deadline"
 
 
@@ -592,7 +597,7 @@ def test_search_miss_is_a_designed_empty_state(client, product):
     every Iranian shop surveyed does."""
     body = client.get(reverse("search") + "?q=xyzzy").content.decode()
 
-    assert "نداریم" in body
+    assert "پیدا نکردیم" in body
     assert product.name in body, "the shelf should be on the page"
     assert "پیدا نشد" not in body, "the passive puts the miss on the visitor"
 
@@ -604,7 +609,132 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "جستجوهای پشت سر هم زیاد شد" in response.content.decode()
+    assert "جستجوها در یک دقیقه‌ی اخیر زیاد بود." in response.content.decode()
+
+
+@pytest.mark.parametrize("query", ["خرید اکانت جمینای", "خرید اکانت جمینای پرو", "اکانت gemini"])
+def test_the_words_around_a_product_name_do_not_sink_the_search(client, category, query):
+    """«خرید اکانت جمینای پرو» is how people type it, and no product name holds
+    «خرید» or «اکانت», so the word-by-word match found nothing and the page
+    said the shop had no Gemini. The aliases are the seeded product's."""
+    gemini = make_product(category, "gemini-advanced")
+    gemini.name = "Gemini Advanced"
+    gemini.aliases = "جمینای، جمنای، جیمینای، gemini، هوش مصنوعی گوگل"
+    gemini.save()
+
+    response = client.get(reverse("search"), {"q": query})
+
+    # The results, not the page: a miss lists the whole catalogue, Gemini included.
+    assert [p.slug for p in response.context["results"]] == ["gemini-advanced"]
+
+
+def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product):
+    body = client.get(reverse("search"), {"q": "xbox"}).content.decode()
+
+    assert "برای «<bdi>xbox</bdi>» محصولی پیدا نکردیم" in body
+    assert "همه‌ی محصولات ما:" in body
+
+
+def test_the_search_page_is_not_indexed(client, product):
+    """A results page per query is an infinite set of thin pages to a crawler."""
+    robots = '<meta name="robots" content="noindex">'
+
+    assert robots in client.get(reverse("search"), {"q": "claude"}).content.decode()
+    assert robots not in client.get(reverse("home")).content.decode()
+    assert robots not in client.get(reverse("product", args=[product.slug])).content.decode()
+
+
+# --- The buy box and the price component --------------------------------------
+
+
+def price_components(body: str) -> list[str]:
+    return PRICE_COMPONENT.findall(body)
+
+
+def test_a_zero_price_reads_free_on_the_card_and_in_the_buy_box(client, category):
+    """The rule was enforced in the `price_html` filter, which no page used:
+    the card and the buy box printed «۰ تومان» through `_price.html`."""
+    free = make_product(category, "free", sale_price=Decimal("0"))
+
+    for url in (reverse("category", args=[category.slug]), reverse("product", args=[free.slug])):
+        prices = price_components(client.get(url).content.decode())
+        assert prices, url
+        for markup in prices:
+            assert '<span class="price__num">رایگان</span>' in markup, url
+            assert "تومان" not in markup and "۰" not in markup, url
+
+    # Beside a paid plan the card says «from» the cheapest, and nothing is from free.
+    Plan.objects.create(product=free, title="۳ ماهه", cost_price=1, sale_price=Decimal(300000))
+    listing = client.get(reverse("category", args=[category.slug])).content.decode()
+    assert '<span class="price__num">رایگان</span>' in listing
+    assert 'class="pcard__pre"' not in listing
+
+
+def test_the_first_available_plan_is_selected(client, category):
+    """With the first plan sold out nothing was checked, and the button still
+    offered to add whatever that meant to the cart."""
+    obj = make_product(category, "sold-first")
+    obj.plans.update(is_available=False)
+    second = Plan.objects.create(
+        product=obj,
+        title="۳ ماهه",
+        cost_price=Decimal("1"),
+        sale_price=Decimal("500000"),
+        sort_order=5,
+    )
+
+    body = client.get(reverse("product", args=[obj.slug])).content.decode()
+
+    checked = re.findall(r'value="(\d+)"[^>]*\schecked', body)
+    assert checked == [str(second.id)]
+
+
+def test_the_cart_button_is_off_until_there_is_a_cart(client, product):
+    """It looked live and did nothing when pressed. The cart arrives at S4b;
+    until then the button says so instead of pretending."""
+    body = client.get(reverse("product", args=[product.slug])).content.decode()
+
+    assert re.search(
+        r'<button type="submit" class="btn btn--primary buybox__cta" disabled[ >]', body
+    )
+    assert "خرید از سایت هنوز فعال نشده است." in body
+
+
+def test_a_plan_title_on_a_card_is_isolated(client, category):
+    """«12 Months Family Plan» inside a Persian line reorders without bdi."""
+    obj = make_product(category, "family")
+    obj.plans.update(title="12 Months Family Plan")
+
+    body = client.get(reverse("category", args=[category.slug])).content.decode()
+
+    assert '<span class="pcard__from"><bdi>12 Months Family Plan</bdi>' in body
+
+
+def test_a_category_intro_is_printed_as_text_never_as_markup(client, category, product):
+    """Anyone who could edit a category could put a script on a page customers
+    pay on. Until the restricted renderer exists, the stored text is escaped."""
+    category.intro_html = "<script>alert(1)</script><b>پررنگ</b>"
+    category.save()
+
+    body = client.get(reverse("category", args=[category.slug])).content.decode()
+
+    assert "<script>alert(1)</script>" not in body
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+
+
+def test_a_discount_carries_the_price_it_falls_back_to(client, category):
+    """When the clock reaches zero the page swaps in the price the server
+    rendered for that moment, from the same `effective_price` the cart uses."""
+    obj = make_product(category, "ending", promo_price=Decimal("90000"))
+    plan = obj.plans.get()
+    plan.promo_ends_at = timezone.now() + timedelta(hours=2)
+    plan.save()
+
+    body = client.get(reverse("product", args=[obj.slug])).content.decode()
+
+    after = effective_price(plan, at=plan.promo_ends_at)
+    assert after == plan.sale_price
+    assert re.search(r'class="price[^"]*" data-left="\d+" data-after="۲۰۰,۰۰۰"', body)
 
 
 def test_an_empty_query_does_not_spend_the_search_budget(client, category, product):

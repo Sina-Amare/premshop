@@ -33,10 +33,16 @@ class _StartTags(HTMLParser):
         self.seen.append((tag, attrs))
 
 
+# A browser reads «<!-->» and «<!--->» as whole, empty comments and renders what
+# follows them. html.parser on some Python versions, 3.12.3 on the CI runner
+# among them, opens a comment there instead, and the check went blind to it.
+ABRUPT_COMMENT = re.compile(r"<!--(?:->|>)")
+
+
 def live_markup(html: str) -> list[str]:
     """Each tag, attribute or link in `html` that is outside what the renderer may emit."""
     parser = _StartTags()
-    parser.feed(html)
+    parser.feed(ABRUPT_COMMENT.sub("<!---->", html))
     parser.close()
     found = []
     for tag, attrs in parser.seen:

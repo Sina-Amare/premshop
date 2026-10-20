@@ -1,11 +1,8 @@
 """What every page needs from the shell, fetched once.
 
-Two things live here rather than in each view. The shelves row is in the header
-of every page, so making each view remember to supply it is a bug waiting for
-the fourth view. The answering hours are a promise the shop makes in three
-places — the header strip, the footer and the product FAQ — and a promise
-stated three times from three literals is a promise that will eventually
-disagree with itself; here it has one definition.
+The shelves row is in the header of every page, so making each view remember
+to supply it is a bug waiting for the fourth view. The support details come
+from `apps.core.support`, their one definition.
 """
 
 from __future__ import annotations
@@ -13,9 +10,7 @@ from __future__ import annotations
 from django.db.models import Count, Q
 from django.http import HttpRequest
 
-# The operator answers between these hours, every day. Persian digits, because
-# this is display text and never parsed back.
-SUPPORT_HOURS = "۱۰ تا ۲۲"
+from apps.core import support
 
 
 def shell(request: HttpRequest) -> dict[str, object]:
@@ -43,4 +38,4 @@ def shell(request: HttpRequest) -> dict[str, object]:
         # be the reason the error page itself fails to render, or a database
         # outage turns into a blank response with no explanation in it.
         categories = []
-    return {"nav_categories": categories, "SUPPORT_HOURS": SUPPORT_HOURS}
+    return {"nav_categories": categories, "support": support.details()}

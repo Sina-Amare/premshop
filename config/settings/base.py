@@ -17,6 +17,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.mail.utils import DNS_NAME
 from django.templatetags.static import static
 from django.urls import reverse_lazy
+from django.utils.text import capfirst
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -78,8 +80,9 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 INSTALLED_APPS = [
     # unfold must precede django.contrib.admin: it overrides the admin templates,
-    # and Django resolves templates in INSTALLED_APPS order.
-    "unfold",
+    # and Django resolves templates in INSTALLED_APPS order. Unfold's own app,
+    # with the panel's site in place of Unfold's (apps/core/admin_site.py).
+    "apps.core.admin_site.PanelAdminConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -118,9 +121,12 @@ MIDDLEWARE = [
     # Before everything else that might touch the cache, so its 503 wins over a
     # traceback no matter which view raised.
     "apps.core.middleware.CacheUnavailableMiddleware",
+    # Before anything reads the path or the query string.
+    "apps.core.middleware.RejectNul",
     "django.contrib.sessions.middleware.SessionMiddleware",
     # Before the locale middleware, so the negotiation it runs never sees a
-    # browser's Accept-Language unless the operator has actually chosen one.
+    # browser's Accept-Language unless the operator has actually chosen one,
+    # and never sees the panel's choice outside the panel.
     "apps.core.middleware.PersianUnlessChosen",
     # After sessions, because that is where the chosen language is stored, and
     # before common, whose redirects depend on the active locale. Without it
@@ -145,13 +151,18 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                # The header's shelves row and the one definition of the
-                # answering hours; see apps/core/context.py.
+                # The header's shelves row and `support`, the one definition
+                # of where a customer reaches a person; see apps/core/context.py.
                 "apps.core.context.shell",
+                # What the shop promises on every page; see apps/catalog/promises.py.
+                "apps.catalog.promises.context",
             ],
         },
     },
 ]
+
+# Django's own CSRF page renders without a request, so without the shop around it.
+CSRF_FAILURE_VIEW = "apps.core.errors.csrf_failure"
 
 WSGI_APPLICATION = "config.wsgi.application"
 
@@ -254,7 +265,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 UNFOLD = {
     "SITE_TITLE": "PremShop",
     "SITE_HEADER": "PremShop",
-    "SITE_SUBHEADER": "پنل مدیریت",
+    "SITE_SUBHEADER": _("پنل مدیریت"),
     "SITE_SYMBOL": "storefront",
     "SITE_URL": "/",
     # The shop's own mark, so the panel's tab is not the browser's blank page
@@ -270,6 +281,9 @@ UNFOLD = {
     # here: Unfold declares --font-sans inside `@layer theme`, and unlayered
     # CSS beats a layer whatever the source order.
     "STYLES": [lambda request: static("css/admin.css")],
+    # The panel's own behaviour (static/js/admin.js), on every page for the
+    # same reason: the icons and the Latin counters are on all of them.
+    "SCRIPTS": [lambda request: static("js/admin.js")],
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     # Matches --radius-sm on the storefront, so the two do not look like two
@@ -290,29 +304,37 @@ UNFOLD = {
         # Deliberately off: it lists every registered model including Django's
         # own plumbing, which is the bare app list this panel is replacing.
         "show_all_applications": False,
+        # Translated like the models' names, so the language switch reaches
+        # the sidebar; capfirst because those names are lower case in English.
         "navigation": [
             {
-                "title": "فروشگاه",
+                "title": _("فروشگاه"),
                 "separator": False,
                 "items": [
                     {
-                        "title": "محصولات",
+                        "title": capfirst(_("محصولات")),
                         "icon": "inventory_2",
                         "link": reverse_lazy("admin:catalog_product_changelist"),
                     },
                     {
-                        "title": "دسته‌بندی‌ها",
+                        # The one view of every price and margin side by side.
+                        "title": capfirst(_("پلن‌ها")),
+                        "icon": "sell",
+                        "link": reverse_lazy("admin:catalog_plan_changelist"),
+                    },
+                    {
+                        "title": capfirst(_("دسته‌بندی‌ها")),
                         "icon": "category",
                         "link": reverse_lazy("admin:catalog_category_changelist"),
                     },
                 ],
             },
             {
-                "title": "مشتریان",
+                "title": _("مشتریان"),
                 "separator": True,
                 "items": [
                     {
-                        "title": "کاربران",
+                        "title": _("کاربران"),
                         "icon": "person",
                         "link": reverse_lazy("admin:accounts_user_changelist"),
                     },

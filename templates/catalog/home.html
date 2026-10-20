@@ -1,7 +1,9 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}PremShop — اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
-{% block meta_description %}خرید اشتراک چت جی پی تی، نتفلیکس، اسپاتیفای، جمینای و گیفت کارت با پرداخت تومانی. تحویل در سریع‌ترین زمان، گارانتی تا پایان دوره.{% endblock %}
+{% block title %}PremShop | اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
+{% comment %}&rlm; after each comma between Latin names: a description is plain
+text, so there is no bdi to keep the names from running together left to right.{% endcomment %}
+{% block meta_description %}خرید اشتراک ChatGPT (چت جی‌پی‌تی)،&rlm; Netflix،&rlm; Spotify،&rlm; Gemini و گیفت کارت با کارت بانکی ایرانی. زمان تحویل و گارانتی هر محصول روی صفحه‌ی خودش آمده است.{% endblock %}
 
 {% block footer_promise %}{% endblock %}
 
@@ -39,12 +41,15 @@ furniture.
         and useful — Product.aliases, so search still finds «چت جیپت», and the
         SEO description below, because that is what people type into Google.
         {% endcomment %}
-        <bdi>ChatGPT</bdi>، <bdi>Netflix</bdi>، <bdi>Spotify</bdi>، <bdi>JetBrains</bdi> و چند سرویس دیگه.
-        <b>با کارت ایرانی می‌خرید، روی حساب خودتون فعال می‌شه.</b>
+        {% comment %}True of every product named: Netflix arrives as a ready account
+        and JetBrains as a code, so «فعال می‌کنیم» alone would be wrong for both.{% endcomment %}
+        <bdi>ChatGPT</bdi>، <bdi>Netflix</bdi>، <bdi>Spotify</bdi>، <bdi>JetBrains</bdi> و سرویس‌های دیگر، با کارت بانکی ایرانی.
+        <b>اشتراک را روی اکانت خودتان فعال می‌کنیم یا اکانت و کد آماده تحویل می‌دهیم.</b>
       </p>
+      {% comment %}No line under the button: the hours it carried are in the strip
+      directly above and again in the promise row below.{% endcomment %}
       <div class="hero__act">
         <a class="btn btn--primary btn--pill" href="#products">مشاهده‌ی محصولات</a>
-        <p class="hero__note">پرداخت از درگاه بانکی · پشتیبانی هر روز {{ SUPPORT_HOURS }}</p>
       </div>
     </div>
 
@@ -71,23 +76,19 @@ furniture.
   </div>
 </section>
 
+{% comment %}What is true of every product (apps/catalog/promises.py) and when a
+person answers. Payment, refund and warranty lines come back here when the
+shop has decided what it commits to; the footer row is hidden on this page
+because this one says the same.{% endcomment %}
 <section class="promises">
   <div class="wrap promises__row">
+    {% for promise in promises %}<div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/></svg>
+      <span>{{ promise.text }}</span>
+    </div>{% endfor %}
     <div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
-      <span>پرداخت از درگاه بانکی</span>
-    </div>
-    <div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      <span>تحویل در سریع‌ترین زمان</span>
-    </div>
-    <div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-      <span>گارانتی تا پایان دوره</span>
-    </div>
-    <div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.2-6.9"/><path d="M21 4v5h-5"/></svg>
-      <span>ضمانت بازگشت وجه</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
+      <span>پشتیبانی {{ support.hours }}</span>
     </div>
   </div>
 </section>
@@ -97,9 +98,10 @@ furniture.
   {% if discounted %}
   <section class="section">
     <div class="deals">
+      {% comment %}No line under the heading: the time left is on each card's badge,
+      and some discounts have no end at all.{% endcomment %}
       <div class="deals__said">
-        <h2 class="deals__title">تخفیف‌دارها</h2>
-        <p class="small" style="margin: 0">قیمت پایین‌تر تا پایان مهلت. مهلت هر تخفیف روی صفحه‌ی محصول نوشته.</p>
+        <h2 class="deals__title">تخفیف‌ها</h2>
       </div>
       <div class="deals__grid">
         {% for product in discounted %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
@@ -128,7 +130,7 @@ furniture.
         <div class="shelf__head">
           <h3 class="shelf__title">{{ cat.name }} <span class="shelf__n">{{ cat.product_count|fa_digits }} محصول</span></h3>
           <a class="shelf__all" href="{% url 'category' cat.slug %}">
-            مشاهده همه
+            مشاهده‌ی همه
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
           </a>
         </div>
@@ -138,7 +140,7 @@ furniture.
       </div>
     {% empty %}
       <div class="card empty">
-        <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
+        <p class="prose" style="margin:0">فعلاً محصولی برای فروش نداریم.</p>
       </div>
     {% endfor %}
   </section>
@@ -146,7 +148,9 @@ furniture.
   {% comment %}
   Three questions, not six: the ones a first-time buyer asks before paying a
   shop they have not used. The rest are on the FAQ page, which this links to.
-  details/summary, so it opens with JavaScript off.
+  «سفارش تحویل نشد، پول برمی‌گرده؟» was the third, and it answers again
+  once the shop has a written refund policy to quote. details/summary, so it
+  opens with JavaScript off.
   {% endcomment %}
   <section class="section">
     <div class="section__head">
@@ -156,15 +160,15 @@ furniture.
     <div class="qa">
       <details class="qa__item">
         <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
-        <div class="qa__a"><p class="prose">روی صفحه‌ی هر محصول نوشته شده. بیشترشون اختصاصیه و روی حساب خودتون فعال می‌شه.</p></div>
+        <div class="qa__a"><p class="prose">به محصول بستگی دارد. نوع هر محصول در مشخصاتش آمده است: روی اکانت خودتان، اکانت آماده‌ی اختصاصی یا اکانت آماده‌ی اشتراکی.</p></div>
       </details>
       <details class="qa__item">
         <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
-        <div class="qa__a"><p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانت رو می‌پرسیم.</p></div>
+        <div class="qa__a"><p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانتتان را می‌پرسیم.</p></div>
       </details>
       <details class="qa__item">
-        <summary class="qa__q">سفارش تحویل نشد، پول برمی‌گرده؟</summary>
-        <div class="qa__a"><p class="prose">بله. کل مبلغ به همون کارت برمی‌گرده.</p></div>
+        <summary class="qa__q">تحویل چقدر طول می‌کشه؟</summary>
+        <div class="qa__a"><p class="prose">{% include "catalog/_delivery_answer.html" %}</p></div>
       </details>
     </div>
   </section>

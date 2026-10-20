@@ -1,4 +1,4 @@
-{% load fa %}{% comment %}
+{% load fa prices %}{% comment %}
 One product on a shelf. The whole card is the link.
 
 Mark and name share the top line; under them, delivery time and warranty,
@@ -35,12 +35,15 @@ grid — its mark is an LCP candidate and must not be lazy-loaded).
     </div>
   </div>
   <div class="pcard__foot">
-    {% with plan=product.cheapest_plan %}
+    {% with plan=product.cheapest_plan next=product|lead_when_promo_ends %}
       {% if plan %}
         {% comment %}The plan above the figure, both at the reading edge: a price
-        and its label on one line collide the moment the figure has seven digits.{% endcomment %}
-        <span class="pcard__from">{{ plan.title }}{% include "catalog/_deadline.html" with plan=plan %}</span>
-        <span class="pcard__price">{% if product.available_plans|length > 1 %}<span class="pcard__pre">از</span>{% endif %}{% include "catalog/_price.html" with plan=plan %}</span>
+        and its label on one line collide the moment the figure has seven digits.
+        When the lead plan's discount ends, the countdown in base.html swaps in
+        the plan that is cheapest from then, title and price together.{% endcomment %}
+        <span class="pcard__from"><bdi{% if next and plan.promo_seconds_left %} data-left="{{ plan.promo_seconds_left }}" data-after="{{ next.title }}"{% endif %}>{{ plan.title }}</bdi>{% include "catalog/_deadline.html" with plan=plan %}</span>
+        {# No «از» before «رایگان»: nothing starts below free. #}
+        <span class="pcard__price">{% if product.available_plans|length > 1 and plan.effective_price %}<span class="pcard__pre">از</span>{% endif %}{% include "catalog/_price.html" with plan=plan after=next.price %}</span>
       {% else %}
         <span class="badge badge--neutral">ناموجود</span>
       {% endif %}

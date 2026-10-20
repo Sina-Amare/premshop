@@ -1,13 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}خطای سرور — PremShop{% endblock %}
+{% block title %}خطای سرور | PremShop{% endblock %}
 
+{% comment %}
+Rendered by apps.core.errors.server_error without a request context: the
+database or the session may be what failed. `support` is passed in, and
+nothing on this page or in base.html may need a query.
+{% endcomment %}
 {% block content %}
 <div class="wrap page">
 <div class="notfound">
   <p class="notfound__code notfound__code--bad">۵۰۰</p>
   <h1 class="page-head__title">مشکلی در سرور پیش آمد</h1>
-  <p class="prose">خطا ثبت شد و پیگیری می‌کنیم. اگر در حال پرداخت بودید، پیش از تلاش دوباره در تلگرام بپرسید: <bdi class="latin">@premshop</bdi></p>
+  <p class="prose">خطا ثبت شد و پیگیری می‌کنیم. اگر در حال پرداخت بودید، دوباره پرداخت نکنید و اول در تلگرام بپرسید: <bdi class="latin">{{ support.telegram }}</bdi></p>
   <div class="notfound__act">
     <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
   </div>

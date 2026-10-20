@@ -19,7 +19,7 @@ from django.urls import reverse
 
 from apps.catalog.management.commands.seed_catalog import MARKS, PRODUCTS, _normalise_mark
 from apps.catalog.models import Category, Plan, Product
-from apps.core.context import SUPPORT_HOURS
+from apps.core import support
 
 pytestmark = pytest.mark.django_db
 
@@ -107,14 +107,15 @@ def test_the_answering_hours_are_stated_once_and_agree_everywhere(client, shop):
     answering hours. Three literals would eventually be three different
     numbers, and on a shop with no نماد اعتماد that is a trust defect, not a
     typo — so all three read the same context value."""
+    hours = support.details()["hours_range"]
     for url in [reverse("home"), reverse("product", args=[shop.slug]), reverse("faq")]:
         body = client.get(url).content.decode()
-        assert SUPPORT_HOURS in body, url
+        assert hours in body, url
         # Any other opening-hours range means a second literal crept back.
-        # A range followed by «ساعت» is a delivery window («۱ تا ۴۸ ساعت»),
+        # A range followed by «ساعت» is a delivery window («۱ تا ۷۲ ساعت»),
         # which is a different fact and is allowed to differ.
         ranges = set(re.findall(r"[۰-۹]+ تا [۰-۹]+(?![۰-۹])(?! ساعت)", body))
-        assert ranges <= {SUPPORT_HOURS}, (url, ranges)
+        assert ranges <= {hours}, (url, ranges)
 
 
 def test_the_footer_links_somewhere_that_exists(client, shop):
@@ -135,8 +136,11 @@ def test_the_faq_answers_the_questions_a_buyer_asks_before_paying(client, shop):
     assert "<details" in body, "it must open without JavaScript"
     # The questions buyers in this market actually ask, from the FAQ pages of
     # shops already selling these products. «باید حساب بسازم؟» and «پرداخت
-    # چطور انجام می‌شود؟» were here and are not questions anyone has.
-    for topic in ["رمز اکانت", "اشتراکیه", "تحویل", "گارانتی", "برمی‌گرده", "درگاه بانکی"]:
+    # چطور انجام می‌شود؟» were here and are not questions anyone has. This
+    # list held «درگاه بانکی», «گارانتی» and «برمی‌گرده» too, which kept a
+    # gateway and a refund nobody had built on the page; test_promises.py
+    # now holds the opposite.
+    for topic in ["رمز اکانت", "اشتراکیه", "تحویل", "تمدید"]:
         assert topic in body, topic
     for obvious in ["باید حساب بسازم", "بله، چون"]:
         assert obvious not in body, obvious

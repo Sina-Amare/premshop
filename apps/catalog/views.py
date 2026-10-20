@@ -13,6 +13,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
+from apps.catalog.search import without_filler
 from apps.core import ratelimit
 
 SEARCH_RESULT_CAP = 50
@@ -152,7 +153,7 @@ def _related_to(product: Product) -> list[Product]:
 def faq(request: HttpRequest) -> HttpResponse:
     """Static answers, in a template rather than a model.
 
-    Six questions that change when the shop's promises change — which is a
+    Questions that change when the shop's promises change — which is a
     code change, in the same commit as the promise. A FAQ table in the
     database would let the answers drift away from the constraints that make
     them true (ADR-0014: no content model before there is content to model).
@@ -169,7 +170,8 @@ def search(request: HttpRequest) -> HttpResponse:
     if not query:
         return redirect("home")
     limited = not ratelimit.hit(ratelimit.SEARCH_PER_IP, ratelimit.client_ip(request))
-    results = [] if limited else list(_for_cards().search(query)[:SEARCH_RESULT_CAP])
+    terms = without_filler(query)
+    results = [] if limited else list(_for_cards().search(terms)[:SEARCH_RESULT_CAP])
     # A miss shows the whole shelf. Every credible Iranian site answers an
     # empty search with one concrete thing to do next, and at ten products the
     # most useful thing by a distance is the catalogue itself: someone who

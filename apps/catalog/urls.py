@@ -2,8 +2,9 @@ from django.urls import path
 
 from apps.catalog import views
 
-# <str:slug> rather than <slug:slug>: category and product slugs may be Persian
-# («ابزار-توسعه»), and Django's slug converter is ASCII-only.
+# <str:slug> rather than <slug:slug>: new slugs are Latin, but a row saved
+# before that rule may still carry a Persian one («ابزار-توسعه»), and Django's
+# slug converter is ASCII-only.
 urlpatterns = [
     path("", views.home, name="home"),
     path("search/", views.search, name="search"),

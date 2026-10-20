@@ -51,3 +51,13 @@ def normalize_for_search(text: str) -> str:
     folded = folded.translate(_CHAR_FOLD).translate(_DIGIT_FOLD)
     folded = folded.lower()
     return _SPACES.sub(" ", folded).strip()
+
+
+# Words a buyer types around a product's name that no product's name holds:
+# «خرید اکانت جمینای پرو». Every word of a query has to match, so these alone
+# turned a real search into a miss.
+FILLER = frozenset({"خرید", "اکانت"})
+
+
+def without_filler(query: str) -> str:
+    return " ".join(word for word in normalize_for_search(query).split() if word not in FILLER)

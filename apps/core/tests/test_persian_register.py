@@ -25,6 +25,8 @@ import re
 import pytest
 from django.apps import apps
 
+from apps.catalog.tests.test_panel_translations import ROOT, compile_messages, persian_msgids
+
 # Each entry: the marker, and what to write instead. The message is the point —
 # a failure that only says "banned" teaches nobody.
 BANNED = [
@@ -43,6 +45,10 @@ BANNED = [
     (r"بانک اطلاعاتی", "«پایگاه داده»"),
     # §Voice bans the em dash in body copy; two help strings had slipped.
     (r"—", "«:» or a full stop"),
+    (r"بهترین|سریع‌ترین", "a number, not a superlative"),
+    # The glossary's panel words (docs/design-language.md, Voice 2026-10-20).
+    (r"رکورد", "«مورد»"),
+    (r"(?<![\w‌])تازه(?![\w‌])", "«جدید»"),
     # ZWNJ, the mistake that makes Persian look machine-set.
     (r"(?<![\w‌])می [اآبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", "a half-space: «می‌…»"),
 ]
@@ -100,6 +106,28 @@ def test_no_model_string_uses_a_banned_form(pattern, instead):
     assert not bad, f"write {instead} — {bad}"
 
 
+def panel_strings() -> list[tuple[str, str]]:
+    """The panel's words that are not a model's: Django's and Unfold's strings
+    as the Persian catalogue words them, and the Persian the panel's own code
+    and templates hand to gettext."""
+    catalogue = compile_messages().parse_po(ROOT / "locale" / "fa" / "LC_MESSAGES" / "django.po")
+    found = [(f"django.po: {msgid[:40]!r}", text) for msgid, text in catalogue.items() if msgid]
+    return found + [("panel code", msgid) for msgid in persian_msgids()]
+
+
+def test_the_panel_walk_reads_the_catalogue_and_the_code():
+    found = panel_strings()
+    assert len(found) > 200, len(found)
+    assert any(text == "ذخیره نشد. خطاهای زیر را درست کنید." for _, text in found)
+    assert any(text == "انتخاب فایل" for _, text in found)
+
+
+@pytest.mark.parametrize("pattern, instead", BANNED)
+def test_no_panel_string_uses_a_banned_form(pattern, instead):
+    bad = [f"{where}: {text}" for where, text in panel_strings() if re.search(pattern, text)]
+    assert not bad, f"write {instead} — {bad}"
+
+
 def test_help_text_stays_one_short_sentence():
     """Measured, not felt: real Persian admin help runs to a median of 12
     words and this project's own strings matched it before the cap existed.
@@ -137,6 +165,9 @@ def test_quantities_are_written_in_persian_digits():
         ("گذرواژه خود را بنویسید", "گذرواژه"),
         ("خالی بگذارید — صفر قبول نمی‌شود.", "em dash"),
         ("این کار انجام می پذیرد", "missing half-space"),
+        ("تحویل در سریع‌ترین زمان", "superlative"),
+        ("این رکورد حذف شد.", "رکورد"),
+        ("رمز عبور تازه", "تازه"),
     ],
 )
 def test_the_lint_catches_what_it_is_meant_to_catch(text, why):

@@ -5,14 +5,15 @@ backgrounds, the accessibility tree, the names that labels and ARIA give. The
 test client sees none of it, and neither does a browser without the built
 stylesheet, which is why CI builds the CSS before this runs.
 
-The bar is WCAG 2 A and AA, and a violation of impact serious or critical
-fails. What the scan found the day it arrived is in ALLOWED, each entry with
-its reason. An entry that no longer occurs fails as well, so the list can only
-shrink.
+The bar is WCAG 2.2 A and AA, and a violation of impact serious or critical
+fails. ALLOWED is empty since the violations the scan first found were
+fixed. An exception would go there with its reason, and one that stops
+occurring fails as well, so the list can only shrink.
 """
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -28,8 +29,10 @@ from apps.catalog.models import Category, Plan, Product
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 AXE = Path(settings.BASE_DIR) / "node_modules" / "axe-core" / "axe.min.js"
+# The 2.1 and 2.2 tags add, among others, the 24px minimum target (2.5.8)
+# that the panel's sort and search icons missed.
 RUN_AXE = """() => axe.run(document, {
-    runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa']},
+    runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']},
     resultTypes: ['violations'],
 })"""
 SERIOUS = {"serious", "critical"}
@@ -59,29 +62,9 @@ OPERATOR = {
     "panel: product form": "/admin/catalog/product/{pk}/change/",
 }
 
-# (rule, page, element) for each violation that fails today, with its reason.
-# Per element, so a second violation of an allowed rule on the same page still
-# fails.
-STOREFRONT = [*VISITOR, "code entry", *CUSTOMER]
-ALLOWED: set[tuple[str, str, str]] = {
-    # At phone width the header's support link keeps only its icon, which is
-    # aria-hidden, so the one way to reach a person has no name.
-    *(("link-name", page, ".hdr__support") for page in STOREFRONT),
-    # Grey #737373 on the deals band's #f5f5f4 is 4.34:1, under 4.5.
-    ("color-contrast", "home", ".deals__said > .small"),
-    # The struck-through price on the buy box's tint is 4.29:1; the same grey
-    # passes on a white card.
-    ("color-contrast", "product", ".price__was"),
-    # «۴۰۴» in #d4d4d4 is 1.48:1, and text that large needs 3:1.
-    ("color-contrast", "404", ".notfound__code"),
-    # Unfold's tabular inline puts each spec row's inputs in table cells with no
-    # label; three empty rows, three inputs each.
-    *(
-        ("label", "panel: product form", f"#id_specs-{row}-{field}")
-        for row in range(3)
-        for field in ("title", "value", "is_key")
-    ),
-}
+# (rule, page, element) for a violation accepted with its reason. Per element,
+# so a second violation of an allowed rule on the same page still fails.
+ALLOWED: set[tuple[str, str, str]] = set()
 
 
 @pytest.fixture
@@ -184,3 +167,187 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
             for rule, name, where in stale
         ]
     )
+
+
+def contrast(first: str, second: str) -> float:
+    """WCAG's contrast ratio of two computed `rgb(...)` colours. A transparent
+    edge (`rgba(0, 0, 0, 0)`) is no edge at all, not a black one."""
+    parts = [[float(n) for n in re.findall(r"[0-9.]+", colour)] for colour in (first, second)]
+    if any(len(rgb) == 4 and rgb[3] == 0 for rgb in parts):
+        return 1.0
+
+    def luminance(rgb: list[float]) -> float:
+        linear = [
+            c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+            for c in (v / 255 for v in rgb[:3])
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    light, dark = sorted((luminance(rgb) for rgb in parts), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+@pytest.mark.parametrize(
+    "first, second, expected",
+    [
+        ("rgb(212, 212, 212)", "rgb(255, 255, 255)", 1.48),
+        ("rgb(115, 115, 115)", "rgb(255, 255, 255)", 4.74),
+        ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)", 1.0),
+    ],
+)
+def test_the_contrast_helper_measures_what_the_audit_measured(first, second, expected):
+    assert round(contrast(first, second), 2) == expected
+
+
+def test_every_field_has_an_edge_a_low_vision_reader_can_find(browser, live_server, shop):
+    """axe measures text, not the edge of a control. Fields and code cells were
+    ruled at 1.48:1 and the header search was a well at 1.09:1, where WCAG
+    1.4.11 asks 3:1 for the boundary that identifies a control. The search's
+    placeholder is the only label a sighted reader gets, so it is text: 4.5:1."""
+    context = browser.new_context(viewport={"width": 390, "height": 800})
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/login/")
+        assert page.evaluate(STYLED)
+        colours = page.evaluate("""() => {
+            const css = (e, pseudo) => getComputedStyle(e, pseudo || null);
+            const cell = document.createElement('input');
+            cell.className = 'otp__cell';
+            document.querySelector('main').append(cell);
+            const field = document.querySelector('main .field__input');
+            const search = document.querySelector('.hdr__search-input');
+            return {
+                field: [css(field).borderTopColor, css(field).backgroundColor],
+                cell: [css(cell).borderTopColor, css(cell).backgroundColor],
+                search: [css(search).borderTopColor, css(search.closest('.hdr')).backgroundColor],
+                placeholder: [css(search, '::placeholder').color, css(search).backgroundColor],
+            };
+        }""")
+    finally:
+        context.close()
+
+    ratios = {name: round(contrast(*pair), 2) for name, pair in colours.items()}
+    assert ratios["field"] >= 3 and ratios["cell"] >= 3 and ratios["search"] >= 3, ratios
+    assert ratios["placeholder"] >= 4.5, ratios
+
+
+# The focus ring each control draws: its colour, spread and blur, and what
+# surrounds it. A shadow whose spread is zero, or that is blurred, is a halo.
+RING = """e => {
+    const s = getComputedStyle(e);
+    const shadow = s.boxShadow.match(/(rgba?\\([^)]*\\)) (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px/);
+    let ground = 'rgb(255, 255, 255)';
+    for (let n = e.parentElement; n; n = n.parentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        if (c !== 'rgba(0, 0, 0, 0)') { ground = c; break; }
+    }
+    return {
+        visible: e.matches(':focus-visible'),
+        colour: shadow && shadow[1], blur: shadow && +shadow[4], spread: shadow && +shadow[5],
+        border: s.borderTopColor, ground,
+    };
+}"""
+
+
+def test_a_focused_field_is_ringed_at_three_to_one(browser, live_server, shop):
+    """The focus change on a field was a 1px shift of hue, 1.63:1 against the
+    field at rest, with a halo at 1.08:1 on white: no pixel changed by the 3:1
+    a focus indicator needs."""
+    context = browser.new_context(viewport={"width": 390, "height": 800})
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/login/")
+        assert page.evaluate(STYLED)
+        page.evaluate("""() => {
+            const cell = document.createElement('input');
+            cell.className = 'otp__cell';
+            document.querySelector('main').append(cell);
+        }""")
+        rings = {}
+        for selector in ("main .field__input", "main .otp__cell", ".hdr__search-input"):
+            field = page.locator(selector).first
+            field.focus()
+            page.wait_for_timeout(400)  # the border's colour is a transition
+            rings[selector] = field.evaluate(RING)
+    finally:
+        context.close()
+
+    for selector, ring in rings.items():
+        assert ring["visible"] and ring["colour"], (selector, ring)
+        assert ring["blur"] == 0 and ring["spread"] >= 1, (selector, ring)
+        assert contrast(ring["colour"], ring["ground"]) >= 3, (selector, ring)
+        assert ring["colour"] == ring["border"], (selector, ring)
+
+
+UNCLIPPED_RING = """e => {
+    e.focus();
+    const s = getComputedStyle(e);
+    const grow = parseFloat(s.outlineOffset) + parseFloat(s.outlineWidth);
+    const r = e.getBoundingClientRect();
+    const ring = [r.left - grow, r.top - grow, r.right + grow, r.bottom + grow];
+    for (let p = e.parentElement; p; p = p.parentElement) {
+        const ps = getComputedStyle(p);
+        if (ps.overflowX === 'visible' && ps.overflowY === 'visible') continue;
+        const pr = p.getBoundingClientRect();
+        const box = [pr.left + p.clientLeft, pr.top + p.clientTop,
+                     pr.left + p.clientLeft + p.clientWidth, pr.top + p.clientTop + p.clientHeight];
+        const inside = ring[0] >= box[0] - 0.5 && ring[1] >= box[1] - 0.5
+            && ring[2] <= box[2] + 0.5 && ring[3] <= box[3] + 0.5;
+        return {visible: e.matches(':focus-visible'), style: s.outlineStyle, inside};
+    }
+    return {visible: e.matches(':focus-visible'), style: s.outlineStyle, inside: true};
+}"""
+
+
+def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
+    """The FAQ's question, the quantity stepper and the department links sit
+    in boxes that clip their overflow, and their rings were cut to a line or
+    two sides."""
+    shop.plans.update(max_quantity=5)
+    context = browser.new_context(viewport={"width": 1280, "height": 900})
+    page = context.new_page()
+    found = {}
+    try:
+        for path, selector in [
+            ("/faq/", ".qa__q"),
+            # «+»: at one, «−» is disabled and takes no focus.
+            ("/p/chatgpt-plus/", ".stepper__btn[data-step='1']"),
+            ("/p/chatgpt-plus/", ".stepper__input"),
+            ("/", ".cats__row a"),
+        ]:
+            page.goto(f"{live_server.url}{path}")
+            assert page.evaluate(STYLED)
+            # Keyboard focus, so :focus-visible applies as it does for a reader.
+            page.keyboard.press("Tab")
+            found[selector] = page.locator(selector).first.evaluate(UNCLIPPED_RING)
+    finally:
+        context.close()
+
+    for selector, ring in found.items():
+        assert ring["visible"] and ring["style"] != "none", (selector, ring)
+        assert ring["inside"], (selector, ring)
+
+
+@pytest.mark.parametrize("name", ["otp_code", "item_delivered", "signin_alert"])
+def test_no_email_has_a_serious_accessibility_violation(browser, live_server, settings, name):
+    """Grey text at 2.4:1 in every email's footer and under the code: the
+    emails are scanned as they render, from their own inline styles."""
+    settings.DEBUG = True
+    context = browser.new_context(viewport={"width": 600, "height": 900})
+    page = context.new_page()
+    try:
+        response = page.goto(f"{live_server.url}/dev/emails/{name}/")
+        assert response.status == 200
+        page.add_script_tag(path=str(AXE))
+        result = page.evaluate(RUN_AXE)
+    finally:
+        context.close()
+
+    assert result["passes"], "axe checked nothing"
+    serious = [
+        f"{v['id']} at {' '.join(map(str, node['target']))}"
+        for v in result["violations"]
+        if v["impact"] in SERIOUS
+        for node in v["nodes"]
+    ]
+    assert not serious, serious

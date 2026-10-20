@@ -68,6 +68,10 @@ def hit(limit: Limit, subject: str) -> bool:
     its expiry atomically. incr() then raises ValueError if the key expired
     between the two calls — a real race under load, not a theoretical one — and
     the recovery is to start a fresh window rather than to crash a login.
+
+    Django's Redis incr() is EXISTS then INCR, and a key that expires between
+    those two comes back from INCR at 1 with no expiry. A count of 1 can only
+    mean that, so the window is given its expiry again.
     """
     key = _key(limit, subject)
     if cache.add(key, 1, timeout=limit.seconds):
@@ -77,6 +81,8 @@ def hit(limit: Limit, subject: str) -> bool:
     except ValueError:
         cache.set(key, 1, timeout=limit.seconds)
         return True
+    if count == 1:
+        cache.touch(key, limit.seconds)
     return count <= limit.times
 
 

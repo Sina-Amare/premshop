@@ -2,6 +2,59 @@
 
 The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
 
+## Voice — 2026-10-20: plain written Persian
+
+The 2026-10-14c register below, polite-colloquial everywhere except money, errors, labels and commitments, did not hold at its own exceptions: the sentences a buyer could hold the shop to were exactly the ones that had drifted colloquial («پول برمی‌گرده», «شماره کارت شخصی برای واریز نمی‌دیم»). From this date the default is **plain written Persian**. These clauses supersede the matching ones in that section, which is kept as it was written; what they do not mention stands.
+
+- **Written, not formal.** «است، را، می‌شود», never «ـه، رو، می‌شه». The shop is «ما», in the active voice: «برمی‌گردانیم», «تحویل می‌دهیم». The register is still built by deletion: no «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», and no passive with «توسط».
+- **Two exceptions.** The buyer's own voice keeps its colloquial form: the questions in the FAQ («اکانت اشتراکیه یا مال خودمه؟») and, when they exist, Telegram messages. Legal pages use standard formal Persian, still without the bureaucratic markers.
+- **Address** is «شما» with «ـید». Never «تو», «ـین», «واسه» or «می‌باشه».
+- **Spelling does not relax.** A half-space in «می‌», «ها» and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»); a clitic joins with no space («ایمیلتان») except after ه («شماره‌تان»); «تأیید» has one spelling.
+- **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional («جایگزین نداشتیم، پول برمی‌گرده») is never how money is promised.
+- **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each one beside the condition it must meet, and `apps/catalog/tests/test_promises.py` checks every public product against it. Today that is one line: delivery within the 72-hour cap after payment is confirmed (ADR-0009). It runs past the four words a label is allowed below, because the number needs its starting point. The payment method, refunds and warranty terms appear when the owner has decided them, not before.
+- **Operator text is a field of its own.** A template adds nothing before or after it. A field that sits inside a fixed sentence, such as what the customer is asked for, takes a noun phrase, and its hint in the panel shows the sentence it lands in.
+- **A Latin name inside Persian is isolated** everywhere: `<bdi>` in a template, U+2068 and U+2069 in a Python string. No em dash joins a Latin run to Persian; a title uses «|», anything else «،».
+- **Dates are Jalali in Persian digits** for the customer and the operator alike. A security message and the event log carry the Tehran date and time.
+- **«تومان» everywhere.** «تومن» only in a Telegram message.
+- **A question only where it means something.** A gift card has no mid-period question, and a ready account has no password question.
+- **Length is a target, not a cap.** Two sentences and about 25 words is still what a yes/no answer aims at, and `test_every_faq_answer_is_short` still holds every FAQ answer to two sentences and 30 words. Product content has no word cap. A sentence that commits money is never cut to make an answer shorter.
+- **Punctuation.** «،» «؟» «» always; at most one «؛» on a page; no em dash in Persian text or in a page title.
+- **No superlative a number could replace:** «بهترین», «سریع‌ترین».
+
+The half of this a pattern can see is a test: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, the three emails in both halves and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads every string the panel shows, from the model labels and help to the Persian catalogue and the panel's own code; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. Those tests ban the glossary's «Not» forms that a pattern can tell apart from good Persian; the rest, such as «حساب» used for a service account, need a reader.
+
+### Glossary
+
+| Concept | Write | Not |
+|---|---|---|
+| The customer's account at PremShop | «حساب کاربری» («ورود به حساب», «خروج از حساب») | «حساب» for this and a service account alike |
+| An account with a service (ChatGPT, Netflix) | «اکانت» | «حساب», «ایمیل حساب OpenAI» |
+| The login details a customer receives | «اطلاعات ورود اکانت» | «اطلاعات حساب», which is also the account page's name |
+| Delivery onto the customer's own account | «فعال‌سازی روی اکانت شخصی»; in a sentence, «روی اکانت خودتان فعال می‌شود» | «روی اکانت شخصی شما», «روی حساب خودتون», «روی ایمیل شما» |
+| A ready account for one person | «اکانت آماده‌ی اختصاصی» | «اختصاصی» for an upgrade of the customer's own account |
+| A ready account several people share | «اکانت آماده‌ی اشتراکی»; «پروفایل اختصاصی» only when the profile itself is what is sold | «یک پروفایل اختصاصی» beside «نوع اکانت: اختصاصی» |
+| License and gift card codes | «کد لایسنس», «کد گیفت کارت» | «کد / لایسنس»; «گیفت کارت» as a delivery type |
+| Gift card | «گیفت کارت», two words | «کارت‌های هدیه», «گیفت‌کارت» |
+| The option a buyer picks | on the shop, «مدت اشتراک» or «مبلغ کارت»; in the panel, «پلن» | «پلن» to a customer |
+| How long delivery takes | to the customer, «زمان تحویل»; to the operator, «مهلت تحویل» | «مهلت هر محصول» to a customer |
+| Warranty | «گارانتی», always with its length and starting point | «پشتیبانی: تا پایان دوره» as a spec |
+| Refund | «بازگشت وجه», always with its condition | «ضمانت بازگشت وجه», «پول برمی‌گرده» |
+| What is left | «مانده», «باقی‌مانده» | «مونده», «باقی‌مونده» |
+| A discount that has ended | «تخفیف تمام شد» | «تخفیف تموم شد» |
+| The discounts section | «تخفیف‌ها» | «تخفیف‌دارها» |
+| Phone number | «شماره‌ی موبایل» | «شماره تماس», «شماره موبایل» |
+| Member since | «تاریخ عضویت» | «عضو از» |
+| Sign-in code | «کد ورود» | «کد تأیید» |
+| A product taken off sale | «ناموجود»: its page stays, with the buy box disabled, and lists leave it out. Until the storefront shows such a page, an unavailable product is a 404. | «ناموجود» meaning hidden |
+| Nothing found | «پیدا نکردیم» | «پیدا نشد», «رو نداریم» |
+| Search | «جستجو» | |
+| Support hours | «هر روز، ساعت ۱۰ تا ۲۲» | «هر روز ۱۰ تا ۲۲», «بین ساعت ۱۰ تا ۲۲» |
+| The panel's sections | «فروشگاه», «مشتریان» | «کاتالوگ», «حساب‌ها» |
+| An item in the panel | «مورد» | «رکورد» |
+| New (password, code, item) | «جدید» | «تازه» |
+| Add | «افزودن» | «اضافه کردن», «ایجاد», «ساختن» |
+| Ezafe after a silent ه | «ـه‌ی» («مشاهده‌ی همه») | «مشاهده همه», «افزودن یک مشخصه دیگر» |
+
 ## Voice — 2026-10-14c
 
 Grounded in the FAQ and rules pages of Iranian shops already selling these products, and in Persian style guidance on محاوره‌نویسی. The owner's test: *«نه چیزی ک طرف بخونه مطمعن باشه با ai نوشتم»*.
@@ -40,7 +93,7 @@ The owner reviewed the ink composition and asked the question the first attempt 
 - **Ambient motion is the constellation**, drifting a few pixels on a nine-second cycle, off below 900px and under reduced motion. Nothing else on the site moves unasked.
 - **Departments are tinted surfaces, not bordered boxes.** Four pale tints with a 24px line glyph each, assigned by position so a fifth department restarts the cycle. monday.com's move, and the one place a little colour earns its keep outside the brand marks.
 - **One pill, for the one opening action.** `.btn--pill` on the hero CTA and nowhere else; everything else keeps the two radii.
-- **A promise strip under the hero, and the same four promises in the footer — never both on one page.** The home page suppresses the footer copy through a block, because saying the same four things twice on one screen reads as a shop with four facts padding them out.
+- **A promise strip under the hero, and the same four promises in the footer — never both on one page.** The home page suppresses the footer copy through a block, because saying the same four things twice on one screen reads as a shop with four facts padding them out. *(2026-10-20: three of the four were not true of every product and are gone. The promises now come from `apps/catalog/promises.py`, one today; the rule against stating them twice on one screen stands.)*
 - **A section is only worth a section if it adds something.** «مراحل خرید» explained in three cards what the promise strip, the product page and the FAQ each already said, and it is gone.
 
 ## Amendment — 2026-10-14: somewhere dark to stand
@@ -55,7 +108,7 @@ The owner reviewed the editorial turn below and rejected it: *«هیچ استا�
 - **One piece of ambient motion exists, and this is it.** The hero band's drafting grid, 4.5% white at a 34px pitch, drifting one pitch a minute. CSS only, one composited layer, zero bytes; off below 900px and under `prefers-reduced-motion`. Everything else moves only in answer to a person: `--dur-xs 90ms` for a press, `--dur 140ms` for colour and state, `--dur-lg 220ms` for anything that reveals, `--ease-out` for what enters.
 - **Colour is only ever the goods.** Unchanged in intent, newly true in fact: the marks now download in their real brand colours from a source named per brand, normalised at seed time so a shelf of twelve looks like one family. Teal keeps the primary action and the current-state indicator; amber still means time and nothing else.
 - **Every Latin run that comes from data is wrapped in `<bdi>`.** Product names, plan titles, spec values, emails. Without it «اشتراک Netflix.» puts the full stop on the wrong side and «(Spotify)» renders «)Spotify(» — the most common real bidi failure in a shop whose entire inventory is Latin names inside Persian sentences. The regression string lives on `/styleguide/` so the next change can be *seen* to break it.
-- **Label, do not explain.** The owner's correction, and the one most easily lost: a Persian shop writes «ضمانت بازگشت وجه» on a promise row, not «اگر سفارش تحویل نشود، وجه برمی‌گردد». Promises, badges and section heads are **noun phrases of two to four words**; buttons are verbs that name what happens; a step's body carries the fact its title does not, never a restatement of it. Explanation is not banned — it is *located*: the FAQ page and the product page's own questions are where a sentence belongs, and nowhere else is. When a line on a shop surface is longer than about eight words, it is almost always a sentence that wants to be a label.
+- **Label, do not explain.** The owner's correction, and the one most easily lost: a Persian shop writes «ضمانت بازگشت وجه» on a promise row, not «اگر سفارش تحویل نشود، وجه برمی‌گردد». Promises, badges and section heads are **noun phrases of two to four words**; buttons are verbs that name what happens; a step's body carries the fact its title does not, never a restatement of it. Explanation is not banned — it is *located*: the FAQ page and the product page's own questions are where a sentence belongs, and nowhere else is. When a line on a shop surface is longer than about eight words, it is almost always a sentence that wants to be a label. *(2026-10-20: the example is withdrawn with the promise it labelled, since the shop has no refund policy yet. The rule stands.)*
 - **Fonts are subset, and all four faces that paint above the fold are preloaded.** `scripts/subset_fonts.py` cut 313 KB to 129 KB with no change to shaping. Estedad gained a measured metric fallback (`size-adjust: 76.5%`, Tahoma), which took the home page's CLS from 0.027 to 0.000 — the hero heading used to measure 109px in the fallback against 73px in Estedad, wrap to a third line, and drop the page 45px when the real face arrived.
 
 ## Amendment — 2026-10-13: the editorial turn
@@ -124,6 +177,7 @@ Nine values, and nothing outside them appears in the stylesheet:
 | Deep | `#131313` | the bands the page opens and closes on; text on it uses the on-deep ramp |
 | Fill subtle | `#F5F5F4` | hover fills, quiet panels |
 | Line / Line strong | `#E7E5E4` / `#D4D4D4` | hairlines; borders that must be seen |
+| Field | `#8C8C8C` | the edge of a control a person types into (field, code cell, the header search), and nothing else: 3.4:1 on white, where WCAG 1.4.11 asks 3:1 and a hairline gave 1.48:1. Added 2026-10-20; the header search stopped being a grey well for the same reason |
 | Muted / Secondary / Ink | `#737373` / `#525252` / `#171717` | text ramp |
 | **Accent** | teal-700 `#0F766E` | see budget below |
 | Success | `#16A34A` (text `#166534`) | delivered, confirmed |

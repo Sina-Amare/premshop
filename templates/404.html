@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}صفحه پیدا نشد — PremShop{% endblock %}
+{% block title %}این صفحه را پیدا نکردیم | PremShop{% endblock %}
 
 {% comment %}
 Written in the system's own classes. The previous version reached for Tailwind
@@ -13,8 +13,8 @@ the list of marks of a translated layout.
 <div class="wrap page">
 <div class="notfound">
   <p class="notfound__code">۴۰۴</p>
-  <h1 class="page-head__title">این صفحه پیدا نشد</h1>
-  <p class="prose">این صفحه رو پیدا نکردیم.</p>
+  <h1 class="page-head__title">این صفحه را پیدا نکردیم</h1>
+  <p class="prose">شاید نشانی اشتباه باشد یا این محصول را دیگر نفروشیم.</p>
   <div class="notfound__act">
     <a class="btn btn--primary" href="{% url 'home' %}">بازگشت به فهرست محصولات</a>
     <a class="btn btn--secondary" href="{% url 'faq' %}">پرسش‌های متداول</a>

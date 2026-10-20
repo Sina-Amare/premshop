@@ -19,3 +19,4 @@ Unchanged: the **48-hour re-reminder** in the input-timeout ladder. It shares a 
 
 Also from this round, and the reason the cap could move cheaply: `Product.delivery_note` lets the operator replace the *displayed* time with a sentence («به‌علت مشکلات پرداخت کمی زمان‌بر (۴۸ تا ۷۲ ساعت)») while `delivery_hours` stays the machine-readable deadline this ADR's arithmetic needs. The note never touches `due_at`.
 
+**Amendment — 2026-10-20.** The delivery note is now a short phrase that takes the place of «تا … ساعت», not a sentence: the panel asks for «۴۸ تا ۷۲ ساعت», and the badge, the card and the buy box print it after «تحویل», as they print the hours («تحویل ۴۸ تا ۷۲ ساعت»). A bare phrase there said nothing about what it measured. The note still never touches `due_at`.

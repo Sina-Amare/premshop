@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load fa %}
 
-{% block title %}زبان طراحی — PremShop{% endblock %}
+{% block title %}زبان طراحی | PremShop{% endblock %}
 
 {% block content %}
 <div class="wrap page">
@@ -17,10 +17,10 @@
   <h1>عنوان اصلی صفحه</h1>
   <h2 style="margin-block-start:0">عنوان بخش</h2>
   <h3>عنوان فرعی</h3>
-  <h4>عنوان کوچک — هم‌اندازه متن، تفاوت را قلم می‌سازد</h4>
+  <h4>عنوان کوچک: هم‌اندازه‌ی متن، تفاوت را قلم می‌سازد</h4>
   <p class="prose" style="margin-block-start: var(--spacing-4)">
     متن اصلی با قلم وزیرمتن نوشته می‌شود و عنوان‌ها با استعداد. نام‌های لاتین
-    داخل متن فارسی — مانند <span class="latin">Claude Pro</span> — جهت خود را
+    داخل متن فارسی، مانند <span class="latin">Claude Pro</span>، جهت خود را
     حفظ می‌کنند و ترتیب حروف به‌هم نمی‌ریزد.
   </p>
   <p class="small" style="margin-block-start: var(--spacing-3)">متن کوچک برای توضیحات فرعی.</p>
@@ -29,12 +29,12 @@
 
 <h3>ارتفاع خط: چرا ۱٫۸۵</h3>
 <div class="card">
-  <p class="label">با ارتفاع خط ۱٫۸۵ — انتخاب‌شده</p>
+  <p class="label">با ارتفاع خط ۱٫۸۵: انتخاب‌شده</p>
   <p class="prose" style="margin-block-start: var(--spacing-2)">
     در خط فارسی کشیدگی حروفی مثل ج و ی به پایین می‌رود و نقطه‌ها بالای خط می‌نشینند.
     اگر فاصله سطرها کم باشد، این‌ها به سطر بعد می‌چسبند و متن شلوغ به نظر می‌رسد.
   </p>
-  <p class="label" style="margin-block-start: var(--spacing-5)">با ارتفاع خط ۱٫۴ — برای مقایسه</p>
+  <p class="label" style="margin-block-start: var(--spacing-5)">با ارتفاع خط ۱٫۴: برای مقایسه</p>
   <p style="line-height:1.4; max-inline-size:32rem; margin-block-start: var(--spacing-2)">
     در خط فارسی کشیدگی حروفی مثل ج و ی به پایین می‌رود و نقطه‌ها بالای خط می‌نشینند.
     اگر فاصله سطرها کم باشد، این‌ها به سطر بعد می‌چسبند و متن شلوغ به نظر می‌رسد.
@@ -51,7 +51,7 @@
     <div>
       <span class="label">با تخفیف</span>
       <div style="margin-block-start: var(--spacing-2)">
-        <span class="price"><span class="price__was">{{ sample_was|toman_plain }}</span></span>
+        <span class="price"><s class="price__was"><span class="sr-only">قیمت قبلی </span>{{ sample_was|toman_plain }}</s></span>
         {{ sample_price|price_html }}
       </div>
     </div>
@@ -118,8 +118,8 @@
     <span class="fact__v">{{ now|jalali }}</span>
   </div>
   <p class="small" style="margin-block-start: var(--spacing-4)">
-    این الگو امضای بصری سایت است: برچسب در راست، مقدار در چپ، و خط‌چین میان آن‌ها —
-    دستور زبان یک فاکتور. در هر بخش از صفحه فقط یک بار استفاده می‌شود.
+    این الگو امضای بصری سایت است: برچسب در راست، مقدار در چپ و خط‌چین میان آن‌ها،
+    مثل دستور زبان یک فاکتور. در هر بخش از صفحه فقط یک بار استفاده می‌شود.
   </p>
 </div>
 
@@ -155,7 +155,7 @@
   </table>
 </div>
 <p class="small" style="margin-block-start: var(--spacing-3)">
-  بدون سطرهای یک‌درمیان رنگی و بدون خطوط عمودی — فقط خطوط مویی افقی.
+  بدون سطرهای یک‌درمیان رنگی و بدون خطوط عمودی. فقط خطوط مویی افقی.
 </p>
 
 <h2>حالت خالی</h2>
@@ -190,15 +190,15 @@
   <div style="display:flex; gap:var(--spacing-4); flex-wrap:wrap; margin-block-start:var(--spacing-4)">
     <div style="inline-size:120px">
       <div style="block-size:64px; border:1px solid var(--color-line-strong); border-radius:var(--radius-sm)"></div>
-      <div class="micro">۶ — دکمه، ورودی، تراشه</div>
+      <div class="micro">۶: دکمه، ورودی، تراشه</div>
     </div>
     <div style="inline-size:120px">
       <div style="block-size:64px; border:1px solid var(--color-line-strong); border-radius:var(--radius-lg)"></div>
-      <div class="micro">۱۴ — کارت، کاشی، پنل</div>
+      <div class="micro">۱۴: کارت، کاشی، پنل</div>
     </div>
     <div style="inline-size:120px">
       <div style="block-size:64px; background:var(--color-deep)"></div>
-      <div class="micro">۰ — نوار تمام‌عرض</div>
+      <div class="micro">۰: نوار تمام‌عرض</div>
     </div>
   </div>
 </div>
@@ -214,19 +214,19 @@ parentheses, a Persian numeral and a question mark.
 {% endcomment %}
 <h2>قلم و شکل‌گیری حروف</h2>
 <div class="card">
-  <p class="label">وزیرمتن ۴۰۰ — اتصال حروف، نیم‌فاصله، و حروف فارسیِ بیرون از بلوک عربی</p>
+  <p class="label">وزیرمتن ۴۰۰: اتصال حروف، نیم‌فاصله و حروف فارسیِ بیرون از بلوک عربی</p>
   <p style="font-size:22px; line-height:1.9; margin:var(--spacing-2) 0 0">کتاب‌های ژاپنی، چگونه می‌شود پژوهش گُل‌ها را دسته‌بندی کرد؟</p>
-  <p class="label" style="margin-block-start:var(--spacing-5)">استعداد ۶۰۰ و ۸۰۰ — ارقام فارسی با شکل درست ۴ و ۶ و ۷</p>
+  <p class="label" style="margin-block-start:var(--spacing-5)">استعداد ۶۰۰ و ۸۰۰: ارقام فارسی با شکل درست ۴ و ۶ و ۷</p>
   <p style="font-family:var(--font-head); font-weight:600; font-size:26px; margin:var(--spacing-2) 0 0">پرسش‌های متداول ۰۱۲۳۴۵۶۷۸۹</p>
   <p style="font-family:var(--font-head); font-weight:800; font-size:26px; font-variant-numeric:tabular-nums; margin:var(--spacing-2) 0 0">۶,۴۰۰,۰۰۰ تومان</p>
   <p class="label" style="margin-block-start:var(--spacing-5)">لاتین داخل فارسی نباید به قلم جایگزین بیفتد</p>
-  <p style="font-size:20px; margin:var(--spacing-2) 0 0">Netflix · Spotify · JetBrains All Products · <span class="latin">@premshop</span></p>
+  <p style="font-size:20px; margin:var(--spacing-2) 0 0">Netflix · Spotify · JetBrains All Products · <span class="latin">{{ support.telegram }}</span></p>
 </div>
 
 <h2>جهت‌گیری متن دوسویه</h2>
 <div class="card">
   <p class="small" style="margin-block-start:0">هر نام لاتینی که از پایگاه داده می‌آید داخل <span class="latin">&lt;bdi&gt;</span> می‌نشیند. بدون آن، نقطه‌ی پایان جمله و پرانتزها به سمت اشتباه می‌پرند.</p>
-  <p style="font-size:20px; line-height:1.9; margin-block-start:var(--spacing-3)">آیا اشتراک <bdi>ChatGPT Plus</bdi> (۱ ماهه) فعال است؟ — ۱۲۰,۰۰۰ تومان</p>
+  <p style="font-size:20px; line-height:1.9; margin-block-start:var(--spacing-3)">آیا اشتراک <bdi>ChatGPT Plus</bdi> (۱ ماهه) فعال است؟ قیمت: ۱۲۰,۰۰۰ تومان</p>
   <p style="font-size:20px; line-height:1.9">«<bdi>Netflix</bdi>» و «<bdi>Spotify Premium</bdi>» هر دو موجودند.</p>
 </div>
 </div>

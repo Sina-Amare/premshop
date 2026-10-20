@@ -1,6 +1,8 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}جستجو{% if query %}: {{ query }}{% endif %} — PremShop{% endblock %}
+{% block title %}جستجو{% if query %}: {{ query }}{% endif %} | PremShop{% endblock %}
+{# A results page per query is an endless set of thin pages to a crawler. #}
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
 <div class="wrap page">
@@ -17,20 +19,23 @@ The page used to say «املای دیگه‌ای رو امتحان کنید». 
 marks wrong on a child's dictation; it accuses, and it is advice rather than
 an answer. The heading takes the blame in the first person plural, which is
 what digikala, basalam and modiseh all do: «پیدا نکردیم», never «پیدا نشد».
+
+The limit is per address, and one mobile carrier can put many customers
+behind one, so the message reports what happened and accuses nobody.
 {% endcomment %}
 {% if limited %}
   <header class="page-head">
     <h1 class="page-head__title">جستجو</h1>
   </header>
   <div class="card empty">
-    <p class="prose" style="margin:0">جستجوهای پشت سر هم زیاد شد.</p>
-    <p class="small" style="margin:0">یک دقیقه دیگه دوباره تلاش کنید.</p>
+    <p class="prose" style="margin:0">جستجوها در یک دقیقه‌ی اخیر زیاد بود.</p>
+    <p class="small" style="margin:0">یک دقیقه دیگر دوباره جستجو کنید.</p>
   </div>
 
 {% elif query and not results %}
   <header class="page-head">
-    <h1 class="page-head__title"><bdi>{{ query }}</bdi> رو نداریم</h1>
-    {% if everything %}<p class="small page-head__intro">هرچی داریم اینهاست:</p>{% endif %}
+    <h1 class="page-head__title">برای «<bdi>{{ query }}</bdi>» محصولی پیدا نکردیم</h1>
+    {% if everything %}<p class="small page-head__intro">همه‌ی محصولات ما:</p>{% endif %}
   </header>
   {% if everything %}
     <div class="grid">
@@ -38,7 +43,7 @@ what digikala, basalam and modiseh all do: «پیدا نکردیم», never «پ
     </div>
   {% else %}
     <div class="card empty">
-      <p class="prose" style="margin:0">هنوز محصولی ثبت نشده است.</p>
+      <p class="prose" style="margin:0">فعلاً محصولی برای فروش نداریم.</p>
     </div>
   {% endif %}
 

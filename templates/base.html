@@ -10,6 +10,7 @@
   <link rel="icon" href="{% static 'icon.svg' %}" type="image/svg+xml">
   <title>{% block title %}PremShop{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}فروشگاه اشتراک‌ها و اکانت‌های دیجیتال{% endblock %}">
+  {% block meta_robots %}{% endblock %}
 
   {% comment %}
   Four faces paint above the fold and all four are preloaded. Until 2026-10-14
@@ -26,7 +27,7 @@
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <a href="#main" class="sr-only">رفتن به محتوای اصلی</a>
+  <a href="#main" class="skip">رفتن به محتوای اصلی</a>
 
   {% comment %}
   The header sticks, and it is <header> itself that does it: a sticky element
@@ -38,10 +39,10 @@
   {% endcomment %}
   <header class="hdr">
     <div class="hdr__promise">
-      {% comment %}Three facts on a desktop strip, two on a phone: at 375px the
-      third wraps onto a second line and orphans two words above the header,
-      which is worse than not saying it here — the footer says it as well.{% endcomment %}
-      <div class="wrap">پشتیبانی هر روز <b>{{ SUPPORT_HOURS }}</b><span class="strip__wide"> · تحویل پس از تأیید پرداخت</span> · گارانتی تا پایان دوره</div>
+      {% comment %}The hours on every width, the promises from apps/catalog/promises.py
+      only where they fit on one line: on a phone the strip would cut a promise
+      off halfway, and the footer row carries it in full.{% endcomment %}
+      <div class="wrap">پشتیبانی <b>{{ support.hours }}</b>{% for promise in promises %}<span class="strip__wide"> · {{ promise.text }}</span>{% endfor %}</div>
     </div>
     <div class="wrap hdr__main">
       <a href="{% url 'home' %}" class="hdr__brand" aria-label="PremShop، خانه">
@@ -65,7 +66,9 @@
       نماد اعتماد, a reachable human is the trust signal that is actually
       available, and a buyer who cannot find one leaves rather than asks.
       {% endcomment %}
-      <a href="https://t.me/premshop" class="hdr__support" rel="noopener">
+      {% comment %}Named for the screen reader: on a phone the label is hidden and
+      the icon is aria-hidden.{% endcomment %}
+      <a href="{{ support.telegram_url }}" class="hdr__support" rel="noopener" aria-label="پشتیبانی در تلگرام">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
         <span>پشتیبانی</span>
       </a>
@@ -97,38 +100,29 @@
   </nav>
   {% endif %}
 
-  <main id="main">
+  {# tabindex: the skip link moves focus here, not only the scroll position. #}
+  <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 
   <footer class="ftr">
     <div class="wrap">
       {% comment %}
-      The promise row. An Iranian buyer paying a shop with no نماد اعتماد looks
-      for exactly these four answers before they trust it, and every one of
-      them here is something the shop already commits to elsewhere in the code
-      — the gateway (ADR-0005), the per-product delivery window (ADR-0009),
-      the warranty field, and the answering hours, which come from one place
-      so the header and the footer can never disagree.
+      The promise row: what the shop commits to on every product, from
+      apps/catalog/promises.py, and when a person answers. It used to carry a
+      bank gateway nobody had built, a warranty four products did not have
+      and a refund policy nobody had written.
       {% endcomment %}
-      {% block footer_promise %}<div class="ftr__promise">
-        <div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></svg>
-          <span>پرداخت از درگاه بانکی</span>
-        </div>
-        <div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          <span>تحویل در سریع‌ترین زمان</span>
-        </div>
-        <div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span>گارانتی تا پایان دوره</span>
-        </div>
+      {% block footer_promise %}{% if promises %}<div class="ftr__promise">
+        {% for promise in promises %}<div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/></svg>
+          <span>{{ promise.text }}</span>
+        </div>{% endfor %}
         <div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
-          <span>ضمانت بازگشت وجه</span>
+          <span>پشتیبانی {{ support.hours }}</span>
         </div>
-      </div>{% endblock %}
+      </div>{% endif %}{% endblock %}
 
       <div class="ftr__grid">
         <div>
@@ -149,17 +143,17 @@
           {# Selectable text, not images: a phone number you cannot copy is decoration. #}
           <div class="fact" style="margin-block-start: var(--spacing-3)">
             <span class="fact__k">پشتیبانی تلگرام</span><span class="fact__lead"></span>
-            <span class="fact__v"><bdi class="latin">@premshop</bdi></span>
+            <span class="fact__v"><bdi class="latin">{{ support.telegram }}</bdi></span>
           </div>
           <div class="fact">
             <span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span>
-            <span class="fact__v">{{ SUPPORT_HOURS }}</span>
+            <span class="fact__v">{{ support.hours }}</span>
           </div>
         </div>
       </div>
 
       <div class="ftr__bottom">
-        {% block footer_bottom %}PremShop — همه‌ی حقوق محفوظ است.{% endblock %}
+        {% block footer_bottom %}همه‌ی حقوق برای <bdi>PremShop</bdi> محفوظ است.{% endblock %}
       </div>
     </div>
   </footer>
@@ -173,13 +167,14 @@
 // absolute server time — a customer whose clock is a day out would otherwise
 // see a countdown that is a day wrong.
 //
-// A price that has run out stays on the page until the next navigation. That
-// is safe and deliberate: the badge says so, and the cart and the checkout
-// re-read every price from the database, so nothing can be bought at a price
-// that has expired.
+// At zero the badge says the discount is over and stops being amber, and each
+// price under a deadline swaps in the one the server rendered for that moment
+// (data-after, from effective_price), so the page never shows a price that has
+// run out; a card swaps the title of the plan it leads with as well. The cart
+// and the checkout re-read every price regardless.
 (function () {
-  var badges = [].slice.call(document.querySelectorAll('.deadline[data-left]'));
-  if (!badges.length) return;
+  var timed = [].slice.call(document.querySelectorAll('[data-left]'));
+  if (!timed.length) return;
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
   var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
@@ -195,24 +190,36 @@
     return toFa(pad(Math.floor(left / 3600))) + ':' + toFa(pad(Math.floor((left % 3600) / 60))) + ':' + toFa(pad(left % 60));
   }
 
-  badges.forEach(function (badge) {
-    badge.endsAt = Math.floor(Date.now() / 1000) + (parseInt(badge.getAttribute('data-left'), 10) || 0);
+  var start = Math.floor(Date.now() / 1000);
+  timed.forEach(function (el) {
+    el.endsAt = start + (parseInt(el.getAttribute('data-left'), 10) || 0);
   });
+
+  function end(el) {
+    if (el.classList.contains('deadline')) {
+      el.textContent = 'تخفیف تمام شد';
+      el.classList.add('deadline--done');
+      var said = el.nextElementSibling;
+      if (said && said.classList.contains('deadline__said')) said.textContent = 'تخفیف تمام شد';
+      return;
+    }
+    if (!el.classList.contains('price')) {
+      el.textContent = el.getAttribute('data-after');
+      return;
+    }
+    el.querySelector('.price__num').textContent = el.getAttribute('data-after');
+    el.querySelectorAll('.price__was, .price__now').forEach(function (node) { node.remove(); });
+  }
 
   function tick() {
     var now = Math.floor(Date.now() / 1000);
-    var running = false;
-    badges.forEach(function (badge) {
-      var left = badge.endsAt - now;
-      if (left > 0) {
-        running = true;
-        badge.textContent = text(left) + ' مونده';
-      } else {
-        badge.textContent = 'تخفیف تموم شد';
-        badge.classList.add('deadline--done');
-      }
+    timed = timed.filter(function (el) {
+      var left = el.endsAt - now;
+      if (left <= 0) { end(el); return false; }
+      if (el.classList.contains('deadline')) el.textContent = text(left) + ' مانده';
+      return true;
     });
-    if (!running) clearInterval(timer);
+    if (!timed.length) clearInterval(timer);
   }
   var timer = setInterval(tick, 1000);
   tick();

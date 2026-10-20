@@ -9,7 +9,7 @@ Technical reference for the codebase. Which document answers which question:
 | What may an order or payment do next, and what happens when it does? | [state-machine.md](state-machine.md) — the order-item machine in full; the payment machine as intent until S5 |
 | Which app owns what; what are the service signatures? | [services-and-modules.md](services-and-modules.md) |
 | What messages go out, when, and in what words? | [notifications-and-bot.md](notifications-and-bot.md) — the built emails in full; later messages and the Telegram bot as intent |
-| What does the interface look like — type, colour, layout rules? | [design-language.md](design-language.md) |
+| What does the interface look like — type, colour, layout rules? How does its Persian read, and which word is the right one? | [design-language.md](design-language.md) |
 | How do I run it, test it, and what are this setup's traps? How does the built code hang together across files? | [development.md](development.md) |
 
 ## Which document owns which kind of fact
@@ -22,7 +22,7 @@ Each fact is stated in **one** of these and referred to from the others — rest
 | Which status may change to which and who may change it; the events each change announces and their dedupe-key families; concurrency rules; the tests that prove the two machines | `state-machine.md` |
 | Which app owns what and may import what; service function signatures; background tasks and their schedule | `services-and-modules.md` |
 | The words of each message, its channel, how the outbox delivers it and builds a dedupe key; the Telegram webhook | `notifications-and-bot.md` |
-| Type, colour, spacing, layout, the look of emails | `design-language.md` |
+| Type, colour, spacing, layout, the look of emails; the voice of the Persian copy and its glossary | `design-language.md` |
 | Setup, commands, environment traps, how built code hangs together across files | `development.md` |
 | Why any of it is so | `decisions/` |
 | For anything already built | the code — these documents keep only what the code cannot say |

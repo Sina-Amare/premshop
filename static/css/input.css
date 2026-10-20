@@ -53,9 +53,12 @@
    Estedad had none until 2026-10-14, and it was the whole of the page's 0.027
    CLS: the hero h1 measured 109px in Tahoma against 73px in Estedad, so the
    headline wrapped to a third line and dropped everything below it by 45px
-   the moment the real face arrived. 76.5% is measured, not guessed — Tahoma
-   renders the hero line at 482.4px there, which is Estedad's width to within
-   a pixel. Re-measure it if either face is replaced. */
+   the moment the real face arrived. 76.5% was measured against that day's
+   headline, where Tahoma matched Estedad's width to within a pixel; on the
+   headline since 2026-10-19 Tahoma runs 4 to 7px narrower, and with the
+   fonts held back 800ms the home page measured CLS 0.015 at 390px and 0.021
+   at 1440px on 2026-10-20. Re-fit when the hero changes again, and if either
+   face is replaced. */
 @font-face {
   font-family: "Vazirmatn Fallback";
   src: local("Tahoma");
@@ -76,15 +79,18 @@
   --spacing-4: 16px; --spacing-5: 24px; --spacing-6: 32px;
   --spacing-7: 48px; --spacing-8: 64px; --spacing-9: 96px;
 
-  /* Eight neutrals carry all structure. A ninth would mean the nesting is wrong.
-     White canvas and a neutral ramp since 2026-10-13: the page is a printed
-     sheet ruled with hairlines, and the only colour in it belongs to the
-     brands on the shelf and to the one action the customer came to take. */
+  /* Eight neutrals carry all structure. White canvas and a neutral ramp since
+     2026-10-13: the page is a printed sheet ruled with hairlines, and the only
+     colour in it belongs to the brands on the shelf and to the one action the
+     customer came to take. The ninth, --color-field, is only the edge of a
+     control a person types into: ruled as a hairline at 1.48:1, the fields and
+     code cells nearly vanished, where WCAG 1.4.11 asks 3:1. */
   --color-ground: #ffffff;
   --color-surface: #ffffff;
   --color-fill-subtle: #f5f5f4;
   --color-line: #e7e5e4;
   --color-line-strong: #d4d4d4;
+  --color-field: #8c8c8c;
   --color-muted: #737373;
   --color-secondary: #525252;
   --color-ink: #171717;
@@ -124,6 +130,11 @@
   --gutter: 18px;
   --container: 1100px;
   --strip-h: 38px;   /* the ink promise strip; the header sticks past it */
+  /* The bar that stays pinned once the strip has scrolled away: .hdr__main
+     plus the header's hairline, measured. The sticky buy box and every
+     in-page jump clear it by this, so they cannot disagree about it. On a
+     phone the search has a row of its own, and 118px is that two-row bar. */
+  --hdr-h: 69px;
   --dur-xs: 90ms;    /* press: contact has to feel instant */
   --dur: 140ms;      /* colour, border, small state changes */
   --dur-lg: 220ms;   /* anything that moves or reveals: longer, still quiet */
@@ -137,14 +148,14 @@
      shelf changes. */
   --shadow-lift: 0 1px 2px rgba(19, 19, 19, 0.04), 0 18px 40px -22px rgba(19, 19, 19, 0.3);
 }
-@media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; } }
+@media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; --hdr-h: 118px; } }
 
 @layer base {
   html {
     /* The header pins at the top, so an in-page jump has to stop short of it
        or it lands behind the bar. The hero's own «مشاهده‌ی محصولات» link is
        the one that would do it. */
-    scroll-padding-block-start: 84px;
+    scroll-padding-block-start: calc(var(--hdr-h) + var(--spacing-3));
     font-size: 16px;
     font-synthesis: none;      /* never let the browser fake a weight or slant */
     text-rendering: optimizeLegibility;
@@ -282,13 +293,18 @@
     transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
   .cats__row a:hover { color: var(--color-ink); }
+  /* The row scrolls, so it clips: a ring outside the link showed only its
+     two sides. Inside the link it shows whole, as in the stepper and the
+     FAQ's questions, whose boxes clip too. */
+  .cats__row a:focus-visible { outline-offset: -2px; }
   .cats__row a[aria-current] { color: var(--color-ink); border-block-end-color: var(--color-accent); }
 
   @media (max-width: 760px) {
     .hdr__promise { font-size: 12px; }
+    /* One fact on a phone, not a promise cut off at the ellipsis. */
+    .strip__wide { display: none; }
     .hdr__main { min-block-size: 58px; gap: var(--spacing-3); flex-wrap: wrap;
-                 padding-block-end: var(--spacing-3); }
-    .hdr__search { order: 9; inline-size: 100%; }
+                 padding-block: var(--spacing-3); }
     .hdr__account { padding: 7px 10px 5px; font-size: 14px; }
     /* On a phone the header has room for one labelled control; support is a
        tap away in the footer and on every product page. */
@@ -363,14 +379,17 @@
   .field__input {
     inline-size: 100%; font-family: var(--font-body); font-size: 16px; line-height: 1.5;
     color: var(--color-ink); background: var(--color-surface);
-    border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+    border: 1px solid var(--color-field); border-radius: var(--radius-sm);
     padding: 11px 14px 9px;
     transition: border-color var(--dur) var(--ease);
   }
   .field__input::placeholder { color: #a8a29e; }
   .field__input:hover { border-color: var(--color-muted); }
+  /* Focus is a 2px ring in the accent, the border and one pixel outside it:
+     5.47:1 on white. The tint halo it replaces was 1.08:1, and the border's
+     own change of hue 1.63:1. Code cells and the header search do the same. */
   .field__input:focus-visible { outline: none; border-color: var(--color-accent);
-                                box-shadow: 0 0 0 3px var(--color-accent-tint); }
+                                box-shadow: 0 0 0 1px var(--color-accent); }
   .field__input[aria-invalid="true"] { border-color: var(--color-danger); }
   .field__hint { font-size: 12px; line-height: 1.9; color: var(--color-muted);
                  margin-block-start: var(--spacing-2); }
@@ -418,14 +437,16 @@
     inline-size: 3rem; block-size: 3.5rem; text-align: center;
     font-family: var(--font-body); font-size: 26px; font-weight: 700; line-height: 1;
     font-variant-numeric: tabular-nums; color: var(--color-ink);
-    background: var(--color-surface); border: 1px solid var(--color-line-strong);
+    background: var(--color-surface); border: 1px solid var(--color-field);
     border-radius: var(--radius-sm); padding: 0; caret-color: var(--color-accent);
+    /* Narrower rather than past the card's padding on a 320px phone. */
+    flex: 0 1 auto; min-inline-size: 0;
     transition: border-color var(--dur-lg) var(--ease), box-shadow var(--dur) var(--ease),
                 background-color var(--dur-lg) var(--ease);
   }
   .otp__cell:hover { border-color: var(--color-muted); }
   .otp__cell:focus-visible { outline: none; border-color: var(--color-accent);
-                             box-shadow: 0 0 0 3px var(--color-accent-tint); }
+                             box-shadow: 0 0 0 1px var(--color-accent); }
   .otp__cell.is-filled { border-color: var(--color-ink); }
   .otp__cell.is-ok { border-color: var(--color-ok); background: color-mix(in oklab, var(--color-ok) 8%, var(--color-surface)); color: var(--color-ok-text); }
   .otp__cell.is-error { border-color: var(--color-danger); background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface)); color: var(--color-danger-text); }
@@ -451,6 +472,10 @@
     .otp__cell { inline-size: 2.6rem; block-size: 3.2rem; font-size: 22px; }
   }
   .otp__clock { font-variant-numeric: tabular-nums; }
+  /* The card the sign-in pages sit in. 32px a side left the code cells
+     too little room on a small phone. */
+  .auth-card { padding: var(--spacing-7) var(--spacing-6); }
+  @media (max-width: 360px) { .auth-card { padding-inline: var(--spacing-4); } }
   .otp__resend { display: flex; align-items: center; justify-content: space-between;
                  gap: var(--spacing-3); margin-block-start: var(--spacing-5); }
   @media (max-width: 440px) {
@@ -485,17 +510,20 @@
   .hdr__search-input {
     inline-size: 100%; min-inline-size: 0; font-family: var(--font-body);
     font-size: 16px; line-height: 1.5;
-    color: var(--color-ink); background: var(--color-fill-subtle);
-    border: 1px solid transparent; border-radius: var(--radius-sm);
+    /* Ruled like every other field rather than a grey well: the well was
+       1.09:1 against the bar and its placeholder, the only visible label,
+       4.35:1. */
+    color: var(--color-ink); background: var(--color-surface);
+    border: 1px solid var(--color-field); border-radius: var(--radius-sm);
     /* Inline-start is the right edge here, which is where the magnifier sits. */
     padding-block: 11px 9px; padding-inline: 44px 14px;
     transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
   }
   .hdr__search-input::placeholder { color: var(--color-muted); }
-  .hdr__search-input:hover { background: var(--color-line); }
+  .hdr__search-input:hover { border-color: var(--color-muted); }
   .hdr__search-input:focus-visible { outline: none; background: var(--color-surface);
                                      border-color: var(--color-accent);
-                                     box-shadow: 0 0 0 3px var(--color-accent-tint); }
+                                     box-shadow: 0 0 0 1px var(--color-accent); }
   .hdr__search-btn {
     position: absolute; inset-inline-start: 4px; inset-block-start: 50%;
     transform: translateY(-50%);
@@ -505,6 +533,12 @@
     transition: color var(--dur) var(--ease);
   }
   .hdr__search-btn:hover { color: var(--color-ink); }
+  /* A row of its own on a phone. It sits after the rule above because it
+     lost to it on order when it lived with the other phone rules, and from
+     521px to 760px the field went back beside the brand. */
+  @media (max-width: 760px) {
+    .hdr__search { order: 9; flex-basis: 100%; max-inline-size: none; }
+  }
 
   /* --- Page furniture ------------------------------------------------------- */
   .crumbs { display: flex; flex-wrap: wrap; gap: var(--spacing-2); font-size: 13px;
@@ -583,7 +617,6 @@
   .hero__lead b { color: var(--color-ink); font-weight: 500; }
   .hero__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-4);
                margin-block-start: var(--spacing-6); }
-  .hero__note { font-size: 14px; line-height: 1.7; color: var(--color-secondary); margin: 0; }
 
   /* The constellation: three sizes on offset rows, so it reads as an
      arrangement rather than a grid that lost a column. */
@@ -644,11 +677,13 @@
   @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
                                        padding: var(--spacing-4); } }
 
-  /* --- The promise strip, where an Iranian buyer looks first ---------------- */
+  /* --- The promise strip, where an Iranian buyer looks first ----------------
+     Items at their own width rather than four columns: it holds only what is
+     true of every product, which is fewer than four things today. */
   .promises { background: var(--color-fill-subtle);
               border-block: 1px solid var(--color-line); }
-  .promises__row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-                   gap: var(--spacing-4) var(--spacing-5); padding-block: var(--spacing-5); }
+  .promises__row { display: flex; flex-wrap: wrap;
+                   gap: var(--spacing-3) var(--spacing-7); padding-block: var(--spacing-5); }
   .promises__row > div { display: flex; align-items: center; gap: var(--spacing-3);
                          font-size: 14px; line-height: 1.6; color: var(--color-ink); }
   .promises__row svg { inline-size: 26px; block-size: 26px; flex: none; color: var(--color-accent); }
@@ -660,7 +695,6 @@
     .nebula { grid-column: 1; grid-row: 2; justify-content: flex-start; }
     .hero__title { font-size: 34px; }
     .hero__lead { font-size: 17px; }
-    .promises__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 520px) {
     .hero { padding-block: var(--spacing-6); }
@@ -674,8 +708,7 @@
     .nebula__item img,
     .nebula__item:nth-child(3n + 2) img,
     .nebula__item:nth-child(4n + 3) img { max-inline-size: 32px; max-block-size: 32px; }
-    .promises__row { grid-template-columns: 1fr; gap: var(--spacing-3);
-                     padding-block: var(--spacing-4); }
+    .promises__row { padding-block: var(--spacing-4); }
   }
   /* Ambient motion is a desktop affordance: on a phone it sits under the thumb
      during the first scroll and costs battery nobody asked to spend. */
@@ -779,10 +812,10 @@
 
   /* The deadline on a discount. Amber and tabular, so the figure does not
      jog sideways as the seconds roll over. Once it reaches zero it stops
-     being time pressure, so it stops being amber. */
+     being time pressure, so it stops being amber: `.deadline--done` sits
+     after `.badge--time`, below, because the same specificity goes to
+     whichever comes last. */
   .deadline { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .deadline--done { background: var(--color-fill-subtle); border-color: var(--color-line);
-                    color: var(--color-muted); }
   .pcard__price { display: inline-flex; align-items: baseline; gap: 6px; }
   .pcard__pre { font-size: 14px; color: var(--color-muted); }
   .pcard__foot .price__num { font-size: 21px; }
@@ -838,7 +871,7 @@
   .faq dt { font-weight: 500; color: var(--color-ink); margin-block-start: var(--spacing-4); }
   .faq dd { margin: var(--spacing-1) 0 0; color: var(--color-secondary); font-size: 15px; line-height: 1.8; }
   .faq dt:first-child { margin-block-start: 0; }
-  .pdp__buy { position: sticky; top: var(--spacing-5); }
+  .pdp__buy { position: sticky; top: calc(var(--hdr-h) + var(--spacing-5)); }
   @media (max-width: 900px) {
     .pdp { grid-template-columns: 1fr; grid-template-areas: "head" "buy" "main"; }
     .pdp__buy { position: static; }
@@ -862,7 +895,9 @@
   .plan:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-tint); }
   .plan:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--color-accent-tint); }
   .plan input { accent-color: var(--color-accent); margin: 0; }
-  .plan__title { flex: 1; font-size: 15px; color: var(--color-ink); }
+  /* Grows, never shrinks: from flex-basis 0 it was squeezed to «۱» over «ماهه»
+     whenever a badge fitted beside it. The badge wraps instead. */
+  .plan__title { flex: 1 0 auto; font-size: 15px; color: var(--color-ink); }
   .plan .price__num { font-size: 17px; }
   .plan--off { cursor: not-allowed; color: var(--color-muted); background: var(--color-fill-subtle);
                border-color: var(--color-line); }
@@ -881,9 +916,11 @@
                     font-variant-numeric: tabular-nums; padding: 8px 0 6px; }
   .stepper__input[disabled] { color: var(--color-muted); background: var(--color-fill-subtle); }
   .stepper__input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .stepper__btn:focus-visible, .stepper__input:focus-visible { outline-offset: -2px; }
   .buybox__cta { inline-size: 100%; }
   .buybox__hint { margin: var(--spacing-3) 0 0; }
   .buybox__note { margin: var(--spacing-4) 0 0; text-align: center; }
+  .buybox__help { margin: var(--spacing-4) auto 0; text-align: center; }
 
   /* --- Search page and steps ------------------------------------------------- */
   .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--spacing-4);
@@ -910,6 +947,7 @@
            transition: background-color var(--dur) var(--ease); }
   .qa__q::-webkit-details-marker { display: none; }
   .qa__q:hover { background: var(--color-fill-subtle); }
+  .qa__q:focus-visible { outline-offset: -2px; }
   /* A plus whose upright stroke retracts into a minus. Rotating the plus 45°
      makes an ✕, which means dismiss, not collapse — two different promises. */
   .qa__q::after {
@@ -943,6 +981,11 @@
   .badge--danger  { background: color-mix(in oklab, var(--color-danger) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-danger) 28%, var(--color-ground)); color: var(--color-danger-text); }
   /* Amber lives here and nowhere else on the site. */
   .badge--time    { background: color-mix(in oklab, var(--color-time) 12%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-time) 34%, var(--color-ground)); color: var(--color-time-text); }
+  /* A discount whose clock reached zero reads as the neutral badge. After
+     `.badge--time`, or amber wins; secondary rather than muted text, which is
+     4.34:1 on this fill. */
+  .deadline--done { background: var(--color-fill-subtle); border-color: var(--color-line-strong);
+                    color: var(--color-secondary); }
 
   /* --- Price: the most carefully set type on the site ------------------- */
   .price { white-space: nowrap; direction: rtl; display: inline-flex; align-items: baseline; }
@@ -953,7 +996,8 @@
                 color: var(--color-muted); margin-inline-start: 0.28em; }
   .price--lg .price__num { font-size: 32px; }
   .price--xl .price__num { font-size: 40px; }
-  .price__was { font-size: 0.78em; color: var(--color-muted); text-decoration: line-through;
+  /* Secondary, not muted: on the selected plan's tint muted is 4.29:1. */
+  .price__was { font-size: 0.78em; color: var(--color-secondary); text-decoration: line-through;
                 text-decoration-thickness: 1px; margin-inline-end: var(--spacing-3);
                 font-variant-numeric: tabular-nums; }
 
@@ -963,7 +1007,8 @@
      rather than a filled pill: one accent, spent on the action, not on the menu. */
   .acct { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: var(--spacing-7);
           align-items: start; }
-  .acct__nav { display: grid; gap: 2px; position: sticky; inset-block-start: 84px; }
+  .acct__nav { display: grid; gap: 2px; position: sticky;
+               inset-block-start: calc(var(--hdr-h) + var(--spacing-4)); }
   /* Who is signed in, at the top of their own menu — an account page that
      never names the account is the one place a shared-device customer most
      needs it named. */
@@ -993,6 +1038,8 @@
   .acct__next-t { font-family: var(--font-head); font-size: 16px; font-weight: 600;
                   line-height: 1.5; margin: 0 0 var(--spacing-1); }
   .acct__next .btn { flex: none; }
+  /* Muted grey on this fill is 4.34:1, under the 4.5 small text needs. */
+  .acct__next .small { color: var(--color-secondary); }
   .acct__nav a { font-size: 15px; line-height: 1.5; color: var(--color-secondary);
                  text-decoration: none; padding: 10px var(--spacing-3) 8px;
                  border-inline-start: 2px solid transparent;
@@ -1060,10 +1107,12 @@
      clearest sign a layout was built for Latin and translated afterwards.
      The numeral is the one loud thing, and it is muted, not red-on-white. */
   .notfound { padding-block: var(--spacing-8) var(--spacing-9); max-inline-size: 36rem; }
+  /* Muted, and still 3:1 or better, which text this large needs: the hairline
+     grey it used was 1.48:1. */
   .notfound__code { font-family: var(--font-head); font-size: 64px; font-weight: 800;
-                    line-height: 1; color: var(--color-line-strong);
+                    line-height: 1; color: var(--color-muted);
                     font-variant-numeric: tabular-nums; margin: 0 0 var(--spacing-5); }
-  .notfound__code--bad { color: color-mix(in oklab, var(--color-danger) 34%, var(--color-ground)); }
+  .notfound__code--bad { color: color-mix(in oklab, var(--color-danger) 80%, var(--color-ground)); }
   .notfound__act { display: flex; flex-wrap: wrap; gap: var(--spacing-3);
                    margin-block-start: var(--spacing-6); }
 
@@ -1084,8 +1133,7 @@
   .ftr .fact__v { color: var(--color-on-deep); }
   .ftr .fact__lead { border-block-end-color: var(--color-on-deep-line); }
 
-  .ftr__promise { display: grid; gap: var(--spacing-4) var(--spacing-5);
-                  grid-template-columns: repeat(4, minmax(0, 1fr));
+  .ftr__promise { display: flex; flex-wrap: wrap; gap: var(--spacing-3) var(--spacing-7);
                   padding-block-end: var(--spacing-7);
                   margin-block-end: var(--spacing-7);
                   border-block-end: 1px solid var(--color-on-deep-line); }
@@ -1093,8 +1141,6 @@
                       font-size: 14px; line-height: 1.7; color: var(--color-on-deep); }
   .ftr__promise svg { inline-size: 22px; block-size: 22px; flex: none;
                       color: var(--color-on-deep-muted); margin-block-start: 2px; }
-  @media (max-width: 860px) { .ftr__promise { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 480px) { .ftr__promise { grid-template-columns: 1fr; gap: var(--spacing-3); } }
 
   .ftr__grid { display: grid; gap: var(--spacing-7) var(--spacing-6); align-items: start;
                grid-template-columns: minmax(280px, 1.25fr) minmax(180px, 0.7fr) minmax(260px, 1fr); }
@@ -1108,6 +1154,16 @@
                  border-block-start: 1px solid var(--color-on-deep-line);
                  font-size: 13px; color: var(--color-on-deep-muted); }
 
-  .sr-only { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
-             overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .sr-only, .skip:not(:focus) { position: absolute; inline-size: 1px; block-size: 1px; padding: 0;
+             margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  /* The first stop for a keyboard: hidden until it has focus, then over the
+     strip where it can be read. */
+  .skip { position: absolute; z-index: 40; inset-block-start: var(--spacing-2);
+          inset-inline-start: var(--spacing-2); padding: var(--spacing-2) var(--spacing-4);
+          background: var(--color-surface); color: var(--color-ink); font-size: 15px;
+          border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+          text-decoration: none; }
+  /* The skip link's target is a container, not a control; it takes focus so
+     the next Tab starts inside it, and a ring round the whole page says nothing. */
+  #main:focus { outline: none; }
 }

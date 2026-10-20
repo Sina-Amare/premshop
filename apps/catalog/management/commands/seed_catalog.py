@@ -83,10 +83,10 @@ def _normalise_mark(svg: bytes, pad: float) -> bytes:
 
 
 CATEGORIES = [
-    ("هوش مصنوعی", "ai", "اشتراک ابزارهای هوش مصنوعی، تحویل سریع و با گارانتی."),
+    ("هوش مصنوعی", "ai", "اشتراک ChatGPT،\u200f Claude و Gemini، روی اکانت خودتان."),
     ("ابزار توسعه", "dev", "لایسنس و اشتراک ابزارهای برنامه‌نویسی."),
     ("سرگرمی", "media", "موسیقی و فیلم، روی اکانت خودتان یا اکانت آماده."),
-    ("گیفت کارت", "gift", "کارت‌های هدیه با کد، تحویل فوری."),
+    ("گیفت کارت", "gift", "گیفت کارت Apple و Google Play آمریکا، تحویل به‌صورت کد."),
 ]
 
 # name, slug, category, delivery, warranty, hours, short, aliases, specs, plans
@@ -101,13 +101,9 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=12,
         short="اشتراک Claude Pro روی اکانت خودتان؛ مدل‌های جدید و سقف پیام بالاتر.",
-        specs=[
-            ("نوع اشتراک", "Pro"),
-            ("فعال‌سازی", "روی ایمیل شما"),
-            ("پشتیبانی", "تا پایان دوره"),
-        ],
+        specs=[("نوع اشتراک", "Pro")],
         plans=[("۱ ماهه", 30, 900000, 1450000, None), ("۳ ماهه", 90, 2600000, 3900000, 3500000)],
-        input="ایمیل حساب Claude",
+        input="ایمیل اکانت Claude",
     ),
     dict(
         name="ChatGPT Plus",
@@ -119,9 +115,9 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=12,
         short="اشتراک ChatGPT Plus روی اکانت خودتان.",
-        specs=[("نوع اکانت", "اختصاصی", True), ("نوع اشتراک", "Plus")],
+        specs=[("نوع اشتراک", "Plus")],
         plans=[("۱ ماهه", 30, 850000, 1390000, None)],
-        input="ایمیل حساب OpenAI",
+        input="ایمیل اکانت OpenAI",
     ),
     dict(
         name="Gemini Advanced",
@@ -133,7 +129,7 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.DAYS_7,
         hours=24,
         short="Gemini Advanced به همراه ۲ ترابایت فضای Google One.",
-        specs=[("نوع اکانت", "اختصاصی", True), ("فضای ابری", "۲ ترابایت")],
+        specs=[("فضای ابری", "۲ ترابایت")],
         plans=[("۱ ماهه", 30, 700000, 1190000, None), ("۲ ماهه", 60, 1300000, 2290000, None)],
         input="آدرس Gmail",
     ),
@@ -174,13 +170,13 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.FULL_PERIOD,
         hours=6,
         short="Spotify Premium روی اکانت خودتان.",
-        specs=[("نوع اکانت", "اختصاصی", True), ("ریجن", "ترکیه")],
+        specs=[("ریجن", "ترکیه")],
         plans=[
             ("۱ ماهه", 30, 90000, 190000, None),
             ("۳ ماهه", 90, 250000, 490000, 420000),
             ("۱۲ ماهه", 365, 900000, 1690000, None),
         ],
-        input="ایمیل حساب Spotify",
+        input="ایمیل اکانت Spotify",
     ),
     dict(
         name="YouTube Premium",
@@ -192,7 +188,7 @@ PRODUCTS: list[dict[str, Any]] = [
         warranty=W.DAYS_7,
         hours=12,
         short="YouTube Premium بدون تبلیغ، به همراه YouTube Music.",
-        specs=[("نوع اکانت", "اختصاصی", True), ("ریجن", "ترکیه"), ("شامل", "YouTube Music")],
+        specs=[("ریجن", "ترکیه"), ("شامل", "YouTube Music")],
         plans=[("۱ ماهه", 30, 120000, 240000, None)],
         input="آدرس Gmail",
     ),
@@ -205,10 +201,9 @@ PRODUCTS: list[dict[str, Any]] = [
         delivery=T.READY_ACCOUNT,
         warranty=W.FULL_PERIOD,
         hours=2,
-        short="اکانت آماده‌ی Netflix، یک پروفایل اختصاصی.",
+        short="اکانت آماده‌ی Netflix: یک پروفایل اختصاصی روی اکانت اشتراکی.",
         specs=[
-            ("نوع اکانت", "اختصاصی", True),
-            ("پخش هم‌زمان", "۲ دستگاه", True),
+            ("نوع اکانت", "اشتراکی (پروفایل اختصاصی)", True),
             ("پلن", "Standard"),
             ("کیفیت", "Full HD"),
         ],
@@ -252,7 +247,7 @@ PRODUCTS: list[dict[str, Any]] = [
         delivery=T.READY_ACCOUNT,
         warranty=W.DAYS_7,
         hours=24,
-        short="پیش‌نویس — هنوز منتشر نشده.",
+        short="پیش‌نویس، هنوز منتشر نشده.",
         specs=[],
         plans=[("۱ ماهه", 30, 500000, 900000, None)],
         status=Product.Status.DRAFT,

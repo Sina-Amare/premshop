@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}{{ product.seo_title|default:product.name }} — PremShop{% endblock %}
+{% block title %}{{ product.seo_title|default:product.name }} | PremShop{% endblock %}
 {% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
 
 {% block content %}
@@ -37,7 +37,7 @@
     {% comment %}The product's facts as the ledger — the signature, once on this page.{% endcomment %}
     <div class="card pdp__facts">
       <div class="fact"><span class="fact__k">نوع تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_delivery_type_display }}</span></div>
-      <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{{ product.get_warranty_display }}</span></div>
+      <div class="fact"><span class="fact__k">گارانتی</span><span class="fact__lead"></span><span class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</span></div>
       <div class="fact"><span class="fact__k">زمان تحویل</span><span class="fact__lead"></span><span class="fact__v">{{ product.delivery_display }}</span></div>
       {% if product.renewable %}<div class="fact"><span class="fact__k">تمدید</span><span class="fact__lead"></span><span class="fact__v">روی همین اکانت، با قیمت روز</span></div>{% endif %}
     </div>
@@ -60,12 +60,17 @@
     </section>
     {% endif %}
 
+    {% comment %}
+    The operator's delivery note, when there is one, is the whole answer: a
+    sentence cannot have the hours appended to it. «وسط دوره پرید، چی می‌شه؟»
+    is off the page until the shop has defined what a warranty replaces and
+    what it refunds; the warranty itself is in the ledger above.
+    {% endcomment %}
     <section class="pdp__section">
       <h2 class="pdp__h2">پرسش‌های متداول</h2>
       <dl class="faq">
-        <dt>کِی تحویل می‌گیرم؟</dt><dd>{{ product.delivery_display }} بعد از تأیید پرداخت. تحویل‌ها بین ساعت {{ SUPPORT_HOURS }} انجام می‌شه.</dd>
-        <dt>وسط دوره پرید، چی می‌شه؟</dt><dd>{% if product.warranty == "none" %}این محصول گارانتی ندارد.{% elif product.warranty == "days_7" %}تا ۷ روز جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% else %}تا پایان دوره جایگزین می‌کنیم. جایگزین نداشتیم، پول برمی‌گرده.{% endif %}</dd>
-        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ product.plans.first.customer_input_label|default:"ایمیل حساب" }} رو می‌پرسیم.</dd>{% endif %}
+        <dt>کِی تحویل می‌گیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت. اگر این زمان بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.{% endif %}</dd>
+        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} را می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
   </div>
@@ -74,8 +79,10 @@
     <div class="card buybox">
       {% comment %}
       The add-to-cart control, complete: plan selector, quantity, one primary
-      button. The cart itself arrives at S4b, which sets this form's action; the
-      control ships now so the page is judged whole and the keyboard path exists.
+      button. The cart itself arrives at S4b, which sets this form's action and
+      enables the button; until then it is disabled and the line under it says
+      why, because a button that looks live and does nothing reads as broken.
+      The first plan that can be bought is selected, never a sold-out one.
 
       The quantity control is not a given. It renders only when the operator
       has set a plan's حداکثر تعداد above one, which for most of this shop is
@@ -87,12 +94,13 @@
       {% endcomment %}
       <form class="buybox__form" method="post" action="#" data-cart-pending>
         {% csrf_token %}
+        {% if plans %}
         <fieldset class="plans">
-          <legend class="buybox__label">پلن</legend>
+          <legend class="buybox__label">{% if product.delivery_type == "gift_card" %}مبلغ کارت{% else %}مدت اشتراک{% endif %}</legend>
           {% for plan in plans %}
             <label class="plan{% if not plan.is_available %} plan--off{% endif %}">
               <input type="radio" name="plan" value="{{ plan.id }}"
-                     {% if not plan.is_available %}disabled{% elif forloop.first %}checked{% endif %}
+                     {% if not plan.is_available %}disabled{% elif plan == available_plans.0 %}checked{% endif %}
                      data-max="{{ plan.max_quantity }}"
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
@@ -102,10 +110,9 @@
                 <span class="plan__off">فعلاً ناموجود</span>
               {% endif %}
             </label>
-          {% empty %}
-            <p class="small" style="margin:0">هنوز پلنی برای این محصول ثبت نشده.</p>
           {% endfor %}
         </fieldset>
+        {% endif %}
 
         {% if available_plans %}
         {% if any_plan_takes_more_than_one %}
@@ -120,14 +127,16 @@
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p class="micro buybox__hint" id="asks-hint" hidden></p>
-        <button type="submit" class="btn btn--primary buybox__cta">افزودن به سبد خرید</button>
+        <button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
+        <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نشده است.</p>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
       </form>
-      <p class="micro buybox__note">پرداخت از درگاه بانکی · {{ product.delivery_sentence }}</p>
+      <p class="micro buybox__note">{{ product.delivery_sentence }}</p>
     </div>
+    <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>
 </div>
 
@@ -141,9 +150,9 @@
   friendly voice.
   {% endcomment %}
   <div class="section__head">
-    <h2 class="section__title">اینا رو هم داریم</h2>
+    <h2 class="section__title">محصولات دیگر</h2>
     <a class="shelf__all" href="{% url 'category' product.category.slug %}">
-      همه‌ی {{ product.category.name }}
+      همه‌ی محصولات {{ product.category.name }}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
     </a>
   </div>
@@ -180,7 +189,7 @@
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' رو می‌پرسیم.' : '';
+      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' را می‌پرسیم.' : '';
       asks.hidden = !question;
     }
   }

@@ -21,10 +21,12 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
+from apps.core import support
+
 
 def render_email(name: str, context: dict[str, Any]) -> tuple[str, str, str]:
     """Render one message's three parts. Returns (subject, text, html)."""
-    full_context: dict[str, Any] = {"support_email": settings.SUPPORT_EMAIL, **context}
+    full_context: dict[str, Any] = {"support": support.details(), **context}
 
     # Collapse ALL whitespace in the subject, not just the trailing newline. A raw
     # newline in a header is the classic header-injection vector: everything after

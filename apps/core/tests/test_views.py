@@ -33,6 +33,11 @@ class TestHealthz:
 
 
 class TestStyleguide:
+    @pytest.fixture(autouse=True)
+    def _development(self, settings) -> None:
+        # Staff or DEBUG only; test_error_pages.py holds who else gets a 404.
+        settings.DEBUG = True
+
     def test_renders_the_design_system(self, client: Client) -> None:
         response = client.get(reverse("styleguide"))
         assert response.status_code == 200

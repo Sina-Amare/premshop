@@ -1,4 +1,4 @@
-"""Turn an infrastructure outage into an honest page instead of a traceback."""
+"""Honest pages instead of tracebacks, and the panel's language."""
 
 from __future__ import annotations
 
@@ -6,11 +6,33 @@ import logging
 from collections.abc import Callable
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
+
+
+class RejectNul:
+    """An address with a NUL in it is no page here: a 404 before anything queries.
+
+    PostgreSQL refuses a NUL inside a string, so a slug or a search query
+    carrying one reached the database and came back as a 500, on any URL. A
+    cookie with one is dropped instead, before the session lookup reads it, and
+    the visitor carries on without it.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        query = request.META.get("QUERY_STRING", "")
+        if "\x00" in request.path or "\x00" in query or "%00" in query:
+            raise Http404
+        for name in [name for name, value in request.COOKIES.items() if "\x00" in value]:
+            del request.COOKIES[name]
+        return self.get_response(request)
 
 
 class CacheUnavailableMiddleware:
@@ -54,12 +76,18 @@ class PersianUnlessChosen:
     Dropping the header only when no cookie is set is what keeps the switch
     working: once the operator picks a language, `set_language` writes the
     cookie, this stands aside, and their choice wins on every later request.
+
+    The choice is the panel's alone. The shop has one language, and with the
+    cookie read everywhere a panel switched to English printed the product
+    page's delivery type and warranty in English as well.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        if not request.path.startswith(reverse("admin:index")):
+            request.COOKIES.pop(settings.LANGUAGE_COOKIE_NAME, None)
         if settings.LANGUAGE_COOKIE_NAME not in request.COOKIES:
             request.META.pop("HTTP_ACCEPT_LANGUAGE", None)
         return self.get_response(request)

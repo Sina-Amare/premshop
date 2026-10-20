@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}{{ category.seo_title|default:category.name }} — PremShop{% endblock %}
+{% block title %}{{ category.seo_title|default:category.name }} | PremShop{% endblock %}
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
 {% block content %}
@@ -9,7 +9,10 @@
 
 <header class="page-head">
   <h1 class="page-head__title">{{ category.name }}</h1>
-  {% if category.intro_html %}<div class="prose page-head__intro">{{ category.intro_html|safe }}</div>
+  {% comment %}Escaped, as text: whoever can edit a category must not be able to
+  put markup on a page customers pay on. The restricted Markdown renderer in
+  apps/core/richtext.py is what will format it.{% endcomment %}
+  {% if category.intro_html %}<div class="prose page-head__intro">{{ category.intro_html|linebreaks }}</div>
   {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
   {% comment %}
   The count and nothing else. A filter over three products returns everything
