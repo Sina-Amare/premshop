@@ -2,15 +2,17 @@
 «پیش از خرید», printed on every product page whether or not the operator has
 written one: the warranty, a refund exception and the stance on Iran come from
 their own fields, so forgetting a section cannot take them off the page. The
-operator's text follows them. `section` is the product's one section of this
-kind, or None.
-{% endcomment %}<section class="pdp__section" id="before-buying" aria-labelledby="before-buying-title">
-  <h2 class="pdp__h2" id="before-buying-title">{% if section.title %}{{ section.title|bdi }}{% else %}پیش از خرید{% endif %}</h2>
-  <dl class="card faq essentials">
-    <dt>گارانتی</dt><dd>{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd>
-    {% if product.refund_note %}<dt>بازگشت وجه</dt><dd>{{ product.refund_note|bdi }}</dd>{% endif %}
-    {% if iran_stance %}<dt>ایران</dt><dd>{{ iran_stance|bdi }}</dd>{% endif %}
+operator's text follows them; product.css rules off its opening bold line, «این
+محصول برای شما نیست اگر …». `section` is the product's one section of this kind,
+or None. From 1024px it is read beside the invoice; under that it leads back to it.
+{% endcomment %}<section class="sec sec--before-buying" id="before-buying" aria-labelledby="before-buying-title">
+  <h2 class="sec__title" id="before-buying-title">{% if section.title %}{{ section.title|bdi }}{% else %}پیش از خرید{% endif %}</h2>
+  <dl class="terms">
+    <div class="terms__row"><dt class="terms__k">گارانتی</dt><dd class="terms__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
+    {% if product.refund_note %}<div class="terms__row"><dt class="terms__k">بازگشت وجه</dt><dd class="terms__v">{{ product.refund_note|bdi }}</dd></div>{% endif %}
+    {% if iran_stance %}<div class="terms__row"><dt class="terms__k">ایران</dt><dd class="terms__v">{{ iran_stance|bdi }}</dd></div>{% endif %}
   </dl>
-  {% if section.body %}<div class="prose rich">{{ section.body|markdown }}</div>{% endif %}
+  {% if section.body %}<div class="prose">{{ section.body|markdown }}</div>{% endif %}
   {% include "catalog/sections/_image.html" %}
+  <p class="toinvoice"><a href="#invoice">بازگشت به پیش‌فاکتور</a></p>
 </section>

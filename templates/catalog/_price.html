@@ -1,15 +1,10 @@
 {% load fa prices %}{% comment %}
-A plan's price. The promotional figure keeps the numeral treatment; the original
-sits beside it struck through, muted, one step down, never bold, and never
-amber, which means time and only time (design-language.md, Numbers and RTL).
+A plan's price. Under a discount the struck original comes first and a screen reader
+is told which figure is which; neither is ever amber, which means time and only time.
 Zero reads «رایگان», with no currency word.
 
-A discount with an end carries its seconds left and the price that follows it,
-which the server renders from `effective_price`; the countdown in base.html
-swaps that price in at zero. A card passes `after`, the price of the plan it
-will lead with then, which need not be this one.
-
-Under a discount two figures stand side by side, and only the strike says
-which is charged; a screen reader is told in words.
-Params: plan, optional size ("lg"), optional after.
-{% endcomment %}{% with left=plan.promo_seconds_left price=plan.effective_price %}<span class="price{% if size == 'lg' %} price--lg{% endif %}"{% if left %} data-left="{{ left }}" data-after="{% if after is not None %}{{ after|toman_plain }}{% else %}{{ plan|price_when_promo_ends|toman_plain }}{% endif %}"{% endif %}>{% if plan.promotion_is_active %}<del class="price__was"><span class="sr-only">قیمت قبلی </span>{{ plan.sale_price|toman_plain }}</del><span class="sr-only price__now">قیمت با تخفیف </span>{% endif %}{% if price %}<span class="price__num">{{ price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="price__num">رایگان</span>{% endif %}</span>{% endwith %}
+A discount with an end carries its seconds left and the price that follows it, from
+`effective_price`; on a rate sheet countdown.js swaps that figure in at zero, and the
+invoice swaps its own (buybox.js).
+Params: plan, optional after (the figure to swap in, when it is not this plan's own).
+{% endcomment %}{% with left=plan.promo_seconds_left price=plan.effective_price %}<span class="price{% if not price %} price--free{% endif %}"{% if left is not None %} data-left="{{ left }}" data-after="{% if after is not None %}{{ after|toman_plain }}{% else %}{{ plan|price_when_promo_ends|toman_plain }}{% endif %}"{% endif %}>{% if plan.promotion_is_active %}<del class="price__was"><span class="visually-hidden">قیمت قبل: </span>{{ plan.sale_price|toman_plain }}</del><span class="visually-hidden price__now-k">قیمت با تخفیف: </span>{% endif %}{% if price %}<span class="price__num">{{ price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="price__num">رایگان</span>{% endif %}</span>{% endwith %}

@@ -10,9 +10,10 @@ database can never disagree; models.ChecksNameTheirField files each message).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from decimal import Decimal
+from functools import partial
 from typing import Any, ClassVar, cast
 
 from django import forms
@@ -71,6 +72,30 @@ STATUS_VARIANTS: dict[str, str] = {
     Product.Status.DRAFT: "info",
     Product.Status.UNAVAILABLE: "danger",
 }
+
+# The product form's tabs that hold rows; each inline names its tab.
+PAGE_TAB = _("صفحه‌ی محصول")
+PLANS_TAB = _("پلن‌ها")
+
+
+@dataclass
+class FormTab:
+    """One tab of the product form: a fieldset and the inlines under it."""
+
+    fieldset: Any
+    inlines: list[Any] = field(default_factory=list)
+
+    @property
+    def errors(self) -> int:
+        """Fields and rows with an error, plus each error about the rows together."""
+        fields = sum(
+            1 for line in self.fieldset for box in line if not box.is_readonly and box.errors()
+        )
+        rows = sum(
+            len(inline.formset.non_form_errors()) + sum(1 for row in inline.formset.errors if row)
+            for inline in self.inlines
+        )
+        return fields + rows
 
 
 @dataclass(frozen=True)
@@ -199,6 +224,7 @@ class ProductSpecInline(TabularInline):
     model = ProductSpec
     form = ProductSpecForm
     formset = ProductRowsFormSet
+    form_tab = PAGE_TAB
     extra = 3
     show_title = False
     # `sort_order` has to be among the fields even though nobody types it:
@@ -232,14 +258,28 @@ class PlanForm(forms.ModelForm):
             time.attrs["aria-label"] = gettext("ساعت %(label)s") % {"label": label}
             for box in (date, time):
                 box.attrs["aria-describedby"] = f"{self[name].auto_id}_helptext"
+        if self.instance.pk:
+            # Unfold heads a saved inline row with `original.get_inline_title()`,
+            # and `original` is this form's instance.
+            self.instance.get_inline_title = partial(plan_summary, self.instance)
+
+    def clean_promo_ends_at(self) -> datetime | None:
+        """An end already past is a typo in the date: the discount would never show."""
+        ends = self.cleaned_data.get("promo_ends_at")
+        if ends and "promo_ends_at" in self.changed_data and ends <= timezone.now():
+            raise ValidationError(gettext("این زمان گذشته است و تخفیف روی سایت نمی‌آید."))
+        return ends
 
 
 class PlanInline(StackedInline):
     model = Plan
     form = PlanForm
     formset = ProductRowsFormSet
+    form_tab = PLANS_TAB
     extra = 1
-    show_title = False
+    # The row's head is its summary line (plan_summary), shown whatever the
+    # operator may delete.
+    show_title = True
     ordering = ["sort_order", "id"]
     ordering_field = "sort_order"
     hide_ordering_field = True
@@ -282,6 +322,7 @@ class ProductSectionInline(StackedInline):
     model = ProductSection
     form = ProductSectionForm
     formset = ProductRowsFormSet
+    form_tab = PAGE_TAB
     extra = 0
     show_title = False
     ordering = ["sort_order", "id"]
@@ -314,6 +355,7 @@ class ProductQuestionInline(StackedInline):
     model = ProductQuestion
     form = ProductQuestionForm
     formset = ProductRowsFormSet
+    form_tab = PAGE_TAB
     extra = 0
     show_title = False
     ordering = ["sort_order", "id"]
@@ -417,14 +459,42 @@ def refusal_reasons(form: forms.ModelForm, formsets: list[Any]) -> list[str]:
 
 
 def amount(value: Decimal) -> SafeString:
-    """A toman figure that never breaks across lines; «تومان» used to land a
-    line below its number in a narrow column."""
-    return format_html('<span class="panel-amount">{}</span>', format_toman(value))
+    """A toman figure as the shop prints a price: the number in the price face
+    and «تومان» in the text's, joined by a no-break space. «تومان» used to land
+    a line below its number in a narrow column. The outer span keeps the two
+    one flex item under a product's name on a phone."""
+    if not value:
+        return format_html('<span class="panel-amount">{}</span>', format_toman(value))
+    return format_html(
+        '<span><span class="panel-amount">{}</span>\u00a0تومان</span>',
+        format_toman(value, with_unit=False),
+    )
 
 
 def countdown(seconds: int) -> SafeString:
     """Time left on a discount, in the time colour (ADR-0016)."""
     return format_html('<span class="panel-time">{}</span>', format_countdown(seconds))
+
+
+def plan_summary(plan: Plan) -> SafeString:
+    """The head of a saved plan's row on the product form: what the shop charges
+    for it today, the time left on its discount, and when its price was confirmed."""
+    parts: list[str] = [
+        format_html('<span class="panel-plan">{}</span>', plan.title),
+        amount(plan.effective_price),
+    ]
+    if plan.promotion_is_active:
+        left = plan.promo_seconds_left
+        parts.append(countdown(left) if left is not None else gettext("تخفیف بی‌پایان"))
+    if plan.price_confirmed_at:
+        parts.append(
+            format_html(
+                '<span class="panel-checked">{}: <span class="panel-date">{}</span></span>',
+                Plan._meta.get_field("price_confirmed_at").verbose_name,
+                format_jalali(plan.price_confirmed_at),
+            )
+        )
+    return format_html_join(" ", "{}", ((part,) for part in parts))
 
 
 def _money(value: Decimal | None) -> str:
@@ -543,8 +613,13 @@ class ProductAdmin(ModelAdmin):
     warn_unsaved_form = True
     # What still stands between a draft and publishing, at the top of its form.
     change_form_before_template = "admin/catalog/product/readiness.html"
+    # Five tabs, each inline under the one its `form_tab` names (product/tabs.html).
+    # One long page was 5,382px tall on a desktop.
     fieldsets = [
-        (None, {"fields": ["name", "slug", "category", "status", "image"]}),
+        (
+            _("اصلی"),
+            {"fields": ["name", "slug", "category", "status", "image"], "classes": ["tab"]},
+        ),
         (
             _("تحویل"),
             {
@@ -553,23 +628,25 @@ class ProductAdmin(ModelAdmin):
                     ("warranty", "renewable"),
                     ("delivery_hours", "delivery_note"),
                     "delivery_template",
-                ]
+                ],
+                "classes": ["tab"],
             },
         ),
-        (_("متن"), {"fields": ["short_description"]}),
         (
-            _("واقعیت‌ها"),
+            PAGE_TAB,
             {
                 "fields": [
+                    "short_description",
                     "iran_stance",
                     "refund_note",
                     ("time_sensitive", "facts_checked_on"),
                     "sources",
-                ]
+                ],
+                "classes": ["tab"],
             },
         ),
-        (_("جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
-        (_("سئو"), {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]}),
+        (PLANS_TAB, {"fields": [], "classes": ["tab"]}),
+        (_("جستجو"), {"fields": ["aliases", "seo_title", "seo_description"], "classes": ["tab"]}),
     ]
 
     @display(description=_("محصول"), header=True, ordering="name")
@@ -744,15 +821,14 @@ class ProductAdmin(ModelAdmin):
         low, high = min(prices), max(prices)
         if low == high:
             return amount(low)
-        # One element of two unbreakable parts, «تا» with the second. Under the
-        # name on a phone each piece was a flex item of its own, and «تا»
-        # could stand alone on a line.
+        # One element of two unbreakable parts, «تا» held to the second by a
+        # no-break space. Under the name on a phone each piece was a flex item
+        # of its own, and «تا» could stand alone on a line.
         return format_html(
-            '<span class="panel-range"><span class="panel-amount">{}</span> '
-            '<span class="panel-amount">{} {}</span></span>',
+            '<span class="panel-range"><span class="panel-amount">{}</span> {}\u00a0{}</span>',
             format_toman(low, with_unit=False),
             gettext("تا"),
-            format_toman(high),
+            amount(high),
         )
 
     @admin.display(description=_("آخرین بررسی"), ordering="facts_checked_on")
@@ -804,6 +880,15 @@ class ProductAdmin(ModelAdmin):
         elif form.data.get("status") == Product.Status.ACTIVE and not (obj and obj.is_live_in_db()):
             formsets = [inline.formset for inline in context["inline_admin_formsets"]]
             context["readiness"] = refusal_reasons(form, formsets) or None
+        tabs = {str(fieldset.name): FormTab(fieldset) for fieldset in context["adminform"]}
+        for inline in context["inline_admin_formsets"]:
+            # A KeyError, not a row that silently never renders.
+            tabs[str(inline.opts.form_tab)].inlines.append(inline)
+        context["form_tabs"] = list(tabs.values())
+        # After a refused save, the first tab with an error is the one open.
+        context["form_tab_open"] = next(
+            (i for i, tab in enumerate(context["form_tabs"]) if tab.errors), 0
+        )
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_search_results(
@@ -930,12 +1015,15 @@ class PlanAdmin(ModelAdmin):
             return "—"
         profit = price - obj.cost_price
         share = to_persian_digits(round(abs(profit) / price * 100))
-        figure = f"{format_toman(abs(profit), with_unit=False)} تومان"
+        figure = format_toman(abs(profit), with_unit=False)
         if profit < 0:
             return format_html(
-                '<span class="panel-loss">{} {} ({}٪)</span>', gettext("زیان"), figure, share
+                '<span class="panel-loss">{} {} تومان ({}٪)</span>',
+                gettext("زیان"),
+                figure,
+                share,
             )
-        return format_html('<span class="panel-amount">{}</span> ({}٪)', figure, share)
+        return format_html('<span class="panel-amount">{}</span>\u00a0تومان ({}٪)', figure, share)
 
     @admin.display(description=_("تخفیف"))
     def promo_window(self, obj: Plan) -> str:

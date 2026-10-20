@@ -26,6 +26,7 @@ from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone, translation
 from PIL import Image
@@ -41,6 +42,7 @@ from apps.catalog.models import (
     ProductSpec,
 )
 from apps.core import ratelimit
+from apps.core.formatting import format_jalali
 
 pytestmark = pytest.mark.django_db
 
@@ -186,9 +188,10 @@ def test_the_product_list_renders_for_an_operator(client, operator, catalogue):
 
 
 def test_every_status_keeps_its_own_colour(client, operator, catalogue):
-    """Unfold resolves the badge with a dict lookup and falls through to
-    neutral grey when it misses. The map is keyed off the enum, so a renamed
-    label or a switched language cannot grey a badge.
+    """Unfold resolves the badge with a dict lookup and falls through to the
+    plain neutral badge when it misses. The map is keyed off the enum, so a
+    renamed label or a switched language cannot grey a badge. A draft draws
+    neutral as well, under its own class, so a miss there still shows.
 
     Each badge is read from its own row's status cell. The first version of
     this test searched the whole page for "red", which Unfold's markup contains
@@ -197,9 +200,9 @@ def test_every_status_keeps_its_own_colour(client, operator, catalogue):
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     for slug, status, colour in [
-        ("live", Product.Status.ACTIVE, "bg-green-100"),
-        ("draft", Product.Status.DRAFT, "bg-blue-100"),
-        ("gone", Product.Status.UNAVAILABLE, "bg-red-100"),
+        ("live", Product.Status.ACTIVE, "panel-badge--ok"),
+        ("draft", Product.Status.DRAFT, "panel-badge--info"),
+        ("gone", Product.Status.UNAVAILABLE, "panel-badge--danger"),
     ]:
         cell = re.search(
             r'<td class="field-status_label[^"]*"[^>]*>(.*?)</td>', row_of(body, slug), re.S
@@ -285,6 +288,10 @@ def test_groups_are_not_in_the_panel(client, operator):
 # --- What the list answers without opening a product -----------------------
 
 
+# A promotion five hours from its end, as the shop words it: «۴ ساعت و ۵۹ دقیقه».
+FIVE_HOURS_LEFT = r"[۴۵]\s?ساعت"
+
+
 def test_a_running_discount_shows_its_time_left(client, operator, catalogue):
     """The catalogue's only real clock. Before this it took opening the
     product and reading two datetime fields to learn a promotion ends
@@ -296,7 +303,7 @@ def test_a_running_discount_shows_its_time_left(client, operator, catalogue):
 
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
-    assert "۰۴:" in row_of(body, "live") or "۰۵:" in row_of(body, "live")
+    assert re.search(FIVE_HOURS_LEFT, row_of(body, "live"))
 
 
 def test_the_countdown_is_in_the_time_colour(client, operator, catalogue):
@@ -310,7 +317,7 @@ def test_the_countdown_is_in_the_time_colour(client, operator, catalogue):
 
     row = row_of(client.get(reverse("admin:catalog_product_changelist")).content.decode(), "live")
 
-    assert re.search(r'<span class="panel-time">\s*۰[۴۵]:', row), row
+    assert re.search(r'<span class="panel-time">\s*' + FIVE_HOURS_LEFT, row), row
 
 
 def test_the_discount_column_reads_every_available_plan(client, operator, catalogue):
@@ -328,7 +335,7 @@ def test_the_discount_column_reads_every_available_plan(client, operator, catalo
 
     row = row_of(client.get(reverse("admin:catalog_product_changelist")).content.decode(), "live")
 
-    assert "۰۴:" in row or "۰۵:" in row, row
+    assert re.search(FIVE_HOURS_LEFT, row), row
 
 
 def test_an_unavailable_plans_discount_is_not_counted(client, operator, catalogue):
@@ -530,6 +537,103 @@ def test_a_failed_save_says_so_in_persian(client, operator, catalogue):
 
     assert "Please correct" not in body
     assert "ذخیره نشد" in body
+
+
+def test_a_price_keeps_its_toman_outside_the_bold_figure(client, operator, catalogue):
+    """«تومان» was set in the price face with its number. It is a word of the
+    text, held to the figure by a no-break space so the two never part."""
+    for url in ("admin:catalog_product_changelist", "admin:catalog_plan_changelist"):
+        body = client.get(reverse(url)).content.decode()
+
+        assert '<span class="panel-amount">۲۰۰,۰۰۰</span>\u00a0تومان' in body, url
+        assert "۲۰۰,۰۰۰ تومان</span>" not in body, url
+
+
+FORM_TABS = ["اصلی", "تحویل", "صفحه‌ی محصول", "پلن‌ها", "جستجو"]
+
+
+def test_the_product_form_is_five_tabs_with_each_inline_in_its_own(client, operator, catalogue):
+    """The form was one page 5,382px tall. The plans have a tab of their own,
+    and the page's specs, sections and questions sit with its text."""
+    body = client.get(change_url(catalogue["live"])).content.decode()
+
+    names = [name.strip() for name in re.findall(r'role="tab"[^>]*>([^<]*)', body)]
+    assert names == FORM_TABS
+    panels = body.split('role="tabpanel"')[1:]
+    groups = [re.findall(r'id="(\w+)-group"', panel) for panel in panels]
+    assert groups == [[], [], ["specs", "sections", "questions"], ["plans"], []]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "tab"),
+    [("delivery_hours", "0", "تحویل"), ("promo_price", "300000", "پلن‌ها")],
+)
+def test_a_refused_save_opens_the_tab_with_the_error(
+    client, operator, catalogue, field, value, tab
+):
+    """An error under a field on a closed tab is an error nobody sees: the
+    first tab with one opens, and each tab counts its own."""
+    product = catalogue["live"]
+    data = form_of(client, change_url(product))
+    plan = plan_prefix(data, product.plans.get())
+    data[field if field == "delivery_hours" else f"{plan}-{field}"] = [value]
+
+    response = client.post(change_url(product), data)
+
+    assert response.status_code == 200, "the error was saved"
+    tabs = response.context["form_tabs"]
+    assert FORM_TABS[response.context["form_tab_open"]] == tab
+    assert [t.errors for t in tabs] == [int(title == tab) for title in FORM_TABS]
+    assert 'data-testid="error-count"' in response.content.decode()
+
+
+def test_a_saved_plan_is_headed_by_what_the_shop_charges_for_it(client, operator, catalogue):
+    """Each plan's row opens on one line: the price the shop charges today,
+    the time left on its discount and the day its price was last confirmed."""
+    plan = catalogue["live"].plans.get()
+    plan.promo_price = Decimal("150000")
+    plan.promo_ends_at = timezone.now() + timedelta(hours=5)
+    plan.save()
+
+    body = client.get(change_url(plan.product)).content.decode()
+
+    plans = body[body.index('id="plans-group"') :]
+    head = re.search(r"<h3.*?</h3>", plans, re.S).group(0)
+    assert '<span class="panel-plan">۱ ماهه</span>' in head
+    assert '<span class="panel-amount">۱۵۰,۰۰۰</span>\u00a0تومان' in head
+    assert re.search(r'<span class="panel-time">\s*' + FIVE_HOURS_LEFT, head), head
+    assert format_jalali(plan.price_confirmed_at) in head
+
+
+def test_a_discount_end_already_past_is_refused(client, operator, catalogue):
+    """A wrong year or month in the end date saved a discount that could
+    never show."""
+    product = catalogue["live"]
+    data = form_of(client, change_url(product))
+    prefix = plan_prefix(data, product.plans.get())
+    data[f"{prefix}-promo_price"] = ["150000"]
+    data[f"{prefix}-promo_ends_at_0"] = ["2025-10-20"]
+    data[f"{prefix}-promo_ends_at_1"] = ["12:00"]
+
+    response = client.post(change_url(product), data)
+
+    assert response.status_code == 200, "the past end was saved"
+    body = response.content.decode()
+    error = re.search(rf'id="id_{prefix}-promo_ends_at_error">(.*?)</ul>', body, re.S)
+    assert error and "این زمان گذشته است" in error.group(1)
+
+
+def test_an_end_that_passed_since_it_was_set_does_not_block_a_save(client, operator, catalogue):
+    product = catalogue["live"]
+    Plan.objects.filter(product=product).update(
+        promo_price=Decimal("150000"), promo_ends_at=timezone.now() - timedelta(days=1)
+    )
+    data = form_of(client, change_url(product))
+    data["short_description"] = ["اکانت آماده‌ی اختصاصی، همین امروز."]
+
+    assert client.post(change_url(product), data).status_code == 302
+    product.refresh_from_db()
+    assert product.short_description == "اکانت آماده‌ی اختصاصی، همین امروز."
 
 
 def test_the_search_palette_counts_in_persian(client, operator):
@@ -1193,7 +1297,7 @@ def test_the_english_product_list_is_english(client, english, catalogue):
     assert not [text for text in words if PERSIAN_LETTER.search(text)], words
     options = re.findall(r'<select name="action".*?</select>', body, re.S)[0]
     assert not PERSIAN_LETTER.search(re.sub(r"<[^>]+>", "", options)), options
-    badges = re.findall(r'<span class="[^"]*rounded-default[^"]*"[^>]*>\s*([^<]+?)\s*</span>', body)
+    badges = re.findall(r'<span class="panel-badge[^"]*"[^>]*>\s*([^<]+?)\s*</span>', body)
     assert {"Active", "Draft", "Unavailable"} <= set(badges), badges
 
 
@@ -1543,6 +1647,10 @@ def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue)
     ProductSection.objects.create(
         product=draft, kind="before_buying", body="ظرف [تصمیم مالک، تصمیم ۴: …] روز"
     )
+    # The invoice prints the shop's own open decisions on every product page,
+    # so the guard is that the copy adds none.
+    placeholders = live.get_absolute_url(), "تصمیم مالک"
+    before = Client().get(placeholders[0]).content.decode().count(placeholders[1])
 
     response = copy_from(client, draft, live, follow=True)
 
@@ -1550,7 +1658,7 @@ def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue)
     [refused] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
     assert "از سایت بردارید" in refused, refused
     client.logout()
-    assert "تصمیم مالک" not in client.get(live.get_absolute_url()).content.decode()
+    assert client.get(placeholders[0]).content.decode().count(placeholders[1]) == before
 
 
 def test_copying_sections_needs_permission_to_add_them(client, catalogue):

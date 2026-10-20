@@ -1,39 +1,65 @@
-{% extends "base.html" %}{% load fa richtext %}
+{% extends "base.html" %}{% load fa prices richtext %}
 
 {% block title %}{{ category.seo_title|default:category.name }}{% endblock %}
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
 {% block content %}
-<div class="wrap page">
-<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
+<section class="cathead" aria-labelledby="cat-t">
+  <div class="cathead__text">
+    <nav class="crumbs" aria-label="مسیر"><ol><li><a href="{% url 'home' %}">خانه</a></li><li aria-current="page">{{ category.name }}</li></ol></nav>
+    <h1 class="cathead__title" id="cat-t">{{ category.name }}</h1>
+    {% comment %}Through the restricted renderer, never as markup: whoever can edit a
+    category must not be able to put a script on a page customers pay on. It sits
+    straight under the h1, so it takes no heading of its own.{% endcomment %}
+    {% if category.intro %}<div class="cathead__lead prose">{{ category.intro|markdown:"" }}</div>
+    {% elif category.description %}<p class="cathead__lead">{{ category.description|bdi }}</p>{% endif %}
+  </div>
+  <div class="cathead__art wall">{% include "catalog/_cat_icon.html" with slug=category.slug %}</div>
+</section>
 
-<header class="page-head">
-  <h1 class="page-head__title">{{ category.name }}</h1>
-  {% comment %}Through the restricted renderer, never as markup: whoever can edit a
-  category must not be able to put a script on a page customers pay on. It sits
-  straight under the h1, so it takes no heading of its own.{% endcomment %}
-  {% if category.intro %}<div class="prose rich page-head__intro">{{ category.intro|markdown:"" }}</div>
-  {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
-  {% comment %}
-  The count and nothing else. A filter over three products returns everything
-  or nothing, and of six small Iranian shops surveyed none offers one — the
-  single exception is a theme default. Sort comes first if a category ever
-  passes about fifteen products; a filter after that.
-  {% endcomment %}
-  {% if products %}<p class="small page-head__intro">{{ products|length|fa_digits }} محصول</p>{% endif %}
-</header>
-
+<div class="wrap">
 {% if products %}
-  {# Each card's name is an h3; without this the outline jumps from the h1. #}
-  <h2 class="sr-only">محصولات {{ category.name }}</h2>
-  <div class="grid">
-    {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+  {% comment %}
+  No filter and no sort. With two or three products a filter returns everything
+  or nothing, and of six small Iranian shops surveyed none offers one. Sort comes
+  first if a department ever passes about fifteen products; a filter after that.
+  {% endcomment %}
+  <div class="catbody{% if products|length > 1 %} catbody--compare{% endif %}">
+    {% include "catalog/_ratesheet.html" with sheet_id="rates" title="نرخ‌نامه" of=category.name items=products count=products|length checked=prices_checked_since grouped=False narrow=False rest=None %}
+    {% if products|length > 1 %}
+    {# Products as columns, from the fields every product has, so three fit beside the sheet. #}
+    <section class="cmp" aria-labelledby="cmp-t">
+      <h2 class="cmp__title" id="cmp-t">مقایسه</h2>
+      <div class="table-scroll" role="region" aria-labelledby="cmp-cap" tabindex="0"><table class="table cmp__table">
+        <caption id="cmp-cap">سرویس‌های {{ category.name }}{% if prices_checked_since %}، قیمت‌ها بررسی‌شده از {{ prices_checked_since|jalali }}{% endif %}</caption>
+        <thead><tr><th scope="col"><span class="visually-hidden">ویژگی</span></th>{% for product in products %}<th scope="col">{% if product.image %}<img class="cmp__logo" src="{{ product.image.url }}" alt="" width="56" height="56" loading="lazy" decoding="async">{% endif %}{{ product.name|isolate }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          <tr><th scope="row">نوع تحویل</th>{% for product in products %}<td>{% if product.delivery_type == "on_customer_account" %}روی اکانت خودتان{% elif product.delivery_type == "ready_account" %}اکانت آماده{% else %}{{ product.get_delivery_type_display }}{% endif %}</td>{% endfor %}</tr>
+          <tr><th scope="row">زمان تحویل</th>{% for product in products %}<td class="cmp__eta">{{ product.delivery_display|bdi }}</td>{% endfor %}</tr>
+          <tr><th scope="row">گارانتی</th>{% for product in products %}<td>{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</td>{% endfor %}</tr>
+          <tr><th scope="row">کمترین قیمت (تومان)</th>{% for product in products %}<td>{% with plan=product.cheapest_plan next=product|lead_when_promo_ends %}{% if not plan %}ناموجود{% else %}<span class="price{% if not plan.effective_price %} price--free{% endif %}"{% if next and plan.promo_seconds_left %} data-left="{{ plan.promo_seconds_left }}" data-after="{{ next.price|toman_plain }}"{% endif %}><span class="price__num">{% if plan.effective_price %}{{ plan.effective_price|toman_plain }}{% else %}رایگان{% endif %}</span></span>{% endif %}{% endwith %}</td>{% endfor %}</tr>
+        </tbody>
+      </table></div>
+    </section>
+    {% endif %}
   </div>
+
+  {% if asked %}
+  <section class="catqa-sec" aria-labelledby="catqa-t">
+    <h2 class="catqa-sec__title" id="catqa-t">پرسش‌های این دسته</h2>
+    <div class="catqa">{% for product in asked %}
+      <div class="catqa__group">
+        <h3 class="catqa__product">{% if product.image %}<img class="catqa__logo" src="{{ product.image.url }}" alt="" width="56" height="56" loading="lazy" decoding="async">{% endif %}{{ product.name|isolate }}</h3>
+        <div class="qa">{% for question in product.questions.all %}<div class="qa__item"><h4 class="qa__q">{{ question.question|bdi }}</h4><div class="qa__a prose">{{ question.answer|markdown:"" }}</div></div>{% endfor %}</div>
+      </div>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
 {% else %}
-  <div class="card empty">
-    <p class="prose" style="margin:0">فعلاً محصولی در این دسته نداریم.</p>
-    <a class="btn btn--secondary" href="{% url 'home' %}">همه‌ی محصولات</a>
-  </div>
+  {# Where the buyer's intent is: the way to ask comes first, then everything else the shop sells. #}
+  <p class="empty-line">در این دسته فعلاً سرویسی نداریم. اگر سرویسی از این دسته می‌خواهید، در تلگرام بپرسید: <a href="{{ support.telegram_url }}" rel="noopener"><bdi lang="en">{{ support.telegram }}</bdi></a>، {{ support.hours }}.{% if everything %} همه‌ی سرویس‌های دیگر در نرخ‌نامه‌ی زیر است.{% else %} همه‌ی سرویس‌ها در <a href="{% url 'home' %}#rates">نرخ‌نامه</a> است.{% endif %}</p>
+  {% if everything %}{% include "catalog/_ratesheet.html" with sheet_id="rates" title="نرخ‌نامه" of="" items=everything grouped=True count=None narrow=False rest=None checked=prices_checked_since %}{% endif %}
 {% endif %}
 </div>
 {% endblock %}

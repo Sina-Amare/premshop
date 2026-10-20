@@ -10,7 +10,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from apps.core import formatting
-from apps.core.richtext import isolate_latin
+from apps.core.richtext import isolate, isolate_latin
 
 register = template.Library()
 
@@ -57,6 +57,12 @@ def bdi(value: str | None) -> str:
     return isolate_latin(value or "")
 
 
+@register.filter(name="isolate")
+def isolate_filter(value: str | None) -> str:
+    """A whole value, a name or a plan title, as one isolate (`richtext.isolate`)."""
+    return isolate(value or "")
+
+
 @register.filter(name="jalali")
 def jalali(value: datetime | date | None) -> str:
     return formatting.format_jalali(value)
@@ -70,3 +76,8 @@ def jalali_numeric(value: datetime | date | None) -> str:
 @register.filter(name="countdown")
 def countdown(seconds: int | None) -> str:
     return "" if seconds is None else formatting.format_countdown(seconds)
+
+
+@register.filter(name="deadline")
+def deadline(value: datetime | None) -> str:
+    return "" if value is None else formatting.format_deadline(value)

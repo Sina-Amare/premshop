@@ -21,9 +21,12 @@ from apps.core import support
 
 pytestmark = pytest.mark.django_db
 
-# Where the shell prints promises: the strip over every page, the footer row
-# and the home page's row.
-SITE_WIDE = ("hdr__promise", "ftr__promise", "promises__row")
+# Where the shell prints promises or support details: the strip over every
+# page and the footer's line, read whole so a claim typed beside the sourced
+# one is seen.
+SITE_WIDE = ("strip", "site-footer__about")
+# The footer line's fixed opening, a fact of the shop rather than a promise.
+ABOUT = "اشتراک و اکانت سرویس‌های خارجی، با پرداخت تومانی."
 
 # Claims nothing backs yet. Payment waits on the gateway (S5) and on the
 # owner's ruling about what to say before it; refunds and warranty terms on
@@ -124,7 +127,11 @@ def test_the_shell_prints_only_what_the_source_holds(client, catalogue):
     """Every word in the site-wide regions comes from the promise source or the
     support details. A literal typed into a template, the way «گارانتی تا
     پایان دوره» was, leaves words over and fails here."""
-    allowed = [support.details()["hours"], "پشتیبانی", "·", *(p.text for p in PROMISES)]
+    details = support.details()
+    labels = ["پاسخ‌گویی", "پشتیبانی", "در تلگرام:", "·", ABOUT, "."]
+    phrases = [details["hours"], details["telegram"], *labels, *(p.text for p in PROMISES)]
+    # Spaced as regions() spaces the page: the hours hold together with no-break spaces.
+    allowed = [" ".join(phrase.split()) for phrase in phrases]
     seen = set()
     for url in pages(catalogue):
         for name, text in regions(client.get(url).content.decode()).items():
@@ -151,7 +158,18 @@ def test_no_page_makes_a_claim_nothing_backs(client, catalogue, claim):
 def test_the_region_reader_sees_a_planted_promise():
     """The control for the reader: a promise typed straight into the strip."""
     planted = (
-        '<div class="hdr__promise"><div class="wrap">پشتیبانی · گارانتی تا پایان دوره</div></div>'
+        '<aside class="strip"><div class="wrap">پشتیبانی · گارانتی تا پایان دوره</div></aside>'
     )
 
-    assert "گارانتی تا پایان دوره" in regions(planted)["hdr__promise"]
+    assert "گارانتی تا پایان دوره" in regions(planted)["strip"]
+
+
+def test_the_region_reader_sees_a_promise_typed_beside_the_footers():
+    """The footer's region was once the span holding the sourced promise, so a
+    claim typed into the same line, outside the span, was never read."""
+    planted = (
+        f'<p class="site-footer__about">{ABOUT} گارانتی تا پایان دوره.'
+        ' <span class="site-footer__promise">تحویل</span>.</p>'
+    )
+
+    assert "گارانتی تا پایان دوره" in regions(planted)["site-footer__about"]

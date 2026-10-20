@@ -1,5 +1,5 @@
-{% load fa richtext %}{% comment %}«بعد از پرداخت»: numbered steps from a confirmed payment to first use.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
-  <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
-  <div class="prose rich rich--steps">{{ section.body|markdown }}</div>
+{% load fa richtext %}{% comment %}«بعد از پرداخت»: numbered steps from a confirmed payment to first use, the numbers set large by product.css.{% endcomment %}<section class="sec sec--after-payment" id="section-{{ section.pk }}" aria-labelledby="section-{{ section.pk }}-title">
+  <h2 class="sec__title" id="section-{{ section.pk }}-title">{{ section.title|default:section.get_kind_display|bdi }}</h2>
+  <div class="prose">{{ section.body|markdown }}</div>
   {% include "catalog/sections/_image.html" %}
 </section>

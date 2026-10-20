@@ -1,0 +1,103 @@
+/* The product page: its grid, and the look of each section kind over the operator's
+   Markdown (ADR-0027), which carries no classes of its own. Shared parts live in
+   ../input.css. */
+
+.product { padding-block: var(--spacing-5) var(--spacing-8); }
+
+/* Phone: title, the invoice, then the rest, with the total and the top of the button
+   inside the first 844px. */
+.product__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--spacing-4); margin-block-start: var(--spacing-4); }
+.product__head { row-gap: var(--spacing-3); }
+/* No logo: the title takes the logo's column too. */
+.phead__title:first-child { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .product { padding-block-start: var(--spacing-4); }
+  .product .phead__logo { inline-size: var(--logo-md); block-size: var(--logo-md); }
+}
+@media (min-width: 761px) {
+  .product__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 340px); grid-template-rows: auto auto 1fr auto;
+                   grid-template-areas: "head side" "lead side" "facts side" "body body"; column-gap: var(--spacing-6); }
+  .product__head { grid-area: head; }
+  .product__side { grid-area: side; }
+  .product__lead { grid-area: lead; }
+  .product__facts { grid-area: facts; align-self: start; margin-block-start: var(--spacing-2); }
+  .product__body { grid-area: body; }
+}
+/* Desktop: the invoice keeps its column the whole way down, so «پیش از خرید» is read
+   beside it. */
+@media (min-width: 1024px) {
+  .product__grid { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto auto auto 1fr;
+                   grid-template-areas: "head side" "lead side" "facts side" "body side"; column-gap: var(--spacing-7); }
+}
+
+.product__body > .sec:first-child { margin-block-start: var(--spacing-6); }
+
+/* A product name moves to the next line whole rather than breaking inside; it wraps
+   within itself only when it is wider than the line. */
+.phead__title bdi { display: inline-block; }
+
+/* A fact with no fuller answer to jump to reads as ink, not as a link. */
+.facts__row--static:hover { background: none; }
+.facts__row--static .facts__v { color: var(--color-ink); text-decoration: none; }
+
+.specs th { inline-size: 38%; font-size: var(--text-small); color: var(--color-muted); }
+
+.sec__img { display: block; margin-block-start: var(--spacing-4);
+            border: var(--border-hair) solid var(--color-line); border-radius: var(--radius-sheet); }
+
+/* مزیت‌ها و کاربردها: a benefit's bold claim on its own line, its use under it. */
+.sec--benefits .prose > ul { display: grid; gap: var(--spacing-5); padding-inline-start: 0; list-style: none; }
+.sec--benefits .prose > ul > li { position: relative; margin: 0; padding-inline-start: var(--spacing-5); color: var(--color-secondary); }
+.sec--benefits .prose > ul > li::before { content: ""; position: absolute; inset-inline-start: 1px; inset-block-start: 0.78em;
+                                          inline-size: 7px; block-size: 7px; background: var(--color-ink); transform: rotate(45deg); }
+.sec--benefits .prose > ul > li > strong:first-child,
+.sec--benefits .prose > ul > li > p:first-child > strong:first-child { display: block; margin-block-end: var(--spacing-1); color: var(--color-ink); }
+
+/* چه چیزهایی می‌گیرید and بعد از پرداخت: numbered lines. counter(list-item) keeps an
+   «۳.» the operator started a list on. */
+.sec--includes .prose > :is(ul, ol), .sec--after-payment .prose > ol { padding-inline-start: 0; list-style: none; }
+.sec--includes .prose > :is(ul, ol) > li, .sec--after-payment .prose > ol > li { position: relative; margin: 0; }
+
+.sec--includes .prose > :is(ul, ol) { border-block-start: var(--border-hair) solid var(--color-ink); }
+.sec--includes .prose > :is(ul, ol) > li { padding-block: var(--spacing-3); padding-inline-start: calc(var(--spacing-6) + var(--spacing-3));
+                                           border-block-end: var(--border-hair) solid var(--color-line); }
+.sec--includes .prose > :is(ul, ol) > li::before { content: counter(list-item, persian); position: absolute; inset-inline-start: 0;
+                                                   font-family: var(--font-head); font-weight: var(--font-weight-extrabold);
+                                                   font-size: var(--text-ui); color: var(--color-muted); }
+
+.sec--after-payment .prose > ol > li { padding-block: var(--spacing-4); padding-inline-start: calc(var(--spacing-7) + var(--spacing-3)); }
+.sec--after-payment .prose > ol > li + li { border-block-start: var(--border-hair) solid var(--color-line); }
+.sec--after-payment .prose > ol > li::before { content: counter(list-item, persian); position: absolute; inset-inline-start: 0;
+                                               inset-block-start: var(--spacing-4); font-family: var(--font-head);
+                                               font-size: var(--text-step); font-weight: var(--font-weight-extrabold);
+                                               line-height: 1.1; color: var(--color-ink); }
+
+/* پیش از خرید: the operator's opening bold line, «این محصول برای شما نیست اگر …», ruled off. */
+.sec--before-buying .prose > p:first-child:has(> strong:first-child) {
+  margin-block-end: var(--spacing-5); padding-inline-start: var(--spacing-4);
+  border-inline-start: var(--border-rule) solid var(--color-ink);
+}
+
+/* Below the first screen a section is laid out when it comes near the view, not before
+   the first paint: the long page cost 0.8 to 1.2 s of layout at a phone's speed. The
+   first section stays out of it, since from 1024px it can be in the first view. */
+.product__body > .sec ~ .sec { content-visibility: auto; contain-intrinsic-size: auto 640px; }
+/* A jump lays every section out first, or it lands by the placeholder sizes of the ones
+   above it, up to a screen away: the target holds focus on frame.js's glide and is
+   :target on the browser's own jump. */
+.product__body:is(:focus-within, :has(:target)) > .sec { content-visibility: visible; }
+
+/* Under 1024px the invoice sits above the text: the conditions lead back to it. */
+.toinvoice { display: none; }
+@media (max-width: 1023px) {
+  .toinvoice { display: block; margin-block-start: var(--spacing-5); padding-block: var(--spacing-3);
+               border-block: var(--border-hair) solid var(--color-line); font-size: var(--text-ui); font-weight: var(--font-weight-medium); }
+  /* After a block that closes on its own rule, a second rule read as an empty row. */
+  :is(.terms, .sec) + .toinvoice { border-block-start: 0; }
+}
+
+.related .sheet__foot a { font-size: var(--text-ui); }
+
+/* The operator's preview of a page nobody else can see. */
+.preview-bar { background: var(--color-fill-subtle); border-block-end: var(--border-hair) solid var(--color-line); }
+.preview-bar p { padding-block: var(--spacing-3); font-size: var(--text-ui); line-height: 1.8; }

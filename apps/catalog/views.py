@@ -12,11 +12,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import datetime
 
+from django.contrib.staticfiles import finders
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.cache import patch_cache_control
 
+from apps.catalog import invoice
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.catalog.search import without_filler
 from apps.core import ratelimit
@@ -100,7 +102,9 @@ def home(request: HttpRequest) -> HttpResponse:
 
 def category(request: HttpRequest, slug: str) -> HttpResponse:
     cat = get_object_or_404(Category, slug=slug)
-    products = list(_for_cards().filter(category=cat))
+    products = list(_for_cards().filter(category=cat).prefetch_related("questions"))
+    # An empty department still answers: everything else the shop sells, under the way to ask.
+    everything = [] if products else list(_for_cards().order_by("name"))
     return render(
         request,
         "catalog/category.html",
@@ -108,7 +112,9 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
             "category": cat,
             "current_category": cat.slug,
             "products": products,
-            "prices_checked_since": _prices_checked_since(products),
+            "asked": [p for p in products if p.questions.all()],
+            "everything": everything,
+            "prices_checked_since": _prices_checked_since(products or everything),
         },
     )
 
@@ -127,22 +133,20 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     )
     plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
     available = [p for p in plans if p.is_available]
-    # The quantity control is rendered server-side only when some plan can
-    # actually take more than one, so a visitor with JavaScript off never sees
-    # a stepper that cannot do anything.
-    ceilings = [p.max_quantity for p in available] or [1]
     related = _related_to(obj)
+    og_path = f"img/og-{obj.slug}.png"  # drawn by scripts/render_og.py for public products only
     sections = sorted(obj.sections.all(), key=lambda s: (s.sort_order, s.pk))
     response = render(
         request,
         "catalog/product.html",
         {
             "product": obj,
+            "current_category": obj.category.slug,
+            "og_path": og_path if finders.find(og_path) else "img/og-default.png",
             "preview": not obj.is_public,
             "plans": plans,
             "available_plans": available,
-            "any_plan_takes_more_than_one": max(ceilings) > 1,
-            "max_quantity": max(ceilings),
+            **invoice.build(plans, request.GET.get("plan")),
             "specs": list(obj.specs.all()),
             "related": related,
             # The facts the operator marked important enough to print beside
@@ -224,9 +228,27 @@ def search(request: HttpRequest) -> HttpResponse:
     # typed «چت جپت» sees ChatGPT on the page without touching the keyboard
     # again. Telling them to check their spelling is advice, not an answer.
     everything = [] if (results or limited) else list(_for_cards().order_by("name"))
+    # One hit is set beside the rest of its department, which is what it is compared with.
+    rest = (
+        list(
+            _for_cards()
+            .filter(category_id=results[0].category_id)
+            .exclude(pk=results[0].pk)
+            .order_by("name")
+        )
+        if len(results) == 1
+        else []
+    )
     return render(
         request,
         "catalog/search.html",
-        {"query": query, "results": results, "limited": limited, "everything": everything},
+        {
+            "query": query,
+            "results": results,
+            "limited": limited,
+            "everything": everything,
+            "rest": rest,
+            "prices_checked_since": _prices_checked_since([*results, *rest] or everything),
+        },
         status=429 if limited else 200,
     )

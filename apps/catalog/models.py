@@ -708,16 +708,6 @@ class Product(ChecksNameTheirField, models.Model):
         return f"تا {to_persian_digits(self.delivery_hours)} ساعت"
 
     @property
-    def delivery_sentence(self) -> str:
-        """The same fact where it stands alone, on a badge or under the buy box.
-
-        The panel asks for the note as a phrase in place of «تا … ساعت», so it
-        takes the same word: «تحویل ۴۸ تا ۷۲ ساعت». Bare, it said nothing about
-        what the hours were.
-        """
-        return f"تحویل {self.delivery_display}"
-
-    @property
     def is_public(self) -> bool:
         return self.status == self.Status.ACTIVE
 

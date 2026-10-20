@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
+from django.conf import settings
 
 from apps.core import formatting
 
@@ -77,20 +79,68 @@ class TestJalali:
         assert formatting.format_jalali(utc_evening) == "۱۱ شهریور ۱۴۰۵"
 
 
+NB = "\u00a0"
+
+
 @pytest.mark.parametrize(
     "seconds, expected",
     [
-        (0, "۰۰:۰۰:۰۰"),
-        (59, "۰۰:۰۰:۵۹"),
-        (3600, "۰۱:۰۰:۰۰"),
-        (86399, "۲۳:۵۹:۵۹"),
-        (86400, "۱ روز"),
-        (90000, "۱ روز و ۱ ساعت"),
-        (1483200, "۱۷ روز و ۴ ساعت"),
-        (-5, "۰۰:۰۰:۰۰"),
+        (0, f"کمتر از یک{NB}دقیقه"),
+        (59, f"کمتر از یک{NB}دقیقه"),
+        (60, f"۱{NB}دقیقه"),
+        (3600, f"۱{NB}ساعت"),
+        (13140, f"۳{NB}ساعت و ۳۹{NB}دقیقه"),
+        (86399, f"۲۳{NB}ساعت و ۵۹{NB}دقیقه"),
+        (86400, f"۱{NB}روز"),
+        (90000, f"۱{NB}روز و ۱{NB}ساعت"),
+        (1202400, f"۱۳{NB}روز و ۲۲{NB}ساعت"),
+        (-5, f"کمتر از یک{NB}دقیقه"),
     ],
 )
 def test_a_countdown_reads_at_the_granularity_someone_can_act_on(seconds, expected):
-    """86400 is the switch: a second past a day stops being a clock. Negative
-    seconds floor at zero rather than printing a clock running backwards."""
+    """Days and hours, under a day hours and minutes, never seconds: the text
+    does not tick. A number and its unit never break apart, and a zero second
+    unit is dropped. Negative seconds floor at zero."""
     assert formatting.format_countdown(seconds) == expected
+
+
+def test_the_countdown_script_writes_what_the_server_writes():
+    """countdown.js rewrites the badge when a tab comes back; a second
+    formatter that drifted would change the text under the reader."""
+    script = (Path(settings.BASE_DIR) / "static" / "js" / "countdown.js").read_text("utf-8")
+    for word in ("روز", "ساعت", "دقیقه", "کمتر از یک"):
+        assert f"'{word}'" in script or f"'{word}' + NB" in script, word
+    assert "NB = '\u00a0'" in script
+
+
+def test_a_deadline_reads_as_a_day_and_a_clock_time_in_tehran(settings):
+    settings.TIME_ZONE = "Asia/Tehran"
+    end = datetime(2026, 11, 2, 20, 9, 41, tzinfo=ZoneInfo("UTC"))
+    assert formatting.format_deadline(end) == f"۱۱{NB}آبان، ساعت{NB}۲۳:۳۹"
+
+
+@pytest.mark.parametrize(
+    "amount, expected",
+    [
+        (1, "یک تومان"),
+        (19, "نوزده تومان"),
+        (21, "بیست و یک تومان"),
+        (110, "صد و ده تومان"),
+        (1000, "هزار تومان"),
+        (1500, "هزار و پانصد تومان"),
+        (190000, "صد و نود هزار تومان"),
+        (Decimal("1180000"), "یک میلیون و صد و هشتاد هزار تومان"),
+        (1690000, "یک میلیون و ششصد و نود هزار تومان"),
+        (1000001, "یک میلیون و یک تومان"),
+        (12345678, "دوازده میلیون و سیصد و چهل و پنج هزار و ششصد و هفتاد و هشت تومان"),
+        (2000000000, "دو میلیارد تومان"),
+    ],
+)
+def test_an_amount_reads_in_words_as_an_invoice_writes_it(amount, expected):
+    assert formatting.toman_in_words(amount) == expected
+
+
+@pytest.mark.parametrize("amount", [0, -1, 1000**4])
+def test_an_amount_with_no_words_is_refused_rather_than_misread(amount):
+    with pytest.raises(ValueError):
+        formatting.toman_in_words(amount)

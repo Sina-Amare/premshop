@@ -1,5 +1,5 @@
-{% load fa richtext %}{% comment %}«مقایسه»: a small table. It scrolls inside its own box at 390px rather than push the page sideways.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
-  <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
-  <div class="rich__scroll" tabindex="0"><div class="prose rich">{{ section.body|markdown }}</div></div>
+{% load fa richtext %}{% comment %}«مقایسه»: a small table. It scrolls inside its own box at 320px rather than push the page sideways.{% endcomment %}<section class="sec sec--comparison" id="section-{{ section.pk }}" aria-labelledby="section-{{ section.pk }}-title">
+  <h2 class="sec__title" id="section-{{ section.pk }}-title">{{ section.title|default:section.get_kind_display|bdi }}</h2>
+  <div class="table-scroll" role="region" aria-labelledby="section-{{ section.pk }}-title" tabindex="0"><div class="prose">{{ section.body|markdown }}</div></div>
   {% include "catalog/sections/_image.html" %}
 </section>

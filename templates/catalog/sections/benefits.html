@@ -1,8 +1,8 @@
 {% load fa richtext %}{% comment %}
-«مزیت‌ها و کاربردها»: what the product does for the buyer, one benefit per list
-item with its use under it. The look of each kind is step 3's; the markup is not.
-{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
-  <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
-  <div class="prose rich">{{ section.body|markdown }}</div>
+«مزیت‌ها و کاربردها»: one list item per benefit, the claim in bold first and its use
+after it. product.css sets the claim on a line of its own.
+{% endcomment %}<section class="sec sec--benefits" id="section-{{ section.pk }}" aria-labelledby="section-{{ section.pk }}-title">
+  <h2 class="sec__title" id="section-{{ section.pk }}-title">{{ section.title|default:section.get_kind_display|bdi }}</h2>
+  <div class="prose">{{ section.body|markdown }}</div>
   {% include "catalog/sections/_image.html" %}
 </section>

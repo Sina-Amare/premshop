@@ -48,9 +48,12 @@ def discounted():
 
 
 def widest_overflow(page) -> list[dict]:
+    # Tile art is drawn twelve periods wide and clipped by its wall; if the wall stopped
+    # clipping it, the scroll width checked beside this would say so.
     return page.evaluate("""() => {
         const w = document.documentElement.clientWidth, over = [];
         document.querySelectorAll('body *').forEach(e => {
+          if (e.parentElement.closest('.wall')) return;
           const b = e.getBoundingClientRect();
           if (b.width > w + 1) over.push({cls: String(e.className).slice(0, 40), w: Math.round(b.width)});
         });
@@ -70,32 +73,43 @@ def test_no_page_scrolls_sideways_on_a_phone(browser, live_server, discounted, p
         context.close()
 
 
-def test_the_discount_clock_counts_down(browser, live_server, discounted):
+def test_the_deadline_never_ticks_and_is_written_again_on_return(browser, live_server, discounted):
+    """The badge counted seconds: moving text nobody could stop (WCAG 2.2.2).
+    The server writes hours and minutes beside the fixed end time, and the
+    script writes them again only when the reader comes back to the tab."""
     context = browser.new_context(viewport={"width": 1280, "height": 900})
     page = context.new_page()
     try:
+        page.clock.install()
         page.goto(f"{live_server.url}/p/netflix/")
-        badge = page.locator(".deadline").first
-        first = badge.text_content()
-        assert "مانده" in first
-        assert "۰۱:5" in first.replace("۵", "5"), first
+        left = page.locator(".invoice__promo .countdown__left")
+        first = left.text_content()
+        assert first in ("۱\u00a0ساعت و ۵۴\u00a0دقیقه", "۱\u00a0ساعت و ۵۵\u00a0دقیقه"), first
+        assert page.locator(".invoice__promo time[datetime]").count() == 1, "the end beside it"
 
-        page.wait_for_timeout(2100)
-        assert badge.text_content() != first, "the clock is painted once and never moves"
+        page.clock.fast_forward("01:00:00")
+        assert left.text_content() == first, "the text moved on its own"
+
+        page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        written = left.text_content()
+        assert written in ("۵۴\u00a0دقیقه", "۵۵\u00a0دقیقه"), "positive control: it can write"
     finally:
         context.close()
 
 
 TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber means time pressure
+# The line a deadline stands on, which says the discount is over once the badge goes.
+DEADLINE_LINE = ":is(.invoice__promo, .plan__clock, .sheet__note, .rs__clock):has(.countdown)"
 
 
-@pytest.mark.parametrize(("path", "scope"), [("/p/netflix/", ".plan"), ("/c/fun/", ".pcard")])
-def test_at_zero_the_regular_price_returns_and_the_badge_stops_being_amber(
-    browser, live_server, discounted, path, scope
+@pytest.mark.parametrize(
+    ("path", "row"), [("/p/netflix/", "#invoice .plan"), ("/c/fun/", "tr.rs__plan")]
+)
+def test_at_zero_the_regular_price_returns_and_the_line_says_the_discount_is_over(
+    browser, live_server, discounted, path, row
 ):
     """The badge said the discount was over while the discounted price stayed
-    on screen in amber's company: `.badge--time` came after `.deadline--done`
-    in the stylesheet and won, and the script never touched the price."""
+    on screen in amber's company, and the script never touched the price."""
     plan = discounted.plans.get()
     after = format_toman(effective_price(plan, at=plan.promo_ends_at), with_unit=False)
     context = browser.new_context(viewport={"width": 1280, "height": 900})
@@ -104,8 +118,9 @@ def test_at_zero_the_regular_price_returns_and_the_badge_stops_being_amber(
         page.clock.install()
         page.goto(f"{live_server.url}{path}")
         assert page.evaluate(STYLED), "unstyled, nothing is amber and the colour check is empty"
-        box = page.locator(scope).first
-        badge = box.locator(".deadline")
+        box = page.locator(row).first
+        badge = page.locator(".countdown").first
+        line = page.locator(DEADLINE_LINE).first.element_handle()
         assert box.locator(".price__num").text_content() == "۳۱۲,۰۰۰"
         assert badge.evaluate("e => getComputedStyle(e).color") == TIME_TEXT, "positive control"
 
@@ -113,16 +128,20 @@ def test_at_zero_the_regular_price_returns_and_the_badge_stops_being_amber(
 
         assert box.locator(".price__num").text_content() == after == "۳۹۰,۰۰۰"
         assert box.locator(".price__was").count() == 0, "a struck price beside itself"
-        assert box.locator(".price__now").count() == 0, "«قیمت با تخفیف» for a regular price"
-        assert badge.evaluate("e => getComputedStyle(e).color") != TIME_TEXT
-        assert badge.text_content() == "تخفیف تمام شد"
+        assert box.locator(".price__now-k").count() == 0, "«قیمت با تخفیف» for a regular price"
+        assert page.locator(".countdown:visible").count() == 0, "a clock past its end"
+        assert "تمام شد" in line.text_content()
+        if path.startswith("/p/"):
+            assert page.locator(".invoice__amount").text_content() == "۳۹۰,۰۰۰"
+            assert page.locator(".invoice__words-text").text_content() == "سیصد و نود هزار تومان"
     finally:
         context.close()
 
 
-def test_at_zero_a_card_leads_with_the_plan_that_is_cheapest_then(browser, live_server, discounted):
-    """The card swapped in its own plan's regular price, 390,000, while
-    another plan cost 350,000, and kept saying so until a reload."""
+def test_at_zero_each_rate_sheet_row_keeps_its_own_plan(browser, live_server, discounted):
+    """A card swapped in its own plan's regular price, 390,000, while another
+    plan cost 350,000. Each plan has its own row now, and at zero only the
+    discounted row changes, to the figure the server built for it."""
     discounted.plans.create(
         title="۱ ماهه، بدون تخفیف",
         cost_price=Decimal("100000"),
@@ -134,14 +153,17 @@ def test_at_zero_a_card_leads_with_the_plan_that_is_cheapest_then(browser, live_
     try:
         page.clock.install()
         page.goto(f"{live_server.url}/c/fun/")
-        card = page.locator(".pcard").first
-        assert card.locator(".price__num").text_content() == "۳۱۲,۰۰۰", "positive control"
-        assert card.locator(".pcard__from bdi").text_content() == "۱ ماهه"
+        rows = page.locator("tr.rs__plan")
+
+        def prices() -> list[str | None]:
+            return [rows.nth(i).locator(".price__num").text_content() for i in range(2)]
+
+        assert rows.count() == 2 and prices() == ["۳۱۲,۰۰۰", "۳۵۰,۰۰۰"], "positive control"
 
         page.clock.fast_forward("02:00:00")
 
-        assert card.locator(".price__num").text_content() == "۳۵۰,۰۰۰"
-        assert card.locator(".pcard__from bdi").text_content() == "۱ ماهه، بدون تخفیف"
+        assert prices() == ["۳۹۰,۰۰۰", "۳۵۰,۰۰۰"]
+        assert "۳۹۰,۰۰۰" in rows.first.locator(".rs__plan-link").get_attribute("aria-label")
     finally:
         context.close()
 
@@ -160,7 +182,7 @@ def test_at_zero_a_plans_title_keeps_its_line_on_a_phone(browser, live_server, d
 
         page.clock.fast_forward("02:00:00")
 
-        assert page.locator(".plan .deadline").first.text_content() == "تخفیف تمام شد"
+        assert page.locator(".invoice__promo").text_content() == "تخفیف تمام شد."
         assert title.evaluate(LINES) == 1
     finally:
         context.close()
@@ -171,23 +193,22 @@ def test_at_zero_a_plans_title_keeps_its_line_on_a_phone(browser, live_server, d
 LINES = "e => new Set([...e.getClientRects()].map(r => Math.round(r.top))).size"
 
 
-def test_a_ticking_clock_is_not_part_of_any_name(browser, live_server, discounted):
-    """Under a day the badge counts seconds, inside the plan's label and the
-    card's link, so both names changed every second and a screen reader on
-    a plan heard its whole label again each time."""
+def test_no_name_changes_while_the_page_is_open(browser, live_server, discounted):
+    """Under a day the badge counted seconds inside the plan's label and the
+    card's link, so both names changed every second and a screen reader on a
+    plan heard its whole label again each time. Nothing ticks now."""
     context = browser.new_context(viewport={"width": 1280, "height": 900})
     page = context.new_page()
     try:
-        for path, scope in (("/p/netflix/", ".plans"), ("/c/fun/", ".pcard")):
+        for path, scope in (("/p/netflix/", "#invoice"), ("/c/fun/", ".sheet:has(.rs)")):
             page.goto(f"{live_server.url}{path}")
             box = page.locator(scope).first
-            heard, shown = box.aria_snapshot(), box.locator(".deadline").text_content()
+            heard = box.aria_snapshot()
             page.wait_for_timeout(2100)
-            assert box.locator(".deadline").text_content() != shown, "positive control: it ticks"
             assert box.aria_snapshot() == heard, path
-            # What is heard instead: the end once, and which price is which.
-            assert "تخفیف تا" in heard, heard
-            assert "قیمت قبلی" in heard and "قیمت با تخفیف" in heard, heard
+            # What is heard: the end, and which price is which.
+            assert "تخفیف" in heard and "مانده" in heard, heard
+            assert "قیمت قبل" in heard and "قیمت با تخفیف" in heard, heard
     finally:
         context.close()
 
@@ -210,7 +231,7 @@ def test_the_skip_link_appears_on_focus_and_lands_in_the_content(browser, live_s
 
 
 def header_bottom(page) -> float:
-    return page.evaluate("document.querySelector('.hdr').getBoundingClientRect().bottom")
+    return page.evaluate("document.querySelector('.site-header').getBoundingClientRect().bottom")
 
 
 @pytest.mark.parametrize("width", [390, 1280])
@@ -220,12 +241,17 @@ def test_an_in_page_jump_lands_below_the_header(browser, live_server, discounted
     try:
         page.goto(f"{live_server.url}/")
         assert page.evaluate(STYLED)
-        page.click('a[href="#products"]')
-        page.wait_for_function("location.hash === '#products'")
+        # «همه‌ی سرویس‌ها» in the category row, which on the home page jumps to its rate sheet.
+        page.click('.catnav a[href="/#rates"]')
+        page.wait_for_function("location.hash === '#rates'")
         page.wait_for_timeout(300)
+        top = page.evaluate("document.getElementById('rates').getBoundingClientRect().top")
+        if width < 761:
+            # The header sticks from 761px; below that the jump only has to land in view.
+            assert top >= 0, (width, top)
+            return
         # Unstyled, the header scrolls away and anything clears it.
         assert header_bottom(page) > 0, "positive control: the header is pinned"
-        top = page.evaluate("document.getElementById('products').getBoundingClientRect().top")
         assert top >= header_bottom(page) - 1, (width, top, header_bottom(page))
     finally:
         context.close()
@@ -233,30 +259,27 @@ def test_an_in_page_jump_lands_below_the_header(browser, live_server, discounted
 
 @pytest.mark.parametrize("width", [320, 390, 640, 760])
 def test_the_phone_bar_gives_search_its_own_row(browser, live_server, discounted, width):
-    """From 521px to 760px a later rule put the search back beside the brand,
-    flush against the top of a bar 47px shorter than every in-page jump
-    allowed for. Narrower, the account button touched the top edge."""
+    """From 521px to 760px a later rule put the search back beside the brand.
+    Narrower, the account button touched the top edge. The header links have
+    no edge of their own now, so it is their icons that must clear it."""
     context = browser.new_context(viewport={"width": width, "height": 800})
     page = context.new_page()
     try:
         page.goto(f"{live_server.url}/")
-        bar, account, search = (
-            page.locator(selector).bounding_box()
-            for selector in (".hdr__main", ".hdr__account", ".hdr__search")
+        bar, links, icon, search = (
+            page.locator(selector).first.bounding_box()
+            for selector in (".site-header__in", ".hlinks", ".hlinks svg", ".search")
         )
-        assert search["y"] >= account["y"] + account["height"], (account, search)
-        assert account["y"] - bar["y"] >= 8, (bar, account)
-        pinned = header_bottom(page) - bar["y"]
-        allowed = page.evaluate(
-            "parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hdr-h'))"
-        )
-        assert pinned <= allowed <= pinned + 1, (pinned, allowed)
+        assert search["y"] >= links["y"] + links["height"], (links, search)
+        assert icon["y"] - bar["y"] >= 8, (bar, icon)
     finally:
         context.close()
 
 
-def test_the_sticky_buy_box_stays_below_the_header(browser, live_server, discounted):
-    """It stuck 24px from the top of the viewport, which is under a 69px bar."""
+def test_the_sticky_invoice_keeps_its_button_below_the_header(browser, live_server, discounted):
+    """It stuck 24px from the top of the viewport, which is under a 69px bar.
+    An invoice taller than the room under the header anchors by its bottom, so
+    the total and the button stay in view; a focused plan sticks it by its top."""
     for i in range(14):
         discounted.specs.create(title=f"ردیف {i}", value="مقدار", sort_order=i)
     context = browser.new_context(viewport={"width": 1280, "height": 700})
@@ -266,13 +289,24 @@ def test_the_sticky_buy_box_stays_below_the_header(browser, live_server, discoun
         assert page.evaluate(STYLED)
         page.mouse.wheel(0, 500)
         page.wait_for_function("window.scrollY > 400")
-        # Unstyled, neither the box nor the header sticks, and the box's top is
-        # above a header that has scrolled off.
-        box = page.locator(".pdp__buy")
+        # Unstyled, neither the invoice nor the header sticks.
+        box = page.locator("#invoice")
         assert box.evaluate("e => getComputedStyle(e).position") == "sticky", "positive control"
         assert header_bottom(page) > 0, "positive control: the header is pinned"
+        for part in (".invoice__total", ".invoice__cta"):
+            r = page.locator(part).bounding_box()
+            assert header_bottom(page) <= r["y"] and r["y"] + r["height"] <= 700, (part, r)
+
+        page.focus("#invoice input[name=plan]")
+        page.wait_for_timeout(100)
+        card = page.locator("#invoice .plan__body").first.bounding_box()
+        assert card["y"] >= header_bottom(page), (card, header_bottom(page))
+
+        page.set_viewport_size({"width": 1280, "height": 1000})
+        page.locator("body").click(position={"x": 5, "y": 400})
+        page.wait_for_timeout(100)
         top = box.evaluate("e => e.getBoundingClientRect().top")
-        assert top >= header_bottom(page), (top, header_bottom(page))
+        assert top >= header_bottom(page), ("room for all of it, yet its top is under", top)
     finally:
         context.close()
 
@@ -294,7 +328,7 @@ def test_a_wide_table_scrolls_inside_its_section_on_a_small_phone(browser, live_
         page.goto(f"{live_server.url}/p/netflix/")
         assert page.evaluate(STYLED)
         assert page.evaluate("document.documentElement.scrollWidth") <= 320
-        box = page.locator(".rich__scroll")
+        box = page.locator(".sec--comparison .table-scroll")
         assert box.evaluate("e => e.scrollWidth > e.clientWidth"), "the table fits: nothing tested"
     finally:
         context.close()

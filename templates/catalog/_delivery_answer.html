@@ -2,4 +2,4 @@
 «تحویل چقدر طول می‌کشه؟», answered on the home page and the FAQ from one
 sentence. The range is the CHECK on delivery_hours, and a time that ends
 outside support hours moves to the next opening (ADR-0009).
-{% endcomment %}۱ تا {{ delivery_cap_hours|fa_digits }} ساعت پس از تأیید پرداخت، بسته به محصول. اگر بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.
+{% endcomment %}بین ۱ تا {{ delivery_cap_hours|fa_digits }} ساعت پس از تأیید پرداخت، بسته به سرویس. موعدی که بیرون از ساعت {{ support.hours_range }} بیفتد، ساعت {{ support.opens }} صبح بعد است.

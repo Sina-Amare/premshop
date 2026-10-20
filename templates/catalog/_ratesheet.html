@@ -1,0 +1,22 @@
+{% load fa ratesheet %}{% comment %}
+The نرخ‌نامه: every plan of the products it is given, as a dated document. The
+date is the stalest confirmation among them, never the newest. Discounts that
+share one end print it once, in the head beside the date.
+
+Grouped, the products are set out by department in the operator's order, two
+columns from a laptop up; otherwise they are one table, and `rest` adds a second
+headed one under it.
+Params: sheet_id, title, of (a department's name, «نرخ‌نامه‌ی …»), items,
+grouped, count (prints «N سرویس»), narrow, checked, rest (optional), rest_of.
+{% endcomment %}{% if grouped %}{% regroup items|dictsort:"category.name"|dictsort:"category.sort_order" by category as groups %}{% endif %}{% with more=rest|default:"" %}{% with shared=items|shared_deadline:more %}
+<section class="sheet sheet--doc ratesheet{% if narrow %} ratesheet--narrow{% endif %}" id="{{ sheet_id }}" aria-labelledby="{{ sheet_id }}-t">
+  <header class="sheet__head">
+    <div><h2 class="sheet__title" id="{{ sheet_id }}-t">{{ title }}{% if of %}‌ی {{ of }}{% endif %}</h2>{% if grouped %}<p class="sheet__sub">{{ items|length|fa_digits }} سرویس در {{ groups|length|fa_digits }} دسته</p>{% elif count %}<p class="sheet__sub">{{ count|fa_digits }} سرویس</p>{% endif %}</div>
+    {% if checked or shared %}<div class="sheet__meta">{% if checked %}<p class="sheet__date">قیمت‌ها بررسی‌شده از <time datetime="{{ checked|date:'Y-m-d' }}">{{ checked|jalali }}</time></p>{% endif %}{% if shared %}<p class="sheet__note" data-over="تخفیف‌ها تمام شد.">تخفیف‌ها تا {% include "catalog/_deadline.html" with plan=shared %}</p>{% endif %}</div>{% endif %}
+  </header>
+  <div class="sheet__body">{% if grouped %}<div class="ratesheet__groups ratesheet__groups--2col">{% for group in groups %}
+    <section class="rs-group" aria-labelledby="{{ sheet_id }}-g{{ forloop.counter }}"><h2 class="rs-group__title" id="{{ sheet_id }}-g{{ forloop.counter }}">{{ group.grouper.name }}</h2>{% include "catalog/_rs_table.html" with products=group.list %}</section>{% endfor %}</div>
+  {% else %}<div class="rs-group">{% include "catalog/_rs_table.html" with products=items %}</div>{% if rest %}
+    <section class="rs-group" aria-labelledby="{{ sheet_id }}-rest"><h3 class="rs-group__title" id="{{ sheet_id }}-rest">سرویس‌های دیگر {{ rest_of }}</h3>{% include "catalog/_rs_table.html" with products=rest %}</section>{% endif %}{% endif %}</div>
+  <p class="sheet__foot">همه‌ی قیمت‌ها به تومان و برای یک عدد است. موعدی که بیرون از ساعت {{ support.hours_range }} بیفتد، ساعت {{ support.opens }} صبح بعد است.</p>
+</section>{% endwith %}{% endwith %}
