@@ -5,6 +5,8 @@ put a script on a page where customers pay. Django escapes every variable by
 default; each way around that is banned here, and `mark_safe` is allowed in
 exactly two files: the constant zero-price markup in `fa.py`, and the
 restricted-Markdown renderer in `richtext.py`, which sanitises what it emits.
+The plain-text half of an email is not HTML, and renders unescaped in one
+place only: `render_email` in `email.py`.
 """
 
 from __future__ import annotations
@@ -21,6 +23,8 @@ SELF = Path(__file__).resolve()
 TEMPLATE_BYPASS = re.compile(r"\|\s*safe(seq)?\b|{%\s*autoescape\s+off")
 CODE_BYPASS = re.compile(r"\bmark_safe\b|\bSafe(String|Text)\(|\bhtml_safe\b|def __html__")
 ALLOWED = {"apps/core/templatetags/fa.py", "apps/core/richtext.py"}
+PLAIN_TEXT_BYPASS = re.compile(r"\bautoescape\s*=\s*False\b")
+PLAIN_TEXT_ALLOWED = {"apps/core/email.py"}
 # A template comment may name the filter it avoids; only what renders counts.
 # `{# #}` is a comment only within one line, as Django lexes it.
 TEMPLATE_COMMENT = re.compile(r"{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#[^\n]*?#}", re.S)
@@ -60,6 +64,13 @@ def test_the_scan_walks_real_files():
 
 def test_no_template_switches_escaping_off():
     assert not offenders(templates(), TEMPLATE_BYPASS)
+
+
+def test_escaping_is_switched_off_only_for_the_plain_text_email():
+    found = offenders(python_files(), PLAIN_TEXT_BYPASS)
+    assert {line.split(":", 1)[0] for line in found} == PLAIN_TEXT_ALLOWED, found
+    assert PLAIN_TEXT_BYPASS.search("Context(context, autoescape=False)")
+    assert not PLAIN_TEXT_BYPASS.search("Context(context, autoescape=True)")
 
 
 def test_mark_safe_lives_only_where_it_was_reviewed():
