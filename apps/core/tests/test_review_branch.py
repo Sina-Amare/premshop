@@ -11,6 +11,7 @@ import json
 import subprocess
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -29,7 +30,8 @@ def _module():
 
 rb = _module()
 
-Files = dict[str, str]
+Files = dict[str, str | bytes]
+OWNER = "R <r@example.com>"
 
 BASE: Files = {
     "apps/shop/migrations/__init__.py": "",
@@ -43,6 +45,7 @@ BASE: Files = {
     ),
     "apps/shop/views.py": "def home():\n    return 1\n",
     "apps/accounts/services.py": "def sign_in():\n    return None\n",
+    "apps/core/tests/test_written_voice.py": "def test_voice():\n    assert True\n",
     "docs/decisions/0001-stack.md": "# ADR-0001\n\nDecision.\n",
     "pyproject.toml": (
         '[project]\nname = "x"\ndependencies = ["django"]\n\n'
@@ -51,7 +54,7 @@ BASE: Files = {
     "templates/home.html": "<p>home</p>\n",
     ".github/workflows/ci.yml": "name: CI\n",
 }
-FORWARDS = (
+MIGRATION_0002 = (
     "from django.db import migrations\n\n\ndef forwards(apps, schema_editor):\n    pass\n\n\n"
     "class Migration(migrations.Migration):\n    operations = [{op}]\n"
 )
@@ -59,11 +62,11 @@ TEST_TWO = "\n\ndef test_two():\n    assert True\n"
 
 
 def edit(path: str, old: str, new: str) -> Callable[[Files], Files]:
-    return lambda files: files | {path: files[path].replace(old, new, 1)}
+    return lambda files: files | {path: str(files[path]).replace(old, new, 1)}
 
 
-def add(path: str, text: str) -> Callable[[Files], Files]:
-    return lambda files: files | {path: text}
+def add(path: str, content: str | bytes) -> Callable[[Files], Files]:
+    return lambda files: files | {path: content}
 
 
 def move_test_two(files: Files) -> Files:
@@ -71,96 +74,109 @@ def move_test_two(files: Files) -> Files:
     return moved | {"apps/shop/tests/test_other.py": "def test_two():\n    assert True\n"}
 
 
-def irreversible_migration(op: str) -> Callable[[Files], Files]:
-    return add("apps/shop/migrations/0002_data.py", FORWARDS.format(op=op))
+def migration(op: str) -> Callable[[Files], Files]:
+    return add("apps/shop/migrations/0002_data.py", MIGRATION_0002.format(op=op))
+
+
+@dataclass
+class Case:
+    change: Callable[[Files], Files]
+    status: int
+    phrase: str = ""
+    message: str = ""
+    author: str = OWNER
 
 
 CASES = {
-    # name: (change, expected status, a phrase the report must contain)
-    "clean": (edit("apps/shop/views.py", "1", "2"), 0, ""),
-    "migration-edited": (
-        edit("apps/shop/migrations/0001_initial.py", "[]", "[None]"),
-        2,
-        "applied migration",
+    "clean": Case(edit("apps/shop/views.py", "1", "2"), 0),
+    "migration-edited": Case(
+        edit("apps/shop/migrations/0001_initial.py", "[]", "[None]"), 2, "applied migration"
     ),
-    "test-removed": (edit("apps/shop/tests/test_views.py", TEST_TWO, ""), 2, "test_two"),
-    "test-moved": (move_test_two, 0, ""),
-    "test-renamed": (
-        edit("apps/shop/tests/test_views.py", "def test_two", "def test_second"),
-        1,
-        "renamed",
+    "test-removed": Case(edit("apps/shop/tests/test_views.py", TEST_TWO, ""), 2, "test_two"),
+    "test-moved": Case(move_test_two, 0),
+    "test-renamed": Case(
+        edit("apps/shop/tests/test_views.py", "def test_two", "def test_second"), 1, "renamed"
     ),
-    "skip-added": (
+    "skip-added": Case(
         edit("apps/shop/tests/test_views.py", "def test_one", "@pytest.mark.skip\ndef test_one"),
         2,
         "skipped",
     ),
-    "markers-quoted": (
+    "markers-quoted": Case(
         edit(
             "apps/shop/tests/test_views.py",
             "PRODUCT_PAGE",
             'NOTE = "@pytest.mark.skip and # noqa are what the rules look for"\nPRODUCT_PAGE',
         ),
         0,
-        "",
     ),
-    "budget-raised": (
-        edit("apps/shop/tests/test_views.py", "= 8", "= 15"),
-        2,
-        "raised from 8 to 15",
+    "budget-raised": Case(
+        edit("apps/shop/tests/test_views.py", "= 8", "= 15"), 2, "raised from 8 to 15"
     ),
-    "ci-changed": (edit(".github/workflows/ci.yml", "CI", "CI lite"), 2, "gate itself"),
-    "pytest-config": (
-        edit("pyproject.toml", "--strict-markers", "-k 'not slow'"),
-        2,
-        "tool.pytest.ini_options",
+    "ci-changed": Case(edit(".github/workflows/ci.yml", "CI", "CI lite"), 2, "gate itself"),
+    "guard-test-changed": Case(
+        edit("apps/core/tests/test_written_voice.py", "True", "1"), 2, "gate itself"
     ),
-    "dependency": (
-        edit("pyproject.toml", '["django"]', '["django", "requests"]'),
-        1,
-        "Dependencies changed",
+    "pytest-ini": Case(add("pytest.ini", "[pytest]\naddopts = -k 'not slow'\n"), 2, "gate"),
+    "pytest-config": Case(
+        edit("pyproject.toml", "--strict-markers", "-k 'not slow'"), 2, "tool.pytest.ini_options"
     ),
-    "adr-rewritten": (
+    "dependency": Case(
+        edit("pyproject.toml", '["django"]', '["django", "requests"]'), 2, "Dependencies"
+    ),
+    "adr-rewritten": Case(
         edit("docs/decisions/0001-stack.md", "Decision.", "Another decision."),
         2,
         "decision record",
     ),
-    "adr-amended": (
+    "adr-amended": Case(
         edit("docs/decisions/0001-stack.md", "Decision.\n", "Decision.\n\n**Amendment.** Later.\n"),
         0,
-        "",
     ),
-    "secret": (
+    "secret": Case(
         edit("apps/shop/views.py", "return 1", 'return "sk-' + "x" * 24 + '"'),
         2,
         "looks like a secret",
     ),
-    "env-file": (add("config/.env", "SECRET_KEY=x\n"), 2, "holds secrets"),
-    "irreversible": (
-        irreversible_migration("migrations.RunPython(forwards)"),
+    "env-file": Case(add("config/.env", "SECRET_KEY=x\n"), 2, "holds secrets"),
+    "irreversible": Case(migration("migrations.RunPython(forwards)"), 2, "cannot be reversed"),
+    "reversible": Case(
+        migration("migrations.RunPython(forwards, migrations.RunPython.noop)"), 1, "New migration"
+    ),
+    "destructive": Case(
+        migration("migrations.RemoveField(model_name='p', name='x')"), 2, "removes or reshapes"
+    ),
+    "silenced": Case(
+        edit("apps/shop/views.py", "return 1", "return 1  # noqa: E501"), 1, "silenced"
+    ),
+    "template": Case(edit("templates/home.html", "home", "start"), 1, "screenshots"),
+    "became-binary": Case(add("templates/home.html", b"\xff\xfe<\x00p\x00>\x00"), 2, "binary"),
+    "sensitive": Case(edit("apps/accounts/services.py", "None", "True"), 2, "sign-in"),
+    "new-top-level": Case(add("tools/helper.py", "X = 1\n"), 2, "top-level path"),
+    "hidden-path": Case(add("apps/shop/.settings/local.json", "{}\n"), 2, "hidden path"),
+    "attribution": Case(
+        edit("apps/shop/views.py", "1", "3"),
         2,
-        "cannot be reversed",
+        "credits someone else",
+        message="views\n\nCo-authored-by: Helper <helper@example.com>\n",
     ),
-    "reversible": (
-        irreversible_migration("migrations.RunPython(forwards, migrations.RunPython.noop)"),
-        1,
-        "New migration",
+    "foreign-author": Case(
+        edit("apps/shop/views.py", "1", "4"), 2, "not as the owner", author="Bot <bot@example.com>"
     ),
-    "silenced": (edit("apps/shop/views.py", "return 1", "return 1  # noqa: E501"), 1, "silenced"),
-    "template": (edit("templates/home.html", "home", "start"), 1, "screenshots"),
-    "sensitive": (edit("apps/accounts/services.py", "None", "True"), 2, "sign-in"),
 }
 
 
-def commit(ref: str, message: str, files: Files, parent: str | None) -> bytes:
-    def data(text: str) -> bytes:
-        raw = text.encode("utf-8")
+def commit(ref: str, case: str, files: Files, parent: str | None, author: str = OWNER) -> bytes:
+    def data(content: str | bytes) -> bytes:
+        raw = content.encode("utf-8") if isinstance(content, str) else content
         return b"data %d\n" % len(raw) + raw + b"\n"
 
-    out = f"commit {ref}\ncommitter R <r@example.com> 0 +0000\n".encode() + data(message)
+    message = CASES[case].message if case in CASES else ""
+    out = f"commit {ref}\nauthor {author} 0 +0000\ncommitter {author} 0 +0000\n".encode()
+    out += data(message or case)
     out += f"from {parent}\ndeleteall\n".encode() if parent else b""
-    for path, text in sorted(files.items()):
-        out += f"M 100644 inline {path}\n".encode() + data(text)
+    for path, content in sorted(files.items()):
+        out += f"M 100644 inline {path}\n".encode() + data(content)
     return out
 
 
@@ -168,31 +184,60 @@ def commit(ref: str, message: str, files: Files, parent: str | None) -> bytes:
 def repo(tmp_path_factory) -> Path:
     """One `git fast-import` builds main and every case branch: one process, not dozens."""
     root = tmp_path_factory.mktemp("review")
-    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)  # noqa: S603, S607
+
+    def git(*args: str, **kwargs) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, **kwargs)  # noqa: S603, S607
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "r@example.com")
     stream = commit("refs/heads/main", "base", BASE, None)
-    for name, (change, _, _) in CASES.items():
-        stream += commit(f"refs/heads/{name}", name, change(BASE), "refs/heads/main")
-    subprocess.run(  # noqa: S603
-        ["git", "fast-import", "--quiet"], cwd=root, input=stream, check=True  # noqa: S607
-    )
+    for name, case in CASES.items():
+        stream += commit(
+            f"refs/heads/{name}", name, case.change(BASE), "refs/heads/main", case.author
+        )
+    git("fast-import", "--quiet", input=stream)
     return root
 
 
 @pytest.mark.parametrize("name", list(CASES))
 def test_each_rule_fires_on_its_own_change(repo, name):
-    _, expected, phrase = CASES[name]
+    case = CASES[name]
 
     report = rb.review(name, "main", repo)
 
     found = "\n".join(report.stop + report.look)
-    assert report.status == expected, found
-    assert phrase in found
+    assert report.status == case.status, found
+    assert case.phrase in found
 
 
 def test_a_stop_is_reported_once_however_many_lines_trigger_it(repo):
     report = rb.review("sensitive", "main", repo)
 
     assert len(report.stop) == 1
+
+
+def test_a_change_outside_the_approved_paths_stops(repo):
+    inside = rb.review("clean", "main", repo, scope=["apps/shop/*"])
+    outside = rb.review("template", "main", repo, scope=["apps/shop/*"])
+
+    assert inside.stop == []
+    assert "outside the approved paths: templates/home.html" in "\n".join(outside.stop)
+
+
+def test_hooks_changed_since_they_were_pinned_stop(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path / "r")], check=True)  # noqa: S603, S607
+    clone = tmp_path / "r"
+    pins = tmp_path / "pins.json"
+    pins.write_text(json.dumps(rb.git_state(clone)), encoding="utf-8")
+    quiet = rb.Report()
+    rb.pinned(quiet, pins, clone)
+    (clone / ".git" / "hooks" / "pre-push").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    changed = rb.Report()
+
+    rb.pinned(changed, pins, clone)
+
+    assert quiet.stop == []
+    assert "hooks/pre-push" in changed.stop[0]
 
 
 INTACT = {

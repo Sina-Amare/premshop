@@ -1,6 +1,7 @@
 """What a branch changes that a second reader must look at before it is merged.
 
-    .venv/Scripts/python.exe scripts/review_branch.py <branch> [--base main]
+    .venv/Scripts/python.exe scripts/review_branch.py <branch> [--base main] [--scope FILE]
+    .venv/Scripts/python.exe scripts/review_branch.py --pin
 
 Run it from a checkout of main, so the rules applied are main's and not the branch's
 own copy of this file. Each finding is STOP (the branch must not be merged as it
@@ -8,30 +9,39 @@ stands) or LOOK (fine if it was part of the approved step). Exit status: 0 nothi
 found, 1 LOOK only, 2 at least one STOP.
 
 The rules cover the ways a change can pass every check while making the checks weaker
-or the data less safe: an applied migration edited, tests removed or skipped, the gate
-itself changed, a query budget raised, a decision record rewritten, a secret added, a
-data migration with no way back, and code where money, sign-in or security live. It
-also asks GitHub whether main is still protected, since the same credentials that push
-a branch can switch that protection off.
+or the data less safe: an applied migration edited or a new one that removes or
+reshapes data, tests removed or skipped, the gate changed, a query budget raised, a
+decision record rewritten, a secret, a text file turned binary, money or sign-in code
+touched, a commit crediting an assistant or made under another identity, and paths
+outside those the step was approved to change. It also asks GitHub whether main is
+still protected, and compares this clone's hooks and ignore rules with their pins.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
+import hashlib
 import json
 import re
 import subprocess
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+PINS = REPO / "docs-local" / "git-state.json"
+SCOPES = REPO / "docs-local" / "scopes"
 
 # Changing any of these changes what "green" means.
 GATE_FILES = re.compile(
-    r"^(\.github/|scripts/check\.py$|scripts/review_branch\.py$|(.*/)?conftest\.py$)"
+    r"^(\.github/|scripts/check\.py$|scripts/review_branch\.py$|(.*/)?conftest\.py$"
+    r"|(pytest|tox|mypy)\.ini$|\.mypy\.ini$|setup\.cfg$|\.?ruff\.toml$|\.coveragerc$"
+    r"|\.pre-commit-config\.yaml$|apps/core/tests/test_(written_voice|safe_markup|env_example"
+    r"|persian_register|review_branch|accessibility_browser)\.py$)"
 )
 # Money, sign-in, credentials, operator HTML and settings: a careful review every time.
 SENSITIVE = re.compile(
@@ -48,15 +58,32 @@ SECRET = re.compile(
     r"|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}"
 )
 SECRET_FILE = re.compile(r"(^|/)(\.env(\..+)?|.*\.pem|.*\.key|id_rsa.*)$")
+ATTRIBUTION = re.compile(r"(?im)^\s*co-authored-by:|\bgenerated (with|by)\b|\U0001f916")
 DEPENDENCY_FILES = {"pyproject.toml", "uv.lock", "package.json", "package-lock.json"}
+KNOWN_HIDDEN = {".github", ".gitignore", ".gitattributes", ".python-version", ".env.example"}
+# Operations that remove or reshape what is already stored.
+DESTRUCTIVE = {
+    "RemoveField",
+    "DeleteModel",
+    "RenameField",
+    "RenameModel",
+    "AlterField",
+    "RunSQL",
+    "RemoveConstraint",
+    "RemoveIndex",
+    "AlterUniqueTogether",
+}
+TEXT_SUFFIXES = (".py", ".html", ".txt", ".md", ".css", ".js", ".json", ".po", ".toml", ".svg")
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-TOO_BIG = 600
 STRING = re.compile(r"""(['"]).*?(?<!\\)\1""")
+TOO_BIG = 600
+GITHUB_BOT = "noreply@github.com"
 REQUIRED_CHECKS = {
     "Lint, format, types",
     "Tests (real PostgreSQL, real Chromium)",
     "Dependency and security audit",
 }
+PINNED_FILES = ("hooks/pre-commit", "hooks/commit-msg", "hooks/pre-push", "info/exclude")
 
 
 @dataclass
@@ -79,6 +106,15 @@ class FileDiff:
     hunks: list[tuple[int, int, int, int]] = field(default_factory=list)
 
 
+@dataclass
+class Commit:
+    sha: str
+    author: str
+    author_email: str
+    committer_email: str
+    message: str
+
+
 def git(*args: str, repo: Path = REPO) -> str:
     out = subprocess.run(  # noqa: S603
         ["git", "-c", "core.quotepath=off", *args],  # noqa: S607
@@ -87,6 +123,13 @@ def git(*args: str, repo: Path = REPO) -> str:
         check=True,
     )
     return out.stdout.decode("utf-8", errors="replace")
+
+
+def git_config(key: str, repo: Path = REPO) -> str:
+    try:
+        return git("config", "--get", key, repo=repo).strip()
+    except subprocess.CalledProcessError:
+        return ""
 
 
 def show(rev: str, path: str, repo: Path) -> str:
@@ -134,6 +177,17 @@ def parse_diff(text: str) -> list[FileDiff]:
     return files
 
 
+def commits(merge_base: str, head: str, repo: Path) -> Iterator[Commit]:
+    out = git(
+        "log", "--format=%H%x1f%an%x1f%ae%x1f%ce%x1f%B%x1e", f"{merge_base}..{head}", repo=repo
+    )
+    for record in out.split("\x1e"):
+        record = record.strip("\n")
+        if record:
+            sha, author, author_email, committer_email, message = record.split("\x1f", 4)
+            yield Commit(sha, author, author_email, committer_email, message)
+
+
 def test_names(revs: tuple[str, str], repo: Path) -> tuple[Counter[str], Counter[str]]:
     """Every test function at each revision, by name, so a test that moves files is not lost."""
     found: dict[str, Counter[str]] = {rev: Counter() for rev in revs}
@@ -158,21 +212,23 @@ def test_names(revs: tuple[str, str], repo: Path) -> tuple[Counter[str], Counter
     return found[revs[0]], found[revs[1]]
 
 
-def irreversible(source: str) -> list[str]:
-    """RunPython and RunSQL calls given no way back."""
+def migration_calls(source: str) -> tuple[list[str], list[str]]:
+    """(calls with no way back, calls that remove or reshape stored data) in a migration."""
     try:
         tree = ast.parse(source)
     except SyntaxError:
-        return ["the file does not parse"]
-    found = []
+        return ["the file does not parse"], []
+    one_way, destructive = [], []
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             name = node.func.attr
             back = "reverse_code" if name == "RunPython" else "reverse_sql"
             if name in ("RunPython", "RunSQL") and len(node.args) < 2:
                 if not any(k.arg == back for k in node.keywords):
-                    found.append(f"{name} on line {node.lineno}")
-    return found
+                    one_way.append(f"{name} on line {node.lineno}")
+            if name in DESTRUCTIVE:
+                destructive.append(f"{name} on line {node.lineno}")
+    return one_way, destructive
 
 
 def sections_by_line(text: str) -> list[str]:
@@ -197,13 +253,35 @@ def touched_sections(diff: FileDiff, before: str, after: str) -> set[str]:
     return touched
 
 
-def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
+def review(
+    head: str, base: str = "main", repo: Path = REPO, scope: list[str] | None = None
+) -> Report:
     report = Report()
     merge_base = git("merge-base", base, head, repo=repo).strip()
     head_rev = git("rev-parse", head, repo=repo).strip()
     diffs = parse_diff(
         git("diff", "-U0", "-M", "--no-color", "--no-ext-diff", merge_base, head_rev, repo=repo)
     )
+    binary = {
+        line.split("\t")[-1]
+        for line in git("diff", "--numstat", "-M", merge_base, head_rev, repo=repo).splitlines()
+        if line.startswith("-\t-\t")
+    }
+    top_level = set(git("ls-tree", "--name-only", merge_base, repo=repo).splitlines())
+    identity = git_config("user.email", repo).lower()
+
+    for commit in commits(merge_base, head_rev, repo):
+        short = commit.sha[:7]
+        if ATTRIBUTION.search(commit.message):
+            report.stop.append(f"Commit {short} credits someone else in its message.")
+        foreign = {commit.author_email.lower(), commit.committer_email.lower()} - {
+            identity,
+            GITHUB_BOT,
+        }
+        if identity and foreign:
+            report.stop.append(
+                f"Commit {short} was made as {commit.author} <{commit.author_email}>, not as the owner."
+            )
 
     before, after = test_names((merge_base, head_rev), repo)
     missing = before - after
@@ -221,8 +299,13 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
                 f"An applied migration was changed ({old}). Applied migrations are never edited; a new migration makes the change."
             )
         if status == "A" and MIGRATION.match(path):
-            for call in irreversible(show(head, path, repo)):
+            one_way, destructive = migration_calls(show(head_rev, path, repo))
+            for call in one_way:
                 report.stop.append(f"{path} cannot be reversed: {call} has no reverse step.")
+            if destructive:
+                report.stop.append(
+                    f"{path} removes or reshapes stored data ({', '.join(destructive)}): back up, and have it reviewed, before migrating real data."
+                )
             report.look.append(
                 f"New migration {path}: was a schema change part of the approved step?"
             )
@@ -241,16 +324,29 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
             tools = sorted(
                 s
                 for s in touched_sections(
-                    diff, show(merge_base, path, repo), show(head, path, repo)
+                    diff, show(merge_base, path, repo), show(head_rev, path, repo)
                 )
                 if s.startswith("tool.")
             )
             if tools:
                 report.stop.append(f"Tool settings changed in pyproject.toml: {', '.join(tools)}.")
         if path in DEPENDENCY_FILES:
-            report.look.append(f"Dependencies changed ({path}): was a new package agreed?")
+            report.stop.append(
+                f"Dependencies changed ({path}): ask whether a new package was agreed."
+            )
         if status == "D":
             continue
+        if status in "AR":
+            parts = path.split("/")
+            if parts[0] not in top_level:
+                report.stop.append(f"A new top-level path appeared: {parts[0]}.")
+            hidden = [p for p in parts if p.startswith(".") and p not in KNOWN_HIDDEN]
+            if hidden:
+                report.stop.append(f"A hidden path was added: {path}.")
+        if status == "M" and path in binary and path.endswith(TEXT_SUFFIXES):
+            report.stop.append(
+                f"{path} turned from text into binary: its encoding was likely damaged."
+            )
         if SECRET_FILE.search(path) and not path.endswith(".env.example"):
             report.stop.append(f"A file that holds secrets was added: {path}.")
         if any(SECRET.search(line) for line in diff.added):
@@ -272,6 +368,11 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
                         f"{m[1]} was raised from {budgets[m[1]]} to {m[2]} in {path}."
                     )
 
+    if scope is not None:
+        outside = [d.path for d in diffs if not any(fnmatch.fnmatch(d.path, p) for p in scope)]
+        if outside:
+            shown = ", ".join(outside[:8]) + (" and more" if len(outside) > 8 else "")
+            report.stop.append(f"Changed outside the approved paths: {shown}.")
     visual = sorted(
         d.path for d in diffs if d.status != "D" and d.path.startswith(("templates/", "static/"))
     )
@@ -285,6 +386,11 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
     report.stop = list(dict.fromkeys(report.stop))
     report.look = list(dict.fromkeys(report.look))
     return report
+
+
+def read_scope(path: Path) -> list[str]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()]
 
 
 def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
@@ -327,18 +433,58 @@ def protection(report: Report, branch: str = "main", repo: Path = REPO) -> None:
         )
 
 
+def git_state(repo: Path = REPO) -> dict[str, str]:
+    """Fingerprints of this clone's hooks and private ignore rules, which every worktree shares."""
+    common = Path(git("rev-parse", "--git-common-dir", repo=repo).strip())
+    common = common if common.is_absolute() else repo / common
+    state = {}
+    for name in PINNED_FILES:
+        target = common / name
+        state[name] = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else ""
+    state["core.hooksPath"] = git_config("core.hooksPath", repo)
+    return state
+
+
+def pinned(report: Report, pins: Path = PINS, repo: Path = REPO) -> None:
+    if not pins.exists():
+        report.look.append(f"No pinned hooks to compare with ({pins.name} is missing).")
+        return
+    expected = json.loads(pins.read_text(encoding="utf-8"))
+    now = git_state(repo)
+    changed = sorted(k for k in expected if expected[k] != now.get(k, ""))
+    if changed:
+        report.stop.append(
+            f"This clone's {', '.join(changed)} changed since they were pinned. Ask before merging anything."
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="What a branch changes that must be looked at.")
-    parser.add_argument("branch")
+    parser.add_argument("branch", nargs="?")
     parser.add_argument("--base", default="main")
+    parser.add_argument("--scope", type=Path, help="the paths the step was approved to change")
+    parser.add_argument("--pin", action="store_true", help="record the hooks as they are now")
     args = parser.parse_args()
+    if args.pin:
+        PINS.write_text(json.dumps(git_state(), indent=1) + "\n", encoding="utf-8")
+        print(f"pinned {', '.join(git_state())} in {PINS}")
+        return 0
+    if not args.branch:
+        parser.error("name the branch to review")
     here = git("rev-parse", "--abbrev-ref", "HEAD").strip()
     if here != args.base:
         print(
             f"Warning: these rules are {here}'s copy, not {args.base}'s. Run this from a checkout of {args.base}.\n"
         )
-    report = review(args.branch, args.base)
+    scope_file = args.scope or SCOPES / (
+        args.branch.removeprefix("origin/").replace("/", "-") + ".txt"
+    )
+    scope = read_scope(scope_file) if scope_file.exists() else None
+    report = review(args.branch, args.base, scope=scope)
+    if scope is None:
+        report.look.append(f"No list of approved paths for this step ({scope_file.name}).")
     protection(report, args.base.removeprefix("origin/"))
+    pinned(report)
     stat = git(
         "diff", "--shortstat", git("merge-base", args.base, args.branch).strip(), args.branch
     ).strip()
