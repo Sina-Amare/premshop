@@ -37,7 +37,7 @@ jobs:
         run: uv run mypy apps config
 
   test:
-    name: Tests (real PostgreSQL)
+    name: Tests (real PostgreSQL, real Chromium)
     runs-on: ubuntu-latest
     services:
       # Real Postgres, never SQLite: the design leans on partial unique indexes
@@ -60,8 +60,22 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # app.css is not in git. Without this build the browser tests would read
+      # unstyled pages, and contrast and layout would be checked against nothing.
+      - name: CSS from source
+        run: npm run css
+      - name: Chromium for Playwright
+        run: uv run playwright install --with-deps chromium
       - name: pytest
         run: uv run pytest -q
+        env:
+          # Here a browser test that cannot launch fails instead of skipping.
+          REQUIRE_BROWSER: "1"
 
   audit:
     name: Dependency and security audit
