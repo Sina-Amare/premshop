@@ -18,7 +18,11 @@ from apps.core import ratelimit
 
 pytestmark = pytest.mark.django_db
 
-PRODUCT_PAGE_QUERY_BUDGET = 15
+# Each budget is the page's real count. A loose one passes the bug it exists
+# for: at 15, a query per plan on the product page still fit.
+PRODUCT_PAGE_QUERY_BUDGET = 8
+CATEGORY_PAGE_QUERY_BUDGET = 4
+HOME_PAGE_QUERY_BUDGET = 5
 
 
 @pytest.fixture
@@ -227,7 +231,20 @@ def test_category_page_query_count_does_not_grow_with_products(client, category)
     with CaptureQueriesContext(connection) as queries:
         client.get(reverse("category", args=[category.slug]))
 
-    assert len(queries) <= 8, "the card grid must prefetch plans, not query per card"
+    assert len(queries) <= CATEGORY_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
+
+
+def test_home_page_query_count_does_not_grow_with_products(client, category):
+    other = Category.objects.create(name="سرگرمی", slug="fun")
+    for i in range(6):
+        make_product(category, f"a{i}", promo_price=Decimal("150000"))
+        make_product(other, f"b{i}")
+
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(reverse("home"))
+
+    assert len(response.context["discounted"]) == 6
+    assert len(queries) <= HOME_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
 
 
 def test_add_to_cart_control_disabled_for_unavailable_plan(client, product):
