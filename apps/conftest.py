@@ -26,6 +26,17 @@ def clean_cache(settings: Any) -> Iterator[None]:
     cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def fast_password_hashing(settings: Any) -> None:
+    """PBKDF2 at a million iterations costs ~700ms per check, by design.
+
+    That is correct in production and pointless in tests: the suite pays it on
+    every sign-in, the panel's included. Nothing asserts on hashing cost, so the
+    fast hasher changes no outcome, only the wait.
+    """
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 @pytest.fixture(scope="module")
 def browser() -> Iterator[Browser]:
     """Playwright's Chromium, launched once per test module.
