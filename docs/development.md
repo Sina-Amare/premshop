@@ -4,7 +4,7 @@ How to run PremShop locally, the commands you will use, the traps this particula
 
 ## Setup
 
-Requires Python 3.11+, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
+Requires Python 3.14 (pinned in `.python-version`, which CI reads too), Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
 
 ```bash
 cp .env.example .env            # then fill SECRET_KEY, DATABASE_URL and the EMAIL_ values
