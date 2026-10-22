@@ -69,6 +69,10 @@ def add(path: str, content: str | bytes) -> Callable[[Files], Files]:
     return lambda files: files | {path: content}
 
 
+def rename(old: str, new: str) -> Callable[[Files], Files]:
+    return lambda files: {(new if path == old else path): body for path, body in files.items()}
+
+
 def move_test_two(files: Files) -> Files:
     moved = edit("apps/shop/tests/test_views.py", TEST_TWO, "")(files)
     return moved | {"apps/shop/tests/test_other.py": "def test_two():\n    assert True\n"}
@@ -89,6 +93,7 @@ class Case:
 
 CASES = {
     "clean": Case(edit("apps/shop/views.py", "1", "2"), 0),
+    "file-renamed": Case(rename("apps/shop/views.py", "apps/shop/handlers.py"), 0),
     "migration-edited": Case(
         edit("apps/shop/migrations/0001_initial.py", "[]", "[None]"), 2, "applied migration"
     ),
@@ -219,9 +224,22 @@ def test_a_stop_is_reported_once_however_many_lines_trigger_it(repo):
 def test_a_change_outside_the_approved_paths_stops(repo):
     inside = rb.review("clean", "main", repo, scope=["apps/shop/*"])
     outside = rb.review("template", "main", repo, scope=["apps/shop/*"])
+    moved_out = rb.review("file-renamed", "main", repo, scope=["apps/shop/handlers.py"])
 
     assert inside.stop == []
     assert "outside the approved paths: templates/home.html" in "\n".join(outside.stop)
+    assert "outside the approved paths: apps/shop/views.py" in "\n".join(moved_out.stop)
+
+
+def test_without_a_user_email_no_commit_passes_unchecked(repo, monkeypatch):
+    real = rb.git_config
+    monkeypatch.setattr(
+        rb, "git_config", lambda key, at=rb.REPO: "" if key == "user.email" else real(key, at)
+    )
+
+    report = rb.review("clean", "main", repo)
+
+    assert "no user.email" in "\n".join(report.stop)
 
 
 def test_a_scope_file_edited_after_its_first_commit_is_flagged(tmp_path):
@@ -266,6 +284,28 @@ def test_hooks_changed_since_they_were_pinned_stop(tmp_path):
 
     assert quiet.stop == []
     assert "hooks/pre-push" in changed.stop[0]
+
+
+def test_pins_missing_trimmed_or_a_changed_identity_stop(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path / "r")], check=True)  # noqa: S603, S607
+    clone = tmp_path / "r"
+    pins = tmp_path / "pins.json"
+    reports = {name: rb.Report() for name in ("missing", "trimmed", "identity")}
+    rb.pinned(reports["missing"], pins, clone)
+    (clone / ".git" / "hooks" / "pre-push").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    state = rb.git_state(clone)
+    pins.write_text(json.dumps({k: v for k, v in state.items() if k != "hooks/pre-push"}))
+    rb.pinned(reports["trimmed"], pins, clone)
+    pins.write_text(json.dumps(state))
+    subprocess.run(  # noqa: S603
+        ["git", "-C", str(clone), "config", "user.email", "agent@example.com"],  # noqa: S607
+        check=True,
+    )
+    rb.pinned(reports["identity"], pins, clone)
+
+    assert "missing" in reports["missing"].stop[0]
+    assert "hooks/pre-push" in reports["trimmed"].stop[0]
+    assert "user.email" in reports["identity"].stop[0]
 
 
 INTACT = {

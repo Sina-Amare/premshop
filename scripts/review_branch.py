@@ -269,6 +269,8 @@ def review(
     }
     top_level = set(git("ls-tree", "--name-only", merge_base, repo=repo).splitlines())
     identity = git_config("user.email", repo).lower()
+    if not identity:
+        report.stop.append("This clone has no user.email, so no commit's identity can be checked.")
 
     for commit in commits(merge_base, head_rev, repo):
         short = commit.sha[:7]
@@ -369,7 +371,9 @@ def review(
                     )
 
     if scope is not None:
-        outside = [d.path for d in diffs if not any(fnmatch.fnmatch(d.path, p) for p in scope)]
+        # Both ends of a rename: moving a file out of a folder changes that folder too.
+        touched = sorted({p for d in diffs for p in (d.old, d.path) if p})
+        outside = [p for p in touched if not any(fnmatch.fnmatch(p, g) for g in scope)]
         if outside:
             shown = ", ".join(outside[:8]) + (" and more" if len(outside) > 8 else "")
             report.stop.append(f"Changed outside the approved paths: {shown}.")
@@ -456,16 +460,21 @@ def git_state(repo: Path = REPO) -> dict[str, str]:
         target = common / name
         state[name] = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else ""
     state["core.hooksPath"] = git_config("core.hooksPath", repo)
+    # Both folders share this config, and the identity checks compare against it.
+    state["user.email"] = git_config("user.email", repo)
     return state
 
 
 def pinned(report: Report, pins: Path = PINS, repo: Path = REPO) -> None:
     if not pins.exists():
-        report.look.append(f"No pinned hooks to compare with ({pins.name} is missing).")
+        report.stop.append(
+            f"No pinned hooks to compare with ({pins.name} is missing): read .git/hooks, then --pin."
+        )
         return
     expected = json.loads(pins.read_text(encoding="utf-8"))
     now = git_state(repo)
-    changed = sorted(k for k in expected if expected[k] != now.get(k, ""))
+    # Every key either side knows: a key dropped from the file must not drop its check.
+    changed = sorted(k for k in set(expected) | set(now) if expected.get(k, "") != now.get(k, ""))
     if changed:
         report.stop.append(
             f"This clone's {', '.join(changed)} changed since they were pinned. Ask before merging anything."
