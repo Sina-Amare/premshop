@@ -224,6 +224,34 @@ def test_a_change_outside_the_approved_paths_stops(repo):
     assert "outside the approved paths: templates/home.html" in "\n".join(outside.stop)
 
 
+def test_a_scope_file_edited_after_its_first_commit_is_flagged(tmp_path):
+    def git(*args: str) -> None:
+        subprocess.run(  # noqa: S603
+            ["git", "-c", "user.email=r@example.com", "-c", "user.name=R", *args],  # noqa: S607
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "-q")
+    scope = tmp_path / "step-x.txt"
+    scope.write_text("apps/shop/*\n", encoding="utf-8")
+    never_committed = rb.rewritten(scope)
+    git("add", scope.name)
+    git("commit", "-q", "-m", "scope")
+    as_approved = rb.rewritten(scope)
+    scope.write_text("apps/shop/*\ntemplates/*\n", encoding="utf-8")
+    widened = rb.rewritten(scope)
+    git("commit", "-q", "-am", "wider")
+
+    assert (never_committed, as_approved, widened, rb.rewritten(scope)) == (
+        True,
+        False,
+        True,
+        True,
+    )
+
+
 def test_hooks_changed_since_they_were_pinned_stop(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path / "r")], check=True)  # noqa: S603, S607
     clone = tmp_path / "r"

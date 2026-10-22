@@ -393,6 +393,20 @@ def read_scope(path: Path) -> list[str]:
     return [line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()]
 
 
+def rewritten(path: Path) -> bool:
+    """Whether the file changed after its first commit, or was never committed at all.
+
+    The scope file sits where the agent under review can write, so a STOP for a path
+    outside it is one edit away from going quiet.
+    """
+    try:
+        commits = git("log", "--format=%h", "--", path.name, repo=path.parent).split()
+        dirty = git("status", "--porcelain", "--", path.name, repo=path.parent).strip()
+    except subprocess.CalledProcessError:
+        return True
+    return len(commits) != 1 or bool(dirty)
+
+
 def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(["gh", "api", path], capture_output=True)  # noqa: S603, S607
 
@@ -483,6 +497,11 @@ def main() -> int:
     report = review(args.branch, args.base, scope=scope)
     if scope is None:
         report.look.append(f"No list of approved paths for this step ({scope_file.name}).")
+    elif rewritten(scope_file):
+        report.look.append(
+            f"The approved paths changed after the go, or were never committed: "
+            f"git -C {scope_file.parent} log -p -- {scope_file.name}"
+        )
     protection(report, args.base.removeprefix("origin/"))
     pinned(report)
     stat = git(
