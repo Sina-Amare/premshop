@@ -7,6 +7,7 @@ as a case that passes for the wrong reason.
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from collections.abc import Callable
@@ -93,6 +94,15 @@ CASES = {
         edit("apps/shop/tests/test_views.py", "def test_one", "@pytest.mark.skip\ndef test_one"),
         2,
         "skipped",
+    ),
+    "markers-quoted": (
+        edit(
+            "apps/shop/tests/test_views.py",
+            "PRODUCT_PAGE",
+            'NOTE = "@pytest.mark.skip and # noqa are what the rules look for"\nPRODUCT_PAGE',
+        ),
+        0,
+        "",
     ),
     "budget-raised": (
         edit("apps/shop/tests/test_views.py", "= 8", "= 15"),
@@ -183,3 +193,58 @@ def test_a_stop_is_reported_once_however_many_lines_trigger_it(repo):
     report = rb.review("sensitive", "main", repo)
 
     assert len(report.stop) == 1
+
+
+INTACT = {
+    "required_pull_request_reviews": {"required_approving_review_count": 0},
+    "required_status_checks": {"contexts": sorted(rb.REQUIRED_CHECKS)},
+    "enforce_admins": {"enabled": True},
+    "allow_force_pushes": {"enabled": False},
+}
+
+
+def answer(code: int = 0, body: object = INTACT, error: bytes = b""):
+    def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            ["gh", "api", path], code, json.dumps(body).encode(), error
+        )
+
+    return gh_api
+
+
+@pytest.mark.parametrize(
+    ("gh_api", "stop", "look"),
+    [
+        (answer(), "", ""),
+        (answer(1, {}, b'{"message":"Branch not protected"}'), "no longer protected", ""),
+        (answer(body=INTACT | {"required_pull_request_reviews": None}), "a pull request", ""),
+        (
+            answer(body=INTACT | {"required_status_checks": {"contexts": ["Lint, format, types"]}}),
+            "Tests (real PostgreSQL, real Chromium)",
+            "",
+        ),
+        (answer(body=INTACT | {"allow_force_pushes": {"enabled": True}}), "force-pushes", ""),
+        (answer(1, {}, b"error connecting to api.github.com"), "", "could not be read"),
+    ],
+)
+def test_mains_protection_is_read_from_github_before_each_merge(monkeypatch, gh_api, stop, look):
+    monkeypatch.setattr(rb, "gh_api", gh_api)
+    report = rb.Report()
+
+    rb.protection(report, "main")
+
+    assert (stop in "\n".join(report.stop)) and (bool(report.stop) == bool(stop)), report.stop
+    assert (look in "\n".join(report.look)) and (bool(report.look) == bool(look)), report.look
+
+
+def test_without_gh_the_protection_check_asks_for_a_look(monkeypatch):
+    def missing(path: str):
+        raise OSError("gh not found")
+
+    monkeypatch.setattr(rb, "gh_api", missing)
+    report = rb.Report()
+
+    rb.protection(report, "main")
+
+    assert report.stop == []
+    assert "not installed" in report.look[0]

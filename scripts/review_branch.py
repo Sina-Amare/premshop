@@ -10,13 +10,16 @@ found, 1 LOOK only, 2 at least one STOP.
 The rules cover the ways a change can pass every check while making the checks weaker
 or the data less safe: an applied migration edited, tests removed or skipped, the gate
 itself changed, a query budget raised, a decision record rewritten, a secret added, a
-data migration with no way back, and code where money, sign-in or security live.
+data migration with no way back, and code where money, sign-in or security live. It
+also asks GitHub whether main is still protected, since the same credentials that push
+a branch can switch that protection off.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import subprocess
 import sys
@@ -48,6 +51,12 @@ SECRET_FILE = re.compile(r"(^|/)(\.env(\..+)?|.*\.pem|.*\.key|id_rsa.*)$")
 DEPENDENCY_FILES = {"pyproject.toml", "uv.lock", "package.json", "package-lock.json"}
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 TOO_BIG = 600
+STRING = re.compile(r"""(['"]).*?(?<!\\)\1""")
+REQUIRED_CHECKS = {
+    "Lint, format, types",
+    "Tests (real PostgreSQL, real Chromium)",
+    "Dependency and security audit",
+}
 
 
 @dataclass
@@ -248,11 +257,13 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
             report.stop.append(f"Something that looks like a secret was added in {path}.")
         if path.endswith(".py"):
             for line in diff.added:
-                if SKIP.search(line):
+                # A marker quoted in a string is data, not a marker.
+                code = STRING.sub("", line)
+                if SKIP.search(code):
                     report.stop.append(
                         f"A test is skipped or expected to fail in {path}: {line.strip()}"
                     )
-                if SUPPRESSION.search(line):
+                if SUPPRESSION.search(code):
                     report.look.append(f"A check is silenced in {path}: {line.strip()}")
             budgets = {m[1]: int(m[2]) for m in map(BUDGET.match, diff.removed) if m}
             for m in filter(None, map(BUDGET.match, diff.added)):
@@ -276,6 +287,46 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
     return report
 
 
+def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(["gh", "api", path], capture_output=True)  # noqa: S603, S607
+
+
+def protection(report: Report, branch: str = "main", repo: Path = REPO) -> None:
+    """Whether GitHub still guards `branch` the way the gate depends on."""
+    url = git("remote", "get-url", "origin", repo=repo).strip()
+    slug = re.search(r"github\.com[:/](.+?)(?:\.git)?$", url)
+    if not slug:
+        return
+    try:
+        out = gh_api(f"repos/{slug[1]}/branches/{branch}/protection")
+    except OSError:
+        report.look.append("GitHub's protection of main could not be checked: gh is not installed.")
+        return
+    if out.returncode != 0:
+        if b"not protected" in out.stderr.lower() or b"not protected" in out.stdout.lower():
+            report.stop.append(
+                f"{branch} is no longer protected on GitHub. Ask before merging anything."
+            )
+        else:
+            report.look.append(f"GitHub's protection of {branch} could not be read (offline?).")
+        return
+    rules = json.loads(out.stdout)
+    missing = []
+    if not rules.get("required_pull_request_reviews"):
+        missing.append("a pull request")
+    checks = set((rules.get("required_status_checks") or {}).get("contexts") or [])
+    if not REQUIRED_CHECKS <= checks:
+        missing.append("the checks " + ", ".join(sorted(REQUIRED_CHECKS - checks)))
+    if not (rules.get("enforce_admins") or {}).get("enabled"):
+        missing.append("the same rules for administrators")
+    if (rules.get("allow_force_pushes") or {}).get("enabled"):
+        missing.append("a refusal of force-pushes")
+    if missing:
+        report.stop.append(
+            f"GitHub no longer requires {'; '.join(missing)} on {branch}. Ask before merging anything."
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="What a branch changes that must be looked at.")
     parser.add_argument("branch")
@@ -287,6 +338,7 @@ def main() -> int:
             f"Warning: these rules are {here}'s copy, not {args.base}'s. Run this from a checkout of {args.base}.\n"
         )
     report = review(args.branch, args.base)
+    protection(report, args.base.removeprefix("origin/"))
     stat = git(
         "diff", "--shortstat", git("merge-base", args.base, args.branch).strip(), args.branch
     ).strip()
