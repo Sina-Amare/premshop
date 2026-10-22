@@ -32,7 +32,6 @@
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">{{ product.delivery_sentence }}</span>
-          {% if iran_stance %}<span class="badge badge--key">ایران: {{ iran_stance|bdi }}</span>{% endif %}
           {% for spec in key_specs %}<span class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
         </div>
       </div>
@@ -43,13 +42,11 @@
 
     {% comment %}
     The ledger is also the index of answers: each row is the short answer and
-    a jump to the long one. Iran is left out where the question never arises,
-    and renewal where the product does not renew, because absence claims
-    nothing and «قابل تمدید نیست» would.
+    a jump to the long one. Renewal is left out where the product does not
+    renew, because absence claims nothing and «قابل تمدید نیست» would.
     {% endcomment %}
     <dl class="card pdp__facts answers">
       {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{% if after_payment %}<a href="#section-{{ after_payment.pk }}">{{ product.get_delivery_type_display }}</a>{% else %}{{ product.get_delivery_type_display }}{% endif %}</dd></div>{% endif %}
-      {% if iran_stance %}<div class="fact"><dt class="fact__k">از ایران</dt><dd class="fact__v"><a href="#before-buying">{{ iran_stance|bdi }}</a></dd></div>{% endif %}
       <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v"><a href="#delivery">{{ product.delivery_display }}</a></dd></div>
       <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if before_buying_shown %}<a href="#before-buying">{% endif %}{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}{% if before_buying_shown %}</a>{% endif %}</dd></div>
       {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}

@@ -461,8 +461,8 @@ msgstr "The image is larger than 5 MB."
 msgid "حساس به زمان"
 msgstr "Time-sensitive"
 
-msgid "منتشرشده، بدون موضع درباره‌ی ایران"
-msgstr "Published, with no stance on Iran"
+msgid "منتشرشده، بدون نکات استفاده"
+msgstr "Published, with no usage notes"
 
 msgid "حساس به زمان، بیش از ۳۰ روز بررسی‌نشده"
 msgstr "Time-sensitive, unchecked for over 30 days"
@@ -527,17 +527,14 @@ msgstr "Comparison"
 msgid "منبع‌ها"
 msgstr "Sources"
 
-msgid "موضع درباره‌ی ایران"
-msgstr "Stance on Iran"
+msgid "نکات استفاده"
+msgstr "Usage notes"
 
-msgid "موضع درباره‌ی ایران منبعی ندارد. نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
-msgstr "The stance on Iran has no source. Add the provider’s official page under “Sources”."
+msgid "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
+msgstr "The usage notes are empty. If there is nothing to add, enter the Persian for “not applicable”."
 
-msgid "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
-msgstr "The stance on Iran is empty. If the question never comes up, enter the Persian for “not applicable”."
-
-msgid "موضع رسمی ارائه‌دهنده، با عبارت خودش. اگر پیش نمی‌آید، «موضوعیت ندارد». برای انتشار لازم است."
-msgstr "The provider’s official stance, in its own words. If it never comes up, the Persian for “not applicable”. Required to publish."
+msgid "هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای ندارد، «موضوعیت ندارد»."
+msgstr "One note per line, each starting with -. If there is nothing to add, the Persian for “not applicable”."
 
 msgid "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
 msgstr "The official pages behind the text’s claims, one address per line. Not shown on the site."

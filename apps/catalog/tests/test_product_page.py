@@ -29,7 +29,7 @@ def product():
         delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
         warranty=Product.Warranty.FULL_PERIOD,
         delivery_hours=12,
-        iran_stance="پشتیبانی‌نشده",
+        usage_notes="- از ایران در دسترس نیست.\n- روی ایمیل خودتان فعال می‌شود.",
         status=Product.Status.ACTIVE,
     )
     Plan.objects.create(product=obj, title="۱ ماهه", cost_price=1, sale_price=Decimal(1390000))
@@ -138,13 +138,13 @@ def test_before_buying_prints_its_facts_with_no_section_at_all(client, product):
     assert "پیش از خرید" in part
     assert "<dt>گارانتی</dt><dd>تا پایان دوره</dd>" in part
     assert "<dt>بازگشت وجه</dt><dd>پس از فعال‌سازی، مبلغ برنمی‌گردد.</dd>" in part
-    assert "<dt>ایران</dt><dd>پشتیبانی‌نشده</dd>" in part
+    assert '<dt>نکات استفاده</dt><dd class="rich"><ul>' in part
 
 
 def test_before_buying_is_left_out_when_it_would_only_repeat_the_warranty(client, product):
     """The warranty is already beside the title and in the answers. A section
     holding nothing else reads as a placeholder, and nothing may link to it."""
-    product.iran_stance = ""
+    product.usage_notes = ""
     product.save()
 
     body = page(client, product)
@@ -156,7 +156,7 @@ def test_before_buying_is_left_out_when_it_would_only_repeat_the_warranty(client
 
 @pytest.mark.parametrize("says", ["refund", "text"])
 def test_before_buying_is_printed_when_it_says_more_than_the_warranty(client, product, says):
-    product.iran_stance = ""
+    product.usage_notes = ""
     product.refund_note = "پس از فعال‌سازی، مبلغ برنمی‌گردد." if says == "refund" else ""
     product.save()
     if says == "text":
@@ -188,28 +188,35 @@ def test_before_buying_puts_the_operators_text_after_the_facts_once(client, prod
     assert headings(body)[-2:] == ["پیش از خرید", "پرسش‌های متداول"]
 
 
-@pytest.mark.parametrize("stance", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
-def test_a_product_the_iran_question_does_not_concern_says_nothing_about_iran(
-    client, product, stance
-):
-    product.iran_stance = stance
+@pytest.mark.parametrize("notes", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
+def test_a_product_with_no_usage_notes_prints_none(client, product, notes):
+    product.usage_notes = notes
     product.save()
 
     body = page(client, product)
 
-    assert "ایران" not in body
+    assert "نکات استفاده" not in body
     assert "موضوع" not in body
 
 
-def test_the_stance_on_iran_is_beside_the_title_in_the_answers_and_before_buying(client, product):
+def test_usage_notes_are_printed_once_in_before_buying_as_a_list(client, product):
+    """A list of notes fits neither a badge beside the title nor a row in the answers."""
     body = page(client, product)
 
-    assert 'class="badge badge--key">ایران: پشتیبانی‌نشده</span>' in body
-    assert (
-        '<dt class="fact__k">از ایران</dt><dd class="fact__v"><a href="#before-buying">پشتیبانی‌نشده</a></dd>'
-        in body
-    )
-    assert "<dt>ایران</dt><dd>پشتیبانی‌نشده</dd>" in before_buying(body)
+    assert body.count("از ایران در دسترس نیست.") == 1
+    assert "<li>از ایران در دسترس نیست.</li>" in before_buying(body)
+    assert "نکات استفاده" not in answers(body)
+
+
+def test_usage_notes_reach_the_page_only_through_the_markdown_renderer(client, product):
+    product.usage_notes = "<script>alert(1)</script> [site](javascript:alert(1))"
+    product.save()
+
+    part = before_buying(page(client, product))
+
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in re.sub(r"</?bdi>", "", part)
+    assert "<script" not in part
+    assert 'href="javascript' not in part
 
 
 # --- The answers index ---------------------------------------------------------

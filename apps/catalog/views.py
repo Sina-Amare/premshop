@@ -158,12 +158,12 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
             "before_buying_shown": bool(
                 (before_buying and (before_buying.body or before_buying.image))
                 or obj.refund_note
-                or obj.iran_stance_shown
+                or obj.usage_notes_shown
             ),
             "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
             "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
             "price_checked_since": _prices_checked_since([obj]),
-            "iran_stance": obj.iran_stance_shown,
+            "usage_notes": obj.usage_notes_shown,
         },
     )
     if not obj.is_public:

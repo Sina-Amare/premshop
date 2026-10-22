@@ -157,7 +157,7 @@ def test_the_bulk_action_menu_can_be_clicked_at_desktop_width(open_panel, produc
     sidebar, so a click on it landed on the sidebar."""
     Product.objects.filter(pk=product.pk).update(
         short_description="اشتراک Claude Pro.",
-        iran_stance="پشتیبانی‌نشده",
+        usage_notes="پشتیبانی‌نشده",
         sources="https://www.anthropic.com/supported-countries",
     )
     page = open_panel("/admin/catalog/product/")
@@ -268,7 +268,7 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     page.select_option("select[name=category]", str(category.pk))
     page.select_option("select[name=delivery_type]", Product.DeliveryType.ON_CUSTOMER_ACCOUNT)
     page.fill("input[name=short_description]", "موسیقی بدون آگهی، روی اکانت خودتان.")
-    page.fill("input[name=iran_stance]", "پشتیبانی‌نشده")
+    page.fill("textarea[name=usage_notes]", "پشتیبانی‌نشده")
     page.fill(
         "textarea[name=sources]",
         "https://support.spotify.com/us/article/full-list-of-territories-where-spotify-is-available/",
@@ -674,7 +674,7 @@ def test_section_order_survives_a_save(open_panel, product):
 
 @pytest.mark.parametrize("width", [DESKTOP, PHONE])
 def test_a_refused_publish_shows_its_reasons_at_both_widths(open_panel, product, width):
-    """The draft lacks its summary and its stance on Iran. Set to «فعال», the
+    """The draft lacks its summary and its usage notes. Set to «فعال», the
     form comes back with each reason under the field it is about, and all of
     them listed at the top."""
     page = open_panel(change_form(product), width)
@@ -683,7 +683,7 @@ def test_a_refused_publish_shows_its_reasons_at_both_widths(open_panel, product,
     page.select_option("select[name=status]", Product.Status.ACTIVE)
     save(page)
 
-    for field in ("status", "short_description", "iran_stance"):
+    for field in ("status", "short_description", "usage_notes"):
         assert page.locator(f"#id_{field}_error").is_visible(), field
     # And together on the first screen, where the save lands.
     reasons = page.locator(".panel-readiness li")

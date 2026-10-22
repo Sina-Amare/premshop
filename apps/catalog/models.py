@@ -58,7 +58,7 @@ FACTS_FRESH_DAYS = 7
 
 # The stance of a product the Iran question never arises for. It claims nothing
 # the provider says, so it needs no source and the page prints nothing about Iran.
-IRAN_NOT_APPLICABLE = normalize_for_search("موضوعیت ندارد")
+NOT_APPLICABLE = normalize_for_search("موضوعیت ندارد")
 
 # The fields whose change re-dates a plan's price confirmation.
 PRICE_FIELDS = ("cost_price", "sale_price", "promo_price")
@@ -377,7 +377,7 @@ class Product(ChecksNameTheirField, models.Model):
     PAGE_TEXT: ClassVar[tuple[str, ...]] = (
         "name",
         "short_description",
-        "iran_stance",
+        "usage_notes",
         "refund_note",
         "delivery_note",
         "seo_title",
@@ -479,18 +479,17 @@ class Product(ChecksNameTheirField, models.Model):
         default="",
         help_text=_("یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."),
     )
-    # Facts the page prints from their own fields. The sections never repeat
-    # them, so two parts of one page cannot disagree.
-    iran_stance = models.CharField(
-        _("موضع درباره‌ی ایران"),
-        max_length=200,
+    # Restricted Markdown with no heading level free: it is printed inside
+    # «پیش از خرید», under that section's own h2. Required to publish, so no
+    # product goes live without the operator having said what applies to it.
+    usage_notes = models.TextField(
+        _("نکات استفاده"),
         blank=True,
         default="",
-        help_text=_(
-            "موضع رسمی ارائه‌دهنده، با عبارت خودش. اگر پیش نمی‌آید، «موضوعیت ندارد». "
-            "برای انتشار لازم است."
-        ),
+        help_text=_("هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای ندارد، «موضوعیت ندارد»."),
     )
+    # A fact the page prints from its own field. The sections never repeat it,
+    # so two parts of one page cannot disagree.
     refund_note = models.CharField(
         _("استثنای بازگشت وجه"),
         max_length=300,
@@ -639,11 +638,11 @@ class Product(ChecksNameTheirField, models.Model):
         )
 
     @property
-    def iran_stance_shown(self) -> str:
-        """The stance as the page prints it: nothing where the question does not arise."""
-        if normalize_for_search(self.iran_stance).rstrip(".") == IRAN_NOT_APPLICABLE:
+    def usage_notes_shown(self) -> str:
+        """The notes as the page prints them: nothing where none apply."""
+        if normalize_for_search(self.usage_notes).rstrip(".") == NOT_APPLICABLE:
             return ""
-        return self.iran_stance.strip()
+        return self.usage_notes.strip()
 
     @property
     def facts_are_fresh(self) -> bool:
@@ -657,14 +656,9 @@ class Product(ChecksNameTheirField, models.Model):
             problems["delivery_type"] = gettext("نوع تحویل انتخاب نشده است.")
         if not self.short_description.strip():
             problems["short_description"] = gettext("جمع‌بندی یک‌خطی خالی است.")
-        if not self.iran_stance.strip():
-            problems["iran_stance"] = gettext(
-                "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
-            )
-        elif self.iran_stance_shown and not self.sources.strip():
-            problems["sources"] = gettext(
-                "موضع درباره‌ی ایران منبعی ندارد. "
-                "نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
+        if not self.usage_notes.strip():
+            problems["usage_notes"] = gettext(
+                "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
             )
         if self.time_sensitive and not self.facts_are_fresh:
             problems["facts_checked_on"] = gettext(

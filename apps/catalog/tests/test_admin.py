@@ -71,7 +71,7 @@ def catalogue():
             name=slug,
             slug=slug,
             short_description="اکانت آماده‌ی اختصاصی.",
-            iran_stance="موضوعیت ندارد",
+            usage_notes="موضوعیت ندارد",
             delivery_type=Product.DeliveryType.READY_ACCOUNT,
             status=status,
         )
@@ -1226,16 +1226,16 @@ def errors_under(body: str, field_id: str) -> str:
     return found.group(1) if found else ""
 
 
-def test_the_form_refuses_to_publish_without_the_stance_on_iran(client, operator, catalogue):
+def test_the_form_refuses_to_publish_without_usage_notes(client, operator, catalogue):
     draft = catalogue["draft"]
     data = form_of(client, change_url(draft))
-    data.update(status=["active"], iran_stance=[""])
+    data.update(status=["active"], usage_notes=[""])
 
     response = client.post(change_url(draft), data)
 
-    assert response.status_code == 200, "a product with no stance on Iran was published"
+    assert response.status_code == 200, "a product with no usage notes was published"
     body = response.content.decode()
-    assert "موضع درباره‌ی ایران نوشته نشده است." in errors_under(body, "iran_stance")
+    assert "نکات استفاده نوشته نشده است." in errors_under(body, "usage_notes")
     assert "منتشر نمی‌شود" in errors_under(body, "status")
     draft.refresh_from_db()
     assert draft.status == Product.Status.DRAFT
@@ -1247,7 +1247,7 @@ def test_not_applicable_publishes_from_the_form(client, operator, catalogue):
     """The control for the refusal above, on the same draft."""
     draft = catalogue["draft"]
     data = form_of(client, change_url(draft))
-    data.update(status=["active"], iran_stance=["موضوعیت ندارد"])
+    data.update(status=["active"], usage_notes=["موضوعیت ندارد"])
 
     response = client.post(change_url(draft), data)
 
@@ -1343,7 +1343,7 @@ def test_a_stale_fact_does_not_lock_a_live_products_other_edits(client, operator
     """Only placeholders hold a live product's form. A check that went stale
     is the freshness list's business, not a reason to refuse a typo fix."""
     live = catalogue["live"]
-    Product.objects.filter(pk=live.pk).update(iran_stance="", time_sensitive=True)
+    Product.objects.filter(pk=live.pk).update(usage_notes="", time_sensitive=True)
     data = form_of(client, change_url(live))
     data["name"] = ["live, renamed"]
 
@@ -1369,14 +1369,14 @@ def test_two_before_buying_sections_in_one_save_are_refused(client, operator, ca
 
 def test_the_bulk_action_names_every_reason_and_publishes_the_rest(client, operator, catalogue):
     draft = catalogue["draft"]
-    Product.objects.filter(pk=draft.pk).update(short_description="", iran_stance="")
+    Product.objects.filter(pk=draft.pk).update(short_description="", usage_notes="")
     ProductQuestion.objects.create(product=draft, question="پول برمی‌گرده؟", answer="[تصمیم مالک]")
     ready = Product.objects.create(
         category=draft.category,
         name="ready",
         slug="ready",
         short_description="آماده.",
-        iran_stance="موضوعیت ندارد",
+        usage_notes="موضوعیت ندارد",
         delivery_type=Product.DeliveryType.GIFT_CARD,
     )
     Plan.objects.create(product=ready, title="۱۰ دلاری", cost_price=1, sale_price=500000)
@@ -1388,7 +1388,7 @@ def test_the_bulk_action_names_every_reason_and_publishes_the_rest(client, opera
     )
 
     [error] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
-    for reason in ("جمع‌بندی یک‌خطی خالی است.", "موضع درباره‌ی ایران", "پاسخ: جای خالی"):
+    for reason in ("جمع‌بندی یک‌خطی خالی است.", "نکات استفاده", "پاسخ: جای خالی"):
         assert reason in error, error
     draft.refresh_from_db()
     ready.refresh_from_db()
@@ -1399,7 +1399,7 @@ def test_each_reason_a_bulk_publish_gives_is_a_line_of_its_own(client, operator,
     """Joined by spaces, ChatGPT Plus's reasons were one red paragraph twelve
     lines tall on a phone."""
     draft = catalogue["draft"]
-    Product.objects.filter(pk=draft.pk).update(short_description="", iran_stance="")
+    Product.objects.filter(pk=draft.pk).update(short_description="", usage_notes="")
 
     response = client.post(
         reverse("admin:catalog_product_changelist"),
@@ -1412,7 +1412,7 @@ def test_each_reason_a_bulk_publish_gives_is_a_line_of_its_own(client, operator,
     assert headline == "«\u2068draft\u2069» منتشر نشد.", error
     reasons = re.findall(r"<li>(.*?)</li>", rest)
     assert "جمع‌بندی یک‌خطی خالی است." in reasons
-    assert any(r.startswith("موضع درباره‌ی ایران نوشته نشده است.") for r in reasons), reasons
+    assert any(r.startswith("نکات استفاده نوشته نشده است.") for r in reasons), reasons
     assert "&lt;li&gt;" not in response.content.decode()
 
 
@@ -1421,16 +1421,16 @@ def test_a_refused_publish_lists_its_reasons_at_the_top(client, operator, catalo
     phone, and the list that names them was hidden on a submitted form."""
     draft = catalogue["draft"]
     data = form_of(client, change_url(draft))
-    data.update(status=["active"], iran_stance=[""], short_description=[""])
+    data.update(status=["active"], usage_notes=[""], short_description=[""])
     add_row(data, "questions", question="پول برمی‌گرده؟", answer="[تصمیم مالک، تصمیم ۴]")
 
     body = client.post(change_url(draft), data).content.decode()
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no list at the top of the refused form"
-    assert body.index("panel-readiness") < body.index('name="iran_stance"')
+    assert body.index("panel-readiness") < body.index('name="usage_notes"')
     items = re.findall(r"<li>(.*?)</li>", readiness.group(0), re.S)
-    for reason in ("جمع‌بندی یک‌خطی خالی است.", "موضع درباره‌ی ایران", "پاسخ: جای خالی"):
+    for reason in ("جمع‌بندی یک‌خطی خالی است.", "نکات استفاده", "پاسخ: جای خالی"):
         assert any(reason in item for item in items), (reason, items)
     assert not any("منتشر نمی‌شود" in item for item in items), "the summary is not a reason"
 
@@ -1439,7 +1439,7 @@ def test_a_bulk_publish_that_publishes_nothing_reports_no_success(client, operat
     """Every selected product refused, and a green «۰ محصول فعال شد.» stood
     under the red reasons as if something had gone through."""
     draft = catalogue["draft"]
-    Product.objects.filter(pk=draft.pk).update(iran_stance="")
+    Product.objects.filter(pk=draft.pk).update(usage_notes="")
 
     response = client.post(
         reverse("admin:catalog_product_changelist"),
@@ -1453,21 +1453,21 @@ def test_a_bulk_publish_that_publishes_nothing_reports_no_success(client, operat
 
 def test_a_drafts_form_lists_what_it_still_lacks(client, operator, catalogue):
     draft = catalogue["draft"]
-    Product.objects.filter(pk=draft.pk).update(iran_stance="")
+    Product.objects.filter(pk=draft.pk).update(usage_notes="")
 
     body = client.get(change_url(draft)).content.decode()
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the draft's form"
     assert "پیش از انتشار" in readiness.group(0)
-    assert "موضع درباره‌ی ایران نوشته نشده است." in readiness.group(0)
+    assert "نکات استفاده نوشته نشده است." in readiness.group(0)
 
 
 def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, operator, catalogue):
-    """The owner's live products predate the stance on Iran. Taken down, each
-    was refused on the way back up, and nothing had said so beforehand."""
+    """The owner's live products predate the notes publishing asks for. Taken
+    down, each was refused on the way back up, and nothing had said so beforehand."""
     live = catalogue["live"]
-    Product.objects.filter(pk=live.pk).update(iran_stance="")
+    Product.objects.filter(pk=live.pk).update(usage_notes="")
 
     body = client.get(change_url(live)).content.decode()
 
@@ -1475,12 +1475,12 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
     assert readiness, "no readiness list on the live product's form"
     assert "دوباره منتشر نمی‌شود" in readiness.group(0)
     assert "پیش از انتشار" not in readiness.group(0)
-    assert "موضع درباره‌ی ایران نوشته نشده است." in readiness.group(0)
+    assert "نکات استفاده نوشته نشده است." in readiness.group(0)
 
 
 def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operator, catalogue):
     live, gone = catalogue["live"], catalogue["gone"]
-    Product.objects.filter(pk=live.pk).update(iran_stance="")
+    Product.objects.filter(pk=live.pk).update(usage_notes="")
 
     response = client.post(
         reverse("admin:catalog_product_changelist"),
@@ -1495,7 +1495,7 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
     headline, _, rest = note.partition('<ul class="panel-reasons">')
     assert headline == "«⁨live⁩» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.", note
     assert re.findall(r"<li>(.*?)</li>", rest) == [
-        "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+        "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
     ]
 
 
@@ -1668,12 +1668,12 @@ def test_the_product_list_finds_time_sensitive_claims_unchecked_for_a_month(
     assert [p.slug for p in response.context["cl"].result_list] == ["live"]
 
 
-def test_the_product_list_finds_live_pages_with_no_stance_on_iran(client, operator, catalogue):
+def test_the_product_list_finds_live_pages_with_no_usage_notes(client, operator, catalogue):
     """Every product that went live before publishing asked for the stance
     has none, and the readiness list that would name it is on drafts only."""
-    Product.objects.filter(slug__in=["live", "draft"]).update(iran_stance="")
+    Product.objects.filter(slug__in=["live", "draft"]).update(usage_notes="")
 
-    response = client.get(reverse("admin:catalog_product_changelist") + "?facts=no_stance")
+    response = client.get(reverse("admin:catalog_product_changelist") + "?facts=no_notes")
 
     assert [p.slug for p in response.context["cl"].result_list] == ["live"]
 

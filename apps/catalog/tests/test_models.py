@@ -466,8 +466,7 @@ def test_the_fuzzy_threshold_separates_real_spellings_from_noise(chatgpt):
 def ready(product):
     """A draft with every fact publishing asks for, and nothing left to decide."""
     product.status = Product.Status.DRAFT
-    product.iran_stance = "پشتیبانی‌نشده"
-    product.sources = "https://help.openai.com/en/articles/7947663-chatgpt-supported-countries"
+    product.usage_notes = "- روی ایمیل خودتان فعال می‌شود."
     product.save()
     plan(product)
     return product
@@ -478,32 +477,27 @@ def test_a_product_with_every_fact_may_publish(ready):
     assert ready.publish_problems() == []
 
 
-@pytest.mark.parametrize("stance", ["", "   "])
-def test_publishing_needs_the_stance_on_iran(ready, stance):
-    ready.iran_stance = stance
+@pytest.mark.parametrize("notes", ["", "   "])
+def test_publishing_needs_usage_notes(ready, notes):
+    ready.usage_notes = notes
 
     assert ready.publish_problems() == [
-        "موضع درباره‌ی ایران نوشته نشده است. اگر پیش نمی‌آید، بنویسید «موضوعیت ندارد»."
+        "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
     ]
 
 
-def test_not_applicable_is_a_stance(ready):
-    """A gift card has no Iran question to answer, and saying so is enough."""
-    ready.iran_stance = "موضوعیت ندارد"
+@pytest.mark.parametrize("notes", ["موضوعیت ندارد", "موضوعيت ندارد."])
+def test_not_applicable_is_a_note(ready, notes):
+    """A product with nothing to add says so, in either spelling of ی."""
+    ready.usage_notes = notes
 
     assert ready.publish_problems() == []
+    assert ready.usage_notes_shown == ""
 
 
-@pytest.mark.parametrize("stance", ["موضوعیت ندارد", "موضوعيت ندارد."])
-def test_a_stance_on_iran_needs_a_source_where_the_question_arises(ready, stance):
-    """The stance is a claim about the provider's own terms. «موضوعیت ندارد»
-    claims nothing the provider says, in either spelling of ی."""
-    ready.sources = ""
-
-    assert ready.publish_problems() == [
-        "موضع درباره‌ی ایران منبعی ندارد. نشانی صفحه‌ی رسمی ارائه‌دهنده را در «منبع‌ها» بنویسید."
-    ]
-    ready.iran_stance = stance
+def test_usage_notes_ask_for_no_source(ready):
+    """The notes are the shop's own words, not a claim about a provider's terms."""
+    assert ready.sources == ""
     assert ready.publish_problems() == []
 
 
@@ -584,19 +578,19 @@ def test_a_product_that_is_not_time_sensitive_needs_no_check(ready):
 
 def test_publishing_through_full_clean_names_the_field_to_fix(ready):
     """The product form's path: a draft set to active is refused field by field."""
-    ready.iran_stance = ""
+    ready.usage_notes = ""
     ready.status = Product.Status.ACTIVE
 
     with pytest.raises(ValidationError) as excinfo:
         ready.full_clean()
 
-    assert set(excinfo.value.message_dict) == {"iran_stance", "status"}
+    assert set(excinfo.value.message_dict) == {"usage_notes", "status"}
 
 
 def test_a_live_product_is_held_to_its_placeholders_only(product):
     """A fact that went stale on a live product must not lock every other
     edit; an unresolved placeholder must never reach the page."""
-    assert product.iran_stance == "", "the fixture is live and lacks the stance"
+    assert product.usage_notes == "", "the fixture is live and has no notes"
     product.full_clean()
 
     product.short_description = "[از تحویل آزمایشی: …]"

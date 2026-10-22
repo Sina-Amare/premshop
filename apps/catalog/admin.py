@@ -329,13 +329,13 @@ class StaleFactsFilter(admin.SimpleListFilter):
     def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, Any]]:
         return [
             ("stale", _("حساس به زمان، بیش از ۳۰ روز بررسی‌نشده")),
-            ("no_stance", _("منتشرشده، بدون موضع درباره‌ی ایران")),
+            ("no_notes", _("منتشرشده، بدون نکات استفاده")),
         ]
 
     def queryset(self, request: HttpRequest, queryset: QuerySet[Product]) -> QuerySet[Product]:
-        if self.value() == "no_stance":
+        if self.value() == "no_notes":
             # Live before publishing asked for it; taken down, it cannot go back up.
-            return queryset.filter(status=Product.Status.ACTIVE, iran_stance="")
+            return queryset.filter(status=Product.Status.ACTIVE, usage_notes="")
         if self.value() != "stale":
             return queryset
         cutoff = timezone.localdate() - timedelta(days=STALE_FACTS_DAYS)
@@ -562,12 +562,11 @@ class ProductAdmin(ModelAdmin):
                 ]
             },
         ),
-        (_("متن"), {"fields": ["short_description"]}),
+        (_("متن"), {"fields": ["short_description", "usage_notes"]}),
         (
             _("واقعیت‌ها"),
             {
                 "fields": [
-                    "iran_stance",
                     "refund_note",
                     ("time_sensitive", "facts_checked_on"),
                     "sources",
