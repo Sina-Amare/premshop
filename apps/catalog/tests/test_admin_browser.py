@@ -507,6 +507,15 @@ ICON_WORDS = re.compile(
 )
 
 
+ICON_DIAGNOSIS = """() => JSON.stringify({
+    adminJs: performance.getEntriesByType("resource")
+        .filter((e) => e.name.includes("admin.js")).map((e) => e.responseStatus),
+    hidden: document.querySelectorAll(".material-symbols-outlined[aria-hidden]").length,
+    icons: document.querySelectorAll(".material-symbols-outlined").length,
+    readyState: document.readyState,
+})"""
+
+
 def spoken(snapshot: str) -> str:
     """What a screen reader says from an ARIA snapshot: its names and text,
     without the role at the head of each line or a link's URL."""
@@ -526,6 +535,10 @@ def test_no_icon_is_read_aloud_as_its_english_name(open_panel, product):
         found[path] = sorted(
             {m.group(0) for m in ICON_WORDS.finditer(spoken(page.locator("body").aria_snapshot()))}
         )
+        if found[path]:
+            # Failed once in a full gate run (2026-10-23) and never alone or under
+            # CPU load: say whether the script arrived, so the next failure is evidence.
+            found[path].append(page.evaluate(ICON_DIAGNOSIS))
         if path == change_form(product):
             # A failed save puts «warning» before each error.
             page.fill("input[name=name]", "")

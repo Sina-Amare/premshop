@@ -6,6 +6,10 @@ on:
   push:
   pull_request:
 
+# The jobs only read the repository; the tests they run get no token that can write.
+permissions:
+  contents: read
+
 concurrency:
   # A newer push makes an in-flight run obsolete; don't pay for both.
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -71,6 +75,8 @@ jobs:
         run: npm run css
       - name: Chromium for Playwright
         run: uv run playwright install --with-deps chromium
+      - name: No model change without its migration
+        run: uv run python manage.py makemigrations --check --dry-run
       - name: pytest
         run: uv run pytest -q
         env:

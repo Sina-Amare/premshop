@@ -34,6 +34,7 @@ STEPS: list[tuple[str, list[str]]] = [
     ("black", [PY, "-m", "black", "--check", "."]),
     ("mypy", [PY, "-m", "mypy", "apps", "config"]),
     ("css", [NPM, "run", "css"]),
+    ("migrations", [PY, "manage.py", "makemigrations", "--check", "--dry-run"]),
     ("pytest", [PY, "-m", "pytest", "-q"]),
     ("pip-audit", [PY, "-m", "pip_audit", "--skip-editable"]),
     ("bandit", [PY, "-m", "bandit", "-q", "-r", "apps", "config", "-x", "*/tests/*"]),
