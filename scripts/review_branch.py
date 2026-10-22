@@ -9,12 +9,13 @@ stands) or LOOK (fine if it was part of the approved step). Exit status: 0 nothi
 found, 1 LOOK only, 2 at least one STOP.
 
 The rules cover the ways a change can pass every check while making the checks weaker
-or the data less safe: an applied migration edited or a new one that removes or
-reshapes data, tests removed or skipped, the gate changed, a query budget raised, a
-decision record rewritten, a secret, a text file turned binary, money or sign-in code
-touched, a commit crediting an assistant or made under another identity, and paths
-outside those the step was approved to change. It also asks GitHub whether main is
-still protected, and compares this clone's hooks and ignore rules with their pins.
+or the data less safe: an applied migration edited or a new one that removes, moves
+or reshapes data, tests removed, skipped or with assertions taken out, the gate
+changed, a query budget raised, a decision record rewritten, a secret, a text file
+turned binary, money or sign-in code touched, a commit crediting an assistant or made
+under another identity, and paths outside those the step was approved to change, or
+approved after the work began. It also asks GitHub whether main is still protected,
+and compares this clone's hooks, ignore rules and user.email with their pins.
 """
 
 from __future__ import annotations
@@ -50,14 +51,19 @@ SENSITIVE = re.compile(
 )
 MIGRATION = re.compile(r"^apps/[^/]+/migrations/(?!__init__\.py$)[^/]+\.py$")
 TEST_DEF = re.compile(r"^\s*(?:async\s+)?def (test_\w+)", re.MULTILINE)
-SKIP = re.compile(r"pytest\.mark\.(skip|skipif|xfail)\b|pytest\.(skip|xfail)\(|unittest\.skip")
+SKIP = re.compile(
+    r"\bmark\.(skip|skipif|xfail)\b|pytest\.(skip|xfail|importorskip)\(|unittest\.skip"
+    r"|\bskipTest\(|\bexpectedFailure\b"
+)
 SUPPRESSION = re.compile(r"#\s*(noqa|type:\s*ignore|nosec)\b|pragma:\s*no cover")
-BUDGET = re.compile(r"^\s*([A-Z][A-Z0-9_]*BUDGET[A-Z0-9_]*)\s*=\s*(\d+)\s*$")
+BUDGET = re.compile(r"^\s*([A-Z][A-Z0-9_]*BUDGET[A-Z0-9_]*)\s*(?::\s*\w+\s*)?=\s*(\d+)\s*(?:#.*)?$")
+TEST_FILE = re.compile(r"(^|/)tests?/.*\.py$|(^|/)test_[^/]*\.py$")
 SECRET = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}"
     r"|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}"
 )
 SECRET_FILE = re.compile(r"(^|/)(\.env(\..+)?|.*\.pem|.*\.key|id_rsa.*)$")
+# No list of names: a rule that names no tool cannot be outlived by a rename.
 ATTRIBUTION = re.compile(r"(?im)^\s*co-authored-by:|\bgenerated (with|by)\b|\U0001f916")
 DEPENDENCY_FILES = {"pyproject.toml", "uv.lock", "package.json", "package-lock.json"}
 KNOWN_HIDDEN = {".github", ".gitignore", ".gitattributes", ".python-version", ".env.example"}
@@ -67,12 +73,12 @@ DESTRUCTIVE = {
     "DeleteModel",
     "RenameField",
     "RenameModel",
-    "AlterField",
-    "RunSQL",
     "RemoveConstraint",
     "RemoveIndex",
     "AlterUniqueTogether",
 }
+# Code that rewrites rows, whatever it does: never judged from its name.
+MOVES_DATA = {"RunPython", "RunSQL"}
 TEXT_SUFFIXES = (".py", ".html", ".txt", ".md", ".css", ".js", ".json", ".po", ".toml", ".svg")
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 STRING = re.compile(r"""(['"]).*?(?<!\\)\1""")
@@ -199,7 +205,8 @@ def test_names(revs: tuple[str, str], repo: Path) -> tuple[Counter[str], Counter
             r"^\s*(async\s+)?def test_\w+",
             *revs,
             "--",
-            ":(glob)**/test_*.py",
+            # pytest's testpaths: a test moved out of apps/ is never collected again.
+            ":(glob)apps/**/test_*.py",
             repo=repo,
         )
     except subprocess.CalledProcessError:
@@ -212,23 +219,33 @@ def test_names(revs: tuple[str, str], repo: Path) -> tuple[Counter[str], Counter
     return found[revs[0]], found[revs[1]]
 
 
-def migration_calls(source: str) -> tuple[list[str], list[str]]:
-    """(calls with no way back, calls that remove or reshape stored data) in a migration."""
+def migration_calls(source: str) -> dict[str, list[str]]:
+    """A new migration's calls, sorted by what they can do to stored data."""
+    calls: dict[str, list[str]] = {"one_way": [], "destructive": [], "moves": [], "alters": []}
     try:
         tree = ast.parse(source)
     except SyntaxError:
-        return ["the file does not parse"], []
-    one_way, destructive = [], []
+        calls["one_way"].append("the file does not parse")
+        return calls
+
+    def is_none(node: ast.expr | None) -> bool:
+        return node is None or (isinstance(node, ast.Constant) and node.value is None)
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            name = node.func.attr
-            back = "reverse_code" if name == "RunPython" else "reverse_sql"
-            if name in ("RunPython", "RunSQL") and len(node.args) < 2:
-                if not any(k.arg == back for k in node.keywords):
-                    one_way.append(f"{name} on line {node.lineno}")
+            name, where = node.func.attr, f"{node.func.attr} on line {node.lineno}"
+            if name in MOVES_DATA:
+                calls["moves"].append(where)
+                back = "reverse_code" if name == "RunPython" else "reverse_sql"
+                given = node.args[1] if len(node.args) > 1 else None
+                given = next((k.value for k in node.keywords if k.arg == back), given)
+                if is_none(given):
+                    calls["one_way"].append(where)
             if name in DESTRUCTIVE:
-                destructive.append(f"{name} on line {node.lineno}")
-    return one_way, destructive
+                calls["destructive"].append(where)
+            if name == "AlterField":
+                calls["alters"].append(where)
+    return calls
 
 
 def sections_by_line(text: str) -> list[str]:
@@ -294,6 +311,7 @@ def review(
     elif missing:
         report.look.append(f"Tests disappeared by name while the count held (renamed?): {names}.")
 
+    test_lines = {line.strip() for d in diffs if TEST_FILE.search(d.path) for line in d.added}
     for diff in diffs:
         status, old, path = diff.status, diff.old or diff.path, diff.path
         if MIGRATION.match(old) and status in "MDR":
@@ -301,12 +319,20 @@ def review(
                 f"An applied migration was changed ({old}). Applied migrations are never edited; a new migration makes the change."
             )
         if status == "A" and MIGRATION.match(path):
-            one_way, destructive = migration_calls(show(head_rev, path, repo))
-            for call in one_way:
+            calls = migration_calls(show(head_rev, path, repo))
+            for call in calls["one_way"]:
                 report.stop.append(f"{path} cannot be reversed: {call} has no reverse step.")
-            if destructive:
+            if calls["destructive"]:
                 report.stop.append(
-                    f"{path} removes or reshapes stored data ({', '.join(destructive)}): back up, and have it reviewed, before migrating real data."
+                    f"{path} removes or reshapes stored data ({', '.join(calls['destructive'])}): back up, and have it reviewed, before migrating real data."
+                )
+            if calls["moves"]:
+                report.stop.append(
+                    f"{path} moves data ({', '.join(calls['moves'])}): back up, and have it reviewed, before migrating real data."
+                )
+            if calls["alters"]:
+                report.look.append(
+                    f"{path} alters a field ({', '.join(calls['alters'])}): check it changes only labels or limits; a new type rewrites the column."
                 )
             report.look.append(
                 f"New migration {path}: was a schema change part of the approved step?"
@@ -363,6 +389,20 @@ def review(
                     )
                 if SUPPRESSION.search(code):
                     report.look.append(f"A check is silenced in {path}: {line.strip()}")
+            if TEST_FILE.search(path) and status in "MR":
+                # Lines that reappear anywhere in the tests were moved, not lost.
+                lost = [line.strip() for line in diff.removed if line.strip() not in test_lines]
+                lost = [line for line in lost if line]
+                asserts = [line for line in lost if "assert" in line]
+                # A LOOK, not a STOP: half of all steps change an assertion on purpose.
+                if asserts:
+                    report.look.append(
+                        f"Assertions removed or changed in {path} ({len(asserts)}): check none was loosened, starting with {asserts[0]}"
+                    )
+                elif lost:
+                    report.look.append(
+                        f"Test code removed or changed in {path} ({len(lost)} lines): read them."
+                    )
             budgets = {m[1]: int(m[2]) for m in map(BUDGET.match, diff.removed) if m}
             for m in filter(None, map(BUDGET.match, diff.added)):
                 if m[1] in budgets and int(m[2]) > budgets[m[1]]:
@@ -393,7 +433,9 @@ def review(
 
 
 def read_scope(path: Path) -> list[str]:
-    lines = path.read_text(encoding="utf-8").splitlines()
+    # utf-8-sig: Windows PowerShell 5.1 starts a UTF-8 file with a byte-order mark, which
+    # would otherwise join the first pattern and put every path outside it.
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
     return [line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()]
 
 
@@ -409,6 +451,17 @@ def rewritten(path: Path) -> bool:
     except subprocess.CalledProcessError:
         return True
     return len(commits) != 1 or bool(dirty)
+
+
+def written_after(path: Path, base: str, head: str, repo: Path = REPO) -> bool:
+    """Whether the scope file was first committed after the branch's first commit: paths
+    copied from finished work approve nothing."""
+    try:
+        added = git("log", "--diff-filter=A", "--format=%ct", "--", path.name, repo=path.parent)
+        first = git("log", "--reverse", "--format=%ct", f"{base}..{head}", repo=repo)
+    except subprocess.CalledProcessError:
+        return False
+    return bool(added.split() and first.split()) and int(added.split()[-1]) > int(first.split()[0])
 
 
 def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
@@ -502,14 +555,26 @@ def main() -> int:
     scope_file = args.scope or SCOPES / (
         args.branch.removeprefix("origin/").replace("/", "-") + ".txt"
     )
-    scope = read_scope(scope_file) if scope_file.exists() else None
+    try:
+        scope = read_scope(scope_file) if scope_file.exists() else None
+        unreadable = False
+    except UnicodeDecodeError:
+        scope, unreadable = None, True
     report = review(args.branch, args.base, scope=scope)
-    if scope is None:
+    if unreadable:
+        report.stop.append(
+            f"{scope_file.name} is not UTF-8 text: write it again with a file-writing tool, not a shell redirect."
+        )
+    elif scope is None:
         report.look.append(f"No list of approved paths for this step ({scope_file.name}).")
     elif rewritten(scope_file):
         report.look.append(
             f"The approved paths changed after the go, or were never committed: "
             f"git -C {scope_file.parent} log -p -- {scope_file.name}"
+        )
+    if scope is not None and written_after(scope_file, args.base, args.branch):
+        report.look.append(
+            "The approved paths were written after the work began: check the go came first."
         )
     protection(report, args.base.removeprefix("origin/"))
     pinned(report)
