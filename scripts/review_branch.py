@@ -63,11 +63,8 @@ SECRET = re.compile(
     r"|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}"
 )
 SECRET_FILE = re.compile(r"(^|/)(\.env(\..+)?|.*\.pem|.*\.key|id_rsa.*)$")
-ATTRIBUTION = re.compile(
-    r"(?im)^\s*co-authored-by:"
-    r"|\bgenerated (with|by) \[?(claude|chatgpt|gpt|openai|anthropic|gemini|codex|copilot|cursor)\b"
-    r"|\U0001f916"
-)
+# No list of names: a rule that names no tool cannot be outlived by a rename.
+ATTRIBUTION = re.compile(r"(?im)^\s*co-authored-by:|\bgenerated (with|by)\b|\U0001f916")
 DEPENDENCY_FILES = {"pyproject.toml", "uv.lock", "package.json", "package-lock.json"}
 KNOWN_HIDDEN = {".github", ".gitignore", ".gitattributes", ".python-version", ".env.example"}
 # Operations that remove or reshape what is already stored.
