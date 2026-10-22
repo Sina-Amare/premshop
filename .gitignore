@@ -7,8 +7,8 @@
 # that matter to the code arrive here as ADRs in docs/decisions/.
 docs-local/
 
-# Encrypted snapshots of docs-local/. Unreadable without the passphrase, but they
-# are still the private notes and never belong in a published repository.
+# Encrypted snapshots of docs-local/, and database dumps taken before a migration.
+# Both are private and never belong in a published repository.
 backups/
 
 
