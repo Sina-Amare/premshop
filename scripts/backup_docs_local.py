@@ -323,7 +323,9 @@ def verify(ask: bool = False) -> None:
             gpg(passphrase, "--decrypt", "--output", str(bundle), str(copy))
             heads = git("bundle", "list-heads", str(bundle), cwd=DOCS)
         if copy is copies[-1] and expected not in heads:
-            raise BackupError(f"the newest copy in {MIRROR}, {copy.name}, does not hold {expected[:7]}")
+            raise BackupError(
+                f"the newest copy in {MIRROR}, {copy.name}, does not hold {expected[:7]}"
+            )
     print(
         f"{MIRROR}: all {len(copies)} copies decrypt, and the newest, {copies[-1].name},"
         f" holds {expected[:7]}."
