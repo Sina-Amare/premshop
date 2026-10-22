@@ -434,7 +434,9 @@ def review(
 
 
 def read_scope(path: Path) -> list[str]:
-    lines = path.read_text(encoding="utf-8").splitlines()
+    # utf-8-sig: Windows PowerShell 5.1 starts a UTF-8 file with a byte-order mark, which
+    # would otherwise join the first pattern and put every path outside it.
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
     return [line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()]
 
 
@@ -554,9 +556,17 @@ def main() -> int:
     scope_file = args.scope or SCOPES / (
         args.branch.removeprefix("origin/").replace("/", "-") + ".txt"
     )
-    scope = read_scope(scope_file) if scope_file.exists() else None
+    try:
+        scope = read_scope(scope_file) if scope_file.exists() else None
+        unreadable = False
+    except UnicodeDecodeError:
+        scope, unreadable = None, True
     report = review(args.branch, args.base, scope=scope)
-    if scope is None:
+    if unreadable:
+        report.stop.append(
+            f"{scope_file.name} is not UTF-8 text: write it again with a file-writing tool, not a shell redirect."
+        )
+    elif scope is None:
         report.look.append(f"No list of approved paths for this step ({scope_file.name}).")
     elif rewritten(scope_file):
         report.look.append(

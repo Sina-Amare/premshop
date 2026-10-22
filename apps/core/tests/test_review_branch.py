@@ -297,6 +297,13 @@ def test_a_scope_file_edited_after_its_first_commit_is_flagged(tmp_path):
     )
 
 
+def test_a_scope_file_with_a_byte_order_mark_reads_as_written(tmp_path):
+    scope = tmp_path / "step-x.txt"
+    scope.write_bytes(b"\xef\xbb\xbfapps/catalog/*\r\n")
+
+    assert rb.read_scope(scope) == ["apps/catalog/*"]
+
+
 def test_a_scope_written_after_the_work_began_is_flagged(repo, tmp_path):
     def git(*args: str, **env: str) -> None:
         subprocess.run(  # noqa: S603
