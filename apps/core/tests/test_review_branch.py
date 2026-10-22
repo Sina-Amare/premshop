@@ -114,7 +114,10 @@ CASES = {
         "skipped",
     ),
     "assert-weakened": Case(
-        edit("apps/shop/tests/test_views.py", "    assert True", "    assert 1"), 2, "Assertions"
+        edit("apps/shop/tests/test_views.py", "    assert True", "    assert 1"), 1, "Assertions"
+    ),
+    "test-moved-out": Case(
+        rename("apps/shop/tests/test_views.py", "scripts/tests/test_views.py"), 2, "test_one"
     ),
     "markers-quoted": Case(
         edit(

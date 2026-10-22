@@ -205,7 +205,8 @@ def test_names(revs: tuple[str, str], repo: Path) -> tuple[Counter[str], Counter
             r"^\s*(async\s+)?def test_\w+",
             *revs,
             "--",
-            ":(glob)**/test_*.py",
+            # pytest's testpaths: a test moved out of apps/ is never collected again.
+            ":(glob)apps/**/test_*.py",
             repo=repo,
         )
     except subprocess.CalledProcessError:
@@ -393,9 +394,10 @@ def review(
                 lost = [line.strip() for line in diff.removed if line.strip() not in test_lines]
                 lost = [line for line in lost if line]
                 asserts = [line for line in lost if "assert" in line]
+                # A LOOK, not a STOP: half of all steps change an assertion on purpose.
                 if asserts:
-                    report.stop.append(
-                        f"Assertions removed or changed in {path} ({len(asserts)}): {asserts[0]}"
+                    report.look.append(
+                        f"Assertions removed or changed in {path} ({len(asserts)}): check none was loosened, starting with {asserts[0]}"
                     )
                 elif lost:
                     report.look.append(
