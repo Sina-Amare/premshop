@@ -111,7 +111,9 @@ def test_no_tracked_file_carries_a_machine_register_marker():
         try:
             found = offences(path.read_text(encoding="utf-8"))
         except UnicodeDecodeError:
-            continue
+            # Every scanned suffix is text, so this is damage, such as a Persian file
+            # rewritten as UTF-16 by an editor or a shell; skipping it hid the damage.
+            found = ["not UTF-8"]
         if found:
             bad[path.relative_to(ROOT).as_posix()] = found
     assert not bad, f"machine register in tracked files: {bad}"
