@@ -85,6 +85,7 @@ npm run css                                            # or css:watch
 - **Never `runserver --noreload` while editing templates** — it serves the old ones, and a screenshot of a stale page looks like a fix that did not work.
 - **A wrapper that filters command output cannot be trusted for a check.** If anything on this machine sits between a command and its answer, prove it does not change exit codes or output before believing a result — a "nothing found" from a tool that refused the query looks exactly like a real empty answer. Local tooling notes are kept outside this repository.
 - **Writing files that mix Persian and quotes:** Git Bash heredocs break on them, and tool layers turn `\n` and `\uXXXX` escapes back into the characters. Use a file-writing tool or a script file; build a backslash with `chr(92)` when an escape must survive. The console is cp1256: set `PYTHONIOENCODING=utf-8` before printing Persian, and in PowerShell 5.1 pass `-Encoding utf8` to `Get-Content`.
+- **Upgrading a package with a compiled part (Pillow, psycopg) while a dev server runs** fails halfway: Windows keeps the loaded `.pyd` open, `uv sync` cannot replace it, and the package is left unimportable. Stop every `runserver` first; if it already happened, `uv sync --frozen --reinstall-package <name>`.
 
 ## Backing up docs-local
 
