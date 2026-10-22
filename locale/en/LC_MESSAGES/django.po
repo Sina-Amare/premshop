@@ -404,8 +404,8 @@ msgstr "The answer itself in the first sentence, usually one or two sentences."
 msgid "امکانات یا قیمت ارائه‌دهنده زود عوض می‌شود. انتشار، بررسی در ۷ روز اخیر را لازم دارد."
 msgstr "The provider’s features or prices change quickly. Publishing needs a check within the last 7 days."
 
-msgid "اول «این محصول برای شما نیست اگر…»، بعد موضع ارائه‌دهنده، محدودیت‌ها و آنچه شامل نیست. گارانتی، استثنای بازگشت وجه (اگر باشد) و موضع ایران را صفحه خودش از فیلدهایشان می‌آورد."
-msgstr "First “this product is not for you if…”, then the provider’s stance, the limits and what is not included. The page prints the warranty, a refund exception (if there is one) and the stance on Iran from their own fields."
+msgid "اول «این محصول برای شما نیست اگر…»، بعد محدودیت‌ها و آنچه شامل نیست. گارانتی، استثنای بازگشت وجه (اگر باشد) و نکات استفاده را صفحه خودش از فیلدهایشان می‌آورد."
+msgstr "First “this product is not for you if…”, then the limits and what is not included. The page prints the warranty, a refund exception (if there is one) and the usage notes from their own fields."
 
 msgid "این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."
 msgstr "This product already has a “Before you buy” section. Edit that one."
