@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product
+from apps.catalog.templatetags.prices import card_price_steps
 
 pytestmark = pytest.mark.django_db
 
@@ -90,3 +91,24 @@ def test_invalid_stored_color_is_not_interpolated_into_css(offers):
     body = render_to_string("catalog/_card.html", {"product": offers})
     assert "display:none" not in body
     assert "--brand:" in body
+
+
+def test_a_scheduled_offer_selected_at_another_expiry_also_expires(offers):
+    now = timezone.now()
+    offers.plans.all().delete()
+    offers.plans.create(
+        title="اول",
+        cost_price=1,
+        sale_price=300,
+        promo_price=90,
+        promo_ends_at=now + timedelta(hours=2),
+    )
+    offers.plans.create(
+        title="بعدی",
+        cost_price=1,
+        sale_price=200,
+        promo_price=80,
+        promo_starts_at=now + timedelta(hours=1),
+        promo_ends_at=now + timedelta(hours=3),
+    )
+    assert [step["price"] for step in card_price_steps(offers)] == [90, 80, 200]

@@ -22,12 +22,18 @@ def price_when_promo_ends(plan: Plan) -> Decimal:
 
 @register.filter
 def card_price_steps(product: Product) -> list[dict[str, object]]:
-    """Server-computed starting prices after each currently active offer ends."""
+    """Server-computed starting prices after each upcoming offer expiry."""
     plans = product.available_plans()
     if not plans:
         return []
     now = timezone.now()
-    ends = sorted({p.promo_ends_at for p in plans if p.promotion_is_active and p.promo_ends_at})
+    ends = sorted(
+        {
+            p.promo_ends_at
+            for p in plans
+            if p.promo_price is not None and p.promo_ends_at and p.promo_ends_at > now
+        }
+    )
     steps = []
     for moment in [now, *ends]:
         plan = min(plans, key=lambda p: effective_price(p, at=moment))
