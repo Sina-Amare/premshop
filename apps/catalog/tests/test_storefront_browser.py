@@ -89,6 +89,23 @@ def test_the_discount_clock_counts_down(browser, live_server, discounted):
 TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber means time pressure
 
 
+def test_a_maximum_price_and_currency_fit_inside_a_phone_card(browser, live_server, discounted):
+    discounted.plans.update(sale_price=999999999999, promo_price=None)
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/c/fun/")
+        assert page.evaluate(STYLED)
+        card = page.locator(".pcard").first
+        bounds = card.bounding_box()
+        for part in (".price__num", ".price__cur"):
+            box = card.locator(part).bounding_box()
+            assert box["x"] >= bounds["x"] + 8, (part, box, bounds)
+            assert box["x"] + box["width"] <= bounds["x"] + bounds["width"] - 8
+    finally:
+        context.close()
+
+
 def test_another_plans_expiry_removes_its_offer_without_changing_the_starting_price(
     browser, live_server, discounted
 ):

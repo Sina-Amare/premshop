@@ -834,6 +834,7 @@
                   background: var(--color-surface); color: var(--color-ink); font-size: 11px; }
   .pcard__from { display: block; font-size: 12px; line-height: 1.7; color: var(--color-secondary); }
   .pcard__price { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 5px; }
+  .pcard__price .price { flex-wrap: wrap; max-inline-size: 100%; row-gap: 4px; }
   .pcard__pre { font-size: 11px; color: var(--color-secondary); }
   .pcard__foot .price__num { font-size: 22px; }
   .pcard__foot .price__cur { font-size: 11px; }
