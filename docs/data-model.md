@@ -2,7 +2,7 @@
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
 > **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Contract, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — the documents disagree; listed for the owner in `docs-local/progress.md`).
+> **Contract, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — their implementation step is settled in S4a's briefing).
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
@@ -97,6 +97,7 @@ erDiagram
         decimal actual_cost "nullable"
         jsonb product_snapshot
         text customer_input "ENCRYPTED"
+        text delivery_note "operator to customer, plaintext"
         date expires_at "subscription expiry"
         timestamptz due_at "SLA deadline"
         timestamptz sla_paused_at
@@ -107,6 +108,7 @@ erDiagram
         varchar delivery_link_token_hash UK "nullable; magic link (ADR-0008)"
         timestamptz delivery_link_expires_at
         timestamptz delivery_link_used_at
+        timestamptz created_at
     }
     OrderItemEvent {
         bigint id PK
@@ -128,6 +130,8 @@ erDiagram
 ### `core.SiteSetting` — singleton (D8)
 
 One row, `CHECK (id = 1)`, holding the operator's clocks and switches. Its columns arrive with the steps that use them: the two payment clocks at S5, the support-hours schedule behind the SLA deadline at S7 (ADR-0009), the holiday switches at S10. One rule is already fixed by ADR-0019: the two payment clocks are two separately named columns and are never merged. `gateway_timeout_minutes` (default 15) decides when the inquiry task asks the gateway about a payment stuck in `initiated`, and it never cancels anything; `unpaid_order_ttl_hours` (default 24) decides when the daily sweep cancels an unpaid order with `cancel_reason='expired_unpaid'`, and the sweep skips any order whose payment is still `initiated`.
+
+Today's support hours have one home, `apps/core/support.py` (`OPENS`, `CLOSES`, every day). Whether S7 moves that schedule into `SiteSetting` is unsettled; if it moves, both the displayed hours and the deadline function must read it from there, rather than keeping two definitions.
 
 Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `core.SiteSetting`). It is re-specified when S5 is planned.
 
@@ -155,7 +159,7 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 - **Slugs are Latin (from 2026-10-20, catalog 0018).** A Persian slug turns into a line of `%D8%A7…` wherever an address is pasted, so a new or changed slug must be Latin (`check_slug_is_latin`, in both models' `clean()`). `Category.slug` is required, because category names are Persian. `Product.slug` may be left empty when the name is Latin, and `clean()` and `save()` fill it from the name (`latin_slug`); `clean()` refuses an empty one for a Persian name, which must have its slug written, and `save()` outside a form raises rather than store an empty slug, which reverses to no page. Both fields keep `allow_unicode` for the rows saved before this, whose Persian slug stays valid until someone changes it: rewriting it would move an address links already point at. The URL patterns keep `<str:slug>` for the same rows.
 - **`Product.aliases` is search fuel and is never rendered.** It holds the spellings a customer actually types — «چت جیپت» for ChatGPT — because character folding cannot turn one transliteration into another. It feeds `search_text` on save; a test asserts it never reaches the page.
 - **`Plan.supplier_url` is deliberately not copied into `OrderItem.product_snapshot`.** Durations are separate listings upstream (owner ruling), and S7's delivery page reads it live through the PROTECTed `OrderItem.plan` FK.
-- **`Product.delivery_template`** is a comma-separated list of field names; S7's delivery form pre-renders from it.
+- **`Product.delivery_template`** is currently a free-text operator note, sent nowhere and parsed nowhere. Its panel hint says so (catalog 0015). Whether S7 replaces that meaning with structured delivery-field names is settled before building its delivery form; existing notes cannot be treated as field lists.
 - **`Plan.requires_customer_input` limits a cart line to quantity 1.** The rule and its reasons are under `cart.CartItem`.
 - **`Product.renewable` (added 2026-10-14), default false.** Claimed, never assumed: renewal depends on the upstream provider and on the operator getting the same account back, so a product that has not been thought about says nothing. Rendered only when true — there is no negative state, and none on a gift card, which has no period to renew.
 - **`ProductSpec.is_key` (added 2026-10-14)** marks a fact important enough to print beside the title as well as in the table. Shared-or-private, capacity, device count, region and any one-off condition live here as free rows rather than as columns, for the reason that deleted `Product.region` in 0003: a column blank on most rows is a column the form asks about anyway.
@@ -198,6 +202,8 @@ The cart is two tables, not a session dictionary. A signed-out visitor's cart is
 **Stored: plan and quantity. Nothing else.** No prices, no names, no snapshots — every amount is recomputed through `effective_price()` from the database on every render and again at checkout. A cart row that is a week old therefore shows today's price, which is the only correct behaviour.
 
 **Merge on login** (the part customers notice, so it gets its own test): if the account already has a cart, the guest cart's lines merge into it — quantities summed per plan and clamped to the per-line maximum of 10 — and the guest cart is deleted. If the account has no cart, the guest cart is **claimed** instead: set `user`, clear `session_key`. Claiming preserves `added_at`; re-creating rows would not.
+
+This merge is not built. Its 10-only clamp predates `Plan.max_quantity` and disagrees with the quantity-1 rule for input-requiring plans above. S4b's briefing settles the ceiling for add, checkout and merge together with `services-and-modules.md` §2 and ADR-0018; this paragraph does not choose one.
 
 **Lifecycle:** checkout consumes the cart and clears it **inside** the order-creation transaction, so an order and its emptied cart commit together. A daily beat task deletes guest carts (`user IS NULL`) with `updated_at` older than 30 days; account carts are never swept.
 
@@ -334,8 +340,8 @@ One in the built tables: `ProductSection (product) WHERE kind = 'before_buying'`
 
 | Model | Constraint |
 |---|---|
-| Product (built: catalog 0002) | `delivery_hours BETWEEN 1 AND 72` (`product_delivery_hours_1_to_72`, raised from 48 on 2026-10-18 — ADR-0009 amended); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
-| Plan (built: catalog 0001, 0002) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`) |
+| Product (built: catalog 0002, 0013) | `delivery_hours BETWEEN 1 AND 72` (`product_delivery_hours_1_to_72`, raised from 48 on 2026-10-18 — ADR-0009 amended); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
+| Plan (built: catalog 0001, 0002, 0004) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`); `max_quantity BETWEEN 1 AND 10` (`plan_max_quantity_1_to_10`); `requires_customer_input = false OR max_quantity = 1` (`plan_customer_input_is_one_per_order`) |
 | ProductSection (built: catalog 0019) | `kind IN ('benefits','includes','comparison','after_payment','before_buying','free')` (`section_kind_valid`); `image = '' OR image_alt <> ''` (`section_image_has_alt`) — a picture without its alternative text is not stored |
 | Cart | `(user_id IS NULL) <> (session_key IS NULL)` — exactly one owner |
 | CartItem | `quantity BETWEEN 1 AND 10`; **service-enforced, not a CHECK:** `quantity = 1` when the plan has `requires_customer_input=true` (the condition lives on `Plan`, one join away — refused in the cart, re-validated at checkout) |
@@ -375,7 +381,9 @@ Django auto-indexes every FK; those cover the per-item timeline (`OrderItemEvent
 
 Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the lost-callback inquiry and the unpaid-order sweep, S5; the outbox poll, S6) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§4). They are re-specified when those steps are planned.
 
-**`Product.search_text` carries a GIN index with `gin_trgm_ops`** since 2026-10-14 (`catalog 0006`), serving the trigram fallback in `search()`. It does nothing at a dozen rows, where a sequential scan is already free; it is there because it is what keeps the approach correct at a thousand, and because adding it later means remembering it was missing. The exact `icontains` pass still cannot use an index and still does not need one, `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
+**`Product.search_text` carries a GIN index with `gin_trgm_ops`** since 2026-10-14 (`catalog 0006`). Its presence does not mean the current search uses it: the exact pass filters on `UPPER(search_text) LIKE UPPER(...)`, and the fallback compares `WORD_SIMILARITY(...) >= 0.4`. EXPLAIN on 2026-10-23 showed sequential scans for both, even with sequential scans discouraged (`enable_seqscan=off`). A query or index change needs its own query-plan check; no index-backed scaling claim is made for either current pass.
+
+**Deliberately unindexed:** `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
 
 ---
 
