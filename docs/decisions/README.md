@@ -12,14 +12,14 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0006](0006-card-to-card-payment-design.md) | ~~Card-to-card: DB-enforced uniqueness, pending-only expiry, revive, card snapshots~~ — **superseded by [0019](0019-payment-gateway.md)** |
 | [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods |
 | [0008](0008-content-free-messages-and-magic-link.md) | No credential values in messages; the constrained single-use magic link |
-| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder |
+| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-18: delivery cap 72 hours; 2026-10-20, evening: the delivery note is printed as written)* |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log; outbox with dedupe keys; accepted on-commit gap |
 | [0011](0011-buy-now-checkout-no-cart.md) | ~~Buy-now + quantity; no cart~~ — **superseded by [0018](0018-shopping-cart-and-guest-checkout.md)**; its item-status argument still stands |
 | [0012](0012-auth-email-otp.md) | Email identity; inline checkout OTP; new-sign-in alert guard |
 | [0013](0013-payment-provider-interface-deferred.md) | One payment implementation, no interface; extract only if a real second gateway arrives |
-| [0014](0014-deliberate-simplifications.md) | The simple-over-flexible verdicts, each with its flip condition |
+| [0014](0014-deliberate-simplifications.md) | The simple-over-flexible verdicts, each with its flip condition *(amended 2026-10-14: the trigram search fallback arrived early)* |
 | [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
-| [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal on stone; amber means time |
+| [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal action colour; amber means time *(amended 2026-10-13: white canvas and neutral ramp; 2026-10-14: ink surfaces and two general radii)* |
 | [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production |
 | [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent `Cart`/`CartItem` in their own `cart` app, plan+quantity only, guest cart merges on login; anonymous browsing, identity inside checkout |
 | [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
@@ -28,14 +28,14 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0022](0022-transactional-email.md) | SMTP2GO relay, env-driven; TLS derived from the port; prod fails closed on a blank relay password |
 | [0023](0023-email-templates.md) | Email templates: tables, wordmark in type *(amended: the font stack grew and a web-font link was added)*; three files per message; amber still only means time |
 | [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one flow for login+registration; no separate password reset *(amended 2026-09-21: two of its statements were untrue of the built code until that day's fix)* |
-| [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; region values; Persian CHECK messages; search folding; seeded shop; Unfold admin |
-| [0026](0026-storefront-composition.md) | Storefront: ink bands top and bottom, the shelf panel across the seam, two radii, one shadow, colour only from the brand marks; fonts subset |
+| [0025](0025-catalog-implementation.md) | Catalog build: money as whole toman; Persian CHECK messages; search folding; seeded shop; Unfold admin *(amended 2026-10-13: region column removed; 2026-10-14: per-plan quantity ceiling; 2026-10-14b: no category filters, renewable products and key specs; 2026-10-20: browser tests required in the gate)* |
+| [0026](0026-storefront-composition.md) | Storefront: ink top strip and footer; subset fonts; brand marks sourced per product *(amended 2026-10-14b: the light brand-wash hero and linked constellation replace the ink hero and shelf composition)* |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
-| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address |
+| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address *(amended 2026-10-22: `iran_stance` became `usage_notes`, «نکات استفاده»; the stance's sources requirement was dropped)* |
 
 ## Legacy shorthand map
 
-The contract documents (data model, state machine, services, notifications, build plan) grew during the design phase and occasionally cite decision-sheet shorthand. Resolve it here:
+The contract documents (data model, state machine, services, notifications) grew during the design phase and occasionally cite decision-sheet shorthand. Resolve it here:
 
 | Shorthand | Meaning → ADR |
 |---|---|
