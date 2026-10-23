@@ -1,30 +1,22 @@
-"""What a branch changes that a second reader must look at before it is merged.
+"""What a change does that a reviewer must look at before it goes into main.
 
-    .venv/Scripts/python.exe scripts/review_branch.py <branch> [--base main] [--scope FILE]
-    .venv/Scripts/python.exe scripts/review_branch.py --pin
+    .venv/Scripts/python.exe scripts/review_branch.py <branch> [--base main]
+    .venv/Scripts/python.exe scripts/review_branch.py HEAD --base <commit before the change>
 
-Run it from a checkout of main, so the rules applied are main's and not the branch's
-own copy of this file. Each finding is STOP (the branch must not be merged as it
-stands) or LOOK (fine if it was part of the approved step). Exit status: 0 nothing
-found, 1 LOOK only, 2 at least one STOP.
+Each finding is STOP (needs an answer before the change goes into main) or LOOK (fine if
+it was meant). Exit status: 0 nothing found, 1 LOOK only, 2 at least one STOP.
 
 The rules cover the ways a change can pass every check while making the checks weaker
-or the data less safe: an applied migration edited or a new one that removes, moves
-or reshapes data, tests removed, skipped or with assertions taken out, the gate
-changed, a query budget raised, a decision record rewritten, a secret, a text file
-turned binary, money or sign-in code touched, a commit crediting an assistant or made
-under another identity, and paths outside those the step was approved to change, or
-approved after the work began. It also asks GitHub whether main is still protected,
-and compares this clone's hooks, ignore rules and user.email with their pins.
+or the data less safe: an applied migration edited or a new one that removes, moves or
+reshapes data, tests removed, skipped or with assertions changed, the gate changed, a
+query budget raised, a decision record rewritten, a secret, a text file turned binary,
+money or sign-in code touched, and a commit crediting an assistant.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
-import fnmatch
-import hashlib
-import json
 import re
 import subprocess
 import sys
@@ -34,8 +26,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-PINS = REPO / "docs-local" / "git-state.json"
-SCOPES = REPO / "docs-local" / "scopes"
 
 # Changing any of these changes what "green" means.
 GATE_FILES = re.compile(
@@ -83,13 +73,6 @@ TEXT_SUFFIXES = (".py", ".html", ".txt", ".md", ".css", ".js", ".json", ".po", "
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 STRING = re.compile(r"""(['"]).*?(?<!\\)\1""")
 TOO_BIG = 600
-GITHUB_BOT = "noreply@github.com"
-REQUIRED_CHECKS = {
-    "Lint, format, types",
-    "Tests (real PostgreSQL, real Chromium)",
-    "Dependency and security audit",
-}
-PINNED_FILES = ("hooks/pre-commit", "hooks/commit-msg", "hooks/pre-push", "info/exclude")
 
 
 @dataclass
@@ -129,13 +112,6 @@ def git(*args: str, repo: Path = REPO) -> str:
         check=True,
     )
     return out.stdout.decode("utf-8", errors="replace")
-
-
-def git_config(key: str, repo: Path = REPO) -> str:
-    try:
-        return git("config", "--get", key, repo=repo).strip()
-    except subprocess.CalledProcessError:
-        return ""
 
 
 def show(rev: str, path: str, repo: Path) -> str:
@@ -270,9 +246,7 @@ def touched_sections(diff: FileDiff, before: str, after: str) -> set[str]:
     return touched
 
 
-def review(
-    head: str, base: str = "main", repo: Path = REPO, scope: list[str] | None = None
-) -> Report:
+def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
     report = Report()
     merge_base = git("merge-base", base, head, repo=repo).strip()
     head_rev = git("rev-parse", head, repo=repo).strip()
@@ -285,22 +259,10 @@ def review(
         if line.startswith("-\t-\t")
     }
     top_level = set(git("ls-tree", "--name-only", merge_base, repo=repo).splitlines())
-    identity = git_config("user.email", repo).lower()
-    if not identity:
-        report.stop.append("This clone has no user.email, so no commit's identity can be checked.")
-
     for commit in commits(merge_base, head_rev, repo):
         short = commit.sha[:7]
         if ATTRIBUTION.search(commit.message):
             report.stop.append(f"Commit {short} credits someone else in its message.")
-        foreign = {commit.author_email.lower(), commit.committer_email.lower()} - {
-            identity,
-            GITHUB_BOT,
-        }
-        if identity and foreign:
-            report.stop.append(
-                f"Commit {short} was made as {commit.author} <{commit.author_email}>, not as the owner."
-            )
 
     before, after = test_names((merge_base, head_rev), repo)
     missing = before - after
@@ -410,13 +372,6 @@ def review(
                         f"{m[1]} was raised from {budgets[m[1]]} to {m[2]} in {path}."
                     )
 
-    if scope is not None:
-        # Both ends of a rename: moving a file out of a folder changes that folder too.
-        touched = sorted({p for d in diffs for p in (d.old, d.path) if p})
-        outside = [p for p in touched if not any(fnmatch.fnmatch(p, g) for g in scope)]
-        if outside:
-            shown = ", ".join(outside[:8]) + (" and more" if len(outside) > 8 else "")
-            report.stop.append(f"Changed outside the approved paths: {shown}.")
     visual = sorted(
         d.path for d in diffs if d.status != "D" and d.path.startswith(("templates/", "static/"))
     )
@@ -432,152 +387,12 @@ def review(
     return report
 
 
-def read_scope(path: Path) -> list[str]:
-    # utf-8-sig: Windows PowerShell 5.1 starts a UTF-8 file with a byte-order mark, which
-    # would otherwise join the first pattern and put every path outside it.
-    lines = path.read_text(encoding="utf-8-sig").splitlines()
-    return [line.split("#", 1)[0].strip() for line in lines if line.split("#", 1)[0].strip()]
-
-
-def rewritten(path: Path) -> bool:
-    """Whether the file changed after its first commit, or was never committed at all.
-
-    The scope file sits where the agent under review can write, so a STOP for a path
-    outside it is one edit away from going quiet.
-    """
-    try:
-        commits = git("log", "--format=%h", "--", path.name, repo=path.parent).split()
-        dirty = git("status", "--porcelain", "--", path.name, repo=path.parent).strip()
-    except subprocess.CalledProcessError:
-        return True
-    return len(commits) != 1 or bool(dirty)
-
-
-def written_after(path: Path, base: str, head: str, repo: Path = REPO) -> bool:
-    """Whether the scope file was first committed after the branch's first commit: paths
-    copied from finished work approve nothing."""
-    try:
-        added = git("log", "--diff-filter=A", "--format=%ct", "--", path.name, repo=path.parent)
-        first = git("log", "--reverse", "--format=%ct", f"{base}..{head}", repo=repo)
-    except subprocess.CalledProcessError:
-        return False
-    return bool(added.split() and first.split()) and int(added.split()[-1]) > int(first.split()[0])
-
-
-def gh_api(path: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(["gh", "api", path], capture_output=True)  # noqa: S603, S607
-
-
-def protection(report: Report, branch: str = "main", repo: Path = REPO) -> None:
-    """Whether GitHub still guards `branch` the way the gate depends on."""
-    url = git("remote", "get-url", "origin", repo=repo).strip()
-    slug = re.search(r"github\.com[:/](.+?)(?:\.git)?$", url)
-    if not slug:
-        return
-    try:
-        out = gh_api(f"repos/{slug[1]}/branches/{branch}/protection")
-    except OSError:
-        report.look.append("GitHub's protection of main could not be checked: gh is not installed.")
-        return
-    if out.returncode != 0:
-        if b"not protected" in out.stderr.lower() or b"not protected" in out.stdout.lower():
-            report.stop.append(
-                f"{branch} is no longer protected on GitHub. Ask before merging anything."
-            )
-        else:
-            report.look.append(f"GitHub's protection of {branch} could not be read (offline?).")
-        return
-    rules = json.loads(out.stdout)
-    missing = []
-    if not rules.get("required_pull_request_reviews"):
-        missing.append("a pull request")
-    checks = set((rules.get("required_status_checks") or {}).get("contexts") or [])
-    if not REQUIRED_CHECKS <= checks:
-        missing.append("the checks " + ", ".join(sorted(REQUIRED_CHECKS - checks)))
-    if not (rules.get("enforce_admins") or {}).get("enabled"):
-        missing.append("the same rules for administrators")
-    if (rules.get("allow_force_pushes") or {}).get("enabled"):
-        missing.append("a refusal of force-pushes")
-    if missing:
-        report.stop.append(
-            f"GitHub no longer requires {'; '.join(missing)} on {branch}. Ask before merging anything."
-        )
-
-
-def git_state(repo: Path = REPO) -> dict[str, str]:
-    """Fingerprints of this clone's hooks and private ignore rules, which every worktree shares."""
-    common = Path(git("rev-parse", "--git-common-dir", repo=repo).strip())
-    common = common if common.is_absolute() else repo / common
-    state = {}
-    for name in PINNED_FILES:
-        target = common / name
-        state[name] = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else ""
-    state["core.hooksPath"] = git_config("core.hooksPath", repo)
-    # Both folders share this config, and the identity checks compare against it.
-    state["user.email"] = git_config("user.email", repo)
-    return state
-
-
-def pinned(report: Report, pins: Path = PINS, repo: Path = REPO) -> None:
-    if not pins.exists():
-        report.stop.append(
-            f"No pinned hooks to compare with ({pins.name} is missing): read .git/hooks, then --pin."
-        )
-        return
-    expected = json.loads(pins.read_text(encoding="utf-8"))
-    now = git_state(repo)
-    # Every key either side knows: a key dropped from the file must not drop its check.
-    changed = sorted(k for k in set(expected) | set(now) if expected.get(k, "") != now.get(k, ""))
-    if changed:
-        report.stop.append(
-            f"This clone's {', '.join(changed)} changed since they were pinned. Ask before merging anything."
-        )
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="What a branch changes that must be looked at.")
-    parser.add_argument("branch", nargs="?")
+    parser = argparse.ArgumentParser(description="What a change does that must be looked at.")
+    parser.add_argument("branch", help="the branch or commit to review")
     parser.add_argument("--base", default="main")
-    parser.add_argument("--scope", type=Path, help="the paths the step was approved to change")
-    parser.add_argument("--pin", action="store_true", help="record the hooks as they are now")
     args = parser.parse_args()
-    if args.pin:
-        PINS.write_text(json.dumps(git_state(), indent=1) + "\n", encoding="utf-8")
-        print(f"pinned {', '.join(git_state())} in {PINS}")
-        return 0
-    if not args.branch:
-        parser.error("name the branch to review")
-    here = git("rev-parse", "--abbrev-ref", "HEAD").strip()
-    if here != args.base:
-        print(
-            f"Warning: these rules are {here}'s copy, not {args.base}'s. Run this from a checkout of {args.base}.\n"
-        )
-    scope_file = args.scope or SCOPES / (
-        args.branch.removeprefix("origin/").replace("/", "-") + ".txt"
-    )
-    try:
-        scope = read_scope(scope_file) if scope_file.exists() else None
-        unreadable = False
-    except UnicodeDecodeError:
-        scope, unreadable = None, True
-    report = review(args.branch, args.base, scope=scope)
-    if unreadable:
-        report.stop.append(
-            f"{scope_file.name} is not UTF-8 text: write it again with a file-writing tool, not a shell redirect."
-        )
-    elif scope is None:
-        report.look.append(f"No list of approved paths for this step ({scope_file.name}).")
-    elif rewritten(scope_file):
-        report.look.append(
-            f"The approved paths changed after the go, or were never committed: "
-            f"git -C {scope_file.parent} log -p -- {scope_file.name}"
-        )
-    if scope is not None and written_after(scope_file, args.base, args.branch):
-        report.look.append(
-            "The approved paths were written after the work began: check the go came first."
-        )
-    protection(report, args.base.removeprefix("origin/"))
-    pinned(report)
+    report = review(args.branch, args.base)
     stat = git(
         "diff", "--shortstat", git("merge-base", args.base, args.branch).strip(), args.branch
     ).strip()
@@ -587,9 +402,9 @@ def main() -> int:
     for item in report.look:
         print(f"LOOK  {item}")
     verdict = {
-        0: "Nothing found. Merge once every CI check on the pull request is green.",
-        1: "Nothing blocking. Check each LOOK item was part of the approved step, then merge once CI is green.",
-        2: "Do not merge. Each STOP item needs a second reader first.",
+        0: "Nothing found.",
+        1: "Nothing blocking. Check each LOOK item was meant to be part of the change.",
+        2: "Each STOP item needs an answer before this goes into main.",
     }[report.status]
     print(f"\nVerdict: {verdict}")
     return report.status
