@@ -91,9 +91,13 @@ The owner reviewed the ink composition and asked the question the first attempt 
 - **The home page opens on light, coloured out of the goods.** Four very soft radial washes in real brand hues — Spotify green, Netflix red, Google blue, Claude clay — at a fraction of their saturation. Not an invented gradient and not a glow behind the type: it is the shelf, out of focus. Ink keeps the top strip and the footer, where it still frames the page.
 - **The marks are the picture.** A loose constellation of tiles at three sizes over the field, each a link, each carrying the one shadow. A product with no mark gets a monogram tile rather than being skipped — the hero claims to list every service, so it has to.
 - **Ambient motion is the constellation**, drifting a few pixels on a nine-second cycle, off below 900px and under reduced motion. Nothing else on the site moves unasked.
-- **Departments are tinted surfaces, not bordered boxes.** Four pale tints with a 24px line glyph each, assigned by position so a fifth department restarts the cycle. monday.com's move, and the one place a little colour earns its keep outside the brand marks.
+- **Departments are tinted surfaces, not bordered boxes.** Four pale tints with a 24px line glyph each, assigned by position so a fifth department restarts the cycle. monday.com's move, and the one place a little colour earns its keep outside the brand marks. *(Implementation note — 2026-10-23: replaced the evening it was built; the home page groups products under department headings with their count and «مشاهده‌ی همه» (`91ab4f3`). No department block is rendered; the old CSS and `_cat_icon.html` remain unused.)*
 - **One pill, for the one opening action.** `.btn--pill` on the hero CTA and nowhere else; everything else keeps the two radii.
+
+  *Implementation note — 2026-10-23: the constellation also uses 22px, 18px and 26px corners, all 16px at ≤520px (`.nebula__item`). These are built exceptions to the two general radii, not amendments to ADR-0016 or ADR-0026; reconciling those decisions remains open.*
 - **A promise strip under the hero, and the same four promises in the footer — never both on one page.** The home page suppresses the footer copy through a block, because saying the same four things twice on one screen reads as a shop with four facts padding them out. *(2026-10-20: three of the four were not true of every product and are gone. The promises now come from `apps/catalog/promises.py`, one today; the rule against stating them twice on one screen stands.)*
+
+  *Known deviation — 2026-10-23: above 760px the top strip still repeats the home page's promise. The footer copy is suppressed, but the top-strip copy is not. Removing it needs a template change; accepting the repetition needs a decision.*
 - **A section is only worth a section if it adds something.** «مراحل خرید» explained in three cards what the promise strip, the product page and the FAQ each already said, and it is gone.
 
 ## Amendment — 2026-10-14: somewhere dark to stand
@@ -113,7 +117,7 @@ The owner reviewed the editorial turn below and rejected it: *«هیچ استا�
 
 ## Amendment — 2026-10-13: the editorial turn
 
-The owner reviewed the built shop and asked for a quieter, more professional surface, supplying an editorial reference (white canvas, hairline rules, 4px corners, headlines set light). The direction taken is hybrid, and these clauses override the matching ones above:
+The owner reviewed the built shop and asked for a quieter, more professional surface, supplying an editorial reference (white canvas, hairline rules, 4px corners, headlines set light). The direction taken is hybrid, and these clauses override the matching ones below:
 
 - **The canvas is white** (`--color-ground: #ffffff`) and the neutral ramp is neutral, not warm stone. The page should read as a printed sheet.
 - **A hairline rule, not a box, marks a region.** Section heads carry a 1px rule the width of the column. Boxing a region to announce it is a region is the habit this replaces.
@@ -122,17 +126,17 @@ The owner reviewed the built shop and asked for a quieter, more professional sur
 - **Colour belongs to the goods.** Product brand marks render in their own brand colours; the interface around them stays achromatic. Teal survives as the single primary action and inline links; amber still means time and nothing else.
 - **Two motion tokens:** `--dur` 140ms for colour and state, `--dur-lg` 220ms for anything that moves or reveals. The easing is `cubic-bezier(0.2, 0, 0, 1)` — a soft stop, no overshoot, no bounce.
 
-Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian, and Google-hosted fonts do not load from Iran at all. Estedad and Vazirmatn stay, self-hosted.
+Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian. The storefront's Estedad and Vazirmatn are self-hosted, so rendering does not depend on Google's font delivery. The email template separately links Vazirmatn from Google Fonts for clients that load it; that optional link is not the storefront's font source and establishes no guarantee about current connectivity from Iran.
 
 ## The stance
 
-This shop should read like **a small business that keeps records** — not like a brand, and not like a landing page. The buyer's fear is paying into a void, so the antidote is visible bookkeeping: hairlines, aligned figures, stated hours, exact amounts, and a payable typeset with more care than any headline on the site. Warm stone paper, one teal accent spent sparingly, amber only when a clock is running.
+This shop should read like **a small business that keeps records** — not like a brand, and not like a landing page. The buyer's fear is paying into a void, so the antidote is visible bookkeeping: hairlines, aligned figures, stated hours, exact amounts, and a payable typeset with more care than any headline on the site. White paper ruled with hairlines, one teal accent spent sparingly, amber only when a clock is running.
 
 ## Type
 
 | Role | Face | Weight | Size | Line-height |
 |---|---|---|---|---|
-| Hero h1 (home) | Estedad | 600 | 40px (26 on a phone) | 1.28 |
+| Hero h1 (home) | Estedad | 600 | 44px (34 at ≤1000px, 28 at ≤520px) | 1.26 |
 | h1 | Estedad | 600 | 30px | 1.3 |
 | h2 | Estedad | 600 | 21px | 1.4 |
 | h3 | Estedad | 600 | 18px | 1.45 |
@@ -153,7 +157,7 @@ This shop should read like **a small business that keeps records** — not like 
 
 ## Spacing
 
-Nine values, and nothing outside them appears in the stylesheet:
+Nine values for the space between components:
 
 `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`
 
@@ -164,6 +168,8 @@ Nine values, and nothing outside them appears in the stylesheet:
 | 24, 32 | component↔component |
 | 48, 64 | block↔block within a page region |
 | 96 | page region↔region |
+
+Inside a component, padding and small gaps are optical and may fall between the tokens: buttons `11px 20px 9px`, the pill `13px 26px 11px`, badges `3px 10px`, fields, table cells, the ledger row, icon-to-label gaps of 2–6px, and the brand lockup's 11px. Between components, prose paragraphs use 1.6rem and the account menu uses 2px. The page gutter is 18px, 14px on a phone.
 
 **The rhythm rule:** the gap *between* groups is at least twice the gap *within* them. If two gaps are equal but the relationships aren't, one is wrong.
 
@@ -186,7 +192,9 @@ Nine values, and nothing outside them appears in the stylesheet:
 
 **The accent budget: teal appears at most three times in a viewport**, and only as (1) the single primary action, (2) the current-state indicator, (3) inline links. Never on icons, headings, rules, or "to feel branded" — scarcity is what makes the primary button read as *the* button.
 
-**Neutrals carry all structure.** A border means "this has an edge". A background step means "this is a distinct surface". A shadow means "this floats and will disappear" — menus and toasts only. **Deleting every shadow from the stylesheet would change nothing about the hierarchy**; that is the test.
+Known deviation (2026-10-23): `.promises__row svg` still uses the accent on the home page. This records the CSS as built, without approving a fourth use; changing it or accepting an exception remains open.
+
+**Neutrals carry all structure.** A border means "this has an edge". A background step means "this is a distinct surface". A shadow means "this sits above the page": the constellation's tiles carry `--shadow-lift` and a stronger shadow on hover (2026-10-14, 14b); elsewhere, structure is a hairline.
 
 **Badges are tint + border + dark text**, never a saturated fill. Colour is never the only carrier of meaning — every status has words too.
 
@@ -197,7 +205,7 @@ Nine values, and nothing outside them appears in the stylesheet:
 - Zero renders **رایگان**, never «۰ تومان». رﯾﺎل never appears in the UI.
 - The currency word is never the numeral's weight — that pairing is a reliable amateur tell.
 - **A discount with an end date carries a clock**, in the amber that this document reserves for time (`.deadline`, `badge--time`): on the product card beside the plan name, and on the plan's own row in the buy box. Under a day it counts down to the second, padded to `۰۰:۰۸:۴۰` — `۰۸:۴۰` alone reads as eight hours. Above a day it says days and hours, because `۴۱۲:۰۶:۵۵` is a number, not a deadline. A discount with **no** end date shows no clock: invented urgency is the thing this shop is trying not to look like. The server renders the text and sends the seconds beside it, never the deadline, so a visitor whose own clock is wrong still sees the right number.
-- A promotional price shows the original beside it, struck through and muted (`.price__was`: `Muted #78716C`, `line-through`, one step down the size scale, never bold). It stays a neutral — **never amber**, which means time and only time. The promotional figure keeps the price numeral treatment; the two never share a weight.
+- A promotional price shows the original beside it, struck through in secondary grey (`.price__was`: Secondary #525252, since muted is 4.29:1 on the selected plan's tint; `line-through`, 0.78em, never bold). It stays a neutral — **never amber**, which means time and only time. The promotional figure keeps the price numeral treatment; the two never share a weight.
 - Inputs keep Latin digits and `direction: ltr`: in RTL the caret, Home/End and backspace all run backwards while someone types a card number, which is the bug that ends a payment.
 - Logical properties only (`margin-inline-start`, never `margin-left`). Directional icons mirror; clocks, locks, phones and cards do not.
 
@@ -219,17 +227,17 @@ Used **once per page region** — a second instance reads as sloppiness rather t
 
 ## The catalog
 
-**The product card** is the tile, the words, and the price on its own line at the block-end, so a grid of them reads as one column of aligned figures. The tile is an icon on tinted stone, or a monogram when there is no image — the same shape either way, so a grid with and without pictures stays even. The whole card is the link. Region sits on the card as a neutral badge; it is a fact, not an alert.
+**The product card** is the tile, the words, and the price on its own line at the block-end, so a grid of them reads as one column of aligned figures. The tile is the brand's mark on white with a hairline, or a monogram on the subtle fill when there is no image — the same shape either way, so a grid with and without pictures stays even. The whole card is the link. There is no region badge: a region-bound product carries the fact in a spec row (ADR-0025, amended 2026-10-13).
 
-**The buy box** structures by hairline. The selected plan is the accent's one appearance in it; the promotional original sits struck through and muted beside the new figure, never amber. On a phone the page reads title → buy box → details, so the price is never below the FAQ.
+**The buy box** structures by hairline. The selected plan is the accent's one appearance in it; the promotional original sits struck through in secondary grey beside the new figure, never amber. On a phone the page reads title → buy box → details, so the price is never below the FAQ.
 
-**Chips** for a filter: the active one takes the accent as the current-state indicator, which is one of its three permitted uses. Step numbers, category counts and everything else that merely wants to look branded stay in ink.
+**No filters.** A category page has none (ADR-0025, amended 2026-10-14b); when one is needed, sort comes first. The unused `.chips`/`.chip` CSS remains, but no template renders it. Step numbers, category counts and everything else that merely wants to look branded stay in ink.
 
 ## Email
 
-Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). What carries over unchanged: the palette, hairlines instead of shadows, the `11px 20px 9px` optical button padding, the ledger line, `letter-spacing: 0`, 1.85 on prose, and **amber for time and only time** — the code expiry and the delivery-link expiry, nothing else.
+Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). It keeps hairlines, the ledger line, no tracking on Persian prose, and **amber for time and only time** — the code expiry and the delivery-link expiry. Its templates retain the warm-stone ramp (#1C1917, #57534E, #78716C, #FAFAF9), prose at 1.95, a 10px card and button radius, and the button padded `13px 26px 11px` (`templates/email/base.html`, `_button.html`; the reasoning is ADR-0023's). These differ from the storefront's neutral ramp and prose metrics.
 
-What cannot carry over: Estedad and Vazirmatn, because Gmail and Outlook strip `@font-face`. The stack falls back to `Tahoma, "Segoe UI", "Noto Naskh Arabic", "Geeza Pro", Arial` — the metric rules survive, the faces do not. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
+The template links Vazirmatn from Google Fonts for clients that load web fonts. Its inline stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`; clients that ignore the link use the installed faces. Estedad is absent. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
 
 **The wordmark is `PremShop`, in Latin, everywhere** (owner's ruling at the S2 review): site header, footer, email sender name, subjects, masthead. One name, one spelling; the Latin form is the anchor in an inbox full of Persian subjects. Persian prose refers to the shop the same way.
 
@@ -243,23 +251,23 @@ Templates live in `templates/email/`; `/dev/emails/` renders them in a browser w
 
 Run this against any new page:
 
-- [ ] No spacing value outside the nine tokens
+- [ ] Space between components from the nine tokens; optical spacing inside a component and the named exceptions above
 - [ ] Every between-group gap ≥ 2× its within-group gap; heading margins asymmetric
-- [ ] Only `--radius-sm` and `--radius-lg` in use, and 0 on anything full-bleed
-- [ ] No `box-shadow` outside focus rings and `--shadow-lift` on the shelf panel; no gradients
-- [ ] Teal ≤3 times per viewport, never on icons or headings; amber only on time
-- [ ] Zero literal colour values outside the token block
+- [ ] General corners use `--radius-sm` and `--radius-lg`; full-bleed edges are square; the hero pill and constellation have the named exceptions above
+- [ ] No `box-shadow` outside focus rings and the constellation tiles (`--shadow-lift`, stronger on hover); no gradient fill except the hero's four brand washes (the questions' plus sign is a drawing)
+- [ ] Teal ≤3 times per viewport, never on icons or headings; amber only on time; the existing promise-icon deviation above still needs resolution
+- [ ] New component colours use tokens; existing brand-wash colours, button/disabled literals and the stronger hover shadow remain outside them pending cleanup
 - [ ] Body 17px, prose line-height 1.85, every text block capped at 32rem
 - [ ] Estedad only in headings and price numerals; never both faces in one line
 - [ ] `tabular-nums` on all figures; Persian digits out, Latin digits in inputs
 - [ ] No `left`/`right` properties — logical only
-- [ ] `:focus-visible` on everything interactive; no `transition: all`; 120–180ms; no hover `transform`
+- [ ] `:focus-visible` on everything interactive; no `transition: all`; durations from `--dur-xs`, `--dur` and `--dur-lg`; a hover moves an element a few pixels at most
 - [ ] `prefers-reduced-motion` honoured; `::selection`, `caret-color`, `accent-color` set
 - [ ] One ledger group per region — no more
 - [ ] Nothing centred, no three feature cards, no rounded-up customer counts, no emoji
 - [ ] Every promise, badge and section head is a noun phrase, not a sentence; explanation lives in the FAQ
 - [ ] Every `{{ product.name }}`, `{{ plan.title }}` and user value wrapped in `<bdi>`
-- [ ] Nothing drifts, slides or fades except the hero's grid; motion answers an action
+- [ ] Only the hero's constellation drifts without an action; it stops below 900px and under reduced motion; other motion answers an action
 
 ## Implementation notes
 
