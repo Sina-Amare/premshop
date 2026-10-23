@@ -550,7 +550,7 @@ class ProductAdmin(ModelAdmin):
     # What still stands between a draft and publishing, at the top of its form.
     change_form_before_template = "admin/catalog/product/readiness.html"
     fieldsets = [
-        (None, {"fields": ["name", "slug", "category", "status", "image"]}),
+        (None, {"fields": ["name", "slug", "category", "status", "image", "brand_colour"]}),
         (
             _("تحویل"),
             {

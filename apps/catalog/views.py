@@ -77,7 +77,7 @@ def home(request: HttpRequest) -> HttpResponse:
     # the price, so a promotion whose end date has passed drops out of this row
     # on its own — a shop that advertises an expired discount has done worse
     # than not advertising one.
-    discounted = [p for p in featured if p.cheapest_plan and p.cheapest_plan.promotion_is_active]
+    discounted = [p for p in featured if p.discounted_plans]
     # Grouped by department rather than one flat grid, which also retired the
     # separate «دسته‌بندی‌ها» block above it: that block and this one listed
     # the same four departments in the same order, four hundred pixels apart.

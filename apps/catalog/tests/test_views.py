@@ -368,28 +368,17 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
 PRICE_COMPONENT = re.compile(r'<span class="price[^"]*"[^>]*>.*?</span></span>', re.S)
 
 
-def test_catalog_card_and_product_page_render_struck_through_original(client, product):
-    """The promo is on the cheapest plan, so the card shows the pair; the product
-    page shows it on that plan's row. The original is muted and struck, never amber.
-
-    The assertion is scoped to the price component. It used to search the whole
-    page for `badge--time`, which read as "a promotion is not a countdown" and
-    was wrong twice over: amber is exactly what a countdown is for
-    (design-language.md, Colour), and the rule it meant to pin is only that the
-    *figure* is never amber.
-
-    `<del>` and not `<s>`: to a crawler that runs no CSS the two figures read
-    as one impossible number unless the markup says the first was removed."""
+def test_only_the_product_plan_strikes_its_original_price(client, product):
+    """A card names an offer separately; only the plan row compares its own prices."""
     listing = client.get(reverse("category", args=[product.category.slug])).content.decode()
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
+    assert '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in page
+    assert '<del class="price__was">' not in listing
     for body in (listing, page):
-        assert (
-            '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in body
-        )
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
-        assert any("price__was" in markup for markup in prices), "the discounted one was read"
+        assert prices, "the displayed prices were read"
         for markup in prices:
             assert "badge--time" not in markup, "the figure itself is never amber"
 
@@ -751,7 +740,7 @@ def test_a_plan_title_on_a_card_is_isolated(client, category):
 
     body = client.get(reverse("category", args=[category.slug])).content.decode()
 
-    assert '<span class="pcard__from"><bdi>12 Months Family Plan</bdi>' in body
+    assert re.search(r'class="pcard__from">[^<]*<bdi>12 Months Family Plan</bdi>', body)
 
 
 def test_a_category_intro_is_restricted_markdown_never_markup(client, category, product):

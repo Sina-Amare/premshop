@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django import template
+from django.utils import timezone
 
 from apps.catalog.models import Plan, Product
 from apps.catalog.pricing import effective_price
@@ -20,13 +21,21 @@ def price_when_promo_ends(plan: Plan) -> Decimal:
 
 
 @register.filter
-def lead_when_promo_ends(product: Product) -> dict[str, object] | None:
-    """The plan a card leads with once its cheapest plan's discount ends, and
-    its price then. That plan's own regular price can be above another's: a
-    card swapped in 390,000 while a 350,000 plan was on sale beside it."""
-    lead = product.cheapest_plan
-    if lead is None or lead.promo_ends_at is None:
-        return None
-    end = lead.promo_ends_at
-    plan = min(product.available_plans(), key=lambda p: effective_price(p, at=end))
-    return {"title": plan.title, "price": effective_price(plan, at=end)}
+def card_price_steps(product: Product) -> list[dict[str, object]]:
+    """Server-computed starting prices after each currently active offer ends."""
+    plans = product.available_plans()
+    if not plans:
+        return []
+    now = timezone.now()
+    ends = sorted({p.promo_ends_at for p in plans if p.promotion_is_active and p.promo_ends_at})
+    steps = []
+    for moment in [now, *ends]:
+        plan = min(plans, key=lambda p: effective_price(p, at=moment))
+        steps.append(
+            {
+                "plan": plan,
+                "price": effective_price(plan, at=moment),
+                "left": None if moment == now else max(0, int((moment - now).total_seconds())),
+            }
+        )
+    return steps
