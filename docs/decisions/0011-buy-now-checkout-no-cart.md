@@ -11,3 +11,5 @@
 **Alternatives considered:** session cart (cheap, but still buys UI surface for an unproven case); DB cart (out of scope wholesale).
 
 **Consequences:** The schema stays fully multi-item, so a future cart is a view/template change, not a migration. Add one only when a customer actually asks to combine different products in one payment.
+
+**Amendment — 2026-10-23: the superseding cart design.** ADR-0018 was revised on the day it was written. It specifies a persistent cart with `Cart` and `CartItem` tables in a separate `cart` app, rather than a session-only cart. The prediction above holds for the order schema, which needs no cart-driven change; the cart itself requires its own migration. These tables and that migration are still planned, not built.
