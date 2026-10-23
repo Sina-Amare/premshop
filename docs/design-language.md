@@ -271,4 +271,6 @@ Run this against any new page:
 
 ## Implementation notes
 
+**Product cards — 2026-10-24.** Each product has one linked card with a large mark on a pale brand-color panel, a small PremShop label and faint circular line detail. The panel occupies an 8:5 rectangle; the normal 14px card radius remains. The grid uses four columns on desktop, three at intermediate widths and two below 700px. Product title, delivery text, offer and starting price stay as text outside the artwork. The offer names its own plan, while the starting price names the cheapest available plan; they need not be the same. An offer badge is neutral; amber remains reserved for its remaining time. Product-page plans retain their own prices and selected state, with a live selected-plan summary and unchanged quantity and unavailable states. ADRs 0021 and 0025 hold the expiry and pricing rules.
+
 Fonts are self-hosted woff2, subset by `scripts/subset_fonts.py` (129KB for five files, from 313KB) with `font-display: swap` and a metric-matched Tahoma fallback so text does not jump when the real faces load. Tailwind's automatic source scanning is disabled (`source(none)`) and pointed only at `templates/` — left on, it read this very document and generated the utilities the document bans.
