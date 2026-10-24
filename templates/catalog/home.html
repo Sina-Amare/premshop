@@ -1,176 +1,24 @@
-{% extends "base.html" %}{% load fa %}
-
-{% block title %}اشتراک و اکانت دیجیتال با تحویل مطمئن{% endblock %}
-{% comment %}&rlm; after each comma between Latin names: a description is plain
-text, so there is no bdi to keep the names from running together left to right.{% endcomment %}
-{% block meta_description %}خرید اشتراک ChatGPT (چت جی‌پی‌تی)،&rlm; Netflix،&rlm; Spotify،&rlm; Gemini و گیفت کارت با کارت بانکی ایرانی. زمان تحویل و گارانتی هر محصول روی صفحه‌ی خودش آمده است.{% endblock %}
-
-{% block footer_promise %}{% endblock %}
-
+{% extends 'base.html' %}{% load fa %}
+{% block title %}خرید اشتراک سرویس‌های آنلاین{% endblock %}
 {% block content %}
-{% comment %}
-The opening: a light field coloured out of the brand palette, the marks
-floating over it as links, one statement and one action. Then the promise
-strip, the departments, the discounts, the shelf and the questions — six
-surfaces a buyer can act on, where there used to be a headline and a grid.
-
-«مراحل خرید» is gone. It explained in three cards what the promise strip,
-the product page and the FAQ each already say, which is the definition of
-furniture.
-{% endcomment %}
-<section class="hero">
-  <div class="wrap hero__inner">
-    <div class="hero__said">
-      {% comment %}
-      The whole proposition in four words, as a pair. «جهانی» named the
-      service and not the problem: the problem is that these are priced in
-      dollars and an Iranian card cannot reach them. «دلاری» beside «تومانی»
-      is the exchange the shop performs, and the parallel does the work that
-      a sentence would need a clause for.
-
-      «تومانی» and not «ریالی» although the owner said rial: every price on
-      this site is in toman (ADR-0005), and a hero that says rial over cards
-      that say toman is the shop contradicting itself in the first two lines.
-      {% endcomment %}
-      <h1 class="hero__title">اشتراک دلاری، پرداخت تومانی</h1>
-      <p class="hero__lead">
-        {% comment %}
-        Brand names in Latin, common nouns in Persian. «Netflix» next to the
-        Netflix mark is one spelling of one thing; «نتفلیکس» next to it is
-        two. The transliterations keep the two jobs where they are invisible
-        and useful — Product.aliases, so search still finds «چت جیپت», and the
-        SEO description below, because that is what people type into Google.
-        {% endcomment %}
-        {% comment %}True of every product named: Netflix arrives as a ready account
-        and JetBrains as a code, so «فعال می‌کنیم» alone would be wrong for both.{% endcomment %}
-        <bdi>ChatGPT</bdi>، <bdi>Netflix</bdi>، <bdi>Spotify</bdi>، <bdi>JetBrains</bdi> و سرویس‌های دیگر، با کارت بانکی ایرانی.
-        <b>اشتراک را روی اکانت خودتان فعال می‌کنیم یا اکانت و کد آماده تحویل می‌دهیم.</b>
-      </p>
-      {% comment %}No line under the button: the hours it carried are in the strip
-      directly above and again in the promise row below.{% endcomment %}
-      <div class="hero__act">
-        <a class="btn btn--primary btn--pill" href="#products">مشاهده‌ی محصولات</a>
-      </div>
-    </div>
-
-    {% if shelf %}
-    <div class="nebula" aria-label="سرویس‌های موجود">
-      {% comment %}
-      A product with no mark yet still gets a tile. Skipping it would quietly
-      drop a service the shop actually sells out of the one place that claims
-      to list them all — and the monogram is a designed state, the same one
-      the product card uses.
-      {% endcomment %}
-      {% for product in shelf %}
-        <a class="nebula__item" href="{% url 'product' product.slug %}" title="{{ product.name }}">
-          {% if product.image %}
-            <img src="{{ product.image.url }}" alt="{{ product.name }}" width="42" height="42" decoding="async">
-          {% else %}
-            <span class="nebula__mono">{{ product.name|slice:":1" }}</span>
-            <span class="sr-only">{{ product.name }}</span>
-          {% endif %}
-        </a>
-      {% endfor %}
-    </div>
-    {% endif %}
+<section class="v-hero"><div class="v-wrap v-hero__inner">
+  <div class="v-hero__copy"><h1>اشتراک بعدی‌تون،<br>از پرم‌شاپ.</h1><p class="v-hero__lead"><bdi>ChatGPT</bdi>، <bdi>Spotify</bdi> و سرویس‌های محبوبتون رو یک‌جا ببینید و پلن مناسب‌تون رو انتخاب کنید.</p><div class="v-hero__actions"><a class="v-button" href="#products">دیدن محصولات{% include 'storefront/icon.html' with name='arrow' %}</a><a class="v-hero__help" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}راهنمایی در تلگرام</a></div></div>
+  <div class="v-service-cloud" data-hero-scene>
+    <nav aria-label="انتخاب سرویس" aria-describedby="service-hint"><div class="nebula"><img class="v-orbit-scene" src="/static/img/constellation.svg" alt="" aria-hidden="true" width="600" height="420">{% include 'storefront/service-effects.html' %}{% for item in shelf %}<a class="nebula__item" data-service="{{ item.slug }}" href="{% url 'product' item.slug %}"><span class="v-service-mark">{% if item.image %}<img src="{{ item.image.url }}" width="54" height="54" alt="">{% else %}<span class="nebula__mono" aria-hidden="true">{{ item.name|slice:':1' }}</span>{% endif %}</span><span class="v-service-name"><bdi>{{ item.name }}</bdi></span></a>{% endfor %}</div></nav>
+    <div class="v-scene-caption"><p id="service-hint">سرویس موردنظرتون رو انتخاب کنید.</p><button type="button" class="v-motion-toggle" data-hero-toggle aria-pressed="false" hidden>{% include 'storefront/icon.html' with name='pause' %}<span>توقف حرکت</span></button></div>
   </div>
-</section>
-
-{% comment %}What is true of every product (apps/catalog/promises.py) and when a
-person answers. Payment, refund and warranty lines come back here when the
-shop has decided what it commits to; the footer row is hidden on this page
-because this one says the same.{% endcomment %}
-<section class="promises">
-  <div class="wrap promises__row">
-    {% for promise in promises %}<div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/></svg>
-      <span>{{ promise.text }}</span>
-    </div>{% endfor %}
-    <div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z"/></svg>
-      <span>پشتیبانی {{ support.hours }}</span>
-    </div>
-  </div>
-</section>
-
-<div class="wrap page">
-
-  {% if discounted %}
-  <section class="section">
-    <div class="deals">
-      {% comment %}No line under the heading: the time left is on each card's badge,
-      and some discounts have no end at all.{% endcomment %}
-      <div class="deals__said">
-        <h2 class="deals__title">تخفیف‌ها</h2>
-      </div>
-      <div class="deals__grid">
-        {% for product in discounted %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
-      </div>
-    </div>
-  </section>
-  {% endif %}
-
-  <section class="section" id="products">
-    {% comment %}
-    One grid of everything told a visitor nothing about what kind of shop this
-    is; the same products under their department headings do. Grouping here
-    rather than on the category pages, because this is the page someone lands
-    on — the department page is where you go once you know which one you want.
-
-    Every active product is in exactly one of these groups: the group list is
-    built from the same ACTIVE filter the grid is, so nothing can quietly fall
-    between two headings. A test holds that.
-    {% endcomment %}
-    <div class="section__head">
-      <h2 class="section__title">محصولات</h2>
-      <span class="small" style="margin: 0">{{ featured|length|fa_digits }} محصول</span>
-    </div>
-    {% for cat, items in by_category %}
-      <div class="shelf">
-        <div class="shelf__head">
-          <h3 class="shelf__title">{{ cat.name }} <span class="shelf__n">{{ cat.product_count|fa_digits }} محصول</span></h3>
-          <a class="shelf__all" href="{% url 'category' cat.slug %}">
-            مشاهده‌ی همه
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
-          </a>
-        </div>
-        <div class="grid">
-          {% for product in items %}{% if forloop.first and forloop.parentloop.first %}{% include "catalog/_card.html" with product=product first=True %}{% else %}{% include "catalog/_card.html" with product=product first=False %}{% endif %}{% endfor %}
-        </div>
-      </div>
-    {% empty %}
-      <div class="card empty">
-        <p class="prose" style="margin:0">فعلاً محصولی برای فروش نداریم.</p>
-      </div>
-    {% endfor %}
-  </section>
-
-  {% comment %}
-  Three questions, not six: the ones a first-time buyer asks before paying a
-  shop they have not used. The rest are on the FAQ page, which this links to.
-  «سفارش تحویل نشد، پول برمی‌گرده؟» was the third, and it answers again
-  once the shop has a written refund policy to quote. details/summary, so it
-  opens with JavaScript off.
-  {% endcomment %}
-  <section class="section">
-    <div class="section__head">
-      <h2 class="section__title">پرسش‌های متداول</h2>
-      <a class="small" style="margin: 0" href="{% url 'faq' %}">همه‌ی پرسش‌ها</a>
-    </div>
-    <div class="qa">
-      <details class="qa__item">
-        <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
-        <div class="qa__a"><p class="prose">به محصول بستگی دارد. نوع هر محصول در مشخصاتش آمده است: روی اکانت خودتان، اکانت آماده‌ی اختصاصی یا اکانت آماده‌ی اشتراکی.</p></div>
-      </details>
-      <details class="qa__item">
-        <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
-        <div class="qa__a"><p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانتتان را می‌پرسیم.</p></div>
-      </details>
-      <details class="qa__item">
-        <summary class="qa__q">تحویل چقدر طول می‌کشه؟</summary>
-        <div class="qa__a"><p class="prose">{% include "catalog/_delivery_answer.html" %}</p></div>
-      </details>
-    </div>
-  </section>
+</div></section>
+<div class="v-wrap">
+  <section class="v-discover" aria-labelledby="discover-title"><div><h2 id="discover-title">دسته‌بندی محصولات</h2></div><div class="v-category-links">{% for cat in nav_categories %}<a href="{% url 'category' cat.slug %}"><span class="v-category-icon">{% include 'storefront/category-icon.html' with slug=cat.slug %}</span><span>{{ cat.name }}<small>{{ cat.product_count|fa_digits }} محصول</small></span>{% include 'storefront/icon.html' with name='arrow' %}</a>{% endfor %}</div></section>
 </div>
+{% if discounted %}
+<section class="v-offers-band"><div class="v-wrap v-section" data-rail data-auto="true" aria-labelledby="offers-title">
+  <div class="v-section__head"><div><h2 id="offers-title"><span class="v-section-mark">{% include 'storefront/icon.html' with name='tag' %}</span>تخفیف‌های فعلی</h2></div>{% include 'storefront/controls.html' with automatic=True %}</div>
+  <div class="v-track" data-rail-track tabindex="0" aria-label="محصولات دارای تخفیف">{% for product in discounted %}{% include 'catalog/_card.html' with first=True %}{% empty %}<div class="v-empty">فعلاً محصولی برای فروش نداریم.</div>{% endfor %}</div>{% include 'storefront/meter.html' %}
+</div></section>
+{% endif %}
+<div class="v-wrap v-catalog" id="products"><div class="v-catalog__intro"><h2>محصولات فروشگاه</h2></div>
+{% for cat, items in by_category %}<section class="v-section v-category-section" data-rail aria-labelledby="category-{{ cat.pk }}"><div class="v-section__head"><div class="v-category-heading"><span class="v-category-icon">{% include 'storefront/category-icon.html' with slug=cat.slug %}</span><div><h2 id="category-{{ cat.pk }}">{{ cat.name }}</h2><p>{{ cat.product_count|fa_digits }} محصول</p></div></div><div class="v-section__actions"><a class="v-view-all" href="{% url 'category' cat.slug %}">دیدن همه{% include 'storefront/icon.html' with name='arrow' %}</a>{% include 'storefront/controls.html' %}</div></div><div class="v-track" data-rail-track tabindex="0" aria-label="محصولات {{ cat.name }}">{% for product in items %}{% include 'catalog/_card.html' with first=True %}{% empty %}<div class="v-empty">فعلاً محصولی برای فروش نداریم.</div>{% endfor %}</div>{% include 'storefront/meter.html' %}</section>{% empty %}<p class="v-empty">فعلاً محصولی برای فروش نداریم.</p>{% endfor %}
+</div>
+<section class="v-faq-band"><div class="v-wrap v-faq"><div><h2>سؤال‌های پرتکرار</h2><a class="v-view-all" href="{% url 'faq' %}">سؤال‌های بیشتر{% include 'storefront/icon.html' with name='arrow' %}</a></div><div class="v-faq__items"><details><summary>اشتراک روی اکانت خودم فعال می‌شه؟{% include 'storefront/icon.html' with name='plus' %}</summary><p>توی صفحه‌ی هر محصول نوشته شده که اشتراک روی اکانت خودتونه یا با اکانت آماده تحویل داده می‌شه.</p></details><details><summary>برای انتخاب اشتراک کمکم می‌کنید؟{% include 'storefront/icon.html' with name='plus' %}</summary><p>بله، توی تلگرام بگید کدوم سرویس رو می‌خواید و برای چه کاری بهش نیاز دارید.</p></details><details><summary>چقدر طول می‌کشه تا اشتراکم رو تحویل بگیرم؟{% include 'storefront/icon.html' with name='plus' %}</summary><p>{% include 'catalog/_delivery_answer.html' %}</p></details></div></div></section>
 {% endblock %}

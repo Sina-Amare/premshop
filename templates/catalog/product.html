@@ -41,16 +41,17 @@
     {% if product.short_description %}<p class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
 
     {% comment %}
-    The ledger is also the index of answers: each row is the short answer and
-    a jump to the long one. Renewal is left out where the product does not
+    The ledger keeps short answers still; the named delivery link leads to
+    the explanation. Renewal is left out where the product does not
     renew, because absence claims nothing and «قابل تمدید نیست» would.
     {% endcomment %}
     <dl class="card pdp__facts answers">
-      {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{% if after_payment %}<a href="#section-{{ after_payment.pk }}">{{ product.get_delivery_type_display }}</a>{% else %}{{ product.get_delivery_type_display }}{% endif %}</dd></div>{% endif %}
-      <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v"><a href="#delivery">{{ product.delivery_display }}</a></dd></div>
-      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if before_buying_shown %}<a href="#before-buying">{% endif %}{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}{% if before_buying_shown %}</a>{% endif %}</dd></div>
+      {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{{ product.get_delivery_type_display }}</dd></div>{% endif %}
+      <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v">{{ product.delivery_display }}</dd></div>
+      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
       {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}
     </dl>
+    <a class="v-delivery-details" href="#delivery">جزئیات تحویل{% include 'storefront/icon.html' with name='arrow' %}</a>
 
     {% if specs %}
     <section class="pdp__section">
@@ -75,11 +76,11 @@
     hours appended to it. A question is the buyer talking, so it is a <dt>.
     {% endcomment %}
     <section class="pdp__section" aria-labelledby="questions-title">
-      <h2 class="pdp__h2" id="questions-title">پرسش‌های متداول</h2>
+      <h2 class="pdp__h2" id="questions-title">سؤال‌های پرتکرار</h2>
       <dl class="faq">
         {% for question in questions %}<dt>{{ question.question|bdi }}</dt><dd class="rich">{{ question.answer|markdown:"" }}</dd>{% endfor %}
-        <dt id="delivery">کِی تحویل می‌گیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت. اگر این زمان بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.{% endif %}</dd>
-        {% if product.delivery_type == "on_customer_account" %}<dt>رمز اکانتم رو باید بدم؟</dt><dd>نه. فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} را می‌پرسیم.</dd>{% endif %}
+        <dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. اگه این زمان بیرون از ساعت {{ support.hours_range }} تموم بشه، تا {{ support.opens }} صبح تحویل می‌دیم.{% endif %}</dd>
+        {% if product.delivery_type == "on_customer_account" %}<dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd>فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} رو می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
 
@@ -144,19 +145,19 @@
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p class="micro buybox__hint" id="asks-hint" hidden></p>
         <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
-          <p class="micro">پلن انتخاب‌شده و مبلغ آن</p>
+          <p class="micro">انتخاب شما</p>
           <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
         </div>
         <button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
-        <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نشده است.</p>
+        <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نیست.</p>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
       </form>
-      <p class="micro buybox__note">{{ product.delivery_sentence }}{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرط‌های خرید</a>{% endif %}</p>
+      <p class="micro buybox__note">{{ product.delivery_sentence }}{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
     </div>
-    <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
+    <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>
 </div>
 
@@ -176,8 +177,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
     </a>
   </div>
-  <div class="grid">
-    {% for other in related %}{% include "catalog/_card.html" with product=other first=False %}{% endfor %}
+  <div class="v-related" data-rail aria-label="محصولات دیگر">
+    {% include 'storefront/controls.html' %}
+    <div class="v-track" data-rail-track tabindex="0" aria-label="محصولات دیگر">
+      {% for other in related %}{% include "catalog/_card.html" with product=other first=True %}{% endfor %}
+    </div>{% include 'storefront/meter.html' %}
   </div>
 </section>
 {% endif %}
@@ -220,7 +224,7 @@
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' را می‌پرسیم.' : '';
+      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' رو می‌پرسیم.' : '';
       asks.hidden = !question;
     }
   }

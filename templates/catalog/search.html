@@ -28,14 +28,16 @@ behind one, so the message reports what happened and accuses nobody.
     <h1 class="page-head__title">جستجو</h1>
   </header>
   <div class="card empty">
-    <p class="prose" style="margin:0">جستجوها در یک دقیقه‌ی اخیر زیاد بود.</p>
-    <p class="small" style="margin:0">یک دقیقه دیگر دوباره جستجو کنید.</p>
+    <p class="prose" style="margin:0">درخواست‌های جستجو زیاد شده.</p>
+    <p class="small" style="margin:0">یک دقیقه صبر کنید و دوباره جستجو کنید.</p>
   </div>
 
 {% elif query and not results %}
   <header class="page-head">
-    <h1 class="page-head__title">برای «<bdi>{{ query }}</bdi>» محصولی پیدا نکردیم</h1>
-    {% if everything %}<p class="small page-head__intro">همه‌ی محصولات ما:</p>{% endif %}
+    <h1 class="page-head__title">محصولی پیدا نکردیم</h1>
+    <p class="small page-head__intro">جستجو برای: <bdi class="v-query">{{ query }}</bdi></p>
+    <div class="v-search-recovery"><p>دنبال سرویس دیگه‌ای هستید؟ توی تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
+    {% if everything %}<p class="small page-head__intro">می‌تونید این محصولات رو هم ببینید:</p>{% endif %}
   </header>
   {% if everything %}
     {# Each card's name is an h3; without this the outline jumps from the h1. #}
@@ -52,7 +54,7 @@ behind one, so the message reports what happened and accuses nobody.
 {% else %}
   <header class="page-head">
     {% if query %}
-      <h1 class="page-head__title">نتایج جستجو برای «<bdi>{{ query }}</bdi>»</h1>
+      <h1 class="page-head__title">نتایج جستجو: <bdi class="v-query">{{ query }}</bdi></h1>
       <p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>
     {% else %}
       <h1 class="page-head__title">جستجو</h1>

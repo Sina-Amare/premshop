@@ -1,15 +1,15 @@
 {% extends "base.html" %}{% load fa %}
 
-{% block title %}پرسش‌های متداول{% endblock %}
-{% block meta_description %}اکانت اشتراکی یا اختصاصی، رمز اکانت، زمان تحویل و تمدید: پاسخ پرسش‌هایی که پیش از خرید اشتراک می‌پرسید.{% endblock %}
+{% block title %}سؤال‌های پرتکرار{% endblock %}
+{% block meta_description %}اکانت اشتراکی یا اختصاصی، رمز اکانت، زمان تحویل و تمدید: جواب سؤال‌هایی که قبل از خرید اشتراک دارید.{% endblock %}
 
 {% block content %}
 <div class="wrap page">
-<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>پرسش‌های متداول</span></nav>
+<nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>سؤال‌های پرتکرار</span></nav>
 
 <header class="page-head">
-  <h1 class="page-head__title">پرسش‌های متداول</h1>
-  <p class="prose page-head__intro">پاسخ پرسشتان اینجا نیست؟ در تلگرام بپرسید: <bdi class="latin">{{ support.telegram }}</bdi>، {{ support.hours }}.</p>
+  <h1 class="page-head__title">سؤال‌های پرتکرار</h1>
+  <p class="prose page-head__intro">جواب سؤالتون رو پیدا نکردید؟ توی <a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}تلگرام</a> پیام بدید.</p>
 </header>
 
 {% comment %}
@@ -28,24 +28,24 @@ details/summary, so it opens with JavaScript off.
 {% endcomment %}
 <div class="qa">
   <details class="qa__item">
-    <summary class="qa__q">اکانت اشتراکیه یا مال خودمه؟</summary>
-    <div class="qa__a"><p class="prose">به محصول بستگی دارد. نوع هر محصول در مشخصاتش آمده است: روی اکانت خودتان، اکانت آماده‌ی اختصاصی یا اکانت آماده‌ی اشتراکی.</p></div>
+    <summary class="qa__q">اشتراک روی اکانت خودم فعال می‌شه؟</summary>
+    <div class="qa__a"><p class="prose">بستگی به محصول داره: فعال‌سازی روی اکانت خودتون، یا تحویل اکانت آماده‌ی اختصاصی یا اشتراکی. نوعش توی مشخصات محصول نوشته شده.</p></div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">رمز اکانت خودم رو باید بدم؟</summary>
-    <div class="qa__a"><p class="prose">نه. برای فعال‌سازی فقط ایمیل یا نام کاربری اکانتتان را می‌پرسیم.</p></div>
+    <summary class="qa__q">برای فعال‌سازی باید رمز اکانتم رو بدم؟</summary>
+    <div class="qa__a"><p class="prose">نه، فقط ایمیل یا نام کاربری اکانتتون رو می‌پرسیم.</p></div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">تحویل چقدر طول می‌کشه؟</summary>
+    <summary class="qa__q">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</summary>
     <div class="qa__a"><p class="prose">{% include "catalog/_delivery_answer.html" %}</p></div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">با آی‌پی ایران کار می‌کنه؟</summary>
-    <div class="qa__a"><p class="prose">بعضی‌هاش نه. <bdi>Netflix</bdi> و <bdi>Spotify</bdi> و <bdi>ChatGPT</bdi> فیلترشکن می‌خوان.</p></div>
+    <summary class="qa__q">با آی‌پی ایران می‌تونم از سرویس استفاده کنم؟</summary>
+    <div class="qa__a"><p class="prose">بعضی سرویس‌ها به فیلترشکن نیاز دارن، مثل <bdi>Netflix</bdi>، <bdi>Spotify</bdi> و <bdi>ChatGPT</bdi>.</p></div>
   </details>
   <details class="qa__item">
-    <summary class="qa__q">تمدید چطوریه؟</summary>
-    <div class="qa__a"><p class="prose">اگر محصولی تمدید داشته باشد، در مشخصاتش آمده است. همان اکانت را با قیمت روز تمدید می‌کنیم.</p></div>
+    <summary class="qa__q">چطور اشتراکم رو تمدید کنم؟</summary>
+    <div class="qa__a"><p class="prose">اگه محصول قابل تمدید باشه، توی مشخصاتش می‌بینید. همون اکانت رو با قیمت روز تمدید می‌کنیم.</p></div>
   </details>
 </div>
 </div>
