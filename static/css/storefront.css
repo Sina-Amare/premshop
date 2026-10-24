@@ -211,7 +211,7 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-icon--telegram{fill:currentColor;stroke:none}
 .v-hero__help .v-icon--telegram{padding:5px;border:0}
 .v-footer{position:relative;isolation:isolate;overflow:hidden}
-.v-footer::before{content:"";position:absolute;inset:0 auto auto 0;width:430px;height:300px;background:url('/static/img/constellation.svg') center/contain no-repeat;opacity:.11;pointer-events:none;z-index:-1}
+.v-footer::before{content:"";position:absolute;inset:0 auto auto 0;width:430px;height:300px;background:url('../img/constellation.svg') center/contain no-repeat;opacity:.11;pointer-events:none;z-index:-1}
 html body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select):focus{outline:none;border-color:var(--v-accent);box-shadow:0 0 0 1px var(--v-accent)}
 html body .v-search input:focus{box-shadow:none}
 .v-delivery-details{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-block:4px 16px;color:var(--v-accent);font-size:14px}
@@ -226,3 +226,13 @@ html body [aria-invalid=true]:focus,html body .field--error :is(input,textarea,s
 [data-orbit-prev] .v-icon{transform:rotate(180deg)}
 
 .v-service-name{position:relative;background:var(--v-hero-bg);box-shadow:0 0 0 5px var(--v-hero-bg);border-radius:4px}
+
+.snapshot-extras{padding-block:24px;border-bottom:1px solid var(--v-line)}
+.snapshot-extras>p{font-size:14px;line-height:1.9}
+.snapshot-extras details{margin-block:16px}
+.snapshot-extras summary{cursor:pointer;font-size:14px}
+.snapshot-highlight{outline:2px solid var(--v-accent);outline-offset:6px;scroll-margin:180px}
+
+.auth-card + :is(p,div) a,.auth-card :is(.small,.micro) a{border:1px solid #b5c4df;border-radius:4px;padding:2px 5px;background:var(--v-mint);color:var(--v-accent)}
+
+html body .buybox .stepper input.stepper__input:focus{outline:2px solid var(--v-accent);outline-offset:-2px;box-shadow:none}

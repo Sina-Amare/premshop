@@ -2,9 +2,10 @@
 
 {% block title %}{{ product.seo_title|default:product.name }}{% endblock %}
 {% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
-{% block meta_robots %}{% if preview %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block meta_robots %}{% if preview or snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
 
 {% block content %}
+{% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
 {% if preview %}
 <div class="preview-bar" role="status">
   <div class="wrap"><span class="badge badge--key">پیش‌نویس</span> این صفحه منتشر نشده است و فقط کارکنان فروشگاه آن را می‌بینند. <a href="{% url 'admin:catalog_product_change' product.pk %}">ویرایش در پنل</a></div>
@@ -14,7 +15,7 @@
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span><bdi>{{ product.name }}</bdi></span></nav>
 
 <div class="pdp">
-  <header class="pdp__head">
+  <header class="pdp__head" data-preview-target="header">
       {% if product.image %}
         <span class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="42" height="42" decoding="async"></span>
       {% else %}
@@ -38,14 +39,14 @@
   </header>
 
   <div class="pdp__main">
-    {% if product.short_description %}<p class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
+    {% if product.short_description %}<p data-preview-target="introduction" class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
 
     {% comment %}
     The ledger keeps short answers still; the named delivery link leads to
     the explanation. Renewal is left out where the product does not
     renew, because absence claims nothing and «قابل تمدید نیست» would.
     {% endcomment %}
-    <dl class="card pdp__facts answers">
+    <dl data-preview-target="facts" class="card pdp__facts answers">
       {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{{ product.get_delivery_type_display }}</dd></div>{% endif %}
       <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v">{{ product.delivery_display }}</dd></div>
       <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
@@ -56,9 +57,9 @@
     {% if specs %}
     <section class="pdp__section">
       <h2 class="pdp__h2">مشخصات</h2>
-      <table class="table spec">
+      <table data-preview-target="specs" class="table spec">
         <tbody>
-          {% for spec in specs %}<tr><th scope="row">{{ spec.title }}</th><td><bdi>{{ spec.value }}</bdi></td></tr>{% endfor %}
+          {% for spec in specs %}<tr data-preview-row="{{ spec.preview_key }}"><th scope="row">{{ spec.title }}</th><td><bdi>{{ spec.value }}</bdi></td></tr>{% endfor %}
         </tbody>
       </table>
     </section>
@@ -75,22 +76,22 @@
     note, when there is one, is the whole answer: a sentence cannot have the
     hours appended to it. A question is the buyer talking, so it is a <dt>.
     {% endcomment %}
-    <section class="pdp__section" aria-labelledby="questions-title">
+    <section data-preview-target="questions" class="pdp__section" aria-labelledby="questions-title">
       <h2 class="pdp__h2" id="questions-title">سؤال‌های پرتکرار</h2>
       <dl class="faq">
-        {% for question in questions %}<dt>{{ question.question|bdi }}</dt><dd class="rich">{{ question.answer|markdown:"" }}</dd>{% endfor %}
+        {% for question in questions %}<dt data-preview-row="{{ question.preview_key }}">{{ question.question|bdi }}</dt><dd class="rich">{{ question.answer|markdown:"" }}</dd>{% endfor %}
         <dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. اگه این زمان بیرون از ساعت {{ support.hours_range }} تموم بشه، تا {{ support.opens }} صبح تحویل می‌دیم.{% endif %}</dd>
         {% if product.delivery_type == "on_customer_account" %}<dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd>فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} رو می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
 
-    {% if product.facts_checked_on %}<p class="small pdp__checked">آخرین بررسی: {{ product.facts_checked_on|jalali }}</p>{% endif %}
+    {% if product.facts_checked_on %}<p data-preview-target="checked" class="small pdp__checked">آخرین بررسی: {{ product.facts_checked_on|jalali }}</p>{% endif %}
   </div>
 
   <aside class="pdp__buy">
     <div class="card buybox">
       {% comment %}The stalest confirmation among this product's plans, never the freshest.{% endcomment %}
-      {% if price_checked_since %}<p class="micro buybox__checked">قیمت‌ها بررسی‌شده از {{ price_checked_since|jalali }}</p>{% endif %}
+      {% if price_checked_since %}<p data-preview-target="price-checked" class="micro buybox__checked">قیمت‌ها بررسی‌شده از {{ price_checked_since|jalali }}</p>{% endif %}
       {% comment %}
       The add-to-cart control, complete: plan selector, quantity, one primary
       button. The cart itself arrives at S4b, which sets this form's action and
@@ -109,10 +110,10 @@
       <form class="buybox__form" method="post" action="#" data-cart-pending>
         {% csrf_token %}
         {% if plans %}
-        <fieldset class="plans">
+        <fieldset data-preview-target="plans" class="plans">
           <legend class="buybox__label">{% if product.delivery_type == "gift_card" %}مبلغ کارت{% else %}مدت اشتراک{% endif %}</legend>
           {% for plan in plans %}
-            <label class="plan{% if not plan.is_available %} plan--off{% endif %}">
+            <label data-preview-row="{{ plan.preview_key }}" class="plan{% if not plan.is_available %} plan--off{% endif %}">
               <input type="radio" name="plan" value="{{ plan.id }}"
                      {% if not plan.is_available %}disabled{% elif plan == available_plans.0 %}checked{% endif %}
                      data-max="{{ plan.max_quantity }}"

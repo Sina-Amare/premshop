@@ -17,9 +17,9 @@ after a refused save, `original` holds the status that was refused.
 
     {% if has_absolute_url and original.status != "unavailable" %}
         {% if original.is_live_in_db %}
-            {% trans 'View on site' as title %}
+            {% translate "صفحه‌ی ذخیره‌شده در سایت" as title %}
         {% else %}
-            {% translate "پیش‌نمایش" as title %}
+            {% translate "پیش‌نمایش نسخه‌ی ذخیره‌شده" as title %}
         {% endif %}
         {% include "unfold/helpers/tab_action.html" with title=title link=absolute_url blank=1 icon="open_in_new" %}
     {% endif %}

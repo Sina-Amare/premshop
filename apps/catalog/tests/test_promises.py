@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 # Where the shell prints promises: the strip over every page, the footer row
 # and the home page's row.
-SITE_WIDE = ("hdr__promise", "ftr__promise", "promises__row")
+SITE_WIDE = ("v-support", "v-footer__contact")
 
 # Claims nothing backs yet. Payment waits on the gateway (S5) and on the
 # owner's ruling about what to say before it; refunds and warranty terms on
@@ -124,7 +124,13 @@ def test_the_shell_prints_only_what_the_source_holds(client, catalogue):
     """Every word in the site-wide regions comes from the promise source or the
     support details. A literal typed into a template, the way «گارانتی تا
     پایان دوره» was, leaves words over and fails here."""
-    allowed = [support.details()["hours"], "پشتیبانی", "·", *(p.text for p in PROMISES)]
+    allowed = [
+        support.details()["hours"],
+        support.details()["telegram"],
+        "پشتیبانی",
+        "·",
+        *(p.text for p in PROMISES),
+    ]
     seen = set()
     for url in pages(catalogue):
         for name, text in regions(client.get(url).content.decode()).items():
@@ -151,7 +157,7 @@ def test_no_page_makes_a_claim_nothing_backs(client, catalogue, claim):
 def test_the_region_reader_sees_a_planted_promise():
     """The control for the reader: a promise typed straight into the strip."""
     planted = (
-        '<div class="hdr__promise"><div class="wrap">پشتیبانی · گارانتی تا پایان دوره</div></div>'
+        '<div class="v-support"><div class="wrap">پشتیبانی · گارانتی تا پایان دوره</div></div>'
     )
 
-    assert "گارانتی تا پایان دوره" in regions(planted)["hdr__promise"]
+    assert "گارانتی تا پایان دوره" in regions(planted)["v-support"]

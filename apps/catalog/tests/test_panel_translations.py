@@ -23,6 +23,8 @@ PERSIAN = re.compile(r"[\u0600-\u06ff]")
 PANEL_CODE = [
     "apps/catalog/models.py",
     "apps/catalog/admin.py",
+    "apps/catalog/admin_preview.py",
+    "apps/catalog/placements.py",
     "apps/accounts/admin.py",
     # The apps' names in the path, and the sidebar's titles.
     "apps/catalog/apps.py",

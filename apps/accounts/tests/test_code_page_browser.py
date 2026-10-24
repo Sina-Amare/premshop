@@ -303,7 +303,9 @@ def shelves(db):
     return product
 
 
-def test_the_header_pins_itself_while_the_promise_strip_scrolls_away(browser, live_server, shelves):
+def test_the_header_and_category_navigation_remain_available_while_scrolling(
+    browser, live_server, shelves
+):
     """`position: sticky` fails silently — one `overflow: hidden` on an
     ancestor and it simply stops sticking, with no error anywhere. It also
     only travels inside its own parent, which is why the sticky box here is
@@ -318,21 +320,19 @@ def test_the_header_pins_itself_while_the_promise_strip_scrolls_away(browser, li
     try:
         page.goto(f"{live_server.url}/")
         assert (
-            page.evaluate(
-                "() => document.querySelector('.hdr__promise').getBoundingClientRect().top"
-            )
+            page.evaluate("() => document.querySelector('.v-header').getBoundingClientRect().top")
             == 0
         )
 
         page.evaluate("() => window.scrollTo(0, 900)")
         geometry = page.evaluate("""() => ({
-                bar: Math.round(document.querySelector('.hdr__main').getBoundingClientRect().top),
-                cats: Math.round(document.querySelector('.cats').getBoundingClientRect().top),
+                bar: Math.round(document.querySelector('.v-header__main').getBoundingClientRect().top),
+                cats: Math.round(document.querySelector('.v-navline').getBoundingClientRect().top),
                 overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             })""")
 
         assert geometry["bar"] == 0, f"the header did not pin: {geometry}"
-        assert geometry["cats"] < 0, "the shelves row should scroll away, not pin"
+        assert geometry["cats"] > 0, "category navigation should remain below the pinned header"
         assert (
             geometry["overflow"] <= 0
         ), f"the full-bleed bands overflow by {geometry['overflow']}px"

@@ -4,7 +4,7 @@ warranty, a refund exception and the usage notes come from their own fields,
 so forgetting a section cannot take them off the page. The operator's text
 follows them. `section` is the product's one section of this kind, or None. The
 view leaves it out when it would hold the warranty and nothing else.
-{% endcomment %}<section class="pdp__section" id="before-buying" aria-labelledby="before-buying-title">
+{% endcomment %}<section data-preview-row="{{ section.preview_key }}" class="pdp__section" id="before-buying" aria-labelledby="before-buying-title">
   <h2 class="pdp__h2" id="before-buying-title">{% if section.title %}{{ section.title|bdi }}{% else %}پیش از خرید{% endif %}</h2>
   <dl class="card faq essentials">
     <dt>گارانتی</dt><dd>{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd>

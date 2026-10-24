@@ -1,4 +1,4 @@
-{% load fa richtext %}{% comment %}«چه چیزهایی می‌گیرید»: one line per feature, the free tier's figure in the same line.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
+{% load fa richtext %}{% comment %}«چه چیزهایی می‌گیرید»: one line per feature, the free tier's figure in the same line.{% endcomment %}<section data-preview-row="{{ section.preview_key }}" class="pdp__section" id="section-{{ section.pk }}">
   <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
   <div class="prose rich">{{ section.body|markdown }}</div>
   {% include "catalog/sections/_image.html" %}

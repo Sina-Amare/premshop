@@ -1,7 +1,7 @@
 {% load fa richtext %}{% comment %}
 «مزیت‌ها و کاربردها»: what the product does for the buyer, one benefit per list
 item with its use under it. The look of each kind is step 3's; the markup is not.
-{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
+{% endcomment %}<section data-preview-row="{{ section.preview_key }}" class="pdp__section" id="section-{{ section.pk }}">
   <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
   <div class="prose rich">{{ section.body|markdown }}</div>
   {% include "catalog/sections/_image.html" %}

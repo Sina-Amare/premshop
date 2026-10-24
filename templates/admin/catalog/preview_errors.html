@@ -1,0 +1,1 @@
+{% load i18n %}<div role="alert"><p>{% translate "پیش‌نمایش به‌روز نشد. خطاهای فرم رو اصلاح کنید." %}</p><ul>{% for error in errors %}<li><a href="#{{ error.id }}" data-field="{{ error.id }}">{% for message in error.messages %}{{ message }}{% if not forloop.last %} · {% endif %}{% endfor %}</a></li>{% endfor %}</ul></div>

@@ -46,7 +46,7 @@
   <link rel="preload" href="{% static 'fonts/Estedad-ExtraBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% block head_extra %}{% endblock %}
-<link rel="stylesheet" href="/static/css/storefront.css">
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}">
 </head>
 <body class="v-page">{% include 'storefront/header.html' %}<main id="main" tabindex="-1">{% block content %}{% endblock %}</main>{% include 'storefront/footer.html' %}{% block scripts %}{% endblock %}
 <script>
@@ -177,5 +177,5 @@ document.querySelectorAll('form').forEach(function (form) {
   });
 });
 </script>
-<script src="/static/js/rails.js" defer></script><script src="/static/js/orbit.js" defer></script></body>
+<script src="{% static 'js/rails.js' %}" defer></script><script src="{% static 'js/orbit.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
 </html>

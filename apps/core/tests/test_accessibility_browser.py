@@ -215,12 +215,12 @@ def test_every_field_has_an_edge_a_low_vision_reader_can_find(browser, live_serv
             cell.className = 'otp__cell';
             document.querySelector('main').append(cell);
             const field = document.querySelector('main .field__input');
-            const search = document.querySelector('.hdr__search-input');
+            const search = document.querySelector('.v-search input');
             return {
                 field: [css(field).borderTopColor, css(field).backgroundColor],
                 cell: [css(cell).borderTopColor, css(cell).backgroundColor],
-                search: [css(search).borderTopColor, css(search.closest('.hdr')).backgroundColor],
-                placeholder: [css(search, '::placeholder').color, css(search).backgroundColor],
+                search: [css(search.closest('form')).borderTopColor, css(search.closest('form')).backgroundColor],
+                placeholder: [css(search, '::placeholder').color, css(search.closest('form')).backgroundColor],
             };
         }""")
     finally:
@@ -234,6 +234,8 @@ def test_every_field_has_an_edge_a_low_vision_reader_can_find(browser, live_serv
 # The focus ring each control draws: its colour, spread and blur, and what
 # surrounds it. A shadow whose spread is zero, or that is blurred, is a halo.
 RING = """e => {
+    const focused = e.matches(':focus-visible');
+    if (e.matches('.v-search input')) e = e.closest('form');
     const s = getComputedStyle(e);
     const shadow = s.boxShadow.match(/(rgba?\\([^)]*\\)) (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px (-?[0-9.]+)px/);
     let ground = 'rgb(255, 255, 255)';
@@ -242,7 +244,7 @@ RING = """e => {
         if (c !== 'rgba(0, 0, 0, 0)') { ground = c; break; }
     }
     return {
-        visible: e.matches(':focus-visible'),
+        visible: focused,
         colour: shadow && shadow[1], blur: shadow && +shadow[4], spread: shadow && +shadow[5],
         border: s.borderTopColor, ground,
     };
@@ -264,7 +266,7 @@ def test_a_focused_field_is_ringed_at_three_to_one(browser, live_server, shop):
             document.querySelector('main').append(cell);
         }""")
         rings = {}
-        for selector in ("main .field__input", "main .otp__cell", ".hdr__search-input"):
+        for selector in ("main .field__input", "main .otp__cell", ".v-search input"):
             field = page.locator(selector).first
             field.focus()
             page.wait_for_timeout(400)  # the border's colour is a transition
@@ -313,7 +315,7 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
             # «+»: at one, «−» is disabled and takes no focus.
             ("/p/chatgpt-plus/", ".stepper__btn[data-step='1']"),
             ("/p/chatgpt-plus/", ".stepper__input"),
-            ("/", ".cats__row a"),
+            ("/", ".v-desktop-cats a"),
         ]:
             page.goto(f"{live_server.url}{path}")
             assert page.evaluate(STYLED)

@@ -21,6 +21,7 @@ from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DEMO_CATALOG = False
 
 
 def _load_dotenv(path: Path) -> None:
@@ -285,7 +286,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 UNFOLD = {
     "SITE_TITLE": "PremShop",
     "SITE_HEADER": "PremShop",
-    "SITE_SUBHEADER": _("پنل مدیریت"),
+    "SITE_SUBHEADER": _("مدیریت فروشگاه"),
+    "SITE_ICON": lambda request: static("icon.svg"),
     "SITE_SYMBOL": "storefront",
     "SITE_URL": "/",
     # The shop's own mark, so the panel's tab is not the browser's blank page
@@ -300,10 +302,16 @@ UNFOLD = {
     # STYLES loads *before* Unfold's own stylesheet, which does not matter
     # here: Unfold declares --font-sans inside `@layer theme`, and unlayered
     # CSS beats a layer whatever the source order.
-    "STYLES": [lambda request: static("css/admin.css")],
+    "STYLES": [
+        lambda request: static("css/admin.css"),
+        lambda request: static("css/admin-experience.css"),
+    ],
     # The panel's own behaviour (static/js/admin.js), on every page for the
     # same reason: the icons and the Latin counters are on all of them.
-    "SCRIPTS": [lambda request: static("js/admin.js")],
+    "SCRIPTS": [
+        lambda request: static("js/admin.js"),
+        lambda request: static("js/admin-experience.js"),
+    ],
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     # Matches --radius-sm on the storefront, so the two do not look like two
@@ -338,7 +346,7 @@ UNFOLD = {
                     },
                     {
                         # The one view of every price and margin side by side.
-                        "title": capfirst(_("پلن‌ها")),
+                        "title": capfirst(_("پلن‌ها و قیمت‌ها")),
                         "icon": "sell",
                         "link": reverse_lazy("admin:catalog_plan_changelist"),
                     },
@@ -362,21 +370,21 @@ UNFOLD = {
             },
         ],
     },
-    # The brand's teal as the primary. Unfold's own default ramp is violet, and
+    # Cobalt is shared with the storefront. Unfold's own default ramp is violet, and
     # "R G B" triples are converted to rgb() for it (unfold/utils.convert_color).
     "COLORS": {
         "primary": {
-            "50": "240 249 248",
-            "100": "204 236 233",
-            "200": "153 217 211",
-            "300": "102 198 190",
-            "400": "51 179 168",
-            "500": "15 118 110",
-            "600": "13 106 99",
-            "700": "11 89 83",
-            "800": "9 71 66",
-            "900": "6 47 44",
-            "950": "3 24 22",
+            "50": "237 242 255",
+            "100": "220 230 253",
+            "200": "187 206 249",
+            "300": "145 175 241",
+            "400": "94 137 230",
+            "500": "55 105 221",
+            "600": "36 89 211",
+            "700": "25 70 176",
+            "800": "23 59 142",
+            "900": "24 51 111",
+            "950": "18 32 65",
         },
     },
 }

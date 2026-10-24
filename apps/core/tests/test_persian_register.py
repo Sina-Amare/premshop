@@ -118,7 +118,7 @@ def panel_strings() -> list[tuple[str, str]]:
 def test_the_panel_walk_reads_the_catalogue_and_the_code():
     found = panel_strings()
     assert len(found) > 200, len(found)
-    assert any(text == "ذخیره نشد. خطاهای زیر را درست کنید." for _, text in found)
+    assert any(text == "ذخیره نشد. خطاهای زیر رو اصلاح کنید." for _, text in found)
     assert any(text == "انتخاب فایل" for _, text in found)
 
 

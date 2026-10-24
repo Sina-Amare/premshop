@@ -1,4 +1,4 @@
-{% load fa richtext %}{% comment %}«مقایسه»: a small table. It scrolls inside its own box at 390px rather than push the page sideways.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
+{% load fa richtext %}{% comment %}«مقایسه»: a small table. It scrolls inside its own box at 390px rather than push the page sideways.{% endcomment %}<section data-preview-row="{{ section.preview_key }}" class="pdp__section" id="section-{{ section.pk }}">
   <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
   <div class="rich__scroll" tabindex="0"><div class="prose rich">{{ section.body|markdown }}</div></div>
   {% include "catalog/sections/_image.html" %}

@@ -3,11 +3,13 @@
 {% block title %}{{ category.seo_title|default:category.name }}{% endblock %}
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
+{% block meta_robots %}{% if snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
+{% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
 <div class="wrap page">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
 
-<header class="page-head">
+<header data-preview-target="category" class="page-head">
   <h1 class="page-head__title">{{ category.name }}</h1>
   {% comment %}Through the restricted renderer, never as markup: whoever can edit a
   category must not be able to put a script on a page customers pay on. It sits

@@ -99,7 +99,8 @@ def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(brow
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(
-            "window.orbitFrame && document.querySelector('[data-hero-scene]').dataset.orbitMode === 'orbit'", polling=50
+            "window.orbitFrame && document.querySelector('[data-hero-scene]').dataset.orbitMode === 'orbit'",
+            polling=50,
         )
         for step in range(121):
             failures = page.evaluate(
