@@ -165,7 +165,7 @@ def test_before_buying_is_printed_when_it_says_more_than_the_warranty(client, pr
     body = page(client, product)
 
     assert body.count('id="before-buying"') == 1
-    assert '<a href="#before-buying">گارانتی و شرط‌های خرید</a>' in body
+    assert '<a href="#before-buying">گارانتی و شرایط خرید</a>' in body
 
 
 def test_before_buying_puts_the_operators_text_after_the_facts_once(client, product):
@@ -185,7 +185,7 @@ def test_before_buying_puts_the_operators_text_after_the_facts_once(client, prod
     assert body.count('id="before-buying"') == 1
     assert headings(body).count("پیش از خرید") == 1
     # Fixed below the other sections whatever its sort order.
-    assert headings(body)[-2:] == ["پیش از خرید", "پرسش‌های متداول"]
+    assert headings(body.split("<footer", 1)[0])[-2:] == ["پیش از خرید", "سؤال‌های پرتکرار"]
 
 
 @pytest.mark.parametrize("notes", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
@@ -226,20 +226,16 @@ def answers(body: str) -> str:
     return body.split('class="card pdp__facts answers"', 1)[1].split("</dl>", 1)[0]
 
 
-def test_each_answer_jumps_to_where_it_is_said_in_full(client, product):
+def test_fact_summary_is_plain_text_and_delivery_has_a_named_link(client, product):
     steps = section(product, Kind.AFTER_PAYMENT, "۱. فعال‌سازی")
-
-    index = answers(page(client, product))
-
-    assert (
-        f'<dt class="fact__k">اکانت</dt><dd class="fact__v"><a href="#section-{steps.pk}">' in index
-    )
-    assert '<a href="#delivery">تا ۱۲ ساعت</a>' in index
-    assert (
-        '<dt class="fact__k">گارانتی</dt><dd class="fact__v"><a href="#before-buying">تا پایان دوره</a>'
-        in index
-    )
-    assert "تمدید" not in index
+    body = page(client, product)
+    summary = answers(body)
+    assert "<a " not in summary
+    assert '<dt class="fact__k">اکانت</dt>' in summary
+    assert "تا ۱۲ ساعت" in summary and "تا پایان دوره" in summary
+    assert 'class="v-delivery-details" href="#delivery"' in body
+    assert 'id="delivery"' in body and f'id="section-{steps.pk}"' in body
+    assert "تمدید" not in summary
 
 
 def test_a_code_is_not_called_an_account(client, product):
@@ -334,6 +330,5 @@ def test_the_buy_box_links_to_the_conditions(client, product):
     body = page(client, product)
 
     assert (
-        '<a href="#before-buying">گارانتی و شرط‌های خرید</a>'
-        in body.split('class="pdp__buy"', 1)[1]
+        '<a href="#before-buying">گارانتی و شرایط خرید</a>' in body.split('class="pdp__buy"', 1)[1]
     )

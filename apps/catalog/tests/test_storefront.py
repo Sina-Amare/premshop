@@ -276,16 +276,22 @@ def test_the_downloaded_marks_are_svgs_in_their_own_colours():
     files = list((Path(settings.MEDIA_ROOT) / "products").glob("*.svg"))
     assert files, "seed the catalog first"
 
-    coloured = 0
+    monochrome = {
+        "amazon-gift-card",
+        "apple-gift-card",
+        "chatgpt-plus",
+        "cursor-pro",
+        "github-copilot",
+        "github-pro",
+        "runway",
+    }
     for path in files:
         body = path.read_bytes()
         assert b"<svg" in body[:400], path.name
         assert b"viewBox" in body, path.name
         assert b"<html" not in body[:400].lower(), f"{path.name} is an error page"
-        if re.search(rb"#(?!000000\b|000\b)[0-9A-Fa-f]{3,6}", body):
-            coloured += 1
-    # Apple, OpenAI and GitHub Copilot really are black marks; most are not.
-    assert coloured >= len(files) - 3, f"only {coloured}/{len(files)} marks carry a brand colour"
+        if path.stem not in monochrome:
+            assert re.search(rb"#(?!000000\b|000\b)[0-9A-Fa-f]{3,6}", body), path.name
 
 
 # --- Performance budget ------------------------------------------------------
