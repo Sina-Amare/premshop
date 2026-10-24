@@ -121,6 +121,48 @@ def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(brow
         page.wait_for_function(
             "document.querySelector('[data-hero-scene]').dataset.orbitMode === 'still'", polling=50
         )
-        assert page.locator(".nebula__item:visible").count() == 8
+        assert page.locator(".nebula__item:visible").count() == 6
+    finally:
+        page.close()
+
+
+def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browser, live_server):
+    category = Category.objects.create(name="محصولات", slug="services")
+    names = [
+        "Claude Pro",
+        "GitHub Copilot",
+        "Spotify Premium",
+        "Apple Gift Card",
+        "ChatGPT Plus",
+        "JetBrains All Products",
+        "YouTube Premium",
+        "Google Play Gift Card",
+    ]
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=names[i % 8], slug=f"service-{i}", status="active")
+            for i in range(24)
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 1050})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(
+            "document.querySelector('[data-hero-scene]').dataset.orbitMode !== undefined"
+        )
+        assert page.locator("[data-hero-scene]").get_attribute("data-orbit-mode") == "orbit"
+        assert page.locator(".nebula__item:visible").count() == 6
+        assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
+        seen = []
+        while True:
+            seen.extend(
+                page.locator(".nebula__item:visible").evaluate_all(
+                    'es=>es.map(e=>e.getAttribute("href"))'
+                )
+            )
+            if page.locator("[data-orbit-next]").is_disabled():
+                break
+            page.locator("[data-orbit-next]").click()
+        assert len(seen) == len(set(seen)) == 24
     finally:
         page.close()

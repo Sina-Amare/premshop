@@ -39,7 +39,19 @@
   };
   const layout = () => {
     const focusIndex = items.indexOf(document.activeElement);
-    size = innerWidth >= 1200 ? 8 : 6;
+    size = 6;
+    if (desktop.matches) {
+      // Choose one capacity for the whole catalog so paging never repeats items.
+      scene.dataset.orbitCapacity = '8';
+      scene.classList.add('is-orbital');
+      items.forEach(item => {item.hidden=false;item.style.transform='';});
+      const width=track.clientWidth, height=track.clientHeight;
+      const maxW=Math.max(0,...items.map(item=>item.offsetWidth));
+      const maxH=Math.max(0,...items.map(item=>item.offsetHeight));
+      const rx=(width-maxW)/2-12, ry=(height-maxH)/2-12, chord=2*Math.sin(Math.PI/8);
+      if (items.length<=3 || (rx>0 && ry>0 && ((maxW+16)/(chord*rx))**2 + ((maxH+16)/(chord*ry))**2 <= 1)) size=8;
+    }
+    scene.dataset.orbitCapacity=String(size);
     if (focusIndex >= 0) start = Math.floor(focusIndex / size) * size;
     else start = Math.min(Math.floor(start / size) * size, Math.max(0, Math.ceil(items.length / size) - 1) * size);
     group = items.slice(start, start + size);
@@ -47,7 +59,8 @@
     controls.hidden = items.length <= size;
     previous.disabled = start === 0;
     next.disabled = start + size >= items.length;
-    range.textContent = items.length ? `${digits.format(start + 1)} تا ${digits.format(start + group.length)} از ${digits.format(items.length)} سرویس` : 'فعلاً سرویسی نداریم';
+    range.textContent = items.length ? `${digits.format(start+1)}–${digits.format(start+group.length)} / ${digits.format(items.length)}` : '۰ / ۰';
+    range.setAttribute('aria-label', `${digits.format(start+1)} تا ${digits.format(start+group.length)} از ${digits.format(items.length)} سرویس`);
     orbital = desktop.matches && group.length > 3;
     scene.classList.toggle('is-orbital', orbital);
     points = group.map(item => ({w:item.offsetWidth, h:item.offsetHeight}));
