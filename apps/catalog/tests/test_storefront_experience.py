@@ -25,3 +25,37 @@ def test_delivery_facts_are_text_with_an_explicit_details_link(client, db):
     assert 'class="v-delivery-details" href="#delivery"' in body
     assert '<a href="#delivery">تا' not in body
     assert 'id="delivery"' in body
+
+
+def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client, db):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from apps.catalog.models import Category, Product
+
+    categories = [
+        Category.objects.create(name=f"گروه {i}", slug=f"group-{i}", sort_order=i) for i in range(3)
+    ]
+    expected = []
+    for i in range(10):
+        for category in categories:
+            expected.append(
+                Product.objects.create(
+                    category=category,
+                    name=f"Service {category.pk}-{i}",
+                    slug=f"service-{category.pk}-{i}",
+                    status="active",
+                ).pk
+            )
+    Product.objects.create(category=categories[0], name="Draft", slug="draft", status="draft")
+    Product.objects.create(
+        category=categories[0], name="Unavailable", slug="unavailable", status="unavailable"
+    )
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(reverse("home"))
+    assert [p.pk for p in response.context["shelf"]] == expected
+    assert len(queries) == 5
+    body = response.content.decode()
+    assert body.count('class="nebula__item"') == 30
+    assert "data-orbit-next" in body
+    assert "data-orbit-range" in body

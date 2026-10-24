@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import datetime
+from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
@@ -72,7 +73,19 @@ def home(request: HttpRequest) -> HttpResponse:
     # mark you can tap. It answers a different question from the cards below
     # ("do you have it" rather than "what does it cost"), so it carries no
     # plans and needs none of the prefetching the cards do: one flat query.
-    shelf = Product.objects.public().order_by("name").only("name", "slug", "image")
+    index = list(
+        Product.objects.public()
+        .order_by("created_at", "id")
+        .only("name", "slug", "image", "category_id", "created_at")
+    )
+    shelf = [
+        item
+        for group in zip_longest(
+            *[[item for item in index if item.category_id == cat.pk] for cat in categories]
+        )
+        for item in group
+        if item is not None
+    ]
     # Real discounts only. `promotion_is_active` consults the window as well as
     # the price, so a promotion whose end date has passed drops out of this row
     # on its own — a shop that advertises an expired discount has done worse

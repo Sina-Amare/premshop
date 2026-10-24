@@ -97,9 +97,12 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 /* The document already reserves the sticky header height. */
 .v-catalog{scroll-margin-top:0}
 
-/* Targets stay still while the illustrated plates float within them. */
-.v-service-cloud{--service-plate:94px;--service-logo:48px;min-width:0;width:100%;max-width:540px;justify-self:center;padding-block:0}
-.v-service-cloud .nebula{display:block;position:relative;height:414px;padding:0;isolation:isolate}
+/* All links remain available when scripts or motion are unavailable. */
+.v-service-cloud{--service-plate:80px;--service-logo:42px;min-width:0;width:100%;max-width:640px;justify-self:center}
+.v-service-cloud .nebula{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:20px 10px;position:relative;padding:22px 0;isolation:isolate}
+.v-service-cloud .nebula__item{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:4px;color:var(--v-ink);min-width:0;inline-size:auto;block-size:auto;transition:none;animation:none;background:transparent;border:0;box-shadow:none}
+.v-service-cloud .nebula__item:nth-of-type(3n+2){margin-top:16px}
+.v-service-cloud .nebula__mono{font:600 32px/1 var(--font-head);color:var(--v-accent)}
 .v-orbit-scene{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:-1}
 .v-service-effects{position:absolute;inset:0;inline-size:100%;block-size:100%;pointer-events:none;z-index:-1;overflow:hidden}
 .v-effect{stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
@@ -125,22 +128,11 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
   .is-animated .v-equalizer__bar:nth-of-type(2n){animation-delay:-1.7s}
   .is-paused .v-service-effects *{animation-play-state:paused}
 }
-.v-service-cloud .nebula__item{
-  position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;
-  inline-size:29%;block-size:auto;min-width:0;padding:8px 3px;border:0;border-radius:0;background:transparent;box-shadow:none;
-  color:var(--v-ink);text-decoration:none;animation:none;transform:none;transition:none
-}
 .v-service-mark{
   display:grid;place-items:center;inline-size:var(--service-plate);block-size:var(--service-plate);flex:none;
   background:#fff;border:1px solid #d8dfe9;border-radius:24%;box-shadow:0 7px 15px -10px #20252e40;
   animation:none;transform:rotate(var(--plate-turn,0deg));transition:border-color 160ms,box-shadow 160ms
 }
-.v-service-cloud [data-service="chatgpt-plus"]{--service-scale:1.10;--service-plate:104px;--plate-turn:2deg;left:69%;top:29px}
-.v-service-cloud [data-service="claude-pro"]{--service-scale:1.08;--plate-turn:-2deg;--float-delay:-5s;left:36%;top:3px}
-.v-service-cloud [data-service="gemini-advanced"]{--service-scale:1.04;--service-plate:84px;--plate-turn:3deg;--float-delay:-9s;left:2%;top:75px}
-.v-service-cloud [data-service="spotify-premium"]{--service-scale:.96;--service-plate:104px;--plate-turn:-2deg;--float-delay:-7s;left:69%;top:213px}
-.v-service-cloud [data-service="netflix"]{--service-plate:84px;--plate-turn:2deg;--float-delay:-3s;left:38%;top:202px}
-.v-service-cloud [data-service="jetbrains-all"]{--plate-turn:-3deg;--float-delay:-11s;left:3%;top:244px}
 .v-service-cloud .nebula__item img{inline-size:calc(var(--service-logo)*var(--service-scale,1));block-size:calc(var(--service-logo)*var(--service-scale,1));max-inline-size:100%;max-block-size:100%;object-fit:contain;transform:rotate(calc(-1 * var(--plate-turn,0deg)))}
 .v-service-name{display:block;width:100%;min-height:39px;font-size:12px;font-weight:500;line-height:1.6;text-align:center}
 .v-service-name bdi{display:block;overflow-wrap:anywhere}
@@ -154,34 +146,17 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 .v-motion-toggle{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 6px;border:0;background:transparent;color:var(--v-text);font-size:12px;white-space:nowrap;cursor:pointer}
 .v-motion-toggle .v-icon{width:15px;height:15px}
 .v-motion-toggle:hover{color:var(--v-accent)}
-@keyframes constellation-float{0%,100%{transform:translateY(-3px) rotate(var(--plate-turn,0deg))}50%{transform:translateY(3px) rotate(var(--plate-turn,0deg))}}
-@media(min-width:1001px) and (prefers-reduced-motion:no-preference){
-  .is-animated .v-service-mark{animation:constellation-float 12s ease-in-out var(--float-delay,0s) infinite}
-  .is-paused .v-service-mark{animation-play-state:paused}
-}
-.page-head__intro a{text-decoration:none}
-@media(min-width:761px) and (max-width:1000px){
-  .v-service-cloud{--service-logo:36px}
-  .v-service-cloud .nebula{height:330px}
-  .v-service-cloud .nebula__item{--service-plate:70px;gap:8px;padding-block:6px}
-  .v-service-cloud [data-service="gemini-advanced"]{top:54px}
-  .v-service-cloud [data-service="spotify-premium"]{top:165px}
-  .v-service-cloud [data-service="netflix"]{top:145px}
-  .v-service-cloud [data-service="jetbrains-all"]{top:193px}
-}
-@media(max-width:760px){
-  .v-service-cloud{--service-logo:36px;max-width:460px}
-  .v-service-cloud .nebula{height:300px}
-  .v-service-cloud .nebula__item{--service-plate:64px;gap:8px;padding:6px 2px;inline-size:31%}
-  .v-service-cloud [data-service="chatgpt-plus"]{--service-plate:72px;left:67%;top:20px}
-  .v-service-cloud [data-service="claude-pro"]{left:34%;top:0}
-  .v-service-cloud [data-service="gemini-advanced"]{left:0;top:41px}
-  .v-service-cloud [data-service="spotify-premium"]{--service-plate:72px;left:68%;top:156px}
-  .v-service-cloud [data-service="netflix"]{left:35%;top:136px}
-  .v-service-cloud [data-service="jetbrains-all"]{left:1%;top:171px}
-  .v-service-name{font-size:12px;min-height:38px}
-  .v-scene-caption{min-height:28px}
-}
+
+.v-orbit-controls{display:flex;align-items:center;justify-content:center;gap:16px;min-height:44px;margin-block:12px 4px;font-size:12px;color:var(--v-text)}
+.v-orbit-controls button{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--v-line);border-radius:50%;background:#fff;cursor:pointer;color:var(--v-ink)}
+.v-orbit-controls button:disabled{opacity:.35;cursor:default}
+.v-service-cloud.is-orbital .nebula{height:640px;display:block;padding:0}
+.v-service-cloud.is-orbital .nebula__item{position:absolute;left:0;top:0;width:112px;margin:0;will-change:transform}
+.v-service-name{min-height:0;font-size:12px;line-height:1.6;flex:none}
+.v-service-cloud .v-service-mark{animation:none;transform:none}
+.v-service-cloud .nebula__item img{transform:none}
+@media(min-width:1200px){.v-hero__inner{grid-template-columns:.9fr 1.3fr;gap:48px}.v-hero__lead{max-width:420px}}
+@media(max-width:760px){.v-service-cloud{--service-plate:66px;--service-logo:36px;max-width:460px}.v-service-cloud .nebula{gap:12px 6px}.v-service-cloud .nebula__item{padding:4px 0}.v-service-name{font-size:12px}.v-scene-caption{flex-wrap:wrap;gap:4px 12px}}
 
 /* Shape cues keep prose links identifiable without underlines. */
 html body a:any-link,html body a:any-link:is(:hover,:focus-visible){text-decoration:none}
@@ -247,3 +222,7 @@ html body .v-search input:focus{box-shadow:none}
 .v-footer nav a:has(.v-icon--telegram){display:flex;align-items:center;gap:7px}
 .v-footer nav .v-icon--telegram{width:16px;height:16px}
 html body [aria-invalid=true]:focus,html body .field--error :is(input,textarea,select):focus{border-color:var(--color-danger,#bd2d35);box-shadow:0 0 0 1px var(--color-danger,#bd2d35)}
+
+[data-orbit-prev] .v-icon{transform:rotate(180deg)}
+
+.v-service-name{position:relative;background:var(--v-hero-bg);box-shadow:0 0 0 5px var(--v-hero-bg);border-radius:4px}
