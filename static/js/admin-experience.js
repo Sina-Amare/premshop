@@ -139,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click',()=>open(button,{key:placement[0],row:match && placement[0]!=='header' ? `${match[1]}-${match[2]}` : model==='plan'?'plan':null}));
         note.append(button);
       }
-      const fieldContainer = control.closest('.field-box,.form-row,td') || control.parentElement;
+      const line=control.closest('.field-line');
+      const fieldContainer = line?.querySelector(':scope > .grow') || control.closest('td,.field-box') || control.parentElement;
       fieldContainer.append(note);
     }
   };

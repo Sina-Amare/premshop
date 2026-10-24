@@ -192,3 +192,12 @@ def test_late_snapshot_response_cannot_replace_a_newer_one(open_panel, product):
     )
     page.wait_for_timeout(100)
     expect(frame.locator("h1")).to_have_text("Newer")
+
+
+def test_field_guidance_aligns_below_its_input(open_panel, product):
+    page = open_panel(change_form(product))
+    control = page.locator("#id_name").bounding_box()
+    note = page.locator("[data-snapshot-field=name]").locator("..").bounding_box()
+    assert note["x"] >= control["x"] - 1
+    assert note["x"] + note["width"] <= control["x"] + control["width"] + 1
+    assert note["y"] >= control["y"] + control["height"]

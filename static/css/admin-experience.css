@@ -72,3 +72,8 @@ body.snapshot-modal{overflow:hidden}
 @media(max-width:1279px){.snapshot-panel{inset:0;width:100%;border:0;border-radius:0}.snapshot-panel header{padding-top:max(12px,env(safe-area-inset-top))}.snapshot-panel button{min-height:44px}}
 
 @media(max-width:1279px){[data-snapshot-expand]{display:none}}
+
+@media(min-width:1280px){
+  body.snapshot-open:not(.snapshot-modal) .field-row,body.snapshot-open:not(.snapshot-modal) .field-line{flex-direction:column;align-items:stretch}
+  body.snapshot-open:not(.snapshot-modal) .field-line>div:first-child{width:auto;min-width:0;height:auto;display:block}
+}
