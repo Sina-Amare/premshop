@@ -184,6 +184,34 @@ def test_snapshot_validates_images_in_memory_without_storage_writes(
     )
 
 
+@pytest.mark.parametrize("stored_on", ["product", "section"])
+def test_snapshot_keeps_existing_image_urls_without_reading_or_writing_storage(
+    client, operator, catalogue, settings, tmp_path, stored_on
+):
+    settings.MEDIA_ROOT = tmp_path
+    obj = catalogue["draft"]
+    if stored_on == "product":
+        obj.image = "catalog/existing.svg"
+        obj.save(update_fields=["image"])
+    else:
+        ProductSection.objects.create(
+            product=obj,
+            kind="free",
+            title="Existing illustration",
+            image="catalog/existing.svg",
+            image_alt="Existing service mark",
+        )
+    data = form_of(client, reverse("admin:catalog_product_change", args=[obj.pk]))
+    with CaptureQueriesContext(connection) as queries:
+        response = client.post(reverse("admin:catalog_product_preview", args=[obj.pk]), data)
+    assert response.status_code == 200, response.content.decode()
+    assert settings.MEDIA_URL + "catalog/existing.svg" in response.content.decode()
+    assert not any(
+        q["sql"].lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for q in queries
+    )
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_every_editable_catalog_field_has_a_placement_or_behavior_note(client, operator, catalogue):
     from django.contrib import admin
     from django.test import RequestFactory

@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from django.contrib.admin.utils import flatten_fieldsets
 from django.core.exceptions import PermissionDenied
+from django.core.files.uploadedfile import UploadedFile
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import render
 from django.urls import path, reverse
@@ -27,7 +28,7 @@ class UploadedPreview:
 
 
 def preview_image(instance: Any, name: str, value: Any) -> None:
-    if value and hasattr(value, "chunks"):
+    if isinstance(value, UploadedFile):
         value.seek(0)
         encoded = base64.b64encode(value.read()).decode("ascii")
         value.seek(0)
