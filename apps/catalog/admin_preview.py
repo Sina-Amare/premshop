@@ -32,7 +32,9 @@ def preview_image(instance: Any, name: str, value: Any) -> None:
         value.seek(0)
         encoded = base64.b64encode(value.read()).decode("ascii")
         value.seek(0)
-        mime = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}[value.image.format]
+        mime = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}[
+            cast(Any, value).image.format
+        ]
         setattr(instance, name, UploadedPreview(f"data:{mime};base64,{encoded}"))
 
 
