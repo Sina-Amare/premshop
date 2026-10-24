@@ -415,13 +415,13 @@ def test_the_english_panel_keeps_its_own_digits_and_names(open_panel, product, l
     assert page.get_by_role("button", name="Search").count() >= 1
 
 
-TEAL = "rgb(15, 118, 110)"
+COBALT = "rgb(36, 89, 211)"
 
 
 @pytest.mark.parametrize(
     ("path", "start", "key", "control"),
     [
-        ("change", "select[name=warranty]", "Tab", "input[name=renewable]"),
+        ("change", "[data-snapshot-field=warranty]", "Tab", "input[name=renewable]"),
         # The button comes before the box in the markup.
         ("/admin/catalog/product/", "#searchbar", "Shift+Tab", "#searchbar-submit"),
     ],
@@ -441,7 +441,7 @@ def test_a_toggle_and_the_search_button_show_the_keyboards_place(
         "e => { const s = getComputedStyle(e); return [s.outlineStyle, s.outlineWidth, s.outlineColor]; }"
     )
     assert style != "none" and float(width.removesuffix("px")) >= 2, (style, width)
-    assert colour == TEAL, colour
+    assert colour == COBALT, colour
 
 
 # A bar pinned over the lower part of the page that overlaps the focused
