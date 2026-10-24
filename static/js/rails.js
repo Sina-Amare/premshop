@@ -70,7 +70,7 @@
         toggle.setAttribute('aria-label', ended ? 'پایان ریل محصولات' : paused ? 'شروع حرکت خودکار' : 'توقف حرکت خودکار');
         toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
       }
-      if (automatic && !paused && !hovered && visible && !document.hidden && !next.disabled) {
+      if (automatic && !paused && !hovered && !root.matches(':focus-within') && visible && !document.hidden && !next.disabled) {
         timer = setTimeout(() => { step(1); }, 6000);
       }
     };
@@ -88,6 +88,7 @@
     root.addEventListener('pointerenter', () => { hovered = true; sync(); });
     root.addEventListener('pointerleave', () => { hovered = false; sync(); });
     root.addEventListener('focusin', stop);
+    root.addEventListener('focusout', () => queueMicrotask(sync));
     track.addEventListener('wheel', stop, {passive:true});
     track.addEventListener('scroll', sync, {passive:true});
     track.addEventListener('keydown', event => {
