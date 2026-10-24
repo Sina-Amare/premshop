@@ -11,3 +11,6 @@ DEBUG = env_bool("DEBUG", True)
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 
 INTERNAL_IPS = ["127.0.0.1"]
+
+# Sample content is labelled and confined to local development.
+DEMO_CATALOG = DEBUG and env_bool("DEMO_CATALOG", False)
