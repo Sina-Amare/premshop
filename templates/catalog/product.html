@@ -116,12 +116,15 @@
                      {% if not plan.is_available %}disabled{% elif plan == available_plans.0 %}checked{% endif %}
                      data-max="{{ plan.max_quantity }}"
                      data-asks="{{ plan.customer_input_label }}">
-              <span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
-              {% if plan.is_available %}
-                {% include "catalog/_price.html" with plan=plan %}{% include "catalog/_deadline.html" with plan=plan %}
-              {% else %}
-                <span class="plan__off">فعلاً ناموجود</span>
-              {% endif %}
+              <span class="plan__details">
+                <span class="plan__line"><span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
+                  {% if plan.is_available %}{% include "catalog/_price.html" with plan=plan %}
+                  {% else %}<span class="plan__off">فعلاً ناموجود</span>{% endif %}
+                </span>
+                {% if plan.is_available and plan.promotion_is_active %}
+                <span class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
+                {% endif %}
+              </span>
             </label>
           {% endfor %}
         </fieldset>
@@ -140,6 +143,10 @@
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p class="micro buybox__hint" id="asks-hint" hidden></p>
+        <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
+          <p class="micro">پلن انتخاب‌شده و مبلغ آن</p>
+          <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
+        </div>
         <button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
         <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نشده است.</p>
         {% else %}
@@ -185,6 +192,7 @@
   var qtyRow = form.querySelector('#qty-row');
   var qty = form.querySelector('#qty');
   var asks = form.querySelector('#asks-hint');
+  var selection = form.querySelector('.buybox__selection');
   function currentPlan() { return form.querySelector('input[name=plan]:checked'); }
 
   // Each plan carries its own ceiling and its own question. Switching plan
@@ -194,6 +202,16 @@
   function applyPlan() {
     var plan = currentPlan();
     if (!plan) return;
+    if (selection) {
+      var row = plan.closest('.plan');
+      selection.querySelector('[data-selected-title]').textContent = row.querySelector('.plan__title').textContent;
+      var price = selection.querySelector('[data-selected-price]');
+      price.replaceChildren();
+      row.querySelectorAll('.price__num, .price__cur').forEach(function (part) {
+        price.appendChild(part.cloneNode(true));
+      });
+      selection.hidden = false;
+    }
     var max = parseInt(plan.getAttribute('data-max'), 10) || 1;
     if (qtyRow && qty) {
       qtyRow.hidden = max < 2;
@@ -210,6 +228,7 @@
   form.querySelectorAll('input[name=plan]').forEach(function (radio) {
     radio.addEventListener('change', applyPlan);
   });
+  document.addEventListener('prices:changed', applyPlan);
   form.querySelectorAll('.stepper__btn').forEach(function (button) {
     button.addEventListener('click', function () {
       if (!qty) return;

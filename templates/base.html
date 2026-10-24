@@ -217,6 +217,23 @@
   });
 
   function end(el) {
+    if (el.hasAttribute('data-offer-badge')) {
+      el.hidden = true;
+      return;
+    }
+    if (el.hasAttribute('data-promotion')) {
+      el.setAttribute('data-expired', '');
+      el.hidden = true;
+      var offer = el.parentElement.querySelector('[data-promotion]:not([data-expired])');
+      if (offer) offer.hidden = false;
+      return;
+    }
+    if (el.hasAttribute('data-card-price')) {
+      var current = el.closest('.pcard').querySelector('.pcard__price-state');
+      current.replaceWith(el.content.cloneNode(true));
+      el.remove();
+      return;
+    }
     if (el.classList.contains('deadline')) {
       el.textContent = 'تخفیف تمام شد';
       el.classList.add('deadline--done');
@@ -230,6 +247,7 @@
     }
     el.querySelector('.price__num').textContent = el.getAttribute('data-after');
     el.querySelectorAll('.price__was, .price__now').forEach(function (node) { node.remove(); });
+    document.dispatchEvent(new Event('prices:changed'));
   }
 
   function tick() {

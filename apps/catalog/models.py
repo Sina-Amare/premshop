@@ -27,7 +27,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.files.base import ContentFile
-from django.core.validators import URLValidator, validate_slug
+from django.core.validators import RegexValidator, URLValidator, validate_slug
 from django.db import models
 from django.db.models import F, Q
 from django.urls import reverse
@@ -427,6 +427,14 @@ class Product(ChecksNameTheirField, models.Model):
             "لوگوی محصول، PNG،\u200f JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
         ),
     )
+    brand_colour = models.CharField(
+        _("رنگ برند"),
+        max_length=7,
+        blank=True,
+        default="",
+        validators=[RegexValidator(r"\A#[0-9a-fA-F]{6}\Z", _("رنگ را مانند #10a37f وارد کنید."))],
+        help_text=_("رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."),
+    )
     delivery_type = models.CharField(
         _("نوع تحویل"),
         max_length=24,
@@ -725,6 +733,20 @@ class Product(ChecksNameTheirField, models.Model):
         plans = self.available_plans()
         return min(plans, key=lambda plan: plan.effective_price) if plans else None
 
+    @property
+    def card_colour(self) -> str:
+        return (
+            self.brand_colour if re.fullmatch(r"#[0-9a-fA-F]{6}", self.brand_colour) else "#737373"
+        )
+
+    @property
+    def discounted_plans(self) -> list[Plan]:
+        return sorted(
+            (plan for plan in self.available_plans() if plan.promotion_is_active),
+            key=lambda plan: plan.discount_percent,
+            reverse=True,
+        )
+
 
 NO_AVAILABLE_PLAN = _("هیچ پلن موجودی ندارد.")
 
@@ -998,6 +1020,14 @@ class Plan(ChecksNameTheirField, PageRow):
     @property
     def promotion_is_active(self) -> bool:
         return self.effective_price != self.sale_price
+
+    @property
+    def discount_percent(self) -> int:
+        return (
+            int((self.sale_price - self.effective_price) * 100 / self.sale_price)
+            if self.sale_price
+            else 0
+        )
 
     @property
     def promo_seconds_left(self) -> int | None:

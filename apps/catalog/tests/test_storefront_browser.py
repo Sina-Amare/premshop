@@ -89,6 +89,127 @@ def test_the_discount_clock_counts_down(browser, live_server, discounted):
 TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber means time pressure
 
 
+def test_a_maximum_price_and_currency_fit_inside_a_phone_card(browser, live_server, discounted):
+    discounted.plans.update(sale_price=999999999999, promo_price=None)
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/c/fun/")
+        assert page.evaluate(STYLED)
+        card = page.locator(".pcard").first
+        bounds = card.bounding_box()
+        for part in (".price__num", ".price__cur"):
+            box = card.locator(part).bounding_box()
+            assert box["x"] >= bounds["x"] + 8, (part, box, bounds)
+            assert box["x"] + box["width"] <= bounds["x"] + bounds["width"] - 8
+    finally:
+        context.close()
+
+
+def test_another_plans_expiry_removes_its_offer_without_changing_the_starting_price(
+    browser, live_server, discounted
+):
+    discounted.plans.create(title="شروع", cost_price=1, sale_price=200000, sort_order=1)
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.clock.install()
+        page.goto(f"{live_server.url}/c/fun/")
+        card = page.locator(".pcard").first
+        assert card.locator(".pcard__price .price__num").text_content() == "۲۰۰,۰۰۰"
+        assert card.locator(".pcard__offer:visible").count() == 1
+        page.clock.fast_forward("02:00:00")
+        assert card.locator(".pcard__offer:visible").count() == 0
+        assert card.locator(".pcard__promotion:visible").count() == 0
+        assert card.locator(".pcard__price .price__num").text_content() == "۲۰۰,۰۰۰"
+    finally:
+        context.close()
+
+
+def test_successive_expiries_keep_the_offer_and_starting_plan_accurate(
+    browser, live_server, discounted
+):
+    discounted.plans.create(
+        title="۳ ماهه",
+        cost_price=1,
+        sale_price=450000,
+        promo_price=330000,
+        promo_ends_at=timezone.now() + timedelta(hours=4),
+        sort_order=1,
+    )
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.clock.install()
+        page.goto(f"{live_server.url}/c/fun/")
+        card = page.locator(".pcard").first
+        assert "۳ ماهه" in card.locator(".pcard__promotion:visible").text_content()
+        assert card.locator(".pcard__price .price__num").text_content() == "۳۱۲,۰۰۰"
+        page.clock.fast_forward("02:00:00")
+        assert card.locator(".pcard__price .price__num").text_content() == "۳۳۰,۰۰۰"
+        assert card.locator(".pcard__from bdi").text_content() == "۳ ماهه"
+        page.clock.fast_forward("03:00:00")
+        assert card.locator(".pcard__price .price__num").text_content() == "۳۹۰,۰۰۰"
+        assert card.locator(".pcard__from bdi").text_content() == "۱ ماهه"
+        assert card.locator(".pcard__offer:visible").count() == 0
+    finally:
+        context.close()
+
+
+def test_expiring_the_highest_offer_reveals_another_active_offer(browser, live_server, discounted):
+    discounted.plans.create(
+        title="۳ ماهه",
+        cost_price=1,
+        sale_price=1000000,
+        promo_price=900000,
+        sort_order=1,
+    )
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.clock.install()
+        page.goto(f"{live_server.url}/c/fun/")
+        card = page.locator(".pcard").first
+        assert card.locator(".pcard__offer:visible").text_content().strip() == "۲۰٪ تخفیف"
+        page.clock.fast_forward("02:00:00")
+        assert card.locator(".pcard__offer:visible").text_content().strip() == "۱۰٪ تخفیف"
+        assert "۳ ماهه" in card.locator(".pcard__promotion:visible").text_content()
+    finally:
+        context.close()
+
+
+def test_selected_plan_summary_tracks_selection_and_promotion_expiry(
+    browser, live_server, discounted
+):
+    other = discounted.plans.create(
+        title="۳ ماهه",
+        cost_price=1,
+        sale_price=900000,
+        max_quantity=3,
+        sort_order=1,
+    )
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.clock.install()
+        page.goto(f"{live_server.url}/p/netflix/")
+        selected = page.locator("[data-selected-price]")
+        assert selected.locator(".price__num").text_content() == "۳۱۲,۰۰۰"
+        page.locator(f'input[name="plan"][value="{other.pk}"]').check()
+        assert page.locator("[data-selected-title]").text_content() == "۳ ماهه"
+        assert selected.locator(".price__num").text_content() == "۹۰۰,۰۰۰"
+        assert page.locator("#qty-row").is_visible()
+        first = discounted.plans.get(title="۱ ماهه")
+        page.locator(f'input[name="plan"][value="{first.pk}"]').check()
+        assert page.locator("#qty-row").is_hidden()
+        page.clock.fast_forward("02:00:00")
+        assert selected.locator(".price__num").text_content() == "۳۹۰,۰۰۰"
+        assert page.locator(".plan__promotion [data-offer-badge]:visible").count() == 0
+        assert page.locator(".buybox__cta").is_disabled()
+    finally:
+        context.close()
+
+
 @pytest.mark.parametrize(("path", "scope"), [("/p/netflix/", ".plan"), ("/c/fun/", ".pcard")])
 def test_at_zero_the_regular_price_returns_and_the_badge_stops_being_amber(
     browser, live_server, discounted, path, scope
@@ -187,7 +308,10 @@ def test_a_ticking_clock_is_not_part_of_any_name(browser, live_server, discounte
             assert box.aria_snapshot() == heard, path
             # What is heard instead: the end once, and which price is which.
             assert "تخفیف تا" in heard, heard
-            assert "قیمت قبلی" in heard and "قیمت با تخفیف" in heard, heard
+            if scope == ".plans":
+                assert "قیمت قبلی" in heard and "قیمت با تخفیف" in heard, heard
+            else:
+                assert "پلن ۱ ماهه" in heard and "۲۰٪ تخفیف" in heard, heard
     finally:
         context.close()
 

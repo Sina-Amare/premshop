@@ -604,3 +604,12 @@ msgstr "If it is taken off the shop"
 
 msgid "تا این‌ها درست نشود، دوباره منتشر نمی‌شود."
 msgstr "Until these are fixed, it cannot be published again."
+
+msgid "رنگ برند"
+msgstr "Brand color"
+
+msgid "رنگ را مانند #10a37f وارد کنید."
+msgstr "Enter a color such as #10a37f."
+
+msgid "رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."
+msgstr "Card background color, such as #10a37f. Leave blank for a neutral background."

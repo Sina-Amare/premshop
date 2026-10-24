@@ -589,7 +589,7 @@
      hold two or three products, and four narrow columns left every row with
      a hole in it; three wide ones fill the row at three and look deliberate
      at two. */
-  .shelf .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .shelf .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   /* The department is the heading above these cards. Printing it again on
      every card says the same word three times across one row. */
   .shelf .pcard__cat { display: none; }
@@ -800,46 +800,61 @@
     .dept__go { display: none; }
   }
 
-  /* The product card. The brand mark and the name share the top line, because
-     a Persian shopper scans the logo first and reads the name to confirm it.
-     Under them, the one line the buyer is actually afraid about — when it
-     arrives and what happens if it breaks — then the price at the reading
-     edge of the foot, which is where digikala, basalam and irpremium all put
-     it. A label at the start and a figure at the end is an English invoice
-     row mirrored, and it reads as one. */
-  .pcard { display: flex; flex-direction: column; text-decoration: none; color: inherit;
-           background: var(--color-surface); border: 1px solid var(--color-line);
-           border-radius: var(--radius-lg); overflow: hidden;
-           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+  /* The starting plan and another plan's offer remain separate. */
+  .grid:has(> .pcard) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pcard { position: relative; min-inline-size: 0; display: flex; flex-direction: column;
+           text-decoration: none; color: inherit; background: var(--color-surface);
+           border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow: hidden; }
   .pcard:hover { border-color: var(--color-line-strong); }
   .pcard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .pcard__top { display: flex; align-items: center; gap: var(--spacing-3);
-                padding: var(--spacing-4) var(--spacing-4) 0; }
-  .pcard__body { padding: var(--spacing-3) var(--spacing-4) var(--spacing-4); flex: 1; }
-  .pcard__cat { display: block; font-size: 13px; color: var(--color-muted); }
-  .pcard__name { font-family: var(--font-head); font-size: 17px; font-weight: 600; line-height: 1.45;
-                 color: var(--color-ink); margin: 0; }
-  .pcard__terms { display: flex; flex-wrap: wrap; gap: var(--spacing-1) var(--spacing-3);
-                  font-size: 13px; line-height: 1.75; color: var(--color-secondary);
-                  margin: var(--spacing-3) 0 0; }
-  .pcard__terms span { display: inline-flex; align-items: center; gap: 6px; }
-  .pcard__terms svg { inline-size: 15px; block-size: 15px; color: var(--color-muted); flex: none; }
-  .pcard__foot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-                 padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
-                 border-block-start: 1px solid var(--color-line); }
-  .pcard__from { font-size: 13px; line-height: 1.6; color: var(--color-muted);
-                 display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2); }
-
-  /* The deadline on a discount. Amber and tabular, so the figure does not
-     jog sideways as the seconds roll over. Once it reaches zero it stops
-     being time pressure, so it stops being amber: `.deadline--done` sits
-     after `.badge--time`, below, because the same specificity goes to
-     whichever comes last. */
+  .pcard__art { position: relative; isolation: isolate; aspect-ratio: 8 / 5; display: grid;
+                place-items: center; overflow: hidden; background: color-mix(in oklab, var(--brand) 10%, white);
+                border-block-end: 1px solid color-mix(in oklab, var(--brand) 16%, var(--color-line)); }
+  .pcard__art::before, .pcard__art::after { content: ""; position: absolute; z-index: -1;
+    inline-size: 72%; aspect-ratio: 1; border: 1px solid color-mix(in oklab, var(--brand) 13%, transparent);
+    border-radius: 50%; }
+  .pcard__art::before { inset-inline-start: -36%; inset-block-end: -70%; }
+  .pcard__art::after { inset-inline-end: -28%; inset-block-start: -74%; }
+  .pcard__art img { inline-size: 30%; max-inline-size: 76px; block-size: auto; aspect-ratio: 1; object-fit: contain; }
+  .pcard__mono { font-family: var(--font-head); font-size: 42px; }
+  .pcard__shop { position: absolute; inset-inline-end: 12px; inset-block-end: 8px;
+                 font-size: 10px; color: var(--color-secondary); }
+  .pcard__body { padding: 12px 16px; flex: 1; }
+  .pcard__cat { display: block; font-size: 12px; color: var(--color-secondary); }
+  .pcard__name { font-family: var(--font-head); font-size: 18px; font-weight: 600; line-height: 1.6;
+                 color: var(--color-ink); margin: 0; overflow-wrap: anywhere; }
+  .pcard__terms { font-size: 12px; line-height: 1.8; color: var(--color-secondary); margin: 4px 0 0; }
+  .pcard__foot { display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+                 padding: 12px 16px 16px; border-block-start: 1px solid var(--color-line); }
+  .pcard__promotion { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-inline-size: 0; }
+  .pcard__promotion[hidden] { display: none; }
+  .pcard__deal { font-size: 11px; color: var(--color-ink); }
+  .pcard__offer { position: absolute; inset-block-start: 12px; inset-inline-start: 12px;
+                  padding: 1px 7px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+                  background: var(--color-surface); color: var(--color-ink); font-size: 11px; }
+  .pcard__from { display: block; font-size: 12px; line-height: 1.7; color: var(--color-secondary); }
+  .pcard__price { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 5px; }
+  .pcard__price .price { flex-wrap: wrap; max-inline-size: 100%; row-gap: 4px; }
+  .pcard__pre { font-size: 11px; color: var(--color-secondary); }
+  .pcard__foot .price__num { font-size: 22px; }
+  .pcard__foot .price__cur { font-size: 11px; }
+  .pcard__price-state { min-inline-size: 0; max-inline-size: 100%; }
   .deadline { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .pcard__price { display: inline-flex; align-items: baseline; gap: 6px; }
-  .pcard__pre { font-size: 14px; color: var(--color-muted); }
-  .pcard__foot .price__num { font-size: 21px; }
-  .pcard:hover .tile { border-color: var(--color-line-strong); }
+  @media (max-width: 1000px) {
+    .grid:has(> .pcard), .shelf .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 700px) {
+    .grid:has(> .pcard), .shelf .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .pcard__body { padding: 10px; }
+    .pcard__foot { padding: 10px 10px 12px; }
+    .pcard__name { font-size: 16px; }
+    .pcard__terms { font-size: 11px; }
+    .pcard__foot .price__num { font-size: 18px; }
+    .pcard__foot .price__cur, .pcard__pre { font-size: 10px; }
+    .pcard__offer { inset-block-start: 8px; inset-inline-start: 8px; font-size: 10px; }
+    .pcard__shop { inset-inline-end: 8px; inset-block-end: 5px; font-size: 9px; }
+    .pcard__promotion .deadline { font-size: 10px; }
+  }
 
   /* The tile: the brand's own mark, or a monogram when there is no image.
      Both are the same shape, so a grid with and without pictures stays even.
@@ -916,7 +931,7 @@
   /* Wraps, because the row can carry a title, a struck original, a figure,
      a currency word and a deadline, and at 390px that is wider than the
      screen. Before this the row pushed the whole page sideways. */
-  .plan { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2) var(--spacing-3);
+  .plan { display: flex; align-items: flex-start; gap: var(--spacing-3);
           cursor: pointer;
           padding: 11px 12px 9px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
           transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
@@ -924,7 +939,16 @@
   .plan:hover { border-color: var(--color-muted); }
   .plan:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-tint); }
   .plan:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--color-accent-tint); }
-  .plan input { accent-color: var(--color-accent); margin: 0; }
+  .plan input { accent-color: var(--color-accent); margin: 5px 0 0; flex: none; }
+  .plan__details { flex: 1; min-inline-size: 0; }
+  .plan__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .plan__promotion { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-block-start: 6px; }
+  .plan__promotion .badge { font-size: 11px; }
+  .plan__promotion [data-offer-badge][hidden] { display: none; }
+  .buybox__selection { border-block-start: 1px solid var(--color-line); padding-block: var(--spacing-4); }
+  .buybox__selection p { margin: 0 0 var(--spacing-2); }
+  .buybox__selected { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .buybox__selected .price__num { font-size: 22px; }
   /* Grows, never shrinks: from flex-basis 0 it was squeezed to «۱» over «ماهه»
      whenever a badge fitted beside it. The badge wraps instead. */
   .plan__title { flex: 1 0 auto; font-size: 15px; color: var(--color-ink); }

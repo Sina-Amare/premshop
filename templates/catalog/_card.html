@@ -1,52 +1,27 @@
-{% load fa prices %}{% comment %}
-One product on a shelf. The whole card is the link.
-
-Mark and name share the top line; under them, delivery time and warranty,
-both read from the product's own fields so the card cannot promise what the
-product page contradicts. The price sits at the reading edge of the foot,
-where digikala, basalam and irpremium all put it.
-
-Params: product (with plans prefetched), first (True for the first card in a
-grid — its mark is an LCP candidate and must not be lazy-loaded).
-{% endcomment %}
-<a class="pcard" href="{% url 'product' product.slug %}">
-  <div class="pcard__top">
-    {% if product.image %}
-      <span class="tile"><img src="{{ product.image.url }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async" width="28" height="28"></span>
-    {% else %}
-      <span class="tile tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
-    {% endif %}
-    <span>
-      <span class="pcard__cat">{{ product.category.name }}</span>
-      {# bdi: the name is DB-supplied and almost always a Latin run inside a Persian page. #}
-      <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>
-    </span>
+{% load fa prices head %}
+<a class="pcard" href="{% url 'product' product.slug %}" style="--brand: {{ product.card_colour }}">
+  <div class="pcard__art">
+    {% if product.image %}<img src="{{ product.image.url }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async" width="76" height="76">
+    {% else %}<span class="pcard__mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>{% endif %}
+    <span class="pcard__shop" aria-hidden="true">{{ ""|shop_title }}</span>
   </div>
   <div class="pcard__body">
-    <div class="pcard__terms">
-      <span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        {{ product.delivery_sentence }}
-      </span>
-      <span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v6c0 4.2-3 7.5-7.5 9-4.5-1.5-7.5-4.8-7.5-9V6Z"/></svg>
-        {% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}
-      </span>
-    </div>
+    <span class="pcard__cat">{{ product.category.name }}</span>
+    <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>
+    <p class="pcard__terms">{{ product.delivery_sentence }}</p>
   </div>
   <div class="pcard__foot">
-    {% with plan=product.cheapest_plan next=product|lead_when_promo_ends %}
-      {% if plan %}
-        {% comment %}The plan above the figure, both at the reading edge: a price
-        and its label on one line collide the moment the figure has seven digits.
-        When the lead plan's discount ends, the countdown in base.html swaps in
-        the plan that is cheapest from then, title and price together.{% endcomment %}
-        <span class="pcard__from"><bdi{% if next and plan.promo_seconds_left %} data-left="{{ plan.promo_seconds_left }}" data-after="{{ next.title }}"{% endif %}>{{ plan.title }}</bdi>{% include "catalog/_deadline.html" with plan=plan %}</span>
-        {# No «از» before «رایگان»: nothing starts below free. #}
-        <span class="pcard__price">{% if product.available_plans|length > 1 and plan.effective_price %}<span class="pcard__pre">از</span>{% endif %}{% include "catalog/_price.html" with plan=plan after=next.price %}</span>
-      {% else %}
-        <span class="badge badge--neutral">ناموجود</span>
-      {% endif %}
-    {% endwith %}
+    {% for offer in product.discounted_plans %}
+    <div class="pcard__promotion" data-promotion{% if offer.promo_seconds_left is not None %} data-left="{{ offer.promo_seconds_left }}"{% endif %}{% if not forloop.first %} hidden{% endif %}>
+      <span class="pcard__offer" aria-hidden="true">{% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
+      <span class="pcard__deal"><bdi>{{ offer.title }}</bdi> با {% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
+      {% include "catalog/_deadline.html" with plan=offer %}
+    </div>
+    {% endfor %}
+    {% for step in product|card_price_steps %}
+      {% if not forloop.first %}<template data-card-price data-left="{{ step.left }}">{% endif %}
+      {% include "catalog/_card_price.html" %}
+      {% if not forloop.first %}</template>{% endif %}
+    {% empty %}<span class="badge badge--neutral">ناموجود</span>{% endfor %}
   </div>
 </a>
