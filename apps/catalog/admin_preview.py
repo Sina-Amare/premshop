@@ -177,9 +177,10 @@ class PreviewAdminMixin(ModelAdmin):
                     .prefetch_related("specs", "sections", "questions")
                     .get(pk=parent.pk)
                 )
-                parent.__dict__["_prefetched_objects_cache"]["plans"] = [
-                    snapshot if row.pk == snapshot.pk else row for row in parent.plans.all()
-                ]
+                parent.__dict__["_prefetched_objects_cache"]["plans"] = sorted(
+                    [row for row in parent.plans.all() if row.pk != snapshot.pk] + [snapshot],
+                    key=lambda row: (row.sort_order, row.pk),
+                )
                 cast(Any, snapshot).preview_key = "plan"
                 context = product_context(parent)
                 template = "catalog/product.html"

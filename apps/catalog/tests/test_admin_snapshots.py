@@ -212,3 +212,31 @@ def test_every_editable_catalog_field_has_a_placement_or_behavior_note(client, o
                     for name in fields
                     if name not in {"id", "product", "DELETE"}
                 )
+
+
+@pytest.mark.parametrize("move", [False, True])
+def test_standalone_plan_snapshot_honors_parent_and_order_changes(
+    client, operator, catalogue, move
+):
+    from apps.catalog.models import Plan
+
+    original = catalogue["draft"].plans.get()
+    destination = catalogue["live"] if move else catalogue["draft"]
+    if not move:
+        Plan.objects.create(
+            product=destination,
+            title="Existing first",
+            sort_order=0,
+            cost_price=1,
+            sale_price=150000,
+        )
+    data = form_of(client, reverse("admin:catalog_plan_change", args=[original.pk]), "plan_form")
+    data.update(product=str(destination.pk), sort_order="5", title="Submitted last")
+    response = client.post(reverse("admin:catalog_plan_preview", args=[original.pk]), data)
+    assert response.status_code == 200
+    plans = response.context["plans"]
+    assert plans[-1].pk == original.pk
+    assert plans[-1].title == "Submitted last"
+    assert len(plans) == 2
+    original.refresh_from_db()
+    assert original.product_id == catalogue["draft"].pk and original.title != "Submitted last"
