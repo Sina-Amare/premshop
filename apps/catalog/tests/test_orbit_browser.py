@@ -84,11 +84,17 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         page.close()
 
 
-def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(browser, live_server):
+@pytest.mark.parametrize("two_lines", [False, True])
+def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(
+    browser, live_server, two_lines
+):
     category = Category.objects.create(name="سرگرمی", slug="fun")
     products = [
         Product.objects.create(
-            category=category, name=f"Service {i}", slug=f"service-{i}", status="active"
+            category=category,
+            name="Google Play Gift Card" if two_lines else f"Service {i}",
+            slug=f"service-{i}",
+            status="active",
         )
         for i in range(8)
     ]
@@ -153,6 +159,9 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert page.locator("[data-hero-scene]").get_attribute("data-orbit-mode") == "orbit"
         assert page.locator(".nebula__item:visible").count() == 6
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
+        assert (
+            page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
+        )
         seen = []
         while True:
             seen.extend(
@@ -164,5 +173,97 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
                 break
             page.locator("[data-orbit-next]").click()
         assert len(seen) == len(set(seen)) == 24
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("javascript", [False, True])
+def test_static_modes_keep_services_reachable_without_motion(browser, live_server, javascript):
+    category = Category.objects.create(name="محصولات", slug="services")
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
+            for i in range(24)
+        ]
+    )
+    page = browser.new_page(
+        viewport={"width": 390 if not javascript else 1440, "height": 900},
+        java_script_enabled=javascript,
+        reduced_motion="reduce",
+    )
+    try:
+        page.goto(live_server.url + "/")
+        if javascript:
+            page.wait_for_function(
+                "document.querySelector('[data-hero-scene]').dataset.orbitMode==='still'"
+            )
+            assert page.locator(".nebula__item:visible").count() == 6
+        else:
+            assert page.locator(".nebula__item:visible").count() == 24
+        assert page.locator("[data-hero-toggle]").is_hidden()
+        assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
+    finally:
+        page.close()
+
+
+def test_resizing_keeps_the_focused_service_in_its_visible_group(browser, live_server):
+    category = Category.objects.create(name="محصولات", slug="services")
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
+            for i in range(9)
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 1050})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(
+            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='orbit'"
+        )
+        item = page.locator(".nebula__item").nth(7)
+        item.focus()
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_function(
+            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='still'"
+        )
+        assert item.is_visible() and item.evaluate("e=>e===document.activeElement")
+    finally:
+        page.close()
+
+
+def test_orbit_suspends_offscreen_and_on_a_visibility_event(browser, live_server):
+    category = Category.objects.create(name="محصولات", slug="services")
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
+            for i in range(8)
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 1050})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(
+            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='orbit'"
+        )
+        page.evaluate("scrollTo(0,document.body.scrollHeight)")
+        page.wait_for_timeout(200)
+        item = page.locator(".nebula__item").first
+        frozen = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(250)
+        assert item.evaluate("e=>e.style.transform") == frozen
+        page.evaluate("scrollTo(0,0)")
+        page.wait_for_timeout(300)
+        assert item.evaluate("e=>e.style.transform") != frozen
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        frozen = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(250)
+        assert item.evaluate("e=>e.style.transform") == frozen
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        page.wait_for_timeout(250)
+        assert item.evaluate("e=>e.style.transform") != frozen
     finally:
         page.close()
