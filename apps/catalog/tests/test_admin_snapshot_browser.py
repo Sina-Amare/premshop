@@ -49,8 +49,8 @@ def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, pr
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator(".pdp__title")).to_have_text("Unsaved service")
     expect(frame.locator("[data-preview-target=card] .pcard__name")).to_have_text("Unsaved service")
-    if width == 390:
-        expect(page.locator(".snapshot-panel")).to_have_attribute("aria-modal", "true")
+    expect(page.locator(".snapshot-panel")).to_have_attribute("role", "region")
+    assert page.locator("#product_form").evaluate("e=>!e.inert")
     page.locator("[data-snapshot-close]").click()
     expect(page.locator("#id_name")).to_have_value("Unsaved service")
     page.fill("#id_name", "Changed again")
@@ -213,3 +213,74 @@ def test_field_guidance_aligns_below_its_input(open_panel, product):
     assert note["x"] >= control["x"] - 1
     assert note["x"] + note["width"] <= control["x"] + control["width"] + 1
     assert note["y"] >= control["y"] + control["height"]
+
+
+@pytest.mark.parametrize("width", [390, 1024, 1280, 1440, 1920])
+def test_preview_reserves_space_without_covering_the_editor(open_panel, product, width):
+    page = open_panel(change_form(product), width=width)
+    page.locator("[data-snapshot-open]").click()
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    panel = page.locator(".snapshot-panel").bounding_box()
+    form = page.locator("#product_form").bounding_box()
+    assert panel["height"] <= 740
+    assert panel["x"] >= 0 and panel["x"] + panel["width"] <= width
+    if width >= 1024:
+        assert 320 <= panel["width"] <= 400
+        assert form["width"] >= 580
+        assert panel["x"] + panel["width"] + 15 <= form["x"]
+        page.locator("#id_name").fill("Editing beside the preview")
+        expect(page.locator("[data-snapshot-status]")).to_contain_text("فرم تغییر کرده")
+        page.locator("#id_plans-0-sale_price").scroll_into_view_if_needed()
+        panel = page.locator(".snapshot-panel").bounding_box()
+        save = page.locator("#submit-row").bounding_box()
+        assert panel["y"] >= 65
+        assert panel["y"] + panel["height"] <= save["y"]
+    else:
+        assert panel["y"] + panel["height"] + 15 <= form["y"]
+        assert page.locator("#product_form").evaluate("e=>!e.inert")
+        page.locator("[data-snapshot-close]").click()
+        expect(page.locator("[data-snapshot-open]")).to_be_focused()
+    assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_full_screen_is_explicit_and_restores_inline_editing(open_panel, product, width):
+    page = open_panel(change_form(product), width=width)
+    trigger = page.locator("[data-snapshot-field=name]")
+    trigger.click()
+    panel = page.locator(".snapshot-panel")
+    expect(panel).to_have_attribute("role", "region")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    page.locator("[data-snapshot-expand]").click()
+    expect(panel).to_have_attribute("aria-modal", "true")
+    assert page.locator("#product_form").evaluate("e=>e.inert")
+    page.locator("[data-snapshot-refresh]").focus()
+    page.keyboard.press("Shift+Tab")
+    expect(panel.locator("iframe")).to_be_focused()
+    page.locator("[data-snapshot-expand]").click()
+    expect(panel).to_have_attribute("role", "region")
+    assert page.locator("#product_form").evaluate("e=>!e.inert")
+    page.locator("[data-snapshot-close]").click()
+    expect(trigger).to_be_focused()
+    expect(page.locator("#id_name")).to_have_value(product.name)
+
+
+def test_resizing_the_preview_preserves_edits_and_field_navigation(open_panel, product):
+    page = open_panel(change_form(product))
+    page.fill("#id_name", "An unsaved name")
+    page.locator("[data-snapshot-open]").click()
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    page.set_viewport_size({"width": 390, "height": 900})
+    page.locator("[data-snapshot-field=name]").click()
+    panel = page.locator(".snapshot-panel")
+    expect(panel).to_have_attribute("role", "region")
+    assert 65 <= panel.bounding_box()["y"] <= 85
+    expect(page.frame_locator(".snapshot-panel iframe").locator(".pdp__title")).to_have_text(
+        "An unsaved name"
+    )
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.locator("#id_name").fill("Still editing")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("فرم تغییر کرده")
+    page.locator("[data-snapshot-close]").click()
+    expect(page.locator("[data-snapshot-field=name]")).to_be_focused()
+    expect(page.locator("#id_name")).to_have_value("Still editing")

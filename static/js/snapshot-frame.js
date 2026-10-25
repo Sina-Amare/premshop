@@ -2,6 +2,12 @@
   if (parent === window) return;
   const parentOrigin = new URL(document.baseURI).origin;
   let modal = false;
+  // scrollIntoView also moves the enclosing editor when the preview is inline.
+  const reveal = target => {
+    if (!target) return;
+    const box = target.getBoundingClientRect();
+    window.scrollTo({top:scrollY + box.top - Math.max(0,(innerHeight-box.height)/2),behavior:'instant'});
+  };
   document.addEventListener('keydown', event => {
     if (document.querySelector('dialog[open]')) return;
     if (event.key === 'Escape') {event.preventDefault();parent.postMessage({type:'snapshot-escape'},parentOrigin);}
@@ -16,7 +22,7 @@
     const link = event.target.closest('a');
     if (!link) return;
     event.preventDefault();
-    if (link.hash) document.querySelector(link.hash)?.scrollIntoView({block:'center'});
+    if (link.hash) reveal(document.querySelector(link.hash));
   }, true);
   window.addEventListener('message', event => {
     if (event.source !== parent || event.origin !== parentOrigin) return;
@@ -30,6 +36,6 @@
     for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) if (ancestor.tagName === 'DETAILS') ancestor.open = true;
     const plan=target.querySelector('input[name=plan]:not(:disabled)');if (plan) plan.click();
     target.classList.add('snapshot-highlight');
-    target.scrollIntoView({block:'center',behavior:'instant'});
+    reveal(target);
   });
 })();

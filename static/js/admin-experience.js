@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const panel = document.querySelector('.snapshot-panel');
   if (!panel) return;
   const form = document.querySelector('#content-main > form');
+  form.before(panel);
   const frame = panel.querySelector('iframe');
   const status = panel.querySelector('[data-snapshot-status]');
   const errors = panel.querySelector('[data-snapshot-errors]');
@@ -31,11 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const text = JSON.parse(document.getElementById('snapshot-text').textContent);
   const processed = new WeakSet();
   const expand = panel.querySelector('[data-snapshot-expand]');
-  const narrow = matchMedia('(max-width:1279px)');
+  const narrow = matchMedia('(max-width:1023px)');
   let revision = 0, sequence = 0, target = null, opener = null, ready = false;
   const stale = () => {revision++;if (ready) status.textContent = text.stale;};
   const modal = () => {
-    const full = narrow.matches || panel.classList.contains('is-expanded');
+    const full = panel.classList.contains('is-expanded');
     panel.setAttribute('role', full ? 'dialog' : 'region');
     if (full) panel.setAttribute('aria-modal','true');else panel.removeAttribute('aria-modal');
     document.body.classList.toggle('snapshot-modal', !panel.hidden && full);
@@ -73,7 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.hidden = false;
     document.body.classList.add('snapshot-open');
     modal();
-    panel.querySelector('[data-snapshot-close]').focus();
+    panel.querySelector('[data-snapshot-close]').focus({preventScroll:true});
+    if (narrow.matches) panel.scrollIntoView({block:'start'});
     if (!ready) refresh();else highlight();
   };
   const close = () => {
@@ -84,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
   panel.querySelector('[data-snapshot-refresh]').addEventListener('click', refresh);
   panel.querySelector('[data-snapshot-close]').addEventListener('click', close);
   expand.addEventListener('click', () => {panel.classList.toggle('is-expanded');expand.setAttribute('aria-pressed',String(panel.classList.contains('is-expanded')));modal();});
-  narrow.addEventListener('change',modal);
   panel.addEventListener('keydown', event => {
     if (event.key === 'Escape') {event.preventDefault();close();}
     if (event.key !== 'Tab' || panel.getAttribute('aria-modal') !== 'true') return;
