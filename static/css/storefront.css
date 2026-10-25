@@ -180,6 +180,7 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-hero__help:is(:hover,:focus-visible) .v-icon{border-color:var(--v-accent)}
 @media(min-width:1200px){
   .v-hero__inner{padding-block:12px}
+  .v-hero__inner:has(.is-orbital) .v-hero__copy{padding-block-end:36px}
   .v-service-cloud{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px}
   .v-service-cloud>nav{grid-column:1/-1}
   .v-orbit-controls{grid-column:2;grid-row:2}

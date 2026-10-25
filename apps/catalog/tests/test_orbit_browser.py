@@ -181,13 +181,14 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert page.locator(".nebula__item:visible").count() == 6
         spacing = page.evaluate("""() => {
             const hero = document.querySelector('.v-hero').getBoundingClientRect();
-            const copy = document.querySelector('.v-hero__copy').getBoundingClientRect();
-            return {height: hero.height, above: copy.top - hero.top,
-                    below: hero.bottom - copy.bottom};
+            const heading = document.querySelector('.v-hero h1').getBoundingClientRect();
+            const actions = document.querySelector('.v-hero__actions').getBoundingClientRect();
+            return {height: hero.height, above: heading.top - hero.top,
+                    below: hero.bottom - actions.bottom};
         }""")
         assert spacing["height"] <= 620, spacing
-        assert max(spacing["above"], spacing["below"]) <= 160, spacing
-        assert abs(spacing["above"] - spacing["below"]) <= 2, spacing
+        assert spacing["above"] <= 145 and spacing["below"] <= 180, spacing
+        assert 34 <= spacing["below"] - spacing["above"] <= 38, spacing
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
         assert (
             page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
