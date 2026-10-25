@@ -79,8 +79,8 @@
     if (orbital) paint();
     update();
   };
-  previous.addEventListener('click', () => {start -= size; layout();});
-  next.addEventListener('click', () => {start += size; layout();});
+  previous.addEventListener('click', () => {document.dispatchEvent(new Event('storefront:manual')); start -= size; layout();});
+  next.addEventListener('click', () => {document.dispatchEvent(new Event('storefront:manual')); start += size; layout();});
   scene.addEventListener('focusin', update);
   for (const event of ['pointerenter','pointerleave']) scene.addEventListener(event, update);
   scene.addEventListener('focusout', () => queueMicrotask(update));

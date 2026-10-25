@@ -1,7 +1,5 @@
 """Automatic shelves give the visitor time to read and choose."""
 
-import re
-
 import pytest
 from playwright.sync_api import expect
 
@@ -79,8 +77,7 @@ def test_only_the_most_visible_shelf_advances_and_focus_restarts_the_full_wait(
             arg=before,
             timeout=6500,
         )
-        first.focus()
-        first.press("End")
+        first.evaluate("e=>e.scrollTo({left:-e.scrollWidth,behavior:'instant'})")
         expect(page.locator("[data-rail]").first.locator("[data-rail-next]")).to_be_disabled()
         page.evaluate("document.activeElement.blur()")
         page.wait_for_function(
@@ -91,32 +88,40 @@ def test_only_the_most_visible_shelf_advances_and_focus_restarts_the_full_wait(
         page.close()
 
 
-def test_motion_preference_persists_and_system_reduction_wins(browser, live_server, catalog):
+def test_manual_browsing_stops_motion_without_a_settings_menu(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
     try:
         page.goto(live_server.url + "/")
+        expect(page.locator("[data-motion-settings],[data-motion-preference]")).to_have_count(0)
         page.mouse.move(0, 0)
         item = page.locator(".nebula__item").first
         page.wait_for_timeout(250)
         moving = item.get_attribute("style")
         page.wait_for_timeout(350)
         assert item.get_attribute("style") != moving
-        page.locator("[data-motion-settings] summary").click()
-        page.locator("[data-motion-preference]").uncheck()
-        page.reload()
-        page.evaluate("scrollTo(0,0)")
+        page.locator("[data-orbit-next]").click()
+        item = page.locator(".nebula__item:visible").first
+        page.evaluate("document.activeElement.blur()")
         page.mouse.move(0, 0)
         page.wait_for_timeout(250)
         expect(page.locator("html")).to_have_attribute("data-motion", "off")
-        expect(page.locator("[data-hero-scene]")).to_have_class(re.compile(r".*is-paused.*"))
         stopped = item.get_attribute("style")
         page.wait_for_timeout(350)
         assert item.get_attribute("style") == stopped
-        page.locator("[data-motion-settings] summary").click()
-        page.locator("[data-motion-preference]").check()
+        page.reload()
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
+        rail = page.locator("[data-rail]").first
+        rail.locator("[data-rail-next]").click()
+        page.evaluate("document.activeElement.blur()")
+        page.mouse.move(0, 0)
+        track = rail.locator("[data-rail-track]")
+        page.wait_for_timeout(400)
+        before = track.evaluate("e=>e.scrollLeft")
+        page.wait_for_timeout(6300)
+        assert track.evaluate("e=>e.scrollLeft") == before
+        expect(page.locator("html")).to_have_attribute("data-motion", "off")
+        page.reload()
         page.emulate_media(reduced_motion="reduce")
-        expect(page.locator("[data-motion-preference]")).not_to_be_checked()
-        expect(page.locator("[data-motion-preference]")).to_be_disabled()
         expect(page.locator("html")).to_have_attribute("data-motion", "off")
     finally:
         page.close()

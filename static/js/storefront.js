@@ -1,32 +1,15 @@
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const preference = document.querySelector('[data-motion-preference]');
-  const settings = document.querySelector('[data-motion-settings]');
-  const hint = document.querySelector('[data-motion-hint]');
-  let automatic = true;
-  try { automatic = localStorage.getItem('premshop.motion') !== 'off'; } catch {}
+  let browsing = false;
   const sync = () => {
-    if (preference) {
-      preference.checked = automatic && !reduced.matches;
-      preference.disabled = reduced.matches;
-      hint.hidden = !reduced.matches;
-    }
-    document.documentElement.dataset.motion = automatic && !reduced.matches && !document.querySelector('dialog[open]') ? 'on' : 'off';
+    document.documentElement.dataset.motion = !browsing && !reduced.matches && !document.querySelector('dialog[open]') ? 'on' : 'off';
     document.dispatchEvent(new Event('storefront:motion'));
   };
-  if (settings) settings.hidden = false;
-  preference?.addEventListener('change', () => {
-    automatic = preference.checked;
-    try { localStorage.setItem('premshop.motion', automatic ? 'on' : 'off'); } catch {}
+  document.addEventListener('storefront:manual', () => {
+    browsing = true;
     sync();
   });
   reduced.addEventListener('change', sync);
-  window.addEventListener('storage', event => {
-    if (event.key === 'premshop.motion' || event.key === null) {
-      try { automatic = localStorage.getItem('premshop.motion') !== 'off'; } catch {}
-      sync();
-    }
-  });
 
   const dialog = document.getElementById('quick-plans');
   if (dialog && typeof dialog.showModal === 'function') {

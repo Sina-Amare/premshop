@@ -1,6 +1,7 @@
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const desktop = matchMedia('(min-width: 761px) and (hover: hover) and (pointer: fine)');
+  const manual = () => document.dispatchEvent(new Event('storefront:manual'));
   const header = document.querySelector('.v-header');
   if (header) new ResizeObserver(() => {
     const height = Math.ceil(header.getBoundingClientRect().height);
@@ -97,8 +98,8 @@
       }
       schedule();
     };
-    previous.addEventListener('click', () => { step(-1); schedule(); });
-    next.addEventListener('click', () => { step(1); schedule(); });
+    previous.addEventListener('click', () => { manual(); step(-1); schedule(); });
+    next.addEventListener('click', () => { manual(); step(1); schedule(); });
     const hold = () => {
       if (desktop.matches) {
         track.classList.add('is-held');
@@ -116,7 +117,10 @@
     for (const event of ['pointerenter','focusin']) root.addEventListener(event, hold);
     root.addEventListener('pointerleave', release);
     root.addEventListener('focusout', () => queueMicrotask(release));
-    track.addEventListener('wheel', schedule, {passive:true});
+    track.addEventListener('wheel', event => {
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) manual();
+      schedule();
+    }, {passive:true});
     track.addEventListener('scroll', sync, {passive:true});
     track.addEventListener('keydown', event => {
       if (event.target !== track) return;
@@ -124,6 +128,7 @@
       const backward = rtl ? 'ArrowRight' : 'ArrowLeft';
       if (![forward, backward, 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
+      manual();
       if (event.key === 'Home') moveTo(0);
       else if (event.key === 'End') moveTo(maximum());
       else step(event.key === forward ? 1 : -1);
@@ -142,6 +147,7 @@
       if (!(event.buttons & 1)) { endDrag(event); return; }
       const delta = event.clientX - drag.x;
       if (!drag.moved && Math.abs(delta) <= 6) return;
+      if (!drag.moved) manual();
       drag.moved = true;
       track.setPointerCapture(event.pointerId);
       track.classList.add('is-dragging');
