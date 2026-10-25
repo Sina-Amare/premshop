@@ -185,8 +185,8 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
             return {height: hero.height, above: copy.top - hero.top,
                     below: hero.bottom - copy.bottom};
         }""")
-        assert spacing["height"] <= 660, spacing
-        assert max(spacing["above"], spacing["below"]) <= 180, spacing
+        assert spacing["height"] <= 620, spacing
+        assert max(spacing["above"], spacing["below"]) <= 160, spacing
         assert abs(spacing["above"] - spacing["below"]) <= 2, spacing
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
         assert (
