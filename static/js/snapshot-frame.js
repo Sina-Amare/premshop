@@ -56,7 +56,7 @@
       target = document.createElement(key==='specs' ? 'tr' : 'div');
       target.dataset.previewField = field;
       if (key==='specs') root.querySelector('tbody').append(target);
-      else if (key==='questions') root.querySelector('dl').insertBefore(target,root.querySelector('#delivery'));
+      else if (key==='questions') root.querySelector('dl').insertBefore(target,root.querySelector('#delivery').parentElement);
       else if (key==='sections') root.insertBefore(target,root.querySelector('#before-buying'));
       else (key==='header' ? root.querySelector('.pdp__meta') : root).append(target);
       target.dataset.previewGenerated = '';

@@ -470,3 +470,13 @@ def test_blank_rows_use_the_same_position_as_completed_rows(
         "(e,s)=>Boolean(e.compareDocumentPosition(document.querySelector(s)) & Node.DOCUMENT_POSITION_FOLLOWING)",
         boundary,
     )
+
+
+def test_faq_pairs_and_empty_markers_use_consistent_definition_groups(open_panel, product):
+    with_sections_and_a_question(product)
+    page = open_panel(change_form(product))
+    page.locator("[data-snapshot-field=refund_note]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator(".snapshot-placeholder.snapshot-highlight")).to_be_visible()
+    for faq in frame.locator("dl.faq").all():
+        assert faq.evaluate("e=>[...e.children].filter(c=>!c.hidden).every(c=>c.tagName==='DIV')")

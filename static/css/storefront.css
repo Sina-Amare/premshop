@@ -231,7 +231,7 @@ html body [aria-invalid=true]:focus,html body .field--error :is(input,textarea,s
 tr.snapshot-placeholder{display:table-row}
 .snapshot-placeholder strong,.snapshot-placeholder span{display:block}
 .snapshot-placeholder>dt{margin:0}
-.faq>[data-preview-row]+[data-preview-row]{margin-block-start:16px}
+.faq>div+div{margin-block-start:16px}
 
 .auth-card + :is(p,div) a,.auth-card :is(.small,.micro) a{border:1px solid #b5c4df;border-radius:4px;padding:2px 5px;background:var(--v-mint);color:var(--v-accent)}
 

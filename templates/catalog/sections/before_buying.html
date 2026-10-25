@@ -7,9 +7,9 @@ view leaves it out when it would hold the warranty and nothing else.
 {% endcomment %}<section data-preview-row="{{ section.preview_key }}" data-preview-field="kind sort_order" class="pdp__section" id="before-buying"{% if snapshot and not before_buying_shown %} hidden data-preview-container{% endif %} aria-labelledby="before-buying-title">
   <h2 data-preview-field="title" class="pdp__h2" id="before-buying-title">{% if section.title %}{{ section.title|bdi }}{% else %}پیش از خرید{% endif %}</h2>
   <dl class="card faq essentials">
-    <dt>گارانتی</dt><dd>{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd>
-    {% if product.refund_note %}<dt>بازگشت وجه</dt><dd{% if snapshot %} data-preview-field="refund_note"{% endif %}>{{ product.refund_note|bdi }}</dd>{% else %}{% include 'admin/catalog/preview_slot.html' with field='refund_note' %}{% endif %}
-    {% if usage_notes %}<dt>نکات استفاده</dt><dd class="rich"{% if snapshot %} data-preview-field="usage_notes"{% endif %}>{{ usage_notes|markdown:"" }}</dd>{% else %}{% include 'admin/catalog/preview_slot.html' with field='usage_notes' %}{% endif %}
+    <div><dt>گارانتی</dt><dd>{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
+    {% if product.refund_note %}<div><dt>بازگشت وجه</dt><dd{% if snapshot %} data-preview-field="refund_note"{% endif %}>{{ product.refund_note|bdi }}</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='refund_note' %}{% endif %}
+    {% if usage_notes %}<div><dt>نکات استفاده</dt><dd class="rich"{% if snapshot %} data-preview-field="usage_notes"{% endif %}>{{ usage_notes|markdown:"" }}</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='usage_notes' %}{% endif %}
   </dl>
   {% if section.body %}<div data-preview-field="body" class="prose rich">{{ section.body|markdown }}</div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='body' %}{% endif %}
   {% include "catalog/sections/_image.html" %}
