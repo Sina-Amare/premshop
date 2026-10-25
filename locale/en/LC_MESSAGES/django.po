@@ -806,3 +806,6 @@ msgstr "Panel only: when the product facts were reviewed for publication."
 
 msgid "فقط توی پنل؛ زمان تأیید قیمت برای پیگیری بررسی قیمت‌ها."
 msgstr "Panel only: price confirmation time for reviewing prices."
+
+msgid "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
+msgstr "This is where this content will appear once completed or enabled."

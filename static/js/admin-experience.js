@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const processed = new WeakSet();
   const expand = panel.querySelector('[data-snapshot-expand]');
   const narrow = matchMedia('(max-width:1023px)');
-  let revision = 0, sequence = 0, target = null, opener = null, ready = false;
+  let revision = 0, renderedRevision = -1, sequence = 0, target = null, opener = null, ready = false;
   const stale = () => {revision++;if (ready) status.textContent = text.stale;};
   const modal = () => {
     const full = panel.classList.contains('is-expanded');
@@ -48,11 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const element = document.querySelector(selector);if (element) element.inert = !panel.hidden && full;
     }
   };
-  const highlight = () => {if (target) frame.contentWindow.postMessage({type:'snapshot-target',...target},location.origin);};
+  const highlight = () => {if (target) frame.contentWindow.postMessage({type:'snapshot-target',empty:text.empty,...target},location.origin);};
   const refresh = async () => {
     const request = ++sequence, submitted = revision;
     status.textContent = text.busy;
     panel.setAttribute('aria-busy','true');
+    frame.contentWindow?.postMessage({type:'snapshot-clear'},location.origin);
     try {
       const response = await fetch(panel.dataset.snapshotUrl, {method:'POST',body:new FormData(form),credentials:'same-origin',headers:{'X-CSRFToken':form.querySelector('[name=csrfmiddlewaretoken]').value}});
       const html = await response.text();
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
       errors.replaceChildren();
       frame.srcdoc = html;
       ready = true;
+      renderedRevision = submitted;
       status.textContent = submitted === revision ? text.fresh : text.stale;
     } catch {
       if (request === sequence) status.textContent = text.failed;
@@ -76,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal();
     panel.querySelector('[data-snapshot-close]').focus({preventScroll:true});
     if (narrow.matches) panel.scrollIntoView({block:'start'});
-    if (!ready) refresh();else highlight();
+    if (!ready || (destination && renderedRevision !== revision)) refresh();else highlight();
   };
   const close = () => {
     panel.hidden = true;modal();document.body.classList.remove('snapshot-open');opener?.focus();
@@ -124,20 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
       processed.add(control);
       if (match?.[1] === 'specs') {
         control.setAttribute('aria-describedby',`${control.getAttribute('aria-describedby') || ''} spec-placement-note`.trim());
-        const row=control.closest('.form-group');
-        if (row && !row.querySelector('.field-placement')) {
-          const note=document.createElement('div');note.className='field-placement';
-          const button=document.createElement('button');button.type='button';button.textContent=text.open;button.dataset.snapshotField=control.name;button.setAttribute('aria-label',`${text.open}: ${control.labels?.[0]?.textContent.trim() || control.name}`);
-          button.addEventListener('click',()=>open(button,{key:'specs',row:`specs-${match[2]}`}));note.append(button);
-          control.closest('td').append(note);
-        }
-        continue;
       }
       const note = document.createElement('div');note.className='field-placement';
-      const explanation = document.createElement('p');explanation.textContent=placement[1];note.append(explanation);
+      if (match?.[1] !== 'specs') {const explanation = document.createElement('p');explanation.textContent=placement[1];note.append(explanation);}
       if (placement[0]) {
-        const button = document.createElement('button');button.type='button';button.textContent=text.open;button.dataset.snapshotField=control.name;button.setAttribute('aria-label',`${text.open}: ${control.labels?.[0]?.textContent.trim() || control.name}`);
-        button.addEventListener('click',()=>open(button,{key:placement[0],row:match && placement[0]!=='header' ? `${match[1]}-${match[2]}` : model==='plan'?'plan':null}));
+        const label = control.labels?.[0]?.textContent.trim() || control.closest('table')?.querySelectorAll('thead th')[control.closest('td')?.cellIndex]?.textContent.trim() || placement[1];
+        const button = document.createElement('button');button.type='button';button.textContent=text.open;button.dataset.snapshotField=control.name;button.setAttribute('aria-label',`${text.open}: ${label}`);
+        button.addEventListener('click',()=>open(button,{key:placement[0],field:match ? match[3] : control.name.replace(/_[01]$/,''),label,row:match ? `${match[1]}-${match[2]}` : model==='plan'?'plan':null}));
         note.append(button);
       }
       const line=control.closest('.field-line');

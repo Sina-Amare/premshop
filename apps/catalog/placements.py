@@ -16,10 +16,11 @@ def field_placements(model: str) -> dict[str, tuple[str, str]]:
                 _("فعال روی سایت دیده می‌شه؛ پیش‌نویس و ناموجود از فهرست‌ها پنهان می‌مونن."),
             ),
             (
-                "delivery_type,warranty,renewable,delivery_hours,delivery_note",
+                "delivery_type,warranty,renewable,delivery_hours",
                 "facts",
                 _("خلاصه‌ی شرایط و توضیح تحویل در صفحه‌ی محصول"),
             ),
+            ("delivery_note", "questions", _("خلاصه‌ی شرایط و توضیح تحویل در صفحه‌ی محصول")),
             (
                 "delivery_template",
                 "",
@@ -53,8 +54,13 @@ def field_placements(model: str) -> dict[str, tuple[str, str]]:
                 _("انتخاب پلن و قیمت محصول؛ تخفیف فقط در بازه‌ی معتبر نمایش داده می‌شه."),
             ),
             (
-                "max_quantity,requires_customer_input,customer_input_label",
-                "plans",
+                "max_quantity",
+                "quantity",
+                _("تعداد مجاز و اطلاعات لازم برای پلن انتخاب‌شده"),
+            ),
+            (
+                "requires_customer_input,customer_input_label",
+                "customer-input",
                 _("تعداد مجاز و اطلاعات لازم برای پلن انتخاب‌شده"),
             ),
             (

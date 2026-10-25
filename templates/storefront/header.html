@@ -9,9 +9,9 @@
     </form>
     <div class="v-actions"><a class="v-support" aria-label="پشتیبانی در تلگرام" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}<span>پشتیبانی<small>{{ support.hours }}</small></span></a><a class="v-account" href="{% if request.user.is_authenticated %}{% url 'account' %}{% else %}{% url 'login-code' %}{% endif %}">{% include 'storefront/icon.html' with name='user' %}<span>{% if request.user.is_authenticated %}حساب کاربری{% else %}ورود | ثبت‌نام{% endif %}</span></a></div>
   </div>
-  <div data-preview-target="navigation" class="v-navline"><div class="v-wrap v-navline__inner">
+  <div data-preview-target="navigation"{% if snapshot and category and not products %}{% else %} data-preview-field="sort_order"{% endif %} class="v-navline"><div class="v-wrap v-navline__inner">
     <nav class="v-desktop-cats" aria-label="دسته‌بندی محصولات"><a href="/#products" class="v-all">{% include 'storefront/icon.html' with name='grid' %}همه‌ی محصولات</a>{% for cat in nav_categories %}<a href="{% url 'category' cat.slug %}"{% if current_category == cat.slug %} aria-current="page"{% endif %}>{% include 'storefront/category-icon.html' with slug=cat.slug %}{{ cat.name }}</a>{% endfor %}</nav>
     <details class="v-mobile-cats"><summary>{% include 'storefront/icon.html' with name='grid' %}دسته‌بندی محصولات{% include 'storefront/icon.html' with name='chevron' %}</summary><nav aria-label="دسته‌بندی محصولات در موبایل"><a href="/#products">همه‌ی محصولات</a>{% for cat in nav_categories %}<a href="{% url 'category' cat.slug %}"{% if current_category == cat.slug %} aria-current="page"{% endif %}>{% include 'storefront/category-icon.html' with slug=cat.slug %}{{ cat.name }}</a>{% endfor %}</nav></details>
     <a href="{% url 'faq' %}" class="v-help">سؤال‌های پرتکرار{% include 'storefront/icon.html' with name='arrow' %}</a>
-  </div></div>
+  </div>{% if snapshot and category and not products %}<div class="v-wrap">{% include 'admin/catalog/preview_slot.html' with field='sort_order' %}</div>{% endif %}</div>
 </header>

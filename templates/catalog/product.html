@@ -15,14 +15,15 @@
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span><bdi>{{ product.name }}</bdi></span></nav>
 
 <div class="pdp">
-  <header class="pdp__head" data-preview-target="header">
+  <header class="pdp__head" data-preview-target="header" data-preview-field="product">
       {% if product.image %}
-        <span class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="42" height="42" decoding="async"></span>
+        <span data-preview-field="image" class="tile tile--lg"><img src="{{ product.image.url }}" alt="" width="42" height="42" decoding="async"></span>
       {% else %}
         <span class="tile tile--lg tile--mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>
+        {% include 'admin/catalog/preview_slot.html' with field='image' %}
       {% endif %}
       <div>
-        <h1 class="pdp__title"><bdi>{{ product.name }}</bdi></h1>
+        <h1 data-preview-field="name" class="pdp__title"><bdi>{{ product.name }}</bdi></h1>
         {% comment %}
         The two questions every buyer has — how long, and what if it breaks —
         then whatever this particular product needs said. Capacity, device
@@ -33,40 +34,42 @@
         <div class="pdp__meta">
           <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">{{ product.delivery_sentence }}</span>
-          {% for spec in key_specs %}<span class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
+          {% for spec in key_specs %}<span data-preview-row="{{ spec.preview_key }}" data-preview-field="is_key" class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}
         </div>
       </div>
   </header>
 
   <div class="pdp__main">
-    {% if product.short_description %}<p data-preview-target="introduction" class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
+    <div data-preview-target="introduction">{% if product.short_description %}<p data-preview-field="short_description" class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% else %}{% include 'admin/catalog/preview_slot.html' with field='short_description' %}{% endif %}</div>
 
     {% comment %}
     The ledger keeps short answers still. Renewal is left out where the product does not
     renew, because absence claims nothing and «قابل تمدید نیست» would.
     {% endcomment %}
     <dl data-preview-target="facts" class="card pdp__facts answers">
-      {% if product.delivery_type %}<div class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{{ product.get_delivery_type_display }}</dd></div>{% endif %}
-      <div class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v">{{ product.delivery_display }}</dd></div>
-      <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
-      {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}
+      {% if product.delivery_type %}<div data-preview-field="delivery_type" class="fact"><dt class="fact__k">{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd class="fact__v">{{ product.get_delivery_type_display }}</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='delivery_type' %}{% endif %}
+      <div data-preview-field="delivery_hours" class="fact"><dt class="fact__k">زمان تحویل</dt><dd class="fact__v">{{ product.delivery_display }}</dd></div>
+      <div data-preview-field="warranty" class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
+      {% if product.renewable %}<div data-preview-field="renewable" class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='renewable' %}{% endif %}
     </dl>
 
-    {% if specs %}
+    {% if specs or snapshot %}
     <section class="pdp__section">
       <h2 class="pdp__h2">مشخصات</h2>
       <table data-preview-target="specs" class="table spec">
         <tbody>
-          {% for spec in specs %}<tr data-preview-row="{{ spec.preview_key }}"><th scope="row">{{ spec.title }}</th><td><bdi>{{ spec.value }}</bdi></td></tr>{% endfor %}
+          {% for spec in specs %}<tr data-preview-row="{{ spec.preview_key }}" data-preview-field="sort_order"><th data-preview-field="title" scope="row">{{ spec.title }}</th><td data-preview-field="value"><bdi>{{ spec.value }}</bdi></td></tr>{% endfor %}
         </tbody>
       </table>
     </section>
     {% endif %}
 
     {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
+    {% if snapshot %}<div data-preview-target="sections">{% endif %}
     {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
 
-    {% if before_buying_shown %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
+    {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
+    {% if snapshot %}</div>{% endif %}
 
     {% comment %}
     The product's own questions, then the shop's: when it arrives and, where it
@@ -77,8 +80,8 @@
     <section data-preview-target="questions" class="pdp__section" aria-labelledby="questions-title">
       <h2 class="pdp__h2" id="questions-title">سؤال‌های پرتکرار</h2>
       <dl class="faq">
-        {% for question in questions %}<dt data-preview-row="{{ question.preview_key }}">{{ question.question|bdi }}</dt><dd class="rich">{{ question.answer|markdown:"" }}</dd>{% endfor %}
-        <dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd>{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. اگه این زمان بیرون از ساعت {{ support.hours_range }} تموم بشه، تا {{ support.opens }} صبح تحویل می‌دیم.{% endif %}</dd>
+        {% for question in questions %}<div data-preview-row="{{ question.preview_key }}" data-preview-field="sort_order"><dt data-preview-field="question">{{ question.question|bdi }}</dt><dd data-preview-field="answer" class="rich">{{ question.answer|markdown:"" }}</dd></div>{% endfor %}
+        <dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd data-preview-field="delivery_note">{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. اگه این زمان بیرون از ساعت {{ support.hours_range }} تموم بشه، تا {{ support.opens }} صبح تحویل می‌دیم.{% endif %}</dd>
         {% if product.delivery_type == "on_customer_account" %}<dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd>فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} رو می‌پرسیم.</dd>{% endif %}
       </dl>
     </section>
@@ -104,32 +107,32 @@
       {% endcomment %}
       <form class="buybox__form" method="post" action="#" data-cart-pending>
         {% csrf_token %}
-        {% if plans %}
+        {% if plans or snapshot %}
         <fieldset data-preview-target="plans" class="plans">
           <legend class="buybox__label">{% if product.delivery_type == "gift_card" %}مبلغ کارت{% else %}مدت اشتراک{% endif %}</legend>
           {% for plan in plans %}
-            <label data-preview-row="{{ plan.preview_key }}" class="plan{% if not plan.is_available %} plan--off{% endif %}">
+            <label data-preview-row="{{ plan.preview_key }}" data-preview-field="sort_order" class="plan{% if not plan.is_available %} plan--off{% endif %}">
               <input type="radio" name="plan" value="{{ plan.id }}"
                      {% if not plan.is_available %}disabled{% elif plan == available_plans.0 %}checked{% endif %}
                      data-max="{{ plan.max_quantity }}"
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__details">
-                <span class="plan__line"><span class="plan__title"><bdi>{{ plan.title }}</bdi></span>
-                  {% if plan.is_available %}{% include "catalog/_price.html" with plan=plan %}
-                  {% else %}<span class="plan__off">فعلاً ناموجود</span>{% endif %}
+                <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
+                  <span data-preview-field="sale_price is_available">{% if plan.is_available %}{% include "catalog/_price.html" with plan=plan %}
+                  {% else %}<span class="plan__off">فعلاً ناموجود</span>{% endif %}</span>
                 </span>
                 {% if plan.is_available and plan.promotion_is_active %}
-                <span class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
-                {% endif %}
+                <span data-preview-field="promo_price promo_starts_at promo_ends_at" class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
+                {% else %}{% include 'admin/catalog/preview_slot.html' with field='promo_price promo_starts_at promo_ends_at' inline=True %}{% endif %}
               </span>
             </label>
           {% endfor %}
         </fieldset>
         {% endif %}
 
-        {% if available_plans %}
-        {% if any_plan_takes_more_than_one %}
-        <div class="buybox__row" id="qty-row">
+        {% if available_plans or snapshot %}
+        {% if any_plan_takes_more_than_one or snapshot %}
+        <div data-preview-target="quantity" data-preview-field="max_quantity" class="buybox__row" id="qty-row"{% if not any_plan_takes_more_than_one %} hidden{% endif %}>
           <label class="buybox__label" for="qty">تعداد</label>
           <div class="stepper">
             <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
@@ -139,13 +142,14 @@
         </div>
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
-        <p class="micro buybox__hint" id="asks-hint" hidden></p>
+        <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
           <p class="micro">انتخاب شما</p>
           <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
         </div>
-        <button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
+        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
         <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نیست.</p>
+        {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>

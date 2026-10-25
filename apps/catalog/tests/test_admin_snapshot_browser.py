@@ -1,9 +1,13 @@
 """Context previews stay beside the form and preserve unsaved edits."""
 
+import re
+from base64 import b64decode
+
 import pytest
 from playwright.sync_api import expect
 
-from apps.catalog.tests.test_admin_browser import change_form
+from apps.catalog.models import Plan, ProductSection
+from apps.catalog.tests.test_admin_browser import change_form, with_sections_and_a_question
 from apps.catalog.tests.test_admin_browser import open_panel as open_panel
 from apps.catalog.tests.test_admin_browser import product as product
 
@@ -170,9 +174,7 @@ def test_field_destination_and_stale_network_failure_preserve_the_last_snapshot(
     page = open_panel(change_form(product))
     page.locator("[data-snapshot-field=name]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
-    expect(frame.locator("[data-preview-target=header]")).to_have_class(
-        "pdp__head snapshot-highlight"
-    )
+    expect(frame.locator(".pdp__title")).to_have_class("pdp__title snapshot-highlight")
     page.locator("[data-snapshot-close]").click()
     page.fill("#id_name", "Not loaded yet")
     page.locator("[data-snapshot-open]").click()
@@ -284,3 +286,134 @@ def test_resizing_the_preview_preserves_edits_and_field_navigation(open_panel, p
     page.locator("[data-snapshot-close]").click()
     expect(page.locator("[data-snapshot-field=name]")).to_be_focused()
     expect(page.locator("#id_name")).to_have_value("Still editing")
+
+
+@pytest.mark.parametrize("field", ["title", "sale_price", "customer_input_label", "max_quantity"])
+def test_plan_field_preview_selects_its_own_plan_and_exact_destination(open_panel, product, field):
+    Plan.objects.create(
+        product=product,
+        title="Second plan",
+        sort_order=5,
+        cost_price=1,
+        sale_price=200000,
+        max_quantity=3 if field == "max_quantity" else 1,
+        requires_customer_input=field == "customer_input_label",
+        customer_input_label="ایمیل خودتون" if field == "customer_input_label" else "",
+    )
+    page = open_panel(change_form(product))
+    page.locator(f"[data-snapshot-field=plans-1-{field}]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    highlighted = frame.locator(".snapshot-highlight")
+    expect(highlighted).to_be_visible()
+    assert field in (highlighted.get_attribute("data-preview-field") or "").split()
+    expect(frame.locator('[data-preview-row="plans-1"] input')).to_be_checked()
+    position = highlighted.evaluate(
+        "e=>({top:e.getBoundingClientRect().top,header:document.querySelector('.v-header').getBoundingClientRect().bottom})"
+    )
+    assert position["top"] >= position["header"] + 6
+
+
+def test_field_link_refreshes_edited_values_before_highlighting(open_panel, product):
+    page = open_panel(change_form(product))
+    page.locator("[data-snapshot-open]").click()
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    page.fill("#id_short_description", "این متن تازه باید همین حالا دیده بشه.")
+    page.locator("[data-snapshot-field=short_description]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator(".snapshot-highlight")).to_have_text(
+        "این متن تازه باید همین حالا دیده بشه."
+    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+
+
+@pytest.mark.parametrize("field", ["short_description", "refund_note", "usage_notes", "renewable"])
+def test_empty_field_preview_marks_its_real_position(open_panel, product, field):
+    page = open_panel(change_form(product))
+    page.locator(f"[data-snapshot-field={field}]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    placeholder = frame.locator(".snapshot-placeholder.snapshot-highlight")
+    expect(placeholder).to_be_visible()
+    expect(placeholder).to_have_attribute("data-preview-field", field)
+    expect(placeholder).to_contain_text("اینجا")
+    region = (
+        "#before-buying"
+        if field in {"refund_note", "usage_notes"}
+        else ("[data-preview-target=facts]" if field == "renewable" else ".pdp__main")
+    )
+    expect(frame.locator(region).locator(".snapshot-placeholder")).to_have_count(1)
+
+
+def test_every_product_field_link_has_a_visible_specific_destination(open_panel, product):
+    with_sections_and_a_question(product)
+    page = open_panel(change_form(product))
+    page.locator("#product_form details").evaluate_all("es=>es.forEach(e=>e.open=true)")
+    frame = page.frame_locator(".snapshot-panel iframe")
+    checked = 0
+    for button in page.locator("[data-snapshot-field]").all():
+        if not button.is_visible():
+            continue
+        name = button.get_attribute("data-snapshot-field")
+        field = re.sub(r"^(plans|sections|specs|questions)-\d+-", "", name)
+        field = re.sub(r"_[01]$", "", field)
+        button.click()
+        expect(frame.locator(".snapshot-highlight")).to_have_attribute(
+            "data-preview-field", re.compile(rf"(^|\s){field}(\s|$)")
+        )
+        expect(frame.locator(".snapshot-highlight")).to_be_visible()
+        checked += 1
+    assert checked >= 35
+
+
+def test_invalid_field_inspection_clears_the_previous_highlight(open_panel, product):
+    page = open_panel(change_form(product))
+    page.locator("[data-snapshot-field=name]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator(".pdp__title.snapshot-highlight")).to_be_visible()
+    page.fill("#id_name", "")
+    page.fill("#id_short_description", "تغییر ذخیره‌نشده")
+    page.locator("[data-snapshot-field=short_description]").click()
+    expect(page.locator("[data-snapshot-errors] [data-field=id_name]")).to_be_visible()
+    expect(frame.locator(".snapshot-highlight")).to_have_count(0)
+
+
+def test_existing_lazy_section_image_is_not_reported_as_empty(open_panel, product):
+    ProductSection.objects.create(
+        product=product,
+        kind="benefits",
+        body="توضیح محصول.\n\n" * 200,
+        image="sections/inspection.png",
+        image_alt="نمونه‌ی تنظیمات",
+    )
+    page = open_panel(change_form(product))
+    page.route(
+        "**/media/sections/inspection.png",
+        lambda route: route.fulfill(
+            content_type="image/png",
+            body=b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7gAAAABJRU5ErkJggg=="
+            ),
+        ),
+    )
+    page.locator("[data-snapshot-open]").click()
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    page.locator("[data-snapshot-field=sections-0-image]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator("img.pdp__img.snapshot-highlight")).to_be_visible()
+    expect(frame.locator(".snapshot-placeholder")).to_have_count(0)
+
+
+def test_blank_new_content_row_marks_the_content_position(open_panel, product):
+    page = open_panel(change_form(product))
+    page.click("#sections-group a.add-row")
+    page.locator("[data-snapshot-field=sections-0-body]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator("[data-preview-target=sections] .snapshot-placeholder")).to_be_visible()
+    expect(frame.locator(".snapshot-highlight")).to_have_attribute("data-preview-field", "body")
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_empty_category_menu_position_is_a_placeholder(open_panel, product, width):
+    page = open_panel(f"/admin/catalog/category/{product.category_id}/change/", width=width)
+    page.locator("[data-snapshot-field=sort_order]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator("[data-preview-target=navigation] .snapshot-placeholder")).to_be_visible()
