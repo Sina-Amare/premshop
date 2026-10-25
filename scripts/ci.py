@@ -30,6 +30,7 @@ def settled(previous: list[dict], current: list[dict]) -> bool:
     return (
         bool(current)
         and ids == {run["databaseId"] for run in previous}
+        and all(run["status"] == "completed" for run in previous)
         and all(run["status"] == "completed" for run in current)
     )
 
