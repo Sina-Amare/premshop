@@ -10,7 +10,7 @@
   const desktop = matchMedia('(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
   const digits = new Intl.NumberFormat('fa-IR');
   let start = 0, size = 6, group = [], points = [], orbital = false;
-  let visible = false, phase = -Math.PI / 2, frame = 0, last = 0;
+  let visible = false, hovered = false, phase = -Math.PI / 2, frame = 0, last = 0;
   const positions = angle => points.map((point, i) => {
     const theta = angle + i * Math.PI * 2 / group.length;
     return {x: point.cx + Math.cos(theta) * point.rx, y: point.cy + Math.sin(theta) * point.ry, w:point.w, h:point.h};
@@ -27,7 +27,7 @@
   const update = () => {
     const eligible = orbital && desktop.matches;
     const moving = eligible && document.documentElement.dataset.motion === 'on';
-    const running = moving && visible && !document.hidden && !scene.querySelector('.v-service-mark:hover,:focus-visible');
+    const running = moving && visible && !hovered && !document.hidden && !scene.querySelector(':focus-visible');
     scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);
@@ -82,7 +82,12 @@
   previous.addEventListener('click', () => {start -= size; layout();});
   next.addEventListener('click', () => {start += size; layout();});
   scene.addEventListener('focusin', update);
-  for (const event of ['pointerover','pointerout']) scene.addEventListener(event, update);
+  // Pointer events precede hover styles in Firefox.
+  for (const item of items) {
+    const mark = item.querySelector('.v-service-mark');
+    mark.addEventListener('pointerenter', () => {hovered = true; update();});
+    mark.addEventListener('pointerleave', () => {hovered = false; update();});
+  }
   scene.addEventListener('focusout', () => queueMicrotask(update));
   desktop.addEventListener('change', layout);
   document.addEventListener('visibilitychange', update);
