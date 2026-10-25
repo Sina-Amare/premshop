@@ -259,7 +259,7 @@ html body .buybox .stepper input.stepper__input:focus{outline:2px solid var(--v-
 .quick-plans__list li{padding:16px;background:white}
 .quick-plans__list li+li{border-top:1px solid var(--v-line)}
 .quick-plans__row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.quick-plans__row strong{font-size:14px;font-weight:500}
+.quick-plans__row strong{font-size:14px;font-weight:500;min-width:0;overflow-wrap:anywhere}
 .quick-plans__row .price__num{font-size:22px}
 .quick-plans .price{flex-wrap:wrap;row-gap:6px;max-width:100%}
 .quick-plans__unavailable{font-size:12px;color:var(--v-text)}

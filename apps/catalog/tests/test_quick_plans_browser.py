@@ -78,14 +78,16 @@ def test_expiry_updates_the_original_preview_dom(browser, live_server, service, 
 def test_long_names_and_maximum_discount_prices_fit_a_small_phone(browser, live_server, service):
     service.name = "LongServiceName" * 8
     service.save(update_fields=["name"])
-    service.plans.filter(title="۳ ماهه").update(sale_price=999999999999, promo_price=999999999998)
+    service.plans.filter(title="۳ ماهه").update(
+        title="LongPlanTitle" * 7, sale_price=999999999999, promo_price=999999999998
+    )
     page = browser.new_page(viewport={"width": 320, "height": 700})
     try:
         page.goto(live_server.url + "/c/ai/")
         page.locator("[data-quick-open]").first.click()
         assert page.locator("#quick-plans").evaluate("""e=>{
           const bounds=e.getBoundingClientRect();
-          return [...e.querySelectorAll('h2,.price,.price__num,.price__cur,del')]
+          return [...e.querySelectorAll('h2,strong,.price,.price__num,.price__cur,del')]
             .filter(n=>n.getClientRects().length).every(n=>{
               const r=n.getBoundingClientRect();
               return r.left>=bounds.left && r.right<=bounds.right;
