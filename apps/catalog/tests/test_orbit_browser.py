@@ -104,9 +104,10 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         page.close()
 
 
+@pytest.mark.parametrize("count", [6, 8])
 @pytest.mark.parametrize("two_lines", [False, True])
 def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(
-    browser, live_server, two_lines
+    browser, live_server, two_lines, count
 ):
     category = Category.objects.create(name="سرگرمی", slug="fun")
     products = [
@@ -116,7 +117,7 @@ def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(
             slug=f"service-{i}",
             status="active",
         )
-        for i in range(8)
+        for i in range(count)
     ]
     page = browser.new_page(viewport={"width": 1440, "height": 1050})
     page.add_init_script(
@@ -178,6 +179,15 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         )
         assert page.locator("[data-hero-scene]").get_attribute("data-orbit-mode") == "orbit"
         assert page.locator(".nebula__item:visible").count() == 6
+        spacing = page.evaluate("""() => {
+            const hero = document.querySelector('.v-hero').getBoundingClientRect();
+            const copy = document.querySelector('.v-hero__copy').getBoundingClientRect();
+            return {height: hero.height, above: copy.top - hero.top,
+                    below: hero.bottom - copy.bottom};
+        }""")
+        assert spacing["height"] <= 660, spacing
+        assert max(spacing["above"], spacing["below"]) <= 180, spacing
+        assert abs(spacing["above"] - spacing["below"]) <= 2, spacing
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
         assert (
             page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
