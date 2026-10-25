@@ -7,11 +7,10 @@
   const previous = scene.querySelector('[data-orbit-prev]');
   const next = scene.querySelector('[data-orbit-next]');
   const range = scene.querySelector('[data-orbit-range]');
-  const toggle = scene.querySelector('[data-hero-toggle]');
   const desktop = matchMedia('(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
   const digits = new Intl.NumberFormat('fa-IR');
   let start = 0, size = 6, group = [], points = [], orbital = false;
-  let paused = false, visible = false, phase = -Math.PI / 2, frame = 0, last = 0;
+  let visible = false, phase = -Math.PI / 2, frame = 0, last = 0;
   const positions = angle => points.map((point, i) => {
     const theta = angle + i * Math.PI * 2 / group.length;
     return {x: point.cx + Math.cos(theta) * point.rx, y: point.cy + Math.sin(theta) * point.ry, w:point.w, h:point.h};
@@ -27,12 +26,9 @@
   };
   const update = () => {
     const eligible = orbital && desktop.matches;
-    const running = eligible && !paused && visible && !document.hidden && !scene.matches(':hover,:focus-within');
-    toggle.hidden = !eligible;
-    toggle.setAttribute('aria-pressed', String(paused));
-    toggle.querySelector('span').textContent = paused ? 'ادامه حرکت' : 'توقف حرکت';
-    toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
-    scene.classList.toggle('is-animated', eligible);
+    const moving = eligible && document.documentElement.dataset.motion === 'on';
+    const running = moving && visible && !document.hidden && !scene.matches(':hover,:focus-within');
+    scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);
     if (!running && frame) {cancelAnimationFrame(frame); frame = 0; last = 0;}
@@ -83,14 +79,14 @@
     if (orbital) paint();
     update();
   };
-  previous.addEventListener('click', () => {start -= size; paused = true; layout();});
-  next.addEventListener('click', () => {start += size; paused = true; layout();});
-  toggle.addEventListener('click', () => {paused = !paused; update();});
-  scene.addEventListener('focusin', event => {if (!toggle.contains(event.target)) paused = true; update();});
+  previous.addEventListener('click', () => {start -= size; layout();});
+  next.addEventListener('click', () => {start += size; layout();});
+  scene.addEventListener('focusin', update);
   for (const event of ['pointerenter','pointerleave']) scene.addEventListener(event, update);
   scene.addEventListener('focusout', () => queueMicrotask(update));
   desktop.addEventListener('change', layout);
   document.addEventListener('visibilitychange', update);
+  document.addEventListener('storefront:motion', update);
   new IntersectionObserver(([entry]) => {visible = entry.isIntersecting; update();}).observe(scene);
   new ResizeObserver(layout).observe(scene);
   document.fonts.ready.then(layout);

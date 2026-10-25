@@ -365,7 +365,9 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
 
 
 # Attributes allowed after the class: a discount with an end carries data-left.
-PRICE_COMPONENT = re.compile(r'<span class="price[^"]*"[^>]*>.*?</span></span>', re.S)
+PRICE_COMPONENT = re.compile(
+    r'<span class="price(?: [^"]*)?"[^>]*>(?=<span|<del).*?</span></span>', re.S
+)
 
 
 def test_only_the_product_plan_strikes_its_original_price(client, product):
@@ -374,7 +376,7 @@ def test_only_the_product_plan_strikes_its_original_price(client, product):
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
     assert '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in page
-    assert '<del class="price__was">' not in listing
+    assert '<del class="price__was">' not in listing.split("</main>", 1)[0]
     for body in (listing, page):
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
@@ -416,7 +418,8 @@ def test_home_groups_products_under_their_department(client, category, product):
     body = client.get(reverse("home")).content.decode()
 
     assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
-    assert re.findall(r"<p>([۰-۹]+) محصول</p>", body) == ["۱", "۱"]
+    catalog = body.split('id="products"', 1)[1].split("</main>", 1)[0]
+    assert re.findall(r"<p>([۰-۹]+) محصول</p>", catalog) == ["۱", "۱"]
     assert len(re.findall(r'class="v-view-all" href="/c/[^"]+/"', body)) == 2
     assert 'href="/c/gift/"' in body
 
@@ -465,7 +468,7 @@ def test_product_page_suggests_other_products(client, category, product):
     elsewhere = make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
-    suggested = body.split("محصولات دیگر", 1)[1]
+    suggested = body.split("محصولات دیگر", 1)[1].split("</section>", 1)[0]
 
     assert f'href="/p/{sibling.slug}/"' in suggested
     assert f'href="/p/{elsewhere.slug}/"' in suggested, "a thin department is topped up"

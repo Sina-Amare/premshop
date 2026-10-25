@@ -65,21 +65,17 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") == frozen
         item.focus()
-        page.locator(".v-brand").focus()
         page.mouse.move(0, 0)
-        page.wait_for_timeout(100)
         frozen = item.evaluate("e=>e.style.transform")
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") == frozen
-        assert page.locator("[data-hero-toggle]").inner_text() == "ادامه حرکت"
-        page.locator("[data-hero-toggle]").click()
         page.locator(".v-brand").focus()
         page.mouse.move(0, 0)
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") != frozen
         page.locator("[data-orbit-next]").click()
         assert page.locator(".nebula__item:visible").count() == 1
-        assert page.locator("[data-hero-toggle]").is_hidden()
+        assert page.locator("[data-hero-toggle]").count() == 0
     finally:
         page.close()
 
@@ -200,7 +196,7 @@ def test_static_modes_keep_services_reachable_without_motion(browser, live_serve
             assert page.locator(".nebula__item:visible").count() == 6
         else:
             assert page.locator(".nebula__item:visible").count() == 24
-        assert page.locator("[data-hero-toggle]").is_hidden()
+        assert page.locator("[data-hero-toggle]").count() == 0
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
     finally:
         page.close()

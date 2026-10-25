@@ -48,7 +48,7 @@
   {% block head_extra %}{% endblock %}
 <link rel="stylesheet" href="{% static 'css/storefront.css' %}">
 </head>
-<body class="v-page">{% include 'storefront/header.html' %}<main id="main" tabindex="-1">{% block content %}{% endblock %}</main>{% include 'storefront/footer.html' %}{% block scripts %}{% endblock %}
+<body class="v-page">{% include 'storefront/header.html' %}<main id="main" tabindex="-1">{% block content %}{% endblock %}</main>{% include 'catalog/_quick_plans.html' %}{% include 'storefront/footer.html' %}{% block scripts %}{% endblock %}
 <script>
 // Discount deadlines tick. The server rendered the text already, so a visitor
 // with JavaScript off sees the time that was left when the page was built;
@@ -177,5 +177,5 @@ document.querySelectorAll('form').forEach(function (form) {
   });
 });
 </script>
-<script src="{% static 'js/rails.js' %}" defer></script><script src="{% static 'js/orbit.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
+<script src="{% static 'js/storefront.js' %}" defer></script><script src="{% static 'js/rails.js' %}" defer></script><script src="{% static 'js/orbit.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
 </html>

@@ -14,7 +14,7 @@ def test_shared_shell_names_the_brand_and_keeps_real_destinations(client, db):
     assert "آزمایش ریل" not in body
 
 
-def test_delivery_facts_are_text_with_an_explicit_details_link(client, db):
+def test_delivery_facts_and_answer_remain_without_a_jump_link(client, db):
     from apps.catalog.models import Category, Product
 
     category = Category.objects.create(name="هوش مصنوعی", slug="ai")
@@ -22,7 +22,7 @@ def test_delivery_facts_are_text_with_an_explicit_details_link(client, db):
         category=category, name="ChatGPT Plus", slug="chatgpt-plus", status="active"
     )
     body = client.get(product.get_absolute_url()).content.decode()
-    assert 'class="v-delivery-details" href="#delivery"' in body
+    assert 'class="v-delivery-details"' not in body
     assert '<a href="#delivery">تا' not in body
     assert 'id="delivery"' in body
 

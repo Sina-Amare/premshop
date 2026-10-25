@@ -42,8 +42,7 @@
     {% if product.short_description %}<p data-preview-target="introduction" class="prose pdp__lead">{{ product.short_description|bdi }}</p>{% endif %}
 
     {% comment %}
-    The ledger keeps short answers still; the named delivery link leads to
-    the explanation. Renewal is left out where the product does not
+    The ledger keeps short answers still. Renewal is left out where the product does not
     renew, because absence claims nothing and «قابل تمدید نیست» would.
     {% endcomment %}
     <dl data-preview-target="facts" class="card pdp__facts answers">
@@ -52,7 +51,6 @@
       <div class="fact"><dt class="fact__k">گارانتی</dt><dd class="fact__v">{% if product.warranty == "none" %}ندارد{% else %}{{ product.get_warranty_display }}{% endif %}</dd></div>
       {% if product.renewable %}<div class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% endif %}
     </dl>
-    <a class="v-delivery-details" href="#delivery">جزئیات تحویل{% include 'storefront/icon.html' with name='arrow' %}</a>
 
     {% if specs %}
     <section class="pdp__section">
@@ -85,13 +83,10 @@
       </dl>
     </section>
 
-    {% if product.facts_checked_on %}<p data-preview-target="checked" class="small pdp__checked">آخرین بررسی: {{ product.facts_checked_on|jalali }}</p>{% endif %}
   </div>
 
   <aside class="pdp__buy">
     <div class="card buybox">
-      {% comment %}The stalest confirmation among this product's plans, never the freshest.{% endcomment %}
-      {% if price_checked_since %}<p data-preview-target="price-checked" class="micro buybox__checked">قیمت‌ها بررسی‌شده از {{ price_checked_since|jalali }}</p>{% endif %}
       {% comment %}
       The add-to-cart control, complete: plan selector, quantity, one primary
       button. The cart itself arrives at S4b, which sets this form's action and

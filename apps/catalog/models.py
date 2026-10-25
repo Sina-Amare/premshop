@@ -913,8 +913,7 @@ class Plan(ChecksNameTheirField, PageRow):
         _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
     )
     # When someone last stood behind this price: set by any change to a price
-    # and by the panel's «قیمت‌ها را امروز بررسی کردم». A toman price follows
-    # the exchange rate, so the page says how old the oldest one is.
+    # and by the panel's «قیمت‌ها را امروز بررسی کردم» for its review filters.
     price_confirmed_at = models.DateTimeField(
         _("تأیید قیمت"), null=True, blank=True, editable=False
     )

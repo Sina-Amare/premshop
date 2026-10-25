@@ -11,7 +11,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductQuestion, ProductSection
-from apps.core.formatting import format_jalali
 
 pytestmark = pytest.mark.django_db
 
@@ -185,7 +184,7 @@ def test_before_buying_puts_the_operators_text_after_the_facts_once(client, prod
     assert body.count('id="before-buying"') == 1
     assert headings(body).count("پیش از خرید") == 1
     # Fixed below the other sections whatever its sort order.
-    assert headings(body.split("<footer", 1)[0])[-2:] == ["پیش از خرید", "سؤال‌های پرتکرار"]
+    assert headings(body.split("</main>", 1)[0])[-2:] == ["پیش از خرید", "سؤال‌های پرتکرار"]
 
 
 @pytest.mark.parametrize("notes", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
@@ -226,14 +225,14 @@ def answers(body: str) -> str:
     return body.split('class="card pdp__facts answers"', 1)[1].split("</dl>", 1)[0]
 
 
-def test_fact_summary_is_plain_text_and_delivery_has_a_named_link(client, product):
+def test_fact_summary_is_plain_text_and_delivery_answer_remains(client, product):
     steps = section(product, Kind.AFTER_PAYMENT, "۱. فعال‌سازی")
     body = page(client, product)
     summary = answers(body)
     assert "<a " not in summary
     assert '<dt class="fact__k">اکانت</dt>' in summary
     assert "تا ۱۲ ساعت" in summary and "تا پایان دوره" in summary
-    assert 'class="v-delivery-details" href="#delivery"' in body
+    assert 'class="v-delivery-details"' not in body
     assert 'id="delivery"' in body and f'id="section-{steps.pk}"' in body
     assert "تمدید" not in summary
 
@@ -273,7 +272,7 @@ def test_the_products_questions_come_before_the_shops_own(client, product):
 # --- Dates the page states ------------------------------------------------------------
 
 
-def test_the_price_date_is_the_oldest_confirmation_among_available_plans(client, product):
+def test_price_confirmations_remain_internal_even_with_mixed_dates(client, product):
     now = timezone.now()
     Plan.objects.filter(product=product).update(price_confirmed_at=now - timedelta(days=9))
     Plan.objects.create(product=product, title="۳ ماهه", cost_price=1, sale_price=3900000)
@@ -287,8 +286,8 @@ def test_the_price_date_is_the_oldest_confirmation_among_available_plans(client,
     response = client.get(reverse("product", args=[product.slug]))
 
     oldest = now - timedelta(days=9)
-    assert response.context["price_checked_since"] == oldest
-    assert f"قیمت‌ها بررسی‌شده از {format_jalali(oldest)}" in response.content.decode()
+    assert product.plans.get(title="۱ ماهه").price_confirmed_at == oldest
+    assert "قیمت‌ها بررسی‌شده" not in response.content.decode()
 
 
 def test_a_price_nobody_has_confirmed_leaves_the_date_off(client, product):
@@ -297,11 +296,11 @@ def test_a_price_nobody_has_confirmed_leaves_the_date_off(client, product):
 
     response = client.get(reverse("product", args=[product.slug]))
 
-    assert response.context["price_checked_since"] is None
+    assert product.plans.get(title="۱ ماهه").price_confirmed_at is None
     assert "قیمت‌ها بررسی‌شده" not in response.content.decode()
 
 
-def test_the_listings_carry_the_oldest_date_of_the_plans_they_show(client, product):
+def test_listings_do_not_print_internal_confirmation_dates(client, product):
     week_ago = timezone.now() - timedelta(days=7)
     Plan.objects.filter(product=product).update(price_confirmed_at=week_ago)
     other = Product.objects.create(
@@ -314,16 +313,18 @@ def test_the_listings_carry_the_oldest_date_of_the_plans_they_show(client, produ
     Plan.objects.create(product=other, title="۱ ماهه", cost_price=1, sale_price=900000)
 
     for url in (reverse("home"), reverse("category", args=["ai"])):
-        assert client.get(url).context["prices_checked_since"] == week_ago, url
+        assert "قیمت‌ها بررسی‌شده" not in client.get(url).content.decode(), url
 
 
-def test_the_last_check_of_the_facts_is_dated(client, product):
+def test_fact_review_date_is_retained_without_a_public_label(client, product):
     assert "آخرین بررسی" not in page(client, product)
 
     product.facts_checked_on = date(2026, 10, 19)
     product.save()
 
-    assert "آخرین بررسی: ۲۷ مهر ۱۴۰۵" in page(client, product)
+    assert "آخرین بررسی:" not in page(client, product)
+    product.refresh_from_db()
+    assert product.facts_checked_on == date(2026, 10, 19)
 
 
 def test_the_buy_box_links_to_the_conditions(client, product):

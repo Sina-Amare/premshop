@@ -10,6 +10,18 @@ from apps.catalog.tests.test_admin_browser import product as product
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
+def test_escape_closes_quick_plans_before_the_enclosing_admin_preview(open_panel, product):
+    page = open_panel(change_form(product), width=390)
+    page.locator("[data-snapshot-open]").click()
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("آماده‌ست")
+    frame = page.frame_locator(".snapshot-panel iframe")
+    frame.locator("[data-quick-open]").first.click()
+    expect(frame.locator("#quick-plans")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(".snapshot-panel")).to_be_visible()
+    expect(frame.locator("#quick-plans")).not_to_be_visible()
+
+
 def test_colour_preview_keeps_last_valid_tint_and_reset_uses_the_storefront_neutral(
     open_panel, product
 ):

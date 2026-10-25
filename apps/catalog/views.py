@@ -9,8 +9,6 @@ operator's preview of a draft on its own address, in `product`.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from datetime import datetime
 from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
@@ -38,18 +36,6 @@ def _for_cards(products: ProductQuerySet | None = None) -> ProductQuerySet:
         .select_related("category")
         .prefetch_related(Prefetch("plans", queryset=Plan.objects.order_by("sort_order", "id")))
     )
-
-
-def _prices_checked_since(products: Iterable[Product]) -> datetime | None:
-    """When the stalest price on the page was last confirmed, or None if one never was.
-
-    The oldest and not the newest: one plan confirmed this morning must not make
-    a list of week-old prices look fresh.
-    """
-    stamps = [plan.price_confirmed_at for product in products for plan in product.available_plans()]
-    if not stamps or None in stamps:
-        return None
-    return min(stamp for stamp in stamps if stamp is not None)
 
 
 def home(request: HttpRequest) -> HttpResponse:
@@ -106,7 +92,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "shelf": shelf,
             "discounted": discounted,
             "by_category": by_category,
-            "prices_checked_since": _prices_checked_since(featured),
+            "quick_plan_products": featured,
         },
     )
 
@@ -121,7 +107,7 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
             "category": cat,
             "current_category": cat.slug,
             "products": products,
-            "prices_checked_since": _prices_checked_since(products),
+            "quick_plan_products": products,
         },
     )
 
@@ -182,7 +168,7 @@ def product_context(obj: Product, *, related: list[Product] | None = None) -> di
         ),
         "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
         "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
-        "price_checked_since": _prices_checked_since([obj]),
+        "quick_plan_products": [obj, *(related or [])],
         "usage_notes": obj.usage_notes_shown,
     }
 
@@ -248,6 +234,12 @@ def search(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "catalog/search.html",
-        {"query": query, "results": results, "limited": limited, "everything": everything},
+        {
+            "query": query,
+            "results": results,
+            "limited": limited,
+            "everything": everything,
+            "quick_plan_products": results or everything,
+        },
         status=429 if limited else 200,
     )

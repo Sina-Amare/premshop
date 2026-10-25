@@ -10,7 +10,7 @@ from apps.catalog.models import Category, Plan, Product
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
-def test_play_keeps_offers_still_until_keyboard_focus_leaves(browser, live_server):
+def test_offers_stay_still_until_keyboard_focus_leaves(browser, live_server):
     category = Category.objects.create(name="محصولات", slug="services")
     for i in range(8):
         product = Product.objects.create(
@@ -27,13 +27,10 @@ def test_play_keeps_offers_still_until_keyboard_focus_leaves(browser, live_serve
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
     try:
         page.goto(live_server.url + "/")
-        rail = page.locator("[data-rail][data-auto]")
+        rail = page.locator("[data-rail][data-auto]").first
         rail.scroll_into_view_if_needed()
-        toggle = rail.locator("[data-rail-toggle]")
-        toggle.focus()
-        page.keyboard.press("Space")
+        rail.locator("[data-rail-next]").focus()
         page.mouse.move(0, 0)
-        assert toggle.get_attribute("aria-pressed") == "false"
         track = rail.locator("[data-rail-track]")
         before = track.evaluate("e=>e.scrollLeft")
         page.wait_for_timeout(6300)

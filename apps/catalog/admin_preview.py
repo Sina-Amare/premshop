@@ -18,7 +18,7 @@ from unfold.admin import ModelAdmin
 
 from apps.catalog.models import Plan, Product
 from apps.catalog.placements import field_placements
-from apps.catalog.views import _for_cards, _prices_checked_since, product_context
+from apps.catalog.views import _for_cards, product_context
 from apps.core.context import shell
 
 
@@ -198,7 +198,7 @@ class PreviewAdminMixin(ModelAdmin):
                     "category": snapshot,
                     "products": products,
                     "current_category": snapshot.slug,
-                    "prices_checked_since": _prices_checked_since(products),
+                    "quick_plan_products": products,
                     "nav_categories": navigation,
                 }
                 template = "catalog/category.html"

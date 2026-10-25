@@ -1,5 +1,6 @@
 {% load fa prices head %}
-<a class="pcard" href="{% url 'product' product.slug %}" style="--brand: {{ product.card_colour }}">
+<article class="pcard" style="--brand: {{ product.card_colour }}">
+<a class="pcard__link" href="{% url 'product' product.slug %}">
   {% include 'catalog/_card_art.html' %}
   <div class="pcard__body">
     <span class="pcard__cat">{{ product.category.name }}</span>
@@ -21,3 +22,5 @@
     {% empty %}<span class="badge badge--neutral">ناموجود</span>{% endfor %}
   </div>
 </a>
+{% if quick_plan_products %}<button type="button" class="pcard__quick" data-quick-open="{{ product.pk }}" aria-label="دیدن پلن‌های {{ product.name }}" aria-haspopup="dialog" aria-controls="quick-plans" hidden>دیدن پلن‌ها{% include 'storefront/icon.html' with name='arrow' %}</button>{% endif %}
+</article>

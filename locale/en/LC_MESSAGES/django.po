@@ -800,3 +800,9 @@ msgstr "Category on the product card and breadcrumb trail"
 
 msgid "رنگ زمینه‌ی کارت محصول؛ رنگ خود لوگو تغییر نمی‌کنه."
 msgstr "Product card background color; the logo itself is unchanged."
+
+msgid "فقط توی پنل؛ زمان بررسی اطلاعات برای انتشار محصول."
+msgstr "Panel only: when the product facts were reviewed for publication."
+
+msgid "فقط توی پنل؛ زمان تأیید قیمت برای پیگیری بررسی قیمت‌ها."
+msgstr "Panel only: price confirmation time for reviewing prices."
