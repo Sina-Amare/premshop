@@ -3,6 +3,7 @@
   const parentOrigin = new URL(document.baseURI).origin;
   let modal = false;
   document.addEventListener('keydown', event => {
+    if (document.querySelector('dialog[open]')) return;
     if (event.key === 'Escape') {event.preventDefault();parent.postMessage({type:'snapshot-escape'},parentOrigin);}
     if (event.key !== 'Tab' || !modal) return;
     const controls=[...document.querySelectorAll('a[href],button,input,summary,[tabindex]')].filter(e=>!e.disabled && e.tabIndex>=0 && e.getClientRects().length);
