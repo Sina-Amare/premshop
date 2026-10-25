@@ -9,8 +9,7 @@ operator's preview of a draft on its own address, in `product`.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from datetime import datetime
+from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
@@ -39,18 +38,6 @@ def _for_cards(products: ProductQuerySet | None = None) -> ProductQuerySet:
     )
 
 
-def _prices_checked_since(products: Iterable[Product]) -> datetime | None:
-    """When the stalest price on the page was last confirmed, or None if one never was.
-
-    The oldest and not the newest: one plan confirmed this morning must not make
-    a list of week-old prices look fresh.
-    """
-    stamps = [plan.price_confirmed_at for product in products for plan in product.available_plans()]
-    if not stamps or None in stamps:
-        return None
-    return min(stamp for stamp in stamps if stamp is not None)
-
-
 def home(request: HttpRequest) -> HttpResponse:
     # Headings for the product grid, in the operator's order. The count is
     # over every active product in the department, which can exceed what the
@@ -72,7 +59,19 @@ def home(request: HttpRequest) -> HttpResponse:
     # mark you can tap. It answers a different question from the cards below
     # ("do you have it" rather than "what does it cost"), so it carries no
     # plans and needs none of the prefetching the cards do: one flat query.
-    shelf = Product.objects.public().order_by("name").only("name", "slug", "image")
+    index = list(
+        Product.objects.public()
+        .order_by("created_at", "id")
+        .only("name", "slug", "image", "category_id", "created_at")
+    )
+    shelf = [
+        item
+        for group in zip_longest(
+            *[[item for item in index if item.category_id == cat.pk] for cat in categories]
+        )
+        for item in group
+        if item is not None
+    ]
     # Real discounts only. `promotion_is_active` consults the window as well as
     # the price, so a promotion whose end date has passed drops out of this row
     # on its own — a shop that advertises an expired discount has done worse
@@ -93,7 +92,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "shelf": shelf,
             "discounted": discounted,
             "by_category": by_category,
-            "prices_checked_since": _prices_checked_since(featured),
+            "quick_plan_products": featured,
         },
     )
 
@@ -108,7 +107,7 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
             "category": cat,
             "current_category": cat.slug,
             "products": products,
-            "prices_checked_since": _prices_checked_since(products),
+            "quick_plan_products": products,
         },
     )
 
@@ -125,52 +124,53 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     obj = get_object_or_404(
         _for_cards(shown).prefetch_related("specs", "sections", "questions"), slug=slug
     )
-    plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
-    available = [p for p in plans if p.is_available]
-    # The quantity control is rendered server-side only when some plan can
-    # actually take more than one, so a visitor with JavaScript off never sees
-    # a stepper that cannot do anything.
-    ceilings = [p.max_quantity for p in available] or [1]
-    related = _related_to(obj)
-    sections = sorted(obj.sections.all(), key=lambda s: (s.sort_order, s.pk))
-    before_buying = next((s for s in sections if s.kind == "before_buying"), None)
     response = render(
-        request,
-        "catalog/product.html",
-        {
-            "product": obj,
-            "preview": not obj.is_public,
-            "plans": plans,
-            "available_plans": available,
-            "any_plan_takes_more_than_one": max(ceilings) > 1,
-            "max_quantity": max(ceilings),
-            "specs": list(obj.specs.all()),
-            "related": related,
-            # The facts the operator marked important enough to print beside
-            # the title. Nothing is key by default, so a product the operator
-            # has not thought about shows exactly what it showed before.
-            "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
-            "sections": sections,
-            # At most one, by a constraint. Its facts come from their own fields,
-            # so it is printed without a row too, but only when it says more than
-            # the warranty, which the badge and the answers already give.
-            "before_buying": before_buying,
-            "before_buying_shown": bool(
-                (before_buying and (before_buying.body or before_buying.image))
-                or obj.refund_note
-                or obj.usage_notes_shown
-            ),
-            "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
-            "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
-            "price_checked_since": _prices_checked_since([obj]),
-            "usage_notes": obj.usage_notes_shown,
-        },
+        request, "catalog/product.html", product_context(obj, related=_related_to(obj))
     )
     if not obj.is_public:
         # The preview is on the public address, so nothing between here and the
         # browser may keep it for whoever asks for that address next.
         patch_cache_control(response, private=True, no_store=True)
     return response
+
+
+def product_context(obj: Product, *, related: list[Product] | None = None) -> dict[str, object]:
+    plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
+    available = [p for p in plans if p.is_available]
+    # The quantity control is rendered server-side only when some plan can
+    # actually take more than one, so a visitor with JavaScript off never sees
+    # a stepper that cannot do anything.
+    ceilings = [p.max_quantity for p in available] or [1]
+    sections = sorted(obj.sections.all(), key=lambda s: (s.sort_order, s.pk))
+    before_buying = next((s for s in sections if s.kind == "before_buying"), None)
+    return {
+        "product": obj,
+        "preview": not obj.is_public,
+        "plans": plans,
+        "available_plans": available,
+        "any_plan_takes_more_than_one": max(ceilings) > 1,
+        "max_quantity": max(ceilings),
+        "specs": list(obj.specs.all()),
+        "related": related or [],
+        # The facts the operator marked important enough to print beside
+        # the title. Nothing is key by default, so a product the operator
+        # has not thought about shows exactly what it showed before.
+        "key_specs": [spec for spec in obj.specs.all() if spec.is_key],
+        "sections": sections,
+        # At most one, by a constraint. Its facts come from their own fields,
+        # so it is printed without a row too, but only when it says more than
+        # the warranty, which the badge and the answers already give.
+        "before_buying": before_buying,
+        "before_buying_shown": bool(
+            (before_buying and (before_buying.body or before_buying.image))
+            or obj.refund_note
+            or obj.usage_notes_shown
+        ),
+        "after_payment": next((s for s in sections if s.kind == "after_payment"), None),
+        "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
+        "quick_plan_products": [obj, *(related or [])],
+        "usage_notes": obj.usage_notes_shown,
+    }
 
 
 RELATED_COUNT = 4
@@ -234,6 +234,12 @@ def search(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "catalog/search.html",
-        {"query": query, "results": results, "limited": limited, "everything": everything},
+        {
+            "query": query,
+            "results": results,
+            "limited": limited,
+            "everything": everything,
+            "quick_plan_products": results or everything,
+        },
         status=429 if limited else 200,
     )

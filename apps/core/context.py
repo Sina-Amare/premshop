@@ -41,6 +41,7 @@ def shell(request: HttpRequest) -> dict[str, object]:
         categories = []
     return {
         "nav_categories": categories,
+        "demo_catalog": settings.DEMO_CATALOG,
         "support": support.details(),
         "site_url": settings.SITE_URL,
     }

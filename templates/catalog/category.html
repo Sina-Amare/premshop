@@ -3,17 +3,21 @@
 {% block title %}{{ category.seo_title|default:category.name }}{% endblock %}
 {% block meta_description %}{{ category.seo_description|default:category.description }}{% endblock %}
 
+{% block meta_robots %}{% if snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
+{% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
 <div class="wrap page">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
 
-<header class="page-head">
-  <h1 class="page-head__title">{{ category.name }}</h1>
+<header data-preview-target="category" class="page-head">
+  <h1 data-preview-field="name" class="page-head__title">{{ category.name }}</h1>
   {% comment %}Through the restricted renderer, never as markup: whoever can edit a
   category must not be able to put a script on a page customers pay on. It sits
   straight under the h1, so it takes no heading of its own.{% endcomment %}
-  {% if category.intro %}<div class="prose rich page-head__intro">{{ category.intro|markdown:"" }}</div>
-  {% elif category.description %}<p class="prose page-head__intro">{{ category.description }}</p>{% endif %}
+  {% if category.intro %}<div data-preview-field="intro" class="prose rich page-head__intro">{{ category.intro|markdown:"" }}</div>
+  {% elif category.description %}<p data-preview-field="description" class="prose page-head__intro">{{ category.description }}</p>{% endif %}
+  {% if not category.intro %}{% include 'admin/catalog/preview_slot.html' with field='intro' %}{% else %}{% include 'admin/catalog/preview_slot.html' with field='description' %}{% endif %}
+  {% if not category.intro and not category.description %}{% include 'admin/catalog/preview_slot.html' with field='description' %}{% endif %}
   {% comment %}
   The count and nothing else. A filter over three products returns everything
   or nothing, and of six small Iranian shops surveyed none offers one — the
@@ -31,7 +35,7 @@
   </div>
 {% else %}
   <div class="card empty">
-    <p class="prose" style="margin:0">فعلاً محصولی در این دسته نداریم.</p>
+    <p class="prose" style="margin:0">توی این دسته فعلاً محصولی نداریم.</p>
     <a class="btn btn--secondary" href="{% url 'home' %}">همه‌ی محصولات</a>
   </div>
 {% endif %}

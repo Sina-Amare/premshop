@@ -17,6 +17,7 @@ arrow points the way a Persian reader moves.
 {% endblock %}
 
 {% block content %}
+    <div class="panel-login-brand"><img src="{% static 'icon.svg' %}" width="42" height="42" alt=""><bdi>PremShop</bdi></div>
     {% get_current_language_bidi as bidi %}
     {% translate "ورود به پنل مدیریت" as heading %}
     {% include "unfold/helpers/unauthenticated_title.html" with title=heading subtitle=site_title %}
@@ -48,7 +49,7 @@ arrow points the way a Persian reader moves.
 
         <div class="flex flex-col gap-3 mt-6">
             {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
-                {% translate 'Log in' %} <span class="material-symbols-outlined text-sm" aria-hidden="true">{% if bidi %}arrow_back{% else %}arrow_forward{% endif %}</span>
+                {% translate "Log in" %} <span class="material-symbols-outlined text-sm" aria-hidden="true">{% if bidi %}arrow_back{% else %}arrow_forward{% endif %}</span>
             {% endcomponent %}
         </div>
     </form>

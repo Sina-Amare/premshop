@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from django.conf import settings
-from django.core.management.base import BaseCommand, CommandParser
+from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.db import connection
 from django.utils import timezone
 
 from apps.catalog.models import Category, Plan, Product, ProductSpec
@@ -270,14 +271,111 @@ PRODUCTS: list[dict[str, Any]] = [
 ]
 
 
+EXTENDED_MARKS = {
+    "perplexity-pro": (LH + "perplexity-color.svg", 0.10),
+    "poe": (LH + "poe-color.svg", 0.10),
+    "runway": (LH + "runway.svg", 0.12),
+    "cursor-pro": (LH + "cursor.svg", 0.12),
+    "github-pro": (LH + "github.svg", 0.16),
+    "replit-core": (LH + "replit-color.svg", 0.10),
+    "docker-pro": (GB + "docker-icon.svg", 0.08),
+    "apple-music": ("https://cdn.simpleicons.org/applemusic", 0.12),
+    "disney-plus": (
+        "https://raw.githubusercontent.com/pheralb/svgl/main/static/library/disneyplus.svg",
+        0.08,
+    ),
+    "crunchyroll": ("https://cdn.simpleicons.org/crunchyroll", 0.12),
+    "steam-gift-card": (GB + "steam.svg", 0.12),
+    "playstation-gift-card": ("https://cdn.simpleicons.org/playstation", 0.12),
+    "xbox-gift-card": (
+        "https://raw.githubusercontent.com/pheralb/svgl/main/static/library/xbox.svg",
+        0.12,
+    ),
+    "amazon-gift-card": (
+        "https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons/amazon.svg",
+        0.12,
+    ),
+}
+EXTENDED_PRODUCTS = []
+for index, (name, slug, category, colour) in enumerate(
+    [
+        ("Perplexity Pro", "perplexity-pro", "ai", "#20808d"),
+        ("Poe", "poe", "ai", "#5d5cde"),
+        ("Runway", "runway", "ai", "#343434"),
+        ("Cursor Pro", "cursor-pro", "dev", "#343434"),
+        ("GitHub Pro", "github-pro", "dev", "#24292f"),
+        ("Replit Core", "replit-core", "dev", "#f26207"),
+        ("Docker Pro", "docker-pro", "dev", "#2496ed"),
+        ("Apple Music", "apple-music", "media", "#fa243c"),
+        ("Disney+", "disney-plus", "media", "#113ccf"),
+        ("Crunchyroll", "crunchyroll", "media", "#f47521"),
+        ("Steam Gift Card", "steam-gift-card", "gift", "#175788"),
+        ("PlayStation Gift Card", "playstation-gift-card", "gift", "#0070cc"),
+        ("Xbox Gift Card", "xbox-gift-card", "gift", "#107c10"),
+        ("Amazon Gift Card", "amazon-gift-card", "gift", "#ff9900"),
+    ]
+):
+    base = 350000 + index * 75000
+    gift = category == "gift"
+    EXTENDED_PRODUCTS.append(
+        dict(
+            name=name,
+            slug=slug,
+            category=category,
+            brand_colour=colour,
+            delivery=T.GIFT_CARD if gift else T.READY_ACCOUNT,
+            warranty=W.NONE,
+            hours=24,
+            short="محصول نمونه برای بررسی ظاهر فروشگاه؛ قیمت و شرایط فروش واقعی نیست.",
+            usage_notes="اطلاعات این محصول آزمایشی‌ست؛ قبل از فروش، شرایط سرویس باید بررسی بشه.",
+            specs=[("اطلاعات محصول", "نمونه‌ی آزمایشی")],
+            plans=[
+                (
+                    "۱۰ دلاری" if gift else "۱ ماهه",
+                    None if gift else 30,
+                    base,
+                    base + 150000,
+                    base + 100000 if index % 3 == 0 else None,
+                ),
+                (
+                    "۲۵ دلاری" if gift else "۳ ماهه",
+                    None if gift else 90,
+                    base * 2,
+                    base * 2 + 250000,
+                    None,
+                ),
+            ],
+        )
+    )
+
+
 class Command(BaseCommand):
     help = "Seed the catalog with mock categories, products, specs and plans (development only)."
 
     def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument(
+            "--extended",
+            action="store_true",
+            help="add a balanced review catalog to the isolated local review database",
+        )
         parser.add_argument("--reset", action="store_true", help="delete the seeded rows first")
         parser.add_argument("--no-images", action="store_true", help="skip fetching icons")
 
     def handle(self, *args: Any, **options: Any) -> None:
+        extended = options["extended"]
+        if extended and (
+            not settings.DEBUG
+            or not getattr(settings, "DEMO_CATALOG", False)
+            or connection.settings_dict["NAME"]
+            not in {"premshop_ui_review", "test_premshop_ui_review"}
+            or connection.settings_dict.get("HOST") not in {"localhost", "127.0.0.1", "::1"}
+            or options["reset"]
+        ):
+            raise CommandError(
+                "Extended seeding requires DEBUG, DEMO_CATALOG and the local premshop_ui_review database, without --reset."
+            )
+        products = PRODUCTS + EXTENDED_PRODUCTS if extended else PRODUCTS
+        marks = MARKS | EXTENDED_MARKS if extended else MARKS
         if not settings.DEBUG:
             self.stderr.write("Refusing to seed a non-DEBUG database.")
             return
@@ -293,11 +391,13 @@ class Command(BaseCommand):
 
         now = timezone.now()
         added = 0
-        for spec in PRODUCTS:
+        for spec in products:
             product, created = Product.objects.get_or_create(
                 slug=spec["slug"],
                 defaults={
                     "name": spec["name"],
+                    "brand_colour": spec.get("brand_colour", ""),
+                    "usage_notes": spec.get("usage_notes", ""),
                     "category": categories[spec["category"]],
                     "short_description": spec["short"],
                     "delivery_type": spec["delivery"],
@@ -341,11 +441,11 @@ class Command(BaseCommand):
                     sort_order=order,
                 )
             if not options["no_images"]:
-                self._attach_icon(product, *MARKS[spec["slug"]])
+                self._attach_icon(product, *marks[spec["slug"]])
             self.stdout.write(f"  {product.name}: {product.plans.count()} plans")
         self.stdout.write(
             self.style.SUCCESS(
-                f"added {added} of {len(PRODUCTS)} products; the rest were already there"
+                f"added {added} of {len(products)} products; the rest were already there"
             )
         )
 

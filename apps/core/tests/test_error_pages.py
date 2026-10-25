@@ -102,7 +102,7 @@ def test_a_nul_in_the_address_is_refused_before_the_database(client, url):
     response = client.get(url)
 
     assert response.status_code == 404
-    assert "این صفحه را پیدا نکردیم" in response.content.decode()
+    assert "این صفحه رو پیدا نکردیم" in response.content.decode()
 
 
 def test_a_nul_in_the_session_cookie_never_reaches_the_database(client, settings):

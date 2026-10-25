@@ -27,7 +27,7 @@ from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.admin import StackedInline, TabularInline
 from unfold.decorators import display
 from unfold.forms import PaginationInlineFormSet
 from unfold.widgets import (
@@ -36,6 +36,7 @@ from unfold.widgets import (
     UnfoldAdminTextInputWidget,
 )
 
+from apps.catalog.admin_preview import PreviewAdminMixin
 from apps.catalog.models import (
     NO_AVAILABLE_PLAN,
     PRICE_FIELDS,
@@ -111,6 +112,17 @@ class SuggestingTextInput(UnfoldAdminTextInputWidget):
         options = format_html_join("", '<option value="{}"></option>', ((t,) for t in titles))
         return super().render(name, value, attrs, renderer) + format_html(
             '<datalist id="spec-title-suggestions">{}</datalist>', options
+        )
+
+
+class BrandColourWidget(UnfoldAdminTextInputWidget):
+    def __init__(self, product: Product | None, attrs: Any = None) -> None:
+        super().__init__(attrs)
+        self.product = product
+
+    def render(self, name: str, value: Any, attrs: Any = None, renderer: Any = None) -> SafeString:
+        return super().render(name, value, attrs, renderer) + render_to_string(
+            "admin/catalog/brand_colour.html", {"product": self.product}
         )
 
 
@@ -492,7 +504,7 @@ def warn_if_below_cost(request: HttpRequest, plan: Plan) -> None:
 
 
 @admin.register(Category)
-class CategoryAdmin(ModelAdmin):
+class CategoryAdmin(PreviewAdminMixin):
     list_display = ["name", "slug", "product_count"]
     # Dragged like specs and plans, where the number box was a full-width
     # input with no label of its own. Unfold adds the hidden field.
@@ -520,7 +532,7 @@ class CategoryAdmin(ModelAdmin):
 
 
 @admin.register(Product)
-class ProductAdmin(ModelAdmin):
+class ProductAdmin(PreviewAdminMixin):
     list_display = [
         "product",
         "status_label",
@@ -550,9 +562,12 @@ class ProductAdmin(ModelAdmin):
     # What still stands between a draft and publishing, at the top of its form.
     change_form_before_template = "admin/catalog/product/readiness.html"
     fieldsets = [
-        (None, {"fields": ["name", "slug", "category", "status", "image", "brand_colour"]}),
         (
-            _("تحویل"),
+            _("مشخصات اصلی"),
+            {"fields": ["name", "slug", "category", "status", "image", "brand_colour"]},
+        ),
+        (
+            _("تحویل و گارانتی"),
             {
                 "fields": [
                     "delivery_type",
@@ -562,9 +577,9 @@ class ProductAdmin(ModelAdmin):
                 ]
             },
         ),
-        (_("متن"), {"fields": ["short_description", "usage_notes"]}),
+        (_("توضیحات محصول"), {"fields": ["short_description", "usage_notes"]}),
         (
-            _("واقعیت‌ها"),
+            _("شرایط و بررسی اطلاعات"),
             {
                 "fields": [
                     "refund_note",
@@ -573,8 +588,11 @@ class ProductAdmin(ModelAdmin):
                 ]
             },
         ),
-        (_("جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
-        (_("سئو"), {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]}),
+        (_("نام‌های جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
+        (
+            _("عنوان و توضیح جستجو"),
+            {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]},
+        ),
     ]
 
     @display(description=_("محصول"), header=True, ordering="name")
@@ -797,6 +815,9 @@ class ProductAdmin(ModelAdmin):
         }
         inlines = self.get_inlines(request, obj)
         form.unseen = [inline.model for inline in inlines if inline.model not in changeable]
+        if "brand_colour" in form.base_fields:
+            field = form.base_fields["brand_colour"]
+            field.widget = BrandColourWidget(obj, attrs=field.widget.attrs)
         return form
 
     def render_change_form(
@@ -877,7 +898,7 @@ class ProductAdmin(ModelAdmin):
 
 
 @admin.register(Plan)
-class PlanAdmin(ModelAdmin):
+class PlanAdmin(PreviewAdminMixin):
     """A read-across of every plan, which the product form cannot give.
 
     Editing stays on the product, where a plan belongs next to the thing it

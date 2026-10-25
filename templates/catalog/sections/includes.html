@@ -1,5 +1,5 @@
-{% load fa richtext %}{% comment %}«چه چیزهایی می‌گیرید»: one line per feature, the free tier's figure in the same line.{% endcomment %}<section class="pdp__section" id="section-{{ section.pk }}">
-  <h2 class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
-  <div class="prose rich">{{ section.body|markdown }}</div>
+{% load fa richtext %}{% comment %}«چه چیزهایی می‌گیرید»: one line per feature, the free tier's figure in the same line.{% endcomment %}<section data-preview-row="{{ section.preview_key }}" data-preview-field="kind sort_order" class="pdp__section" id="section-{{ section.pk }}">
+  <h2 data-preview-field="title" class="pdp__h2">{{ section.title|default:section.get_kind_display|bdi }}</h2>
+  <div data-preview-field="body"{% if snapshot and not section.body %} data-preview-empty hidden{% endif %} class="prose rich">{{ section.body|markdown }}</div>
   {% include "catalog/sections/_image.html" %}
 </section>

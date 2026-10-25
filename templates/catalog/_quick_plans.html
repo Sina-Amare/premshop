@@ -1,0 +1,13 @@
+{% load fa %}{% if quick_plan_products %}
+<dialog id="quick-plans" class="quick-plans" aria-labelledby="quick-plans-title">
+  <header class="quick-plans__head"><h2 id="quick-plans-title"><bdi>پلن‌ها</bdi></h2><button type="button" data-quick-close aria-label="بستن پیش‌نمایش پلن‌ها" autofocus>{% include 'storefront/icon.html' with name='close' %}</button></header>
+  <div class="quick-plans__body">
+    {% for product in quick_plan_products %}<section data-quick-product="{{ product.pk }}" data-name="{{ product.name }}" hidden>
+      <div class="quick-plans__service">{% if product.image %}<img src="{{ product.image.url }}" width="44" height="44" alt="" loading="lazy">{% endif %}<div><p>{{ product.category.name }}</p><p>{{ product.delivery_sentence }}</p></div></div>
+      <h3>{% if product.delivery_type == 'gift_card' %}مبلغ کارت{% else %}پلن‌های اشتراک{% endif %}</h3>
+      <ul class="quick-plans__list">{% for plan in product.plans.all %}<li><div class="quick-plans__row"><strong><bdi>{{ plan.title }}</bdi></strong>{% if plan.is_available %}{% include 'catalog/_price.html' with plan=plan %}{% else %}<span class="quick-plans__unavailable">فعلاً ناموجود</span>{% endif %}</div>{% if plan.is_available and plan.promotion_is_active %}<div class="quick-plans__offer"><span data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include 'catalog/_deadline.html' with plan=plan %}</div>{% endif %}</li>{% empty %}<li>فعلاً پلنی برای این محصول نداریم.</li>{% endfor %}</ul>
+      <a class="v-button quick-plans__details" href="{% url 'product' product.slug %}">جزئیات محصول{% include 'storefront/icon.html' with name='arrow' %}</a>
+    </section>{% endfor %}
+  </div>
+</dialog>
+{% endif %}

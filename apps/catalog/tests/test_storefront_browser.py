@@ -334,7 +334,7 @@ def test_the_skip_link_appears_on_focus_and_lands_in_the_content(browser, live_s
 
 
 def header_bottom(page) -> float:
-    return page.evaluate("document.querySelector('.hdr').getBoundingClientRect().bottom")
+    return page.evaluate("document.querySelector('.v-header').getBoundingClientRect().bottom")
 
 
 @pytest.mark.parametrize("width", [390, 1280])
@@ -366,7 +366,7 @@ def test_the_phone_bar_gives_search_its_own_row(browser, live_server, discounted
         page.goto(f"{live_server.url}/")
         bar, account, search = (
             page.locator(selector).bounding_box()
-            for selector in (".hdr__main", ".hdr__account", ".hdr__search")
+            for selector in (".v-header__main", ".v-account", ".v-search")
         )
         assert search["y"] >= account["y"] + account["height"], (account, search)
         assert account["y"] - bar["y"] >= 8, (bar, account)

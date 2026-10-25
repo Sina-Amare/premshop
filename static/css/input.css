@@ -1,3 +1,4 @@
+@import "./product-art.css";
 /* source(none) disables Tailwind's automatic project-wide scanning: it was
    reading our own documentation and generating utilities from the class names
    the docs exist to ban. Scan only where markup actually lives. */
@@ -807,18 +808,6 @@
            border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow: hidden; }
   .pcard:hover { border-color: var(--color-line-strong); }
   .pcard:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .pcard__art { position: relative; isolation: isolate; aspect-ratio: 8 / 5; display: grid;
-                place-items: center; overflow: hidden; background: color-mix(in oklab, var(--brand) 10%, white);
-                border-block-end: 1px solid color-mix(in oklab, var(--brand) 16%, var(--color-line)); }
-  .pcard__art::before, .pcard__art::after { content: ""; position: absolute; z-index: -1;
-    inline-size: 72%; aspect-ratio: 1; border: 1px solid color-mix(in oklab, var(--brand) 13%, transparent);
-    border-radius: 50%; }
-  .pcard__art::before { inset-inline-start: -36%; inset-block-end: -70%; }
-  .pcard__art::after { inset-inline-end: -28%; inset-block-start: -74%; }
-  .pcard__art img { inline-size: 30%; max-inline-size: 76px; block-size: auto; aspect-ratio: 1; object-fit: contain; }
-  .pcard__mono { font-family: var(--font-head); font-size: 42px; }
-  .pcard__shop { position: absolute; inset-inline-end: 12px; inset-block-end: 8px;
-                 font-size: 10px; color: var(--color-secondary); }
   .pcard__body { padding: 12px 16px; flex: 1; }
   .pcard__cat { display: block; font-size: 12px; color: var(--color-secondary); }
   .pcard__name { font-family: var(--font-head); font-size: 18px; font-weight: 600; line-height: 1.6;

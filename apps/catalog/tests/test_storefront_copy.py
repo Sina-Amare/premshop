@@ -1,11 +1,4 @@
-"""The shop's own sentences are plain written Persian, on every storefront page.
-
-The questions in the FAQ are the buyer's voice and keep it («رمز اکانت خودم
-رو باید بدم؟»); everything the shop says back is written Persian: «را» not
-«رو», «مانده» not «مونده», «می‌شود» not «می‌شه». No em dash in Persian text or
-in a title, where «|» separates the brand. And no superlative the shop cannot
-measure.
-"""
+"""Conversational storefront copy stays precise; email keeps written Persian."""
 
 from __future__ import annotations
 
@@ -38,17 +31,6 @@ pytestmark = pytest.mark.django_db
 # (form, why). Words, not substrings: «رو» is inside «روی» and «روز».
 BANNED = [
     ("—", "an em dash in Persian text: «،» or a full stop, and «|» in a title"),
-    ("رو", "«را»"),
-    ("می‌شه", "«می‌شود»"),
-    ("نمی‌دیم", "«نمی‌دهیم»"),
-    ("مونده", "«مانده»"),
-    ("باقی‌مونده", "«باقی‌مانده»"),
-    ("تموم", "«تمام»"),
-    ("دیگه", "«دیگر»"),
-    ("خودتون", "«خودتان»"),
-    ("همون", "«همان»"),
-    ("اینا", "«این‌ها» or a noun"),
-    ("هرچی", "«هر چه» or a noun"),
     ("بهترین", "a number, not a superlative"),
     ("سریع‌ترین", "a number, not a superlative"),
     ("تخفیف‌دارها", "«تخفیف‌ها»"),
@@ -62,6 +44,19 @@ BANNED = [
     ("برمی‌گرده", "«برمی‌گردانیم», with its condition"),
     ("ضمانت بازگشت وجه", "«بازگشت وجه», with its condition"),
     ("تومن", "«تومان»"),
+]
+WRITTEN_ONLY = [
+    ("رو", "«را»"),
+    ("می‌شه", "«می‌شود»"),
+    ("نمی‌دیم", "«نمی‌دهیم»"),
+    ("مونده", "«مانده»"),
+    ("باقی‌مونده", "«باقی‌مانده»"),
+    ("تموم", "«تمام»"),
+    ("دیگه", "«دیگر»"),
+    ("خودتون", "«خودتان»"),
+    ("همون", "«همان»"),
+    ("اینا", "«این‌ها» or a noun"),
+    ("هرچی", "«هر چه» or a noun"),
 ]
 PATTERNS = [
     (form, re.compile(rf"(?<![\w\u200c]){re.escape(form)}(?![\w\u200c])"), why)
@@ -102,8 +97,15 @@ def said(body: str) -> tuple[str, str]:
     return " ".join(" ".join(parser.parts).split()), parser.title
 
 
-def offences(text: str) -> list[str]:
-    return [f"{form}: {why}" for form, pattern, why in PATTERNS if pattern.search(text)]
+def offences(text: str, *, written: bool = False) -> list[str]:
+    found = [f"{form}: {why}" for form, pattern, why in PATTERNS if pattern.search(text)]
+    if written:
+        found += [
+            form
+            for form, _why in WRITTEN_ONLY
+            if re.search(rf"(?<![\w‌]){re.escape(form)}(?![\w‌])", text)
+        ]
+    return found
 
 
 @pytest.fixture
@@ -202,7 +204,12 @@ def test_every_email_speaks_written_persian_in_both_halves():
         text = re.sub(r"(?m)^\s*—+\s*$", "", text)
         body, title = said(html)
         assert body and text, f"nothing read in {name}"
-        found = offences(subject) + offences(text) + offences(body) + offences(title)
+        found = (
+            offences(subject, written=True)
+            + offences(text, written=True)
+            + offences(body, written=True)
+            + offences(title, written=True)
+        )
         if found:
             bad[name] = found
     assert len(EMAIL_PREVIEWS) == 3

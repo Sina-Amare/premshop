@@ -67,7 +67,7 @@ def test_the_support_link_has_a_name_at_every_width(client):
     the one way to reach a person with no name to a screen reader."""
     body = client.get(reverse("home")).content.decode()
 
-    assert re.search(r'class="hdr__support"[^>]*aria-label="پشتیبانی در تلگرام"', body)
+    assert re.search(r'class="v-support"[^>]*aria-label="پشتیبانی در تلگرام"', body)
 
 
 def test_every_email_gets_the_same_details():

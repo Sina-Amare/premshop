@@ -315,10 +315,10 @@ def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
 def test_the_header_account_link_goes_to_login_when_signed_out(client):
     body = client.get(reverse("login")).content.decode()
 
-    assert f'href="{reverse("login-code")}" class="hdr__account"' in body
+    assert f'class="v-account" href="{reverse("login-code")}"' in body
     # Labelled, not a bare pictogram: a first-time visitor has to be able to
     # see where signing up happens without decoding a glyph.
-    assert "ورود یا ثبت‌نام" in body
+    assert "ورود | ثبت‌نام" in body
 
 
 def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user):
@@ -326,7 +326,7 @@ def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user
 
     body = client.get(reverse("account")).content.decode()
 
-    assert f'href="{reverse("account")}" class="hdr__account"' in body
+    assert f'class="v-account" href="{reverse("account")}"' in body
     assert "ورود یا ثبت‌نام" not in body
 
 

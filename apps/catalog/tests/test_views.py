@@ -118,7 +118,7 @@ def test_category_page_and_its_empty_state(client, category, product):
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "فعلاً محصولی در این دسته نداریم" in body
+    assert "توی این دسته فعلاً محصولی نداریم" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):
@@ -365,7 +365,9 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
 
 
 # Attributes allowed after the class: a discount with an end carries data-left.
-PRICE_COMPONENT = re.compile(r'<span class="price[^"]*"[^>]*>.*?</span></span>', re.S)
+PRICE_COMPONENT = re.compile(
+    r'<span class="price(?: [^"]*)?"[^>]*>(?=<span|<del).*?</span></span>', re.S
+)
 
 
 def test_only_the_product_plan_strikes_its_original_price(client, product):
@@ -374,7 +376,7 @@ def test_only_the_product_plan_strikes_its_original_price(client, product):
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
     assert '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in page
-    assert '<del class="price__was">' not in listing
+    assert '<del class="price__was">' not in listing.split("</main>", 1)[0]
     for body in (listing, page):
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)
@@ -406,7 +408,7 @@ def test_seo_fields_render_when_set(client, product):
 
 
 def shelf_headings(body: str) -> list[str]:
-    return [h.strip() for h in re.findall(r'class="shelf__title">([^<]+)<', body)]
+    return [h.strip() for h in re.findall(r'id="category-[0-9]+">([^<]+)<', body)]
 
 
 def test_home_groups_products_under_their_department(client, category, product):
@@ -416,8 +418,9 @@ def test_home_groups_products_under_their_department(client, category, product):
     body = client.get(reverse("home")).content.decode()
 
     assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
-    assert "۲ محصول" in body, "with a count that has its unit, not a bare digit"
-    assert body.count('class="shelf__all"') == 2, "each group links to its own department"
+    catalog = body.split('id="products"', 1)[1].split("</main>", 1)[0]
+    assert re.findall(r"<p>([۰-۹]+) محصول</p>", catalog) == ["۱", "۱"]
+    assert len(re.findall(r'class="v-view-all" href="/c/[^"]+/"', body)) == 2
     assert 'href="/c/gift/"' in body
 
 
@@ -465,7 +468,7 @@ def test_product_page_suggests_other_products(client, category, product):
     elsewhere = make_product(Category.objects.create(name="گیفت کارت", slug="gift"), "steam-gift")
 
     body = client.get(reverse("product", args=[product.slug])).content.decode()
-    suggested = body.split("محصولات دیگر", 1)[1]
+    suggested = body.split("محصولات دیگر", 1)[1].split("</section>", 1)[0]
 
     assert f'href="/p/{sibling.slug}/"' in suggested
     assert f'href="/p/{elsewhere.slug}/"' in suggested, "a thin department is topped up"
@@ -642,7 +645,7 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "جستجوها در یک دقیقه‌ی اخیر زیاد بود." in response.content.decode()
+    assert "درخواست‌های جستجو زیاد شده." in response.content.decode()
 
 
 @pytest.mark.parametrize("query", ["خرید اکانت جمینای", "خرید اکانت جمینای پرو", "اکانت gemini"])
@@ -664,8 +667,9 @@ def test_the_words_around_a_product_name_do_not_sink_the_search(client, category
 def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product):
     body = client.get(reverse("search"), {"q": "xbox"}).content.decode()
 
-    assert "برای «<bdi>xbox</bdi>» محصولی پیدا نکردیم" in body
-    assert "همه‌ی محصولات ما:" in body
+    assert "محصولی پیدا نکردیم" in body
+    assert '<bdi class="v-query">xbox</bdi>' in body
+    assert "می‌تونید این محصولات رو هم ببینید:" in body
 
 
 def test_the_search_page_is_not_indexed(client, product):
@@ -730,7 +734,7 @@ def test_the_cart_button_is_off_until_there_is_a_cart(client, product):
     assert re.search(
         r'<button type="submit" class="btn btn--primary buybox__cta" disabled[ >]', body
     )
-    assert "خرید از سایت هنوز فعال نشده است." in body
+    assert "خرید از سایت هنوز فعال نیست." in body
 
 
 def test_a_plan_title_on_a_card_is_isolated(client, category):

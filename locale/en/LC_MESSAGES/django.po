@@ -193,16 +193,16 @@ msgid "برای گیفت کارت خالی بگذارید."
 msgstr "Leave empty for a gift card."
 
 msgid "قیمت خرید"
-msgstr "Cost price"
+msgstr "Cost price (toman)"
 
 msgid "مشتری این را نمی‌بیند."
 msgstr "The customer does not see this."
 
 msgid "قیمت فروش"
-msgstr "Sale price"
+msgstr "Sale price (toman)"
 
 msgid "قیمت تخفیفی"
-msgstr "Discount price"
+msgstr "Discounted price (toman)"
 
 msgid "باید از قیمت فروش کمتر باشد."
 msgstr "Must be lower than the sale price."
@@ -613,3 +613,202 @@ msgstr "Enter a color such as #10a37f."
 
 msgid "رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."
 msgstr "Card background color, such as #10a37f. Leave blank for a neutral background."
+
+
+msgid "مدیریت فروشگاه"
+msgstr "Store management"
+
+msgid "پلن‌ها و قیمت‌ها"
+msgstr "Plans and prices"
+
+msgid "مشخصات اصلی"
+msgstr "Basic details"
+
+msgid "تحویل و گارانتی"
+msgstr "Delivery and warranty"
+
+msgid "توضیحات محصول"
+msgstr "Product description"
+
+msgid "شرایط و بررسی اطلاعات"
+msgstr "Terms and information review"
+
+msgid "نام‌های جستجو"
+msgstr "Search names"
+
+msgid "عنوان و توضیح جستجو"
+msgstr "Search title and description"
+
+msgid "بخش‌های فرم محصول"
+msgstr "Product form sections"
+
+msgid "پیش‌نمایش پنل با اطلاعات آزمایشی"
+msgstr "Panel preview with sample data"
+
+msgid "پیش‌نمایش پنل · اطلاعات این محیط آزمایشی‌اند."
+msgstr "Panel preview. This environment contains sample data."
+
+msgid "تاریخچه‌ی تغییرات"
+msgstr "Change history"
+
+msgid "انتخاب رنگ"
+msgstr "Choose color"
+
+msgid "انتخاب پلن و قیمت محصول؛ تخفیف فقط در بازه‌ی معتبر نمایش داده می‌شه."
+msgstr "Product plans and prices; discounts appear only during their valid window."
+
+msgid "اگه روشن باشه، این مشخصه کنار نام محصول هم دیده می‌شه."
+msgstr "Also show this fact beside the product name."
+
+msgid "این بخش با اطلاعات فعلی نمایش داده نمی‌شه. راهنمای کنار فیلد رو ببینید."
+msgstr "This section is absent with the current values. Check the field guidance."
+
+msgid "این ردیف متعلق به این محصول نیست."
+msgstr "This row does not belong to this product."
+
+msgid "این نسخه از فرم آماده‌ست. هنوز چیزی ذخیره نشده."
+msgstr "This form snapshot is ready. Nothing has been saved."
+
+msgid "بالای صفحه‌ی محصول و کارت محصول"
+msgstr "Product header and product card"
+
+msgid "بخش پایانی لینک دسته‌بندی؛ تغییرش لینک قبلی رو از دسترس خارج می‌کنه."
+msgstr "The final part of the category URL. Changing it breaks the previous address."
+
+msgid "بخش پایانی لینک محصول؛ تغییرش لینک قبلی رو از دسترس خارج می‌کنه."
+msgstr "The final part of the product URL. Changing it breaks the previous address."
+
+msgid "بخش پیش از خرید؛ نکات خالی یا «موضوعیت ندارد» نمایش داده نمی‌شن."
+msgstr "Before buying; empty or inapplicable usage notes are omitted."
+
+msgid "برای پیدا شدن محصول با نام‌های دیگه؛ روی صفحه نمایش داده نمی‌شه."
+msgstr "Alternative search names; these do not appear on the product page."
+
+msgid "بستن"
+msgstr "Close"
+
+msgid "تأثیر هر فیلد رو همین‌جا ببینید. پیش‌نمایش چیزی رو ذخیره نمی‌کنه."
+msgstr "See where each field appears. Previewing does not save changes."
+
+msgid "تاریخ آخرین بررسی اطلاعات؛ پایین توضیحات محصول"
+msgstr "Last information review date, below the product description"
+
+msgid "ترتیب دسته‌های دارای محصول فعال در منوی سایت؛ دسته‌ی خالی وارد منو نمی‌شه."
+msgstr "Navigation order for categories with public products; empty categories stay out of the menu."
+
+msgid "ترتیب ردیف‌های جدول مشخصات"
+msgstr "Order of specification rows"
+
+msgid "ترتیب پلن‌ها در صفحه‌ی محصول"
+msgstr "Order of plans on the product page"
+
+msgid "تعداد مجاز و اطلاعات لازم برای پلن انتخاب‌شده"
+msgstr "Allowed quantity and details required for the selected plan"
+
+msgid "تمام‌صفحه"
+msgstr "Full screen"
+
+msgid "جدول مشخصات محصول"
+msgstr "Product specifications table"
+
+msgid "خلاصه‌ی شرایط و توضیح تحویل در صفحه‌ی محصول"
+msgstr "Terms summary and delivery explanation on the product page"
+
+msgid "در حال آماده‌کردن پیش‌نمایش…"
+msgstr "Preparing preview…"
+
+msgid "دیدن در پیش‌نمایش"
+msgstr "Show in preview"
+
+msgid "رنگ خنثی"
+msgstr "Neutral color"
+
+msgid "رنگ رو با # و شش رقم وارد کنید؛ مثل #10a37f."
+msgstr "Enter # followed by six hexadecimal digits, such as #10a37f."
+
+msgid "روی الزام بررسی به‌روز اطلاعات برای انتشار اثر می‌ذاره."
+msgstr "Controls whether publishing requires recently checked information."
+
+msgid "زمان تأیید قیمت؛ قدیمی‌ترین تأیید معتبر کنار قیمت‌ها نمایش داده می‌شه."
+msgstr "Price confirmation time; the oldest applicable confirmation appears beside prices."
+
+msgid "صفحه‌ی ذخیره‌شده در سایت"
+msgstr "Saved page on site"
+
+msgid "عنوان و معرفی صفحه‌ی دسته‌بندی؛ نام در منوی سایت هم دیده می‌شه."
+msgstr "Category heading and introduction; the name also appears in navigation."
+
+msgid "فرم تغییر کرده؛ برای دیدن نسخه‌ی جدید، پیش‌نمایش رو به‌روز کنید."
+msgstr "The form has changed. Refresh the preview to see the latest values."
+
+msgid "فعال روی سایت دیده می‌شه؛ پیش‌نویس و ناموجود از فهرست‌ها پنهان می‌مونن."
+msgstr "Active products appear on the site; drafts and unavailable products stay out of listings."
+
+msgid "فقط برای آماده‌کردن پیام تحویل؛ مشتری توی صفحه‌ی محصول نمی‌بینه."
+msgstr "Used to prepare the delivery message; absent from the product page."
+
+msgid "فقط توی پنل، برای خرید و محاسبه‌ی سود؛ مشتری بهش دسترسی نداره."
+msgstr "Panel only, for purchasing and margin calculations; customers cannot access this."
+
+msgid "محصولی که این پلن زیر اون نمایش داده می‌شه."
+msgstr "The product under which this plan appears."
+
+msgid "مدت واقعی اشتراک برای عملیات فروش؛ عنوانی که مشتری می‌بینه جداست."
+msgstr "Actual subscription duration for sales operations; the visible title is separate."
+
+msgid "معرفی کوتاه زیر نام محصول؛ توضیح پیش‌فرض نتایج جستجو هم هست."
+msgstr "Short product introduction and fallback search description."
+
+msgid "منابع بررسی، فقط توی پنل؛ مشتری بهشون دسترسی نداره."
+msgstr "Information sources, for the panel only; customers cannot access them."
+
+msgid "نمای تقریبی در نتایج جستجو"
+msgstr "Approximate search result"
+
+msgid "نمای تقریبی نتیجه در موتور جستجو؛ متن نهایی رو موتور جستجو انتخاب می‌کنه."
+msgstr "Approximate search appearance; the search engine chooses its final text."
+
+msgid "نمایش تغییرات ذخیره‌نشده"
+msgstr "Unsaved changes preview"
+
+msgid "همین بخش در توضیحات محصول؛ پیش از خرید جای ثابت داره، بقیه با ترتیب شما نمایش داده می‌شن."
+msgstr "This product content section; Before buying has a fixed position, others follow your order."
+
+msgid "همین سؤال و جواب در سؤال‌های پرتکرار محصول"
+msgstr "This question and answer in the product FAQ"
+
+msgid "پیش‌نمایش به‌روز نشد. خطاهای فرم رو اصلاح کنید."
+msgstr "Preview was not refreshed. Correct the form errors."
+
+msgid "پیش‌نمایش به‌روز نشد. نسخه‌ی قبلی همچنان نمایش داده می‌شه."
+msgstr "Preview was not refreshed. The previous version remains visible."
+
+msgid "پیش‌نمایش تغییرات"
+msgstr "Preview changes"
+
+msgid "پیش‌نمایش تغییرات ذخیره‌نشده؛ چیزی روی سایت تغییر نکرده."
+msgstr "Unsaved changes preview; nothing on the site has changed."
+
+msgid "پیش‌نمایش نسخه‌ی ذخیره‌شده"
+msgstr "Preview saved version"
+
+msgid "کارت محصول"
+msgstr "Product card"
+
+msgid "دسته‌بندی روی کارت محصول و مسیر بالای صفحه"
+msgstr "Category on the product card and breadcrumb trail"
+
+msgid "رنگ زمینه‌ی کارت محصول؛ رنگ خود لوگو تغییر نمی‌کنه."
+msgstr "Product card background color; the logo itself is unchanged."
+
+msgid "فقط توی پنل؛ زمان بررسی اطلاعات برای انتشار محصول."
+msgstr "Panel only: when the product facts were reviewed for publication."
+
+msgid "فقط توی پنل؛ زمان تأیید قیمت برای پیگیری بررسی قیمت‌ها."
+msgstr "Panel only: price confirmation time for reviewing prices."
+
+msgid "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
+msgstr "This is where this content will appear once completed or enabled."
+
+msgid "این ردیف برای حذف انتخاب شده. اگه حذف رو برگردونید، دوباره اینجا نمایش داده می‌شه."
+msgstr "This row is marked for deletion. Undo deletion to show it here again."
