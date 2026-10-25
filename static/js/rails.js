@@ -102,7 +102,10 @@
     const hold = () => {
       if (desktop.matches) {
         track.classList.add('is-held');
-        track.scrollTo({left:track.scrollLeft, behavior:'instant'});
+        const left = track.scrollLeft;
+        // Firefox keeps a smooth scroll alive when its replacement has no distance.
+        track.scrollTo({left:left + (rtl ? -1 : 1), behavior:'instant'});
+        track.scrollTo({left, behavior:'instant'});
       }
       schedule();
     };
