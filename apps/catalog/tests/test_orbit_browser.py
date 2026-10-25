@@ -46,7 +46,7 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
     Product.objects.bulk_create(
         [
             Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(9)
+            for i in range(16)
         ]
     )
     page = browser.new_page(viewport={"width": 1440, "height": 1050})
@@ -61,6 +61,18 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") != initial
         page.locator(".nebula").hover()
+        empty = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(350)
+        assert item.evaluate("e=>e.style.transform") != empty
+        name = item.locator(".v-service-name")
+        box = name.bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        assert name.evaluate("e=>e.matches(':hover')")
+        over_name = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(350)
+        assert item.evaluate("e=>e.style.transform") != over_name
+        box = item.locator(".v-service-mark").bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
         frozen = item.evaluate("e=>e.style.transform")
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") == frozen
@@ -73,8 +85,20 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         page.mouse.move(0, 0)
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") != frozen
+        item.evaluate("e=>e.addEventListener('click',event=>event.preventDefault(),{once:true})")
+        box = item.locator(".v-service-mark").bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        item.click()
+        page.mouse.move(0, 0)
+        frozen = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(350)
+        assert item.evaluate("e=>e.style.transform") != frozen
         page.locator("[data-orbit-next]").click()
-        assert page.locator(".nebula__item:visible").count() == 1
+        assert page.locator(".nebula__item:visible").count() == 8
+        item = page.locator(".nebula__item:visible").first
+        frozen = item.evaluate("e=>e.style.transform")
+        page.wait_for_timeout(350)
+        assert item.evaluate("e=>e.style.transform") != frozen
         assert page.locator("[data-hero-toggle]").count() == 0
     finally:
         page.close()

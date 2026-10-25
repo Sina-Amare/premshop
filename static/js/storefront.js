@@ -1,14 +1,9 @@
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  let browsing = false;
   const sync = () => {
-    document.documentElement.dataset.motion = !browsing && !reduced.matches && !document.querySelector('dialog[open]') ? 'on' : 'off';
+    document.documentElement.dataset.motion = !reduced.matches && !document.querySelector('dialog[open]') ? 'on' : 'off';
     document.dispatchEvent(new Event('storefront:motion'));
   };
-  document.addEventListener('storefront:manual', () => {
-    browsing = true;
-    sync();
-  });
   reduced.addEventListener('change', sync);
 
   const dialog = document.getElementById('quick-plans');

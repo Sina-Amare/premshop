@@ -27,7 +27,7 @@
   const update = () => {
     const eligible = orbital && desktop.matches;
     const moving = eligible && document.documentElement.dataset.motion === 'on';
-    const running = moving && visible && !document.hidden && !scene.matches(':hover,:focus-within');
+    const running = moving && visible && !document.hidden && !scene.querySelector('.v-service-mark:hover,:focus-visible');
     scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);
@@ -79,10 +79,10 @@
     if (orbital) paint();
     update();
   };
-  previous.addEventListener('click', () => {document.dispatchEvent(new Event('storefront:manual')); start -= size; layout();});
-  next.addEventListener('click', () => {document.dispatchEvent(new Event('storefront:manual')); start += size; layout();});
+  previous.addEventListener('click', () => {start -= size; layout();});
+  next.addEventListener('click', () => {start += size; layout();});
   scene.addEventListener('focusin', update);
-  for (const event of ['pointerenter','pointerleave']) scene.addEventListener(event, update);
+  for (const event of ['pointerover','pointerout']) scene.addEventListener(event, update);
   scene.addEventListener('focusout', () => queueMicrotask(update));
   desktop.addEventListener('change', layout);
   document.addEventListener('visibilitychange', update);

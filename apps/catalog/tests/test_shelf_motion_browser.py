@@ -88,7 +88,7 @@ def test_only_the_most_visible_shelf_advances_and_focus_restarts_the_full_wait(
         page.close()
 
 
-def test_manual_browsing_stops_motion_without_a_settings_menu(browser, live_server, catalog):
+def test_manual_browsing_resumes_motion_without_a_settings_menu(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
     try:
         page.goto(live_server.url + "/")
@@ -104,10 +104,10 @@ def test_manual_browsing_stops_motion_without_a_settings_menu(browser, live_serv
         page.evaluate("document.activeElement.blur()")
         page.mouse.move(0, 0)
         page.wait_for_timeout(250)
-        expect(page.locator("html")).to_have_attribute("data-motion", "off")
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
         stopped = item.get_attribute("style")
         page.wait_for_timeout(350)
-        assert item.get_attribute("style") == stopped
+        assert item.get_attribute("style") != stopped
         page.reload()
         expect(page.locator("html")).to_have_attribute("data-motion", "on")
         rail = page.locator("[data-rail]").first
@@ -117,9 +117,12 @@ def test_manual_browsing_stops_motion_without_a_settings_menu(browser, live_serv
         track = rail.locator("[data-rail-track]")
         page.wait_for_timeout(400)
         before = track.evaluate("e=>e.scrollLeft")
-        page.wait_for_timeout(6300)
-        assert track.evaluate("e=>e.scrollLeft") == before
-        expect(page.locator("html")).to_have_attribute("data-motion", "off")
+        page.wait_for_function(
+            '(before)=>Math.abs(document.querySelector("[data-rail-track]").scrollLeft-before)>3',
+            arg=before,
+            timeout=8000,
+        )
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
         page.reload()
         page.emulate_media(reduced_motion="reduce")
         expect(page.locator("html")).to_have_attribute("data-motion", "off")
