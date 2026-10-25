@@ -809,3 +809,6 @@ msgstr "Panel only: price confirmation time for reviewing prices."
 
 msgid "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
 msgstr "This is where this content will appear once completed or enabled."
+
+msgid "این ردیف برای حذف انتخاب شده. اگه حذف رو برگردونید، دوباره اینجا نمایش داده می‌شه."
+msgstr "This row is marked for deletion. Undo deletion to show it here again."

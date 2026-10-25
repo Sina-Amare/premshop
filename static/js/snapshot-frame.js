@@ -45,6 +45,7 @@
     if (!root) {parent.postMessage({type:'snapshot-missing'},parentOrigin);return;}
     const rowSelector = row ? `[data-preview-row="${CSS.escape(row)}"]` : null;
     const plan = rowSelector && document.querySelector(`.plans ${rowSelector} input[name=plan]`);
+    const unavailablePlan = row && ['quantity','customer-input'].includes(key) && (!plan || plan.disabled);
     if (plan && !plan.disabled) plan.click();
     const rowTarget = rowSelector && (root.matches(rowSelector) ? root : root.querySelector(rowSelector));
     const needsRow = row && (['plans','specs','sections','questions'].includes(key) || (key==='header' && row.startsWith('specs-')));
@@ -62,7 +63,7 @@
     for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) {
       if (ancestor.hasAttribute('data-preview-container') && ancestor.hidden) {ancestor.hidden=false;ancestor.dataset.previewRevealed='';}
     }
-    if (target.hasAttribute('data-preview-empty') || target.hasAttribute('data-preview-generated') || !target.getBoundingClientRect().height || (plan?.disabled && ['quantity','customer-input'].includes(key))) {
+    if (target.hasAttribute('data-preview-empty') || target.hasAttribute('data-preview-generated') || !target.getBoundingClientRect().height || unavailablePlan) {
       if (!target.hasAttribute('data-preview-empty') && !target.hasAttribute('data-preview-generated')) {
         const placeholder=document.createElement('div');target.after(placeholder);target=placeholder;
       }

@@ -79,6 +79,9 @@ class PreviewAdminMixin(ModelAdmin):
             "empty": _(
                 "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
             ),
+            "deleted": _(
+                "این ردیف برای حذف انتخاب شده. اگه حذف رو برگردونید، دوباره اینجا نمایش داده می‌شه."
+            ),
         }
         return super().render_change_form(request, context, *args, **kwargs)
 

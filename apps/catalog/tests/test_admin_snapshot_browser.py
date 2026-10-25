@@ -417,3 +417,33 @@ def test_empty_category_menu_position_is_a_placeholder(open_panel, product, widt
     page.locator("[data-snapshot-field=sort_order]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator("[data-preview-target=navigation] .snapshot-placeholder")).to_be_visible()
+
+
+@pytest.mark.parametrize("field", ["max_quantity", "customer_input_label"])
+def test_deleted_plan_does_not_inspect_another_plans_shared_controls(open_panel, product, field):
+    first = product.plans.get()
+    first.max_quantity = 3 if field == "max_quantity" else 1
+    first.requires_customer_input = field == "customer_input_label"
+    first.customer_input_label = "ایمیل پلن اول" if field == "customer_input_label" else ""
+    first.save()
+    Plan.objects.create(
+        product=product,
+        title="Second plan",
+        sort_order=5,
+        cost_price=1,
+        sale_price=200000,
+        max_quantity=first.max_quantity,
+        requires_customer_input=first.requires_customer_input,
+        customer_input_label="ایمیل پلن دوم" if field == "customer_input_label" else "",
+    )
+    page = open_panel(change_form(product))
+    page.locator(f"[data-snapshot-field=plans-1-{field}]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator('[data-preview-row="plans-1"] input')).to_be_checked()
+    page.locator("#id_plans-1-DELETE").locator("xpath=ancestor::label").click()
+    page.locator("[data-snapshot-refresh]").click()
+    expect(frame.locator('[data-preview-row="plans-1"]')).to_have_count(0)
+    expect(frame.locator(".snapshot-placeholder.snapshot-highlight")).to_have_attribute(
+        "data-preview-field", field
+    )
+    expect(frame.locator(".snapshot-placeholder.snapshot-highlight")).to_contain_text("حذف")

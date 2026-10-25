@@ -48,7 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const element = document.querySelector(selector);if (element) element.inert = !panel.hidden && full;
     }
   };
-  const highlight = () => {if (target) frame.contentWindow.postMessage({type:'snapshot-target',empty:text.empty,...target},location.origin);};
+  const highlight = () => {
+    if (!target) return;
+    const deleted = target.row && form.elements.namedItem(`${target.row}-DELETE`)?.checked;
+    frame.contentWindow.postMessage({type:'snapshot-target',...target,empty:deleted ? text.deleted : text.empty},location.origin);
+  };
   const refresh = async () => {
     const request = ++sequence, submitted = revision;
     status.textContent = text.busy;
