@@ -56,7 +56,9 @@
       target = document.createElement(key==='specs' ? 'tr' : 'div');
       target.dataset.previewField = field;
       if (key==='specs') root.querySelector('tbody').append(target);
-      else (key==='questions' ? root.querySelector('dl') : key==='header' ? root.querySelector('.pdp__meta') : root).append(target);
+      else if (key==='questions') root.querySelector('dl').insertBefore(target,root.querySelector('#delivery'));
+      else if (key==='sections') root.insertBefore(target,root.querySelector('#before-buying'));
+      else (key==='header' ? root.querySelector('.pdp__meta') : root).append(target);
       target.dataset.previewGenerated = '';
     }
     for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) if (ancestor.tagName === 'DETAILS') ancestor.open = true;

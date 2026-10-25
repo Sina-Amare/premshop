@@ -447,3 +447,26 @@ def test_deleted_plan_does_not_inspect_another_plans_shared_controls(open_panel,
         "data-preview-field", field
     )
     expect(frame.locator(".snapshot-placeholder.snapshot-highlight")).to_contain_text("حذف")
+
+
+@pytest.mark.parametrize(
+    "prefix,index,field,boundary",
+    [
+        ("sections", 2, "body", "#before-buying"),
+        ("questions", 1, "question", "#delivery"),
+    ],
+)
+def test_blank_rows_use_the_same_position_as_completed_rows(
+    open_panel, product, prefix, index, field, boundary
+):
+    with_sections_and_a_question(product)
+    page = open_panel(change_form(product))
+    page.click(f"#{prefix}-group a.add-row")
+    page.locator(f"[data-snapshot-field={prefix}-{index}-{field}]").click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    placeholder = frame.locator(".snapshot-placeholder.snapshot-highlight")
+    expect(placeholder).to_be_visible()
+    assert placeholder.evaluate(
+        "(e,s)=>Boolean(e.compareDocumentPosition(document.querySelector(s)) & Node.DOCUMENT_POSITION_FOLLOWING)",
+        boundary,
+    )
