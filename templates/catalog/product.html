@@ -102,15 +102,13 @@
               <input type="radio" name="plan" value="{{ plan.id }}"
                      {% if not option.selectable %}disabled{% elif option == available_plans.0 %}checked{% endif %}
                      data-max="{{ option.max_add }}" data-in-cart="{{ option.in_cart }}"
-                     data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
+                     data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.sale_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__details">
                 <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
                   <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
                 </span>
-                {% if option.selectable and plan.promotion_is_active %}
-                <span data-preview-field="promo_price promo_starts_at promo_ends_at" class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
-                {% else %}{% include 'admin/catalog/preview_slot.html' with field='promo_price promo_starts_at promo_ends_at' inline=True %}{% endif %}
+                <span data-plan-promotion{% if not option.selectable %} hidden{% endif %}>{% include 'catalog/_purchase_promotion.html' with plan=plan %}</span>
               </span>
             </label>
           {% endwith %}{% endfor %}

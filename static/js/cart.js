@@ -75,10 +75,13 @@
         const row = radio.closest('.plan');
         row.classList.toggle('plan--off', radio.disabled);
         const price = row.querySelector('[data-plan-price]');
+        const promotion = row.querySelector('[data-plan-promotion]');
+        if (promotion) promotion.hidden = radio.disabled;
         if (price) {
           price.hidden = radio.disabled;
           if (option && radio.dataset.priceKey !== option.price_key) {
             price.innerHTML = option.price_html;
+            if (promotion) promotion.innerHTML = option.promotion_html;
             radio.dataset.priceKey = option.price_key;
           }
         }
