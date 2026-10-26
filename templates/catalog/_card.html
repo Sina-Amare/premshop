@@ -22,5 +22,5 @@
     {% empty %}<span class="badge badge--neutral">ناموجود</span>{% endfor %}
   </div>
 </a>
-{% if quick_plan_products %}<button type="button" class="pcard__quick" data-quick-open="{{ product.pk }}" aria-label="دیدن پلن‌ها: {{ product.name }}" aria-haspopup="dialog" aria-controls="quick-plans" hidden>دیدن پلن‌ها{% include 'storefront/icon.html' with name='arrow' %}</button>{% endif %}
+{% if quick_plan_products %}<button type="button" class="pcard__quick" data-quick-open="{{ product.pk }}" aria-label="گزینه‌های خرید: {{ product.name }}" aria-haspopup="dialog" aria-controls="quick-plans" hidden>گزینه‌های خرید{% include 'storefront/icon.html' with name='arrow' %}</button>{% endif %}
 </article>

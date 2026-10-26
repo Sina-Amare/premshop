@@ -43,8 +43,8 @@ def test_no_template_spells_out_a_support_detail():
 
 def test_the_scan_would_see_a_typed_handle():
     """The control: the literal is what a template would contain."""
-    assert support.details()["telegram"] == "@premshop"
-    assert "@premshop" in '<bdi class="latin">@premshop</bdi>'
+    assert support.details()["telegram"] == "@premshop_support"
+    assert "@premshop_support" in '<bdi class="latin">@premshop_support</bdi>'
 
 
 @pytest.mark.parametrize("url", ["/", "/faq/", "/search/?q=x", "/no-such-page/"])

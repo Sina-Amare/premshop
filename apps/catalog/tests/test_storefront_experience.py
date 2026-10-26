@@ -5,7 +5,7 @@ def test_shared_shell_names_the_brand_and_keeps_real_destinations(client, db):
     response = client.get(reverse("home"))
     body = response.content.decode()
     assert "اشتراک بعدی‌تون" in body
-    assert "پلن مناسب‌تون رو انتخاب کنید" in body
+    assert "اشتراک مناسب‌تون رو انتخاب کنید" in body
     assert 'class="v-search"' in body
     assert 'href="/faq/"' in body
     assert 'name="q"' in body
