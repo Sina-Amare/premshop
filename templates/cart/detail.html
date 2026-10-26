@@ -27,7 +27,8 @@
         </div>
         <div class="cart-line__amount">{% if not line.unavailable and not line.quantity_invalid %}<span class="cart-money">{{ line.line_total|price_html }}</span>{% else %}<span class="cart-line__excluded">خارج از جمع سبد</span>{% endif %}</div>
         <div class="cart-line__controls">
-          {% if not line.unavailable and line.plan.max_quantity > 1 or line.quantity_invalid %}
+          {% if line.unavailable %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>
+          {% elif line.plan.max_quantity > 1 or line.quantity_invalid %}
           <form method="post" action="{% url 'cart-quantity' %}" class="cart-quantity">
             {% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}">
             <label class="sr-only" for="quantity-{{ line.plan_id }}">تعداد {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% endif %}</label>
