@@ -897,8 +897,8 @@ msgstr "Purchase cost"
 msgid "قیمت فروش زمان خرید"
 msgstr "Purchase price"
 
-msgid "لغو توسط پشتیبانی"
-msgstr "Cancelled by support"
+msgid "پشتیبانی لغو کرد"
+msgstr "Support cancelled"
 
 msgid "لغو شده"
 msgstr "Cancelled"

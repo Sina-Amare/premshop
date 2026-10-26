@@ -159,7 +159,7 @@ class OrderItem(models.Model):
         SUPPLY_FAILURE = "supply_failure", _("امکان تأمین نیست")
         INPUT_TIMEOUT = "input_timeout", _("اطلاعات مشتری دریافت نشده")
         WARRANTY_REFUND = "warranty_refund", _("بازپرداخت گارانتی")
-        OPERATOR = "operator", _("لغو توسط پشتیبانی")
+        OPERATOR = "operator", _("پشتیبانی لغو کرد")
 
     order = models.ForeignKey(
         Order, on_delete=models.PROTECT, related_name="items", verbose_name=_("سفارش")
