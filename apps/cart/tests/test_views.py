@@ -99,7 +99,7 @@ def test_add_json_stays_on_product_and_reports_authoritative_count_and_limits(cl
     assert data["count"] == 2
     assert data["options"][str(plan.pk)]["max_add"] == 1
     assert data["options"][str(other.pk)]["selectable"] is True
-    assert data["message"] == "به سبد خرید اضافه شد."
+    assert data["message"] == f"{plan.product.name}، {plan.title} به سبد خرید اضافه شد."
 
 
 def test_stock_json_failure_leaves_cart_unchanged_and_uses_plain_persian(client, plan):

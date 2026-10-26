@@ -102,11 +102,11 @@
               <input type="radio" name="plan" value="{{ plan.id }}"
                      {% if not option.selectable %}disabled{% elif option == available_plans.0 %}checked{% endif %}
                      data-max="{{ option.max_add }}" data-in-cart="{{ option.in_cart }}"
+                     data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__details">
                 <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
-                  <span data-preview-field="sale_price is_available stock_quantity">{% if option.selectable %}{% include "catalog/_price.html" with plan=plan %}
-                  {% else %}<span class="plan__off">فعلاً ناموجود</span>{% endif %}</span>
+                  <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
                 </span>
                 {% if option.selectable and plan.promotion_is_active %}
                 <span data-preview-field="promo_price promo_starts_at promo_ends_at" class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
@@ -117,29 +117,30 @@
         </fieldset>
         {% endif %}
 
-        {% if available_plans or snapshot %}
-        {% if max_quantity > 1 or snapshot %}
+        {% if plans or snapshot %}
         <div data-preview-target="quantity" data-preview-field="max_quantity" class="buybox__row" id="qty-row"{% if purchase.initial_maximum < 2 %} hidden{% endif %}>
           <label class="buybox__label" for="qty">تعداد</label>
-          <div class="stepper">
+          <div class="stepper" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
             <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr">
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
           </div>
         </div>
-        {% endif %}
+        <p class="micro buybox__limit" id="qty-limit" hidden></p>
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
           <p class="micro">انتخاب شما</p>
           <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
         </div>
-        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot or available_plans.0.max_add == 0 %} disabled{% endif %}>{% if available_plans.0.max_add == 0 %}در سبد خرید شماست{% else %}افزودن به سبد خرید{% endif %}</button>
+        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif available_plans.0.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
         {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
+        <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not available_plans or available_plans.0.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
+        <p class="cart-add-error" role="alert" hidden></p>
       </form>
       {% endwith %}
       <p class="micro buybox__note">{{ product.delivery_sentence }}{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
@@ -185,37 +186,59 @@
   var asks = form.querySelector('#asks-hint');
   var selection = form.querySelector('.buybox__selection');
   var submit = form.querySelector('.buybox__cta');
+  var cartLink = form.querySelector('.buybox__cart');
+  var limit = form.querySelector('#qty-limit');
   function currentPlan() { return form.querySelector('input[name=plan]:checked'); }
 
-  // Each plan carries its own ceiling and its own question. Switching plan
-  // can turn the quantity control off entirely — a gift card takes five, the
-  // subscription next to it takes one — so the row is hidden rather than
-  // disabled: a greyed-out stepper is a control the buyer tries to use.
-  function applyPlan() {
+  function applyPlan(event) {
     var plan = currentPlan();
-    if (!plan) { if (submit) { submit.disabled = true; submit.textContent = 'ناموجود'; } return; }
-    if (selection) {
-      var row = plan.closest('.plan');
-      selection.querySelector('[data-selected-title]').textContent = row.querySelector('.plan__title').textContent;
+    if (!plan || plan.disabled) {
+      if (submit) { submit.disabled = form.hasAttribute('data-snapshot'); submit.setAttribute('aria-disabled', 'true'); submit.hidden = false; submit.textContent = 'ناموجود'; }
+      if (selection) selection.hidden = true;
+      if (cartLink) cartLink.hidden = true;
+      return;
+    }
+    var row = plan.closest('.plan');
+    var parts = row.querySelectorAll('[data-plan-price] .price__num, [data-plan-price] .price__cur');
+    var title = row.querySelector('.plan__title').textContent;
+    var key = title + Array.from(parts).map(function (part) { return part.textContent; }).join('|');
+    if (selection && selection.dataset.value !== key) {
+      selection.querySelector('[data-selected-title]').textContent = title;
       var price = selection.querySelector('[data-selected-price]');
       price.replaceChildren();
-      row.querySelectorAll('.price__num, .price__cur').forEach(function (part) {
+      parts.forEach(function (part) {
         price.appendChild(part.cloneNode(true));
       });
+      selection.dataset.value = key;
       selection.hidden = false;
     }
+    if (selection && selection.hidden) selection.hidden = false;
     var max = parseInt(plan.getAttribute('data-max'), 10) || 0;
     if (submit && !form.hasAttribute('data-snapshot')) {
-      submit.disabled = max < 1 || form.dataset.pending === 'true';
-      submit.textContent = max > 0 ? 'افزودن به سبد خرید' : (+plan.dataset.inCart > 0 ? 'در سبد خرید شماست' : 'ناموجود');
+      var pending = form.dataset.pending === 'true';
+      var full = max < 1 && +plan.dataset.inCart > 0;
+      var focused = document.activeElement === submit;
+      submit.disabled = false;
+      submit.setAttribute('aria-disabled', String(pending || max < 1));
+      submit.hidden = full && !pending;
+      submit.textContent = max > 0 || full ? 'افزودن به سبد خرید' : 'ناموجود';
+      if (cartLink) {
+        cartLink.hidden = !full || pending;
+        if (focused && submit.hidden) cartLink.focus({preventScroll:true});
+      }
     }
     if (qtyRow && qty) {
-      qtyRow.hidden = max < 2;
+      qtyRow.hidden = max < 2 && !qtyRow.contains(document.activeElement);
       qty.max = String(Math.max(1, max));
-      if (parseInt(qty.value, 10) > Math.max(1, max)) qty.value = String(Math.max(1, max));
+      if (event && event.type === 'change' && parseInt(qty.value, 10) > Math.max(1, max)) qty.value = String(Math.max(1, max));
       form.querySelectorAll('.stepper__btn').forEach(function (button) {
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
+      if (limit) {
+        var text = max > 0 ? 'از ۱ تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد قابل افزودن است.' : 'حداکثر تعداد مجاز در سبد خرید شماست.';
+        if (limit.textContent !== text) limit.textContent = text;
+        limit.hidden = qtyRow.hidden && max > 0;
+      }
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';

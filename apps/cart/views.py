@@ -1,16 +1,19 @@
 from collections.abc import Callable
+from math import ceil
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.cart import services
+from apps.cart.models import CartItem
 from apps.catalog.models import Plan, Product
-from apps.core.formatting import to_persian_digits
+from apps.core.formatting import format_countdown, format_toman, to_persian_digits
 
 
 class LineForm(forms.Form):
@@ -57,7 +60,7 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
         kwargs["quantity"] = quantity
     new_guest = not request.user.is_authenticated and request.session.session_key is None
     try:
-        operation(request, **kwargs)
+        result = operation(request, **kwargs)
     except ValidationError as exc:
         if new_guest:
             request.session.flush()
@@ -66,10 +69,25 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
         plans = list(
             Plan.objects.filter(
                 product__plans__pk=kwargs["plan_id"], product__in=Product.objects.public()
-            )
+            ).select_related("product")
         )
         data = _state(request, plans)
-        data["message"] = "به سبد خرید اضافه شد."
+        plan = next((plan for plan in plans if plan.pk == kwargs["plan_id"]), None)
+        name = f"{plan.product.name}، {plan.title}" if plan else "محصول"
+        removed = operation is services.remove_from_cart or kwargs.get("quantity") == 0
+        if removed:
+            data["message"] = f"{name} از سبد خرید حذف شد."
+        elif operation is services.set_quantity:
+            data["message"] = f"تعداد {name} در سبد خرید به‌روز شد."
+        else:
+            data["message"] = f"{name} به سبد خرید اضافه شد."
+        if (
+            isinstance(result, CartItem)
+            and result.reserved_until
+            and result.reserved_until > timezone.now()
+        ):
+            left = ceil((result.reserved_until - timezone.now()).total_seconds())
+            data["hold_message"] = f"مهلت رزرو در سبد خرید: {format_countdown(left)}."
         return JsonResponse(data)
     return redirect("cart")
 
@@ -91,7 +109,24 @@ def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
                     option.reserved_until.isoformat() if option.reserved_until else None
                 ),
                 "expired": option.plan.stock_quantity is not None
-                and (option.reserved_until is None or option.reserved_until <= timezone.now()),
+                and option.reserved_until is not None
+                and option.reserved_until <= timezone.now(),
+                "reservation_required": option.plan.stock_quantity is not None
+                and option.in_cart > 0
+                and option.reserved_until is None,
+                "price_html": render_to_string(
+                    "catalog/_price.html", {"plan": option.plan}
+                ).strip(),
+                "price_text": format_toman(option.plan.effective_price, with_unit=False),
+                "price_key": (
+                    format_toman(option.plan.effective_price, with_unit=False)
+                    + "|"
+                    + (
+                        str(int(option.plan.promo_ends_at.timestamp()))
+                        if option.plan.promo_ends_at
+                        else ""
+                    )
+                ),
             }
             for option in services.purchase_options(request, plans)
         },

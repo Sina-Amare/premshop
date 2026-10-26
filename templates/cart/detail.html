@@ -14,7 +14,7 @@
   <div class="cart-layout">
     <section class="cart-lines" aria-label="اقلام سبد خرید">
     {% for line in cart.lines %}
-      <article class="cart-line" data-cart-plan="{{ line.plan_id }}" data-cart-maximum="{{ line.max_quantity }}" data-cart-expired="{{ line.reservation_expired|yesno:'true,false' }}" aria-label="{% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">
+      <article class="cart-line" data-cart-plan="{{ line.plan_id }}" data-cart-maximum="{{ line.max_quantity }}" data-cart-expired="{{ line.reservation_expired|yesno:'true,false' }}" data-cart-reservation-required="{{ line.reservation_required|yesno:'true,false' }}" data-cart-price="{{ line.unit_price|toman_plain }}" aria-label="{% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">
         <div class="cart-line__art"{% if line.plan %} style="--brand: {{ line.plan.product.card_colour }}"{% endif %} aria-hidden="true">
           {% if line.plan %}{% include 'catalog/_card_art.html' with product=line.plan.product %}{% else %}<span>−</span>{% endif %}
         </div>
@@ -24,25 +24,27 @@
           {% if line.unavailable %}<p class="cart-line__warning">این محصول فعلاً موجود نیست.</p>
           {% elif line.quantity_invalid %}<p class="cart-line__warning">حداکثر {{ line.max_quantity|fa_digits }} عدد قابل خرید است. تعداد را کم کنید.</p>
           {% elif line.reservation_expired %}<p class="cart-line__warning">مهلت رزرو تمام شده. دوباره رزرو کنید.</p>
+          {% elif line.reservation_required %}<p class="cart-line__warning">این محصول هنوز رزرو نشده است. برای بررسی موجودی، رزرو کنید.</p>
           {% else %}
             {% if line.quantity > 1 %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}
-            {% if line.reservation_seconds is not None %}<p class="cart-line__reservation" data-reservation-seconds="{{ line.reservation_seconds }}">{% include 'storefront/icon.html' with name='clock' %}زمان رزرو: <bdi data-reservation-clock>{{ line.reservation_seconds|reservation_clock }}</bdi></p>{% endif %}
+            {% if line.reservation_seconds %}<p class="cart-line__reservation deadline" data-reservation-seconds="{{ line.reservation_seconds }}">{% include 'storefront/icon.html' with name='clock' %}مهلت رزرو: <bdi data-reservation-clock aria-hidden="true">{{ line.reservation_seconds|reservation_clock }}</bdi><span class="sr-only">{{ line.reservation_seconds|reservation_clock }} از آخرین به‌روزرسانی سبد</span></p>{% endif %}
           {% endif %}
         </div>
-        {% if not line.unavailable and not line.quantity_invalid and not line.reservation_expired %}<div class="cart-line__amount"><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
+        {% if line.purchasable %}<div class="cart-line__amount"><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
         <div class="cart-line__controls">
           {% if line.unavailable %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>
-          {% elif line.max_quantity > 1 or line.quantity_invalid or line.reservation_expired %}
+          {% elif line.max_quantity > 1 or line.quantity_invalid or line.reservation_expired or line.reservation_required %}
           <form method="post" action="{% url 'cart-quantity' %}" class="cart-quantity">
             {% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}">
             <label class="sr-only" for="quantity-{{ line.plan_id }}">تعداد {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% endif %}</label>
-            <div class="cart-stepper">
+            <div class="cart-stepper" aria-describedby="quantity-limit-{{ line.plan_id }}">
               <button type="submit" name="step" value="1" aria-label="افزایش تعداد {{ line.plan.title }}"{% if line.quantity >= line.max_quantity %} disabled{% endif %}>+</button>
               <input id="quantity-{{ line.plan_id }}" name="quantity" type="number" inputmode="numeric" min="1" max="{{ line.max_quantity }}" value="{{ line.quantity }}" dir="ltr">
               <button type="submit" name="step" value="-1" aria-label="کاهش تعداد {{ line.plan.title }}"{% if line.quantity == 1 %} disabled{% endif %}>−</button>
             </div>
-            {% if line.reservation_expired %}<button type="submit" class="cart-reserve">رزرو دوباره</button>{% else %}<button type="submit" class="cart-apply" aria-label="ثبت تعداد {{ line.plan.product.name }}، {{ line.plan.title }}" title="ثبت تعداد">{% include 'storefront/icon.html' with name='check' %}</button>{% endif %}
+            {% if line.reservation_expired %}<button type="submit" class="cart-reserve">رزرو دوباره</button>{% elif line.reservation_required %}<button type="submit" class="cart-reserve">رزرو محصول</button>{% else %}<button type="submit" class="cart-apply" aria-label="ثبت تعداد {{ line.plan.product.name }}، {{ line.plan.title }}" title="ثبت تعداد">{% include 'storefront/icon.html' with name='check' %}</button>{% endif %}
           </form>
+          <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">از ۱ تا {{ line.max_quantity|fa_digits }} عدد</p>
           {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" title="حذف از سبد خرید" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}</button></form>
         </div>

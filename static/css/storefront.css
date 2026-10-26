@@ -324,7 +324,10 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:760px){.v-actions{gap:12px}.cart-page{padding-block:22px 48px}.cart-heading{margin:24px 0}.cart-heading h1{font-size:28px;gap:10px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:20px}.cart-line{padding:24px 18px}.cart-line h2{font-size:16px}.cart-summary{padding:24px}.cart-summary h2{margin-bottom:22px}.cart-summary__total .price__num{font-size:34px}.cart-empty{padding:42px 20px 48px}.cart-empty h2{font-size:22px}}
 
 .cart-fixed-quantity{font-size:14px;color:var(--v-text);margin:0;min-height:44px;display:flex;align-items:center}
-.cart-stepper button:disabled,.buybox .stepper__btn:disabled{visibility:hidden}
+.cart-stepper button:disabled,.buybox .stepper__btn:disabled{opacity:.5;cursor:default;color:var(--v-text)}
+.cart-line__controls{flex-wrap:wrap;justify-content:flex-start}.cart-remove-form{margin-inline-start:auto}.cart-quantity-limit{flex-basis:100%;order:3;margin:0;font-size:12px;color:var(--v-text)}
+.buybox__limit{margin:0 0 12px}.buybox__cart{width:100%;justify-content:center;gap:10px}.buybox__cta[aria-disabled=true]{cursor:progress}.cart-add-error{font-size:14px;line-height:1.9;color:var(--color-danger-text);margin-top:12px}
+.cart-toast__message [data-toast-message]{unicode-bidi:plaintext}.cart-toast__message small{display:block;font-size:12px;color:var(--v-text);margin-top:4px}
 .cart-line__reservation{display:flex;align-items:center;gap:6px;color:var(--color-time-text);font-size:14px;margin-top:12px}.cart-line__reservation .v-icon{width:18px;height:18px}
 .cart-reserve{min-height:44px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:var(--v-soft);color:var(--v-ink);font-size:14px;padding:8px 12px;cursor:pointer}
 .cart-toast{position:fixed;z-index:70;top:var(--toast-top,calc(var(--hdr-h) + 12px));left:50%;transform:translateX(-50%);width:min(400px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr) auto 44px;align-items:center;gap:8px;padding:8px 10px;background:var(--v-light);border:1px solid var(--v-line);border-radius:12px;box-shadow:0 6px 24px rgb(19 31 49 / 10%);color:var(--v-ink)}

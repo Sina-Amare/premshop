@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
+from math import ceil
 from typing import Any, cast
 
 from django.contrib.sessions.models import Session
@@ -99,6 +100,8 @@ def _reserved_totals(plans: list[Plan]) -> dict[int, int]:
 
 
 def _capacity(plan: Plan, item: CartItem | None, reserved: int) -> int:
+    if not plan.is_available:
+        return 0
     if plan.stock_quantity is None:
         return plan.max_quantity
     own = (
@@ -261,6 +264,16 @@ class CartLine:
     max_quantity: int
     reservation_expired: bool
     reservation_seconds: int | None
+    reservation_required: bool
+
+    @property
+    def purchasable(self) -> bool:
+        return not (
+            self.unavailable
+            or self.quantity_invalid
+            or self.reservation_expired
+            or self.reservation_required
+        )
 
 
 @dataclass(frozen=True)
@@ -270,10 +283,7 @@ class CartSummary:
 
     @property
     def has_purchasable_items(self) -> bool:
-        return any(
-            not line.unavailable and not line.quantity_invalid and not line.reservation_expired
-            for line in self.lines
-        )
+        return any(line.purchasable for line in self.lines)
 
 
 @dataclass(frozen=True)
@@ -297,7 +307,7 @@ def purchase_options(request: HttpRequest | None, plans: list[Plan]) -> list[Pur
     for plan in plans:
         item = own.get(plan.pk)
         quantity = item.quantity if item else 0
-        maximum = _capacity(plan, item, reserved.get(plan.pk, 0)) if plan.is_available else 0
+        maximum = _capacity(plan, item, reserved.get(plan.pk, 0))
         options.append(
             PurchaseOption(
                 plan,
@@ -329,19 +339,19 @@ def cart_summary(cart: Cart | None) -> CartSummary:
         capacity = _capacity(plan, item, reserved.get(item.plan_id, 0)) if plan else 0
         unavailable = plan is None or not plan.is_available or capacity == 0
         invalid = bool(plan and item.quantity > capacity)
+        limited = bool(plan and plan.stock_quantity is not None)
+        needs_reservation = limited and item.reserved_until is None
         expires = bool(
-            plan
-            and plan.stock_quantity is not None
-            and (not item.reserved_until or item.reserved_until <= timezone.now())
+            plan and limited and item.reserved_until and item.reserved_until <= timezone.now()
         )
         seconds = (
-            max(0, int((item.reserved_until - timezone.now()).total_seconds()))
-            if plan and plan.stock_quantity is not None and item.reserved_until
+            max(0, ceil((item.reserved_until - timezone.now()).total_seconds()))
+            if limited and item.reserved_until and not expires
             else None
         )
         price = effective_price(plan) if plan else Decimal(0)
         amount = price * item.quantity
-        if not unavailable and not invalid and not expires:
+        if not unavailable and not invalid and not expires and not needs_reservation:
             total += amount
         lines.append(
             CartLine(
@@ -355,6 +365,7 @@ def cart_summary(cart: Cart | None) -> CartSummary:
                 capacity,
                 expires,
                 seconds,
+                needs_reservation,
             )
         )
     return CartSummary(lines, total)

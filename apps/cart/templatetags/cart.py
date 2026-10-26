@@ -4,7 +4,7 @@ from django import template
 
 from apps.cart.services import purchase_options
 from apps.catalog.models import Plan
-from apps.core.formatting import to_persian_digits
+from apps.core.formatting import format_countdown
 
 register = template.Library()
 
@@ -24,5 +24,4 @@ def cart_purchase(context: Any, plans: list[Plan]) -> dict[str, Any]:
 
 @register.filter
 def reservation_clock(seconds: int) -> str:
-    minutes, rest = divmod(seconds, 60)
-    return to_persian_digits(f"{minutes:02}:{rest:02}")
+    return format_countdown(seconds)

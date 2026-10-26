@@ -63,8 +63,7 @@
 // run out; a card swaps the title of the plan it leads with as well. The cart
 // and the checkout re-read every price regardless.
 (function () {
-  var timed = [].slice.call(document.querySelectorAll('[data-left]'));
-  if (!timed.length) return;
+  var timed = [], timer;
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
   var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
@@ -80,10 +79,16 @@
     return toFa(pad(Math.floor(left / 3600))) + ':' + toFa(pad(Math.floor((left % 3600) / 60))) + ':' + toFa(pad(left % 60));
   }
 
-  var start = Math.floor(Date.now() / 1000);
-  timed.forEach(function (el) {
-    el.endsAt = start + (parseInt(el.getAttribute('data-left'), 10) || 0);
-  });
+  function register() {
+    var start = Math.floor(Date.now() / 1000);
+    document.querySelectorAll('[data-left]:not([data-clock-ready])').forEach(function (el) {
+      el.setAttribute('data-clock-ready', '');
+      el.endsAt = start + (parseInt(el.getAttribute('data-left'), 10) || 0);
+      timed.push(el);
+    });
+    if (timed.length && !timer) timer = setInterval(tick, 1000);
+    tick();
+  }
 
   function end(el) {
     if (el.hasAttribute('data-offer-badge')) {
@@ -122,15 +127,16 @@
   function tick() {
     var now = Math.floor(Date.now() / 1000);
     timed = timed.filter(function (el) {
+      if (!el.isConnected) return false;
       var left = el.endsAt - now;
       if (left <= 0) { end(el); return false; }
       if (el.classList.contains('deadline')) el.textContent = text(left) + ' مانده';
       return true;
     });
-    if (!timed.length) clearInterval(timer);
+    if (!timed.length) { clearInterval(timer); timer = null; }
   }
-  var timer = setInterval(tick, 1000);
-  tick();
+  document.addEventListener('prices:updated', register);
+  register();
 })();
 </script>
 <script>

@@ -25,19 +25,21 @@ def test_reservation_toast_limits_release_and_expiry(browser, live_server, plan,
     try:
         page.goto(live_server.url + plan.product.get_absolute_url())
         page.locator("#qty").fill("2")
-        expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_hidden()
+        expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_disabled()
+        expect(page.locator("#qty-limit")).to_contain_text("۲ عدد")
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         toast = page.locator("#cart-toast").bounding_box()
         header = page.locator(".v-header").bounding_box()
-        purchase = page.locator(".buybox__cta").bounding_box()
+        purchase = page.locator(".buybox__cart").bounding_box()
         assert abs(toast["x"] + toast["width"] / 2 - width / 2) <= 1
         assert toast["y"] >= header["y"] + header["height"] + 8
-        assert toast["height"] <= 76 and toast["width"] <= 400
+        assert toast["height"] <= 140 and toast["width"] <= 400
         assert toast["y"] + toast["height"] <= purchase["y"]
         expect(page).to_have_url(live_server.url + plan.product.get_absolute_url())
         expect(page.locator(".v-cart__count")).to_have_text("۲")
-        expect(page.locator(".buybox__cta")).to_be_disabled()
+        expect(page.locator(".buybox__cart")).to_be_visible()
         assert page.locator("#cart-toast").count() == 1
         page.evaluate("document.fonts.ready")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -46,7 +48,8 @@ def test_reservation_toast_limits_release_and_expiry(browser, live_server, plan,
         expect(other.locator(".buybox__cta")).to_be_disabled()
         page.locator("#cart-toast a").click()
         expect(page.locator("[data-reservation-clock]")).to_contain_text("۱۹:")
-        expect(page.locator('.cart-stepper [value="1"]')).to_be_hidden()
+        expect(page.locator('.cart-stepper [value="1"]')).to_be_visible()
+        expect(page.locator('.cart-stepper [value="1"]')).to_be_disabled()
         page.screenshot(path=str(directory / f"reserved-{width}.png"), full_page=True)
         page.locator('.cart-stepper [value="-1"]').click()
         other.reload()
