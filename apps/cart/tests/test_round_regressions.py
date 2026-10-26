@@ -219,3 +219,23 @@ def test_a_remaining_single_unit_does_not_hide_an_invalid_quantity(browser, live
         assert CartItem.objects.get().quantity == 3
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("link", [".cart-line h2 a", ".cart-back", ".crumbs a"])
+def test_cart_content_refresh_restores_focused_links(browser, live_server, plan, link):
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        page.locator(".buybox__cta").click()
+        expect(page.locator("#cart-toast")).to_be_visible()
+        page.goto(live_server.url + "/cart/")
+        page.locator(link).focus()
+        Plan.objects.filter(pk=plan.pk).update(max_quantity=2)
+        with page.expect_response("**/cart/availability/**"):
+            page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(page.locator("[name=quantity]")).to_have_attribute("max", "2")
+        expect(page.locator(link)).to_be_focused()
+    finally:
+        page.close()

@@ -44,14 +44,17 @@
     const active = document.activeElement;
     const focusedLine = active?.closest('[data-cart-plan]');
     const focusId = cartPage.contains(active) ? active.id : '';
+    const focusHref = cartPage.contains(active) && active.matches('a[href]') ? active.getAttribute('href') : null;
     const focusSelector = focusedLine && !focusId ? `[data-cart-plan="${focusedLine.dataset.cartPlan}"] ` +
       (active.name === 'step' ? `[name=step][value="${active.value}"]` :
         active.matches('.cart-remove,.cart-apply,.cart-reserve') ? '.' + active.classList[0] : '') : '';
     cartPage.replaceChildren(...fresh.childNodes);
     edited.forEach(([id, value]) => { const input = document.getElementById(id); if (input) input.value = value; });
-    const target = focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
+    let target = focusHref !== null ? [...cartPage.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusHref) :
+      focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
+    if (target?.disabled && focusedLine) target = cartPage.querySelector(`[data-cart-plan="${focusedLine.dataset.cartPlan}"] [name=quantity]`);
     target?.focus({preventScroll: true});
-    if (focusedLine && !target) {
+    if (focusedLine && document.activeElement !== target) {
       const heading = cartPage.querySelector('h1');
       heading.tabIndex = -1;
       heading.focus({preventScroll: true});
