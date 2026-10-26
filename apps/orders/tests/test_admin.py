@@ -26,6 +26,9 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
     assert "private-target@example.test" not in text and "customer_input" not in text
     assert "سرویس نمونه" in text and "سابقهٔ سفارش" in text
     assert 'name="_save"' not in text
+    assert 'class="order-timeline"' in text
+    assert "مشخصات سفارش" in text and "مبلغ‌های سفارش" in text
+    assert buyer.email in text
     assert client.post(detail, {"total_amount": 1}).status_code == 403
     assert client.get(reverse("admin:orders_order_add")).status_code == 403
     assert client.post(reverse("admin:orders_order_delete", args=[order.pk])).status_code == 403

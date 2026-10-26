@@ -42,3 +42,10 @@ The cart page allows quantity change and removal; the header shows an item count
 - **Buy-now only** (keep ADR-0011) — the reason it held is gone with the rail, and an absent cart now reads to customers as an unfinished site.
 
 **Consequences:** Two new tables, one merge function, one daily purge task, and a cart that behaves the way customers expect. Because the cart carries no prices, a price change or a promotion starting mid-cart is not a discrepancy to reconcile but simply the new price, shown before payment — and a 30-day-old cart is as safe as a 30-second-old one. The `CHECK` on `Cart` means "one cart per identity" is enforced by the database, not by careful code: a duplicate guest-to-user claim fails loudly instead of silently splitting a customer's cart in two.
+
+
+## Amendment — 2026-10-26: cart implementation
+
+Cart tables land in cart 0001; discount tables already landed in orders 0001. Guest session keys are unique, and an empty key is invalid. Add and quantity edits reject an excess over the current Plan.max_quantity rather than clamping it; login merges cap imported quantities to that same limit, with a notice. Input-requiring plans remain limited to one.
+
+Guest mutations set a per-session 30-day expiry; login restores its previous expiry rather than increasing the global authenticated-session lifetime. The guest-cart id lives in server-side session data so the login signal can find it after session-key rotation; cart reads never authorize from a request-supplied id. The merge and edits hold account/cart locks. A cleanup command exists; daily scheduling waits for the job runner. Checkout, discount application and order-page interfaces remain unbuilt.

@@ -173,9 +173,9 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 - **`Plan.price_confirmed_at` is set on every save that changes `cost_price`, `sale_price` or `promo_price`, and by the bulk action «قیمت‌ها را امروز بررسی کردم».** It is not on the form. A page prints the oldest value among the plans it shows, and none while any of them is null — which every plan saved before 2026-10-20 is until it is confirmed.
 - **`Product.full_description` and `Category.intro_html` are retired but not dropped.** Catalog 0020 moved a full description into a «متن آزاد» section wherever the page printed it, and a category's HTML introduction into the Markdown `Category.intro` (no headings: it sits under the page's `h1`). Both old columns are off every form and page and stay only so 0020 can be reversed.
 
-### `cart` — persistent, cross-device (ADR-0018, rewritten)
+### `cart` — persistent, cross-device (ADR-0018)
 
-The cart is two tables, not a session dictionary. A signed-out visitor's cart is keyed by `session_key` and the session cookie is configured to outlive the browser window (`SESSION_EXPIRE_AT_BROWSER_CLOSE = False`, `SESSION_COOKIE_AGE = 30 days`), so it is still there tomorrow. A signed-in customer's cart is keyed by `user`, so it follows them to any device.
+Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; cart mutations set that session's expiry to 30 days. Login restores its previous expiry, so authenticated sessions keep their existing lifetime. A signed-in cart belongs to the account across devices. Empty reads create neither cart nor session.
 
 **These tables live in their own `cart` app, not in `orders`.** `cart` imports `core`, `accounts` and `catalog`; it is imported by `payments` (which resolves a cart into order lines at checkout) and by `panel`. It does **not** import `orders`, and `orders` never imports it — that one-way edge is what keeps `orders` ignorant of how a cart is stored, which is what lets `place_order` take a plain `Sequence[OrderLine]`. Migration home: `cart/0001` lands at **S4b** with the cart tables — never in `orders/0001`.
 
@@ -184,7 +184,7 @@ The cart is two tables, not a session dictionary. A signed-out visitor's cart is
 | Field | Type | Null | Default | Note |
 |---|---|---|---|---|
 | user | FK User, CASCADE, **unique** | yes | null | one cart per account; the cart dies with the account |
-| session_key | varchar(40), indexed | yes | null | Django session key of a signed-out visitor |
+| session_key | varchar(40), unique | yes | null | Django session key of a signed-out visitor; empty string forbidden |
 | created_at / updated_at | TS / TS | — | auto | `updated_at` drives the guest-cart sweep |
 
 `CHECK ((user_id IS NULL) <> (session_key IS NULL))` — exactly one of the two is set; a cart is either a guest's or an account's, never both and never neither.
@@ -204,11 +204,9 @@ The cart is two tables, not a session dictionary. A signed-out visitor's cart is
 
 **Stored: plan and quantity. Nothing else.** No prices, no names, no snapshots — every amount is recomputed through `effective_price()` from the database on every render and again at checkout. A cart row that is a week old therefore shows today's price, which is the only correct behaviour.
 
-**Merge on login** (the part customers notice, so it gets its own test): if the account already has a cart, the guest cart's lines merge into it — quantities summed per plan and clamped to the per-line maximum of 10 — and the guest cart is deleted. If the account has no cart, the guest cart is **claimed** instead: set `user`, clear `session_key`. Claiming preserves `added_at`; re-creating rows would not.
+**Merge on login:** the server stores the guest-cart id in session data, which survives Django's session-key rotation. The login signal claims a guest cart if the account has none, preserving item ids and added_at; otherwise it combines matching plans, caps imported quantities at each current Plan.max_quantity (one for input-requiring plans), moves new lines and deletes the guest cart. The account and cart rows are locked in one transaction; a replay is harmless. A reduction gets a customer notice. Guest reads and edits still resolve by the current session key, never by a posted cart id.
 
-This merge is not built. Its 10-only clamp predates `Plan.max_quantity` and disagrees with the quantity-1 rule for input-requiring plans above. S4b's briefing settles the ceiling for add, checkout and merge together with `services-and-modules.md` §2 and ADR-0018; this paragraph does not choose one.
-
-**Lifecycle:** checkout consumes the cart and clears it **inside** the order-creation transaction, so an order and its emptied cart commit together. A daily beat task deletes guest carts (`user IS NULL`) with `updated_at` older than 30 days; account carts are never swept.
+**Lifecycle:** `purge_guest_carts` deletes only guest carts inactive for over 30 days, including their lines. A partial updated_at index supports it. It is a rerunnable management command; daily scheduling and clearsessions wait for the job runner. Account carts are never swept. Checkout's atomic order creation and cart clearing remain unbuilt.
 
 ### `orders`
 

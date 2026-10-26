@@ -78,28 +78,20 @@ The visitor-facing views read products through `Product.objects.public()`, with 
 
 ### cart
 
-Its own app (ADR-0018), sibling to `orders`: it imports `core`, `accounts` and `catalog`, and **never `orders`** — which is the other half of why `place_order` takes a plain `Sequence[OrderLine]`. A cart is resolved by **user when signed in, `session_key` otherwise** — so a guest's cart survives closing the browser (`SESSION_EXPIRE_AT_BROWSER_CLOSE=False`, `SESSION_COOKIE_AGE=30 days`) and a customer's cart follows them across devices. `CartItem` stores **only** `plan` and `quantity` (1–10, DB CHECK) — never prices, never names; every amount is recomputed from the database on every render. These helpers take `request` because resolution needs both the user and the session key; they touch nothing else on it, and the only other services in the codebase that accept a request are `accounts`' sign-in services, which need the session or the client IP.
+Implemented in `apps.cart`, independent of `orders`. The request identifies the owner: account when signed in, current session key otherwise. Prices and public product facts are read fresh from the catalog; no price or customer input is stored in cart rows.
 
-The cart is not built. Its drafted quantity ceiling and merge clamp predate the built `Plan.max_quantity`; S4b's briefing settles that discrepancy with the cart rules in `data-model.md` §2 and ADR-0018. No choice of ceiling is made here.
-
-| Signature | Behavior |
+| Service | Behaviour |
 |---|---|
-| `def get_cart(request, *, create: bool = False) -> Cart \| None` | Resolves the cart for this visitor: by `user` when authenticated, else by `session_key` (forcing session creation only when `create=True`). Returns `None` when there is nothing yet and `create=False` — a browsing visitor writes no rows. |
-| `def add_to_cart(request, *, plan_id: int, quantity: int = 1) -> CartItem` | Creates the cart if needed; adds or increments the line, clamped to the per-line maximum. Unique `(cart, plan)` makes a double-submit an update, not a second line. **A plan with `requires_customer_input` is capped at quantity 1**: a second unit is refused with a clear Persian message, because each `OrderItem` is a separate credential with its own lifecycle and three of them would need three separate inputs — a form nobody asked for. Raises `ValidationError`. |
-| `def set_quantity(request, *, plan_id: int, quantity: int) -> None` | Sets absolute quantity, clamped; `0` deletes the line. Same quantity-1 rule for input-requiring plans, same refusal. |
-| `def remove_from_cart(request, *, plan_id: int) -> None` / `def clear_cart(cart: Cart) -> None` | Removal; `clear_cart` runs inside the order-creation transaction. |
-| `def cart_count(request) -> int` | Total units — the header badge; one aggregate query. |
-| `def merge_carts(*, user: User, session_key: str) -> Cart` | **Runs on the `user_logged_in` signal.** If the account has no cart, the guest cart is **claimed** (set `user`, clear `session_key`) — which preserves each line's `added_at`. Otherwise quantities are **summed per plan** into the account's cart and clamped to the per-line maximum (and to 1 for input-requiring plans), and the guest cart is deleted. Idempotent, atomic, and a no-op when there is no guest cart. This is the part customers notice, so it has its own test. |
+| `get_cart(request)` | Returns the current owner's cart or None, without creating rows. |
+| `add_to_cart(request, *, plan_id, quantity=1)` | Adds or increments a line; rejects unavailable plans and quantities outside the current Plan.max_quantity, with no partial mutation. |
+| `set_quantity(request, *, plan_id, quantity)` | Sets an absolute quantity; zero removes the line. Same availability and quantity validation. |
+| `remove_from_cart(request, *, plan_id)` | Removes only the current owner's line; repeating is harmless. |
+| `cart_count(request)` | Total units for the header; no cart lookup for a guest without a session. |
+| `cart_summary(cart)` | Returns lines and total; each line has plan id, public plan or None, quantity, unit price, line total, unavailable and quantity_invalid flags. Totals exclude unavailable or invalid-quantity lines. Hidden products expose no facts. |
+| `merge_carts(*, user, guest_cart_id)` | Atomic login merge; claims or combines, preserving added_at, capping imported quantities to current limits. Returns whether a quantity was reduced. Account edits and merges lock the account row; cart mutations also lock their cart. |
+| `purge_guest_carts()` | Deletes inactive guest carts older than 30 days under locks; returns the number of carts deleted. |
 
-```python
-def cart_summary(
-    cart: Cart | None, *,
-    discount_amount: Decimal = Decimal(0), discount_error: str | None = None,
-) -> CartSummary: ...
-```
-The one selector the cart and checkout pages render from: re-reads every plan from the DB, recomputes each `unit_price` through `catalog.effective_price`, and returns per-line `plan`, `quantity`, `unit_price`, `original_price` (set only while a promotion is active, for the struck-through display), `line_total`, plus `unavailable` flags for plans that went inactive or whose product is unavailable. Returns `subtotal`, `discount_amount`, `total` as distinct numbers so the summary renders as three ledger lines (ADR-0020). The discount itself is **computed by `orders.validate_discount_code(lock=False)`** — read-only, selector-grade — and handed in by the caller (`payments.checkout`, or the cart page's view for a live preview); a code that fails validation arrives as `discount_error` and renders as a rejection on the summary, never as an exception. Cart does not call the validator itself, because cart does not import orders.
-
-Because quantity is capped at 1 for input-requiring plans, `customer_inputs` is a mapping of **plan id → one string** — the shape the checkout form and `payments.checkout` already assume. *Flip condition:* if a customer genuinely needs several units of an input-requiring plan, the answer is **per-item inputs on the checkout form**, never silently reusing one value across units.
+`user_logged_in` reads the guest reference from session data after key rotation, merges, then clears it and restores the prior session expiry. Failed merges leave the reference intact. No auth app imports cart. Cart GET and CSRF-protected POST views render ordinary HTML; the plus/minus controls submit an absolute quantity adjustment. Empty, unavailable, invalid-quantity and error states use the same page. No checkout, discount application, clear-cart orchestrator or job scheduler exists yet.
 
 ### orders
 

@@ -944,3 +944,18 @@ msgstr "Discount code"
 
 msgid "کدهای تخفیف"
 msgstr "Discount codes"
+
+msgid "مشخصات سفارش"
+msgstr "Order details"
+
+msgid "مبلغ‌های سفارش"
+msgstr "Order amounts"
+
+msgid "آیتم %(number)s"
+msgstr "Item %(number)s"
+
+msgid "ثبت سفارش"
+msgstr "Order created"
+
+msgid "وضعیت قبلی: %(state)s"
+msgstr "Previous status: %(state)s"

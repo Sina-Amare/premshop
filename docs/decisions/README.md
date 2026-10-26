@@ -21,7 +21,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
 | [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal action colour; amber means time *(amended 2026-10-13: white canvas and neutral ramp; 2026-10-14: ink surfaces and two general radii; 2026-10-23: constellation radii remain an unresolved divergence)* |
 | [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production *(amended 2026-10-23: PostgreSQL rationale corrected; daily Redis container, in-memory test cache)* |
-| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent `Cart`/`CartItem` in their own `cart` app, plan+quantity only, guest cart merges on login; anonymous browsing, identity inside checkout |
+| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent `Cart`/`CartItem` in their own `cart` app, plan+quantity only, guest cart merges on login; anonymous browsing, identity inside checkout ; 2026-10-26 amendment: implemented cart, current plan limits and guest-only expiry |
 | [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
 | [0020](0020-discount-codes.md) | Scoped discount codes computed server-side; `DiscountRedemption` rows; `used_count` under row lock; total floored at zero |
 | [0021](0021-promotional-pricing.md) | Promo price + window on `Plan`; one `effective_price` rule *(amended 2026-10-23: countdowns; 2026-10-24: separate plan offers and successive server-computed card expiry prices)* |
