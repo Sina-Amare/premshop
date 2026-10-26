@@ -77,11 +77,21 @@ class _Said(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.depth, self.parts, self.title, self.in_title = 0, [], "", False
+        self.metadata = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in self.SKIP:
             self.depth += 1
         self.in_title = tag == "title"
+        attributes = dict(attrs)
+        if tag == "meta" and (attributes.get("name") or attributes.get("property")) in {
+            "description",
+            "og:title",
+            "og:description",
+            "twitter:title",
+            "twitter:description",
+        }:
+            self.metadata.append(attributes.get("content") or "")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.SKIP and self.depth:
@@ -114,6 +124,9 @@ def offences(text: str, *, written: bool = False) -> list[str]:
 
 class _Commitments(HTMLParser):
     CLASSES = {
+        "faq__answer",
+        "qa__a",
+        "delivery-answer",
         "price",
         "deadline",
         "deadline__said",
@@ -246,7 +259,7 @@ def test_every_storefront_page_speaks_written_persian(client, shop):
     for name, body in pages.items():
         text, title = said(body)
         assert text, f"nothing read on {name}"
-        found = offences(text) + [f"title: {o}" for o in offences(title)]
+        found = offences(text) + [f"title: {o}" for o in offences(title, written=True)]
         if found:
             bad[name] = found
     assert not bad
@@ -275,7 +288,9 @@ def test_every_email_speaks_written_persian_in_both_halves():
 def test_activation_answer_does_not_make_a_blanket_password_promise(client):
     body = client.get(reverse("faq")).content.decode()
     answer = re.search(
-        r"برای فعال‌سازی باید رمز اکانتم رو بدم؟</summary>\s*<div[^>]*><p[^>]*>(.*?)</p>", body
+        r"برای فعال‌سازی باید رمز اکانتم رو بدم؟</summary>\s*<div[^>]*><p[^>]*>(.*?)</p>",
+        body,
+        re.S,
     )
     assert answer, "the activation question was not checked"
     text = said(answer[1])[0]
@@ -323,6 +338,35 @@ def test_money_and_deadline_regions_keep_written_persian(client, shop):
             bad[name] = found
     assert captured > 10, "no purchase facts were checked"
     assert not bad
+
+
+def test_product_delivery_answer_is_written(client, shop):
+    body = client.get("/p/chatgpt-plus/").content.decode()
+    answer = re.search(r'<dt id="delivery">.*?</dt><dd[^>]*>(.*?)</dd>', body, re.S)
+    assert answer, "the delivery commitment was not checked"
+    assert not offences(said(answer[1])[0], written=True)
+
+
+def test_seo_titles_and_metadata_keep_written_persian(client, shop):
+    checked, bad = 0, {}
+    for name, body in rendered_pages(client).items():
+        parser = _Said()
+        parser.feed(body)
+        checked += len(parser.metadata)
+        found = offences(" ".join([parser.title, *parser.metadata]), written=True)
+        if found:
+            bad[name] = found
+    assert checked > 20, "no SEO attributes were checked"
+    assert not bad
+
+
+def test_seo_scan_reads_attributes_and_titles_without_scanning_guidance():
+    parser = _Said()
+    parser.feed(
+        '<title>می‌شه</title><meta name="description" content="این رو ببینید"><p>همون رو ببینید.</p>'
+    )
+    assert offences(parser.title, written=True) == ["می‌شه"]
+    assert offences(" ".join(parser.metadata), written=True) == ["رو"]
 
 
 def test_commitment_scan_catches_nested_text_without_banning_casual_guidance():

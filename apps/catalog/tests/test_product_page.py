@@ -148,7 +148,8 @@ def test_before_buying_is_left_out_when_it_would_only_repeat_the_warranty(client
 
     body = page(client, product)
 
-    assert "پیش از خرید" not in body
+    assert 'id="before-buying"' not in body
+    assert 'id="before-buying-title"' not in body
     assert "#before-buying" not in body
     assert '<dt class="fact__k">گارانتی</dt><dd class="fact__v">تا پایان دوره</dd>' in body
 
