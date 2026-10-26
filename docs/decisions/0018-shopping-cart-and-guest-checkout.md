@@ -49,3 +49,8 @@ The cart page allows quantity change and removal; the header shows an item count
 Cart tables land in cart 0001; discount tables already landed in orders 0001. Guest session keys are unique, and an empty key is invalid. Add and quantity edits reject an excess over the current Plan.max_quantity rather than clamping it; login merges cap imported quantities to that same limit, with a notice. Input-requiring plans remain limited to one.
 
 Guest mutations set a per-session 30-day expiry; login restores its previous expiry rather than increasing the global authenticated-session lifetime. The guest-cart id lives in server-side session data so the login signal can find it after session-key rotation; cart reads never authorize from a request-supplied id. The merge and edits hold account/cart locks. A cleanup command exists; daily scheduling waits for the job runner. Checkout, discount application and order-page interfaces remain unbuilt.
+
+
+### Follow-up — 2026-10-26: session rotation and in-flight edits
+
+An edit from an already-started anonymous request can arrive after login rotates its session. Guest mutations now lock and validate the DB Session before locking the cart, and persist the guest reference in the same transaction. Login locks and refreshes that original Session before rotation and receiver execution, all atomically; admin acquires this lock before authentication. A stale guest request is rejected rather than creating a second cart. Two reproduced interleavings cover delayed edits and a first addition after login had cached the session.

@@ -11,7 +11,6 @@ from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password, make_password
-from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -30,6 +29,7 @@ from apps.accounts.forms import (
 )
 from apps.accounts.models import User
 from apps.core import ratelimit
+from apps.core.sessions import login_session
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -104,7 +104,7 @@ def login_password(request: HttpRequest) -> HttpResponse:
                 authenticated = False
             if authenticated:
                 # Session-key rotation and login receivers must roll back together.
-                with transaction.atomic():
+                with login_session(request):
                     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
                 return redirect(_safe_next(request))

@@ -240,3 +240,34 @@ def test_account_cart_is_shared_by_two_sessions(plan, buyer):
     second.force_login(buyer)
     first.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     assert second.get("/cart/").context["cart"].lines[0].quantity == 2
+
+
+def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, plan, buyer):
+    client.post("/cart/add/", {"plan": plan.pk})
+    stale = request_for(session=SessionStore(session_key=client.session.session_key))
+    assert stale.session[GUEST_CART_ID] == Cart.objects.get().pk
+    client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
+    with pytest.raises(ValidationError):
+        add_to_cart(stale, plan_id=plan.pk)
+    assert Cart.objects.count() == 1
+    assert CartItem.objects.get(cart__user=buyer).quantity == 1
+
+
+def test_first_add_is_merged_even_if_login_already_cached_the_session(client, plan, buyer):
+    from apps.accounts.models import User
+
+    key = client.session.session_key
+    guest = request_for(session=SessionStore(session_key=key))
+    real_check = User.check_password
+
+    def check_with_concurrent_add(user, password):
+        valid = real_check(user, password)
+        if valid:
+            add_to_cart(guest, plan_id=plan.pk)
+        return valid
+
+    with patch.object(User, "check_password", check_with_concurrent_add):
+        response = client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
+    assert response.status_code == 302
+    assert Cart.objects.count() == 1
+    assert CartItem.objects.get(cart__user=buyer).quantity == 1

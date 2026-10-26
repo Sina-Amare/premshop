@@ -5,6 +5,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any, cast
 
+from django.contrib.sessions.models import Session
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -40,6 +41,12 @@ def _locked_cart(request: HttpRequest, *, create: bool) -> Cart | None:
             if not create:
                 return None
             request.session.save()
+        if (
+            not Session.objects.select_for_update()
+            .filter(session_key=request.session.session_key, expire_date__gt=timezone.now())
+            .exists()
+        ):
+            raise ValidationError("نشست تغییر کرده است. صفحه را تازه کنید و سبد را بررسی کنید.")
         lookup = {"session_key": request.session.session_key, "user_id": None}
     carts = Cart.objects.select_for_update()
     if create:
@@ -54,6 +61,7 @@ def _touch(request: HttpRequest, cart: Cart) -> None:
             request.session[GUEST_PREVIOUS_EXPIRY] = request.session.get("_session_expiry")
         request.session[GUEST_CART_ID] = cart.pk
         request.session.set_expiry(GUEST_AGE)
+        request.session.save()
 
 
 def _available_plan(plan_id: int) -> Plan:
