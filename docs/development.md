@@ -129,8 +129,17 @@ Catalog editors have a separate unsaved-preview action. Protected POST routes va
 
 ## Unpaid order records
 
-The order list in the operator panel is read-only. It searches by order number or customer email and shows frozen purchase names, prices, item states and the chronological history. Customer activation input is excluded from admin queries, pages and search. No button confirms a payment.
+The order list in the operator panel is read-only. It searches by order number or customer email and shows the buyer account email, frozen purchase names, prices and item states. Order identity and amounts have named sections; the chronological timeline follows the items. Customer activation input is excluded from admin queries, pages and search. No button confirms a payment.
 
 Use `orders.services.place_order` with `OrderLine` objects in development; it re-reads catalog prices and creates one item per unit. `cancel_unpaid_item` takes the real actor account and an item id, with a reason note for staff. Customer cancellation checks ownership. Paid-state transitions, public order pages and checkout are not available yet.
 
 Set FIELD_ENCRYPTION_KEY to a Fernet key generated locally (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Keep it out of git and separate from SECRET_KEY. Retired keys go in the comma-separated FIELD_ENCRYPTION_KEY_FALLBACKS. After changing the active key, run `python manage.py reencrypt_fields --batch-size 200`; repeat safely if interrupted. Remove a retired key only after every dependent row is rotated and backups requiring that key have expired. Production use still requires an offline key copy and a successful decrypting restore.
+
+
+## Cart
+
+Product-page additions stay in place with one compact toast and a cart link; without JavaScript, the POST opens /cart/. Quantity controls and removal use CSRF-protected POST forms. A guest cart survives browser restart for 30 days; password or code login claims or combines it with the account cart. Authenticated session duration is unchanged. The header counts units. Prices are read fresh on each render. Checkout and payment are not connected.
+
+Enter a plan's total under «موجودی و تعداد» in the product admin to enable shared stock; blank means unlimited. Cart additions hold finite stock for twenty minutes. Decreasing/removing releases units, and expired holds stop counting without a cleanup job. Saved selections remain in the cart but need a new reservation before contributing to the total. Sign-in never starts a fresh hold for entirely expired selections; merging with a live hold preserves its deadline. Unavailable lines remain removable, and stock-aware controls prevent increases beyond current availability.
+
+Run `python manage.py purge_guest_carts` to remove guest carts inactive for over 30 days. It reports a count and can be repeated; account carts stay. Automatic daily scheduling and clearsessions still need the job runner before launch.

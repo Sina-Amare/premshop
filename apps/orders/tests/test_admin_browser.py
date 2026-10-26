@@ -59,6 +59,8 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         assert page.evaluate("document.fonts.check('600 16px Estedad')")
         assert not page.locator('[name="_save"]').count()
         if width == 390:
+            row = page.locator("#items-group .form-row").first
+            assert row.evaluate("el => getComputedStyle(el).display") == "grid"
             for label in (
                 "محصول و پلن زمان خرید",
                 "قیمت فروش زمان خرید",

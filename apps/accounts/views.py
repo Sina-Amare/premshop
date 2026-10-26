@@ -29,6 +29,7 @@ from apps.accounts.forms import (
 )
 from apps.accounts.models import User
 from apps.core import ratelimit
+from apps.core.sessions import login_session
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -102,7 +103,9 @@ def login_password(request: HttpRequest) -> HttpResponse:
                 check_password(form.cleaned_data["password"], _DUMMY_HASH)
                 authenticated = False
             if authenticated:
-                django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                # Session-key rotation and login receivers must roll back together.
+                with login_session(request):
+                    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
                 return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)

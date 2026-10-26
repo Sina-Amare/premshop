@@ -42,3 +42,31 @@ The cart page allows quantity change and removal; the header shows an item count
 - **Buy-now only** (keep ADR-0011) — the reason it held is gone with the rail, and an absent cart now reads to customers as an unfinished site.
 
 **Consequences:** Two new tables, one merge function, one daily purge task, and a cart that behaves the way customers expect. Because the cart carries no prices, a price change or a promotion starting mid-cart is not a discrepancy to reconcile but simply the new price, shown before payment — and a 30-day-old cart is as safe as a 30-second-old one. The `CHECK` on `Cart` means "one cart per identity" is enforced by the database, not by careful code: a duplicate guest-to-user claim fails loudly instead of silently splitting a customer's cart in two.
+
+
+## Amendment — 2026-10-26: cart implementation
+
+Cart tables land in cart 0001; discount tables already landed in orders 0001. Guest session keys are unique, and an empty key is invalid. Add and quantity edits reject an excess over the current Plan.max_quantity rather than clamping it; login merges cap imported quantities to that same limit, with a notice. Input-requiring plans remain limited to one.
+
+Guest mutations set a per-session 30-day expiry; login restores its previous expiry rather than increasing the global authenticated-session lifetime. The guest-cart id lives in server-side session data so the login signal can find it after session-key rotation; cart reads never authorize from a request-supplied id. The merge and edits hold account/cart locks. A cleanup command exists; daily scheduling waits for the job runner. Checkout, discount application and order-page interfaces remain unbuilt.
+
+
+### Follow-up — 2026-10-26: session rotation and in-flight edits
+
+An edit from an already-started anonymous request can arrive after login rotates its session. Guest mutations now lock and validate the DB Session before locking the cart, and persist the guest reference in the same transaction. Login locks and refreshes that original Session before rotation and receiver execution, all atomically; admin acquires this lock before authentication. A stale guest request is rejected rather than creating a second cart. Two reproduced interleavings cover delayed edits and a first addition after login had cached the session.
+
+### Follow-up — 2026-10-26: stock holds and in-place additions
+
+Plan.stock_quantity is a nullable nonnegative total, including reserved units; null keeps an existing plan unlimited. CartItem.reserved_until holds a finite plan's units for twenty minutes. Availability subtracts only unexpired reservations, so expiry frees units without deleting the cart or waiting for a task. Reducing/removing releases units immediately. Reads and quantity edits keep a live deadline; an expired selection stays in the cart, contributes no payable amount, and needs an explicit reservation against current stock.
+
+Mutations lock the owner, cart and then Plan; merges lock all affected plans in primary-key order. Stock validation and writes share one transaction. Merges preserve the earlier live deadline and cap imported quantities against stock and the plan limit. Admin refuses a total below live reservations and shows available/reserved counts. Enabling finite stock does not silently reserve older, untimed selections. Checkout must implement atomic reservation transfer and payment expiry before customers can proceed to payment.
+
+With JavaScript, adding stays on the product page and updates one accessible toast with a cart link. The pending button blocks overlapping clicks; uncertain network results are not retried automatically. HTML forms remain the fallback. Product/cart controls use current stock, with periodic refresh while visible and server revalidation on every mutation. No price comes from JavaScript, and no checkout or payment action exists in this slice.
+
+### Correction — 2026-10-26: expired selections during login
+
+Sign-in never creates a new twenty-minute window. If every contributing hold has expired, merging or claiming keeps the selection with no deadline until the customer reserves again. When matching selections include a live hold, their quantities may combine against current stock under its earliest live deadline. This keeps a surviving hold without renewing it.
+
+### Follow-up — 2026-10-26: account locks and admin history
+
+Account serialization uses PostgreSQL FOR NO KEY UPDATE. It still serializes cart edits/merges and prevents concurrent user changes, while permitting foreign-key checks on that user. A stronger FOR UPDATE created a cycle when the same operator edited stock and their own cart: the cart held User while waiting on Plan; admin held Plan while its history row waited on User. Both edit and merge interleavings reproduced the deadlock before the correction. Session, Cart and Plan lock modes stay as specified above.

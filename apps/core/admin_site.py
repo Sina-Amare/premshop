@@ -6,13 +6,21 @@ from typing import Any
 
 from django.contrib import admin
 from django.contrib.admin import sites
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from unfold.apps import DefaultAppConfig
 from unfold.dataclasses import SearchResult
 from unfold.sites import UnfoldAdminSite
 
+from apps.core.sessions import login_session
+
 
 class PanelSite(UnfoldAdminSite):
+    def login(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> HttpResponse:
+        with login_session(request):
+            return super().login(request, extra_context)
+
     def _search_models(
         self,
         request: HttpRequest,

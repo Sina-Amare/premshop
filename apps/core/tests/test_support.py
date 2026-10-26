@@ -63,11 +63,11 @@ def test_every_page_reaches_the_same_person(client, url):
 
 
 def test_the_support_link_has_a_name_at_every_width(client):
-    """On a phone the label is hidden and the icon is aria-hidden, which left
-    the one way to reach a person with no name to a screen reader."""
+    """The name includes visible hours and survives an icon-only layout."""
     body = client.get(reverse("home")).content.decode()
 
-    assert re.search(r'class="v-support"[^>]*aria-label="پشتیبانی در تلگرام"', body)
+    name = f'پشتیبانی {support.details()["hours"]} در تلگرام'
+    assert re.search(r'class="v-support"[^>]*aria-label="' + re.escape(name) + '"', body)
 
 
 def test_every_email_gets_the_same_details():

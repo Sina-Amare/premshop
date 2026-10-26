@@ -115,6 +115,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "apps.accounts",
     "apps.catalog",
+    "apps.cart",
     "apps.orders",
     "apps.core",
 ]
@@ -176,6 +177,7 @@ TEMPLATES = [
                 # The header's shelves row and `support`, the one definition
                 # of where a customer reaches a person; see apps/core/context.py.
                 "apps.core.context.shell",
+                "apps.cart.context.context",
                 # What the shop promises on every page; see apps/catalog/promises.py.
                 "apps.catalog.promises.context",
             ],

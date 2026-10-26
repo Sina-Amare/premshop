@@ -44,6 +44,7 @@ urlpatterns = [
     path("dev/emails/", core_views.email_preview, name="email-previews"),
     path("dev/emails/<str:name>/", core_views.email_preview, name="email-preview"),
     path("", include("apps.accounts.urls")),
+    path("cart/", include("apps.cart.urls")),
     path("admin/", admin.site.urls),
 ]
 

@@ -161,8 +161,15 @@ def rendered_pages(client) -> dict[str, str]:
             "404": "/no-such-page/",
             "sign-in": "/login/",
             "code request": "/login/code/",
+            "cart empty": "/cart/",
         }.items()
     }
+    cart_plan = Plan.objects.filter(product__slug="chatgpt-plus", is_available=True).first()
+    client.post("/cart/add/", {"plan": cart_plan.pk})
+    pages["cart populated"] = client.get("/cart/").content.decode()
+    pages["cart error"] = client.post(
+        "/cart/quantity/", {"plan": cart_plan.pk, "quantity": 99}
+    ).content.decode()
     customer = Client()
     customer.force_login(User.objects.create_user("customer@example.test", is_verified=True))
     pages["account"] = customer.get(reverse("account")).content.decode()
@@ -184,7 +191,7 @@ def rendered_pages(client) -> dict[str, str]:
 
 def test_every_storefront_page_speaks_written_persian(client, shop):
     pages = rendered_pages(client)
-    assert len(pages) == 17
+    assert len(pages) == 20
 
     bad = {}
     for name, body in pages.items():

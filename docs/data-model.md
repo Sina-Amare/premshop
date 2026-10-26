@@ -2,7 +2,7 @@
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
 > **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Contract, settled at the step that builds it:** remaining order fields and operations, and `cart` (S4b). Discount tables already exist; checkout validation and consumption remain future work.
+> **Built cart:** `Cart` and `CartItem` in cart 0001/0002, including shared stock holds against Plan.stock_quantity (catalog 0025). Remaining order operations, checkout, discount application and consumption remain future work.
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
@@ -51,6 +51,7 @@ erDiagram
         bigint plan_id FK "PROTECT"
         smallint quantity "CHECK 1..10"
         timestamptz added_at
+        timestamptz reserved_until "nullable; finite stock only"
     }
     Order {
         bigint id PK
@@ -173,9 +174,9 @@ Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `ca
 - **`Plan.price_confirmed_at` is set on every save that changes `cost_price`, `sale_price` or `promo_price`, and by the bulk action «قیمت‌ها را امروز بررسی کردم».** It is not on the form. A page prints the oldest value among the plans it shows, and none while any of them is null — which every plan saved before 2026-10-20 is until it is confirmed.
 - **`Product.full_description` and `Category.intro_html` are retired but not dropped.** Catalog 0020 moved a full description into a «متن آزاد» section wherever the page printed it, and a category's HTML introduction into the Markdown `Category.intro` (no headings: it sits under the page's `h1`). Both old columns are off every form and page and stay only so 0020 can be reversed.
 
-### `cart` — persistent, cross-device (ADR-0018, rewritten)
+### `cart` — persistent, cross-device (ADR-0018)
 
-The cart is two tables, not a session dictionary. A signed-out visitor's cart is keyed by `session_key` and the session cookie is configured to outlive the browser window (`SESSION_EXPIRE_AT_BROWSER_CLOSE = False`, `SESSION_COOKIE_AGE = 30 days`), so it is still there tomorrow. A signed-in customer's cart is keyed by `user`, so it follows them to any device.
+Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; cart mutations set that session's expiry to 30 days. Login restores its previous expiry, so authenticated sessions keep their existing lifetime. A signed-in cart belongs to the account across devices. Empty reads create neither cart nor session.
 
 **These tables live in their own `cart` app, not in `orders`.** `cart` imports `core`, `accounts` and `catalog`; it is imported by `payments` (which resolves a cart into order lines at checkout) and by `panel`. It does **not** import `orders`, and `orders` never imports it — that one-way edge is what keeps `orders` ignorant of how a cart is stored, which is what lets `place_order` take a plain `Sequence[OrderLine]`. Migration home: `cart/0001` lands at **S4b** with the cart tables — never in `orders/0001`.
 
@@ -184,7 +185,7 @@ The cart is two tables, not a session dictionary. A signed-out visitor's cart is
 | Field | Type | Null | Default | Note |
 |---|---|---|---|---|
 | user | FK User, CASCADE, **unique** | yes | null | one cart per account; the cart dies with the account |
-| session_key | varchar(40), indexed | yes | null | Django session key of a signed-out visitor |
+| session_key | varchar(40), unique | yes | null | Django session key of a signed-out visitor; empty string forbidden |
 | created_at / updated_at | TS / TS | — | auto | `updated_at` drives the guest-cart sweep |
 
 `CHECK ((user_id IS NULL) <> (session_key IS NULL))` — exactly one of the two is set; a cart is either a guest's or an account's, never both and never neither.
@@ -197,18 +198,19 @@ The cart is two tables, not a session dictionary. A signed-out visitor's cart is
 | plan | FK Plan, **PROTECT** | — | | a plan sitting in someone's cart cannot be row-deleted; retire with `is_available=false` |
 | quantity | smallint | — | 1 | `CHECK BETWEEN 1 AND 10` |
 | added_at | TS | — | auto | preserved when a guest cart is claimed |
+| reserved_until | TS, indexed | yes | null | finite stock held for 20 minutes; expired selections remain stored |
 
 `UNIQUE (cart, plan)` — adding a plan already in the cart raises its quantity, it never makes a second line.
 
 > **A plan with `requires_customer_input=true` is limited to quantity 1 per line.** Each OrderItem is a separate credential with its own lifecycle, so three units would need three separate inputs, and a form collecting three account passwords under one line is a UI nobody asked for. Enforced in the cart — adding or incrementing to a second unit of such a plan is refused with a clear message, not silently clamped — and **re-validated at checkout**, because a plan's `requires_customer_input` can be flipped on after the line was created. It is a service rule at both points, not a DB `CHECK`: the condition lives on `Plan`, one join away from the row being written. The consequence the services already assume: `customer_inputs` is a mapping of **plan id → a single string**. *Flip condition:* if a customer ever genuinely needs several units of an input-requiring plan, the answer is per-item inputs on the checkout form — never silently reusing one value across items.
 
-**Stored: plan and quantity. Nothing else.** No prices, no names, no snapshots — every amount is recomputed through `effective_price()` from the database on every render and again at checkout. A cart row that is a week old therefore shows today's price, which is the only correct behaviour.
+**Stored: plan, quantity and reservation deadline.** No prices, names or purchase snapshots. Every amount is recomputed through `effective_price()` from the database on every render and again at checkout. A finite-stock line with an expired reservation remains visible, but contributes no payable amount until reserved again.
 
-**Merge on login** (the part customers notice, so it gets its own test): if the account already has a cart, the guest cart's lines merge into it — quantities summed per plan and clamped to the per-line maximum of 10 — and the guest cart is deleted. If the account has no cart, the guest cart is **claimed** instead: set `user`, clear `session_key`. Claiming preserves `added_at`; re-creating rows would not.
+**Shared stock:** Plan.stock_quantity is nullable (unlimited) or a nonnegative total including reserved units, added in catalog 0025. Available units are that total minus CartItem quantities whose reserved_until is still in the future, added in cart 0002. A plan lock serializes reservation changes and stock edits. Decreasing/removing releases units; live edits preserve the deadline. Admin rejects totals below live reservations. Merges lock plans in id order, preserve the earlier live deadline and cap to current stock/quantity limits. No expiry worker is needed; checkout's order/payment reservation transfer remains unbuilt.
 
-This merge is not built. Its 10-only clamp predates `Plan.max_quantity` and disagrees with the quantity-1 rule for input-requiring plans above. S4b's briefing settles the ceiling for add, checkout and merge together with `services-and-modules.md` §2 and ADR-0018; this paragraph does not choose one.
+**Merge on login:** the server stores the guest-cart id in session data, which survives Django's session-key rotation. The login signal claims a guest cart if the account has none, preserving item ids and added_at; otherwise it combines matching plans, caps imported quantities at each current Plan.max_quantity (one for input-requiring plans), moves new lines and deletes the guest cart. The account and cart rows are locked in one transaction; a replay is harmless. A reduction gets a customer notice. Guest reads and edits still resolve by the current session key, never by a posted cart id.
 
-**Lifecycle:** checkout consumes the cart and clears it **inside** the order-creation transaction, so an order and its emptied cart commit together. A daily beat task deletes guest carts (`user IS NULL`) with `updated_at` older than 30 days; account carts are never swept.
+**Lifecycle:** `purge_guest_carts` deletes only guest carts inactive for over 30 days, including their lines. A partial updated_at index supports it. It is a rerunnable management command; daily scheduling and clearsessions wait for the job runner. Account carts are never swept. Checkout's atomic order creation and cart clearing remain unbuilt.
 
 ### `orders`
 
@@ -398,7 +400,7 @@ Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the
 | Promo/discount stacking flag | A code applies on top of promotional pricing, decided once (§2). Excluding promoted items is the named future option; it flips on evidence that a promotion's margin is actually being lost, and it becomes a `DiscountCode` field then |
 | Card-to-card apparatus (`unique_amount` and its partial unique index, `paid_amount`, receipt upload, destination-card slots, `UnmatchedTransfer`) | ADR-0019 replaced the rail with a gateway; ADR-0006 is superseded, not deleted. Amount-matching, receipt storage and unmatched-transfer reconciliation all existed to answer "did this money arrive?" — a server-to-server verify answers it directly |
 | Supplier / FX rate | one upstream marketplace, manual pricing; `cost_snapshot`/`actual_cost` capture what matters (profit) without modeling why |
-| Inventory / stock | nothing delivers instantly; `Product.status='unavailable'` is the whole stock model |
+| Inventory app | Limited stock uses Plan.stock_quantity and CartItem.reserved_until, not separate inventory tables (ADR-0018, 2026-10-26 amendment). Supplier and stock-movement accounting remain unbuilt. |
 | RBAC / roles | one operator = `is_staff`; a second role would be the trigger to add it |
 | Identity tables (EmailIdentity/TelegramIdentity) | brief §19-الف resolved to flat fields on User; splitting is a mechanical migration if a third login method ever appears |
 | Wallet / ledger | brief out-of-scope; if it comes, it arrives double-entry from day one |

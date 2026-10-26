@@ -726,15 +726,15 @@ def test_the_first_available_plan_is_selected(client, category):
     assert checked == [str(second.id)]
 
 
-def test_the_cart_button_is_off_until_there_is_a_cart(client, product):
-    """It looked live and did nothing when pressed. The cart arrives at S4b;
-    until then the button says so instead of pretending."""
+def test_the_cart_button_opens_the_working_cart(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert re.search(
-        r'<button type="submit" class="btn btn--primary buybox__cta" disabled[ >]', body
-    )
-    assert "خرید از سایت هنوز فعال نیست." in body
+    assert re.search(r'<button type="submit" class="btn btn--primary buybox__cta">', body)
+    assert 'action="/cart/add/"' in body
+    plan = product.plans.filter(is_available=True).first()
+    response = client.post("/cart/add/", {"plan": plan.pk}, follow=True)
+    assert response.status_code == 200
+    assert response.context["cart"].lines[0].plan_id == plan.pk
 
 
 def test_a_plan_title_on_a_card_is_isolated(client, category):

@@ -79,3 +79,46 @@ body.snapshot-open:not(.snapshot-modal) .snapshot-panel{grid-row:1}
   body.snapshot-open:not(.snapshot-modal) .field-row,body.snapshot-open:not(.snapshot-modal) .field-line{flex-direction:column;align-items:stretch}
   body.snapshot-open:not(.snapshot-modal) .field-line>div:first-child{width:auto;min-width:0;height:auto;display:block}
 }
+
+/* Records use dark text; blue remains an action and selection cue. */
+html body #result_list tbody :is(th,td) a{color:var(--panel-ink);font-weight:500}
+html body #result_list tbody :is(th,td) a:hover{color:var(--panel-accent)}
+html body #result_list thead th{background:var(--panel-soft);color:var(--panel-text);font-size:12px}
+html body #result_list tbody td{line-height:1.9}
+html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-line);color:var(--panel-ink)}
+.order-number{font-weight:600;font-variant-numeric:tabular-nums;color:var(--panel-ink)}
+.order-list-mobile{display:none}
+.order-status{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;font-weight:400;padding:3px 9px;margin:2px 0;background:var(--panel-soft);border:1px solid var(--panel-line);border-radius:5px;color:var(--panel-text)}
+.order-status[data-state=cancelled]{border-style:dashed}
+.order-history{border:1px solid var(--panel-line);border-radius:8px;background:var(--panel-surface);margin-top:24px;padding:0 24px 8px}
+.order-history>header{padding:18px 0;border-bottom:1px solid var(--panel-line)}
+.order-history h2{font:600 15px/1.8 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink);margin:0}
+.order-timeline{list-style:none;margin:0;padding:6px 0}
+.order-timeline li{position:relative;padding:20px 22px 20px 0;border-bottom:1px solid var(--panel-line);overflow-wrap:anywhere}
+[dir=ltr] .order-timeline li{padding:20px 0 20px 22px}
+.order-timeline li:last-child{border:0}
+.order-timeline li::before{content:"";position:absolute;inset-inline-start:0;top:28px;width:7px;height:7px;border:1px solid var(--panel-text);border-radius:50%;background:var(--panel-surface)}
+.order-timeline__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;color:var(--panel-ink)}
+.order-timeline__head strong{font-size:13px;font-weight:500}.order-timeline__head>span{font-size:11px;color:var(--panel-text);font-variant-numeric:tabular-nums}
+.order-timeline__meta{font-size:11px;line-height:1.9;color:var(--panel-text);margin:7px 0 0}
+.order-timeline__note{font-size:12px;line-height:1.9;color:var(--panel-ink);margin:10px 0 0}.order-timeline__note:empty{display:none}
+body.app-orders.model-order.change-form fieldset{margin-bottom:24px}
+body.app-orders.model-order.change-form .order-list-mobile{display:none}
+@media(max-width:767px){
+  body.app-orders.model-order.change-list #result_list :is(.column-customer,.field-customer,.column-amount,.field-amount,.column-item_states,.field-item_states,.column-placed,.field-placed){display:none}
+  .order-list-mobile{display:grid;gap:5px;margin-top:9px;font-size:12px;white-space:normal;color:var(--panel-text);font-weight:400}
+  .order-list-mobile strong{font-weight:500;color:var(--panel-ink)}.order-list-mobile .order-status{width:fit-content}
+  .order-history{padding-inline:18px}.order-timeline__head{flex-direction:column;gap:4px}.order-timeline li{padding-block:18px}
+}
+
+.order-purchase{display:flex;flex-direction:column;gap:7px;line-height:1.9;min-width:0;overflow-wrap:anywhere;font-weight:500;color:var(--panel-ink)}
+.order-purchase>span{font-size:12px;font-weight:400;color:var(--panel-text)}
+.order-customer{overflow-wrap:anywhere;font-weight:400}
+@media(max-width:1023px){
+  .order-items .form-group>tr:first-child{display:none}
+  .order-items tr.form-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:20px 16px;border-bottom:1px solid var(--panel-line)}
+  .order-items .form-group:last-child .form-row{border-bottom:0}
+  .order-items .form-row>td{display:block!important;border:0!important;padding:0!important;min-height:0!important;min-width:0;text-align:start}
+  .order-items .form-row>.field-purchase{grid-column:1/-1}
+  .order-items .panel-cell-label{font-size:11px;color:var(--panel-text);font-weight:400;margin-bottom:5px}
+}
