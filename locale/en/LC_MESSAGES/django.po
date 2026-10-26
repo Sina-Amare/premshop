@@ -812,3 +812,135 @@ msgstr "This is where this content will appear once completed or enabled."
 
 msgid "این ردیف برای حذف انتخاب شده. اگه حذف رو برگردونید، دوباره اینجا نمایش داده می‌شه."
 msgstr "This row is marked for deletion. Undo deletion to show it here again."
+
+msgid "آیتم سفارش"
+msgstr "Order item"
+
+msgid "آیتم‌های سفارش"
+msgstr "Order items"
+
+msgid "اطلاعات زمان خرید"
+msgstr "Purchase details"
+
+msgid "اطلاعات مشتری دریافت نشده"
+msgstr "Customer information not received"
+
+msgid "امکان تأمین نیست"
+msgstr "Supply unavailable"
+
+msgid "بازپرداخت شده"
+msgstr "Refunded"
+
+msgid "بازپرداخت گارانتی"
+msgstr "Warranty refund"
+
+msgid "تحویل داده شده"
+msgstr "Delivered"
+
+msgid "جمع اقلام"
+msgstr "Subtotal"
+
+msgid "جمع نهایی"
+msgstr "Total"
+
+msgid "دامنه"
+msgstr "Scope"
+
+msgid "در صف انجام"
+msgstr "Queued"
+
+msgid "درخواست تعویض"
+msgstr "Replacement requested"
+
+msgid "درخواست مشتری پس از پرداخت"
+msgstr "Customer request after payment"
+
+msgid "درخواست مشتری پیش از پرداخت"
+msgstr "Customer request before payment"
+
+msgid "درصدی"
+msgstr "Percentage"
+
+msgid "دلیل لغو"
+msgstr "Cancellation reason"
+
+msgid "ربات"
+msgstr "Bot"
+
+msgid "زمان ثبت"
+msgstr "Created at"
+
+msgid "سابقهٔ سفارش"
+msgstr "Order history"
+
+msgid "سایت"
+msgstr "Website"
+
+msgid "سفارش"
+msgstr "Order"
+
+msgid "سفارش قبلی"
+msgstr "Legacy order"
+
+msgid "سفارش‌ها"
+msgstr "Orders"
+
+msgid "سیستم"
+msgstr "System"
+
+msgid "شمارهٔ سفارش"
+msgstr "Order number"
+
+msgid "قیمت تأمین زمان خرید"
+msgstr "Purchase cost"
+
+msgid "قیمت فروش زمان خرید"
+msgstr "Purchase price"
+
+msgid "لغو توسط پشتیبانی"
+msgstr "Cancelled by support"
+
+msgid "لغو شده"
+msgstr "Cancelled"
+
+msgid "مبلغ ثابت"
+msgstr "Fixed amount"
+
+msgid "محصول و پلن زمان خرید"
+msgstr "Purchased product and plan"
+
+msgid "محصولات انتخاب‌شده"
+msgstr "Selected products"
+
+msgid "مسیر ثبت"
+msgstr "Channel"
+
+msgid "مشتری"
+msgstr "Customer"
+
+msgid "منتظر اطلاعات مشتری"
+msgstr "Awaiting customer information"
+
+msgid "منتظر پرداخت"
+msgstr "Awaiting payment"
+
+msgid "مهلت پرداخت تمام شده"
+msgstr "Payment window expired"
+
+msgid "همهٔ محصولات"
+msgstr "All products"
+
+msgid "وضعیت آیتم‌ها"
+msgstr "Item states"
+
+msgid "پشتیبانی"
+msgstr "Support"
+
+msgid "کد"
+msgstr "Code"
+
+msgid "کد تخفیف"
+msgstr "Discount code"
+
+msgid "کدهای تخفیف"
+msgstr "Discount codes"
