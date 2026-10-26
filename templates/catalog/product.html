@@ -228,7 +228,8 @@
       }
     }
     if (qtyRow && qty) {
-      qtyRow.hidden = max < 2 && !qtyRow.contains(document.activeElement);
+      qtyRow.hidden = max < 2 && !qtyRow.contains(document.activeElement) && (max === 0 || (parseInt(qty.value, 10) || 1) <= 1);
+      qty.disabled = max < 1;
       qty.max = String(Math.max(1, max));
       if (event && event.type === 'change' && parseInt(qty.value, 10) > Math.max(1, max)) qty.value = String(Math.max(1, max));
       form.querySelectorAll('.stepper__btn').forEach(function (button) {

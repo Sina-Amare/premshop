@@ -199,3 +199,23 @@ def test_hold_expiry_refreshes_in_place_without_losing_a_quantity_edit(browser, 
         assert not navigations
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_a_remaining_single_unit_does_not_hide_an_invalid_quantity(browser, live_server, plan):
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        page.locator("#qty").fill("2")
+        page.locator(".buybox__cta").click()
+        expect(page.locator("#cart-toast")).to_be_visible()
+        expect(page.locator("#qty")).to_be_visible()
+        expect(page.locator("#qty")).to_have_attribute("max", "1")
+        page.locator("#qty").fill("1")
+        page.locator(".buybox__cta").click()
+        expect(page.locator(".v-cart__count")).to_have_text("۳")
+        expect(page.locator(".buybox__cart")).to_be_visible()
+        assert CartItem.objects.get().quantity == 3
+    finally:
+        page.close()
