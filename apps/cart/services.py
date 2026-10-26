@@ -35,7 +35,12 @@ def get_cart(request: HttpRequest) -> Cart | None:
 def _locked_cart(request: HttpRequest, *, create: bool) -> Cart | None:
     lookup: dict[str, Any]
     if request.user.is_authenticated:
-        if not User.objects.select_for_update().filter(pk=request.user.pk, is_active=True).first():
+        # Admin audit rows reference this user while holding a stock lock.
+        if (
+            not User.objects.select_for_update(no_key=True)
+            .filter(pk=request.user.pk, is_active=True)
+            .first()
+        ):
             raise PermissionDenied
         lookup = {"user_id": request.user.pk}
     else:
@@ -173,7 +178,7 @@ def remove_from_cart(request: HttpRequest, *, plan_id: int) -> None:
 @transaction.atomic
 def merge_carts(*, user: User, guest_cart_id: int) -> bool:
     """Serialize account edits and merges; return whether a quantity was reduced."""
-    if not User.objects.select_for_update().filter(pk=user.pk, is_active=True).first():
+    if not User.objects.select_for_update(no_key=True).filter(pk=user.pk, is_active=True).first():
         raise PermissionDenied
     carts = list(
         Cart.objects.select_for_update()

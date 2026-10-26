@@ -227,3 +227,74 @@ def test_competing_customers_cannot_both_reserve_the_last_unit(plan):
         results = list(pool.map(lambda _: reserve(), range(2)))
     assert sorted(results) == [False, True]
     assert CartItem.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("operation", ["quantity", "merge"])
+def test_admin_stock_edit_and_own_cart_edit_do_not_deadlock(plan, buyer, operation):
+    from threading import Event
+    from unittest.mock import patch
+
+    from django.contrib.admin.models import CHANGE, LogEntry
+    from django.contrib.contenttypes.models import ContentType
+    from django.db.models.query import QuerySet
+
+    from apps.accounts.models import User
+
+    limited(plan, 3)
+    add_to_cart(request_for(buyer), plan_id=plan.pk)
+    guest_id = None
+    if operation == "merge":
+        guest = request_for()
+        add_to_cart(guest, plan_id=plan.pk)
+        guest_id = get_cart(guest).pk
+    content_type = ContentType.objects.get_for_model(Plan).pk
+    cart_locked, stock_locked = Event(), Event()
+    original_first = QuerySet.first
+
+    def pause_after_owner_lock(queryset):
+        result = original_first(queryset)
+        if queryset.model is User and queryset.query.select_for_update:
+            cart_locked.set()
+            assert stock_locked.wait(5)
+        return result
+
+    def edit_cart():
+        close_old_connections()
+        try:
+            if operation == "merge":
+                merge_carts(user=buyer, guest_cart_id=guest_id)
+            else:
+                set_quantity(request_for(buyer), plan_id=plan.pk, quantity=2)
+        finally:
+            connections.close_all()
+
+    def edit_stock():
+        close_old_connections()
+        try:
+            assert cart_locked.wait(5)
+            with transaction.atomic():
+                stock = Plan.objects.select_for_update().get(pk=plan.pk)
+                stock_locked.set()
+                stock.stock_quantity = 4
+                stock.save()
+                LogEntry.objects.create(
+                    user_id=buyer.pk,
+                    content_type_id=content_type,
+                    object_id=str(plan.pk),
+                    object_repr="stock edit",
+                    action_flag=CHANGE,
+                    change_message="Stock changed",
+                )
+                with connections["default"].cursor() as cursor:
+                    cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        finally:
+            connections.close_all()
+
+    with patch.object(QuerySet, "first", pause_after_owner_lock):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(edit_cart), pool.submit(edit_stock)]
+            for future in futures:
+                future.result(timeout=10)
+    assert get_cart(request_for(buyer)).items.get().quantity == 2
+    assert LogEntry.objects.filter(user_id=buyer.pk).count() == 1

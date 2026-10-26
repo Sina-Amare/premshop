@@ -66,3 +66,7 @@ With JavaScript, adding stays on the product page and updates one accessible toa
 ### Correction — 2026-10-26: expired selections during login
 
 Sign-in never creates a new twenty-minute window. If every contributing hold has expired, merging or claiming keeps the selection with no deadline until the customer reserves again. When matching selections include a live hold, their quantities may combine against current stock under its earliest live deadline. This keeps a surviving hold without renewing it.
+
+### Follow-up — 2026-10-26: account locks and admin history
+
+Account serialization uses PostgreSQL FOR NO KEY UPDATE. It still serializes cart edits/merges and prevents concurrent user changes, while permitting foreign-key checks on that user. A stronger FOR UPDATE created a cycle when the same operator edited stock and their own cart: the cart held User while waiting on Plan; admin held Plan while its history row waited on User. Both edit and merge interleavings reproduced the deadlock before the correction. Session, Cart and Plan lock modes stay as specified above.
