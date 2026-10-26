@@ -23,10 +23,15 @@ class LineForm(forms.Form):
 
 
 def _page(request: HttpRequest, *, error: str = "", status: int = 200) -> HttpResponse:
+    cart = services.get_cart(request)
     return render(
         request,
         "cart/detail.html",
-        {"cart": services.cart_summary(services.get_cart(request)), "error": error},
+        {
+            "cart": services.cart_summary(cart),
+            "cart_revision": cart.updated_at.isoformat() if cart else "",
+            "error": error,
+        },
         status=status,
     )
 
@@ -94,7 +99,9 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
 
 def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
     count = services.cart_count(request)
+    cart = services.get_cart(request)
     return {
+        "revision": cart.updated_at.isoformat() if cart else "",
         "count": count,
         "count_text": to_persian_digits(count),
         "count_label": f"سبد خرید، {to_persian_digits(count)} عدد",

@@ -2,7 +2,7 @@
   const form = document.querySelector('[data-cart-add]:not([data-snapshot])');
   const cartPage = document.querySelector('.cart-page');
   const lines = () => [...document.querySelectorAll('[data-cart-plan]')];
-  if (!form && !lines().length) return;
+  if (!form && !cartPage) return;
   const toast = document.getElementById('cart-toast');
   const announcement = document.getElementById('cart-announcement');
   const positionToast = () => {
@@ -49,6 +49,7 @@
       (active.name === 'step' ? `[name=step][value="${active.value}"]` :
         active.matches('.cart-remove,.cart-apply,.cart-reserve') ? '.' + active.classList[0] : '') : '';
     cartPage.replaceChildren(...fresh.childNodes);
+    cartPage.dataset.cartRevision = fresh.dataset.cartRevision;
     edited.forEach(([id, value]) => { const input = document.getElementById(id); if (input) input.value = value; });
     let target = focusHref !== null ? [...cartPage.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusHref) :
       focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
@@ -59,10 +60,12 @@
       heading.tabIndex = -1;
       heading.focus({preventScroll: true});
     }
+    announcement.textContent = 'سبد خرید به‌روز شد. تعداد و مهلت رزرو محصولات را بررسی کنید.';
   };
   const sync = async (data, forceCart = false) => {
     const badge = document.querySelector('.v-cart__count');
     let changed = badge && badge.textContent !== data.count_text;
+    if (cartPage) changed ||= cartPage.dataset.cartRevision !== data.revision;
     if (badge && changed) badge.textContent = data.count_text;
     const cartLink = document.querySelector('.v-cart');
     if (cartLink?.getAttribute('aria-label') !== data.count_label) cartLink?.setAttribute('aria-label', data.count_label);
