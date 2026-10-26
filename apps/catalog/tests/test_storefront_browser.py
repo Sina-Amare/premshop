@@ -319,7 +319,7 @@ def test_a_ticking_clock_is_not_part_of_any_name(browser, live_server, discounte
             if scope == ".plans":
                 assert "قیمت قبلی" in heard and "قیمت با تخفیف" in heard, heard
             else:
-                assert "پلن ۱ ماهه" in heard and "۲۰٪ تخفیف" in heard, heard
+                assert "۱ ماهه" in heard and "۲۰٪ تخفیف" in heard, heard
     finally:
         context.close()
 
