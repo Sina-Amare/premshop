@@ -324,3 +324,11 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:760px){.v-actions{gap:12px}.cart-page{padding-block:22px 48px}.cart-heading{margin:24px 0}.cart-heading h1{font-size:28px;gap:10px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:20px}.cart-line{padding:24px 18px}.cart-line h2{font-size:16px}.cart-summary{padding:24px}.cart-summary h2{margin-bottom:22px}.cart-summary__total .price__num{font-size:34px}.cart-empty{padding:42px 20px 48px}.cart-empty h2{font-size:22px}}
 
 .cart-fixed-quantity{font-size:14px;color:var(--v-text);margin:0;min-height:44px;display:flex;align-items:center}
+.cart-stepper button:disabled,.buybox .stepper__btn:disabled{visibility:hidden}
+.cart-line__reservation{display:flex;align-items:center;gap:6px;color:var(--color-time-text);font-size:14px;margin-top:12px}.cart-line__reservation .v-icon{width:18px;height:18px}
+.cart-reserve{min-height:44px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:var(--v-soft);color:var(--v-ink);font-size:14px;padding:8px 12px;cursor:pointer}
+.cart-toast{position:fixed;z-index:70;top:var(--toast-top,calc(var(--hdr-h) + 12px));left:50%;transform:translateX(-50%);width:min(400px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr) auto 44px;align-items:center;gap:8px;padding:8px 10px;background:var(--v-light);border:1px solid var(--v-line);border-radius:12px;box-shadow:0 6px 24px rgb(19 31 49 / 10%);color:var(--v-ink)}
+.cart-toast__message{display:flex;align-items:flex-start;gap:8px;min-width:0;font-size:14px;line-height:1.7}.cart-toast__message>.v-icon{flex:none;width:20px;height:20px;margin-top:2px;color:#19704f}
+.cart-toast>a{display:inline-flex;align-items:center;gap:4px;min-height:44px;white-space:nowrap;color:var(--v-accent);font-size:14px;font-weight:500}.cart-toast>a>.v-icon{width:16px;height:16px}
+.cart-toast>button{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:var(--radius-sm);color:var(--v-text);background:transparent;cursor:pointer}.cart-toast>button:hover{background:var(--v-soft)}
+.cart-toast--error .cart-toast__message>.v-icon{color:var(--color-danger-text)}

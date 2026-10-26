@@ -2,12 +2,15 @@ from collections.abc import Callable
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.cart import services
+from apps.catalog.models import Plan, Product
+from apps.core.formatting import to_persian_digits
 
 
 class LineForm(forms.Form):
@@ -32,24 +35,77 @@ def detail(request: HttpRequest) -> HttpResponse:
 
 
 def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpResponse:
+    wants_json = request.headers.get("Accept") == "application/json"
+
+    def error(message: str) -> HttpResponse:
+        if wants_json:
+            return JsonResponse({"message": message}, status=400)
+        return _page(request, error=message, status=400)
+
     form = LineForm(request.POST)
     if not form.is_valid():
-        return _page(request, error="اطلاعات سبد خرید درست نیست.", status=400)
+        return error("تعداد را با عدد وارد کنید و دوباره امتحان کنید.")
     kwargs = {"plan_id": form.cleaned_data["plan"]}
     if operation is not services.remove_from_cart:
         quantity = form.cleaned_data["quantity"]
         if quantity is None and operation is services.add_to_cart:
             quantity = 1
         if quantity is None:
-            return _page(request, error="تعداد را وارد کنید.", status=400)
+            return error("تعداد را وارد کنید.")
         if operation is services.set_quantity:
             quantity += form.cleaned_data["step"] or 0
         kwargs["quantity"] = quantity
+    new_guest = not request.user.is_authenticated and request.session.session_key is None
     try:
         operation(request, **kwargs)
     except ValidationError as exc:
-        return _page(request, error=" ".join(exc.messages), status=400)
+        if new_guest:
+            request.session.flush()
+        return error(" ".join(exc.messages))
+    if wants_json:
+        plans = list(
+            Plan.objects.filter(
+                product__plans__pk=kwargs["plan_id"], product__in=Product.objects.public()
+            )
+        )
+        data = _state(request, plans)
+        data["message"] = "به سبد خرید اضافه شد."
+        return JsonResponse(data)
     return redirect("cart")
+
+
+def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
+    count = services.cart_count(request)
+    return {
+        "count": count,
+        "count_text": to_persian_digits(count),
+        "count_label": f"سبد خرید، {to_persian_digits(count)} عدد",
+        "options": {
+            str(option.plan.pk): {
+                "max_add": option.max_add,
+                "in_cart": option.in_cart,
+                "maximum": option.maximum,
+                "available": option.plan.is_available and option.maximum > 0,
+                "selectable": option.selectable,
+                "reserved_until": (
+                    option.reserved_until.isoformat() if option.reserved_until else None
+                ),
+                "expired": option.plan.stock_quantity is not None
+                and (option.reserved_until is None or option.reserved_until <= timezone.now()),
+            }
+            for option in services.purchase_options(request, plans)
+        },
+    }
+
+
+@never_cache
+@require_GET
+def availability(request: HttpRequest) -> HttpResponse:
+    values = request.GET.getlist("plan")
+    if len(values) > 50 or any(not value.isdecimal() or len(value) > 10 for value in values):
+        return JsonResponse({"message": "صفحه را دوباره باز کنید."}, status=400)
+    plans = list(Plan.objects.filter(pk__in=values, product__in=Product.objects.public()))
+    return JsonResponse(_state(request, plans))
 
 
 @never_cache

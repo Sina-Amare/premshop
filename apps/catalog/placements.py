@@ -49,7 +49,7 @@ def field_placements(model: str) -> dict[str, tuple[str, str]]:
         "plan": [
             ("product", "header", _("محصولی که این پلن زیر اون نمایش داده می‌شه.")),
             (
-                "title,sale_price,promo_price,promo_starts_at,promo_ends_at,is_available",
+                "title,sale_price,promo_price,promo_starts_at,promo_ends_at,is_available,stock_quantity",
                 "plans",
                 _("انتخاب پلن و قیمت محصول؛ تخفیف فقط در بازه‌ی معتبر نمایش داده می‌شه."),
             ),

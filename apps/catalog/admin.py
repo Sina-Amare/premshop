@@ -18,7 +18,8 @@ from typing import Any, ClassVar, cast
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.db.models import Max, Q, QuerySet
+from django.db import connection
+from django.db.models import Max, Q, QuerySet, Sum
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
@@ -245,6 +246,25 @@ class PlanForm(forms.ModelForm):
             for box in (date, time):
                 box.attrs["aria-describedby"] = f"{self[name].auto_id}_helptext"
 
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        if self.instance.pk and connection.in_atomic_block:
+            Plan.objects.select_for_update().filter(pk=self.instance.pk).exists()
+        return cleaned
+
+
+@admin.display(description=_("وضعیت موجودی"))
+def stock_levels(obj: Plan) -> str:
+    if obj.stock_quantity is None:
+        return gettext("بدون محدودیت موجودی")
+    reserved = getattr(obj, "cart_reserved", None)
+    if reserved is None:
+        reserved = obj.reserved_stock
+    return gettext("%(available)s قابل خرید، %(reserved)s رزرو شده") % {
+        "available": to_persian_digits(max(0, obj.stock_quantity - reserved)),
+        "reserved": to_persian_digits(reserved),
+    }
+
 
 class PlanInline(StackedInline):
     model = Plan
@@ -255,6 +275,8 @@ class PlanInline(StackedInline):
     ordering = ["sort_order", "id"]
     ordering_field = "sort_order"
     hide_ordering_field = True
+    readonly_fields = ["stock_levels"]
+    stock_levels = staticmethod(stock_levels)
     fieldsets = [
         (
             None,
@@ -262,13 +284,16 @@ class PlanInline(StackedInline):
                 "fields": [
                     ("title", "duration_days"),
                     ("cost_price", "sale_price"),
-                    ("is_available", "max_quantity"),
                     # A row of its own: Unfold hides the whole row that holds
                     # the ordering field, and while it shared one with title
                     # and duration no screen could add a plan.
                     "sort_order",
                 ]
             },
+        ),
+        (
+            _("موجودی و تعداد"),
+            {"fields": [("stock_quantity", "max_quantity"), "stock_levels", "is_available"]},
         ),
         (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
         (
@@ -807,6 +832,14 @@ class ProductAdmin(PreviewAdminMixin):
         return super().get_queryset(request).prefetch_related("plans")
 
     def get_form(self, request: Any, obj: Any = None, change: bool = False, **kwargs: Any) -> Any:
+        if request.method == "POST" and obj and connection.in_atomic_block:
+            # Cart merges acquire several stock rows in this same order.
+            list(
+                Plan.objects.select_for_update()
+                .filter(product=obj)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
         form = super().get_form(request, obj, change=change, **kwargs)
         changeable = {
             inline.model
@@ -908,13 +941,36 @@ class PlanAdmin(PreviewAdminMixin):
     """
 
     form = PlanForm
-    list_display = ["plan", "price", "margin", "promo_window", "price_checked", "is_available"]
+    list_display = [
+        "plan",
+        "price",
+        "margin",
+        "stock_levels",
+        "promo_window",
+        "price_checked",
+        "is_available",
+    ]
+    readonly_fields = ["stock_levels"]
+    stock_levels = staticmethod(stock_levels)
     list_filter = ["is_available", "product__category", StalePriceFilter]
     actions = ["confirm_prices"]
     search_fields = ["title"]
     list_select_related = ["product"]
     list_fullwidth = True
     ordering = ["product__name", "sort_order"]
+
+    def get_queryset(self, request: Any) -> Any:
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                cart_reserved=Sum(
+                    "cartitem__quantity",
+                    filter=Q(cartitem__reserved_until__gt=timezone.now()),
+                    default=0,
+                )
+            )
+        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         # A plan with no product is meaningless; it is added on the product.

@@ -54,7 +54,7 @@ def test_hidden_product_facts_never_reappear_in_a_cart(client, plan):
     body = client.get("/cart/").content.decode()
     assert "private-draft-name" not in body
     assert plan.title not in body
-    assert "در دسترس نیست" in body
+    assert "این محصول فعلاً موجود نیست." in body
     assert client.post("/cart/remove/", {"plan": plan.pk}).status_code == 302
     assert not CartItem.objects.exists()
 
@@ -83,3 +83,64 @@ def test_quantity_step_buttons_work_without_javascript(client, plan):
         client.post("/cart/quantity/", {"plan": plan.pk, "quantity": 1, "step": 99}).status_code
         == 400
     )
+
+
+def test_add_json_stays_on_product_and_reports_authoritative_count_and_limits(client, plan):
+    from apps.catalog.models import Plan
+
+    other = Plan.objects.create(
+        product=plan.product, title="سه ماهه", cost_price=400_000, sale_price=500_000
+    )
+    response = client.post(
+        "/cart/add/", {"plan": plan.pk, "quantity": 2}, HTTP_ACCEPT="application/json"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    assert data["options"][str(plan.pk)]["max_add"] == 1
+    assert data["options"][str(other.pk)]["selectable"] is True
+    assert data["message"] == "به سبد خرید اضافه شد."
+
+
+def test_stock_json_failure_leaves_cart_unchanged_and_uses_plain_persian(client, plan):
+    plan.stock_quantity = 0
+    plan.save()
+    response = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json")
+    assert response.status_code == 400
+    assert response.json()["message"] == "این محصول فعلاً موجود نیست."
+    assert not Cart.objects.exists()
+
+
+def test_cart_uses_one_clear_unavailable_message_without_accounting_jargon(client, plan):
+    client.post("/cart/add/", {"plan": plan.pk})
+    type(plan).objects.filter(pk=plan.pk).update(is_available=False)
+    body = client.get("/cart/").content.decode()
+    assert "این محصول فعلاً موجود نیست." in body
+    assert "خارج از" not in body and "مبلغ این قلم" not in body
+
+
+def test_availability_is_private_current_and_does_not_reveal_drafts(client, plan):
+    plan.stock_quantity = 2
+    plan.save()
+    client.post("/cart/add/", {"plan": plan.pk})
+    stranger = Client()
+    state = stranger.get("/cart/availability/", {"plan": plan.pk})
+    assert state.json()["options"][str(plan.pk)]["max_add"] == 1
+    assert state.json()["count"] == 0
+    assert "no-store" in state["Cache-Control"]
+    assert "sessionid" not in state.cookies
+    Product.objects.filter(pk=plan.product_id).update(status=Product.Status.DRAFT)
+    assert stranger.get("/cart/availability/", {"plan": plan.pk}).json()["options"] == {}
+
+
+@pytest.mark.parametrize("plans", [["x"], ["-1"], ["1"] * 51, ["9" * 40]])
+def test_availability_bounds_browser_inputs(client, plans):
+    assert client.get("/cart/availability/", {"plan": plans}).status_code == 400
+
+
+def test_json_add_still_requires_csrf(plan):
+    response = Client(enforce_csrf_checks=True).post(
+        "/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json"
+    )
+    assert response.status_code == 403
+    assert not Cart.objects.exists()

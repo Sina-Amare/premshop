@@ -54,3 +54,11 @@ Guest mutations set a per-session 30-day expiry; login restores its previous exp
 ### Follow-up — 2026-10-26: session rotation and in-flight edits
 
 An edit from an already-started anonymous request can arrive after login rotates its session. Guest mutations now lock and validate the DB Session before locking the cart, and persist the guest reference in the same transaction. Login locks and refreshes that original Session before rotation and receiver execution, all atomically; admin acquires this lock before authentication. A stale guest request is rejected rather than creating a second cart. Two reproduced interleavings cover delayed edits and a first addition after login had cached the session.
+
+### Follow-up — 2026-10-26: stock holds and in-place additions
+
+Plan.stock_quantity is a nullable nonnegative total, including reserved units; null keeps an existing plan unlimited. CartItem.reserved_until holds a finite plan's units for twenty minutes. Availability subtracts only unexpired reservations, so expiry frees units without deleting the cart or waiting for a task. Reducing/removing releases units immediately. Reads and quantity edits keep a live deadline; an expired selection stays in the cart, contributes no payable amount, and needs an explicit reservation against current stock.
+
+Mutations lock the owner, cart and then Plan; merges lock all affected plans in primary-key order. Stock validation and writes share one transaction. Merges preserve the earlier live deadline and cap imported quantities against stock and the plan limit. Admin refuses a total below live reservations and shows available/reserved counts. Enabling finite stock does not silently reserve older, untimed selections. Checkout must implement atomic reservation transfer and payment expiry before customers can proceed to payment.
+
+With JavaScript, adding stays on the product page and updates one accessible toast with a cart link. The pending button blocks overlapping clicks; uncertain network results are not retried automatically. HTML forms remain the fallback. Product/cart controls use current stock, with periodic refresh while visible and server revalidation on every mutation. No price comes from JavaScript, and no checkout or payment action exists in this slice.

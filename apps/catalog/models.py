@@ -28,8 +28,8 @@ from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.files.base import ContentFile
 from django.core.validators import RegexValidator, URLValidator, validate_slug
-from django.db import models
-from django.db.models import F, Q
+from django.db import models, transaction
+from django.db.models import F, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import Truncator, slugify
@@ -871,6 +871,12 @@ class Plan(ChecksNameTheirField, PageRow):
             "با تعیین تاریخ، روی سایت شمارش معکوس نمایش داده می‌شود. خالی یعنی بدون پایان."
         ),
     )
+    stock_quantity = models.PositiveIntegerField(
+        _("موجودی کل"),
+        null=True,
+        blank=True,
+        help_text=_("تعداد کل قابل فروش، شامل تعداد رزروشده. خالی یعنی بدون محدودیت موجودی."),
+    )
     is_available = models.BooleanField(
         _("موجود"),
         default=True,
@@ -927,6 +933,7 @@ class Plan(ChecksNameTheirField, PageRow):
         "plan_duration_positive_or_unlimited": "duration_days",
         "plan_max_quantity_1_to_10": "max_quantity",
         "plan_customer_input_is_one_per_order": "max_quantity",
+        "plan_stock_not_negative": "stock_quantity",
     }
 
     class Meta:
@@ -974,6 +981,11 @@ class Plan(ChecksNameTheirField, PageRow):
                 name="plan_max_quantity_1_to_10",
                 violation_error_message=_("حداکثر تعداد باید بین ۱ تا ۱۰ باشد."),
             ),
+            models.CheckConstraint(
+                condition=Q(stock_quantity__isnull=True) | Q(stock_quantity__gte=0),
+                name="plan_stock_not_negative",
+                violation_error_message=_("موجودی نمی‌تواند منفی باشد."),
+            ),
             # One input per credential. A plan that needs the customer's own
             # account details cannot be ordered twice on one line: there is
             # one box to type the email into, so a quantity of two would mean
@@ -995,7 +1007,11 @@ class Plan(ChecksNameTheirField, PageRow):
         # that used to stand between them read «۱ — Claude Pro ماهه».
         return f"{self.title}، \u2068{self.product}\u2069"
 
+    @transaction.atomic
     def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.pk and self.stock_quantity is not None:
+            Plan.objects.select_for_update().get(pk=self.pk)
+            self._check_reserved_stock()
         # A price someone has just typed is a price someone has just checked.
         fields = kwargs.get("update_fields")
         if (fields is None or set(fields) & set(PRICE_FIELDS)) and self._price_is_new():
@@ -1009,6 +1025,29 @@ class Plan(ChecksNameTheirField, PageRow):
             return True
         stored = Plan.objects.filter(pk=self.pk).values(*PRICE_FIELDS).first()
         return stored is None or any(stored[name] != getattr(self, name) for name in PRICE_FIELDS)
+
+    @property
+    def reserved_stock(self) -> int:
+        if not self.pk:
+            return 0
+        return int(
+            self.cartitem_set.filter(reserved_until__gt=timezone.now()).aggregate(
+                total=Sum("quantity")
+            )["total"]
+            or 0
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        self._check_reserved_stock()
+
+    def _check_reserved_stock(self) -> None:
+        if self.pk and self.stock_quantity is not None:
+            reserved = self.reserved_stock
+            if self.stock_quantity < reserved:
+                raise ValidationError(
+                    {"stock_quantity": _("موجودی کل نمی‌تواند کمتر از تعداد رزروشده باشد.")}
+                )
 
     @property
     def effective_price(self) -> Decimal:

@@ -19,5 +19,6 @@ def merge_guest_cart(sender: type[User], request: HttpRequest, user: User, **kwa
     request.session.set_expiry(request.session.pop(GUEST_PREVIOUS_EXPIRY, None))
     if reduced:
         messages.info(
-            request, "سبد خرید به‌روزرسانی شد؛ تعداد برخی اقلام را به سقف مجاز پلن کاهش دادیم."
+            request,
+            "تعداد بعضی محصولات با توجه به موجودی و محدودیت خرید تغییر کرد. سبد خریدتان را بررسی کنید.",
         )

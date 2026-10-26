@@ -33,7 +33,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         assert page.url == live_server.url + path
         expect(page.locator("h1")).to_contain_text("سبد خرید")
         if state != "empty":
-            expect(page.locator(".cart-heading__count")).to_have_text("۲ قلم")
+            expect(page.locator(".cart-heading__count")).to_have_text("۲ محصول")
         page.evaluate("document.fonts.ready")
         assert page.evaluate(
             "[...document.fonts].some(f => f.family.includes('Estedad') && f.status === 'loaded')"
@@ -47,7 +47,9 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
                 assert (
                     element.evaluate("el => parseFloat(getComputedStyle(el).fontSize)") >= minimum
                 )
-        for control in page.locator(".cart-remove, .cart-apply, .cart-stepper button").all():
+        for control in page.locator(
+            ".cart-remove:visible, .cart-apply:visible, .cart-stepper button:visible"
+        ).all():
             box = control.bounding_box()
             assert box and box["width"] >= 44 and box["height"] >= 44
             assert control.get_attribute("aria-label")
@@ -66,6 +68,9 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         page.goto(live_server.url + plan.product.get_absolute_url())
         page.locator(".buybox__cta").focus()
         page.keyboard.press("Enter")
+        expect(page.locator("#cart-toast")).to_be_visible()
+        expect(page).to_have_url(live_server.url + plan.product.get_absolute_url())
+        page.locator("#cart-toast a").click()
         expect(page).to_have_url(live_server.url + "/cart/")
         expect(page.locator(".cart-line")).to_have_count(1)
         token = page.locator('[name="csrfmiddlewaretoken"]').first.input_value()
@@ -93,7 +98,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         page.locator(f"#quantity-{plan.pk}").evaluate(
             "el => { el.max = '10'; el.value = '4'; el.form.requestSubmit(); }"
         )
-        expect(page.get_by_role("alert")).to_contain_text("مجاز نیست")
+        expect(page.get_by_role("alert")).to_contain_text("حداکثر تعداد")
         inspect("error")
         assert page.locator(f"#quantity-{plan.pk}").input_value() == "2"
         Plan.objects.filter(pk=plan.pk).update(sale_price=999999999990)
@@ -102,7 +107,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         Plan.objects.filter(pk=plan.pk).update(sale_price=200000)
         Product.objects.filter(pk=plan.product_id).update(status=Product.Status.DRAFT)
         page.goto(live_server.url + "/cart/")
-        expect(page.locator(".cart-line").first).to_contain_text("در دسترس نیست")
+        expect(page.locator(".cart-line").first).to_contain_text("این محصول فعلاً موجود نیست.")
         assert plan.product.name not in page.locator("main").inner_text()
         inspect("unavailable")
         page.get_by_role("button", name="حذف محصول ناموجود", exact=True).click()
@@ -119,7 +124,8 @@ def test_real_browser_profile_keeps_guest_cart_after_restart(browser, live_serve
         page = context.pages[0]
         page.goto(live_server.url + plan.product.get_absolute_url())
         page.locator(".buybox__cta").click()
-        expect(page).to_have_url(live_server.url + "/cart/")
+        expect(page.locator("#cart-toast")).to_be_visible()
+        expect(page).to_have_url(live_server.url + plan.product.get_absolute_url())
     finally:
         context.close()
     context = browser.browser_type.launch_persistent_context(profile)

@@ -959,3 +959,27 @@ msgstr "Order created"
 
 msgid "وضعیت قبلی: %(state)s"
 msgstr "Previous status: %(state)s"
+
+msgid "%(available)s قابل خرید، %(reserved)s رزرو شده"
+msgstr "%(available)s available, %(reserved)s reserved"
+
+msgid "بدون محدودیت موجودی"
+msgstr "Unlimited stock"
+
+msgid "تعداد کل قابل فروش، شامل تعداد رزروشده. خالی یعنی بدون محدودیت موجودی."
+msgstr "Total units for sale, including reserved units. Leave blank for unlimited stock."
+
+msgid "موجودی نمی‌تواند منفی باشد."
+msgstr "Stock cannot be negative."
+
+msgid "موجودی و تعداد"
+msgstr "Stock and quantity"
+
+msgid "موجودی کل"
+msgstr "Total stock"
+
+msgid "موجودی کل نمی‌تواند کمتر از تعداد رزروشده باشد."
+msgstr "Total stock cannot be lower than reserved stock."
+
+msgid "وضعیت موجودی"
+msgstr "Stock status"

@@ -34,6 +34,7 @@ class CartItem(models.Model):
     plan = models.ForeignKey("catalog.Plan", on_delete=models.PROTECT)
     quantity = models.PositiveSmallIntegerField(default=1)
     added_at = models.DateTimeField(auto_now_add=True)
+    reserved_until = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         constraints = [

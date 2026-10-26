@@ -177,5 +177,5 @@ document.querySelectorAll('form').forEach(function (form) {
   });
 });
 </script>
-<script src="{% static 'js/storefront.js' %}" defer></script><script src="{% static 'js/rails.js' %}" defer></script><script src="{% static 'js/orbit.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
+{% include 'cart/toast.html' %}<script src="{% static 'js/cart.js' %}" defer></script><script src="{% static 'js/storefront.js' %}" defer></script><script src="{% static 'js/rails.js' %}" defer></script><script src="{% static 'js/orbit.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
 </html>

@@ -52,7 +52,14 @@ def test_cart_contains_only_identity_plan_quantity_and_timestamps(plan):
         "created_at",
         "updated_at",
     }
-    assert {f.name for f in CartItem._meta.fields} == {"id", "cart", "plan", "quantity", "added_at"}
+    assert {f.name for f in CartItem._meta.fields} == {
+        "id",
+        "cart",
+        "plan",
+        "quantity",
+        "added_at",
+        "reserved_until",
+    }
     cart = get_cart(request)
     assert cart.session_key == request.session.session_key
     assert request.session[GUEST_CART_ID] == cart.pk

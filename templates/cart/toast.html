@@ -1,0 +1,6 @@
+<div class="sr-only" id="cart-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
+<aside class="cart-toast" id="cart-toast" aria-label="پیام سبد خرید" hidden>
+  <div class="cart-toast__message">{% include 'storefront/icon.html' with name='check' %}<span data-toast-message></span></div>
+  <a href="{% url 'cart' %}" aria-label="مشاهده‌ی سبد خرید">سبد خرید{% include 'storefront/icon.html' with name='arrow' %}</a>
+  <button type="button" data-toast-close aria-label="بستن پیام">{% include 'storefront/icon.html' with name='close' %}</button>
+</aside>
