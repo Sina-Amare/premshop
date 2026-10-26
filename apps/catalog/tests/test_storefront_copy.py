@@ -284,6 +284,17 @@ def test_activation_answer_does_not_make_a_blanket_password_promise(client):
     assert not offences(text, written=True)
 
 
+def test_product_activation_answer_does_not_promise_email_is_sufficient(client, shop):
+    body = client.get("/p/chatgpt-plus/").content.decode()
+    answer = re.search(
+        r"برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd[^>]*>(.*?)</dd>", body, re.S
+    )
+    assert answer, "the product activation answer was not checked"
+    text = said(answer[1])[0]
+    assert "فقط" not in text
+    assert "سایت" in text and "وارد نکنید" in text
+
+
 def test_faq_describes_access_limits_without_vpn_guidance(client):
     text = said(client.get(reverse("faq")).content.decode())[0]
     assert "محدودیت" in text
