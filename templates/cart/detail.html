@@ -5,8 +5,8 @@
 <div class="wrap cart-page">
   <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>سبد خرید</span></nav>
   <header class="cart-heading">
-    <div><h1>سبد خرید{% if cart.lines %}<span class="cart-heading__count">{{ cart.lines|length|fa_digits }} قلم</span>{% endif %}</h1><p>انتخاب‌های شما، یک‌جا</p></div>
-    {% if cart.lines %}<a href="{% url 'home' %}#products" class="cart-back">بازگشت به محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>{% endif %}
+    <h1>سبد خرید{% if cart.lines %}<span class="cart-heading__count">{{ cart.lines|length|fa_digits }} قلم</span>{% endif %}</h1>
+    {% if cart.lines %}<a href="{% url 'home' %}#products" class="cart-back" aria-label="بازگشت به محصولات" title="بازگشت به محصولات">{% include 'storefront/icon.html' with name='arrow' %}</a>{% endif %}
   </header>
   {% if error %}<p class="cart-notice cart-notice--error" role="alert">{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
@@ -23,9 +23,9 @@
           {% else %}<h2>این محصول دیگر در دسترس نیست</h2>{% endif %}
           {% if line.unavailable %}<p class="cart-line__warning">ناموجود؛ مبلغ این قلم در جمع سبد نیست.</p>
           {% elif line.quantity_invalid %}<p class="cart-line__warning">حداکثر تعداد: {{ line.plan.max_quantity|fa_digits }}. تعداد را اصلاح کنید تا مبلغ این قلم به جمع سبد اضافه شود.</p>
-          {% else %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}
+          {% elif line.quantity > 1 %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}
         </div>
-        <div class="cart-line__amount">{% if not line.unavailable and not line.quantity_invalid %}<span class="cart-money">{{ line.line_total|price_html }}</span>{% else %}<span class="cart-line__excluded">خارج از جمع سبد</span>{% endif %}</div>
+        <div class="cart-line__amount">{% if not line.unavailable and not line.quantity_invalid %}<span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span>{% else %}<span class="cart-line__excluded">خارج از جمع سبد</span>{% endif %}</div>
         <div class="cart-line__controls">
           {% if line.unavailable %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>
           {% elif line.plan.max_quantity > 1 or line.quantity_invalid %}
@@ -37,21 +37,20 @@
               <input id="quantity-{{ line.plan_id }}" name="quantity" type="number" inputmode="numeric" min="1" max="{{ line.plan.max_quantity }}" value="{{ line.quantity }}" dir="ltr">
               <button type="submit" name="step" value="-1" aria-label="کاهش تعداد {{ line.plan.title }}"{% if line.quantity == 1 %} disabled{% endif %}>−</button>
             </div>
-            <button type="submit" class="cart-apply">اعمال</button>
+            <button type="submit" class="cart-apply" aria-label="ثبت تعداد {{ line.plan.product.name }}، {{ line.plan.title }}" title="ثبت تعداد">{% include 'storefront/icon.html' with name='check' %}</button>
           </form>
           {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
-          <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"/></svg><span>حذف</span></button></form>
+          <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" title="حذف از سبد خرید" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}</button></form>
         </div>
       </article>
     {% endfor %}
     </section>
     <aside class="cart-summary" aria-label="جمع سبد خرید">
       <h2>خلاصه‌ی سبد</h2>
-      <div class="cart-summary__label">جمع اقلام قابل سفارش</div>
-      <div class="cart-summary__total cart-money">{{ cart.total|price_html }}</div>
-      <p class="cart-summary__note">مبلغ نهایی را پیش از ثبت سفارش دوباره بررسی می‌کنید.</p>
-      <a class="btn btn--primary" href="{% url 'home' %}#products">ادامه‌ی خرید{% include 'storefront/icon.html' with name='arrow' %}</a>
-      <p class="cart-summary__pending">ثبت سفارش از سایت هنوز فعال نیست.</p>
+      <div class="cart-summary__label">جمع سبد خرید</div>
+      <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ cart.total|price_html }}</div>
+      <a class="btn btn--primary" href="{% url 'home' %}#products">افزودن محصول{% include 'storefront/icon.html' with name='plus' %}</a>
+      <p class="cart-summary__pending">{% include 'storefront/icon.html' with name='info' %}<span>ثبت سفارش هنوز فعال نیست.</span></p>
     </aside>
   </div>
   {% else %}

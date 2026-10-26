@@ -35,13 +35,29 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         if state != "empty":
             expect(page.locator(".cart-heading__count")).to_have_text("۲ قلم")
         page.evaluate("document.fonts.ready")
-        assert page.evaluate("document.fonts.check('600 16px Estedad')")
+        assert page.evaluate(
+            "[...document.fonts].some(f => f.family.includes('Estedad') && f.status === 'loaded')"
+        )
+        expect(page.locator(".v-cart svg")).to_be_visible()
+        expect(page.locator(".v-cart")).to_have_accessible_name(
+            "سبد خرید، " + ("۰" if state == "empty" else "۳") + " عدد"
+        )
+        for selector, minimum in ((".cart-line h2", 16), (".cart-line__plan", 14)):
+            for element in page.locator(selector).all():
+                assert (
+                    element.evaluate("el => parseFloat(getComputedStyle(el).fontSize)") >= minimum
+                )
+        for control in page.locator(".cart-remove, .cart-apply, .cart-stepper button").all():
+            box = control.bounding_box()
+            assert box and box["width"] >= 44 and box["height"] >= 44
+            assert control.get_attribute("aria-label")
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         assert page.locator('input[type="password"]').count() == 0
         for amount in page.locator(".cart-money").all():
             box = amount.bounding_box()
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= width + 1
+            assert amount.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
         page.screenshot(path=str(directory / f"{state}-{width}.png"), full_page=True)
 
     try:
@@ -65,8 +81,8 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         page.reload()
         expect(page.locator(".cart-line")).to_have_count(2)
         page.locator(f"#quantity-{plan.pk}").fill("2")
-        page.locator(".cart-quantity").filter(has=page.locator(f"#quantity-{plan.pk}")).get_by_role(
-            "button", name="اعمال", exact=True
+        page.locator(".cart-quantity").filter(has=page.locator(f"#quantity-{plan.pk}")).locator(
+            ".cart-apply"
         ).click()
         expect(page.locator(".v-cart__count")).to_have_text("۳")
         inspect("populated")
@@ -80,6 +96,10 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         expect(page.get_by_role("alert")).to_contain_text("مجاز نیست")
         inspect("error")
         assert page.locator(f"#quantity-{plan.pk}").input_value() == "2"
+        Plan.objects.filter(pk=plan.pk).update(sale_price=999999999990)
+        page.goto(live_server.url + "/cart/")
+        inspect("large-price")
+        Plan.objects.filter(pk=plan.pk).update(sale_price=200000)
         Product.objects.filter(pk=plan.product_id).update(status=Product.Status.DRAFT)
         page.goto(live_server.url + "/cart/")
         expect(page.locator(".cart-line").first).to_contain_text("در دسترس نیست")
