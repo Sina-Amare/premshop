@@ -1,8 +1,8 @@
 # PremShop — Phase 1 ERD
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
-> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Contract, settled at the step that builds it:** `orders` (S4a), `cart` (S4b), the discount tables (S4a or S4b — their implementation step is settled in S4a's briefing).
+> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
+> **Contract, settled at the step that builds it:** remaining order fields and operations, and `cart` (S4b). Discount tables already exist; checkout validation and consumption remain future work.
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
@@ -126,6 +126,8 @@ erDiagram
 ---
 
 ## 2. Models by App
+
+**Orders implementation — 2026-10-26.** `apps/orders/models.py` and its migrations now define Order, OrderItem, OrderItemEvent, DiscountCode and DiscountRedemption. The order tables below retain later-operation intent: actual_cost, delivery_note, expires_at, due_at, sla_paused_at, paid_at, delivered_at, cancellation_requested_at and delivery-link columns are not built yet. The implemented item has purchase snapshots, encrypted non-secret customer_input and cancel_reason. History also records actor_user (nullable, PROTECT); its item FK and OrderItem.order are PROTECT, and event UPDATE/DELETE is blocked by a database trigger. No payment, delivery or discount-application service exists yet. These facts supersede the corresponding draft rows and CASCADE descriptions below.
 
 ### `core.SiteSetting` — singleton (D8)
 
@@ -272,7 +274,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | cost_snapshot | Money | — | | copied from Plan.cost_price at order time (D10) |
 | actual_cost | Money | yes | null | delivery-form editable, prefilled from cost_snapshot; replacements add to it (D10) |
 | product_snapshot | jsonb | — | | name, plan title, warranty, specs at purchase time |
-| customer_input | **EncryptedTextField** | blank | "" | may contain the customer's own password (D10) |
+| customer_input | **EncryptedTextField** | blank | "" | non-secret email/username only; passwords are handled manually after payment (ADR-0007 amendment) |
 | delivery_note | text | blank | "" | operator → customer, plaintext non-secret |
 | expires_at | date | yes | null | subscription expiry; precomputed from duration_days, editable |
 | due_at | TS | yes | null | set at payment confirm via the pure SLA function (D7) |

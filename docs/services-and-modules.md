@@ -1,8 +1,8 @@
 # PremShop — Module Boundaries & Service Layer Contract (Phase 1)
 
 > **At a glance.** Which app owns what, which app may import which, and the service contracts for the next two steps.
-> **Built:** `accounts`, `catalog`, and `core`'s email, rate-limit and display helpers. For these the code is the source of truth; §2 keeps only what the code cannot say, plus a pointer to the module.
-> **Contract, settled at the step that builds it:** `orders` (S4a — `place_order`, `validate_discount_code` and the customer selectors are used from S4b; its §2 table still carries full signatures for later operations such as `extend_due_at`, `request_cancellation`, `pause_all_slas` and `reveal_delivery_fields`, and whether they stay contract is settled in S4a's briefing), `cart` (S4b), `payments.checkout` (the proposed S4b checkout entry — whether checkout goes through it and creates a Payment row, or calls `orders.place_order` directly, is settled in S4a's briefing), `core`'s `emit`/`register` and `compute_due_at`, the guest-cart purge task (§3), §4 Thin Views, §5 Testing Seams.
+> **Built:** `accounts`, `catalog`, `orders`' unpaid creation/cancellation and read-only admin, and `core`'s email, rate-limit, display and encrypted-field helpers. For these the code is the source of truth; §2 keeps only what the code cannot say, plus a pointer to the module.
+> **Contract, settled at the step that builds it:** remaining `orders` operations (`validate_discount_code` and the customer selectors are used from S4b; its §2 table still carries full signatures for later operations such as `extend_due_at`, `request_cancellation`, `pause_all_slas` and `reveal_delivery_fields`, and whether they stay contract is settled in S4a's briefing), `cart` (S4b), `payments.checkout` (the proposed S4b checkout entry — whether checkout goes through it and creates a Payment row, or calls `orders.place_order` directly, is settled in S4a's briefing), `core`'s `emit`/`register` and `compute_due_at`, the guest-cart purge task (§3), §4 Thin Views, §5 Testing Seams.
 > **Intent only, re-specified when their step is planned:** the rest of `payments` (S6b and S5), `notifications` (S6), Telegram linking (S8), the operator and renewal selectors (S7–S10), the other beat tasks (S5–S10). `panel` (S7) and `cms` (S11) appear only in the App Map. The full earlier draft of all of it is `git show 027c5d1:docs/services-and-modules.md`.
 > **Read for S4a:** §1 App Map, §2 `orders`, §5 Testing Seams.
 
@@ -102,6 +102,8 @@ The one selector the cart and checkout pages render from: re-reads every plan fr
 Because quantity is capped at 1 for input-requiring plans, `customer_inputs` is a mapping of **plan id → one string** — the shape the checkout form and `payments.checkout` already assume. *Flip condition:* if a customer genuinely needs several units of an input-requiring plan, the answer is **per-item inputs on the checkout form**, never silently reusing one value across units.
 
 ### orders
+
+**Built — 2026-10-26.** `OrderLine(plan, quantity, customer_input=None)` and `place_order(*, user, lines, phone="", channel="web")` create an unpaid order atomically with price/cost/product snapshots and one creation event per unit. Plans, public product status, availability, quantity ceilings and required non-secret input are re-read server-side; duplicate plan lines are refused. No discount argument exists yet. `cancel_unpaid_item(*, item_id, actor, note="")` allows the stored active owner or staff; staff must supply a reason note. It locks the item, writes its cancellation and event together, and treats a replay of the same cancellation as a no-op. It does not cancel paid states. The proposed interfaces below are future contracts and do not describe callable built paid-state or checkout services.
 
 ```python
 @dataclass(frozen=True)

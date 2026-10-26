@@ -115,6 +115,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "apps.accounts",
     "apps.catalog",
+    "apps.orders",
     "apps.core",
 ]
 
@@ -247,6 +248,9 @@ DNS_NAME._fqdn = env("EMAIL_HELO_NAME", "premshop.ir")
 # schema on a live system. accounts.0001 is migration one of the whole history.
 AUTH_USER_MODEL = "accounts.User"
 
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
+FIELD_ENCRYPTION_KEY_FALLBACKS = env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")
+
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/account/"
 LOGOUT_REDIRECT_URL = "/"
@@ -339,6 +343,11 @@ UNFOLD = {
                 "title": _("فروشگاه"),
                 "separator": False,
                 "items": [
+                    {
+                        "title": _("سفارش‌ها"),
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:orders_order_changelist"),
+                    },
                     {
                         "title": capfirst(_("محصولات")),
                         "icon": "inventory_2",

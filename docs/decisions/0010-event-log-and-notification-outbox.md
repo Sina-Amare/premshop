@@ -13,3 +13,5 @@
 **Alternatives considered:** `unique_together(order_item, event_type, channel)` dedup (NULL-hostile for order-level events, and blocks the legitimate second "delivered" after a replacement); classic in-transaction outbox (stronger guarantee, more machinery than this volume justifies).
 
 **Consequences:** A notification failure can never affect order state. Re-sends are modeled by new occurrences, never by relaxing uniqueness.
+
+**Amendment — 2026-10-26.** Order history now has database enforcement: its PostgreSQL trigger rejects UPDATE and DELETE, and protected foreign keys preserve its item and order. Creation and unpaid cancellation write their events atomically. No dispatcher or notification consumer is installed for these unpaid actions; creation must not alert the operator as if payment had arrived. The later outbox design and its accepted crash gap are unchanged.

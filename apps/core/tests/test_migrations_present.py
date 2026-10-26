@@ -16,7 +16,9 @@ def unmigrated_project_apps() -> set[str]:
         for config in apps.get_app_configs()
         if config.name.startswith("apps.") and list(config.get_models())
     }
-    return with_models & MigrationLoader(None, ignore_no_migrations=True).unmigrated_apps
+    loader = MigrationLoader(None, load=False)
+    loader.load_disk()
+    return with_models & loader.unmigrated_apps
 
 
 def test_every_project_app_with_models_has_migrations():

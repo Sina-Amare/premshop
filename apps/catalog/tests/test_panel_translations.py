@@ -29,6 +29,9 @@ PANEL_CODE = [
     # The apps' names in the path, and the sidebar's titles.
     "apps/catalog/apps.py",
     "apps/accounts/apps.py",
+    "apps/orders/apps.py",
+    "apps/orders/models.py",
+    "apps/orders/admin.py",
     "config/settings/base.py",
 ]
 PANEL_TEMPLATES = ["templates/admin", "templates/unfold"]

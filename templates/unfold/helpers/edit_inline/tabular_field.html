@@ -12,7 +12,10 @@ where it shows (admin.css).
     {% endif %}
 
     {% if field.is_readonly %}
-        {% include "unfold/helpers/field_readonly_value.html" with tabular=1 %}
+        <div class="flex flex-col grow">
+            <span class="panel-cell-label">{{ field.field.label }}</span>
+            {% include "unfold/helpers/field_readonly_value.html" with tabular=1 %}
+        </div>
     {% else %}
         <div class="flex flex-col grow">
             <label class="panel-cell-label" for="{{ field.field.auto_id }}">{{ field.field.label }}</label>
