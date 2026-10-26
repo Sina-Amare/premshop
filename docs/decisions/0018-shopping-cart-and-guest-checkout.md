@@ -62,3 +62,7 @@ Plan.stock_quantity is a nullable nonnegative total, including reserved units; n
 Mutations lock the owner, cart and then Plan; merges lock all affected plans in primary-key order. Stock validation and writes share one transaction. Merges preserve the earlier live deadline and cap imported quantities against stock and the plan limit. Admin refuses a total below live reservations and shows available/reserved counts. Enabling finite stock does not silently reserve older, untimed selections. Checkout must implement atomic reservation transfer and payment expiry before customers can proceed to payment.
 
 With JavaScript, adding stays on the product page and updates one accessible toast with a cart link. The pending button blocks overlapping clicks; uncertain network results are not retried automatically. HTML forms remain the fallback. Product/cart controls use current stock, with periodic refresh while visible and server revalidation on every mutation. No price comes from JavaScript, and no checkout or payment action exists in this slice.
+
+### Correction — 2026-10-26: expired selections during login
+
+Sign-in never creates a new twenty-minute window. If every contributing hold has expired, merging or claiming keeps the selection with no deadline until the customer reserves again. When matching selections include a live hold, their quantities may combine against current stock under its earliest live deadline. This keeps a surviving hold without renewing it.

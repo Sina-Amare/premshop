@@ -209,14 +209,10 @@ def merge_carts(*, user: User, guest_cart_id: int) -> bool:
             ]
             own = sum(row.quantity for row in live)
             available = max(0, plan.stock_quantity - _reserved_totals([plan]).get(plan.pk, 0) + own)
-            if available:
+            if available and live:
                 reduced |= quantity > available
                 quantity = min(quantity, available)
-                deadline = (
-                    min(cast(datetime, row.reserved_until) for row in live)
-                    if live
-                    else now + RESERVATION_AGE
-                )
+                deadline = min(cast(datetime, row.reserved_until) for row in live)
         if existing:
             existing.quantity = quantity
             existing.reserved_until = deadline

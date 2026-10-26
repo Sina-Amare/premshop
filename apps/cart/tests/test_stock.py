@@ -105,6 +105,40 @@ def test_expired_guest_merge_cannot_take_another_customers_reservation(plan, buy
     assert cart_summary(account_cart).total == 0
 
 
+@pytest.mark.parametrize("account_has_cart", [False, True])
+def test_login_does_not_start_a_new_hold_for_expired_selections(plan, buyer, account_has_cart):
+    limited(plan, 2)
+    guest, account = request_for(), request_for(buyer)
+    add_to_cart(guest, plan_id=plan.pk)
+    if account_has_cart:
+        add_to_cart(account, plan_id=plan.pk)
+    CartItem.objects.update(reserved_until=timezone.now() - timedelta(seconds=1))
+    merge_carts(user=buyer, guest_cart_id=get_cart(guest).pk)
+    merged = get_cart(account).items.get()
+    assert merged.quantity == (2 if account_has_cart else 1)
+    assert merged.reserved_until is None
+    assert cart_summary(get_cart(account)).total == 0
+    add_to_cart(request_for(), plan_id=plan.pk, quantity=2)
+
+
+@pytest.mark.parametrize("expired_owner", ["guest", "account"])
+def test_mixed_expired_and_live_merge_keeps_the_live_deadline(plan, buyer, expired_owner):
+    limited(plan, 2)
+    guest, account = request_for(), request_for(buyer)
+    guest_item = add_to_cart(guest, plan_id=plan.pk)
+    account_item = add_to_cart(account, plan_id=plan.pk)
+    expired = guest_item if expired_owner == "guest" else account_item
+    live = account_item if expired_owner == "guest" else guest_item
+    CartItem.objects.filter(pk=expired.pk).update(
+        reserved_until=timezone.now() - timedelta(seconds=1)
+    )
+    merge_carts(user=buyer, guest_cart_id=get_cart(guest).pk)
+    merged = get_cart(account).items.get()
+    assert merged.quantity == 2 and merged.reserved_until == live.reserved_until
+    with pytest.raises(ValidationError, match="موجود"):
+        add_to_cart(request_for(), plan_id=plan.pk)
+
+
 def test_stock_cannot_be_negative_or_lower_than_live_reservations(plan):
     limited(plan, 2)
     add_to_cart(request_for(), plan_id=plan.pk)
