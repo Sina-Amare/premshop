@@ -14,6 +14,7 @@ from decimal import Decimal
 
 import pytest
 from django.utils import timezone
+from playwright.sync_api import expect
 
 from apps.catalog.models import Category, Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
@@ -205,7 +206,11 @@ def test_selected_plan_summary_tracks_selection_and_promotion_expiry(
         page.clock.fast_forward("02:00:00")
         assert selected.locator(".price__num").text_content() == "۳۹۰,۰۰۰"
         assert page.locator(".plan__promotion [data-offer-badge]:visible").count() == 0
-        assert page.locator(".buybox__cta").is_disabled()
+        assert page.locator(".buybox__cta").is_enabled()
+        page.locator(".buybox__cta").click()
+        expect(page).to_have_url(f"{live_server.url}/cart/")
+        # Advancing the browser clock does not advance the server's promotion window.
+        expect(page.locator(".cart-line")).to_contain_text("۳۱۲,۰۰۰")
     finally:
         context.close()
 

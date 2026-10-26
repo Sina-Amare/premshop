@@ -13,6 +13,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import login as django_login
+from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
@@ -118,7 +119,8 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     # django_login cycles the session key, which is the whole defence against
     # session fixation — an attacker who planted a known session id in the
     # browser before login cannot reuse it after.
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    with transaction.atomic():
+        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
     # Receiving the code proves the address works, which is the only claim email
     # verification ever makes. Hence no separate "click to verify" mail (ADR-0012).

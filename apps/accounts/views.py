@@ -11,6 +11,7 @@ from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -102,7 +103,9 @@ def login_password(request: HttpRequest) -> HttpResponse:
                 check_password(form.cleaned_data["password"], _DUMMY_HASH)
                 authenticated = False
             if authenticated:
-                django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                # Session-key rotation and login receivers must roll back together.
+                with transaction.atomic():
+                    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
                 return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)

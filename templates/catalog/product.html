@@ -105,7 +105,7 @@
       CHECK, not only by this script. S4b re-validates every quantity on the
       server regardless.
       {% endcomment %}
-      <form class="buybox__form" method="post" action="#" data-cart-pending>
+      <form class="buybox__form" method="post" action="{% url 'cart-add' %}">
         {% csrf_token %}
         {% if plans or snapshot %}
         <fieldset data-preview-target="plans" class="plans">
@@ -147,8 +147,7 @@
           <p class="micro">انتخاب شما</p>
           <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
         </div>
-        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta" disabled aria-describedby="cart-pending">افزودن به سبد خرید</button>
-        <p class="micro buybox__hint" id="cart-pending">خرید از سایت هنوز فعال نیست.</p>
+        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% endif %}>افزودن به سبد خرید</button>
         {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
@@ -239,10 +238,6 @@
       var next = (parseInt(qty.value, 10) || 1) + parseInt(button.getAttribute('data-step'), 10);
       qty.value = String(Math.min(Math.max(next, 1), parseInt(qty.max, 10) || 1));
     });
-  });
-  // The cart arrives at S4b. Until then the control is complete but inert.
-  form.addEventListener('submit', function (e) {
-    if (form.hasAttribute('data-cart-pending')) e.preventDefault();
   });
   applyPlan();
 })();
