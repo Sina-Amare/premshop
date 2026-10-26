@@ -101,7 +101,7 @@ npm run css                                            # or css:watch
 
 ## How the built code hangs together
 
-Built so far: `core`, `accounts`, `catalog`. Which app owns what and may import what is `services-and-modules.md` §1; why views stay thin is its §4. What follows spans files and is not obvious from any one of them.
+Built so far: `core`, `accounts`, `catalog`, and the unpaid order records in `orders`. Which app owns what and may import what is `services-and-modules.md` §1; why views stay thin is its §4. What follows spans files and is not obvious from any one of them.
 
 - **Settings** are `config/settings/{base,dev,prod}.py`, entirely environment-driven. `.env` is loaded with `setdefault`, so the real environment always wins. `manage.py` and pytest default to `dev`; `wsgi`/`asgi` default to `prod`, which **refuses to boot** without `ALLOWED_HOSTS`, the relay credentials, a From address at `premshop.ir`, and an https `SITE_URL`.
 - **Every absolute address is built on `SITE_URL`**, the shop's scheme and host (`http://127.0.0.1:8000` when unset in development): the canonical link, `og:url` and `og:image` in `base.html`, through `site_url` from the `shell` context processor, and the link in the sign-in alert email. Never on the request's Host header, which is whatever the client sent. `core.richtext` also reads it, to treat a full address on the shop's own host as an internal link (ADR-0027, amended).
@@ -126,3 +126,11 @@ Built so far: `core`, `accounts`, `catalog`. Which app owns what and may import 
 The regular Django application serves the storefront and `/admin/`. A separate local database and copied media keep review edits apart from an existing catalog. For an expanded sample, use the local PostgreSQL database `premshop_ui_review`, enable `DEBUG=true` and `DEMO_CATALOG=true`, then run `python manage.py seed_catalog --extended`. It adds 14 products to the original 12, producing 24 public products across four categories. Existing products, plans, images and operator edits are retained. `--no-images` avoids network downloads. Extended mode refuses unknown databases, remote hosts, non-development settings and `--reset`. The sample-data notice remains visible while `DEMO_CATALOG` is enabled; production always disables it.
 
 Catalog editors have a separate unsaved-preview action. Protected POST routes validate the same permitted forms and inlines, then render in-memory objects through the normal storefront context and price functions. Previewing writes no catalog rows, history or media. Snapshots are private and cannot be cached. Only the color swatch updates immediately; full snapshots refresh on request, with stale and validation states kept beside the editor. Saved-page links remain separate.
+
+## Unpaid order records
+
+The order list in the operator panel is read-only. It searches by order number or customer email and shows frozen purchase names, prices, item states and the chronological history. Customer activation input is excluded from admin queries, pages and search. No button confirms a payment.
+
+Use `orders.services.place_order` with `OrderLine` objects in development; it re-reads catalog prices and creates one item per unit. `cancel_unpaid_item` takes the real actor account and an item id, with a reason note for staff. Customer cancellation checks ownership. Paid-state transitions, public order pages and checkout are not available yet.
+
+Set FIELD_ENCRYPTION_KEY to a Fernet key generated locally (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Keep it out of git and separate from SECRET_KEY. Retired keys go in the comma-separated FIELD_ENCRYPTION_KEY_FALLBACKS. After changing the active key, run `python manage.py reencrypt_fields --batch-size 200`; repeat safely if interrupted. Remove a retired key only after every dependent row is rotated and backups requiring that key have expired. Production use still requires an offline key copy and a successful decrypting restore.

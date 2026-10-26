@@ -16,3 +16,5 @@
 **Alternatives considered:** strictly content-free messages (safest on paper, but the marginal risk of the constrained link is small and the migration-friction cost is real); credentials inline (rejected — permanent third-party copies).
 
 **Consequences:** A bounded, deliberate widening on the Telegram side only — strictly safer than the PV status quo customers come from. The constraint list is part of the decision; implementing the link without any item of it reopens this ADR.
+
+**Amendment — 2026-10-26.** The operator may manually receive a customer's activation password or direct-login details in Telegram for a product that disclosed this requirement before purchase, and only after verified payment. The website does not collect those values. This exception covers incoming customer-to-operator activation details; it does not permit software notifications or delivery messages to include credential values. Those messages keep the constraints above. A downloadable purchase invoice and an operator payment lookup are separate future features; neither an image nor possession of an order number proves payment or ownership.

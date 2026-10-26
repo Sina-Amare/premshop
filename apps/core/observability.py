@@ -124,6 +124,7 @@ def sentry_options(*, dsn: str, environment: str) -> dict[str, Any]:
         "environment": environment,
         # Never attach user identity or request bodies (ADR-0007).
         "send_default_pii": False,
+        "include_local_variables": False,
         "max_request_body_size": "never",
         "before_send": scrub_event,
         "traces_sample_rate": 0.0,
