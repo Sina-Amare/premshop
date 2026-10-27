@@ -54,7 +54,7 @@ def test_hidden_product_facts_never_reappear_in_a_cart(client, plan):
     body = client.get("/cart/").content.decode()
     assert "private-draft-name" not in body
     assert plan.title not in body
-    assert "این محصول فعلاً موجود نیست." in body
+    assert 'class="cart-line__stock">ناموجود</p>' in body
     assert client.post("/cart/remove/", {"plan": plan.pk}).status_code == 302
     assert not CartItem.objects.exists()
 
@@ -115,7 +115,7 @@ def test_cart_uses_one_clear_unavailable_message_without_accounting_jargon(clien
     client.post("/cart/add/", {"plan": plan.pk})
     type(plan).objects.filter(pk=plan.pk).update(is_available=False)
     body = client.get("/cart/").content.decode()
-    assert "این محصول فعلاً موجود نیست." in body
+    assert 'class="cart-line__stock">ناموجود</p>' in body
     assert "خارج از" not in body and "مبلغ این قلم" not in body
 
 

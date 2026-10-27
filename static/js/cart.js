@@ -46,7 +46,7 @@
     }
   });
 
-  const updateCart = async (started, message = 'سبد خرید به‌روز شد. موجودی و تعداد محصولات را بررسی کنید.', accepted) => {
+  const updateCart = async (started, message = 'سبد خرید به‌روز شد.', accepted) => {
     const response = await fetch('/cart/', {cache: 'no-store'});
     if (!response.ok) return false;
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');

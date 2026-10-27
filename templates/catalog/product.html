@@ -90,6 +90,7 @@
 
   <aside class="pdp__buy">
     <div class="card buybox">
+      {% if product.delivery_type %}<dl class="buybox__facts"><div><dt>{% include 'storefront/icon.html' with name='info' %}{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}نوع اکانت{% else %}نوع تحویل{% endif %}</dt><dd>{{ product.get_delivery_type_display }}</dd></div></dl>{% endif %}
       {% cart_purchase plans as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
       <form class="buybox__form" method="post" action="{% url 'cart-add' %}" data-cart-add{% if snapshot %} data-snapshot{% endif %}>
@@ -243,14 +244,14 @@
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
       if (limit) {
-        var text = max > 0 ? 'از ۱ تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد قابل افزودن است.' : 'بیش از این نمی‌توانید به سبد خرید اضافه کنید.';
+        var text = max > 0 ? 'حداکثر تعداد قابل افزودن: ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد' : 'حداکثر تعداد در سبد است.';
         if (limit.textContent !== text) limit.textContent = text;
         limit.hidden = qtyRow.hidden && max > 0;
       }
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' رو می‌پرسیم.' : '';
+      asks.textContent = question ? 'اطلاعات فعال‌سازی: ' + question : '';
       asks.hidden = !question;
     }
   }

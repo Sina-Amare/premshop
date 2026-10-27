@@ -81,8 +81,10 @@ def _available_plan(plan_id: int) -> Plan:
 
 def _validate_quantity(plan: Plan, quantity: int) -> None:
     limit = 1 if plan.requires_customer_input else plan.max_quantity
-    if type(quantity) is not int or not 1 <= quantity <= limit:
-        raise ValidationError(f"حداکثر تعداد برای این محصول: {to_persian_digits(limit)} عدد.")
+    if type(quantity) is not int or quantity < 1:
+        raise ValidationError("حداقل تعداد قابل خرید: ۱ عدد")
+    if quantity > limit:
+        raise ValidationError(f"حداکثر تعداد قابل خرید: {to_persian_digits(limit)} عدد")
 
 
 def _capacity(plan: Plan) -> int:
@@ -99,7 +101,7 @@ def _check_stock(plan: Plan, quantity: int) -> None:
     if quantity > available:
         if not available:
             raise ValidationError("این محصول فعلاً موجود نیست.")
-        raise ValidationError(f"فقط {to_persian_digits(available)} عدد از این محصول موجود است.")
+        raise ValidationError(f"موجودی فعلی: {to_persian_digits(available)} عدد")
 
 
 @transaction.atomic
