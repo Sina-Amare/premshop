@@ -140,3 +140,9 @@ def test_a_scheduled_offer_selected_at_another_expiry_also_expires(offers):
 def test_the_starting_plan_has_no_dot_that_reads_as_a_persian_zero(offers):
     body = render_to_string("catalog/_card.html", {"product": offers})
     assert "·" not in body
+
+
+def test_a_category_page_does_not_repeat_its_name_on_every_card(client, offers):
+    body = client.get(reverse("category", args=[offers.category.slug])).content.decode()
+    assert 'class="pcard__cat"' not in body
+    assert 'class="pcard__cat"' in client.get(reverse("search") + "?q=Claude").content.decode()
