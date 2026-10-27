@@ -23,6 +23,9 @@
     const detail = toast.querySelector('[data-toast-detail]');
     toast.querySelector('[data-toast-title]').textContent = data.title || data.message;
     detail.hidden = !data.item;
+    // The product's own mark confirms which item went in; the tick stands in without one.
+    toast.classList.toggle('cart-toast--art', Boolean(data.image));
+    if (data.image) toast.querySelector('[data-toast-image]').src = data.image;
     if (data.item) {
       const [item, option] = [data.item, data.option].map(text => Object.assign(document.createElement('bdi'), {textContent: text}));
       detail.replaceChildren(item, '، ', option);

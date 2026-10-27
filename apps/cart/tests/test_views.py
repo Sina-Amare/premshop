@@ -148,10 +148,11 @@ def test_json_add_still_requires_csrf(plan):
 
 def test_add_json_names_the_item_apart_from_the_status(client, plan):
     data = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json").json()
-    assert (data["title"], data["item"], data["option"]) == (
+    assert (data["title"], data["item"], data["option"], data["image"]) == (
         "به سبد خرید اضافه شد",
         plan.product.name,
         plan.title,
+        "",
     )
 
 
