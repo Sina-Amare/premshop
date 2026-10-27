@@ -41,7 +41,7 @@ def test_phone_category_has_four_cards_in_two_columns_and_a_category_link(
         assert section.locator("[data-rail-track]").get_attribute("tabindex") == "-1"
         for card in cards.all():
             art = card.locator(".pcard__art").bounding_box()
-            assert abs(art["width"] / art["height"] - 1.6) < 0.03
+            assert abs(art["width"] / art["height"] - 16 / 9) < 0.03
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
     finally:
         page.close()
