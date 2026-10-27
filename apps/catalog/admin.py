@@ -18,7 +18,7 @@ from typing import Any, ClassVar, cast
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.db import connection
+from django.db import connection, transaction
 from django.db.models import Max, Q, QuerySet
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -769,6 +769,7 @@ class ProductAdmin(PreviewAdminMixin):
             messages.success(request, message)
         return None
 
+    @transaction.atomic
     def _set_status(
         self, request: HttpRequest, queryset: QuerySet[Product], status: Product.Status
     ) -> None:

@@ -419,6 +419,35 @@ def test_publishing_what_is_already_live_writes_nothing(client, operator, catalo
     assert history_of(live) == []
 
 
+def test_bulk_publication_rolls_back_statuses_and_history_together(
+    client, operator, catalogue, monkeypatch
+):
+    from apps.catalog.admin import ProductAdmin
+
+    products = [catalogue["draft"], catalogue["gone"]]
+    original_statuses = {product.pk: product.status for product in products}
+    original_log = ProductAdmin.log_change
+    calls = []
+
+    def failing_history(self, request, obj, message):
+        original_log(self, request, obj, message)
+        calls.append(obj.pk)
+        if len(calls) == 2:
+            raise RuntimeError("history failure")
+
+    monkeypatch.setattr(ProductAdmin, "log_change", failing_history)
+    with pytest.raises(RuntimeError, match="history failure"):
+        client.post(
+            reverse("admin:catalog_product_changelist"),
+            {"action": "publish", "_selected_action": [str(product.pk) for product in products]},
+        )
+    assert (
+        dict(Product.objects.filter(pk__in=original_statuses).values_list("pk", "status"))
+        == original_statuses
+    )
+    assert all(not history_of(product) for product in products)
+
+
 def history_of(obj: Any) -> list[LogEntry]:
     return list(
         LogEntry.objects.filter(
