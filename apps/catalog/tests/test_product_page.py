@@ -334,3 +334,10 @@ def test_the_buy_box_links_to_the_conditions(client, product):
     assert (
         '<a href="#before-buying">گارانتی و شرایط خرید</a>' in body.split('class="pdp__buy"', 1)[1]
     )
+
+
+def test_the_buy_box_says_how_the_buyer_pays_beside_the_button(client, product):
+    """The market's first promise, next to the action as Baymard advises."""
+    body = page(client, product)
+    note = body.split('class="micro buybox__note"', 1)[1].split("</p>", 1)[0]
+    assert "پرداخت تومانی، بدون کارت ارزی" in note
