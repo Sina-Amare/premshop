@@ -55,8 +55,6 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         assert "سابقهٔ سفارش" in page.locator("body").inner_text()
         assert "سرویس نمونه" in page.locator("body").inner_text()
         assert "never-render-this@example.test" not in page.content()
-        cancelled = page.locator('.order-status[data-state="CANCELLED"]').first
-        assert cancelled.evaluate("el => getComputedStyle(el).borderTopStyle") == "dashed"
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert page.evaluate("document.fonts.check('600 16px Estedad')")
         assert not page.locator('[name="_save"]').count()
@@ -74,6 +72,9 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         page.screenshot(path=str(directory / f"detail-{width}.png"), full_page=True)
         page.goto(live_server.url + listing)
         assert page.locator("#result_list").is_visible()
+        cancelled = page.locator('.order-status[data-state="CANCELLED"]:visible').first
+        assert cancelled.is_visible()
+        assert cancelled.evaluate("el => getComputedStyle(el).borderTopStyle") == "dashed"
         page.screenshot(path=str(directory / f"list-{width}.png"), full_page=True)
         assert not errors
     finally:
