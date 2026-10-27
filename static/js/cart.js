@@ -153,6 +153,8 @@
   cartPage?.addEventListener('submit', async event => {
     const action = event.target;
     if (!action.matches('.cart-quantity,.cart-remove-form') || !window.fetch) return;
+    // Safari before 15.4 names no submitter, so «+» and «−» would post nothing new; let the form post itself.
+    if (action.matches('.cart-quantity') && !event.submitter) return;
     event.preventDefault();
     if (cartPending) return;
     const line = action.closest('[data-cart-plan]');
