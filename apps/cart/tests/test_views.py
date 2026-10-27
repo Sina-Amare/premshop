@@ -144,3 +144,24 @@ def test_json_add_still_requires_csrf(plan):
     )
     assert response.status_code == 403
     assert not Cart.objects.exists()
+
+
+def test_add_json_names_the_item_apart_from_the_status(client, plan):
+    data = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json").json()
+    assert (data["title"], data["item"], data["option"]) == (
+        "به سبد خرید اضافه شد",
+        plan.product.name,
+        plan.title,
+    )
+
+
+def test_an_empty_cart_hides_the_header_count(client):
+    body = client.get("/cart/").content.decode()
+    assert '<span class="v-cart__count" aria-hidden="true" hidden>' in body
+
+
+def test_cart_summary_shows_the_order_step_as_not_yet_open(client, plan):
+    client.post("/cart/add/", {"plan": plan.pk})
+    body = client.get("/cart/").content.decode()
+    assert '<button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>' in body
+    assert "ثبت سفارش هنوز فعال نیست." in body

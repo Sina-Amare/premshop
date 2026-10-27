@@ -8,6 +8,9 @@
   const positionToast = () => {
     const bottom = document.querySelector('.v-header').getBoundingClientRect().bottom;
     toast.style.setProperty('--toast-top', Math.ceil(bottom) + 12 + 'px');
+    // On wide screens the toast hangs under the cart icon it reports on.
+    const cart = document.querySelector('.v-cart')?.getBoundingClientRect();
+    if (cart) toast.style.setProperty('--toast-left', Math.round(Math.max(16, Math.min(innerWidth - toast.offsetWidth - 16, cart.left + cart.width / 2 - toast.offsetWidth / 2))) + 'px');
   };
   new ResizeObserver(positionToast).observe(document.querySelector('.v-header'));
   window.addEventListener('scroll', () => { if (!toast.hidden) positionToast(); }, {passive: true});
@@ -17,9 +20,15 @@
   };
   const scheduleHide = () => { clearTimeout(timer); timer = setTimeout(hide, 6500); };
   const show = data => {
-    toast.querySelector('[data-toast-message]').textContent = data.message;
-    positionToast();
+    const detail = toast.querySelector('[data-toast-detail]');
+    toast.querySelector('[data-toast-title]').textContent = data.title || data.message;
+    detail.hidden = !data.item;
+    if (data.item) {
+      const [item, option] = [data.item, data.option].map(text => Object.assign(document.createElement('bdi'), {textContent: text}));
+      detail.replaceChildren(item, '، ', option);
+    }
     toast.hidden = false;
+    positionToast();
     announcement.textContent = data.message;
     scheduleHide();
   };
@@ -89,7 +98,7 @@
     const badge = document.querySelector('.v-cart__count');
     let changed = badge && badge.textContent !== data.count_text;
     if (cartPage) changed ||= cartPage.dataset.cartRevision !== data.revision;
-    if (badge && changed) badge.textContent = data.count_text;
+    if (badge && changed) Object.assign(badge, {textContent: data.count_text, hidden: !data.count});
     const cartLink = document.querySelector('.v-cart');
     if (cartLink?.getAttribute('aria-label') !== data.count_label) cartLink?.setAttribute('aria-label', data.count_label);
     if (form) {

@@ -2,7 +2,7 @@ import pytest
 from playwright.sync_api import expect
 
 from apps.cart.models import CartItem
-from apps.catalog.models import Plan
+from apps.catalog.models import Plan, Product
 
 pytestmark = pytest.mark.django_db
 
@@ -245,5 +245,24 @@ def test_failed_add_reconciles_unavailable_quantity_controls_and_button(browser,
         expect(page.locator("#qty")).to_be_disabled()
         expect(page.locator("#qty-limit")).to_be_hidden()
         assert button.evaluate("e=>getComputedStyle(e).backgroundColor") != normal
+    finally:
+        page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_toast_keeps_a_latin_product_name_inside_a_right_to_left_line(browser, live_server, plan):
+    Product.objects.filter(pk=plan.product_id).update(name="GitHub Copilot")
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        page.locator(".buybox__cta").click()
+        toast = page.locator("#cart-toast")
+        expect(toast.locator("[data-toast-title]")).to_have_text("به سبد خرید اضافه شد")
+        detail, name = toast.locator("[data-toast-detail]"), toast.locator("[data-toast-detail] bdi").first
+        expect(name).to_have_text("GitHub Copilot")
+        line, word = detail.bounding_box(), name.bounding_box()
+        # Right to left, the first thing said sits at the right edge of the line.
+        assert word["x"] + word["width"] >= line["x"] + line["width"] - 2
     finally:
         page.close()

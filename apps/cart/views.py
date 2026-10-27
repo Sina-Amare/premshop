@@ -83,6 +83,9 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
             data["message"] = f"تعداد {name} در سبد خرید به‌روز شد."
         else:
             data["message"] = f"{name} به سبد خرید اضافه شد."
+            if plan:
+                # Separate lines, so a Latin product name cannot set the sentence's direction.
+                data |= {"title": "به سبد خرید اضافه شد", "item": plan.product.name, "option": plan.title}
         return JsonResponse(data)
     return redirect("cart")
 
