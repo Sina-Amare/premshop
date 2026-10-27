@@ -1,10 +1,10 @@
-"""Nothing reaches a page unescaped except through two reviewed functions.
+"""HTML and script output pass through their reviewed renderers.
 
 A category intro printed with `|safe` let anyone who could edit a category
 put a script on a page where customers pay. Django escapes every variable by
 default; each way around that is banned here, and `mark_safe` is allowed in
-exactly two files: the constant zero-price markup in `fa.py`, and the
-restricted-Markdown renderer in `richtext.py`, which sanitises what it emits.
+three files: constant zero-price markup in `fa.py`, restricted Markdown in
+`richtext.py`, and the head tag that reuses Django's script-safe JSON serializer.
 The plain-text half of an email is not HTML, and renders unescaped in one
 place only: `render_email` in `email.py`.
 """
@@ -22,7 +22,11 @@ SELF = Path(__file__).resolve()
 
 TEMPLATE_BYPASS = re.compile(r"\|\s*safe(seq)?\b|{%\s*autoescape\s+off")
 CODE_BYPASS = re.compile(r"\bmark_safe\b|\bSafe(String|Text)\(|\bhtml_safe\b|def __html__")
-ALLOWED = {"apps/core/templatetags/fa.py", "apps/core/richtext.py"}
+ALLOWED = {
+    "apps/core/templatetags/fa.py",
+    "apps/core/richtext.py",
+    "apps/core/templatetags/head.py",
+}
 PLAIN_TEXT_BYPASS = re.compile(r"\bautoescape\s*=\s*False\b")
 PLAIN_TEXT_ALLOWED = {"apps/core/email.py"}
 # A template comment may name the filter it avoids; only what renders counts.

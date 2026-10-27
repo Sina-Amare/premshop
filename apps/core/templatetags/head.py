@@ -8,10 +8,20 @@ from html import unescape
 from django import template
 from django.template.base import NodeList, Parser, Token
 from django.template.context import Context
+from django.utils.html import json_script
+from django.utils.safestring import SafeString, mark_safe
 
 register = template.Library()
 
 SHOP = "PremShop"
+
+
+@register.simple_tag
+def json_ld(value: object) -> SafeString:
+    """Reuse Django's script-safe JSON escaping, changing only its MIME type."""
+    return mark_safe(
+        json_script(value).replace('type="application/json"', 'type="application/ld+json"', 1)
+    )  # noqa: S308  # nosec B308, B703
 
 
 def _ends_left_to_right(text: str) -> bool:

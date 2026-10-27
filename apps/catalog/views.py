@@ -14,10 +14,12 @@ from itertools import zip_longest
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.cache import patch_cache_control
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.catalog.search import without_filler
+from apps.catalog.seo import breadcrumb_schema, product_breadcrumb, product_metadata, website_schema
 from apps.core import ratelimit
 
 SEARCH_RESULT_CAP = 50
@@ -93,6 +95,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "discounted": discounted,
             "by_category": by_category,
             "quick_plan_products": featured,
+            "structured_data": website_schema(),
         },
     )
 
@@ -108,6 +111,9 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
             "current_category": cat.slug,
             "products": products,
             "quick_plan_products": products,
+            "structured_data": breadcrumb_schema(
+                [(cat.name, reverse("category", args=[cat.slug]))]
+            ),
         },
     )
 
@@ -125,7 +131,12 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
         _for_cards(shown).prefetch_related("specs", "sections", "questions"), slug=slug
     )
     response = render(
-        request, "catalog/product.html", product_context(obj, related=_related_to(obj))
+        request,
+        "catalog/product.html",
+        {
+            **product_context(obj, related=_related_to(obj)),
+            "structured_data": product_breadcrumb(obj) if obj.is_public else None,
+        },
     )
     if not obj.is_public:
         # The preview is on the public address, so nothing between here and the
@@ -170,6 +181,7 @@ def product_context(obj: Product, *, related: list[Product] | None = None) -> di
         "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
         "quick_plan_products": [obj, *(related or [])],
         "usage_notes": obj.usage_notes_shown,
+        **product_metadata(obj),
     }
 
 

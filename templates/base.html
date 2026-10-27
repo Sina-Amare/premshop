@@ -28,10 +28,11 @@
   <meta property="og:locale" content="fa_IR">
   <meta property="og:title" content="{{ page_title|shop_title }}">
   <meta property="og:description" content="{{ page_description }}">
-  <meta property="og:image" content="{{ site_url }}{% static 'img/share.png' %}">
+  <meta property="og:image" content="{{ site_url }}{% static share_image|default:'img/share.png' %}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  {% if structured_data %}{% json_ld structured_data %}{% endif %}
 
   {% comment %}
   Four faces paint above the fold and all four are preloaded. Until 2026-10-14

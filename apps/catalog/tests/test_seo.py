@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from decimal import Decimal
 from html import unescape
@@ -88,7 +89,10 @@ def test_absolute_addresses_come_from_site_url_whatever_host_was_asked(
 
     assert canonical(body).startswith(SITE + "/")
     assert meta(body, "og:url").startswith(SITE + "/")
-    assert meta(body, "og:image") == SITE + "/static/img/share.png"
+    expected_image = (
+        "/static/img/share/claude-pro.png" if page == "product" else "/static/img/share.png"
+    )
+    assert meta(body, "og:image") == SITE + expected_image
     assert "attacker.example" not in body
 
 
@@ -134,10 +138,15 @@ def test_the_seo_title_is_the_part_before_the_bar(client, shop):
     assert title(department) == "خرید اشتراک هوش مصنوعی | PremShop"
 
 
-def test_without_a_seo_title_the_name_is_the_title_and_a_latin_end_is_marked(client, shop):
+def test_without_a_seo_title_the_purchase_title_has_both_names(client, shop):
     body = client.get(reverse("product", args=[shop.slug])).content.decode()
 
-    assert title(body) == f"Claude Pro{RLM} | PremShop"
+    assert title(body) == "خرید Claude Pro (کلود پرو) | PremShop"
+    shop.seo_title = "Claude Pro"
+    shop.save()
+    assert (
+        title(client.get(shop.get_absolute_url()).content.decode()) == f"Claude Pro{RLM} | PremShop"
+    )
 
 
 def test_the_preview_card_and_the_icons_are_pngs_of_the_size_they_claim(client):
@@ -189,3 +198,62 @@ def test_no_page_skips_a_heading_level(client, shop, page):
     )
 
     assert heading_jumps(client.get(ALL_PAGES[page](shop)).content.decode()) == []
+
+
+def structured(body):
+    return [
+        json.loads(value)
+        for value in re.findall(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)
+    ]
+
+
+def test_home_names_the_requested_products_and_only_truthful_site_entities(client):
+    body = client.get("/").content.decode()
+    assert title(body) == "خرید اشتراک چت جی‌پی‌تی و جمینای | PremShop"
+    graph = structured(body)[0]["@graph"]
+    assert [item["@type"] for item in graph] == ["Organization", "WebSite"]
+    assert graph[0]["name"] == "PremShop" and graph[0]["url"] == SITE + "/"
+    assert graph[1]["url"] == SITE + "/" and graph[1]["alternateName"] == "پرم‌شاپ"
+    assert not any(
+        word in json.dumps(graph) for word in ["price", "Offer", "rating", "Person", "address"]
+    )
+
+
+def test_breadcrumbs_use_canonical_hierarchy_and_escape_editor_text(client, shop):
+    shop.category.name = 'آزمایش </script><script>alert(1)</script> & "نام"'
+    shop.category.save()
+    body = client.get(shop.get_absolute_url(), HTTP_HOST="testserver").content.decode()
+    trail = structured(body)[0]["itemListElement"]
+    assert [item["position"] for item in trail] == [1, 2, 3]
+    assert [item["item"] for item in trail] == [
+        SITE + "/",
+        SITE + reverse("category", args=[shop.category.slug]),
+        SITE + shop.get_absolute_url(),
+    ]
+    assert trail[1]["name"] == shop.category.name
+    assert "<script>alert(1)</script>" not in body
+
+
+def test_product_metadata_has_both_brand_spellings_without_changing_its_address(client, shop):
+    body = client.get(shop.get_absolute_url()).content.decode()
+    assert "Claude Pro" in title(body) and "کلود پرو" in title(body)
+    assert canonical(body) == SITE + "/p/claude-pro/"
+    assert meta(body, "og:image") == SITE + "/static/img/share/claude-pro.png"
+    with Image.open(finders.find("img/share/claude-pro.png")) as image:
+        assert image.size == (1200, 630)
+
+
+def test_a_product_without_generated_artwork_uses_the_store_card(client, shop):
+    shop.slug = "not-in-share-images"
+    shop.save()
+    assert (
+        meta(client.get(shop.get_absolute_url()).content.decode(), "og:image")
+        == SITE + "/static/img/share.png"
+    )
+
+
+@pytest.mark.parametrize(
+    "path", ["/cart/", "/login/", "/search/?q=claude", "/missing-schema-page/"]
+)
+def test_private_or_nonindexed_pages_have_no_structured_data(client, shop, path):
+    assert structured(client.get(path).content.decode()) == []

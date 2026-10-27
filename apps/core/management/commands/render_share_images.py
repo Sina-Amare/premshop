@@ -13,6 +13,8 @@ ones every crawler reads, and Google Search does not take an SVG favicon.
 from __future__ import annotations
 
 import base64
+import mimetypes
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +22,14 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from PIL import Image
 
+from apps.catalog.models import Product
+
 STATIC = Path(settings.BASE_DIR) / "static"
 OUT = STATIC / "img"
 
 # The home page's headline and lead, as the page prints them today.
-HEADLINE = "اشتراک دلاری، پرداخت تومانی"
-LEAD = "اشتراک را روی اکانت خودتان فعال می‌کنیم یا اکانت و کد آماده تحویل می‌دهیم."
+HEADLINE = "ChatGPT رو پای کار بیارید."
+LEAD = "ChatGPT و Gemini؛ برای کار، تحقیق و یادگیری."
 
 
 def _font(name: str) -> str:
@@ -33,25 +37,39 @@ def _font(name: str) -> str:
     return f'url(data:font/woff2;base64,{data}) format("woff2")'
 
 
-def _card() -> str:
+def _card(product: Product | None = None) -> str:
     mark = (STATIC / "brand" / "premshop.svg").read_text(encoding="utf-8")
+    title = product.name if product else HEADLINE
+    lead = product.short_description if product else LEAD
+    artwork = ""
+    if product:
+        if product.image and Path(product.image.path).is_file():
+            mime = mimetypes.guess_type(product.image.path)[0] or "application/octet-stream"
+            pixels = base64.b64encode(Path(product.image.path).read_bytes()).decode()
+            artwork = f'<div class="art"><img src="data:{mime};base64,{pixels}" alt=""></div>'
+        else:
+            artwork = f'<div class="art">{escape(title[:1])}</div>'
     return f"""<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><style>
 @font-face {{ font-family: Estedad; font-weight: 600; src: {_font("Estedad-SemiBold.woff2")}; }}
 @font-face {{ font-family: Vazirmatn; font-weight: 400; src: {_font("Vazirmatn-Regular.woff2")}; }}
 html, body {{ margin: 0; }}
 body {{ inline-size: 1200px; block-size: 630px; display: flex; flex-direction: column;
-        background: #ffffff; color: #171717; font-family: Vazirmatn; }}
-main {{ flex: 1; display: flex; flex-direction: column; justify-content: center;
+        background: #f5f6f8; color: #20252e; font-family: Vazirmatn; }}
+main {{ flex: 1; display: flex; align-items: center; gap: 48px;
         padding: 0 96px 8px; }}
-h1 {{ font-family: Estedad; font-weight: 600; font-size: 84px; line-height: 1.3; margin: 0; }}
-p {{ font-size: 34px; line-height: 1.8; color: #525252; margin: 24px 0 0; max-inline-size: 24em;
+h1 {{ font-family: Estedad; font-weight: 600; font-size: {64 if product else 76}px; line-height: 1.5; margin: 0; }}
+.copy {{ flex: 1; min-width: 0; }}
+.art {{ width: 176px; height: 176px; flex: 0 0 176px; display: grid; place-items: center;
+        background: white; border: 1px solid #dfe3e9; border-radius: 18px; font-size: 76px; color: #2459d3; }}
+.art img {{ width: 112px; height: 112px; object-fit: contain; }}
+p {{ font-size: {28 if product else 34}px; line-height: 1.8; color: #566170; margin: 24px 0 0; max-inline-size: 24em;
      text-wrap: balance; }}
 footer {{ block-size: 128px; display: flex; align-items: center; gap: 20px; padding: 0 96px;
-          background: #131313; color: rgba(255, 255, 255, 0.94); }}
+          background: #20252e; color: rgba(255, 255, 255, 0.94); }}
 footer svg {{ inline-size: 50px; block-size: 50px; }}
 footer span {{ font-family: Estedad; font-weight: 600; font-size: 44px; }}
 </style></head><body>
-<main><h1>{HEADLINE}</h1><p>{LEAD}</p></main>
+<main><div class="copy"><h1>{escape(title)}</h1><p>{escape(lead)}</p></div>{artwork}</main>
 <footer>{mark}<span>PremShop</span></footer>
 </body></html>"""
 
@@ -73,6 +91,11 @@ def _icon(size: int, *, square: bool = False) -> str:
 class Command(BaseCommand):
     help = "Draw static/img/share.png and the favicons from the brand SVGs."
 
+    def add_arguments(self, parser: Any) -> None:
+        parser.add_argument(
+            "--products", action="store_true", help="Also draw public product cards."
+        )
+
     def handle(self, *args: Any, **options: Any) -> None:
         from playwright.sync_api import sync_playwright
 
@@ -83,6 +106,12 @@ class Command(BaseCommand):
             ("favicon-48.png", _icon(48), 48, 48),
             ("apple-touch-icon.png", _icon(180, square=True), 180, 180),
         ]
+        if options["products"]:
+            (OUT / "share").mkdir(exist_ok=True)
+            shots.extend(
+                (f"share/{product.slug}.png", _card(product), 1200, 630)
+                for product in Product.objects.public().order_by("pk")
+            )
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
             page = browser.new_page(device_scale_factor=1)
