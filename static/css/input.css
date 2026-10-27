@@ -839,7 +839,6 @@
     .pcard__foot .price__num { font-size: 18px; }
     .pcard__foot .price__cur, .pcard__pre { font-size: 10px; }
     .pcard__offer { inset-block-start: 8px; inset-inline-start: 8px; font-size: 10px; }
-    .pcard__shop { inset-inline-end: 8px; inset-block-end: 5px; font-size: 9px; }
     .pcard__promotion .deadline { font-size: 10px; }
   }
 
