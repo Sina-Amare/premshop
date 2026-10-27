@@ -51,8 +51,14 @@
   const header = document.querySelector('.v-header');
   const phone = matchMedia('(max-width: 760px)');
   let lastY = scrollY;
+  // An in-page jump lands below the header (scroll-padding), so the header stays for it.
+  let jumpUntil = location.hash ? performance.now() + 1500 : 0;
+  const jumping = () => { jumpUntil = performance.now() + 1500; };
+  addEventListener('hashchange', jumping);
+  document.addEventListener('click', event => { if (event.target.closest('a[href*="#"]')) jumping(); });
   if (header) addEventListener('scroll', () => {
     const y = scrollY;
+    if (performance.now() < jumpUntil) { lastY = y; return; }
     if (Math.abs(y - lastY) < 8) return;
     const busy = header.contains(document.activeElement) || header.querySelector('details[open]');
     header.classList.toggle('v-header--away', phone.matches && y > lastY && y > header.offsetHeight && !busy);
