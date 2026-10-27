@@ -224,9 +224,10 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert page.locator(".nebula__item:visible").count() == 6
         spacing = page.evaluate("""() => {
             const hero = document.querySelector('.v-hero').getBoundingClientRect();
-            const heading = document.querySelector('.v-hero h1').getBoundingClientRect();
+            // The copy block's top: the line above the headline since U8.
+            const first = document.querySelector('.v-hero__copy').firstElementChild.getBoundingClientRect();
             const actions = document.querySelector('.v-hero__actions').getBoundingClientRect();
-            return {height: hero.height, above: heading.top - hero.top,
+            return {height: hero.height, above: first.top - hero.top,
                     below: hero.bottom - actions.bottom};
         }""")
         assert spacing["height"] <= 620, spacing

@@ -156,7 +156,7 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 .v-service-name{min-height:0;font-size:12px;line-height:1.6;flex:none}
 .v-service-cloud .v-service-mark{animation:none;transform:none}
 .v-service-cloud .nebula__item img{transform:none}
-@media(min-width:1200px){.v-hero__inner{grid-template-columns:1.05fr 1fr;gap:48px}.v-hero__lead{max-width:470px}}
+@media(min-width:1200px){.v-hero__inner{grid-template-columns:.9fr 1.3fr;gap:48px}.v-hero__lead{max-width:420px}}
 @media(max-width:760px){.v-service-cloud{--service-plate:66px;--service-logo:36px;max-width:460px}.v-service-cloud .nebula{gap:12px 6px}.v-service-cloud .nebula__item{padding:4px 0}.v-service-name{font-size:12px}.v-scene-footer{gap:8px;margin-top:12px}}
 
 /* Shape cues keep prose links identifiable without underlines. */
@@ -174,7 +174,7 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 
 /* Compact both columns together so centering does not move whitespace below the copy. */
 .v-hero__inner{padding-block:20px}
-.v-hero h1{font-size:clamp(30px,3.2vw,46px);line-height:1.45;text-wrap:balance}
+.v-hero h1{font-size:clamp(30px,2.75vw,40px);line-height:1.45;text-wrap:balance}
 .v-hero__lead{max-width:430px;text-wrap:pretty}
 .v-hero__highlight{color:var(--v-accent)}
 .pcard__description{font-size:12px;line-height:1.9;color:var(--v-text);margin:8px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
