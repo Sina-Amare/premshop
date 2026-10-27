@@ -683,7 +683,7 @@ class Product(ChecksNameTheirField, models.Model):
         row, the admin's inline formsets for the rows under it.
         """
         problems = list(self.fact_problems().values())
-        if not self.available_plans():
+        if not any(plan.is_available for plan in self.plans.all()):
             problems.append(str(NO_AVAILABLE_PLAN))
         rows = [
             self,

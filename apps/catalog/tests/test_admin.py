@@ -372,6 +372,26 @@ def test_publishing_writes_the_status(client, operator, catalogue):
     assert draft.status == Product.Status.ACTIVE
 
 
+@pytest.mark.parametrize("surface", ["form", "action"])
+def test_publication_keeps_enabled_zero_stock_choices_visible(client, operator, catalogue, surface):
+    draft = catalogue["draft"]
+    draft.plans.update(stock_quantity=0)
+    assert not draft.publish_problems()
+    if surface == "form":
+        data = form_of(client, change_url(draft))
+        data["status"] = [Product.Status.ACTIVE]
+        response = client.post(change_url(draft), data)
+        assert response.status_code == 302
+    else:
+        client.post(
+            reverse("admin:catalog_product_changelist"),
+            {"action": "publish", "_selected_action": [str(draft.pk)]},
+        )
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.ACTIVE
+    assert not draft.available_plans()
+
+
 def test_unpublishing_takes_it_off_the_site(client, operator, catalogue):
     live = catalogue["live"]
 
