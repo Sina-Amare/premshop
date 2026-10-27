@@ -187,7 +187,7 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-hero__help .v-icon{width:30px;height:30px;padding:6px;border:1px solid #bdc7d5;border-radius:50%;transition:border-color 140ms}
 .v-hero__help:is(:hover,:focus-visible) .v-icon{border-color:var(--v-accent)}
 @media(min-width:1200px){
-  .v-hero__inner{padding-block:12px}
+  .v-hero__inner{padding-block:10px}
   .v-hero__inner:has(.is-orbital) .v-hero__copy{padding-block-end:36px}
 }
 .v-section-mark{display:inline-grid;place-items:center;vertical-align:middle;margin-inline-end:9px;color:var(--v-accent)}
