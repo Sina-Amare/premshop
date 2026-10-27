@@ -12,6 +12,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
+import pytest
 from django.core.cache import cache
 
 from apps.accounts import otp
@@ -20,15 +21,21 @@ EMAIL = "race@example.test"
 
 
 class HeldAfterRead:
-    """The real cache, except that every read waits at each barrier in turn."""
+    """Hold each thread's first read while the competing operation runs."""
 
     def __init__(self, *barriers: threading.Barrier) -> None:
         self.barriers = barriers
+        self.readers: set[int] = set()
+        self.lock = threading.Lock()
 
     def get(self, *args: object, **kwargs: object) -> object:
         value = cache.get(*args, **kwargs)
-        for barrier in self.barriers:
-            barrier.wait(timeout=5)
+        with self.lock:
+            first_read = threading.get_ident() not in self.readers
+            self.readers.add(threading.get_ident())
+        if first_read:
+            for barrier in self.barriers:
+                barrier.wait(timeout=5)
         return value
 
     def __getattr__(self, name: str) -> object:
@@ -102,3 +109,62 @@ def test_a_guess_at_the_old_code_cannot_undo_a_resend(monkeypatch):
     monkeypatch.setattr(otp, "cache", cache)
 
     assert otp.verify(EMAIL, new.code), "the code just mailed must work"
+
+
+@pytest.mark.parametrize("readers", [1, 2])
+def test_a_resend_invalidates_correct_checks_already_in_flight(monkeypatch, readers):
+    old = otp.issue(EMAIL)
+    has_read, resent = threading.Barrier(readers + 1), threading.Barrier(readers + 1)
+    monkeypatch.setattr(otp, "cache", HeldAfterRead(has_read, resent))
+    results = []
+    threads = [
+        threading.Thread(target=lambda: results.append(otp.verify(EMAIL, old.code)))
+        for _ in range(readers)
+    ]
+    for thread in threads:
+        thread.start()
+    has_read.wait(timeout=5)
+    new = otp.issue(EMAIL)
+    resent.wait(timeout=5)
+    for thread in threads:
+        thread.join(timeout=10)
+        assert not thread.is_alive()
+    monkeypatch.setattr(otp, "cache", cache)
+
+    assert results == [False] * readers, "A replaced issuance must not create a session"
+    valid = otp.verify(EMAIL, new.code)
+    assert valid, "An old check must not consume the replacement"
+
+
+def test_a_final_wrong_guess_cannot_delete_a_replacement(monkeypatch):
+    old = otp.issue(EMAIL)
+    for _ in range(otp.MAX_ATTEMPTS - 1):
+        assert not otp.verify(EMAIL, wrong(old.code))
+    counted, resent = threading.Event(), threading.Event()
+    count_attempt = otp._count_attempt
+
+    def held_count(*args):
+        result = count_attempt(*args)
+        counted.set()
+        assert resent.wait(timeout=5)
+        return result
+
+    monkeypatch.setattr(otp, "_count_attempt", held_count)
+    results = []
+    thread = threading.Thread(target=lambda: results.append(otp.verify(EMAIL, wrong(old.code))))
+    thread.start()
+    assert counted.wait(timeout=5)
+    new = otp.issue(EMAIL)
+    resent.set()
+    thread.join(timeout=10)
+    assert not thread.is_alive() and results == [False]
+    monkeypatch.setattr(otp, "_count_attempt", count_attempt)
+
+    valid = otp.verify(EMAIL, new.code)
+    assert valid, "An exhausted old issuance must not delete the new one"
+
+
+def test_a_record_from_before_issuance_keys_fails_closed():
+    cache.set(otp._key(EMAIL), {"digest": otp._digest("123456"), "expires_at": 9999999999})
+    valid = otp.verify(EMAIL, "123456")
+    assert not valid

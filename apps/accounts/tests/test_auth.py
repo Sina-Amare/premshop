@@ -285,11 +285,12 @@ def test_a_guessed_out_code_stays_dead_when_its_counter_is_lost(user):
     restore taken between the two writes, it gave a guessed-out code a fresh
     budget of guesses."""
     issued = otp.issue(user.email)
+    issuance = cache.get(otp._key(user.email))
     wrong = f"{(int(issued.code) + 1) % 10**otp.CODE_LENGTH:0{otp.CODE_LENGTH}d}"
     for _ in range(otp.MAX_ATTEMPTS):
         otp.verify(user.email, wrong)
 
-    cache.delete(otp._attempts_key(user.email))
+    cache.delete(otp._attempts_key(user.email, issuance))
 
     assert not otp.verify(user.email, issued.code)
 
@@ -333,13 +334,14 @@ def test_a_code_counter_recreated_by_incr_still_expires_and_fails_closed(monkeyp
     INCR means the code's life is over; left without an expiry it would also
     count against every later code until the next one was issued."""
     issued = otp.issue(user.email)
+    issuance = cache.get(otp._key(user.email))
     window = WindowExpiredInsideIncr()
     monkeypatch.setattr(otp, "cache", window)
 
     assert not otp.verify(user.email, issued.code)
 
     [(key, timeout)] = window.touched
-    assert key == otp._attempts_key(user.email)
+    assert key == otp._attempts_key(user.email, issuance)
     assert 0 < timeout <= otp.CODE_TTL_SECONDS
 
 
