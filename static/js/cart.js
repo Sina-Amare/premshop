@@ -35,20 +35,27 @@
     const controls = input.closest('.cart-quantity');
     controls.querySelector('[name=step][value="-1"]').disabled = quantity <= 1;
     controls.querySelector('[name=step][value="1"]').disabled = !input.validity.valid || quantity >= +input.max;
-    controls.querySelector('.cart-apply').hidden = input.value === input.defaultValue;
+    const dirty = input.value !== input.defaultValue;
+    controls.querySelector('.cart-apply').hidden = !dirty;
+    controls.closest('[data-cart-plan]').querySelector('[data-cart-draft]').hidden = !dirty;
   };
   cartPage?.addEventListener('input', event => {
-    if (event.target.matches('.cart-quantity [name=quantity]')) updateStepper(event.target);
+    if (event.target.matches('.cart-quantity [name=quantity]')) {
+      event.target.dataset.editVersion = String(Number(event.target.dataset.editVersion || 0) + 1);
+      updateStepper(event.target);
+    }
   });
 
-  const updateCart = async (started, message = 'سبد خرید به‌روز شد. موجودی و تعداد محصولات را بررسی کنید.') => {
+  const updateCart = async (started, message = 'سبد خرید به‌روز شد. موجودی و تعداد محصولات را بررسی کنید.', accepted) => {
     const response = await fetch('/cart/', {cache: 'no-store'});
     if (!response.ok) return false;
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
     const fresh = doc.querySelector('.cart-page');
     if (!fresh || started !== generation) return false;
     const edited = [...cartPage.querySelectorAll('[name=quantity]')]
-      .filter(input => input.value !== input.defaultValue).map(input => [input.id, input.value]);
+      .filter(input => accepted && input.id === accepted.id ?
+        (input.dataset.editVersion || '0') !== accepted.version : input.value !== input.defaultValue)
+      .map(input => [input.id, input.value]);
     const errors = [...cartPage.querySelectorAll('.cart-line__error:not([hidden])')]
       .map(error => [error.closest('[data-cart-plan]').dataset.cartPlan, error.textContent]);
     const active = document.activeElement;
@@ -78,7 +85,7 @@
     announcement.textContent = message;
     return true;
   };
-  const sync = async (data, forceCart = false, message) => {
+  const sync = async (data, forceCart = false, message, accepted) => {
     const badge = document.querySelector('.v-cart__count');
     let changed = badge && badge.textContent !== data.count_text;
     if (cartPage) changed ||= cartPage.dataset.cartRevision !== data.revision;
@@ -120,7 +127,7 @@
       changed ||= +line.dataset.cartMaximum !== option.maximum;
       changed ||= line.dataset.cartPrice !== option.price_text;
     });
-    if (cartPage && (changed || forceCart)) return await updateCart(generation, message);
+    if (cartPage && (changed || forceCart)) return await updateCart(generation, message, accepted);
   };
   const refresh = async (forceCart = false) => {
     if (document.hidden || refreshing || cartPending || form?.dataset.pending === 'true') return;
@@ -145,6 +152,8 @@
     document.getElementById('cart-action-error')?.remove();
     error.hidden = true;
     const body = new FormData(action);
+    const quantity = action.querySelector('[name=quantity]');
+    const accepted = quantity ? {id:quantity.id, version:quantity.dataset.editVersion || '0'} : null;
     if (event.submitter?.name) body.append(event.submitter.name, event.submitter.value);
     cartPending = true;
     generation += 1;
@@ -155,7 +164,7 @@
       const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
       const data = await response.json();
       if (!response.ok) message = data.message || 'سبد خریدتان را بررسی کنید و دوباره امتحان کنید.';
-      else if (!await sync(data, true, data.message)) message = 'تغییر ثبت شد، اما نمایش سبد به‌روز نشد. صفحه را دوباره باز کنید.';
+      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد، اما نمایش سبد به‌روز نشد. صفحه را دوباره باز کنید.';
     } catch {
       message = 'نتیجه مشخص نیست. سبد خریدتان را بررسی کنید.';
     } finally {

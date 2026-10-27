@@ -183,3 +183,45 @@ def test_pending_cart_edit_keeps_focus_and_its_error_is_persistent(
         assert CartItem.objects.get().quantity == 1
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("later_edit", [None, "1", "2"])
+def test_successful_step_accepts_server_quantity_but_keeps_later_edits(
+    browser, live_server, client, plan, later_edit
+):
+    client.post("/cart/add/", {"plan": plan.pk})
+    page = browser.new_page()
+    held = []
+    try:
+        page.context.add_cookies(
+            [
+                {
+                    "name": "sessionid",
+                    "value": client.cookies["sessionid"].value,
+                    "url": live_server.url,
+                }
+            ]
+        )
+        page.goto(live_server.url + "/cart/")
+        page.route("**/cart/quantity/", lambda route: held.append(route))
+        quantity = page.locator(".cart-quantity [name=quantity]")
+        quantity.fill("2")
+        page.locator('[name=step][value="1"]').click()
+        page.wait_for_timeout(100)
+        assert len(held) == 1
+        if later_edit is not None:
+            quantity.fill("1")
+            quantity.fill(later_edit)
+        held[0].continue_()
+        expect(page.locator(".cart-line__amount")).to_contain_text("۶۰۰,۰۰۰")
+        expect(quantity).to_have_value(later_edit or "3")
+        expect(page.locator(".cart-line__amount-label")).to_have_text("جمع ۳ عدد")
+        if later_edit is not None:
+            expect(page.locator("[data-cart-draft]")).to_be_visible()
+        else:
+            expect(page.locator("[data-cart-draft]")).to_be_hidden()
+        assert CartItem.objects.get().quantity == 3
+    finally:
+        page.close()

@@ -27,7 +27,7 @@
             {% if line.quantity > 1 %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}
           {% endif %}
         </div>
-        {% if line.purchasable %}<div class="cart-line__amount"><span class="cart-line__amount-label">جمع این محصول</span><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
+        {% if line.purchasable %}<div class="cart-line__amount"><span class="cart-line__amount-label">جمع {{ line.quantity|fa_digits }} عدد</span><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
         <div class="cart-line__controls">
           {% if line.unavailable %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>
           {% elif line.plan.max_quantity > 1 or line.quantity_invalid %}
@@ -42,6 +42,7 @@
             </div>
           </form>
           <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">از ۱ تا {{ line.max_quantity|fa_digits }} عدد</p>
+          <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است.</p>
           {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}<span>حذف</span></button></form>
         </div>
