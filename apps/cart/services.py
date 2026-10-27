@@ -88,7 +88,7 @@ def _validate_quantity(plan: Plan, quantity: int) -> None:
 
 
 def _capacity(plan: Plan) -> int:
-    if not plan.is_available:
+    if not plan.is_in_stock:
         return 0
     if plan.stock_quantity is None:
         return plan.max_quantity

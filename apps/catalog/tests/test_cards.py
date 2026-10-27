@@ -1,5 +1,6 @@
 """A product's starting price and another plan's offer are distinct facts."""
 
+import re
 from datetime import timedelta
 from decimal import Decimal
 
@@ -48,6 +49,28 @@ def test_a_non_cheapest_plan_offer_is_visible_on_every_card(offers):
 def test_home_counts_products_with_a_discount_on_any_available_plan(client, offers):
     response = client.get(reverse("home"))
     assert [p.pk for p in response.context["discounted"]] == [offers.pk]
+
+
+@pytest.mark.parametrize("remaining", [0, 2])
+def test_sold_out_choices_keep_their_row_without_advertising_a_price(
+    client, offers, remaining, django_assert_num_queries
+):
+    offers.plans.update(stock_quantity=remaining)
+    sold = offers.plans.get(title="۳ ماهه")
+    offers.plans.filter(pk=sold.pk).update(stock_quantity=0, promo_price=50)
+    product = Product.objects.select_related("category").prefetch_related("plans").get(pk=offers.pk)
+    with django_assert_num_queries(0):
+        steps = card_price_steps(product)
+        assert not product.discounted_plans
+        assert [step["price"] for step in steps] == ([Decimal(1450000)] if remaining else [])
+        quick = render_to_string("catalog/_quick_plans.html", {"quick_plan_products": [product]})
+        card = render_to_string("catalog/_card.html", {"product": product})
+    assert "۳ ماهه" in quick and "فعلاً ناموجود" in quick
+    sold_row = next(row for row in re.findall(r"<li>.*?</li>", quick, re.S) if "۳ ماهه" in row)
+    assert "۵۰" not in sold_row and "تخفیف" not in quick
+    if not remaining:
+        assert "ناموجود" in card
+    assert not client.get(reverse("home")).context["discounted"]
 
 
 def test_unavailable_expired_and_future_offers_do_not_count(offers):

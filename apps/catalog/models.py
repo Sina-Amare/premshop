@@ -726,7 +726,7 @@ class Product(ChecksNameTheirField, models.Model):
     def available_plans(self) -> list[Plan]:
         """Iterates plans.all() so a prefetch is honoured — a card grid of thirty
         products must not become thirty queries."""
-        return [plan for plan in self.plans.all() if plan.is_available]
+        return [plan for plan in self.plans.all() if plan.is_in_stock]
 
     @property
     def cheapest_plan(self) -> Plan | None:
@@ -1021,6 +1021,10 @@ class Plan(ChecksNameTheirField, PageRow):
             return True
         stored = Plan.objects.filter(pk=self.pk).values(*PRICE_FIELDS).first()
         return stored is None or any(stored[name] != getattr(self, name) for name in PRICE_FIELDS)
+
+    @property
+    def is_in_stock(self) -> bool:
+        return self.is_available and (self.stock_quantity is None or self.stock_quantity > 0)
 
     @property
     def effective_price(self) -> Decimal:

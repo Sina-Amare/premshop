@@ -147,7 +147,7 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
 
 def product_context(obj: Product, *, related: list[Product] | None = None) -> dict[str, object]:
     plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
-    available = [p for p in plans if p.is_available]
+    available = [p for p in plans if p.is_in_stock]
     # The quantity control is rendered server-side only when some plan can
     # actually take more than one, so a visitor with JavaScript off never sees
     # a stepper that cannot do anything.
