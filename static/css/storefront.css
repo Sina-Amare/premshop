@@ -180,7 +180,7 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .pcard__description{font-size:12px;line-height:1.9;color:var(--v-text);margin:8px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .v-hero__copy .v-hero__lead{margin-bottom:12px}
 .v-hero__eyebrow{margin:0 0 10px;font-size:14px;font-weight:600;line-height:1.8;color:var(--v-accent)}
-.v-hero__proof{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 26px;padding:0;list-style:none;font-size:13px;line-height:1.8;color:var(--v-text)}
+.v-hero__proof{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:0 0 26px;padding:0;list-style:none;font-size:13px;line-height:1.8;color:var(--v-text)}
 .v-hero__proof li{display:inline-flex;align-items:center;gap:7px}.v-hero__proof .v-icon{flex:none;width:18px;height:18px;color:var(--v-accent)}
 .v-hero__actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px 22px}
 .v-hero__actions .v-button{gap:20px;min-height:44px}

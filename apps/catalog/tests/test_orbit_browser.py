@@ -347,3 +347,27 @@ def test_orbit_suspends_offscreen_and_on_a_visibility_event(browser, live_server
         assert item.evaluate("e=>e.style.transform") != frozen
     finally:
         page.close()
+
+
+def test_late_fonts_do_not_move_the_home_hero(browser, live_server):
+    """In the wider fallback face the hero's two facts wrapped onto two lines,
+    so the copy grew a line and shifted when the web fonts arrived."""
+    category = Category.objects.create(name="سرویس‌ها", slug="services")
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=name, slug=f"service-{i}", status="active")
+            for i, name in enumerate(["ChatGPT Plus", "Claude Pro", "Spotify Premium", "Netflix"])
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.add_init_script(
+            "window.homeShift=0;new PerformanceObserver(xs=>xs.getEntries().forEach(x=>{if(!x.hadRecentInput)window.homeShift+=x.value})).observe({type:'layout-shift',buffered:true});"
+        )
+        page.route("**/*.woff2", lambda route: (page.wait_for_timeout(1000), route.continue_()))
+        page.goto(live_server.url + "/")
+        page.evaluate("() => document.fonts.ready")
+        page.wait_for_timeout(300)
+        assert page.evaluate("window.homeShift") < 0.01
+    finally:
+        page.close()
