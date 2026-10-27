@@ -963,6 +963,12 @@ msgstr "Previous status: %(state)s"
 msgid "%(available)s قابل خرید، %(reserved)s رزرو شده"
 msgstr "%(available)s available, %(reserved)s reserved"
 
+msgid "%(available)s عدد قابل خرید"
+msgstr "%(available)s available to buy"
+
+msgid "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+msgstr "Units available for sale. Adding to a cart does not reserve stock. Leave blank for unlimited stock."
+
 msgid "بدون محدودیت موجودی"
 msgstr "Unlimited stock"
 
