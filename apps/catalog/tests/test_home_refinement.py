@@ -55,6 +55,17 @@ def test_orbit_pause_survives_paging_and_reload_and_resume_works_with_focus(
         page.goto(live_server.url + "/")
         scene = page.locator("[data-hero-scene]")
         expect(scene).to_have_attribute("data-orbit-mode", "orbit")
+        page.evaluate("""() => {
+            window.orbitControlChanges = 0;
+            new MutationObserver(xs => window.orbitControlChanges += xs.length).observe(
+                document.querySelector('[data-orbit-toggle]'),
+                {childList:true,subtree:true,attributes:true,attributeFilter:['href']}
+            );
+        }""")
+        page.locator(".nebula__item:visible").first.focus()
+        page.locator("[data-orbit-toggle]").focus()
+        page.wait_for_timeout(100)
+        assert page.evaluate("window.orbitControlChanges") == 0
         pause = page.get_by_role("button", name="توقف حرکت", exact=True)
         pause.click()
         item = page.locator(".nebula__item:visible").first

@@ -32,8 +32,11 @@
     const moving = eligible && document.documentElement.dataset.motion === 'on';
     const running = moving && !paused && visible && !hovered && !document.hidden && !scene.querySelector('.nebula__item:focus-visible');
     toggle.hidden = !eligible;
-    toggle.querySelector('span').textContent = paused ? 'ادامه‌ی حرکت' : 'توقف حرکت';
-    toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
+    const label = paused ? 'ادامه‌ی حرکت' : 'توقف حرکت';
+    if (toggle.querySelector('span').textContent !== label) {
+      toggle.querySelector('span').textContent = label;
+      toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
+    }
     scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);
