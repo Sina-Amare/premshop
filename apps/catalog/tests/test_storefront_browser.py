@@ -475,3 +475,14 @@ def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
             assert head["y"] + head["height"] <= track["y"] + 1
     finally:
         context.close()
+
+
+def test_one_option_is_not_repeated_as_the_selection(browser, live_server, discounted):
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        expect(page.locator(".buybox__cta")).to_be_visible()
+        expect(page.locator(".buybox__selection")).to_be_hidden()
+    finally:
+        context.close()

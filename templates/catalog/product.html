@@ -189,6 +189,8 @@
   var submit = form.querySelector('.buybox__cta');
   var cartLink = form.querySelector('.buybox__cart');
   var limit = form.querySelector('#qty-limit');
+  // With one option the summary would only repeat it.
+  var single = form.querySelectorAll('input[name=plan]').length < 2;
   function currentPlan() { return form.querySelector('input[name=plan]:checked'); }
 
   function applyPlan(event) {
@@ -218,9 +220,9 @@
         price.appendChild(part.cloneNode(true));
       });
       selection.dataset.value = key;
-      selection.hidden = false;
+      selection.hidden = single;
     }
-    if (selection && selection.hidden) selection.hidden = false;
+    if (selection && selection.hidden !== single) selection.hidden = single;
     var max = parseInt(plan.getAttribute('data-max'), 10) || 0;
     if (submit && !form.hasAttribute('data-snapshot')) {
       var pending = form.dataset.pending === 'true';
