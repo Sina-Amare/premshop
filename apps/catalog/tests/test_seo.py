@@ -209,7 +209,7 @@ def structured(body):
 
 def test_home_names_the_requested_products_and_only_truthful_site_entities(client):
     body = client.get("/").content.decode()
-    assert title(body) == "خرید اشتراک چت جی‌پی‌تی و جمینای | PremShop"
+    assert title(body) == "خرید اشتراک چت جی‌پی‌تی، جمینای و سرویس‌های خارجی | PremShop"
     graph = structured(body)[0]["@graph"]
     assert [item["@type"] for item in graph] == ["Organization", "WebSite"]
     assert graph[0]["name"] == "PremShop" and graph[0]["url"] == SITE + "/"
