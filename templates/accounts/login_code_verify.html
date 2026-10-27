@@ -223,6 +223,7 @@ a courtesy, and the server's limit on codes per address is the defence.
   // code expired has nothing to wait for. The server's three-per-15-minutes
   // limit stays the defence; this is a courtesy.
   var cooldownUntil = Math.floor(Date.now() / 1000) + Math.min(cooldownSeconds, Math.max(expiresIn, 0));
+  var resendPending = false;
 
   function tick() {
     var now = Math.floor(Date.now() / 1000);
@@ -247,7 +248,10 @@ a courtesy, and the server's limit on codes per address is the defence.
       resendButton.classList.replace('btn--ghost', 'btn--primary');
     }
     var wait = cooldownUntil - now;
-    if (wait > 0) {
+    if (resendPending) {
+      resendButton.disabled = true;
+      resendButton.textContent = 'در حال ارسال…';
+    } else if (wait > 0) {
       resendButton.disabled = true;
       resendButton.textContent = 'ارسال دوباره (' + toFa(wait) + ')';
     } else {
@@ -263,9 +267,9 @@ a courtesy, and the server's limit on codes per address is the defence.
 
   resendForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (resendButton.disabled) return;
-    resendButton.disabled = true;
-    resendButton.textContent = 'در حال ارسال…';
+    if (resendPending || resendButton.disabled) return;
+    resendPending = true;
+    tick();
     fetch(resendForm.action, {
       method: 'POST', body: new FormData(resendForm), credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
@@ -287,10 +291,12 @@ a courtesy, and the server's limit on codes per address is the defence.
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       }
+      resendPending = false;
       tick();
     }).catch(function () {
       showError('کد فرستاده نشد. دوباره تلاش کنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
+      resendPending = false;
       tick();
     });
   });
