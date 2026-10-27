@@ -715,6 +715,7 @@ class ProductAdmin(PreviewAdminMixin):
         )
 
     @admin.action(description=_("کپی بخش‌ها از محصول دیگر"), permissions=["copy_sections"])
+    @transaction.atomic
     def copy_sections(
         self, request: HttpRequest, queryset: QuerySet[Product]
     ) -> TemplateResponse | None:

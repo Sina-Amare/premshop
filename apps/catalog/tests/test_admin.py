@@ -1627,6 +1627,31 @@ def test_a_copy_never_gives_a_product_a_second_before_buying(client, operator, c
     assert any("کپی نشد" in str(m) for m in response.context["messages"])
 
 
+def test_section_copies_and_history_roll_back_across_all_targets(
+    client, operator, catalogue, monkeypatch
+):
+    from apps.catalog.admin import ProductAdmin
+
+    source, first, second = catalogue["live"], catalogue["draft"], catalogue["gone"]
+    ProductSection.objects.create(product=source, kind="benefits", body="متن نمونه")
+    original = ProductAdmin.log_change
+    writes = []
+
+    def fail_second(self, request, obj, message):
+        writes.append(obj.pk)
+        if len(writes) == 2:
+            raise RuntimeError("Synthetic history failure")
+        return original(self, request, obj, message)
+
+    monkeypatch.setattr(ProductAdmin, "log_change", fail_second)
+    with pytest.raises(RuntimeError, match="Synthetic history failure"):
+        copy_from(client, source, first, second)
+
+    assert len(writes) == 2
+    assert not first.sections.exists() and not second.sections.exists()
+    assert not history_of(first) and not history_of(second)
+
+
 def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue):
     """A copy writes rows straight into its target, past the publishing rule.
     Onto a live product it printed another product's claims, and the
