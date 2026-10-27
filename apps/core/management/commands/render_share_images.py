@@ -29,8 +29,8 @@ STATIC = Path(settings.BASE_DIR) / "static"
 OUT = STATIC / "img"
 
 # The home page's headline and lead, as the page prints them today.
-HEADLINE = "وقتی نسخه‌ی رایگان کافی نیست،\nنسخه‌ی کاملش اینجاست."
-LEAD = "اشتراک پولی سرویس‌های هوش مصنوعی، موسیقی، فیلم و برنامه‌نویسی را با تومان بخرید."
+HEADLINE = "اشتراک دلاری،\nپرداخت تومانی."
+LEAD = "هوش مصنوعی، برنامه‌نویسی، موسیقی، فیلم و گیفت کارت؛ بدون کارت ارزی."
 
 
 def _font(name: str) -> str:

@@ -79,6 +79,10 @@ def home(request: HttpRequest) -> HttpResponse:
     # on its own — a shop that advertises an expired discount has done worse
     # than not advertising one.
     discounted = [p for p in featured if p.discounted_plans]
+    # The hero's "cheaper" is this number, not an adjective nothing backs.
+    offer_peak = max(
+        (plan.discount_percent for p in discounted for plan in p.discounted_plans), default=0
+    )
     # Grouped by department rather than one flat grid, which also retired the
     # separate «دسته‌بندی‌ها» block above it: that block and this one listed
     # the same four departments in the same order, four hundred pixels apart.
@@ -93,6 +97,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "featured": featured,
             "shelf": shelf,
             "discounted": discounted,
+            "offer_peak": offer_peak,
             "by_category": by_category,
             "quick_plan_products": featured,
             "structured_data": website_schema(),

@@ -146,3 +146,15 @@ def test_a_category_page_does_not_repeat_its_name_on_every_card(client, offers):
     body = client.get(reverse("category", args=[offers.category.slug])).content.decode()
     assert 'class="pcard__cat"' not in body
     assert 'class="pcard__cat"' in client.get(reverse("search") + "?q=Claude").content.decode()
+
+
+def test_the_hero_states_the_deepest_running_discount_as_a_number(client, offers):
+    """The owner asked the hero to say "cheaper"; it says by how much, from the
+    catalogue, and says nothing when nothing is discounted."""
+    hero = client.get(reverse("home")).content.decode().split('class="v-hero__actions"', 1)[0]
+    assert '<a class="v-hero__deal" href="#offers">' in hero
+    assert "تا ۱۰٪ تخفیف روی ۱ محصول" in hero
+    assert "ارزان‌تر" not in hero
+    offers.plans.update(promo_price=None, promo_ends_at=None)
+    hero = client.get(reverse("home")).content.decode().split('class="v-hero__actions"', 1)[0]
+    assert "v-hero__deal" not in hero
