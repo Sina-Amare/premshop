@@ -457,14 +457,12 @@ def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
         context.close()
 
 
-@pytest.mark.parametrize(
-    ("viewport", "beside"), [(PHONE, False), ({"width": 1280, "height": 900}, True)]
-)
-def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
-    browser, live_server, discounted, viewport, beside
+@pytest.mark.parametrize("viewport", [PHONE, {"width": 1280, "height": 900}])
+def test_a_category_opens_with_one_header_row_above_its_cards(
+    browser, live_server, discounted, viewport
 ):
-    """Three cards in a four-column row left a quarter of every category empty,
-    with «همه‌ی محصولات» floating in the gap."""
+    """The owner rejected tall side panels for the categories: the name, the
+    count and «همه‌ی محصولات» share one row above the cards."""
     context = browser.new_context(viewport=viewport, device_scale_factor=1)
     page = context.new_page()
     try:
@@ -472,13 +470,11 @@ def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
         section = page.locator(".v-category-section").first
         head = section.locator(".v-section__head").bounding_box()
         track = section.locator(".v-track").bounding_box()
-        if beside:
-            assert (
-                head["x"] >= track["x"] + track["width"]
-            ), "right to left, the heading is the first column"
-            assert abs(head["y"] - track["y"]) < 8
-        else:
-            assert head["y"] + head["height"] <= track["y"] + 1
+        title = section.locator(".v-category-heading h2").bounding_box()
+        link = section.locator(".v-view-all").bounding_box()
+        assert head["y"] + head["height"] <= track["y"] + 1
+        assert head["height"] < 120, "a header row, not a panel"
+        assert link["y"] < title["y"] + title["height"] and title["y"] < link["y"] + link["height"]
     finally:
         context.close()
 
