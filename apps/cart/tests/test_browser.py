@@ -89,6 +89,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
             ".cart-apply"
         ).click()
         expect(page.locator(".v-cart__count")).to_have_text("۳")
+        expect(page.locator(".cart-line__amount-label").first).to_have_text("جمع ۲ عدد")
         inspect("populated")
         page.locator(f'[data-cart-plan="{plan.pk}"] [name=step][value="1"]').click()
         expect(page.locator(f"#quantity-{plan.pk}")).to_have_value("3")
