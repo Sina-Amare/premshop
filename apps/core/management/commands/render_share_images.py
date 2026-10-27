@@ -55,16 +55,17 @@ def _card(product: Product | None = None) -> str:
 html, body {{ margin: 0; }}
 body {{ inline-size: 1200px; block-size: 630px; display: flex; flex-direction: column;
         background: #f5f6f8; color: #20252e; font-family: Vazirmatn; }}
-main {{ flex: 1; display: flex; align-items: center; gap: 48px;
+main {{ flex: 1; min-height: 0; display: flex; align-items: center; gap: 48px;
         padding: 0 96px 8px; }}
-h1 {{ font-family: Estedad; font-weight: 600; font-size: {64 if product else 76}px; line-height: 1.5; margin: 0; }}
+h1 {{ font-family: Estedad; font-weight: 600; font-size: {64 if product else 76}px; line-height: 1.5; margin: 0;
+      overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }}
 .copy {{ flex: 1; min-width: 0; }}
 .art {{ width: 176px; height: 176px; flex: 0 0 176px; display: grid; place-items: center;
         background: white; border: 1px solid #dfe3e9; border-radius: 18px; font-size: 76px; color: #2459d3; }}
 .art img {{ width: 112px; height: 112px; object-fit: contain; }}
 p {{ font-size: {28 if product else 34}px; line-height: 1.8; color: #566170; margin: 24px 0 0; max-inline-size: 24em;
-     text-wrap: balance; }}
-footer {{ block-size: 128px; display: flex; align-items: center; gap: 20px; padding: 0 96px;
+     text-wrap: balance; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }}
+footer {{ block-size: 128px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 96px;
           background: #20252e; color: rgba(255, 255, 255, 0.94); }}
 footer svg {{ inline-size: 50px; block-size: 50px; }}
 footer span {{ font-family: Estedad; font-weight: 600; font-size: 44px; }}

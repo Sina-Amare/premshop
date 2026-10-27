@@ -26,3 +26,29 @@ def test_share_renderer_embeds_existing_artwork_and_escapes_editor_text(
     assert "<script>bad</script>" not in html
     assert "&lt;script&gt;bad&lt;/script&gt;" in html
     assert "A &amp; B &quot;quoted&quot;" in html
+
+
+@pytest.mark.browser
+def test_long_share_text_keeps_its_column_and_footer(browser):
+    product = Product(name="W" * 150, short_description="شرح طولانی محصول " * 17)
+    page = browser.new_page(viewport={"width": 1200, "height": 630})
+    try:
+        page.set_content(_card(product))
+        page.evaluate("() => document.fonts.ready")
+        layout = page.evaluate("""() => {
+            const h=document.querySelector('h1'), p=document.querySelector('p'),
+                main=document.querySelector('main').getBoundingClientRect(),
+                footer=document.querySelector('footer').getBoundingClientRect(),
+                art=document.querySelector('.art').getBoundingClientRect(),
+                text=document.querySelector('.copy').getBoundingClientRect();
+            return {overflow:document.documentElement.scrollWidth>1200,
+                footerBottom:footer.bottom, footerTop:footer.top,
+                mainBottom:main.bottom, textBottom:text.bottom,
+                overlaps:art.right>text.left,
+                titleHeight:h.getBoundingClientRect().height,
+                descriptionHeight:p.getBoundingClientRect().height};
+        }""")
+        assert not layout["overflow"] and not layout["overlaps"], layout
+        assert layout["footerBottom"] <= 630 and layout["textBottom"] <= layout["footerTop"], layout
+    finally:
+        page.close()
