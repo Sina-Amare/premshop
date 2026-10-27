@@ -715,7 +715,6 @@ class ProductAdmin(PreviewAdminMixin):
         )
 
     @admin.action(description=_("کپی بخش‌ها از محصول دیگر"), permissions=["copy_sections"])
-    @transaction.atomic
     def copy_sections(
         self, request: HttpRequest, queryset: QuerySet[Product]
     ) -> TemplateResponse | None:
@@ -751,22 +750,26 @@ class ProductAdmin(PreviewAdminMixin):
             }
             return TemplateResponse(request, "admin/catalog/product/copy_sections.html", context)
         source = form.cleaned_data["source"]
-        for target in targets:
-            copies, skipped = copy_sections_onto(source, target)
-            with translation.override(None):
-                kind = str(ProductSection._meta.verbose_name)
-                added = [{"added": {"name": kind, "object": str(copy)}} for copy in copies]
-            self.log_change(request, target, added)
-            names = {
-                "count": to_persian_digits(len(copies)),
-                "source": f"\u2068{source}\u2069",
-                "target": f"\u2068{target}\u2069",
-            }
-            message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
-            if skipped:
-                message += " " + gettext("«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد.") % {
-                    "target": names["target"]
+        notices = []
+        with transaction.atomic():
+            for target in targets:
+                copies, skipped = copy_sections_onto(source, target)
+                with translation.override(None):
+                    kind = str(ProductSection._meta.verbose_name)
+                    added = [{"added": {"name": kind, "object": str(copy)}} for copy in copies]
+                self.log_change(request, target, added)
+                names = {
+                    "count": to_persian_digits(len(copies)),
+                    "source": f"\u2068{source}\u2069",
+                    "target": f"\u2068{target}\u2069",
                 }
+                message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
+                if skipped:
+                    message += " " + gettext(
+                        "«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد."
+                    ) % {"target": names["target"]}
+                notices.append(message)
+        for message in notices:
             messages.success(request, message)
         return None
 

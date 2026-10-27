@@ -1656,8 +1656,10 @@ def test_section_copies_and_history_roll_back_across_all_targets(
     ProductSection.objects.create(product=source, kind="benefits", body="متن نمونه")
     original = ProductAdmin.log_change
     writes = []
+    requests = []
 
     def fail_second(self, request, obj, message):
+        requests.append(request)
         writes.append(obj.pk)
         if len(writes) == 2:
             raise RuntimeError("Synthetic history failure")
@@ -1670,6 +1672,9 @@ def test_section_copies_and_history_roll_back_across_all_targets(
     assert len(writes) == 2
     assert not first.sections.exists() and not second.sections.exists()
     assert not history_of(first) and not history_of(second)
+    from django.contrib.messages import SUCCESS, get_messages
+
+    assert not [message for message in get_messages(requests[0]) if message.level == SUCCESS]
 
 
 def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue):
