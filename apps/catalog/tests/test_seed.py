@@ -13,6 +13,23 @@ from apps.catalog.models import Category, Product
 pytestmark = pytest.mark.django_db
 
 
+def test_product_introductions_are_editable_content_not_name_based_templates(seed, client):
+    seed()
+    product = Product.objects.get(slug="spotify-premium")
+    section = product.sections.filter(kind="benefits").first()
+    assert section is not None
+    assert "دانلود" in product.short_description
+    product.short_description = "متن معرفیِ ویرایش‌شده در پنل."
+    product.seo_description = "توضیح جستجوی ویرایش‌شده."
+    product.save()
+    section.body = "متن امکاناتِ تنظیم‌شده برای همین محصول."
+    section.save()
+    seed()
+    body = client.get(product.get_absolute_url()).content.decode()
+    assert product.short_description in body and section.body in body
+    assert 'content="توضیح جستجوی ویرایش‌شده."' in body
+
+
 @pytest.fixture
 def seed(settings, tmp_path, monkeypatch):
     """The command as the developer runs it, with the network refused.

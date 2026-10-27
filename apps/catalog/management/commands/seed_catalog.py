@@ -27,7 +27,8 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection
 from django.utils import timezone
 
-from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.demo_content import PRODUCT_COPY
+from apps.catalog.models import Category, Plan, Product, ProductSection, ProductSpec
 
 # One source per brand, because no single icon set has all twelve in colour.
 # gilbarbara/logos carries the full-colour marks; lobehub has the AI brands the
@@ -392,6 +393,7 @@ class Command(BaseCommand):
         now = timezone.now()
         added = 0
         for spec in products:
+            copy = PRODUCT_COPY.get(spec["slug"], {})
             product, created = Product.objects.get_or_create(
                 slug=spec["slug"],
                 defaults={
@@ -399,20 +401,25 @@ class Command(BaseCommand):
                     "brand_colour": spec.get("brand_colour", ""),
                     "usage_notes": spec.get("usage_notes", ""),
                     "category": categories[spec["category"]],
-                    "short_description": spec["short"],
+                    "short_description": copy.get("short", spec["short"]),
                     "delivery_type": spec["delivery"],
                     "aliases": spec.get("aliases", ""),
                     "warranty": spec["warranty"],
                     "delivery_hours": spec["hours"],
                     "status": spec.get("status", Product.Status.ACTIVE),
                     "renewable": spec.get("renewable", False),
-                    "seo_title": f"خرید {spec['name']}",
-                    "seo_description": spec["short"][:160],
+                    "seo_title": copy.get("title", f"خرید {spec['name']}"),
+                    "seo_description": copy.get("description", spec["short"][:160]),
+                    "sources": copy.get("sources", ""),
                 },
             )
             if not created:
                 continue
             added += 1
+            if copy:
+                ProductSection.objects.create(
+                    product=product, kind="benefits", title=copy["heading"], body=copy["body"]
+                )
             for order, row in enumerate(spec["specs"]):
                 title, value, *key = row
                 ProductSpec.objects.create(
