@@ -19,9 +19,9 @@ SHOP = "PremShop"
 @register.simple_tag
 def json_ld(value: object) -> SafeString:
     """Reuse Django's script-safe JSON escaping, changing only its MIME type."""
-    return mark_safe(
+    return mark_safe(  # noqa: S308  # nosec B308, B703
         json_script(value).replace('type="application/json"', 'type="application/ld+json"', 1)
-    )  # noqa: S308  # nosec B308, B703
+    )
 
 
 def _ends_left_to_right(text: str) -> bool:
