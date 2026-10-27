@@ -38,10 +38,10 @@
             <div class="cart-stepper" aria-describedby="quantity-limit-{{ line.plan_id }}">
               <button type="submit" name="step" value="1" aria-label="افزایش تعداد {{ line.plan.product.name }}، {{ line.plan.title }}"{% if line.quantity >= line.max_quantity %} disabled{% endif %}>+</button>
               <input id="quantity-{{ line.plan_id }}" name="quantity" type="number" inputmode="numeric" min="1" max="{{ line.max_quantity }}" value="{{ line.quantity }}" dir="ltr" aria-describedby="quantity-limit-{{ line.plan_id }}">
-              <button type="submit" name="step" value="-1" aria-label="کاهش تعداد {{ line.plan.product.name }}، {{ line.plan.title }}"{% if line.quantity == 1 %} disabled{% endif %}>−</button>
+              <button type="submit" data-cart-step="-1" id="decrease-{{ line.plan_id }}" formnovalidate {% if line.quantity_invalid %}name="quantity" value="{{ line.max_quantity }}" aria-label="کاهش به {{ line.max_quantity|fa_digits }} عدد برای {{ line.plan.product.name }}، {{ line.plan.title }}"{% else %}name="step" value="-1" aria-label="کاهش تعداد {{ line.plan.product.name }}، {{ line.plan.title }}"{% endif %}{% if line.quantity == 1 %} disabled{% endif %}>−</button>
             </div>
           </form>
-          <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">از ۱ تا {{ line.max_quantity|fa_digits }} عدد</p>
+          <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">حداکثر {{ line.max_quantity|fa_digits }} عدد</p>
           <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است.</p>
           {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}<span>حذف</span></button></form>

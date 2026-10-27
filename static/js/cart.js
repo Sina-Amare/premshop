@@ -33,14 +33,14 @@
   const updateStepper = input => {
     const quantity = Number(input.value);
     const controls = input.closest('.cart-quantity');
-    controls.querySelector('[name=step][value="-1"]').disabled = quantity <= 1;
+    controls.querySelector('[data-cart-step="-1"]').disabled = quantity <= 1;
     controls.querySelector('[name=step][value="1"]').disabled = !input.validity.valid || quantity >= +input.max;
     const dirty = input.value !== input.defaultValue;
     controls.querySelector('.cart-apply').hidden = !dirty;
     controls.closest('[data-cart-plan]').querySelector('[data-cart-draft]').hidden = !dirty;
   };
   cartPage?.addEventListener('input', event => {
-    if (event.target.matches('.cart-quantity [name=quantity]')) {
+    if (event.target.matches('.cart-quantity input[name=quantity]')) {
       event.target.dataset.editVersion = String(Number(event.target.dataset.editVersion || 0) + 1);
       updateStepper(event.target);
     }
@@ -52,7 +52,7 @@
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
     const fresh = doc.querySelector('.cart-page');
     if (!fresh || started !== generation) return false;
-    const edited = [...cartPage.querySelectorAll('[name=quantity]')]
+    const edited = [...cartPage.querySelectorAll('input[name=quantity]')]
       .filter(input => accepted && input.id === accepted.id ?
         (input.dataset.editVersion || '0') !== accepted.version : input.value !== input.defaultValue)
       .map(input => [input.id, input.value]);
@@ -72,10 +72,10 @@
       const error = cartPage.querySelector(`[data-cart-plan="${Number(id)}"] .cart-line__error`);
       if (error) { error.textContent = text; error.hidden = false; }
     });
-    cartPage.querySelectorAll('.cart-quantity [name=quantity]').forEach(updateStepper);
+    cartPage.querySelectorAll('.cart-quantity input[name=quantity]').forEach(updateStepper);
     let target = focusHref !== null ? [...cartPage.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusHref) :
       focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
-    if (target?.disabled && focusedLine) target = cartPage.querySelector(`[data-cart-plan="${focusedLine.dataset.cartPlan}"] [name=quantity]`);
+    if (target?.disabled && focusedLine) target = cartPage.querySelector(`[data-cart-plan="${focusedLine.dataset.cartPlan}"] input[name=quantity]`);
     target?.focus({preventScroll: true});
     if (focusedLine && document.activeElement !== target) {
       const heading = cartPage.querySelector('h1');
@@ -152,7 +152,7 @@
     document.getElementById('cart-action-error')?.remove();
     error.hidden = true;
     const body = new FormData(action);
-    const quantity = action.querySelector('[name=quantity]');
+    const quantity = action.querySelector('input[name=quantity]');
     const accepted = quantity ? {id:quantity.id, version:quantity.dataset.editVersion || '0'} : null;
     if (event.submitter?.name) body.append(event.submitter.name, event.submitter.value);
     cartPending = true;
@@ -217,6 +217,6 @@
   });
 
   setInterval(refresh, 15000);
-  cartPage?.querySelectorAll('.cart-quantity [name=quantity]').forEach(updateStepper);
+  cartPage?.querySelectorAll('.cart-quantity input[name=quantity]').forEach(updateStepper);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 })();

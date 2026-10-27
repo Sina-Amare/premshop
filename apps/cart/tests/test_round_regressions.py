@@ -127,7 +127,7 @@ def test_cart_refresh_keeps_an_edited_quantity_and_keyboard_focus(browser, live_
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         page.goto(live_server.url + "/cart/")
-        quantity = page.locator("[name=quantity]")
+        quantity = page.locator("input[name=quantity]")
         quantity.fill("2")
         Plan.objects.filter(pk=plan.pk).update(max_quantity=2)
         with page.expect_response("**/cart/availability/**"):
@@ -173,7 +173,7 @@ def test_stock_reduction_refreshes_in_place_without_losing_a_quantity_edit(
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         page.goto(live_server.url + "/cart/")
-        quantity = page.locator("[name=quantity]")
+        quantity = page.locator("input[name=quantity]")
         quantity.fill("2")
         navigations = []
         page.on("framenavigated", lambda frame: navigations.append(frame.url))
@@ -222,7 +222,7 @@ def test_cart_content_refresh_restores_focused_links(browser, live_server, plan,
         Plan.objects.filter(pk=plan.pk).update(max_quantity=2)
         with page.expect_response("**/cart/availability/**"):
             page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
-        expect(page.locator("[name=quantity]")).to_have_attribute("max", "2")
+        expect(page.locator("input[name=quantity]")).to_have_attribute("max", "2")
         expect(page.locator(link)).to_be_focused()
     finally:
         page.close()

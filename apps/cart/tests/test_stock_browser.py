@@ -52,7 +52,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         expect(page.locator('.cart-stepper [value="1"]')).to_be_disabled()
         page.screenshot(path=str(directory / f"selected-{width}.png"), full_page=True)
         page.locator('.cart-stepper [value="-1"]').click()
-        expect(page.locator(".cart-quantity [name=quantity]")).to_have_value("1")
+        expect(page.locator(".cart-quantity input[name=quantity]")).to_have_value("1")
         plan.stock_quantity = 0
         plan.save()
         page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")

@@ -19,9 +19,9 @@ def test_typed_and_restored_quantities_control_both_stepper_limits(
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         page.goto(live_server.url + "/cart/")
-        value = page.locator("[name=quantity]")
+        value = page.locator("input[name=quantity]")
         value.fill(quantity)
-        minus = page.locator('.cart-stepper [value="-1"]')
+        minus = page.locator('[data-cart-step="-1"]')
         if quantity == "1":
             expect(minus).to_be_disabled()
         else:

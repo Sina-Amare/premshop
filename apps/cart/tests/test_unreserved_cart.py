@@ -129,7 +129,7 @@ def test_quantity_changes_and_removal_update_in_place(browser, live_server, clie
         more = line.locator('[name=step][value="1"]')
         more.focus()
         page.keyboard.press("Enter")
-        expect(line.locator("[name=quantity]")).to_have_value("2")
+        expect(line.locator("input[name=quantity]")).to_have_value("2")
         expect(more).to_be_focused()
         expect(line.locator(".cart-line__amount")).to_contain_text("۴۰۰,۰۰۰")
         expect(page.locator(".cart-summary__blocked")).to_be_visible()
@@ -206,7 +206,7 @@ def test_successful_step_accepts_server_quantity_but_keeps_later_edits(
         )
         page.goto(live_server.url + "/cart/")
         page.route("**/cart/quantity/", lambda route: held.append(route))
-        quantity = page.locator(".cart-quantity [name=quantity]")
+        quantity = page.locator(".cart-quantity input[name=quantity]")
         quantity.fill("2")
         page.locator('[name=step][value="1"]').click()
         page.wait_for_timeout(100)
@@ -223,5 +223,36 @@ def test_successful_step_accepts_server_quantity_but_keeps_later_edits(
         else:
             expect(page.locator("[data-cart-draft]")).to_be_hidden()
         assert CartItem.objects.get().quantity == 3
+    finally:
+        page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("stored", [2, 3])
+@pytest.mark.parametrize("javascript", [True, False])
+def test_minus_corrects_a_selection_above_current_stock(
+    browser, live_server, client, plan, stored, javascript
+):
+    client.post("/cart/add/", {"plan": plan.pk, "quantity": stored})
+    Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
+    page = browser.new_page(java_script_enabled=javascript)
+    try:
+        page.context.add_cookies(
+            [
+                {
+                    "name": "sessionid",
+                    "value": client.cookies["sessionid"].value,
+                    "url": live_server.url,
+                }
+            ]
+        )
+        page.goto(live_server.url + "/cart/")
+        expect(page.locator(".cart-summary__blocked")).to_be_visible()
+        page.locator(".cart-stepper button").filter(has_text="−").click()
+        expect(page.locator(".cart-quantity input[name=quantity]")).to_have_value("1")
+        expect(page.locator(".cart-line__amount")).to_contain_text("۲۰۰,۰۰۰")
+        expect(page.locator(".cart-summary__blocked")).to_have_count(0)
+        assert CartItem.objects.get().quantity == 1
     finally:
         page.close()
