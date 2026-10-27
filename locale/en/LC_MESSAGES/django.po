@@ -227,6 +227,9 @@ msgstr "Does activation need anything from the customer?"
 msgid "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. مثل: ایمیل اکانت Spotify"
 msgstr "A short phrase, not a sentence. The site prints: ⁨برای فعال‌سازی، … را می‌پرسیم.⁩ Like: ⁨ایمیل اکانت Spotify⁩"
 
+msgid "عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."
+msgstr "A short label, such as Spotify account email."
+
 msgid "مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."
 msgstr "The delivery deadline must be between 1 and 72 hours."
 

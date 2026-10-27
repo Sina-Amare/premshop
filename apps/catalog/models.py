@@ -899,17 +899,12 @@ class Plan(ChecksNameTheirField, PageRow):
         default=False,
         help_text=_("برای فعال‌سازی چیزی از مشتری لازم است؟"),
     )
-    # The page prints it inside «برای فعال‌سازی، … را می‌پرسیم.», so a whole
-    # sentence here broke that sentence on the product page.
     customer_input_label = models.CharField(
         _("چه چیزی از مشتری بپرسیم؟"),
         max_length=200,
         blank=True,
         default="",
-        help_text=_(
-            "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. "
-            "مثل: ایمیل اکانت Spotify"
-        ),
+        help_text=_("عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),

@@ -929,13 +929,7 @@ class ProductAdmin(PreviewAdminMixin):
 
 @admin.register(Plan)
 class PlanAdmin(PreviewAdminMixin):
-    """A read-across of every plan, which the product form cannot give.
-
-    Editing stays on the product, where a plan belongs next to the thing it
-    prices — this page exists for the two questions a product form can never
-    answer: which discounts are running right now, and where the margin is
-    thin. Both needed opening twelve forms before.
-    """
+    """Prices, stock and availability across the catalogue."""
 
     form = PlanForm
     list_display = [
@@ -949,6 +943,20 @@ class PlanAdmin(PreviewAdminMixin):
     ]
     readonly_fields = ["stock_levels"]
     stock_levels = staticmethod(stock_levels)
+    fieldsets = [
+        (None, {"fields": ["product", ("title", "duration_days")]}),
+        (_("قیمت"), {"fields": [("cost_price", "sale_price")]}),
+        (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
+        (
+            _("موجودی و تعداد"),
+            {"fields": [("stock_quantity", "max_quantity"), "stock_levels", "is_available"]},
+        ),
+        (
+            _("اطلاعات مشتری و تأمین"),
+            {"fields": ["requires_customer_input", "customer_input_label", "supplier_url"]},
+        ),
+        (_("ترتیب نمایش"), {"fields": ["sort_order"]}),
+    ]
     list_filter = ["is_available", "product__category", StalePriceFilter]
     actions = ["confirm_prices"]
     search_fields = ["title"]
