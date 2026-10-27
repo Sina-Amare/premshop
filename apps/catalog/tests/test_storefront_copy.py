@@ -387,7 +387,12 @@ def script_strings() -> list[tuple[str, str]]:
     the rendered-page scan above never sees."""
     root = Path(settings.BASE_DIR)
     found = []
-    for path in [*(root / "templates").rglob("*.html"), *(root / "static" / "js").rglob("*.js")]:
+    templates = root / "templates"
+    for path in [
+        *templates.rglob("*.html"),
+        *templates.rglob("*.js"),
+        *(root / "static" / "js").rglob("*.js"),
+    ]:
         text = path.read_text(encoding="utf-8")
         blocks = (
             [text] if path.suffix == ".js" else re.findall(r"<script\b.*?</script>", text, re.S)

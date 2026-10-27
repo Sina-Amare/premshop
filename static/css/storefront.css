@@ -190,8 +190,9 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-hero__help:is(:hover,:focus-visible) .v-icon{border-color:var(--v-accent)}
 @media(min-width:1200px){
   .v-hero__inner{padding-block:10px}
-  .v-hero__inner:has(.is-orbital) .v-hero__copy{padding-block-end:36px}
 }
+/* The same query orbit.js uses, so the offset does not wait for the script. */
+@media(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference){.v-hero__copy{padding-block-end:36px}}
 .v-section-mark{display:inline-grid;place-items:center;vertical-align:middle;margin-inline-end:9px;color:var(--v-accent)}
 .v-section-mark .v-icon{width:23px;height:23px}
 .v-rail-controls [data-rail-prev] .v-icon{transform:rotate(180deg)}
