@@ -890,6 +890,8 @@
   .spec th { text-align: start; font-weight: 400; color: var(--color-muted); inline-size: 34%;
              padding-inline-end: var(--spacing-4); }
   .spec td { color: var(--color-ink); }
+  .spec tbody tr:last-child th { border-block-end: 0; }
+  .spec tbody tr:hover td { background: none; }
   .faq dt { font-weight: 500; color: var(--color-ink); margin-block-start: var(--spacing-4); }
   .faq dd { margin: var(--spacing-1) 0 0; color: var(--color-secondary); font-size: 15px; line-height: 1.8; }
   .faq dt:first-child { margin-block-start: 0; }
