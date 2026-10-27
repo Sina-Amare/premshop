@@ -266,3 +266,24 @@ def test_toast_keeps_a_latin_product_name_inside_a_right_to_left_line(browser, l
         assert word["x"] + word["width"] >= line["x"] + line["width"] - 2
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_a_quantity_form_submitted_without_a_submitter_still_changes_the_quantity(
+    browser, live_server, plan
+):
+    """What Safari before 15.4 sends: a submit event with no submitter."""
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        page.locator(".buybox__cta").click()
+        expect(page.locator("#cart-toast")).to_be_visible()
+        page.goto(live_server.url + "/cart/")
+        page.locator(".cart-quantity input[name=quantity]").fill("2")
+        with page.expect_navigation():
+            page.locator(".cart-quantity").evaluate("form => form.requestSubmit()")
+        expect(page.locator(".cart-quantity input[name=quantity]")).to_have_value("2")
+        assert CartItem.objects.get().quantity == 2
+    finally:
+        page.close()
