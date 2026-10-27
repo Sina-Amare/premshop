@@ -4,7 +4,10 @@ from django.urls import reverse
 def test_shared_shell_names_the_brand_and_keeps_real_destinations(client, db):
     response = client.get(reverse("home"))
     body = response.content.decode()
-    assert "برای متن، فایل و کد." in body
+    hero = body.split('class="v-hero__copy"', 1)[1].split('class="v-hero__actions"', 1)[0]
+    assert "وقتی نسخه‌ی رایگان کافی نیست" in hero
+    # The owner's ruling: the home page introduces the shop, never one product.
+    assert not any(name in hero for name in ("ChatGPT", "Gemini", "Claude", "Spotify"))
     assert "اشتراک ابزارهای هوش مصنوعی" in body
     assert 'class="v-search"' in body
     assert 'href="/faq/"' in body

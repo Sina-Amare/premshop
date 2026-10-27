@@ -156,7 +156,7 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 .v-service-name{min-height:0;font-size:12px;line-height:1.6;flex:none}
 .v-service-cloud .v-service-mark{animation:none;transform:none}
 .v-service-cloud .nebula__item img{transform:none}
-@media(min-width:1200px){.v-hero__inner{grid-template-columns:.9fr 1.3fr;gap:48px}.v-hero__lead{max-width:420px}}
+@media(min-width:1200px){.v-hero__inner{grid-template-columns:1.05fr 1fr;gap:48px}.v-hero__lead{max-width:470px}}
 @media(max-width:760px){.v-service-cloud{--service-plate:66px;--service-logo:36px;max-width:460px}.v-service-cloud .nebula{gap:12px 6px}.v-service-cloud .nebula__item{padding:4px 0}.v-service-name{font-size:12px}.v-scene-footer{gap:8px;margin-top:12px}}
 
 /* Shape cues keep prose links identifiable without underlines. */
@@ -174,13 +174,14 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 
 /* Compact both columns together so centering does not move whitespace below the copy. */
 .v-hero__inner{padding-block:20px}
-.v-hero h1{font-size:clamp(32px,3.6vw,48px);line-height:1.45}
+.v-hero h1{font-size:clamp(30px,3.2vw,46px);line-height:1.45;text-wrap:balance}
 .v-hero__lead{max-width:430px;text-wrap:pretty}
 .v-hero__highlight{color:var(--v-accent)}
 .pcard__description{font-size:12px;line-height:1.9;color:var(--v-text);margin:8px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .v-hero__copy .v-hero__lead{margin-bottom:12px}
-.v-hero__facts{display:flex;align-items:flex-start;gap:7px;margin:0 0 22px;font-size:12px;line-height:1.9;color:var(--v-text)}
-.v-hero__facts .v-icon{width:16px;height:16px;margin-top:3px}
+.v-hero__eyebrow{margin:0 0 10px;font-size:14px;font-weight:600;line-height:1.8;color:var(--v-accent)}
+.v-hero__proof{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 26px;padding:0;list-style:none;font-size:13px;line-height:1.8;color:var(--v-text)}
+.v-hero__proof li{display:inline-flex;align-items:center;gap:7px}.v-hero__proof .v-icon{flex:none;width:18px;height:18px;color:var(--v-accent)}
 .v-hero__actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px 22px}
 .v-hero__actions .v-button{gap:20px;min-height:44px}
 .v-hero__help{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:var(--v-text);font-size:13px;border-radius:6px;transition:color 140ms}
