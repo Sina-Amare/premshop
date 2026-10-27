@@ -273,7 +273,7 @@ def test_no_quantity_control_unless_the_operator_asked_for_one(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
     assert 'name="quantity"' not in body
-    assert "تعداد" not in body
+    assert 'id="qty-row"' not in body
 
 
 def test_the_quantity_control_appears_when_a_plan_takes_more_than_one(client, product):

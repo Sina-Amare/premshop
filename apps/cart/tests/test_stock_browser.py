@@ -57,7 +57,9 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         plan.save()
         page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
         expect(page.locator(".cart-line__stock")).to_have_text("ناموجود")
-        expect(page.locator(".cart-line__warning")).to_contain_text("از سبد حذف کنید")
+        expect(page.locator(".cart-line__warning")).to_have_text(
+            "برای ادامه‌ی خرید، این مورد را حذف کنید."
+        )
         expect(page.locator(".cart-line__restock")).to_be_visible()
         assert CartItem.objects.get().quantity == 1
         expect(page.locator(".cart-line__amount")).to_have_count(0)
