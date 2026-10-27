@@ -7,7 +7,7 @@
   const announcement = document.getElementById('cart-announcement');
   const positionToast = () => {
     const bottom = document.querySelector('.v-header').getBoundingClientRect().bottom;
-    toast.style.setProperty('--toast-top', Math.ceil(bottom) + 12 + 'px');
+    toast.style.setProperty('--toast-top', Math.ceil(Math.max(0, bottom)) + 12 + 'px');
     // On wide screens the toast hangs under the cart icon it reports on.
     const cart = document.querySelector('.v-cart')?.getBoundingClientRect();
     if (cart) toast.style.setProperty('--toast-left', Math.round(Math.max(16, Math.min(innerWidth - toast.offsetWidth - 16, cart.left + cart.width / 2 - toast.offsetWidth / 2))) + 'px');

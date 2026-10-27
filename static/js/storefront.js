@@ -45,5 +45,18 @@
       sync();
     });
   }
+
+  // On a phone the full header is a fifth of the screen: it steps aside while
+  // the reader scrolls down and comes back as soon as they scroll up.
+  const header = document.querySelector('.v-header');
+  const phone = matchMedia('(max-width: 760px)');
+  let lastY = scrollY;
+  if (header) addEventListener('scroll', () => {
+    const y = scrollY;
+    if (Math.abs(y - lastY) < 8) return;
+    const busy = header.contains(document.activeElement) || header.querySelector('details[open]');
+    header.classList.toggle('v-header--away', phone.matches && y > lastY && y > header.offsetHeight && !busy);
+    lastY = y;
+  }, {passive: true});
   sync();
 })();

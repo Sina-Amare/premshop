@@ -9,6 +9,7 @@ too many in the buy box, which pushed the whole product page sideways at
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from decimal import Decimal
 
@@ -428,5 +429,27 @@ def test_a_wide_table_scrolls_inside_its_section_on_a_small_phone(browser, live_
         assert page.evaluate("document.documentElement.scrollWidth") <= 320
         box = page.locator(".rich__scroll")
         assert box.evaluate("e => e.scrollWidth > e.clientWidth"), "the table fits: nothing tested"
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(("viewport", "gives_way"), [(PHONE, True), ({"width": 1280, "height": 900}, False)])
+def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
+    browser, live_server, discounted, viewport, gives_way
+):
+    """A 170px sticky header kept a fifth of a phone screen while reading."""
+    context = browser.new_context(viewport=viewport, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        header = page.locator(".v-header")
+        page.mouse.wheel(0, 1200)
+        away = re.compile(r"\bv-header--away\b")
+        if gives_way:
+            expect(header).to_have_class(away)
+            page.mouse.wheel(0, -300)
+        page.wait_for_timeout(300)
+        expect(header).not_to_have_class(away)
     finally:
         context.close()
