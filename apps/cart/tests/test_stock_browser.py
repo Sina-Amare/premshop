@@ -33,7 +33,10 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         toast = page.locator("#cart-toast").bounding_box()
         header = page.locator(".v-header").bounding_box()
         purchase = page.locator(".buybox__cart").bounding_box()
-        assert abs(toast["x"] + toast["width"] / 2 - width / 2) <= 1
+        cart = page.locator(".v-cart").bounding_box()
+        # Phones: the width of the screen; wider: hung under the cart icon it reports on.
+        anchor = width / 2 if width < 720 else cart["x"] + cart["width"] / 2
+        assert abs(toast["x"] + toast["width"] / 2 - anchor) <= 1
         assert toast["y"] >= header["y"] + header["height"] + 8
         assert toast["height"] <= 140 and toast["width"] <= 400
         assert toast["y"] + toast["height"] <= purchase["y"]
@@ -111,7 +114,7 @@ def test_increased_stock_updates_quantity_and_price_on_an_open_product_page(
         expect(page.locator("#qty-row")).to_be_visible()
         expect(page.locator("#qty")).to_have_attribute("max", "2")
         expect(page.locator(".buybox__cta")).to_be_enabled()
-        expect(page.locator("[data-selected-price] .price__num")).to_be_visible()
+        expect(page.locator("[data-plan-price] .price__num").first).to_be_visible()
     finally:
         page.close()
 
