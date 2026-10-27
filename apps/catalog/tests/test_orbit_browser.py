@@ -191,9 +191,10 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert 34 <= spacing["below"] - spacing["above"] <= 38, spacing
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
         controls = page.locator(".v-orbit-controls").bounding_box()
+        tools = page.locator(".v-scene-tools").bounding_box()
         caption = page.locator(".v-scene-caption").bounding_box()
         assert controls and caption and controls["width"] < 240
-        assert abs(controls["x"] + controls["width"] / 2 - caption["x"] - caption["width"] / 2) < 1
+        assert abs(tools["x"] + tools["width"] / 2 - caption["x"] - caption["width"] / 2) < 1
         assert (
             page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
         )

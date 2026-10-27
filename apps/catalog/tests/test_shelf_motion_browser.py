@@ -1,4 +1,4 @@
-"""Automatic shelves give the visitor time to read and choose."""
+"""Manual shelves stay still while the orbit retains its own controls."""
 
 import pytest
 from playwright.sync_api import expect
@@ -51,9 +51,7 @@ def place_two_shelves(page):
     )
 
 
-def test_only_the_most_visible_shelf_advances_and_focus_restarts_the_full_wait(
-    browser, live_server, catalog
-):
+def test_visible_shelves_wait_for_the_visitor_after_focus_leaves(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 2000})
     try:
         page.goto(live_server.url + "/")
@@ -61,28 +59,21 @@ def test_only_the_most_visible_shelf_advances_and_focus_restarts_the_full_wait(
         place_two_shelves(page)
         tracks = page.locator("[data-rail-track]")
         first, second = tracks.nth(0), tracks.nth(1)
-        page.wait_for_function(
-            "Math.abs(document.querySelector('[data-rail-track]').scrollLeft)>50", timeout=8000
-        )
-        assert second.evaluate("e=>e.scrollLeft") == 0
         page.locator("[data-rail]").first.locator("[data-rail-next]").focus()
         before = first.evaluate("e=>e.scrollLeft")
+        page.evaluate("document.activeElement.blur()")
         page.wait_for_timeout(6300)
         assert first.evaluate("e=>e.scrollLeft") == before
-        page.evaluate("document.activeElement.blur()")
-        page.wait_for_timeout(1200)
-        assert first.evaluate("e=>e.scrollLeft") == before
+        assert second.evaluate("e=>e.scrollLeft") == 0
+        page.locator("[data-rail]").first.locator("[data-rail-next]").click()
         page.wait_for_function(
-            '(before)=>Math.abs(document.querySelector("[data-rail-track]").scrollLeft-before)>50',
-            arg=before,
-            timeout=6500,
+            'Math.abs(document.querySelector("[data-rail-track]").scrollLeft)>50'
         )
         first.evaluate("e=>e.scrollTo({left:-e.scrollWidth,behavior:'instant'})")
         expect(page.locator("[data-rail]").first.locator("[data-rail-next]")).to_be_disabled()
         page.evaluate("document.activeElement.blur()")
-        page.wait_for_function(
-            'Math.abs(document.querySelector("[data-rail-track]").scrollLeft)<3', timeout=8000
-        )
+        page.wait_for_timeout(1000)
+        assert abs(first.evaluate("e=>e.scrollLeft")) > 50
         assert first.locator(".pcard").count() == 8
     finally:
         page.close()
@@ -117,11 +108,8 @@ def test_manual_browsing_resumes_motion_without_a_settings_menu(browser, live_se
         track = rail.locator("[data-rail-track]")
         page.wait_for_timeout(400)
         before = track.evaluate("e=>e.scrollLeft")
-        page.wait_for_function(
-            '(before)=>Math.abs(document.querySelector("[data-rail-track]").scrollLeft-before)>3',
-            arg=before,
-            timeout=8000,
-        )
+        page.wait_for_timeout(1000)
+        assert track.evaluate("e=>e.scrollLeft") == before
         expect(page.locator("html")).to_have_attribute("data-motion", "on")
         page.reload()
         page.emulate_media(reduced_motion="reduce")

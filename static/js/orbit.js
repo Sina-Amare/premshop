@@ -7,10 +7,13 @@
   const previous = scene.querySelector('[data-orbit-prev]');
   const next = scene.querySelector('[data-orbit-next]');
   const range = scene.querySelector('[data-orbit-range]');
+  const toggle = scene.querySelector('[data-orbit-toggle]');
   const desktop = matchMedia('(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
   const digits = new Intl.NumberFormat('fa-IR');
   let start = 0, size = 6, group = [], points = [], orbital = false;
   let visible = false, hovered = false, phase = -Math.PI / 2, frame = 0, last = 0;
+  let paused = false;
+  try { paused = localStorage.getItem('premshop.orbitPaused') === 'true'; } catch {}
   const positions = angle => points.map((point, i) => {
     const theta = angle + i * Math.PI * 2 / group.length;
     return {x: point.cx + Math.cos(theta) * point.rx, y: point.cy + Math.sin(theta) * point.ry, w:point.w, h:point.h};
@@ -27,7 +30,10 @@
   const update = () => {
     const eligible = orbital && desktop.matches;
     const moving = eligible && document.documentElement.dataset.motion === 'on';
-    const running = moving && visible && !hovered && !document.hidden && !scene.querySelector(':focus-visible');
+    const running = moving && !paused && visible && !hovered && !document.hidden && !scene.querySelector('.nebula__item:focus-visible');
+    toggle.hidden = !eligible;
+    toggle.querySelector('span').textContent = paused ? 'ادامه‌ی حرکت' : 'توقف حرکت';
+    toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
     scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);
@@ -81,6 +87,11 @@
   };
   previous.addEventListener('click', () => {start -= size; layout();});
   next.addEventListener('click', () => {start += size; layout();});
+  toggle.addEventListener('click', () => {
+    paused = !paused;
+    try { localStorage.setItem('premshop.orbitPaused', String(paused)); } catch {}
+    update();
+  });
   scene.addEventListener('focusin', update);
   // Pointer events precede hover styles in Firefox.
   for (const item of items) {
