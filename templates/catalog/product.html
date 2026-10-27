@@ -116,6 +116,7 @@
         {% endif %}
 
         {% if plans or snapshot %}
+        {% if max_quantity > 1 or snapshot %}
         <div data-preview-target="quantity" data-preview-field="max_quantity" class="buybox__row" id="qty-row"{% if purchase.initial_maximum < 2 %} hidden{% endif %}>
           <label class="buybox__label" for="qty">تعداد</label>
           <div class="stepper" aria-describedby="qty-limit">
@@ -125,6 +126,7 @@
           </div>
         </div>
         <p class="micro buybox__limit" id="qty-limit" hidden></p>
+        {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
@@ -241,7 +243,7 @@
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
       if (limit) {
-        var text = max > 0 ? 'از ۱ تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد قابل افزودن است.' : 'حداکثر تعداد مجاز در سبد خرید شماست.';
+        var text = max > 0 ? 'از ۱ تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد قابل افزودن است.' : 'بیش از این نمی‌توانید به سبد خرید اضافه کنید.';
         if (limit.textContent !== text) limit.textContent = text;
         limit.hidden = qtyRow.hidden && max > 0;
       }

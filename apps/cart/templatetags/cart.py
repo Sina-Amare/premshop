@@ -17,7 +17,7 @@ def cart_purchase(context: Any, plans: list[Plan]) -> dict[str, Any]:
     return {
         "options": options,
         "selectable": selectable,
-        "maximum": max((option.max_add for option in selectable), default=1),
+        "maximum": max((option.plan.max_quantity for option in options), default=1),
         "initial_maximum": selectable[0].max_add if selectable else 1,
     }
 
