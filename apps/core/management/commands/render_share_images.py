@@ -29,8 +29,8 @@ STATIC = Path(settings.BASE_DIR) / "static"
 OUT = STATIC / "img"
 
 # The home page's headline and lead, as the page prints them today.
-HEADLINE = "ChatGPT Plus، برای متن، فایل و کد."
-LEAD = "امکانات و شرایط خرید اشتراک‌های ChatGPT، Gemini و Claude را ببینید."
+HEADLINE = "وقتی نسخه‌ی رایگان کافی نیست،\nنسخه‌ی کاملش اینجاست."
+LEAD = "اشتراک پولی سرویس‌های هوش مصنوعی، موسیقی، فیلم و برنامه‌نویسی را با تومان بخرید."
 
 
 def _font(name: str) -> str:
@@ -58,7 +58,7 @@ body {{ inline-size: 1200px; block-size: 630px; display: flex; flex-direction: c
         background: #f5f6f8; color: #20252e; font-family: Vazirmatn; }}
 main {{ flex: 1; min-height: 0; display: flex; align-items: center; gap: 48px;
         padding: 0 96px 8px; }}
-h1 {{ font-family: Estedad; font-weight: 600; font-size: {64 if product else 76}px; line-height: 1.5; margin: 0;
+h1 {{ font-family: Estedad; font-weight: 600; font-size: {64 if product else 60}px; line-height: 1.5; margin: 0; white-space: pre-line;
       overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }}
 .copy {{ flex: 1; min-width: 0; }}
 .art {{ width: 176px; height: 176px; flex: 0 0 176px; display: grid; place-items: center;
