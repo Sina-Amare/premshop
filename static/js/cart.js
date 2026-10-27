@@ -33,6 +33,16 @@
   toast.addEventListener('mouseleave', scheduleHide);
   toast.addEventListener('focusout', scheduleHide);
 
+  const updateStepper = input => {
+    const quantity = Number(input.value);
+    const controls = input.closest('.cart-quantity');
+    controls.querySelector('[name=step][value="-1"]').disabled = quantity <= 1;
+    controls.querySelector('[name=step][value="1"]').disabled = !input.validity.valid || quantity >= +input.max;
+  };
+  cartPage?.addEventListener('input', event => {
+    if (event.target.matches('.cart-quantity [name=quantity]')) updateStepper(event.target);
+  });
+
   const updateCart = async started => {
     const response = await fetch('/cart/', {cache: 'no-store'});
     if (!response.ok) return;
@@ -51,6 +61,7 @@
     cartPage.replaceChildren(...fresh.childNodes);
     cartPage.dataset.cartRevision = fresh.dataset.cartRevision;
     edited.forEach(([id, value]) => { const input = document.getElementById(id); if (input) input.value = value; });
+    cartPage.querySelectorAll('.cart-quantity [name=quantity]').forEach(updateStepper);
     let target = focusHref !== null ? [...cartPage.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusHref) :
       focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
     if (target?.disabled && focusedLine) target = cartPage.querySelector(`[data-cart-plan="${focusedLine.dataset.cartPlan}"] [name=quantity]`);

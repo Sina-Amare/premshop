@@ -39,7 +39,7 @@
             <label class="sr-only" for="quantity-{{ line.plan_id }}">تعداد {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% endif %}</label>
             <div class="cart-stepper" aria-describedby="quantity-limit-{{ line.plan_id }}">
               <button type="submit" name="step" value="1" aria-label="افزایش تعداد {{ line.plan.title }}"{% if line.quantity >= line.max_quantity %} disabled{% endif %}>+</button>
-              <input id="quantity-{{ line.plan_id }}" name="quantity" type="number" inputmode="numeric" min="1" max="{{ line.max_quantity }}" value="{{ line.quantity }}" dir="ltr">
+              <input id="quantity-{{ line.plan_id }}" name="quantity" type="number" inputmode="numeric" min="1" max="{{ line.max_quantity }}" value="{{ line.quantity }}" dir="ltr" aria-describedby="quantity-limit-{{ line.plan_id }}">
               <button type="submit" name="step" value="-1" aria-label="کاهش تعداد {{ line.plan.title }}"{% if line.quantity == 1 %} disabled{% endif %}>−</button>
             </div>
             {% if line.reservation_expired %}<button type="submit" class="cart-reserve">رزرو دوباره</button>{% elif line.reservation_required %}<button type="submit" class="cart-reserve">رزرو محصول</button>{% else %}<button type="submit" class="cart-apply" aria-label="ثبت تعداد {{ line.plan.product.name }}، {{ line.plan.title }}" title="ثبت تعداد">{% include 'storefront/icon.html' with name='check' %}</button>{% endif %}

@@ -120,7 +120,7 @@
           <label class="buybox__label" for="qty">تعداد</label>
           <div class="stepper" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
-            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr">
+            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
           </div>
         </div>
