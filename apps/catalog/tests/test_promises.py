@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 # Where the shell prints promises: the strip over every page, the footer row
 # and the home page's row.
-SITE_WIDE = ("v-support", "v-footer__contact")
+SITE_WIDE = ("v-support", "v-footer__contact", "v-hero__proof")
 
 # Claims nothing backs yet. Payment waits on the gateway (S5) and on the
 # owner's ruling about what to say before it; refunds and warranty terms on
