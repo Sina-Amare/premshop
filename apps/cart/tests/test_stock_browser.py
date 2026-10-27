@@ -1,8 +1,6 @@
-from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.cart.models import CartItem
@@ -12,7 +10,9 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_reservation_toast_limits_release_and_expiry(browser, live_server, plan, width):
+def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
+    browser, live_server, plan, width
+):
     plan.stock_quantity = 2
     plan.save()
     directory = Path("screenshots/cart-stock")
@@ -45,28 +45,28 @@ def test_reservation_toast_limits_release_and_expiry(browser, live_server, plan,
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         page.screenshot(path=str(directory / f"toast-{width}.png"), full_page=True)
         other.goto(live_server.url + plan.product.get_absolute_url())
-        expect(other.locator(".buybox__cta")).to_be_disabled()
+        expect(other.locator(".buybox__cta")).to_be_enabled()
         page.locator("#cart-toast a").click()
-        expect(page.locator("[data-reservation-clock]")).to_contain_text("۱۹:")
+        expect(page.locator("[data-reservation-clock]")).to_have_count(0)
         expect(page.locator('.cart-stepper [value="1"]')).to_be_visible()
         expect(page.locator('.cart-stepper [value="1"]')).to_be_disabled()
-        page.screenshot(path=str(directory / f"reserved-{width}.png"), full_page=True)
+        page.screenshot(path=str(directory / f"selected-{width}.png"), full_page=True)
         page.locator('.cart-stepper [value="-1"]').click()
-        other.reload()
-        expect(other.locator(".buybox__cta")).to_be_enabled()
-        expect(other.locator("#qty-row")).to_be_hidden()
-        CartItem.objects.update(reserved_until=timezone.now() - timedelta(seconds=1))
-        page.reload()
-        expect(page.locator(".cart-line__warning")).to_have_text(
-            "مهلت رزرو تمام شده. دوباره رزرو کنید."
-        )
+        expect(page.locator(".cart-quantity [name=quantity]")).to_have_value("1")
+        plan.stock_quantity = 0
+        plan.save()
+        page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(page.locator(".cart-line__stock")).to_have_text("ناموجود")
+        expect(page.locator(".cart-line__warning")).to_contain_text("از سبد حذف کنید")
+        expect(page.locator(".cart-line__restock")).to_be_visible()
+        assert CartItem.objects.get().quantity == 1
         expect(page.locator(".cart-line__amount")).to_have_count(0)
         expect(page.locator(".cart-summary__total")).not_to_contain_text("رایگان")
-        page.screenshot(path=str(directory / f"expired-{width}.png"), full_page=True)
-        page.get_by_role("button", name="رزرو دوباره", exact=True).click()
-        expect(page.locator("[data-reservation-clock]")).to_be_visible()
+        page.screenshot(path=str(directory / f"unavailable-{width}.png"), full_page=True)
         page.locator(".cart-remove").click()
         expect(page.locator(".cart-empty")).to_be_visible()
+        plan.stock_quantity = 2
+        plan.save()
         other.reload()
         expect(other.locator("#qty")).to_have_attribute("max", "2")
         assert not errors
@@ -93,22 +93,18 @@ def test_rapid_clicks_submit_once_and_toasts_never_stack(browser, live_server, p
         page.close()
 
 
-@pytest.mark.parametrize("held", [1, 2])
-def test_released_stock_restores_quantity_and_price_on_an_open_product_page(
-    browser, live_server, plan, held
+@pytest.mark.parametrize("initial_stock", [0, 1])
+def test_increased_stock_updates_quantity_and_price_on_an_open_product_page(
+    browser, live_server, plan, initial_stock
 ):
-    from apps.cart.services import add_to_cart, remove_from_cart
-    from apps.cart.tests.test_services import request_for
-
-    plan.stock_quantity = 2
+    plan.stock_quantity = initial_stock
     plan.save()
-    donor = request_for()
-    add_to_cart(donor, plan_id=plan.pk, quantity=held)
     page = browser.new_page()
     try:
         page.goto(live_server.url + plan.product.get_absolute_url())
         expect(page.locator("#qty-row")).to_be_hidden()
-        remove_from_cart(donor, plan_id=plan.pk)
+        plan.stock_quantity = 2
+        plan.save()
         page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
         expect(page.locator("#qty-row")).to_be_visible()
         expect(page.locator("#qty")).to_have_attribute("max", "2")
@@ -130,7 +126,7 @@ def test_admin_stock_section_and_live_counts(open_panel, plan, width):
     stock = page.locator("#id_plans-0-stock_quantity")
     stock.scroll_into_view_if_needed()
     expect(stock).to_have_value("3")
-    expect(page.get_by_text("۱ قابل خرید، ۲ رزرو شده", exact=True)).to_be_visible()
+    expect(page.get_by_text("۳ عدد قابل خرید", exact=True)).to_be_visible()
     expect(page.get_by_text("موجودی و تعداد", exact=True).first).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     directory = Path("screenshots/cart-stock")

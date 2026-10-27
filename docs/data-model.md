@@ -51,7 +51,6 @@ erDiagram
         bigint plan_id FK "PROTECT"
         smallint quantity "CHECK 1..10"
         timestamptz added_at
-        timestamptz reserved_until "nullable; finite stock only"
     }
     Order {
         bigint id PK
@@ -198,15 +197,14 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 | plan | FK Plan, **PROTECT** | — | | a plan sitting in someone's cart cannot be row-deleted; retire with `is_available=false` |
 | quantity | smallint | — | 1 | `CHECK BETWEEN 1 AND 10` |
 | added_at | TS | — | auto | preserved when a guest cart is claimed |
-| reserved_until | TS, indexed | yes | null | finite stock held for 20 minutes; expired selections remain stored |
 
 `UNIQUE (cart, plan)` — adding a plan already in the cart raises its quantity, it never makes a second line.
 
 > **A plan with `requires_customer_input=true` is limited to quantity 1 per line.** Each OrderItem is a separate credential with its own lifecycle, so three units would need three separate inputs, and a form collecting three account passwords under one line is a UI nobody asked for. Enforced in the cart — adding or incrementing to a second unit of such a plan is refused with a clear message, not silently clamped — and **re-validated at checkout**, because a plan's `requires_customer_input` can be flipped on after the line was created. It is a service rule at both points, not a DB `CHECK`: the condition lives on `Plan`, one join away from the row being written. The consequence the services already assume: `customer_inputs` is a mapping of **plan id → a single string**. *Flip condition:* if a customer ever genuinely needs several units of an input-requiring plan, the answer is per-item inputs on the checkout form — never silently reusing one value across items.
 
-**Stored: plan, quantity and reservation deadline.** No prices, names or purchase snapshots. Every amount is recomputed through `effective_price()` from the database on every render and again at checkout. A finite-stock line with an expired reservation remains visible, but contributes no payable amount until reserved again.
+**Stored: plan and quantity.** No prices, names or purchase snapshots. Every amount is recomputed through `effective_price()` from the database on every render and again at checkout. Unavailable and invalid-quantity lines remain visible but contribute no payable amount; either blocks readiness to proceed.
 
-**Shared stock:** Plan.stock_quantity is nullable (unlimited) or a nonnegative total including reserved units, added in catalog 0025. Available units are that total minus CartItem quantities whose reserved_until is still in the future, added in cart 0002. A plan lock serializes reservation changes and stock edits. Decreasing/removing releases units; live edits preserve the deadline. Admin rejects totals below live reservations. Merges lock plans in id order, preserve the earlier live deadline and cap to current stock/quantity limits. No expiry worker is needed; checkout's order/payment reservation transfer remains unbuilt.
+**Stock:** Plan.stock_quantity is nullable (unlimited) or a nonnegative available count, added in catalog 0025. Cart selections do not reserve or consume units. Cart 0003 removes the former deadline column; a reverse migration restores it empty, with old timestamps recoverable from the pre-migration backup. A plan lock serializes mutation checks and stock edits. Merges lock plans in id order and cap only to per-line policy limits; shortages remain visible for correction. No cart expiry worker is needed; checkout's atomic stock claim and payment lifecycle remain unbuilt (ADR-0018, 2026-10-27 amendment).
 
 **Merge on login:** the server stores the guest-cart id in session data, which survives Django's session-key rotation. The login signal claims a guest cart if the account has none, preserving item ids and added_at; otherwise it combines matching plans, caps imported quantities at each current Plan.max_quantity (one for input-requiring plans), moves new lines and deletes the guest cart. The account and cart rows are locked in one transaction; a replay is harmless. A reduction gets a customer notice. Guest reads and edits still resolve by the current session key, never by a posted cart id.
 
@@ -400,7 +398,7 @@ Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the
 | Promo/discount stacking flag | A code applies on top of promotional pricing, decided once (§2). Excluding promoted items is the named future option; it flips on evidence that a promotion's margin is actually being lost, and it becomes a `DiscountCode` field then |
 | Card-to-card apparatus (`unique_amount` and its partial unique index, `paid_amount`, receipt upload, destination-card slots, `UnmatchedTransfer`) | ADR-0019 replaced the rail with a gateway; ADR-0006 is superseded, not deleted. Amount-matching, receipt storage and unmatched-transfer reconciliation all existed to answer "did this money arrive?" — a server-to-server verify answers it directly |
 | Supplier / FX rate | one upstream marketplace, manual pricing; `cost_snapshot`/`actual_cost` capture what matters (profit) without modeling why |
-| Inventory app | Limited stock uses Plan.stock_quantity and CartItem.reserved_until, not separate inventory tables (ADR-0018, 2026-10-26 amendment). Supplier and stock-movement accounting remain unbuilt. |
+| Inventory app | Limited stock uses Plan.stock_quantity; carts do not reserve it (ADR-0018, 2026-10-27 amendment). Supplier and stock-movement accounting remain unbuilt. |
 | RBAC / roles | one operator = `is_staff`; a second role would be the trigger to add it |
 | Identity tables (EmailIdentity/TelegramIdentity) | brief §19-الف resolved to flat fields on User; splitting is a mechanical migration if a third login method ever appears |
 | Wallet / ledger | brief out-of-scope; if it comes, it arrives double-entry from day one |

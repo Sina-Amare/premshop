@@ -11,19 +11,16 @@
   };
   new ResizeObserver(positionToast).observe(document.querySelector('.v-header'));
   window.addEventListener('scroll', () => { if (!toast.hidden) positionToast(); }, {passive: true});
-  let timer, generation = 0, refreshing = false;
+  let timer, generation = 0, refreshing = false, cartPending = false;
   const hide = () => {
     if (!toast.matches(':hover') && !toast.contains(document.activeElement)) toast.hidden = true;
   };
   const scheduleHide = () => { clearTimeout(timer); timer = setTimeout(hide, 6500); };
   const show = data => {
     toast.querySelector('[data-toast-message]').textContent = data.message;
-    const hold = toast.querySelector('[data-toast-hold]');
-    hold.textContent = data.hold_message || '';
-    hold.hidden = !data.hold_message;
     positionToast();
     toast.hidden = false;
-    announcement.textContent = [data.message, data.hold_message].filter(Boolean).join(' ');
+    announcement.textContent = data.message;
     scheduleHide();
   };
   toast.querySelector('[data-toast-close]').addEventListener('click', () => {
@@ -38,29 +35,36 @@
     const controls = input.closest('.cart-quantity');
     controls.querySelector('[name=step][value="-1"]').disabled = quantity <= 1;
     controls.querySelector('[name=step][value="1"]').disabled = !input.validity.valid || quantity >= +input.max;
+    controls.querySelector('.cart-apply').hidden = input.value === input.defaultValue;
   };
   cartPage?.addEventListener('input', event => {
     if (event.target.matches('.cart-quantity [name=quantity]')) updateStepper(event.target);
   });
 
-  const updateCart = async started => {
+  const updateCart = async (started, message = 'سبد خرید به‌روز شد. موجودی و تعداد محصولات را بررسی کنید.') => {
     const response = await fetch('/cart/', {cache: 'no-store'});
-    if (!response.ok) return;
+    if (!response.ok) return false;
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
     const fresh = doc.querySelector('.cart-page');
-    if (!fresh || started !== generation) return;
+    if (!fresh || started !== generation) return false;
     const edited = [...cartPage.querySelectorAll('[name=quantity]')]
       .filter(input => input.value !== input.defaultValue).map(input => [input.id, input.value]);
+    const errors = [...cartPage.querySelectorAll('.cart-line__error:not([hidden])')]
+      .map(error => [error.closest('[data-cart-plan]').dataset.cartPlan, error.textContent]);
     const active = document.activeElement;
     const focusedLine = active?.closest('[data-cart-plan]');
     const focusId = cartPage.contains(active) ? active.id : '';
     const focusHref = cartPage.contains(active) && active.matches('a[href]') ? active.getAttribute('href') : null;
     const focusSelector = focusedLine && !focusId ? `[data-cart-plan="${focusedLine.dataset.cartPlan}"] ` +
       (active.name === 'step' ? `[name=step][value="${active.value}"]` :
-        active.matches('.cart-remove,.cart-apply,.cart-reserve') ? '.' + active.classList[0] : '') : '';
+        active.matches('.cart-remove,.cart-apply') ? '.' + active.classList[0] : '') : '';
     cartPage.replaceChildren(...fresh.childNodes);
     cartPage.dataset.cartRevision = fresh.dataset.cartRevision;
     edited.forEach(([id, value]) => { const input = document.getElementById(id); if (input) input.value = value; });
+    errors.forEach(([id, text]) => {
+      const error = cartPage.querySelector(`[data-cart-plan="${Number(id)}"] .cart-line__error`);
+      if (error) { error.textContent = text; error.hidden = false; }
+    });
     cartPage.querySelectorAll('.cart-quantity [name=quantity]').forEach(updateStepper);
     let target = focusHref !== null ? [...cartPage.querySelectorAll('a[href]')].find(link => link.getAttribute('href') === focusHref) :
       focusId ? document.getElementById(focusId) : focusSelector ? cartPage.querySelector(focusSelector) : null;
@@ -71,9 +75,10 @@
       heading.tabIndex = -1;
       heading.focus({preventScroll: true});
     }
-    announcement.textContent = 'سبد خرید به‌روز شد. تعداد و مهلت رزرو محصولات را بررسی کنید.';
+    announcement.textContent = message;
+    return true;
   };
-  const sync = async (data, forceCart = false) => {
+  const sync = async (data, forceCart = false, message) => {
     const badge = document.querySelector('.v-cart__count');
     let changed = badge && badge.textContent !== data.count_text;
     if (cartPage) changed ||= cartPage.dataset.cartRevision !== data.revision;
@@ -113,14 +118,12 @@
       const option = data.options[line.dataset.cartPlan];
       if (!option) { changed ||= line.dataset.cartMaximum !== '0'; return; }
       changed ||= +line.dataset.cartMaximum !== option.maximum;
-      changed ||= (line.dataset.cartExpired === 'true') !== option.expired;
-      changed ||= (line.dataset.cartReservationRequired === 'true') !== option.reservation_required;
       changed ||= line.dataset.cartPrice !== option.price_text;
     });
-    if (cartPage && (changed || forceCart)) await updateCart(generation);
+    if (cartPage && (changed || forceCart)) return await updateCart(generation, message);
   };
   const refresh = async (forceCart = false) => {
-    if (document.hidden || refreshing || form?.dataset.pending === 'true') return;
+    if (document.hidden || refreshing || cartPending || form?.dataset.pending === 'true') return;
     refreshing = true;
     const started = generation;
     const ids = form ? [...form.querySelectorAll('[name=plan]')].map(radio => radio.value) : lines().map(line => line.dataset.cartPlan);
@@ -131,6 +134,49 @@
     } catch { /* A stale display cannot bypass the server's stock check. */ }
     finally { refreshing = false; }
   };
+  cartPage?.addEventListener('submit', async event => {
+    const action = event.target;
+    if (!action.matches('.cart-quantity,.cart-remove-form') || !window.fetch) return;
+    event.preventDefault();
+    if (cartPending) return;
+    const line = action.closest('[data-cart-plan]');
+    const planId = Number(line.dataset.cartPlan);
+    const error = line.querySelector('.cart-line__error');
+    document.getElementById('cart-action-error')?.remove();
+    error.hidden = true;
+    const body = new FormData(action);
+    if (event.submitter?.name) body.append(event.submitter.name, event.submitter.value);
+    cartPending = true;
+    generation += 1;
+    cartPage.setAttribute('aria-busy', 'true');
+    cartPage.querySelectorAll('button').forEach(button => button.setAttribute('aria-disabled', 'true'));
+    let message = '';
+    try {
+      const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
+      const data = await response.json();
+      if (!response.ok) message = data.message || 'سبد خریدتان را بررسی کنید و دوباره امتحان کنید.';
+      else if (!await sync(data, true, data.message)) message = 'تغییر ثبت شد، اما نمایش سبد به‌روز نشد. صفحه را دوباره باز کنید.';
+    } catch {
+      message = 'نتیجه مشخص نیست. سبد خریدتان را بررسی کنید.';
+    } finally {
+      cartPending = false;
+      cartPage.removeAttribute('aria-busy');
+      cartPage.querySelectorAll('button[aria-disabled]').forEach(button => button.removeAttribute('aria-disabled'));
+      if (message) {
+        await refresh();
+        let target = cartPage.querySelector(`[data-cart-plan="${planId}"] .cart-line__error`);
+        if (!target) {
+          target = document.createElement('p');
+          target.id = 'cart-action-error';
+          target.className = 'wrap cart-notice cart-notice--error';
+          target.setAttribute('role', 'alert');
+          cartPage.before(target);
+        }
+        target.textContent = message;
+        target.hidden = false;
+      }
+    }
+  });
   if (form && window.fetch) form.addEventListener('submit', async event => {
     event.preventDefault();
     if (form.dataset.pending === 'true') return;
@@ -161,17 +207,7 @@
     }
   });
 
-  if (cartPage) setInterval(() => {
-    let expired = false;
-    cartPage.querySelectorAll('[data-reservation-seconds]').forEach(node => {
-      if (!node.dataset.ends) node.dataset.ends = performance.now() + +node.dataset.reservationSeconds * 1000;
-      const left = Math.max(0, Math.ceil((+node.dataset.ends - performance.now()) / 1000));
-      const text = [Math.floor(left / 3600), Math.floor(left / 60) % 60, left % 60].map(n => String(n).padStart(2, '0')).join(':');
-      node.querySelector('[data-reservation-clock]').textContent = text.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
-      if (!left) { node.removeAttribute('data-reservation-seconds'); expired = true; }
-    });
-    if (expired) refresh(true);
-  }, 1000);
   setInterval(refresh, 15000);
+  cartPage?.querySelectorAll('.cart-quantity [name=quantity]').forEach(updateStepper);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 })();

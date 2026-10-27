@@ -29,7 +29,7 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.files.base import ContentFile
 from django.core.validators import RegexValidator, URLValidator, validate_slug
 from django.db import models, transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import Truncator, slugify
@@ -875,7 +875,9 @@ class Plan(ChecksNameTheirField, PageRow):
         _("موجودی کل"),
         null=True,
         blank=True,
-        help_text=_("تعداد کل قابل فروش، شامل تعداد رزروشده. خالی یعنی بدون محدودیت موجودی."),
+        help_text=_(
+            "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+        ),
     )
     is_available = models.BooleanField(
         _("موجود"),
@@ -1011,7 +1013,6 @@ class Plan(ChecksNameTheirField, PageRow):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.pk and self.stock_quantity is not None:
             Plan.objects.select_for_update().get(pk=self.pk)
-            self._check_reserved_stock()
         # A price someone has just typed is a price someone has just checked.
         fields = kwargs.get("update_fields")
         if (fields is None or set(fields) & set(PRICE_FIELDS)) and self._price_is_new():
@@ -1025,29 +1026,6 @@ class Plan(ChecksNameTheirField, PageRow):
             return True
         stored = Plan.objects.filter(pk=self.pk).values(*PRICE_FIELDS).first()
         return stored is None or any(stored[name] != getattr(self, name) for name in PRICE_FIELDS)
-
-    @property
-    def reserved_stock(self) -> int:
-        if not self.pk:
-            return 0
-        return int(
-            self.cartitem_set.filter(reserved_until__gt=timezone.now()).aggregate(
-                total=Sum("quantity")
-            )["total"]
-            or 0
-        )
-
-    def clean(self) -> None:
-        super().clean()
-        self._check_reserved_stock()
-
-    def _check_reserved_stock(self) -> None:
-        if self.pk and self.stock_quantity is not None:
-            reserved = self.reserved_stock
-            if self.stock_quantity < reserved:
-                raise ValidationError(
-                    {"stock_quantity": _("موجودی کل نمی‌تواند کمتر از تعداد رزروشده باشد.")}
-                )
 
     @property
     def effective_price(self) -> Decimal:

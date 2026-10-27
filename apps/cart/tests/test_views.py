@@ -125,7 +125,7 @@ def test_availability_is_private_current_and_does_not_reveal_drafts(client, plan
     client.post("/cart/add/", {"plan": plan.pk})
     stranger = Client()
     state = stranger.get("/cart/availability/", {"plan": plan.pk})
-    assert state.json()["options"][str(plan.pk)]["max_add"] == 1
+    assert state.json()["options"][str(plan.pk)]["max_add"] == 2
     assert state.json()["count"] == 0
     assert "no-store" in state["Cache-Control"]
     assert "sessionid" not in state.cookies

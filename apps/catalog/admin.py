@@ -19,7 +19,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.db import connection
-from django.db.models import Max, Q, QuerySet, Sum
+from django.db.models import Max, Q, QuerySet
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
@@ -257,12 +257,8 @@ class PlanForm(forms.ModelForm):
 def stock_levels(obj: Plan) -> str:
     if obj.stock_quantity is None:
         return gettext("بدون محدودیت موجودی")
-    reserved = getattr(obj, "cart_reserved", None)
-    if reserved is None:
-        reserved = obj.reserved_stock
-    return gettext("%(available)s قابل خرید، %(reserved)s رزرو شده") % {
-        "available": to_persian_digits(max(0, obj.stock_quantity - reserved)),
-        "reserved": to_persian_digits(reserved),
+    return gettext("%(available)s عدد قابل خرید") % {
+        "available": to_persian_digits(obj.stock_quantity)
     }
 
 
@@ -958,19 +954,6 @@ class PlanAdmin(PreviewAdminMixin):
     list_select_related = ["product"]
     list_fullwidth = True
     ordering = ["product__name", "sort_order"]
-
-    def get_queryset(self, request: Any) -> Any:
-        return (
-            super()
-            .get_queryset(request)
-            .annotate(
-                cart_reserved=Sum(
-                    "cartitem__quantity",
-                    filter=Q(cartitem__reserved_until__gt=timezone.now()),
-                    default=0,
-                )
-            )
-        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         # A plan with no product is meaningless; it is added on the product.

@@ -131,7 +131,8 @@ class _Commitments(HTMLParser):
         "deadline",
         "deadline__said",
         "cart-line__warning",
-        "cart-line__reservation",
+        "cart-line__error",
+        "cart-summary__blocked",
         "cart-notice",
         "cart-add-error",
     }

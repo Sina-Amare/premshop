@@ -1,11 +1,7 @@
-from datetime import timedelta
-
 import pytest
-from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.cart.models import CartItem
-from apps.cart.templatetags.cart import reservation_clock
 from apps.catalog.models import Plan
 
 pytestmark = pytest.mark.django_db
@@ -19,17 +15,14 @@ def test_unavailable_cart_and_polling_have_the_same_limit(client, plan):
     assert line.max_quantity == state["maximum"] == 0
 
 
-def test_stock_added_later_requires_a_hold_without_claiming_it_expired(client, plan):
+def test_stock_added_later_revalidates_the_saved_selection(client, plan):
     client.post("/cart/add/", {"plan": plan.pk})
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=3)
     response = client.get("/cart/")
     line = response.context["cart"].lines[0]
-    assert not line.reservation_expired
-    assert line.reservation_required and not line.purchasable
-    assert response.context["cart"].total == 0
-    assert "هنوز رزرو نشده" in response.content.decode()
-    state = client.get("/cart/availability/", {"plan": plan.pk}).json()["options"][str(plan.pk)]
-    assert not state["expired"] and state["reservation_required"]
+    assert line.purchasable
+    assert response.context["cart"].total == plan.sale_price
+    assert response.context["cart"].ready
 
 
 def test_mutation_feedback_names_the_selection_and_the_actual_operation(client, plan):
@@ -48,12 +41,7 @@ def test_mutation_feedback_names_the_selection_and_the_actual_operation(client, 
         assert not data.get("hold_message")
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=3)
     data = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json").json()
-    assert "مهلت رزرو" in data["hold_message"] and "۰۰:" in data["hold_message"]
-
-
-def test_reservation_clocks_include_hours():
-    assert reservation_clock(1199) == "۰۰:۱۹:۵۹"
-    assert reservation_clock(0) == "۰۰:۰۰:۰۰"
+    assert "hold_message" not in data
 
 
 @pytest.mark.browser
@@ -103,7 +91,7 @@ def test_pending_add_keeps_focus_and_errors_stay_next_to_the_action(browser, liv
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("state", ["unavailable", "expired"])
+@pytest.mark.parametrize("state", ["unavailable", "empty-stock"])
 def test_static_cart_states_do_not_reload_on_repeated_refresh(browser, live_server, plan, state):
     page = browser.new_page()
     try:
@@ -113,8 +101,7 @@ def test_static_cart_states_do_not_reload_on_repeated_refresh(browser, live_serv
         if state == "unavailable":
             Plan.objects.filter(pk=plan.pk).update(is_available=False)
         else:
-            Plan.objects.filter(pk=plan.pk).update(stock_quantity=3)
-            CartItem.objects.update(reserved_until=timezone.now() - timedelta(seconds=1))
+            Plan.objects.filter(pk=plan.pk).update(stock_quantity=0)
         page.goto(live_server.url + "/cart/")
         navigations = []
         page.on(
@@ -176,7 +163,9 @@ def test_newly_available_selection_gets_the_current_server_price_without_navigat
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-def test_hold_expiry_refreshes_in_place_without_losing_a_quantity_edit(browser, live_server, plan):
+def test_stock_reduction_refreshes_in_place_without_losing_a_quantity_edit(
+    browser, live_server, plan
+):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=3)
     page = browser.new_page()
     try:
@@ -188,14 +177,12 @@ def test_hold_expiry_refreshes_in_place_without_losing_a_quantity_edit(browser, 
         quantity.fill("2")
         navigations = []
         page.on("framenavigated", lambda frame: navigations.append(frame.url))
-        CartItem.objects.update(reserved_until=timezone.now() - timedelta(seconds=1))
-        page.locator("[data-reservation-seconds]").evaluate(
-            "el=>el.dataset.ends=performance.now()-1"
-        )
-        expect(page.locator(".cart-line__warning")).to_contain_text("مهلت رزرو تمام شده")
+        Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
+        with page.expect_response("**/cart/availability/**"):
+            page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(quantity).to_have_attribute("max", "1")
         expect(quantity).to_have_value("2")
         expect(quantity).to_be_focused()
-        expect(page.locator(".cart-line__amount")).to_have_count(0)
         assert not navigations
     finally:
         page.close()

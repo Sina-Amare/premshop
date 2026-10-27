@@ -1,9 +1,8 @@
 """A cart holds intentions; the catalog supplies every price."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
-from math import ceil
 from typing import Any, cast
 
 from django.contrib.sessions.models import Session
@@ -22,7 +21,6 @@ from apps.core.formatting import to_persian_digits
 GUEST_CART_ID = "guest_cart_id"
 GUEST_PREVIOUS_EXPIRY = "guest_cart_previous_expiry"
 GUEST_AGE = 30 * 86400
-RESERVATION_AGE = timedelta(minutes=20)
 
 
 def get_cart(request: HttpRequest) -> Cart | None:
@@ -87,67 +85,39 @@ def _validate_quantity(plan: Plan, quantity: int) -> None:
         raise ValidationError(f"حداکثر تعداد برای این محصول: {to_persian_digits(limit)} عدد.")
 
 
-def _reserved_totals(plans: list[Plan]) -> dict[int, int]:
-    limited = [plan.pk for plan in plans if plan.stock_quantity is not None]
-    if not limited:
-        return {}
-    return dict(
-        CartItem.objects.filter(plan_id__in=limited, reserved_until__gt=timezone.now())
-        .values("plan_id")
-        .annotate(total=Sum("quantity"))
-        .values_list("plan_id", "total")
-    )
-
-
-def _capacity(plan: Plan, item: CartItem | None, reserved: int) -> int:
+def _capacity(plan: Plan) -> int:
     if not plan.is_available:
         return 0
     if plan.stock_quantity is None:
         return plan.max_quantity
-    own = (
-        item.quantity
-        if item and item.reserved_until and item.reserved_until > timezone.now()
-        else 0
-    )
-    return max(0, min(plan.max_quantity, plan.stock_quantity - reserved + own))
+    return min(plan.max_quantity, plan.stock_quantity)
 
 
-def _reserve(plan: Plan, item: CartItem | None, quantity: int) -> datetime | None:
+def _check_stock(plan: Plan, quantity: int) -> None:
     _validate_quantity(plan, quantity)
-    if plan.stock_quantity is None:
-        return None
-    available = _capacity(plan, item, _reserved_totals([plan]).get(plan.pk, 0))
+    available = _capacity(plan)
     if quantity > available:
         if not available:
             raise ValidationError("این محصول فعلاً موجود نیست.")
         raise ValidationError(f"فقط {to_persian_digits(available)} عدد از این محصول موجود است.")
-    now = timezone.now()
-    return (
-        item.reserved_until
-        if item and item.reserved_until and item.reserved_until > now
-        else now + RESERVATION_AGE
-    )
 
 
 @transaction.atomic
 def add_to_cart(request: HttpRequest, *, plan_id: int, quantity: int = 1) -> CartItem:
     plan = _available_plan(plan_id)
     _validate_quantity(plan, quantity)
-    _reserve(plan, None, quantity)
+    _check_stock(plan, quantity)
     cart = cast(Cart, _locked_cart(request, create=True))
     plan = Plan.objects.select_for_update().get(pk=plan_id)
     _available_plan(plan_id)
     item = cart.items.filter(plan_id=plan_id).first()
     new_quantity = quantity + (item.quantity if item else 0)
-    reserved_until = _reserve(plan, item, new_quantity)
+    _check_stock(plan, new_quantity)
     if item:
         item.quantity = new_quantity
-        item.reserved_until = reserved_until
-        item.save(update_fields=["quantity", "reserved_until"])
+        item.save(update_fields=["quantity"])
     else:
-        item = CartItem.objects.create(
-            cart=cart, plan=plan, quantity=quantity, reserved_until=reserved_until
-        )
+        item = CartItem.objects.create(cart=cart, plan=plan, quantity=quantity)
     _touch(request, cart)
     return item
 
@@ -163,10 +133,9 @@ def set_quantity(request: HttpRequest, *, plan_id: int, quantity: int) -> None:
         plan = Plan.objects.select_for_update().get(pk=plan_id)
         _available_plan(plan_id)
         if item := cart.items.filter(plan_id=plan_id).first():
-            reserved_until = _reserve(plan, item, quantity)
+            _check_stock(plan, quantity)
             item.quantity = quantity
-            item.reserved_until = reserved_until
-            item.save(update_fields=["quantity", "reserved_until"])
+            item.save(update_fields=["quantity"])
             _touch(request, cart)
 
 
@@ -207,30 +176,14 @@ def merge_carts(*, user: User, guest_cart_id: int) -> bool:
         limit = 1 if plan.requires_customer_input else plan.max_quantity
         reduced |= quantity > limit
         quantity = min(quantity, limit)
-        deadline = None
-        if plan.stock_quantity is not None:
-            now = timezone.now()
-            live = [
-                row
-                for row in (item, existing)
-                if row and row.reserved_until and row.reserved_until > now
-            ]
-            own = sum(row.quantity for row in live)
-            available = max(0, plan.stock_quantity - _reserved_totals([plan]).get(plan.pk, 0) + own)
-            if available and live:
-                reduced |= quantity > available
-                quantity = min(quantity, available)
-                deadline = min(cast(datetime, row.reserved_until) for row in live)
         if existing:
             existing.quantity = quantity
-            existing.reserved_until = deadline
-            existing.save(update_fields=["quantity", "reserved_until"])
+            existing.save(update_fields=["quantity"])
         else:
             item.quantity = quantity
-            item.reserved_until = deadline
             if account:
                 item.cart = account
-            item.save(update_fields=["quantity", "cart", "reserved_until"])
+            item.save(update_fields=["quantity", "cart"])
     if account:
         guest.delete()
     else:
@@ -262,18 +215,10 @@ class CartLine:
     unavailable: bool
     quantity_invalid: bool
     max_quantity: int
-    reservation_expired: bool
-    reservation_seconds: int | None
-    reservation_required: bool
 
     @property
     def purchasable(self) -> bool:
-        return not (
-            self.unavailable
-            or self.quantity_invalid
-            or self.reservation_expired
-            or self.reservation_required
-        )
+        return not (self.unavailable or self.quantity_invalid)
 
 
 @dataclass(frozen=True)
@@ -285,6 +230,10 @@ class CartSummary:
     def has_purchasable_items(self) -> bool:
         return any(line.purchasable for line in self.lines)
 
+    @property
+    def ready(self) -> bool:
+        return bool(self.lines) and all(line.purchasable for line in self.lines)
+
 
 @dataclass(frozen=True)
 class PurchaseOption:
@@ -292,29 +241,26 @@ class PurchaseOption:
     in_cart: int
     max_add: int
     maximum: int
-    reserved_until: datetime | None
 
     @property
     def selectable(self) -> bool:
-        return self.plan.is_available and (self.max_add > 0 or self.in_cart > 0)
+        return self.plan.is_available and self.maximum > 0
 
 
 def purchase_options(request: HttpRequest | None, plans: list[Plan]) -> list[PurchaseOption]:
     cart = get_cart(request) if request else None
     own = {item.plan_id: item for item in cart.items.all()} if cart else {}
-    reserved = _reserved_totals(plans)
     options = []
     for plan in plans:
         item = own.get(plan.pk)
         quantity = item.quantity if item else 0
-        maximum = _capacity(plan, item, reserved.get(plan.pk, 0))
+        maximum = _capacity(plan)
         options.append(
             PurchaseOption(
                 plan,
                 quantity,
                 max(0, maximum - quantity),
                 maximum,
-                item.reserved_until if item else None,
             )
         )
     return options
@@ -331,27 +277,16 @@ def cart_summary(cart: Cart | None) -> CartSummary:
             pk__in=[item.plan_id for item in items], product__in=Product.objects.public()
         )
     }
-    reserved = _reserved_totals(list(plans.values()))
     lines = []
     total = Decimal(0)
     for item in items:
         plan = plans.get(item.plan_id)
-        capacity = _capacity(plan, item, reserved.get(item.plan_id, 0)) if plan else 0
+        capacity = _capacity(plan) if plan else 0
         unavailable = plan is None or not plan.is_available or capacity == 0
         invalid = bool(plan and item.quantity > capacity)
-        limited = bool(plan and plan.stock_quantity is not None)
-        needs_reservation = limited and item.reserved_until is None
-        expires = bool(
-            plan and limited and item.reserved_until and item.reserved_until <= timezone.now()
-        )
-        seconds = (
-            max(0, ceil((item.reserved_until - timezone.now()).total_seconds()))
-            if limited and item.reserved_until and not expires
-            else None
-        )
         price = effective_price(plan) if plan else Decimal(0)
         amount = price * item.quantity
-        if not unavailable and not invalid and not expires and not needs_reservation:
+        if not unavailable and not invalid:
             total += amount
         lines.append(
             CartLine(
@@ -363,9 +298,6 @@ def cart_summary(cart: Cart | None) -> CartSummary:
                 unavailable,
                 invalid,
                 capacity,
-                expires,
-                seconds,
-                needs_reservation,
             )
         )
     return CartSummary(lines, total)

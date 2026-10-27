@@ -37,7 +37,31 @@ def test_stock_migrations_reverse_and_preserve_existing_data(plan):
         executor.migrate(executor.loader.graph.leaf_nodes())
         item.refresh_from_db()
         plan.refresh_from_db()
-        assert item.quantity == 1 and item.reserved_until is None and plan.stock_quantity is None
+        assert item.quantity == 1 and plan.stock_quantity is None
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_removing_cart_deadlines_reverses_without_losing_selections(plan):
+    from apps.cart.models import Cart, CartItem
+
+    cart = Cart.objects.create(session_key="migration-unreserved-example")
+    item = CartItem.objects.create(cart=cart, plan=plan, quantity=2)
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([("cart", "0002_cartitem_reserved_until")])
+        old_item = (
+            executor.loader.project_state([("cart", "0002_cartitem_reserved_until")])
+            .apps.get_model("cart", "CartItem")
+            .objects.get(pk=item.pk)
+        )
+        assert old_item.quantity == 2 and old_item.reserved_until is None
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        item.refresh_from_db()
+        assert item.quantity == 2 and item.plan_id == plan.pk and item.cart_id == cart.pk
+        assert not any(field.name == "reserved_until" for field in CartItem._meta.fields)
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
