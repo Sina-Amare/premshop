@@ -139,6 +139,8 @@ def set_quantity(request: HttpRequest, *, plan_id: int, quantity: int) -> None:
             item.quantity = quantity
             item.save(update_fields=["quantity"])
             _touch(request, cart)
+            return
+    raise ValidationError("این مورد دیگر در سبد خرید نیست.")
 
 
 @transaction.atomic
