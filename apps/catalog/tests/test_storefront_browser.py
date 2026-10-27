@@ -453,3 +453,25 @@ def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
         expect(header).not_to_have_class(away)
     finally:
         context.close()
+
+
+@pytest.mark.parametrize(("viewport", "beside"), [(PHONE, False), ({"width": 1280, "height": 900}, True)])
+def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
+    browser, live_server, discounted, viewport, beside
+):
+    """Three cards in a four-column row left a quarter of every category empty,
+    with «همه‌ی محصولات» floating in the gap."""
+    context = browser.new_context(viewport=viewport, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/")
+        section = page.locator(".v-category-section").first
+        head = section.locator(".v-section__head").bounding_box()
+        track = section.locator(".v-track").bounding_box()
+        if beside:
+            assert head["x"] >= track["x"] + track["width"], "right to left, the heading is the first column"
+            assert abs(head["y"] - track["y"]) < 8
+        else:
+            assert head["y"] + head["height"] <= track["y"] + 1
+    finally:
+        context.close()
