@@ -1001,3 +1001,27 @@ msgstr "Access"
 
 msgid "زمان‌ها"
 msgstr "Dates"
+
+msgid "محصول منتشرشده"
+msgstr "Published products"
+
+msgid "تخفیف فعال"
+msgstr "Active discounts"
+
+msgid "پلن ناموجود"
+msgstr "Unavailable plans"
+
+msgid "نیاز به رسیدگی"
+msgstr "Needs attention"
+
+msgid "پلن‌های ناموجود"
+msgstr "Unavailable plans"
+
+msgid "تخفیف‌هایی که تا ۴۸ ساعت دیگر تمام می‌شوند"
+msgstr "Discounts ending within 48 hours"
+
+msgid "پیش‌نویس‌ها"
+msgstr "Drafts"
+
+msgid "فعلاً موردی برای رسیدگی نیست."
+msgstr "Nothing needs attention right now."

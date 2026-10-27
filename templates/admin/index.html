@@ -1,0 +1,46 @@
+{% extends 'admin/base.html' %}
+{% load i18n fa %}
+{% comment %}
+Unfold's first page listed the same links as the sidebar. This one counts the
+catalogue and names what needs the operator, each item linked to its form;
+the recent actions stay beside it.
+{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-6">
+    <div class="panel-dashboard grow">
+        <div class="panel-stats">
+            <a href="{% url 'admin:catalog_product_changelist' %}"><span>{% translate "محصول منتشرشده" %}</span><strong>{{ attention.published|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_plan_changelist' %}"><span>{% translate "تخفیف فعال" %}</span><strong>{{ attention.on_sale|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_plan_changelist' %}"><span>{% translate "پلن ناموجود" %}</span><strong>{{ attention.sold_out|length|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_product_changelist' %}"><span>{% translate "پیش‌نویس" %}</span><strong>{{ attention.drafts|length|fa_digits }}</strong></a>
+        </div>
+        <section class="panel-attention">
+            <h2>{% translate "نیاز به رسیدگی" %}</h2>
+            {% if attention.sold_out %}
+                <h3>{% translate "پلن‌های ناموجود" %}</h3>
+                <ul>{% for plan in attention.sold_out %}<li><a href="{% url 'admin:catalog_plan_change' plan.pk %}"><bdi>{{ plan.product.name }}</bdi>، {{ plan.title }}</a></li>{% endfor %}</ul>
+            {% endif %}
+            {% if attention.ending %}
+                <h3>{% translate "تخفیف‌هایی که تا ۴۸ ساعت دیگر تمام می‌شوند" %}</h3>
+                <ul>{% for plan in attention.ending %}<li><a href="{% url 'admin:catalog_plan_change' plan.pk %}"><bdi>{{ plan.product.name }}</bdi>، {{ plan.title }}</a><span>{{ plan.promo_ends_at|jalali }}، {{ plan.promo_ends_at|time:"H:i"|fa_digits }}</span></li>{% endfor %}</ul>
+            {% endif %}
+            {% if attention.drafts %}
+                <h3>{% translate "پیش‌نویس‌ها" %}</h3>
+                <ul>{% for product in attention.drafts %}<li><a href="{% url 'admin:catalog_product_change' product.pk %}"><bdi>{{ product.name }}</bdi></a></li>{% endfor %}</ul>
+            {% endif %}
+            {% if not attention.sold_out and not attention.ending and not attention.drafts %}
+                <p>{% translate "فعلاً موردی برای رسیدگی نیست." %}</p>
+            {% endif %}
+        </section>
+    </div>
+
+    {% include "unfold/helpers/history.html" %}
+</div>
+{% endblock %}

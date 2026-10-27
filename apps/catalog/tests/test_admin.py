@@ -1887,3 +1887,36 @@ def test_a_section_image_without_its_description_is_refused(client, operator, ca
     assert response.status_code == 200
     assert "متن جایگزین" in errors_under(response.content.decode(), f"{row}-image_alt")
     assert not draft.sections.exists()
+
+
+def test_the_panel_opens_on_what_needs_attention(client, operator, catalogue):
+    """The first page repeated the sidebar's links. It now counts the
+    catalogue and lists what needs the operator: a sold-out plan, a discount
+    about to end and an unpublished draft, each linked to its form."""
+    live = catalogue["live"]
+    sold = live.plans.get()
+    Plan.objects.filter(pk=sold.pk).update(stock_quantity=0)
+    ending = Plan.objects.create(
+        product=live,
+        title="۳ ماهه",
+        cost_price=Decimal("100"),
+        sale_price=Decimal("500000"),
+        promo_price=Decimal("400000"),
+        promo_ends_at=timezone.now() + timedelta(hours=20),
+    )
+    later = Plan.objects.create(
+        product=live,
+        title="۶ ماهه",
+        cost_price=Decimal("100"),
+        sale_price=Decimal("900000"),
+        promo_price=Decimal("800000"),
+        promo_ends_at=timezone.now() + timedelta(days=9),
+    )
+
+    body = client.get(reverse("admin:index")).content.decode()
+
+    attention = body.split('class="panel-attention"', 1)[1]
+    assert reverse("admin:catalog_plan_change", args=[sold.pk]) in attention
+    assert reverse("admin:catalog_plan_change", args=[ending.pk]) in attention
+    assert reverse("admin:catalog_plan_change", args=[later.pk]) not in attention
+    assert reverse("admin:catalog_product_change", args=[catalogue["draft"].pk]) in attention
