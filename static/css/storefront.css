@@ -148,9 +148,6 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 .v-orbit-controls button{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:var(--radius-sm);background:transparent;cursor:pointer;color:var(--v-ink)}.v-orbit-controls button:hover:not(:disabled){background:var(--v-soft)}
 .v-orbit-controls button:disabled{opacity:.35;cursor:default}
 .v-scene-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}
-.v-orbit-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;background:var(--v-light);border:1px solid var(--v-line);border-radius:var(--radius-sm);color:var(--v-ink);font-size:12px;cursor:pointer}
-.v-orbit-toggle:hover{background:var(--v-mint);border-color:var(--v-accent)}
-.v-orbit-toggle .v-icon{width:16px;height:16px}
 .v-service-cloud.is-orbital .nebula{height:640px;display:block;padding:0}
 .v-service-cloud.is-orbital .nebula__item{position:absolute;left:0;top:0;width:112px;margin:0;will-change:transform}
 .v-service-name{min-height:0;font-size:12px;line-height:1.6;flex:none}

@@ -47,50 +47,30 @@ def test_phone_category_has_four_cards_in_two_columns_and_a_category_link(
         page.close()
 
 
-def test_orbit_pause_survives_paging_and_reload_and_resume_works_with_focus(
+def test_the_orbit_moves_without_a_pause_button_and_stops_for_a_visitor(
     browser, live_server, products
 ):
+    """The owner removed the pause button on 2026-10-28. The orbit still stops
+    while a logo is pointed at, never moves under reduced motion, and a pause
+    stored by the old button no longer freezes it."""
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
     try:
+        page.add_init_script(
+            "try { localStorage.setItem('premshop.orbitPaused', 'true') } catch {}"
+        )
         page.goto(live_server.url + "/")
         scene = page.locator("[data-hero-scene]")
         expect(scene).to_have_attribute("data-orbit-mode", "orbit")
-        page.evaluate("""() => {
-            window.orbitControlChanges = 0;
-            new MutationObserver(xs => window.orbitControlChanges += xs.length).observe(
-                document.querySelector('[data-orbit-toggle]'),
-                {childList:true,subtree:true,attributes:true,attributeFilter:['href']}
-            );
-        }""")
-        page.locator(".nebula__item:visible").first.focus()
-        page.locator("[data-orbit-toggle]").focus()
-        page.wait_for_timeout(100)
-        assert page.evaluate("window.orbitControlChanges") == 0
-        pause = page.get_by_role("button", name="توقف حرکت", exact=True)
-        pause.click()
+        assert page.locator("[data-orbit-toggle]").count() == 0
         item = page.locator(".nebula__item:visible").first
+        before = item.get_attribute("style")
+        page.wait_for_timeout(350)
+        assert item.get_attribute("style") != before, "the orbit should move on its own"
+        item.hover(force=True)
         stopped = item.get_attribute("style")
-        page.mouse.move(0, 0)
         page.wait_for_timeout(350)
         assert item.get_attribute("style") == stopped
-        if page.locator("[data-orbit-next]").is_visible():
-            page.locator("[data-orbit-next]").click()
-            item = page.locator(".nebula__item:visible").first
-            stopped = item.get_attribute("style")
-            page.wait_for_timeout(350)
-            assert item.get_attribute("style") == stopped
-        page.reload()
-        expect(scene).to_have_class(re.compile(r"\bis-paused\b"))
-        resume = page.locator("[data-orbit-toggle]")
-        expect(resume).to_have_text("ادامه‌ی حرکت")
-        resume.focus()
-        page.keyboard.press("Enter")
-        expect(resume).to_be_focused()
-        item = page.locator(".nebula__item:visible").first
-        stopped = item.get_attribute("style")
-        page.wait_for_timeout(350)
-        assert item.get_attribute("style") != stopped
         page.emulate_media(reduced_motion="reduce")
-        expect(page.locator("[data-orbit-toggle]")).to_be_hidden()
+        expect(scene).not_to_have_class(re.compile(r"\bis-animated\b"))
     finally:
         page.close()
