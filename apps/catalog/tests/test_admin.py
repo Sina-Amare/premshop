@@ -918,6 +918,15 @@ def test_the_panel_counts_per_address_whatever_its_case(client, staff_account):
     assert "_auth_user_id" not in client.session
 
 
+def test_the_panel_accepts_the_accounts_email_in_mixed_case(client, staff_account):
+    response = client.post(
+        reverse("admin:login"), {"username": "PaNel@EXAMPLE.test", "password": PASSWORD}
+    )
+
+    assert response.status_code == 302
+    assert client.session.get("_auth_user_id") == str(staff_account.pk)
+
+
 def test_only_a_real_sign_in_clears_the_budget(client, staff_account):
     """A post with the address and no password skips the password check. If
     it also cleared the budget, an empty submission after every nine guesses

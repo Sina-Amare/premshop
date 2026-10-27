@@ -20,6 +20,7 @@ from unfold.admin import ModelAdmin
 from unfold.forms import AuthenticationForm
 
 from apps.accounts.models import User
+from apps.accounts.otp import normalize_email
 from apps.accounts.services import password_attempt_refusal
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, to_persian_digits
@@ -39,7 +40,8 @@ class PanelLoginForm(AuthenticationForm):
     """
 
     def clean(self) -> dict[str, Any]:
-        username = self.cleaned_data.get("username")
+        username = normalize_email(self.cleaned_data.get("username", ""))
+        self.cleaned_data["username"] = username
         if username and self.cleaned_data.get("password"):
             if refusal := password_attempt_refusal(self.request, username):
                 raise ValidationError(refusal, code="rate_limited")
