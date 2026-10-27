@@ -44,6 +44,20 @@ def test_colour_preview_keeps_last_valid_tint_and_reset_uses_the_storefront_neut
     assert art.evaluate("e=>getComputedStyle(e).backgroundColor") != first
 
 
+@pytest.mark.parametrize("discounted", [False, True])
+def test_unavailable_plan_promotion_fields_have_visible_preview_targets(
+    open_panel, product, discounted
+):
+    Plan.objects.filter(product=product).update(
+        is_available=False, promo_price=1000000 if discounted else None
+    )
+    page = open_panel(change_form(product))
+    page.locator('[data-snapshot-field="plans-0-promo_price"]').click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator(".snapshot-highlight")).to_be_visible()
+    expect(frame.locator("[data-plan-promotion]")).to_be_visible()
+
+
 @pytest.mark.parametrize("width", [390, 1440])
 def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, product, width):
     page = open_panel(change_form(product), width=width)

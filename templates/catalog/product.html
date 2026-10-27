@@ -106,9 +106,9 @@
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__details">
                 <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
-                  <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
+                  <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price data-preview-container{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
                 </span>
-                <span data-plan-promotion{% if not option.selectable %} hidden{% endif %}>{% include 'catalog/_purchase_promotion.html' with plan=plan %}</span>
+                <span data-plan-promotion data-preview-container{% if not option.selectable %} hidden{% endif %}>{% include 'catalog/_purchase_promotion.html' with plan=plan %}</span>
               </span>
             </label>
           {% endwith %}{% endfor %}
