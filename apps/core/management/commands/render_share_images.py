@@ -28,8 +28,8 @@ STATIC = Path(settings.BASE_DIR) / "static"
 OUT = STATIC / "img"
 
 # The home page's headline and lead, as the page prints them today.
-HEADLINE = "ChatGPT رو پای کار بیارید."
-LEAD = "ChatGPT و Gemini؛ برای کار، تحقیق و یادگیری."
+HEADLINE = "ChatGPT Plus، برای متن، فایل و کد."
+LEAD = "امکانات و شرایط خرید اشتراک‌های ChatGPT، Gemini و Claude را ببینید."
 
 
 def _font(name: str) -> str:

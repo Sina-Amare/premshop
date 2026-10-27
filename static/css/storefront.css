@@ -176,7 +176,8 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-hero__inner{padding-block:20px}
 .v-hero h1{font-size:clamp(32px,3.6vw,48px);line-height:1.45}
 .v-hero__lead{max-width:430px;text-wrap:pretty}
-.v-hero__product{color:var(--v-accent)}
+.v-hero__highlight{color:var(--v-accent)}
+.pcard__description{font-size:12px;line-height:1.9;color:var(--v-text);margin:8px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .v-hero__copy .v-hero__lead{margin-bottom:12px}
 .v-hero__facts{display:flex;align-items:flex-start;gap:7px;margin:0 0 22px;font-size:12px;line-height:1.9;color:var(--v-text)}
 .v-hero__facts .v-icon{width:16px;height:16px;margin-top:3px}

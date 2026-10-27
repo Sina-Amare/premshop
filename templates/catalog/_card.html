@@ -5,6 +5,7 @@
   <div class="pcard__body">
     <span class="pcard__cat">{{ product.category.name }}</span>
     <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>
+    {% if product.short_description %}<p class="pcard__description">{{ product.short_description }}</p>{% endif %}
     <p class="pcard__terms">{{ product.delivery_sentence }}</p>
   </div>
   <div class="pcard__foot">

@@ -4,8 +4,8 @@ from django.urls import reverse
 def test_shared_shell_names_the_brand_and_keeps_real_destinations(client, db):
     response = client.get(reverse("home"))
     body = response.content.decode()
-    assert "پای کار بیارید." in body
-    assert "از اشتراکتون کار بکشید." in body
+    assert "برای متن، فایل و کد." in body
+    assert "اشتراک ابزارهای هوش مصنوعی" in body
     assert 'class="v-search"' in body
     assert 'href="/faq/"' in body
     assert 'name="q"' in body
