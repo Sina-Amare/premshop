@@ -61,7 +61,11 @@ class UserAdmin(ModelAdmin):
     search_fields = ["email", "phone"]
     ordering = ["-date_joined"]
     readonly_fields = ["email", "joined", "last_seen", "is_verified"]
-    fields = ["email", "is_verified", "phone", "is_active", "is_staff", "joined", "last_seen"]
+    fieldsets = (
+        (_("حساب کاربری"), {"fields": ("email", "is_verified", "phone")}),
+        (_("دسترسی"), {"fields": ("is_active", "is_staff")}),
+        (_("زمان‌ها"), {"fields": ("joined", "last_seen")}),
+    )
 
     @admin.display(description=_("تاریخ عضویت"), ordering="date_joined")
     def joined(self, obj: User) -> str:

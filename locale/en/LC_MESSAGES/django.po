@@ -992,3 +992,12 @@ msgstr "Total stock cannot be lower than reserved stock."
 
 msgid "وضعیت موجودی"
 msgstr "Stock status"
+
+msgid "حساب کاربری"
+msgstr "Account"
+
+msgid "دسترسی"
+msgstr "Access"
+
+msgid "زمان‌ها"
+msgstr "Dates"
