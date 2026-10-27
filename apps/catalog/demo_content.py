@@ -66,7 +66,7 @@ PRODUCT_COPY = {
         "sources": "https://help.netflix.com/en/node/24926",
     },
     "apple-gift-card": {
-        "short": "اعتبار برای App Store، Apple Music و iCloud+.",
+        "short": "اعتبار برای خرید از App Store و تمدید اشتراک‌های اپل.",
         "title": "خرید Apple Gift Card (گیفت کارت اپل)",
         "description": "خرید گیفت کارت اپل Apple Gift Card برای افزایش اعتبار Apple Account و خریدهای مجاز اپل. مبلغ و کشور کارت باید با نیاز و حساب شما سازگار باشد.",
         "heading": "با گیفت کارت اپل چه کارهایی می‌شه کرد؟",

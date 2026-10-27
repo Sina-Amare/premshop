@@ -42,7 +42,7 @@
             </div>
           </form>
           <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">حداکثر تعداد قابل خرید: {{ line.max_quantity|fa_digits }} عدد</p>
-          <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید: ثبت‌نشده</p>
+          <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است.</p>
           {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}<span>حذف</span></button></form>
         </div>
@@ -54,7 +54,7 @@
       <h2>خلاصه‌ی سبد</h2>
       <div class="cart-summary__label">{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات قابل خرید{% endif %}</div>
       <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="ابتدا محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div>
-      {% if not cart.ready %}<p class="cart-summary__blocked">وضعیت سبد: نیاز به اصلاح</p>{% endif %}
+      {% if not cart.ready %}<p class="cart-summary__blocked">بعضی موارد سبد نیاز به اصلاح دارند.</p>{% endif %}
       <button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>
       <a class="btn btn--secondary cart-summary__more" href="{% url 'home' %}#products">افزودن محصول دیگر{% include 'storefront/icon.html' with name='plus' %}</a>
       <p class="cart-summary__pending">{% include 'storefront/icon.html' with name='info' %}<span>ثبت سفارش هنوز فعال نیست.</span></p>
