@@ -66,7 +66,7 @@ class UserAdmin(ModelAdmin):
     fieldsets = (
         (_("حساب کاربری"), {"fields": ("email", "is_verified", "phone")}),
         (_("دسترسی"), {"fields": ("is_active", "is_staff")}),
-        (_("زمان‌ها"), {"fields": ("joined", "last_seen")}),
+        (_("تاریخ‌ها"), {"fields": ("joined", "last_seen")}),
     )
 
     @admin.display(description=_("تاریخ عضویت"), ordering="date_joined")

@@ -1035,7 +1035,7 @@ def test_the_password_change_errors_say_ramz_obour(client, operator):
 
     body = response.content.decode()
     assert "رمز عبور فعلی اشتباه است." in body
-    assert "تکرار رمز عبور یکسان نیست." in body
+    assert "رمز عبور و تکرار آن یکسان نیستند." in body
     for leak in ("گذرواژه", "لطفاً", "Please correct"):
         assert leak not in body, leak
 

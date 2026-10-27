@@ -181,9 +181,9 @@
       const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
       const data = await response.json();
       if (!response.ok) message = data.message || 'سبد خریدتان را بررسی کنید و دوباره امتحان کنید.';
-      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد، اما نمایش سبد به‌روز نشد. صفحه را دوباره باز کنید.';
+      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. برای دیدن سبد خرید به‌روز، صفحه را دوباره باز کنید.';
     } catch {
-      message = 'نتیجه مشخص نیست. سبد خریدتان را بررسی کنید.';
+      message = 'مشخص نیست تغییر ثبت شد یا نه. سبد خریدتان را بررسی کنید.';
     } finally {
       cartPending = false;
       cartPage.removeAttribute('aria-busy');
@@ -222,9 +222,9 @@
       if (response.ok) {
         await sync(data);
         show(data);
-      } else fail(data.message || 'صفحه را دوباره باز کنید و دوباره امتحان کنید.');
+      } else fail(data.message || 'صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');
     } catch {
-      fail('نتیجه مشخص نیست. سبد خریدتان را بررسی کنید.');
+      fail('مشخص نیست اضافه شد یا نه. سبد خریدتان را بررسی کنید.');
     } finally {
       form.dataset.pending = 'false';
       form.removeAttribute('aria-busy');

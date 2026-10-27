@@ -204,7 +204,7 @@ def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
 
     assert response.redirect_chain[-1][0] == reverse("login-code")
     # Printed on the email page, so it names the page that ran out.
-    assert "زمان صفحه‌ی کد ورود تمام شده است." in response.content.decode()
+    assert "صفحه‌ی کد ورود دیگر معتبر نیست." in response.content.decode()
 
 
 def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):

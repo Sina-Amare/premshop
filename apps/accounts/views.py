@@ -48,7 +48,7 @@ WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
 CODE_RESENT = "کد جدید را فرستادیم."
 # Shown on the code page by its script and on the email page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "زمان صفحه‌ی کد ورود تمام شده است. دوباره ایمیلتان را وارد کنید."
+PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر معتبر نیست. دوباره ایمیلتان را وارد کنید."
 
 # A real hash of a value nobody knows. Comparing a submitted password against it
 # when there is no live account to check makes the miss cost the same work as a

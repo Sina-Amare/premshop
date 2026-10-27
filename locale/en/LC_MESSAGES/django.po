@@ -428,7 +428,7 @@ msgstr "The sections are added at the end of these products:"
 msgid "بخش‌های محتوا"
 msgstr "content sections"
 
-msgid "بررسی واقعیت‌ها"
+msgid "نیاز به بررسی"
 msgstr "Fact check"
 
 msgid "بعد از پرداخت"
@@ -639,7 +639,7 @@ msgstr "Terms and information review"
 msgid "نام‌های جستجو"
 msgstr "Search names"
 
-msgid "عنوان و توضیح جستجو"
+msgid "عنوان و توضیح سئو"
 msgstr "Search title and description"
 
 msgid "بخش‌های فرم محصول"
@@ -999,7 +999,7 @@ msgstr "Account"
 msgid "دسترسی"
 msgstr "Access"
 
-msgid "زمان‌ها"
+msgid "تاریخ‌ها"
 msgstr "Dates"
 
 msgid "محصول منتشرشده"

@@ -356,7 +356,7 @@ class ProductQuestionInline(StackedInline):
 
 
 class StaleFactsFilter(admin.SimpleListFilter):
-    title = _("بررسی واقعیت‌ها")
+    title = _("نیاز به بررسی")
     parameter_name = "facts"
 
     def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, Any]]:
@@ -611,7 +611,7 @@ class ProductAdmin(PreviewAdminMixin):
         ),
         (_("نام‌های جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
         (
-            _("عنوان و توضیح جستجو"),
+            _("عنوان و توضیح سئو"),
             {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]},
         ),
     ]
