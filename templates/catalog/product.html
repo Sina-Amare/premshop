@@ -53,6 +53,15 @@
       {% if product.renewable %}<div data-preview-field="renewable" class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='renewable' %}{% endif %}
     </dl>
 
+
+    {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
+    {% if snapshot %}<div data-preview-target="sections">{% endif %}
+    {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
+
+    {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
+    {% if snapshot %}</div>{% endif %}
+
+    {# The full table after the benefits: what the product does sells, the specs confirm; key specs are chips above. #}
     {% if specs or snapshot %}
     <section class="pdp__section">
       <h2 class="pdp__h2">مشخصات</h2>
@@ -63,13 +72,6 @@
       </table>
     </section>
     {% endif %}
-
-    {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
-    {% if snapshot %}<div data-preview-target="sections">{% endif %}
-    {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
-
-    {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
-    {% if snapshot %}</div>{% endif %}
 
     {% comment %}
     The product's own questions, then the shop's: when it arrives and, where it
