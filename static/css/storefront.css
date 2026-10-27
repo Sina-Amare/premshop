@@ -176,6 +176,10 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 .v-hero__inner{padding-block:20px}
 .v-hero h1{font-size:clamp(32px,3.6vw,48px);line-height:1.45}
 .v-hero__lead{max-width:430px;text-wrap:pretty}
+.v-hero__product{color:var(--v-accent)}
+.v-hero__copy .v-hero__lead{margin-bottom:12px}
+.v-hero__facts{display:flex;align-items:flex-start;gap:7px;margin:0 0 22px;font-size:12px;line-height:1.9;color:var(--v-text)}
+.v-hero__facts .v-icon{width:16px;height:16px;margin-top:3px}
 .v-hero__actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px 22px}
 .v-hero__actions .v-button{gap:20px;min-height:44px}
 .v-hero__help{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:var(--v-text);font-size:13px;border-radius:6px;transition:color 140ms}
