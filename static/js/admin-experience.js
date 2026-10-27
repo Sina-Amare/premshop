@@ -165,13 +165,27 @@ document.addEventListener('DOMContentLoaded', () => {
     colour.addEventListener('input',update);
     picker.addEventListener('input',()=>{colour.value=picker.value;colour.dispatchEvent(new Event('input',{bubbles:true}));colour.dispatchEvent(new Event('change',{bubbles:true}));});
     art.querySelector('[data-brand-reset]').addEventListener('click',()=>{colour.value='';colour.dispatchEvent(new Event('input',{bubbles:true}));colour.dispatchEvent(new Event('change',{bubbles:true}));});
-    const image = form.querySelector('[name=image]');let blob;
-    image?.addEventListener('change',()=>{
-      if (blob) URL.revokeObjectURL(blob);
-      if (!image.files[0] || !/^image\/(png|jpeg|webp)$/.test(image.files[0].type)) return;
-      blob=URL.createObjectURL(image.files[0]);
-      let logo=art.querySelector('img');if (!logo) {logo=document.createElement('img');logo.alt='';art.querySelector('.pcard__art').prepend(logo);art.querySelector('.pcard__mono')?.remove();}logo.src=blob;
-    });
+    const image = form.querySelector('[name=image]'), clear = form.querySelector('[name="image-clear"]');
+    const canvas = art.querySelector('.pcard__art');
+    const savedArt = canvas.querySelector('img,.pcard__mono')?.cloneNode(true);
+    let blob;
+    const updateImage = () => {
+      if (blob) { URL.revokeObjectURL(blob); blob = undefined; }
+      const file = image?.files[0];
+      let content;
+      if (file && /^image\/(png|jpeg|webp)$/.test(file.type)) {
+        content = document.createElement('img');content.alt = '';
+        blob = URL.createObjectURL(file);content.src = blob;
+      } else if (!clear?.checked && savedArt) content = savedArt.cloneNode(true);
+      else {
+        content = document.createElement('span');content.className = 'pcard__mono';
+        content.textContent = form.querySelector('[name=name]')?.value.slice(0,1) || '';
+      }
+      canvas.querySelector('img,.pcard__mono')?.remove();
+      canvas.prepend(content);
+    };
+    image?.addEventListener('change',updateImage);
+    clear?.addEventListener('change',updateImage);
     update();
   }
 });
