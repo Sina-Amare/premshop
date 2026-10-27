@@ -50,3 +50,31 @@ def test_same_count_changes_in_another_tab_refresh_line_quantities_and_totals(
         expect(page.locator(".v-cart__count")).to_have_text("۳")
     finally:
         page.close()
+
+
+def test_focused_cart_navigation_moves_to_the_surviving_product_link_when_emptied(
+    browser, live_server, plan
+):
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        page.locator(".buybox__cta").click()
+        expect(page.locator("#cart-toast")).to_be_visible()
+        page.goto(live_server.url + "/cart/")
+        page.locator(".cart-back").focus()
+        response = page.request.post(
+            live_server.url + "/cart/remove/",
+            form={
+                "plan": str(plan.pk),
+                "csrfmiddlewaretoken": page.locator(
+                    "[name=csrfmiddlewaretoken]"
+                ).first.input_value(),
+            },
+        )
+        assert response.ok
+        with page.expect_response("**/cart/availability/**"):
+            page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(page.locator(".cart-empty")).to_be_visible()
+        expect(page.locator(".cart-empty .btn")).to_be_focused()
+    finally:
+        page.close()
