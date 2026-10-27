@@ -175,7 +175,7 @@ def test_plan_guidance_applies_to_costs_and_supplier_links(open_panel, product):
 
 def test_title_error_requires_removing_the_store_name(open_panel, product):
     page = open_panel(change_form(product))
-    page.locator(".panel-section-jumps a").filter(has_text="عنوان و توضیح جستجو").click()
+    page.locator(".panel-section-jumps a").filter(has_text="عنوان و توضیح سئو").click()
     page.fill("#id_seo_title", "PremShop Plus")
     page.locator("#submit-row button[name=_continue]").click()
     expect(page.locator(".field-seo_title")).to_contain_text("نام فروشگاه رو اینجا ننویسید")
