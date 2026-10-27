@@ -194,6 +194,13 @@
       if (submit) { submit.disabled = form.hasAttribute('data-snapshot'); submit.setAttribute('aria-disabled', 'true'); submit.hidden = false; submit.textContent = 'ناموجود'; }
       if (selection) selection.hidden = true;
       if (cartLink) cartLink.hidden = true;
+      if (qtyRow && qty) {
+        if (qtyRow.contains(document.activeElement) && submit) submit.focus({preventScroll:true});
+        qtyRow.hidden = true;
+        qty.disabled = true;
+      }
+      if (limit) limit.hidden = true;
+      if (asks) asks.hidden = true;
       return;
     }
     var row = plan.closest('.plan');

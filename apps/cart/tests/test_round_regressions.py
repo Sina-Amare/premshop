@@ -239,3 +239,24 @@ def test_cart_content_refresh_restores_focused_links(browser, live_server, plan,
         expect(page.locator(link)).to_be_focused()
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_failed_add_reconciles_unavailable_quantity_controls_and_button(browser, live_server, plan):
+    page = browser.new_page()
+    try:
+        page.goto(live_server.url + plan.product.get_absolute_url())
+        button = page.locator(".buybox__cta")
+        normal = button.evaluate("e=>getComputedStyle(e).backgroundColor")
+        Plan.objects.filter(pk=plan.pk).update(stock_quantity=0)
+        button.click()
+        expect(page.locator(".cart-add-error")).to_be_visible()
+        expect(button).to_be_disabled()
+        expect(button).to_be_focused()
+        expect(page.locator("#qty-row")).to_be_hidden()
+        expect(page.locator("#qty")).to_be_disabled()
+        expect(page.locator("#qty-limit")).to_be_hidden()
+        assert button.evaluate("e=>getComputedStyle(e).backgroundColor") != normal
+    finally:
+        page.close()
