@@ -135,3 +135,8 @@ def test_a_scheduled_offer_selected_at_another_expiry_also_expires(offers):
         promo_ends_at=now + timedelta(hours=3),
     )
     assert [step["price"] for step in card_price_steps(offers)] == [90, 80, 200]
+
+
+def test_the_starting_plan_has_no_dot_that_reads_as_a_persian_zero(offers):
+    body = render_to_string("catalog/_card.html", {"product": offers})
+    assert "·" not in body
