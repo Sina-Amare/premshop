@@ -137,3 +137,6 @@ body.app-orders.model-order.change-form .order-list-mobile{display:none}
 .panel-attention li span{color:var(--panel-text);font-size:13px}
 .panel-attention p{margin:6px 0 0;color:var(--panel-text);font-size:14px}
 @media(max-width:900px){.panel-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Service logos are drawn for a light ground; on Unfold's dark tile the black ones (Apple, ChatGPT, Copilot) vanished. */
+html.dark #result_list span.rounded.border:has(> img),html.dark .field-image img{background:#f5f6f8;border-color:#394354}
+html.dark .field-image img{padding:4px;border-radius:6px}
