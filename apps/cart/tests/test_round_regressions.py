@@ -259,7 +259,10 @@ def test_toast_keeps_a_latin_product_name_inside_a_right_to_left_line(browser, l
         page.locator(".buybox__cta").click()
         toast = page.locator("#cart-toast")
         expect(toast.locator("[data-toast-title]")).to_have_text("به سبد خرید اضافه شد")
-        detail, name = toast.locator("[data-toast-detail]"), toast.locator("[data-toast-detail] bdi").first
+        detail, name = (
+            toast.locator("[data-toast-detail]"),
+            toast.locator("[data-toast-detail] bdi").first,
+        )
         expect(name).to_have_text("GitHub Copilot")
         line, word = detail.bounding_box(), name.bounding_box()
         # Right to left, the first thing said sits at the right edge of the line.

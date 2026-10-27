@@ -433,7 +433,9 @@ def test_a_wide_table_scrolls_inside_its_section_on_a_small_phone(browser, live_
         context.close()
 
 
-@pytest.mark.parametrize(("viewport", "gives_way"), [(PHONE, True), ({"width": 1280, "height": 900}, False)])
+@pytest.mark.parametrize(
+    ("viewport", "gives_way"), [(PHONE, True), ({"width": 1280, "height": 900}, False)]
+)
 def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
     browser, live_server, discounted, viewport, gives_way
 ):
@@ -455,7 +457,9 @@ def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
         context.close()
 
 
-@pytest.mark.parametrize(("viewport", "beside"), [(PHONE, False), ({"width": 1280, "height": 900}, True)])
+@pytest.mark.parametrize(
+    ("viewport", "beside"), [(PHONE, False), ({"width": 1280, "height": 900}, True)]
+)
 def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
     browser, live_server, discounted, viewport, beside
 ):
@@ -469,7 +473,9 @@ def test_a_category_heading_sits_beside_its_cards_on_wide_screens(
         head = section.locator(".v-section__head").bounding_box()
         track = section.locator(".v-track").bounding_box()
         if beside:
-            assert head["x"] >= track["x"] + track["width"], "right to left, the heading is the first column"
+            assert (
+                head["x"] >= track["x"] + track["width"]
+            ), "right to left, the heading is the first column"
             assert abs(head["y"] - track["y"]) < 8
         else:
             assert head["y"] + head["height"] <= track["y"] + 1
