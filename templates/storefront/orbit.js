@@ -27,7 +27,7 @@
   const update = () => {
     const eligible = orbital && desktop.matches;
     const moving = eligible && document.documentElement.dataset.motion === 'on';
-    const running = moving && visible && !hovered && !document.hidden && !scene.querySelector('.nebula__item:focus-visible');
+    const running = moving && visible && !hovered && !document.hidden && !scene.querySelector('.nebula__item:focus-visible, [data-orbit-controls] :focus-visible');
     scene.classList.toggle('is-animated', moving);
     scene.classList.toggle('is-paused', !running);
     if (running && !frame) frame = requestAnimationFrame(tick);

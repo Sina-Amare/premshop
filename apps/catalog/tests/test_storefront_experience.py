@@ -62,3 +62,14 @@ def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client,
     assert body.count('class="nebula__item"') == 30
     assert "data-orbit-next" in body
     assert "data-orbit-range" in body
+
+
+def test_the_first_paint_waits_for_the_orbit_marker(client, db):
+    """rel=expect names the marker the inline orbit script leaves behind it;
+    with the two apart, the logos jumped into place after the first paint."""
+    body = client.get(reverse("home")).content.decode()
+    head = body.split("</head>", 1)[0]
+    assert '<link rel="expect" href="#orbit-placed" blocking="render">' in head
+    assert body.index('id="orbit-placed"') > body.index(
+        "document.querySelector('[data-hero-scene]')"
+    )
