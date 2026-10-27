@@ -1,6 +1,7 @@
 @import url("product-art.css");
 :root{--panel-accent:#2459d3;--panel-line:#dfe3e9;--panel-surface:#fff;--panel-soft:#f5f6f8;--panel-ink:#20252e;--panel-text:#566170;--panel-danger:#bd2d35}
 html.dark{--panel-accent:#91aff1;--panel-line:#394354;--panel-surface:#181d26;--panel-soft:#202733;--panel-ink:#edf1f7;--panel-text:#bcc6d5;--panel-danger:#ff939a}
+html body :is(.errorlist,.errorlist *,.errornote){color:var(--panel-danger)}
 body{background:var(--panel-soft);color:var(--panel-ink)}
 html body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select){border-color:#8490a0;transition:background-color 140ms}
 html.dark body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select){border-color:#69778d}

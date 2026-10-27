@@ -5,7 +5,7 @@ import pytest
 from django.conf import settings
 from playwright.sync_api import expect
 
-from apps.catalog.tests.test_admin_browser import change_form
+from apps.catalog.tests.test_admin_browser import change_form, save
 from apps.catalog.tests.test_admin_browser import open_panel as open_panel
 from apps.catalog.tests.test_admin_browser import product as product
 from apps.core.tests.test_accessibility_browser import contrast
@@ -34,6 +34,24 @@ def test_brand_validation_message_meets_AA_in_both_themes(open_panel, product, t
     error = page.locator("[data-brand-error]")
     expect(error).to_be_visible()
     foreground = error.evaluate("e=>getComputedStyle(e).color")
+    background = error.evaluate("e=>getComputedStyle(e.closest('fieldset')).backgroundColor")
+    assert contrast(foreground, background) >= 4.5
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_server_validation_message_meets_AA_in_both_themes(open_panel, product, theme):
+    page = open_panel(change_form(product))
+    page.evaluate("theme=>localStorage.setItem('adminTheme',JSON.stringify(theme))", theme)
+    page.reload()
+    page.locator("#id_name").fill("")
+    save(page)
+    error = page.locator(".errorlist").first
+    expect(error).to_be_visible()
+    foreground = error.evaluate("""e=>{
+        const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d');
+        ctx.fillStyle=getComputedStyle(e).color;ctx.fillRect(0,0,1,1);
+        return 'rgb('+[...ctx.getImageData(0,0,1,1).data].slice(0,3).join(',')+')';
+    }""")
     background = error.evaluate("e=>getComputedStyle(e.closest('fieldset')).backgroundColor")
     assert contrast(foreground, background) >= 4.5
 
