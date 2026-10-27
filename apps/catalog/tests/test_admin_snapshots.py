@@ -40,6 +40,16 @@ def test_product_snapshot_uses_posted_values_without_writing(client, operator, c
     assert response["X-Robots-Tag"] == "noindex, nofollow"
 
 
+def test_product_seo_preview_matches_its_computed_public_title(client, operator, catalogue):
+    obj = catalogue["draft"]
+    data = form_of(client, reverse("admin:catalog_product_change", args=[obj.pk]))
+    data.update(name="Claude Pro", seo_title="", seo_description="")
+    response = client.post(reverse("admin:catalog_product_preview", args=[obj.pk]), data)
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'data-preview-field="seo_title">خرید Claude Pro (کلود پرو) | PremShop</h2>' in body
+
+
 def test_invalid_snapshot_has_linked_errors_and_does_not_create(client, operator, catalogue):
     data = form_of(client, reverse("admin:catalog_product_change", args=[catalogue["draft"].pk]))
     data["brand_colour"] = "wrong"
