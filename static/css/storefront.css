@@ -385,4 +385,4 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:719px){.cart-toast{padding-inline:10px 4px}.cart-toast__message{gap:8px}.cart-toast--art .cart-toast__art{width:32px;height:32px;border-radius:8px}.cart-toast__art img{width:22px;height:22px}.cart-toast__message strong{font-size:13px}.cart-toast__message [data-toast-detail]{font-size:12px}.cart-toast>a{padding-inline:6px;font-size:12px}}
 
 @media(max-width:760px){.v-category-section .v-track .pcard__art,.v-offers-band .v-track .pcard__art{aspect-ratio:16/9}}
-.pcard__art img{max-inline-size:64px}
+.pcard__art img{max-inline-size:64px}@media(min-width:1200px) and (prefers-reduced-motion:reduce),(min-width:1200px) and (not (pointer:fine)){.v-hero__inner{padding-block:36px}}
