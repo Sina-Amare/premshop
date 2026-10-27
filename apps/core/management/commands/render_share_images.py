@@ -23,6 +23,7 @@ from django.core.management.base import BaseCommand, CommandError
 from PIL import Image
 
 from apps.catalog.models import Product
+from apps.core.richtext import isolate_latin
 
 STATIC = Path(settings.BASE_DIR) / "static"
 OUT = STATIC / "img"
@@ -70,7 +71,7 @@ footer {{ block-size: 128px; flex-shrink: 0; display: flex; align-items: center;
 footer svg {{ inline-size: 50px; block-size: 50px; }}
 footer span {{ font-family: Estedad; font-weight: 600; font-size: 44px; }}
 </style></head><body>
-<main><div class="copy"><h1>{escape(title)}</h1><p>{escape(lead)}</p></div>{artwork}</main>
+<main><div class="copy"><h1>{isolate_latin(title)}</h1><p>{isolate_latin(lead)}</p></div>{artwork}</main>
 <footer>{mark}<span>PremShop</span></footer>
 </body></html>"""
 

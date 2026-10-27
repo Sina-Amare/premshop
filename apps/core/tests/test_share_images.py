@@ -1,4 +1,5 @@
 import pytest
+from django.utils.html import strip_tags
 from PIL import Image
 
 from apps.catalog.models import Product
@@ -24,8 +25,18 @@ def test_share_renderer_embeds_existing_artwork_and_escapes_editor_text(
     html = _card(product)
     assert f"data:{mime};base64," in html
     assert "<script>bad</script>" not in html
-    assert "&lt;script&gt;bad&lt;/script&gt;" in html
-    assert "A &amp; B &quot;quoted&quot;" in html
+    assert "&lt;script&gt;bad&lt;/script&gt;" in strip_tags(html)
+    assert "A &amp; B &quot;quoted&quot;" in strip_tags(html)
+
+
+def test_share_text_isolates_each_latin_product_name():
+    html = _card(
+        Product(
+            name="JetBrains", short_description="برای Python در PyCharm و Java در IntelliJ IDEA"
+        )
+    )
+    assert "<bdi>PyCharm</bdi>" in html
+    assert "<bdi>IntelliJ IDEA</bdi>" in html
 
 
 @pytest.mark.browser
