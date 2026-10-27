@@ -37,7 +37,7 @@
   };
   toast.querySelector('[data-toast-close]').addEventListener('click', () => {
     toast.hidden = true;
-    document.querySelector('.v-cart')?.focus();
+    document.querySelector('.v-cart')?.focus({preventScroll: true});
   });
   toast.addEventListener('mouseleave', scheduleHide);
   toast.addEventListener('focusout', scheduleHide);
@@ -153,11 +153,14 @@
     } catch { /* A stale display cannot bypass the server's stock check. */ }
     finally { refreshing = false; }
   };
+  // Safari before 15.4 names no submitter, so the button pressed is remembered from its click.
+  let pressed = null;
+  cartPage?.addEventListener('click', event => { pressed = event.target.closest('button[type=submit]'); });
   cartPage?.addEventListener('submit', async event => {
     const action = event.target;
     if (!action.matches('.cart-quantity,.cart-remove-form') || !window.fetch) return;
-    // Safari before 15.4 names no submitter, so «+» and «−» would post nothing new; let the form post itself.
-    if (action.matches('.cart-quantity') && !event.submitter) return;
+    const submitter = event.submitter ?? (action.contains(pressed) ? pressed : null);
+    pressed = null;
     event.preventDefault();
     if (cartPending) return;
     const line = action.closest('[data-cart-plan]');
@@ -168,7 +171,7 @@
     const body = new FormData(action);
     const quantity = action.querySelector('input[name=quantity]');
     const accepted = quantity ? {id:quantity.id, version:quantity.dataset.editVersion || '0'} : null;
-    if (event.submitter?.name) body.append(event.submitter.name, event.submitter.value);
+    if (submitter?.name) body.append(submitter.name, submitter.value);
     cartPending = true;
     generation += 1;
     cartPage.setAttribute('aria-busy', 'true');

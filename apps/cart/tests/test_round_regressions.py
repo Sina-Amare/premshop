@@ -273,20 +273,21 @@ def test_toast_keeps_a_latin_product_name_inside_a_right_to_left_line(browser, l
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-def test_a_quantity_form_submitted_without_a_submitter_still_changes_the_quantity(
-    browser, live_server, plan
-):
-    """What Safari before 15.4 sends: a submit event with no submitter."""
+def test_a_step_button_works_where_the_browser_names_no_submitter(browser, live_server, plan):
+    """Safari before 15.4 leaves SubmitEvent.submitter empty, so «+» posted the
+    unchanged quantity and the cart reported an update that never happened."""
     page = browser.new_page()
     try:
         page.goto(live_server.url + plan.product.get_absolute_url())
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         page.goto(live_server.url + "/cart/")
-        page.locator(".cart-quantity input[name=quantity]").fill("2")
-        with page.expect_navigation():
-            page.locator(".cart-quantity").evaluate("form => form.requestSubmit()")
+        page.evaluate(
+            "Object.defineProperty(SubmitEvent.prototype, 'submitter', {get: () => null})"
+        )
+        page.locator('.cart-quantity [name=step][value="1"]').click()
         expect(page.locator(".cart-quantity input[name=quantity]")).to_have_value("2")
+        expect(page).to_have_url(live_server.url + "/cart/")
         assert CartItem.objects.get().quantity == 2
     finally:
         page.close()
