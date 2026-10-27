@@ -56,6 +56,8 @@
   const jumping = () => { jumpUntil = performance.now() + 1500; };
   addEventListener('hashchange', jumping);
   document.addEventListener('click', event => { if (event.target.closest('a[href*="#"]')) jumping(); });
+  // Focus inside the header, a keyboard user or a returned focus, brings it back first.
+  header?.addEventListener('focusin', () => header.classList.remove('v-header--away'));
   if (header) addEventListener('scroll', () => {
     const y = scrollY;
     if (performance.now() < jumpUntil) { lastY = y; return; }
