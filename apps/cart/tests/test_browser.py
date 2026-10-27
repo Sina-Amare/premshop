@@ -106,7 +106,9 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         Plan.objects.filter(pk=plan.pk).update(sale_price=200000)
         Product.objects.filter(pk=plan.product_id).update(status=Product.Status.DRAFT)
         page.goto(live_server.url + "/cart/")
-        expect(page.locator(".cart-line").first.locator(".cart-line__stock")).to_have_text("ناموجود")
+        expect(page.locator(".cart-line").first.locator(".cart-line__stock")).to_have_text(
+            "ناموجود"
+        )
         assert plan.product.name not in page.locator("main").inner_text()
         inspect("unavailable")
         page.get_by_role("button", name="حذف محصول ناموجود", exact=True).click()
