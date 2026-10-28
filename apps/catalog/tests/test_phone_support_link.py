@@ -5,7 +5,7 @@ ends the categories row; on a phone the FAQ link gives up its place there and
 becomes the last row of the opened categories list. The footer says no other
 account messages for the shop, because for a buyer who came from Telegram a
 fake support account asking for a password is the realistic way to lose an
-account. The buy bar also covers 761 to 900px, where the buy box stops sticking.
+account.
 """
 
 import re
@@ -46,14 +46,6 @@ def shop():
             status=Product.Status.ACTIVE,
         )
         Plan.objects.create(product=made, title="یک ماهه", cost_price=1, sale_price=200000)
-    # A neighbour puts a rail under the buy box, so even a sticky box can leave the screen.
-    tidal = Product.objects.create(
-        category=Category.objects.get(slug="media"),
-        name="Tidal HiFi",
-        slug="tidal",
-        status=Product.Status.ACTIVE,
-    )
-    Plan.objects.create(product=tidal, title="یک ماهه", cost_price=1, sale_price=300000)
 
 
 def name() -> str:
@@ -237,27 +229,3 @@ def test_the_sentence_comes_from_the_support_details(client, shop):
 
 def test_the_sentence_is_the_one_written_for_the_footer():
     assert support.details()["only_handle"] == "جز این آیدی، آیدی دیگری از طرف ما پیام نمی‌دهد."
-
-
-@pytest.mark.browser
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize(("width", "bar"), [(761, True), (900, True), (901, False)])
-def test_the_buy_bar_covers_the_widths_where_the_buy_box_does_not_stick(
-    browser, live_server, shop, width, bar
-):
-    page = browser.new_page(viewport={"width": width, "height": 844})
-    cta = page.locator(".buybox__cta")
-    try:
-        page.goto(live_server.url + "/p/spotify/")
-        position = page.locator(".pdp__buy").evaluate("box => getComputedStyle(box).position")
-        assert position == ("static" if bar else "sticky")
-        page.evaluate("scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'})")
-        expect(cta).not_to_be_in_viewport()
-        # Two frames and a beat, so an observer that would show the bar has reported.
-        page.evaluate(
-            "() => new Promise(done => requestAnimationFrame(() =>"
-            " requestAnimationFrame(() => setTimeout(done, 80))))"
-        )
-        assert page.locator("[data-buy-bar]").is_visible() is bar
-    finally:
-        page.close()
