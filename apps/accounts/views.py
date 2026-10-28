@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import secrets
 import time
 from typing import cast
 
 from django.contrib import messages
-from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -23,13 +21,12 @@ from apps.accounts.forms import (
     CodeForm,
     EmailForm,
     PasswordLoginForm,
+    PasswordRecoveryForm,
     ProfileForm,
     StyledPasswordChangeForm,
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
-from apps.core import ratelimit
-from apps.core.sessions import login_session
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -49,12 +46,6 @@ CODE_RESENT = "کد جدید را فرستادیم."
 # Shown on the code page by its script and on the email page without one, so
 # it names the page that ran out.
 PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر معتبر نیست. دوباره ایمیلتان را وارد کنید."
-
-# A real hash of a value nobody knows. Comparing a submitted password against it
-# when there is no live account to check makes the miss cost the same work as a
-# genuine check; without it a nonexistent account answers measurably faster, which
-# is a user-enumeration oracle. Built once at import, never per request.
-_DUMMY_HASH = make_password(secrets.token_urlsafe(16))
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -86,27 +77,12 @@ def login_password(request: HttpRequest) -> HttpResponse:
     form = PasswordLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
-        if refusal := services.password_attempt_refusal(request, email):
-            form.add_error(None, refusal)
+        try:
+            user = services.login_with_password(request, email, form.cleaned_data["password"])
+        except services.RateLimited as exc:
+            form.add_error(None, exc.message)
         else:
-            user = User.objects.filter(email__iexact=email).first()
-            # Exactly ONE password hash per attempt, whatever the outcome. Any
-            # difference in work is a difference in response time, and that tells a
-            # stranger which addresses shop here. A live account costs its own check
-            # (for an account with no password Django fakes that hash itself); every
-            # other case costs one check against a throwaway hash. Never both — the
-            # old code ran the throwaway after every failure, so a real account with
-            # a wrong password cost two hashes and answered slower than a stranger.
-            if user is not None and user.is_active:
-                authenticated = user.check_password(form.cleaned_data["password"])
-            else:
-                check_password(form.cleaned_data["password"], _DUMMY_HASH)
-                authenticated = False
-            if authenticated:
-                # Session-key rotation and login receivers must roll back together.
-                with login_session(request):
-                    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-                ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
+            if user is not None:
                 return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)
 
@@ -283,10 +259,52 @@ def account_password(request: HttpRequest) -> HttpResponse:
     form_class = StyledPasswordChangeForm if had_password else StyledSetPasswordForm
     form = form_class(user, request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()
-        # Changing a password rotates the session hash, which signs out every
-        # other device and would sign out this tab too. Re-issue it here only.
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
-        return redirect(reverse("account-password"))
+        try:
+            services.change_password(
+                request,
+                password=form.cleaned_data["new_password1"],
+                old_password=form.cleaned_data.get("old_password", ""),
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
+            return redirect(reverse("account-password"))
     return render(request, "accounts/account_password.html", {"form": form, "section": "password"})
+
+
+@never_cache
+@login_required
+@require_http_methods(["GET", "POST"])
+def account_password_recovery(request: HttpRequest) -> HttpResponse:
+    user = cast(User, request.user)
+    changing = request.method == "POST" and request.POST.get("action") == "change"
+    form = PasswordRecoveryForm(user, request.POST if changing else None)
+    status = 200
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "request":
+                services.request_password_recovery(request)
+                messages.success(request, "کد تازه را به ایمیلتان فرستادیم. تا ۱۰ دقیقه معتبر است.")
+            elif changing and form.is_valid():
+                result = services.complete_password_recovery(
+                    request,
+                    code=form.cleaned_data["code"],
+                    password=form.cleaned_data["new_password1"],
+                )
+                if result is not None:
+                    messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
+                    return redirect("account-password")
+                form.add_error("code", "کد درست نیست یا منقضی شده است. کد تازه بخواهید.")
+        except services.RateLimited as exc:
+            if changing:
+                form.add_error(None, exc.message)
+            else:
+                messages.error(request, exc.message)
+            status = 429
+    return render(
+        request,
+        "accounts/password_recovery.html",
+        {"form": form, "section": "password"},
+        status=status,
+    )

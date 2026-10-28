@@ -23,7 +23,7 @@ from django.test import Client
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
-from apps.accounts import otp, services, views
+from apps.accounts import otp, services
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.email import render_email
@@ -126,7 +126,7 @@ def test_every_password_attempt_costs_exactly_one_hash(client, user, monkeypatch
     computations is exact and is what the time difference is made of. It was two for
     a real account with a wrong password, and two for an account with no password
     (Django already fakes one hash for those; the view added a second)."""
-    monkeypatch.setattr(views, "_DUMMY_HASH", make_password("nobody-knows-this"))
+    monkeypatch.setattr(services, "_DUMMY_HASH", make_password("nobody-knows-this"))
     email, password = user.email, "not-the-password"
     if case == "unknown":
         email = "stranger@example.test"

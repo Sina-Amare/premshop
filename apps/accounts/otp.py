@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.conf import settings
 from django.core.cache import cache
@@ -31,7 +31,7 @@ MAX_ATTEMPTS = 5
 
 @dataclass(frozen=True)
 class Issued:
-    code: str
+    code: str = field(repr=False)
     ttl_minutes: int
     expires_at: int  # unix seconds; the page counts down to this
 
@@ -53,7 +53,20 @@ def _digest(code: str) -> str:
     return salted_hmac("premshop.accounts.otp", code, secret=settings.SECRET_KEY).hexdigest()
 
 
-def issue(email: str) -> Issued:
+def _subject(email: str, purpose: str, binding: str) -> str:
+    if purpose == "login" and not binding:
+        return email
+    if purpose != "password_reset" or not binding:
+        raise ValueError("Recovery codes require a session binding.")
+    return (
+        "password-reset:"
+        + salted_hmac(
+            "premshop.accounts.recovery", f"{normalize_email(email)}:{binding}"
+        ).hexdigest()
+    )
+
+
+def issue(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
     """Generate a code, replacing any outstanding one for this address.
 
     Replacing rather than reusing matters: a customer who clicks "send again"
@@ -63,6 +76,7 @@ def issue(email: str) -> Issued:
     secrets, not random: random is seeded predictably and is not for anything
     that guards an account.
     """
+    email = _subject(email, purpose, binding)
     code = f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
     expires_at = int(time.time()) + CODE_TTL_SECONDS
     # The deadline travels WITH the code. Django's cache API cannot read an entry's
@@ -75,7 +89,7 @@ def issue(email: str) -> Issued:
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
-def verify(email: str, code: str) -> bool:
+def verify(email: str, code: str, *, purpose: str = "login", binding: str = "") -> bool:
     """Check a code and consume it. A correct code is single-use.
 
     Every attempt is counted before it is compared, and the wrong guess that
@@ -85,6 +99,7 @@ def verify(email: str, code: str) -> bool:
     Each issuance owns its record and attempt budget. A stale request can never
     delete a replacement; only the request deleting its record spends a code.
     """
+    email = _subject(email, purpose, binding)
     key = _key(email)
     issuance = cache.get(key)
     if not isinstance(issuance, str):
@@ -141,13 +156,13 @@ def normalize_digits(value: str) -> str:
     return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
 
 
-def send_login_code(email: str) -> Issued:
+def send_login_code(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
     """Issue a code and mail it. Raises if the relay refuses — never silently."""
     from apps.core.email import send_templated_email
 
-    issued = issue(email)
+    issued = issue(email, purpose=purpose, binding=binding)
     send_templated_email(
-        "otp_code",
+        "password_reset" if purpose == "password_reset" else "otp_code",
         to=[email],
         context={"code": issued.code, "ttl_minutes": issued.ttl_minutes},
     )

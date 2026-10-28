@@ -150,6 +150,13 @@ class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordFor
             field.widget.attrs["class"] = "field__input"
 
 
+class PasswordRecoveryForm(StyledSetPasswordForm, CodeForm):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["code"].label = "کد بازیابی"
+        self.order_fields(["code", "new_password1", "new_password2"])
+
+
 class ProfileForm(forms.ModelForm):
     """The parts of the account a customer may edit themselves. Today: the phone.
 

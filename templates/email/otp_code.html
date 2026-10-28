@@ -11,9 +11,11 @@ nothing an attacker with inbox access would not already have.
 {% block preheader %}کد ورود شما: {{ code|fa_digits }}. تا {{ ttl_minutes|fa_digits }} دقیقه اعتبار دارد.{% endblock %}
 
 {% block content %}
+{% block instruction %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">کد ورود شما</h1>
 
 <p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">این کد را در صفحه‌ی ورود وارد کنید.</p>
+{% endblock %}
 
 {% comment %}
 The payload. Ground-coloured fill and a hairline rather than a shadow — the
