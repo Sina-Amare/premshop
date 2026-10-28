@@ -16,10 +16,10 @@ from django.utils.cache import patch_cache_control
 from django.utils.translation import gettext as _
 from unfold.admin import ModelAdmin
 
+from apps.catalog.context import navigation as catalog_navigation
 from apps.catalog.models import Plan, Product
 from apps.catalog.placements import field_placements
 from apps.catalog.views import _for_cards, product_context
-from apps.core.context import shell
 
 
 @dataclass
@@ -197,7 +197,7 @@ class PreviewAdminMixin(ModelAdmin):
                 products = list(_for_cards().filter(category_id=snapshot.pk)) if snapshot.pk else []
                 for product in products:
                     product.category = snapshot
-                navigation = cast(list[Any], shell(request)["nav_categories"])
+                navigation = cast(list[Any], catalog_navigation(request)["nav_categories"])
                 navigation = [snapshot if cat.pk == snapshot.pk else cat for cat in navigation]
                 navigation.sort(key=lambda cat: (cat.sort_order, cat.name))
                 context = {
