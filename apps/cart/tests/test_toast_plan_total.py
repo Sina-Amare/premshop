@@ -122,7 +122,7 @@ def test_the_plan_row_the_cart_line_and_the_toast_state_one_figure(plan):
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("width, height", [(1440, 900), (390, 844)])
+@pytest.mark.parametrize("width, height", [(1440, 900), (390, 844), (360, 740)])
 def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, width, height):
     category = Category.objects.create(name="موسیقی", slug="music")
     # A logo narrows the toast's text column, as the real product's does.
@@ -179,6 +179,14 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
         if width >= 720:
             assert box["width"] == 380
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        # Beside a logo the text column is too narrow for the total, so it has a row of its own:
+        # one line, which keeps the toast short and, on a wide screen, clear of the plans.
+        end = len(total.text_content())
+        assert total.evaluate(TOP, [0, 1]) == total.evaluate(TOP, [end - 1, end])
+        assert box["height"] <= 140
+        if width >= 720:
+            plan_row = page.locator("#buy-form .plan").first.bounding_box()
+            assert box["y"] + box["height"] <= plan_row["y"]
         page.screenshot(path=str(SHOTS / f"{width}.png"))
         # However the line wraps, the figure keeps its unit beside it: narrowed until it breaks
         # at every space it may, with no `text-wrap: pretty`, which Safari before 26 lacks.

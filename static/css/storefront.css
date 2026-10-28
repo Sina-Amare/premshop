@@ -443,6 +443,6 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 /* The add toast names the whole plan: its line wraps rather than cutting «۳ ماهه» to «۳ ما…», and breaks after the product's name, never inside the plan's. */
 .cart-toast__message [data-toast-detail]{white-space:normal;overflow-wrap:anywhere}
 .cart-toast__message [data-toast-detail] bdi:last-child{display:inline-block}
-/* The cart's total, under the plan in the same grey. The server joins the figure to «تومان» with a no-break space, so no line ends between them. */
-.cart-toast__message [data-toast-total]{display:block;font-size:13px;line-height:1.8;color:var(--v-text)}
-@media(max-width:719px){.cart-toast__message [data-toast-total]{font-size:12px}}
+/* The cart's total, in the plan's grey on a row of its own: beside a logo, «مشاهده‌ی سبد» and the close button the text column is too narrow for it. The server joins the figure to «تومان» with a no-break space, so no line ends between them. */
+.cart-toast>[data-toast-total]{grid-column:1/-1;font-size:13px;line-height:1.8;color:var(--v-text)}
+@media(max-width:719px){.cart-toast>[data-toast-total]{font-size:12px}}

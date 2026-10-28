@@ -4,6 +4,7 @@ import pytest
 from playwright.sync_api import expect
 
 from apps.cart.models import CartItem
+from apps.cart.tests.test_toast_plan_total import LOGO
 from apps.catalog.tests.test_admin_browser import open_panel as open_panel
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -15,10 +16,18 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
 ):
     plan.stock_quantity = 2
     plan.save()
+    # A logo narrows the toast's text column, as every seeded product's does.
+    plan.product.image = "products/sample.svg"
+    plan.product.save()
     directory = Path("screenshots/cart-stock")
     directory.mkdir(parents=True, exist_ok=True)
     context = browser.new_context(viewport={"width": width, "height": 1000})
     other_context = browser.new_context(viewport={"width": width, "height": 1000})
+    for each in (context, other_context):
+        each.route(
+            f"**{plan.product.image.url}",
+            lambda route: route.fulfill(content_type="image/svg+xml", body=LOGO),
+        )
     page, other = context.new_page(), other_context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -30,6 +39,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         expect(page.locator("#qty-limit")).to_contain_text("۲ عدد")
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
+        expect(page.locator("#cart-toast .cart-toast__art")).to_be_visible()
         toast = page.locator("#cart-toast").bounding_box()
         header = page.locator(".v-header").bounding_box()
         purchase = page.locator(".buybox__cart").bounding_box()
