@@ -21,7 +21,7 @@ The 2026-10-14c register below, polite-colloquial everywhere except money, error
 - **Punctuation.** «،» «؟» «» always; at most one «؛» on a page; no em dash in Persian text or in a page title.
 - **No superlative a number could replace:** «بهترین», «سریع‌ترین».
 
-The half of this a pattern can see is a test: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, the three emails in both halves and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads every string the panel shows, from the model labels and help to the Persian catalogue and the panel's own code; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. Those tests ban the glossary's «Not» forms that a pattern can tell apart from good Persian; the rest, such as «حساب» used for a service account, need a reader.
+The half of this a pattern can see is a test: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, every email in both halves and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels, help, the Persian catalogue, template text and accessible labels, scripts, demo copy and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. Those tests ban the glossary's «Not» forms that a pattern can tell apart from good Persian; the rest, such as «حساب» used for a service account, need a reader.
 
 ### Glossary
 

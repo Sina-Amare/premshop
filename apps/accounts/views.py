@@ -285,7 +285,7 @@ def account_password_recovery(request: HttpRequest) -> HttpResponse:
         try:
             if request.POST.get("action") == "request":
                 services.request_password_recovery(request)
-                messages.success(request, "کد تازه را به ایمیلتان فرستادیم. تا ۱۰ دقیقه معتبر است.")
+                messages.success(request, "کد جدید را به ایمیلتان فرستادیم. تا ۱۰ دقیقه معتبر است.")
             elif changing and form.is_valid():
                 result = services.complete_password_recovery(
                     request,
@@ -295,7 +295,7 @@ def account_password_recovery(request: HttpRequest) -> HttpResponse:
                 if result is not None:
                     messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
                     return redirect("account-password")
-                form.add_error("code", "کد درست نیست یا منقضی شده است. کد تازه بخواهید.")
+                form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
         except services.RateLimited as exc:
             if changing:
                 form.add_error(None, exc.message)

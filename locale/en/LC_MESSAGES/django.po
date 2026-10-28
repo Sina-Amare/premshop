@@ -879,7 +879,7 @@ msgstr "Bot"
 msgid "زمان ثبت"
 msgstr "Created at"
 
-msgid "سابقهٔ سفارش"
+msgid "سابقه‌ی سفارش"
 msgstr "Order history"
 
 msgid "سایت"
@@ -897,7 +897,7 @@ msgstr "Orders"
 msgid "سیستم"
 msgstr "System"
 
-msgid "شمارهٔ سفارش"
+msgid "شماره‌ی سفارش"
 msgstr "Order number"
 
 msgid "قیمت تأمین زمان خرید"
@@ -936,7 +936,7 @@ msgstr "Awaiting payment"
 msgid "مهلت پرداخت تمام شده"
 msgstr "Payment window expired"
 
-msgid "همهٔ محصولات"
+msgid "همه‌ی محصولات"
 msgstr "All products"
 
 msgid "وضعیت آیتم‌ها"

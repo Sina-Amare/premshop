@@ -75,6 +75,14 @@ def test_the_code_reaches_both_halves_in_persian_digits():
     assert "418305" not in text
 
 
+@pytest.mark.parametrize("name", ["otp_code", "password_reset"])
+def test_code_mail_warns_against_sharing_without_an_inbox_access_claim(name):
+    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    for body in (text, html):
+        assert "این کد را به کسی ندهید." in body
+        assert "بدون دسترسی به ایمیل" not in body
+
+
 def test_replies_go_to_the_support_mailbox():
     send_templated_email(
         "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]

@@ -92,7 +92,7 @@ def place_order(
             )
     if phone:
         if not isinstance(phone, str) or len(phone) > 20:
-            raise ValidationError("شمارهٔ موبایل درست نیست.")
+            raise ValidationError("شماره‌ی موبایل درست نیست.")
         User.objects.filter(pk=user.pk, phone="").update(phone=phone)
     return order
 

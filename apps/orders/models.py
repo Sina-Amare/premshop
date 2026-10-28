@@ -32,7 +32,7 @@ class DiscountCode(models.Model):
         FIXED = "fixed", _("مبلغ ثابت")
 
     class Scope(models.TextChoices):
-        ALL = "all", _("همهٔ محصولات")
+        ALL = "all", _("همه‌ی محصولات")
         SELECTED = "selected", _("محصولات انتخاب‌شده")
 
     code = models.CharField(
@@ -106,7 +106,7 @@ class Order(models.Model):
         verbose_name=_("مشتری"),
     )
     order_number = models.BigIntegerField(
-        _("شمارهٔ سفارش"), default=next_order_number, unique=True, editable=False
+        _("شماره‌ی سفارش"), default=next_order_number, unique=True, editable=False
     )
     tracking_token = models.CharField(
         max_length=32, default=tracking_token, unique=True, editable=False

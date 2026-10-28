@@ -102,7 +102,7 @@ class OrderAdmin(ModelAdmin):
     def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
 
-    @admin.display(description=_("شمارهٔ سفارش"), ordering="order_number")
+    @admin.display(description=_("شماره‌ی سفارش"), ordering="order_number")
     def number(self, obj: Order) -> str:
         return format_html(
             '<span class="order-number">{}</span><span class="order-list-mobile">'
@@ -138,7 +138,7 @@ class OrderAdmin(ModelAdmin):
     def placed(self, obj: Order) -> str:
         return format_jalali(obj.created_at)
 
-    @admin.display(description=_("سابقهٔ سفارش"))
+    @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
         events = OrderItemEvent.objects.filter(order_item__order=obj).order_by("created_at", "pk")
         rows = format_html_join(
