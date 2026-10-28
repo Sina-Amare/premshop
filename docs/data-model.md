@@ -343,7 +343,7 @@ One in the built tables: `ProductSection (product) WHERE kind = 'before_buying'`
 
 | Model | Constraint |
 |---|---|
-| Product (built: catalog 0002, 0013) | `delivery_hours BETWEEN 1 AND 72` (`product_delivery_hours_1_to_72`, raised from 48 on 2026-10-18 — ADR-0009 amended); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
+| Product (built: catalog 0002, 0013, 0028) | `delivery_hours BETWEEN 1 AND 48` (`product_delivery_hours_1_to_48`; ADR-0009 amended 2026-10-28); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
 | Plan (built: catalog 0001, 0002, 0004) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`); `max_quantity BETWEEN 1 AND 10` (`plan_max_quantity_1_to_10`); `requires_customer_input = false OR max_quantity = 1` (`plan_customer_input_is_one_per_order`) |
 | ProductSection (built: catalog 0019) | `kind IN ('benefits','includes','comparison','after_payment','before_buying','free')` (`section_kind_valid`); `image = '' OR image_alt <> ''` (`section_image_has_alt`) — a picture without its alternative text is not stored |
 | Cart | `(user_id IS NULL) <> (session_key IS NULL)` — exactly one owner |
