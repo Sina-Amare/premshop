@@ -174,9 +174,9 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                # The header's shelves row and `support`, the one definition
-                # of where a customer reaches a person; see apps/core/context.py.
+                # Shared site facts and catalog navigation.
                 "apps.core.context.shell",
+                "apps.catalog.context.navigation",
                 "apps.cart.context.context",
                 # What the shop promises on every page; see apps/catalog/promises.py.
                 "apps.catalog.promises.context",

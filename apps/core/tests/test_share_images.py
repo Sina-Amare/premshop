@@ -2,8 +2,8 @@ import pytest
 from django.utils.html import strip_tags
 from PIL import Image
 
+from apps.catalog.management.commands.render_share_images import _card
 from apps.catalog.models import Product
-from apps.core.management.commands.render_share_images import _card
 
 
 @pytest.mark.parametrize("suffix,mime", [("svg", "image/svg+xml"), ("png", "image/png")])
