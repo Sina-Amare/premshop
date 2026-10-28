@@ -2,7 +2,7 @@
 
 > **At a glance.** Which app owns what, which app may import which, and the service contracts for the next two steps.
 > **Built:** `accounts`, `catalog`, `orders`' unpaid creation/cancellation and read-only admin, and `core`'s email, rate-limit, display and encrypted-field helpers. For these the code is the source of truth; §2 keeps only what the code cannot say, plus a pointer to the module.
-> **Contract, settled at the step that builds it:** remaining `orders` operations (`validate_discount_code` and the customer selectors are used from S4b; its §2 table still carries full signatures for later operations such as `extend_due_at`, `request_cancellation`, `pause_all_slas` and `reveal_delivery_fields`, and whether they stay contract is settled in S4a's briefing), `cart` (S4b), `payments.checkout` (the proposed S4b checkout entry — whether checkout goes through it and creates a Payment row, or calls `orders.place_order` directly, is settled in S4a's briefing), `core`'s `emit`/`register` and `compute_due_at`, the guest-cart purge task (§3), §4 Thin Views, §5 Testing Seams.
+> **Contract, settled at the step that builds it:** remaining `orders` operations (customer selectors arrive with S4b; its §2 table still carries full signatures for later operations such as `extend_due_at`, `request_cancellation`, `pause_all_slas` and `reveal_delivery_fields`, and whether they stay contract is settled in S4a's briefing), `cart` (S4b), `payments.checkout` (S4b's downstream cart/order coordinator, without a Payment row), `core`'s `emit`/`register` and `compute_due_at`, the remaining task consumers (§3), §4 Thin Views, §5 Testing Seams.
 > **Intent only, re-specified when their step is planned:** the rest of `payments` (S6b and S5), `notifications` (S6), Telegram linking (S8), the operator and renewal selectors (S7–S10), the other beat tasks (S5–S10). `panel` (S7) and `cms` (S11) appear only in the App Map. The full earlier draft of all of it is `git show 027c5d1:docs/services-and-modules.md`.
 > **Read for S4a:** §1 App Map, §2 `orders`, §5 Testing Seams.
 
@@ -99,37 +99,21 @@ Finite-stock mutations also lock Plan before checking its current count. Merges 
 
 ### orders
 
-**Built — 2026-10-26.** `OrderLine(plan, quantity, customer_input=None)` and `place_order(*, user, lines, phone="", channel="web")` create an unpaid order atomically with price/cost/product snapshots and one creation event per unit. Plans, public product status, availability, quantity ceilings and required non-secret input are re-read server-side; duplicate plan lines are refused. No discount argument exists yet. `cancel_unpaid_item(*, item_id, actor, note="")` allows the stored active owner or staff; staff must supply a reason note. It locks the item, writes its cancellation and event together, and treats a replay of the same cancellation as a no-op. It does not cancel paid states. The proposed interfaces below are future contracts and do not describe callable built paid-state or checkout services.
+**Built — 2026-10-29.** `apps/orders/services.py` owns `place_order`, `quote_order`, `replay_checkout`, `cancel_unpaid_order` and `expire_unpaid_orders`. `OrderLine(plan, quantity, customer_input=None)` contains resolved plans and non-secret customer input; orders never receives a cart or session.
 
-```python
-@dataclass(frozen=True)
-class OrderLine:
-    plan: Plan
-    quantity: int
-    customer_input: str | None = None
+`place_order(*, user, lines, phone="", channel="web", discount_code="", activation_consent=False, checkout_id=None, submission_digest="", expected_terms=None) -> Order` re-reads the active account, public products, plans, stock, quantities and prices. It captures one pricing time after locking and uses `effective_price` for every unit. It stores immutable product/category, sale/cost, discount and consent facts, encrypted input and one event per unit. Whole-toman amounts must fit storage; a zero-total purchase is refused before resources are consumed. Optional phone input uses the account's Iranian-number normalizer and only fills an empty profile.
 
-def place_order(
-    *, user: User, lines: Sequence[OrderLine], phone: str,
-    discount_code: str | None, channel: Literal["web", "bot"],
-) -> Order: ...
-```
-Takes **resolved lines, never a session and never a cart object** — `orders` does not know how a cart is stored; `payments.checkout` resolves the cart into `OrderLine`s first. Writes one Order + one OrderItem per unit in `PENDING_PAYMENT`; snapshots `price_snapshot = catalog.effective_price(plan)` and `cost_snapshot = plan.cost_price`, both **read fresh from the DB** — nothing priced by the browser is trusted; `subtotal = Σ price_snapshot`; applies `discount_code` via `validate_discount_code(lock=True)`, consumes it (`used_count` incremented under `select_for_update` on the `DiscountCode` row, inside this transaction — a single-use code cannot be spent twice concurrently, ADR-0020) and writes the `DiscountRedemption` row; `discount_amount` clamped so `total_amount = subtotal − discount_amount` is never negative; encrypts each line's `customer_input`; generates `tracking_token` + sequential `order_number`; stores phone on user if empty. Invariant asserted here and tested: `subtotal = Σ price_snapshot`, `total_amount = subtotal − discount_amount`, `total_amount >= 0`. Raises `ValidationError` (plan unavailable, holiday_stop_new_orders, missing required input, **quantity > 1 on a plan with `requires_customer_input`** — one input, one item, re-validated here after the cart already refused it, quantity < 1, no lines) and the discount exceptions below. **Emits nothing** — there is no `order.created` event: the operator alert fires on `payment.verified`, so an unpaid order never pages anyone (ADR-0019). Tx: one atomic block; the only lock is on the discount row. Not called by the checkout view directly — `payments.checkout` wraps it.
+Lock order is account (`FOR NO KEY UPDATE`) → cart in the downstream coordinator → existing orders → products → plans → discount codes → items. Each group is sorted by primary key. Creation locks the union of resources from overdue orders and proposed lines before releasing old claims. Joined rows are excluded from plan/order lock scope. One live unpaid order per customer is enforced under the account lock; `UnpaidOrderExists` carries that owner's existing order. Overdue pending orders are released before deciding whether another purchase is allowed.
 
-```python
-def validate_discount_code(
-    *, code: str, user: User, lines: Sequence[OrderLine], lock: bool = False,
-) -> tuple[DiscountCode, Decimal]: ...
-```
-Normalises the typed code to uppercase before lookup (stored uppercase, `^[A-Z0-9]{4,8}$`); checks `is_active`, `valid_from`/`valid_until` window, `min_order_amount` (compared against the order **subtotal**, before any discount), `max_uses` vs `used_count`, and `per_user_limit` against this user's `DiscountRedemption` rows. Returns the code and the **server-computed** discount amount. The computation, stated once and tested once:
+Successful checkout replay checks the stored owner and constant-time digest before inspecting a new cart or an expired quote. A different digest or another customer receives a validation error. The unique checkout identifier also protects simultaneous cross-customer claims. The downstream checkout service will supply the keyed digest and signed quote; `expected_terms` requires another explicit review when fresh purchase facts differ.
 
-- `eligible_subtotal` = the sum of the line totals **in scope** — every line when `scope="all"`, only lines whose product is in `code.products` when `scope="selected"`. A scoped code discounts the eligible subtotal, never the order subtotal.
-- `percent`: `round(eligible_subtotal × value / 100)` to whole toman, `ROUND_HALF_UP`.
-- `fixed`: `min(value, eligible_subtotal)`.
-- The result is clamped so `total_amount` can never fall below zero.
+`quote_order(*, user, lines, discount_code="") -> Purchase` previews the same computation without consuming resources. Codes are uppercase ASCII letters/digits, four to eight characters. Activation/window, global capacity, unreleased per-user history, pre-code minimum and product eligibility are checked under the code lock during creation. Promotional prices come first; percentages use `ROUND_HALF_UP`; fixed and percentage results are capped at the eligible subtotal. Invalid and empty-eligibility codes produce specific Persian validation errors. Code changes never rewrite purchase snapshots.
 
-Every input is read from the database — line totals come from `catalog.effective_price`, so a code applies **on top of** promotional pricing: it discounts what the customer would actually pay. (Excluding promo items from codes is a named future option, not a flag; it flips only if a code is ever seen to sell a promo item below cost.) `lock=True` takes `select_for_update` on the row; used only from inside `place_order`. Raises `DiscountInvalid`, `DiscountExpired`, `DiscountExhausted`, `DiscountMinimumNotMet` (all `ValidationError` subclasses, each with its own Persian message). Read-only when `lock=False`, so the cart page can preview a code without consuming it.
+`cancel_unpaid_order(*, order_id, actor, note="") -> Order` checks stored ownership or operator permission, locks the whole unpaid order and releases its resources atomically with every item event. A stored operator cancelling another customer's order supplies a note. Repetition creates no extra stock or history. `cancel_unpaid_item` remains a compatibility delegate to this whole-order operation. Paid items are refused.
 
-`DiscountRedemption` (one row per order, `order` UNIQUE) is written by `place_order` inside the same transaction. It exists because `per_user_limit` cannot be enforced without it, and it doubles as the audit trail of what each code actually cost.
+Finite stock is decremented at creation; `OrderItem.stock_debited` records the claim's origin. Cancellation returns only debited units, and only while the plan still has finite stock. Unlimited-origin claims never manufacture stock. Discount redemptions retain their amount/history and gain `released_at`; release decrements the code's active counter once. Standalone and inline stock forms use a signed original quantity: unrelated edits preserve the latest stock; conflicting intentional edits require review. Product/discount editors acquire product locks before plans/codes, including before M2M foreign-key checks.
+
+`expire_unpaid_orders(*, limit=100) -> int` processes database deadlines in bounded, separate transactions through the same cancellation implementation. Repeated/missed sweeps are harmless; a validation failure is logged with order id and exception type only and does not block later rows. Database failures propagate and do not update sweep freshness. No paid transitions, payment record or outbound order notification is introduced.
 
 Transitions — all follow the convention block above; “Emits” lists the event name whose occurrence id seeds notification `dedupe_key`s:
 
@@ -191,15 +175,19 @@ Intent only here (S6, with Telegram in S8). It is the outbox of ADR-0010: `notif
 
 ---
 
-## 3. Celery Tasks & Beat Schedule
+## 3. Huey scheduled work
 
-All tasks are state-guarded and safe to double-run (beat + manual). `acks_late=True`, bound, with `max_retries` where they touch the network.
+One Redis-backed Huey consumer runs with one worker, explicit asynchronous mode in development and production, and a queue name derived from database host/port/name. Credentials do not enter queue names. Tests retain queued execution using MemoryStorage; no Redis daemon is required in CI. All tasks use Django's database-aware decorators.
 
-| Task | Cadence | What it does | Idempotency |
-|---|---|---|---|
-| `cart.tasks.purge_stale_guest_carts` | daily 03:20 | deletes guest `Cart` rows (`session_key` set) untouched for 30 days, cascading their items. Carts owned by a user are never purged | date-bounded delete; re-run is a no-op |
+| Task | UTC cadence | Behavior |
+|---|---|---|
+| `orders.tasks.sweep_unpaid_orders` | every minute | releases up to 100 due unpaid orders; records successful sweep time, processed count and overdue backlog in `UnpaidExpirySweep` |
+| `cart.tasks.clean_guest_carts` | daily 03:00 | existing guest-only 30-day purge; account carts remain |
+| `core.tasks.clean_expired_sessions` | daily 03:10 | Django's expired database-session cleanup |
 
-The other scheduled work is intent only here, each task state-guarded and safe to re-run as above: the mandatory lost-callback inquiry sweep and the unpaid-order sweep (S5, on ADR-0019's two separate clocks), the outbox sender and the external heartbeat (S6, ADR-0010), the input-timeout ladder (S8, ADR-0009), renewal reminders (S10), the hourly overdue digest to the operator, and the credential and access-log purges that enforce ADR-0007's retention. Outbound bot messages are ordinary outbox sends, not a task of their own. Full earlier draft: `git show 027c5d1:docs/services-and-modules.md` (§3). It is re-specified when each task's step (S5–S10) is planned.
+The order list shows live overdue backlog and warns when the last successful sweep is over three minutes old. A stopped worker delays release; checkout still locks and validates available stock and database deadlines. Restart catches up without extending deadlines or deleting orders. Run/stop instructions are in [development.md](development.md#background-worker).
+
+Gateway inquiry, outbox/heartbeat, input-timeout, renewal and credential-retention tasks remain future consumers at their owning steps. Gateway initiation/verification must coordinate with expiry under the shared lock order before enabling a payment route.
 
 ---
 
@@ -232,11 +220,11 @@ Two views carry extra constraints:
 | Later transports (intent) | the Telegram sender (S6/S8), the gateway client's four calls (S5), the external heartbeat (S6) — each one module, monkeypatched; re-specified with its step |
 | Clock | `time_machine` for `compute_due_at`, SLA pause math, the stale-payment threshold, discount validity windows, renewal scans |
 | Fernet key | fixed test key in test settings; one test decrypts a stored `DeliveryField` and round-trips key rotation via MultiFernet |
-| Celery | `task_always_eager` off by default — services are called directly; task tests call task functions synchronously |
+| Huey | asynchronous queue with in-memory storage; task tests explicitly dequeue and execute |
 
 Everything else (Postgres constraints, the state machine, ownership, `select_for_update` on the discount row) runs against the real test DB — row locking **is** a test subject, so no sqlite; the payment row's lock and the live-payment index join at S6b/S5. The concurrent-discount test needs real transactions: two threads racing one single-use code, exactly one wins.
 
-**Factories** (`factory_boy`): `UserFactory` (traits: `verified`, `telegram_linked`, `staff`) · `CategoryFactory` · `ProductFactory` (trait: `with_template`) · `ProductSpecFactory` · `PlanFactory` (traits: `requires_input`, `unavailable`, `on_promo`, `promo_expired`) · `CartFactory` (traits: `guest`, `owned`) · `CartItemFactory` · `OrderFactory` · `OrderItemFactory` (state traits for all 7 statuses, `paused`, `cancellation_requested`, `legacy`) · `DeliveryFieldFactory` (trait: `superseded`) · `DiscountCodeFactory` (traits: `percent`, `fixed`, `single_use`, `expired`, `scoped`) · `DiscountRedemptionFactory`. Factories for later tables (Payment, Refund, Notification, SiteSetting, Page) arrive with their step. Whether to use factory_boy at all is open: the built tests use plain pytest fixtures (S4a's briefing).
+**Fixtures:** plain pytest fixtures build the rows each test needs; unused factory-boy was removed. Future payment/notification fixtures arrive with their real services.
 
 Must-cover suites: full transition matrix (legal + every illegal pair raises, DELIVERED→CANCELLED forbidden, both REPLACEMENT_REQUESTED→DELIVERED variants A10a/A10b), `compute_due_at` boundary table, `extend_due_at`, from S5 the payment suites ADR-0019 names (idempotent confirmation, amount mismatch, untrusted redirect parameters, lost-callback recovery, the manual fallback), `revive` recomputing `due_at` from now (a payment verified weeks ago must not yield an instantly-overdue item), `effective_price` boundary table, discount validation matrix + scoped-code eligible-subtotal arithmetic + `ROUND_HALF_UP` rounding + concurrent single-use consumption + `total_amount >= 0` clamp, the order-total invariant `subtotal − discount_amount = total_amount`, **cart merge on login** (guest cart claimed when the account has none; quantities summed and clamped when it does), cart price recomputation (promotional price started or ended, plan gone unavailable between add and checkout), **the quantity-1 cap on input-requiring plans** (the cart refuses the second unit; `place_order` refuses it again if it ever arrives), ownership on order pages + reveal, encryption round-trip, Sentry scrubber leak test (D20), end-to-end cart→checkout→gateway verify→deliver→notify flow.
 

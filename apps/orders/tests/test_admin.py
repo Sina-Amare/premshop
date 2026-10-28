@@ -11,7 +11,11 @@ pytestmark = pytest.mark.django_db
 def test_order_admin_is_read_only_searchable_and_never_discloses_input(
     client, buyer, plan, settings
 ):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "private-target@example.test")])
+    order = place_order(
+        activation_consent=True,
+        user=buyer,
+        lines=[OrderLine(plan, 1, "private-target@example.test")],
+    )
     client.force_login(User.objects.create_superuser("operator@example.test"))
     settings.FIELD_ENCRYPTION_KEY = ""
     listing = reverse("admin:orders_order_changelist")
@@ -36,10 +40,34 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
 
 
 def test_customer_and_staff_without_permission_cannot_inspect_orders(client, buyer, plan):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    order = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
     detail = reverse("admin:orders_order_change", args=[order.pk])
     assert client.get(detail).status_code == 302
     client.force_login(buyer)
     assert client.get(detail).status_code == 302
     client.force_login(User.objects.create_user("staff@example.test", is_staff=True))
     assert client.get(detail).status_code == 403
+
+
+def test_operator_sees_live_expiry_backlog_and_stale_sweep_warning(client, buyer, plan):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.orders.models import UnpaidExpirySweep
+
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
+    client.force_login(User.objects.create_superuser("operator@example.test"))
+    url = reverse("admin:orders_order_changelist")
+    response = client.get(url)
+    assert response.context["expiry_stale"] is True
+    assert response.context["expiry_backlog"] == 1
+    UnpaidExpirySweep.objects.create(
+        last_success_at=timezone.now(), processed_count=0, overdue_count=0
+    )
+    response = client.get(url)
+    assert response.context["expiry_stale"] is False
+    assert response.context["expiry_backlog"] == 1
+    UnpaidExpirySweep.objects.update(last_success_at=timezone.now() - timedelta(minutes=4))
+    assert "بررسی خودکار به‌روز نیست" in client.get(url).content.decode()

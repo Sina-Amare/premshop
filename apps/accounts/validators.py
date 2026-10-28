@@ -9,12 +9,29 @@ are Django's, untouched — only the sentence a customer sees changes.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Any
 
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
+from apps.accounts.otp import normalize_digits
 from apps.core.formatting import to_persian_digits
+
+
+def normalize_mobile_phone(value: str) -> str:
+    if not isinstance(value, str) or len(value) > 32:
+        raise ValidationError("شماره‌ی موبایل درست نیست.")
+    typed = normalize_digits(value)
+    # Contact cards often carry invisible direction marks on RTL phones.
+    number = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
+    if not number:
+        return ""
+    mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", number))
+    if not mobile:
+        raise ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
+    return "0" + mobile.group(1)
 
 
 class MinimumLengthValidator(password_validation.MinimumLengthValidator):

@@ -20,6 +20,8 @@ from django.urls import reverse_lazy
 from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy as _
 
+from config.queue import queue_name
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEMO_CATALOG = False
 
@@ -117,6 +119,7 @@ INSTALLED_APPS = [
     "apps.catalog",
     "apps.cart",
     "apps.orders",
+    "huey.contrib.djhuey",
     "apps.core",
 ]
 
@@ -194,6 +197,15 @@ DATABASES = {"default": database_from_url(env("DATABASE_URL", required=True))}
 DATABASES["default"]["OPTIONS"] = {"options": "-c pg_trgm.word_similarity_threshold=0.3"}
 
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
+
+HUEY = {
+    "name": queue_name(DATABASES["default"]),
+    "huey_class": "huey.RedisHuey",
+    "connection": {"url": REDIS_URL},
+    "immediate": False,
+    "results": False,
+    "consumer": {"workers": 1, "worker_type": "thread"},
+}
 
 # OTP codes and rate-limit counters go through Django's cache API rather than a
 # raw redis client. Two reasons: an expiring code should evaporate on its own
@@ -352,6 +364,11 @@ UNFOLD = {
                         "title": _("سفارش‌ها"),
                         "icon": "receipt_long",
                         "link": reverse_lazy("admin:orders_order_changelist"),
+                    },
+                    {
+                        "title": _("کدهای تخفیف"),
+                        "icon": "local_offer",
+                        "link": reverse_lazy("admin:orders_discountcode_changelist"),
                     },
                     {
                         "title": capfirst(_("محصولات")),

@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
+from django import forms
 from django.contrib import admin
-from django.db.models import Prefetch, QuerySet
+from django.db.models import Exists, OuterRef, Prefetch, QuerySet
 from django.http import HttpRequest
+from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin, TabularInline
 
+from apps.catalog.models import Product
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
-from apps.orders.models import Order, OrderItem, OrderItemEvent
+from apps.orders.models import (
+    DiscountCode,
+    DiscountRedemption,
+    Order,
+    OrderItem,
+    OrderItemEvent,
+    UnpaidExpirySweep,
+)
 
 
 class OrderItemInline(TabularInline):
@@ -52,6 +63,7 @@ class OrderItemInline(TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
+    change_list_template = "admin/orders/change_list.html"
     list_display = ("number", "customer", "amount", "item_states", "placed")
     search_fields = ("=order_number", "user__email")
     ordering = ("-created_at", "-pk")
@@ -71,6 +83,27 @@ class OrderAdmin(ModelAdmin):
         (_("مبلغ‌های سفارش"), {"fields": (("subtotal_amount", "discount", "amount"),)}),
     )
     change_form_after_template = "admin/orders/history.html"
+
+    def changelist_view(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> Any:
+        state = UnpaidExpirySweep.objects.filter(pk=1).first()
+        pending = OrderItem.objects.filter(
+            order_id=OuterRef("pk"), status=OrderItem.Status.PENDING_PAYMENT
+        )
+        backlog = (
+            Order.objects.filter(unpaid_expires_at__lte=timezone.now())
+            .filter(Exists(pending))
+            .count()
+        )
+        context = {
+            **(extra_context or {}),
+            "expiry_state": state,
+            "expiry_backlog": backlog,
+            "expiry_stale": state is None
+            or timezone.now() - state.last_success_at > timedelta(minutes=3),
+        }
+        return super().changelist_view(request, extra_context=context)
 
     def render_change_form(
         self,
@@ -163,3 +196,106 @@ class OrderAdmin(ModelAdmin):
             ),
         )
         return format_html('<ol class="order-timeline">{}</ol>', rows)
+
+
+class DiscountForm(forms.ModelForm):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["value"].label = _("میزان تخفیف")
+        self.fields["scope"].label = _("محصولات مشمول تخفیف")
+        self.fields["value"].help_text = _(
+            "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
+        )
+        for name in ("max_uses", "per_user_limit"):
+            self.fields[name].help_text = _(
+                "خالی یعنی بدون محدودیت. استفاده‌های لغوشده حساب نمی‌شوند."
+            )
+
+    def clean_code(self) -> str:
+        return self.cleaned_data["code"].strip().upper()
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        for name in ("value", "max_uses", "per_user_limit"):
+            if cleaned.get(name) is not None and cleaned[name] <= 0:
+                self.add_error(name, _("عددی بزرگ‌تر از صفر وارد کنید."))
+        minimum = cleaned.get("min_order_amount")
+        if minimum is not None and minimum < 0:
+            self.add_error("min_order_amount", _("صفر یا عددی بزرگ‌تر وارد کنید."))
+        start, end = cleaned.get("valid_from"), cleaned.get("valid_until")
+        if start and end and start >= end:
+            self.add_error("valid_until", _("پایان اعتبار باید پس از شروع آن باشد."))
+        if cleaned.get("scope") == DiscountCode.Scope.SELECTED and not cleaned.get("products"):
+            self.add_error("products", _("حداقل یک محصول برای این کد تخفیف انتخاب کنید."))
+        return cleaned
+
+
+class RedemptionInline(TabularInline):
+    model = DiscountRedemption
+    fields = ("order", "user", "discount_amount", "used", "released")
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    @admin.display(description=_("مبلغ تخفیف"))
+    def discount_amount(self, obj: DiscountRedemption) -> str:
+        return format_toman(obj.amount)
+
+    @admin.display(description=_("زمان استفاده"))
+    def used(self, obj: DiscountRedemption) -> str:
+        return format_jalali(obj.created_at)
+
+    @admin.display(description=_("زمان آزادسازی"))
+    def released(self, obj: DiscountRedemption) -> str:
+        return format_jalali(obj.released_at) if obj.released_at else "—"
+
+
+@admin.register(DiscountCode)
+class DiscountAdmin(ModelAdmin):
+    form = DiscountForm
+    list_display = ("code", "discount_value", "is_active", "active_uses", "limit")
+    search_fields = ("code",)
+    list_filter = ("is_active", "kind", "scope")
+    exclude = ("used_count", "created_at")
+    readonly_fields = ("active_uses", "created")
+    inlines = (RedemptionInline,)
+
+    @admin.display(description=_("تخفیف"))
+    def discount_value(self, obj: DiscountCode) -> str:
+        if obj.kind == DiscountCode.Kind.PERCENT:
+            return to_persian_digits(obj.value) + " " + _("درصد")
+        return format_toman(obj.value)
+
+    @admin.display(description=_("تعداد استفاده‌ی فعال"))
+    def active_uses(self, obj: DiscountCode) -> str:
+        return to_persian_digits(obj.used_count)
+
+    @admin.display(description=_("حداکثر تعداد استفاده"))
+    def limit(self, obj: DiscountCode) -> str:
+        return (
+            to_persian_digits(obj.max_uses) if obj.max_uses is not None else str(_("بدون محدودیت"))
+        )
+
+    @admin.display(description=_("زمان ایجاد"))
+    def created(self, obj: DiscountCode) -> str:
+        return format_jalali(obj.created_at)
+
+    def save_model(self, request: HttpRequest, obj: DiscountCode, form: Any, change: bool) -> None:
+        # M2M inserts check product foreign keys after saving the code.
+        list(
+            Product.objects.select_for_update()
+            .filter(pk__in=form.cleaned_data["products"])
+            .order_by("pk")
+        )
+        if change:
+            obj.used_count = DiscountCode.objects.select_for_update().get(pk=obj.pk).used_count
+        super().save_model(request, obj, form, change)
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-import unicodedata
 from typing import Any
 
 from django import forms
@@ -12,6 +10,7 @@ from django.contrib.auth.hashers import check_password
 
 from apps.accounts import otp
 from apps.accounts.models import User
+from apps.accounts.validators import normalize_mobile_phone
 
 
 class EmailForm(forms.Form):
@@ -198,15 +197,4 @@ class ProfileForm(forms.ModelForm):
         fields = ["phone"]
 
     def clean_phone(self) -> str:
-        # Direction marks and other invisible format characters come along with
-        # a number copied from a contact card or a chat on a right-to-left phone.
-        typed = otp.normalize_digits(self.cleaned_data.get("phone") or "")
-        value = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
-        if not value:
-            return ""
-        # [0-9], not \d or isdigit(): both accept digits from other scripts, and
-        # isdigit() accepts «²».
-        mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", value))
-        if not mobile:
-            raise forms.ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
-        return "0" + mobile.group(1)
+        return normalize_mobile_phone(self.cleaned_data.get("phone") or "")

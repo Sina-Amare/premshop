@@ -893,11 +893,11 @@ class Plan(ChecksNameTheirField, PageRow):
         ),
     )
     stock_quantity = models.PositiveIntegerField(
-        _("موجودی کل"),
+        _("موجودی قابل فروش"),
         null=True,
         blank=True,
         help_text=_(
-            "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+            "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
         ),
     )
     is_available = models.BooleanField(

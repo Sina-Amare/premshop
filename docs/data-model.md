@@ -2,7 +2,7 @@
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
 > **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Built cart:** `Cart` and `CartItem` in cart 0001/0002, including shared stock holds against Plan.stock_quantity (catalog 0025). Remaining order operations, checkout, discount application and consumption remain future work.
+> **Built cart/orders — 2026-10-29:** cart 0003 stores untimed selections without holds. Order creation claims available finite stock, applies locked discounts and records fixed deadlines/consent. Whole unpaid cancellation/expiry restores actual claims and retains redemption history. Checkout cart consumption and customer pages are the next integration boundaries.
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7), `cms` (S11). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
@@ -208,7 +208,7 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 
 **Merge on login:** the server stores the guest-cart id in session data, which survives Django's session-key rotation. The login signal claims a guest cart if the account has none, preserving item ids and added_at; otherwise it combines matching plans, caps imported quantities at each current Plan.max_quantity (one for input-requiring plans), moves new lines and deletes the guest cart. The account and cart rows are locked in one transaction; a replay is harmless. A reduction gets a customer notice. Guest reads and edits still resolve by the current session key, never by a posted cart id.
 
-**Lifecycle:** `purge_guest_carts` deletes only guest carts inactive for over 30 days, including their lines. A partial updated_at index supports it. It is a rerunnable management command; daily scheduling and clearsessions wait for the job runner. Account carts are never swept. Checkout's atomic order creation and cart clearing remain unbuilt.
+**Lifecycle:** `purge_guest_carts` deletes only guest carts inactive for over 30 days, including their lines. A partial updated_at index supports it. It is a rerunnable management command; Huey schedules this purge and expired-session cleanup daily. Account carts are never swept. Order creation claims stock atomically; downstream checkout cart consumption remains the next integration boundary.
 
 ### `orders`
 
@@ -219,6 +219,12 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 | user | FK User, **PROTECT** | — | | financial record; anonymize users, never delete |
 | order_number | int, unique | — | sequence | PG sequence starting 1001; human-facing |
 | tracking_token | varchar(32), unique | — | `token_urlsafe(16)` | public tracking URL key (D12); no login, no PII exposed |
+| checkout_id | UUID, unique | — | uuid4 | permanent submission identity |
+| submission_digest | varchar(64) | — | blank for legacy | keyed validated request digest from checkout |
+| unpaid_expires_at | TS, indexed | — | created_at + 24 hours | retries never extend it |
+| cancelled_at | TS | yes | null | whole-order release time |
+| consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable for legacy | blank / null | exact accepted wording/version/time; no invented legacy consent |
+| discount_snapshot | JSON | — | {} | frozen code/arithmetic/scope facts |
 | subtotal | Money | — | | = sum of item price_snapshots, before discount |
 | discount_code | FK DiscountCode, **PROTECT** | yes | null | a code that has been spent can never be deleted (ADR-0020) |
 | discount_amount | Money | — | 0 | computed server-side at checkout from the DB row, never from the browser |
@@ -260,6 +266,7 @@ Validation and application are **server-side at checkout only**; the browser sen
 | order | FK Order, **PROTECT**, **unique** | — | one redemption per order, DB-enforced — the same guarantee as "one code per order" |
 | amount | Money | — | what this code actually cost, in toman; the audit trail of a campaign's real price |
 | created_at | TS | — | auto |
+| released_at | TS | yes | null until released; retained history stops consuming limits |
 
 Written **inside** the order-creation transaction alongside the `used_count` increment, under the same `select_for_update()` on the DiscountCode row. `per_user_limit` cannot be enforced without it: counting orders was the previous plan and it is wrong the moment an order is cancelled or a code is changed. `amount` duplicates `Order.discount_amount` on purpose — the order column is what the customer paid, this one is what the campaign spent, and reporting reads the second.
 
@@ -270,6 +277,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | order | FK Order, CASCADE | — | | composition; deletion of paid orders is blocked by Payment PROTECT anyway |
 | plan | FK Plan, **PROTECT** | — | | plan row must outlive every sale (snapshot has the display data; FK keeps the supply/re-buy link) |
 | status | varchar(24), choices | — | `PENDING_PAYMENT` | `PENDING_PAYMENT`·`QUEUED`·`AWAITING_INPUT`·`DELIVERED`·`REPLACEMENT_REQUESTED`·`CANCELLED`·`REFUNDED` |
+| stock_debited | bool | — | false | true only when checkout actually decremented finite stock |
 | price_snapshot | Money | — | | |
 | cost_snapshot | Money | — | | copied from Plan.cost_price at order time (D10) |
 | actual_cost | Money | yes | null | delivery-form editable, prefilled from cost_snapshot; replacements add to it (D10) |
@@ -287,6 +295,8 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | delivery_link_expires_at | TS | yes | null | issue + 72h |
 | delivery_link_used_at | TS | yes | null | stamped under the item lock on first open — single-use |
 | created_at | TS | — | auto | |
+
+**UnpaidExpirySweep** — singleton with `CHECK (id = 1)`: last successful sweep time, processed count and overdue backlog. Updated only after a successful bounded sweep; the operator list also queries live backlog. This is operational freshness, not financial history.
 
 **DeliveryField** (S7, D10) — intent: the credentials the operator delivers for one item, one row per field, the value encrypted at field level (ADR-0007). A replacement writes a new generation and keeps the old rows rather than overwriting them (ADR-0003: replacement cycles back to DELIVERED with a new credential generation). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, DeliveryField). It is re-specified when S7 is planned.
 

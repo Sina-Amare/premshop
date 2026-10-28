@@ -17,6 +17,7 @@ from typing import Any, ClassVar, cast
 
 from django import forms
 from django.contrib import admin, messages
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.db.models import Max, Q, QuerySet
@@ -234,8 +235,15 @@ class PlanForm(forms.ModelForm):
 
     No Meta: the inline gives the model and its fieldsets the fields."""
 
+    stock_version = forms.CharField(required=False, widget=forms.HiddenInput, label="")
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial["stock_version"] = signing.dumps(
+                {"plan": self.instance.pk, "stock": self.instance.stock_quantity},
+                salt="catalog.stock",
+            )
         for name in ("promo_starts_at", "promo_ends_at"):
             if name not in self.fields:
                 continue
@@ -249,7 +257,41 @@ class PlanForm(forms.ModelForm):
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}
         if self.instance.pk and connection.in_atomic_block:
-            Plan.objects.select_for_update().filter(pk=self.instance.pk).exists()
+            product_ids = set(
+                Plan.objects.filter(pk=self.instance.pk).values_list("product_id", flat=True)
+            )
+            if product := cleaned.get("product"):
+                product_ids.add(product.pk)
+            list(Product.objects.select_for_update().filter(pk__in=product_ids).order_by("pk"))
+            current = Plan.objects.select_for_update().get(pk=self.instance.pk)
+            if current.product_id not in product_ids:
+                raise ValidationError("اطلاعات محصول تغییر کرده است. صفحه را دوباره باز کنید.")
+            if "stock_quantity" in cleaned:
+                try:
+                    snapshot = signing.loads(cleaned.get("stock_version", ""), salt="catalog.stock")
+                except signing.BadSignature:
+                    raise ValidationError(
+                        "صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید."
+                    ) from None
+                if (
+                    not isinstance(snapshot, dict)
+                    or snapshot.get("plan") != current.pk
+                    or "stock" not in snapshot
+                ):
+                    raise ValidationError("صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید.")
+                if cleaned["stock_quantity"] == snapshot["stock"]:
+                    cleaned["stock_quantity"] = current.stock_quantity
+                    self.changed_data[:] = [
+                        name for name in self.changed_data if name != "stock_quantity"
+                    ]
+                elif current.stock_quantity != snapshot["stock"]:
+                    self.add_error(
+                        "stock_quantity",
+                        "موجودی تغییر کرده است. مقدار فعلی را بررسی کنید و صفحه را دوباره باز کنید.",
+                    )
+            else:
+                self.instance.stock_quantity = current.stock_quantity
+        self.changed_data[:] = [name for name in self.changed_data if name != "stock_version"]
         return cleaned
 
 
@@ -289,7 +331,14 @@ class PlanInline(StackedInline):
         ),
         (
             _("موجودی و تعداد"),
-            {"fields": [("stock_quantity", "max_quantity"), "stock_levels", "is_available"]},
+            {
+                "fields": [
+                    "stock_version",
+                    ("stock_quantity", "max_quantity"),
+                    "stock_levels",
+                    "is_available",
+                ]
+            },
         ),
         (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
         (
@@ -834,7 +883,8 @@ class ProductAdmin(PreviewAdminMixin):
 
     def get_form(self, request: Any, obj: Any = None, change: bool = False, **kwargs: Any) -> Any:
         if request.method == "POST" and obj and connection.in_atomic_block:
-            # Cart merges acquire several stock rows in this same order.
+            Product.objects.select_for_update().get(pk=obj.pk)
+            # Checkout locks products before plans, each group in primary-key order.
             list(
                 Plan.objects.select_for_update()
                 .filter(product=obj)
@@ -953,7 +1003,14 @@ class PlanAdmin(PreviewAdminMixin):
         (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
         (
             _("موجودی و تعداد"),
-            {"fields": [("stock_quantity", "max_quantity"), "stock_levels", "is_available"]},
+            {
+                "fields": [
+                    "stock_version",
+                    ("stock_quantity", "max_quantity"),
+                    "stock_levels",
+                    "is_available",
+                ]
+            },
         ),
         (
             _("اطلاعات مشتری و تأمین"),

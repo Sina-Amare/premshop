@@ -1031,3 +1031,102 @@ msgstr "Drafts"
 
 msgid "فعلاً موردی برای رسیدگی نیست."
 msgstr "Nothing needs attention right now."
+
+msgid "آخرین بررسی موفق"
+msgstr "Last successful sweep"
+
+msgid "سفارش‌های لغوشده"
+msgstr "Cancelled orders"
+
+msgid "سفارش‌های گذشته از مهلت"
+msgstr "Overdue orders"
+
+msgid "موجودی قابل فروش"
+msgstr "Available stock"
+
+msgid "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
+msgstr "Excludes units already committed to orders. Leave blank for unlimited stock."
+
+msgid "آخرین بررسی مهلت پرداخت"
+msgstr "Last unpaid-order sweep"
+
+msgid "استفاده از کد تخفیف"
+msgstr "Discount redemption"
+
+msgid "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
+msgstr "Enter a percentage for a percent discount, or toman for a fixed discount."
+
+msgid "بررسی خودکار به‌روز نیست. وضعیت اجرای آن را بررسی کنید."
+msgstr "The automatic sweep is overdue. Check that it is running."
+
+msgid "تعداد استفاده‌ی فعال"
+msgstr "Active redemptions"
+
+msgid "حداقل مبلغ سفارش"
+msgstr "Minimum order subtotal"
+
+msgid "حداقل یک محصول برای این کد تخفیف انتخاب کنید."
+msgstr "Select at least one product for this discount code."
+
+msgid "حداکثر استفاده برای هر مشتری"
+msgstr "Redemption limit per customer"
+
+msgid "حداکثر تعداد استفاده"
+msgstr "Total redemption limit"
+
+msgid "خالی یعنی بدون محدودیت. استفاده‌های لغوشده حساب نمی‌شوند."
+msgstr "Leave blank for unlimited use. Cancelled redemptions do not count."
+
+msgid "زمان آزادسازی"
+msgstr "Released at"
+
+msgid "زمان استفاده"
+msgstr "Redeemed at"
+
+msgid "زمان ایجاد"
+msgstr "Created at"
+
+msgid "ساعت"
+msgstr "Time"
+
+msgid "سفارش‌های گذشته از مهلت پرداخت"
+msgstr "Orders past their payment deadline"
+
+msgid "سوابق استفاده از کد تخفیف"
+msgstr "Discount redemption history"
+
+msgid "شروع اعتبار"
+msgstr "Valid from"
+
+msgid "عددی بزرگ‌تر از صفر وارد کنید."
+msgstr "Enter a number greater than zero."
+
+msgid "مبلغ تخفیف"
+msgstr "Discount amount"
+
+msgid "هنوز اجرا نشده است"
+msgstr "Not run yet"
+
+msgid "پایان اعتبار"
+msgstr "Valid until"
+
+msgid "پایان اعتبار باید پس از شروع آن باشد."
+msgstr "The end of validity must be after its start."
+
+msgid "بررسی مهلت پرداخت"
+msgstr "Payment deadline sweep"
+
+msgid "درصد"
+msgstr "Percent"
+
+msgid "بدون محدودیت"
+msgstr "Unlimited"
+
+msgid "صفر یا عددی بزرگ‌تر وارد کنید."
+msgstr "Enter zero or a greater number."
+
+msgid "میزان تخفیف"
+msgstr "Discount value"
+
+msgid "محصولات مشمول تخفیف"
+msgstr "Eligible products"
