@@ -479,6 +479,9 @@ msgstr "The check date cannot be after today."
 msgid "نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند."
 msgstr "Leave out the shop’s name. The site adds it to the end of the title itself."
 
+msgid "درصد تخفیف را در نام یا عنوان سئو ننویسید. سایت آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+msgstr "Leave the discount percentage out of the name and the SEO title. The site works it out from the plan’s discounted price and shows it beside the price."
+
 msgid "روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."
 msgstr "The day the text’s claims were last checked against the sources."
 

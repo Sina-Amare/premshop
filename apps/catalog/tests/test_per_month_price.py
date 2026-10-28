@@ -92,8 +92,8 @@ def test_the_three_month_row_carries_the_line_and_the_one_month_row_does_not(cli
     )
     body = client.get(reverse("product", args=[service.slug])).content.decode()
     one, three = re.findall(r"<label data-preview-row.*?</label>", body, re.S)
-    assert "۱ ماهه" in one and "ماهی حدود" not in one
-    assert "ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه" in re.sub(r"<[^>]+>", "", three)
+    assert "۱ ماهه" in one and "معادل ماهی حدود" not in one
+    assert "معادل ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه" in re.sub(r"<[^>]+>", "", three)
 
 
 @pytest.mark.browser
@@ -124,7 +124,7 @@ def test_the_line_stays_in_its_row_and_follows_the_countdown(browser, live_serve
         rows = page.locator("label.plan")
         line = rows.nth(1).locator(".plan__monthly")
         expect(line).to_have_text(
-            "ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه", use_inner_text=True
+            "معادل ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه", use_inner_text=True
         )
         box, row = line.bounding_box(), rows.nth(1).bounding_box()
         assert row["x"] <= box["x"] and box["x"] + box["width"] <= row["x"] + row["width"]
@@ -132,7 +132,7 @@ def test_the_line_stays_in_its_row_and_follows_the_countdown(browser, live_serve
         expect(rows.nth(2).locator(".plan__monthly")).to_be_hidden()
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
         page.clock.fast_forward("01:00:01")
-        expect(line).to_have_text("ماهی حدود ۱۶۰,۰۰۰ تومان", use_inner_text=True)
+        expect(line).to_have_text("معادل ماهی حدود ۱۶۰,۰۰۰ تومان", use_inner_text=True)
     finally:
         page.close()
 
@@ -185,18 +185,18 @@ def test_the_poll_redraws_the_line_when_the_one_month_offer_starts_or_sells_out(
         page.goto(live_server.url + reverse("product", args=[service.slug]))
         line = page.locator("label.plan").nth(1).locator(".plan__monthly")
         expect(line).to_have_text(
-            "ماهی حدود ۱۴۰,۰۰۰ تومان، ۳۰٪ کمتر از خرید ماهانه", use_inner_text=True
+            "معادل ماهی حدود ۱۴۰,۰۰۰ تومان، ۳۰٪ کمتر از خرید ماهانه", use_inner_text=True
         )
         Plan.objects.filter(pk=month.pk).update(
             promo_starts_at=timezone.now() - timedelta(minutes=1)
         )
         poll()
         expect(line).to_have_text(
-            "ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه", use_inner_text=True
+            "معادل ماهی حدود ۱۴۰,۰۰۰ تومان، ۱۲٪ کمتر از خرید ماهانه", use_inner_text=True
         )
         Plan.objects.filter(pk=month.pk).update(stock_quantity=0)
         poll()
         expect(page.locator("label.plan").nth(0)).to_contain_text("فعلاً ناموجود")
-        expect(line).to_have_text("ماهی حدود ۱۴۰,۰۰۰ تومان", use_inner_text=True)
+        expect(line).to_have_text("معادل ماهی حدود ۱۴۰,۰۰۰ تومان", use_inner_text=True)
     finally:
         page.close()

@@ -120,6 +120,21 @@ def check_seo_title(row: Category | Product) -> None:
         )
 
 
+def check_no_discount_in_names(row: Product) -> None:
+    """A discount is worked out from the plan's own prices and printed beside them.
+    Typed into a name it outlives the offer and can contradict that figure."""
+    refused = {
+        field: _(
+            "درصد تخفیف را در نام یا عنوان سئو ننویسید. "
+            "سایت آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+        )
+        for field in ("name", "seo_title")
+        if any(mark in normalize_for_search(getattr(row, field)) for mark in ("٪", "%", "تخفیف"))
+    }
+    if refused:
+        raise ValidationError(refused)
+
+
 def validate_image_upload(file: Any) -> None:
     """PNG, JPEG or WebP, judged by what Pillow reads rather than by the name.
 
@@ -614,6 +629,7 @@ class Product(ChecksNameTheirField, models.Model):
                 )
         check_slug_is_latin(self)
         check_seo_title(self)
+        check_no_discount_in_names(self)
         if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
             raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
         # The product form's half of the publishing rule: this row's own fields.

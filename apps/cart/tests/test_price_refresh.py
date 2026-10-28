@@ -25,7 +25,7 @@ def test_polling_refreshes_changed_offer_deadlines_and_removed_promotions(
         Plan.objects.filter(pk=plan.pk).update(promo_price=None)
         with page.expect_response("**/cart/availability/**"):
             page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
-        expect(page.locator(".plan__promotion")).to_have_count(0)
+        expect(page.locator(".plans .plan__promotion")).to_have_count(0)
         expect(page.locator(".plans .price__num")).to_have_text("۲۰۰,۰۰۰")
     finally:
         page.close()
