@@ -66,5 +66,39 @@
     header.classList.toggle('v-header--away', phone.matches && y > lastY && y > header.offsetHeight && !busy);
     lastY = y;
   }, {passive: true});
+
+  // The buy bar repeats the buy box's button while that button is out of sight. It mirrors
+  // the button's state and never decides one, so it cannot offer what the box would refuse.
+  const bar = document.querySelector('[data-buy-bar]');
+  const cta = document.querySelector('.buybox__cta');
+  if (bar && cta) {
+    const add = bar.querySelector('button');
+    const error = cta.form.querySelector('.cart-add-error');
+    let away = false;
+    // The checked plan's own row is the source, so the bar shows the price the server rendered.
+    const fill = () => {
+      const plan = cta.form.querySelector('[name=plan]:checked')?.closest('.plan');
+      if (!plan) return;
+      bar.querySelector('bdi').textContent = plan.querySelector('.plan__title').textContent;
+      bar.querySelector('.price').replaceChildren(...[...plan.querySelectorAll('[data-plan-price] :is(.price__num,.price__cur)')].map(part => part.cloneNode(true)));
+    };
+    const update = () => {
+      fill();
+      add.setAttribute('aria-disabled', cta.getAttribute('aria-disabled') ?? 'false');
+      bar.hidden = !(phone.matches && away && !cta.disabled && !cta.hidden && cta.textContent.trim() === add.textContent.trim());
+      if (bar.hidden && bar.contains(document.activeElement)) (cta.hidden ? cta.form.querySelector('.buybox__cart') : cta)?.focus({preventScroll: true});
+    };
+    const sight = new IntersectionObserver(entries => { away = !entries.at(-1).isIntersecting; update(); });
+    sight.observe(cta);
+    // Observed afresh after every change: a button shown again where it was reports nothing by itself.
+    new MutationObserver(() => { sight.unobserve(cta); sight.observe(cta); })
+      .observe(cta, {attributes: true, childList: true, characterData: true, subtree: true});
+    phone.addEventListener('change', update);
+    ['change', 'cart:availability'].forEach(type => cta.form.addEventListener(type, fill));
+    document.addEventListener('prices:changed', fill);
+    // A refusal is written in the box, out of sight while the bar shows, so the page goes to it.
+    new MutationObserver(() => { if (!error.hidden && !bar.hidden) error.scrollIntoView({block: 'center'}); })
+      .observe(error, {attributes: true, attributeFilter: ['hidden']});
+  }
   sync();
 })();
