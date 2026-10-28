@@ -162,3 +162,42 @@ def test_poll_rereads_a_list_price_changed_behind_a_live_discount(
         expect(page.locator(".cart-summary__saving")).to_contain_text("۱۵۰,۰۰۰")
     finally:
         page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_a_discount_ending_on_the_cart_page_rereads_the_cart_at_once(
+    browser, live_server, client, plan
+):
+    _promote(plan, promo_ends_at=timezone.now() + timedelta(seconds=6))
+    client.post("/cart/add/", {"plan": plan.pk})
+    page = _open_cart(browser, live_server, client, 1440)
+    try:
+        saving = page.locator(".cart-summary__saving")
+        expect(saving).to_contain_text("۵۰,۰۰۰")
+        expect(page.locator(".cart-line .deadline")).to_have_text("تخفیف تمام شد", timeout=9000)
+        # Waiting for the 15-second poll would leave the saving on show after the badge ended it.
+        expect(saving).to_have_count(0, timeout=5000)
+        expect(page.locator(".cart-line .price__was")).to_have_count(0)
+    finally:
+        page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_the_charged_price_outweighs_the_struck_list_price(browser, live_server, client, plan):
+    promoted = Plan.objects.create(
+        product=plan.product, title="سه‌ماهه", cost_price=1, sale_price=500000, promo_price=400000
+    )
+    client.post("/cart/add/", {"plan": promoted.pk})
+    client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
+    page = _open_cart(browser, live_server, client, 390)
+    weight = "node => getComputedStyle(node).fontWeight"
+    try:
+        promoted = page.locator(".cart-line__unit--promoted")
+        assert promoted.locator(".price__num").evaluate(weight) == "600"
+        assert promoted.locator(".price__was").evaluate(weight) == "400"
+        quiet = page.locator(".cart-line__unit:not(.cart-line__unit--promoted) .price__num")
+        assert quiet.evaluate(weight) == "400"
+    finally:
+        page.close()

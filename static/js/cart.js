@@ -238,6 +238,8 @@
   });
 
   setInterval(refresh, 15000);
+  // An ended discount changes the cart's prices now, not at the next poll; the delay covers the seconds the server rounds down.
+  if (cartPage) document.addEventListener('deadline:ended', () => setTimeout(refresh, 1500));
   cartPage?.querySelectorAll('.cart-quantity input[name=quantity]').forEach(updateStepper);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 })();

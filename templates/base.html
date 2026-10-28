@@ -114,6 +114,7 @@
       el.classList.add('deadline--done');
       var said = el.nextElementSibling;
       if (said && said.classList.contains('deadline__said')) said.textContent = 'تخفیف تمام شد';
+      document.dispatchEvent(new Event('deadline:ended'));
       return;
     }
     if (!el.classList.contains('price')) {
