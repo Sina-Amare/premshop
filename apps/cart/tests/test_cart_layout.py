@@ -140,6 +140,11 @@ def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
         expect(page.locator(".cart-line__restock")).to_have_text(
             "زمان موجود شدن دوباره را از پشتیبانی بپرسید."
         )
+        if width == 390:
+            long_line = page.locator(".cart-line").last
+            controls = long_line.locator(".cart-line__controls").bounding_box()
+            amount = long_line.locator(".cart-line__amount").bounding_box()
+            assert amount["y"] >= controls["y"] + controls["height"]
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         for amount in page.locator(".cart-money").all():
             assert amount.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
