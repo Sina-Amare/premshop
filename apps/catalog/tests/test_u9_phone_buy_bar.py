@@ -1,8 +1,11 @@
 """On a phone the buy box's button follows the reader down the product page."""
 
+import re
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.cart.models import CartItem
@@ -60,6 +63,27 @@ def leave_the_buy_box(page):
     page.evaluate(
         "() => scrollTo({top: document.querySelector('.buybox__cta').getBoundingClientRect()"
         ".bottom + scrollY + 40, behavior: 'instant'})"
+    )
+
+
+def raise_cta_to_header_edge(page, rise):
+    """Scrolls so the box's button centre sits `rise` pixels above the header's lower edge."""
+    page.evaluate(
+        "rise => { const box = document.querySelector('.buybox__cta').getBoundingClientRect();"
+        " const edge = document.querySelector('.v-header').offsetHeight;"
+        " scrollTo({top: scrollY + box.top + box.height / 2 - edge + rise, behavior: 'instant'}); }",
+        rise,
+    )
+
+
+def wait_until_on_top(page, selector, over):
+    """Waits until a tap at the centre of `selector` would land on `over`."""
+    page.wait_for_function(
+        "([selector, over]) => { const box = document.querySelector(selector).getBoundingClientRect();"
+        " return document.querySelector(over).contains("
+        "document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)); }",
+        arg=[selector, over],
+        timeout=5000,
     )
 
 
@@ -151,6 +175,59 @@ def test_a_filled_plan_takes_the_bar_away_and_keeps_focus(browser, live_server, 
         expect(page.locator(".buybox__cart")).to_be_visible()
         expect(page.locator("[data-buy-bar]")).to_be_hidden()
         expect(page.locator(".buybox__cart")).to_be_focused()
+        # The link it lands on is brought into view, clear of the header, so the ring is seen.
+        expect(page.locator(".buybox__cart")).to_be_in_viewport()
+        wait_until_on_top(page, ".buybox__cart", ".buybox__cart")
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("name,opened", [("phone", PHONE), ("narrowed", DESKTOP)])
+def test_a_button_under_the_returned_header_is_out_of_sight(
+    browser, live_server, product, name, opened
+):
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    page = browser.new_page(viewport=opened)
+    bar = page.locator("[data-buy-bar]")
+    try:
+        page.goto(live_server.url + product.get_absolute_url())
+        # Opened wide and then narrowed, the phone's taller header is the one to clear.
+        page.set_viewport_size(PHONE)
+        leave_the_buy_box(page)
+        expect(bar).to_be_visible()
+        expect(page.locator(".v-header")).to_have_class(re.compile("v-header--away"))
+        # Scrolling back up brings the header back over the button: wholly, then all but a sliver.
+        for rise in (90, 4):
+            raise_cta_to_header_edge(page, rise)
+            wait_until_on_top(page, ".buybox__cta", ".v-header")
+            settle(page)
+            assert bar.is_visible(), rise
+        page.screenshot(path=str(SHOTS / f"under-header-{name}-390.png"))
+        # Once most of the button is clear of the header, the box's own button is the one to use.
+        raise_cta_to_header_edge(page, -30)
+        wait_until_on_top(page, ".buybox__cta", ".buybox__cta")
+        expect(bar).to_be_hidden()
+    finally:
+        page.close()
+
+
+def test_the_bar_follows_the_price_when_a_discount_ends(browser, live_server, product):
+    product.plans.filter(title="سه ماهه").update(
+        promo_ends_at=timezone.now() + timedelta(seconds=6)
+    )
+    page = browser.new_page(viewport=PHONE)
+    region = page.get_by_role("region", name="خرید سریع")
+    row = page.locator(".plan").filter(has_text="سه ماهه")
+    try:
+        page.goto(live_server.url + product.get_absolute_url())
+        row.click()
+        leave_the_buy_box(page)
+        expect(region.locator(".price__num")).to_have_text("۵۰۰,۰۰۰")
+        # At zero the box's countdown swaps in the regular price, and the bar must not keep the old one.
+        expect(row.locator("[data-plan-price] .price__num")).to_have_text("۶۰۰,۰۰۰", timeout=10000)
+        expect(region.locator(".price__num")).to_have_text("۶۰۰,۰۰۰")
+        expect(region.locator("bdi")).to_have_text("سه ماهه")
+        expect(region).to_be_visible()
     finally:
         page.close()
 
