@@ -1,5 +1,5 @@
 """The quick-plans sheet states a plan's discount and its monthly figure the way
-the buy box does, and the panel keeps a discount out of a product's name."""
+the buy box does, and the panel keeps a discount out of the text printed beside it."""
 
 import re
 from datetime import timedelta
@@ -12,14 +12,16 @@ from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.catalog.models import Category, Plan, Product
+from apps.catalog.tests.test_admin import errors_under, form_of
+from apps.catalog.tests.test_admin import operator as operator
 
 pytestmark = pytest.mark.django_db
 
 QUARTER = "معادل ماهی حدود ۱۴۰,۰۰۰ تومان، ۲۶٪ کمتر از خرید ماهانه"
 QUARTER_AFTER = "معادل ماهی حدود ۱۶۳,۰۰۰ تومان، ۱۴٪ کمتر از خرید ماهانه"
 REFUSAL = (
-    "درصد تخفیف را در نام یا عنوان سئو ننویسید. "
-    "سایت آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+    "تخفیف را اینجا ننویسید. "
+    "سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
 )
 SECONDARY = "rgb(86, 97, 112)"  # --color-secondary on the storefront
 TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text, the amber kept for time
@@ -118,9 +120,10 @@ def test_the_monthly_line_reads_the_plans_already_fetched(
         ("name", "Spotify Premium 20%"),
         ("seo_title", "خرید Spotify Premium با تخفیف"),
         ("name", "Spotify Premium با تخفيف"),  # typed with an Arabic keyboard's yeh
+        ("seo_description", "Spotify Premium روی اکانت خودتان، با ۲۰٪ تخفیف."),
     ],
 )
-def test_a_discount_written_into_the_name_or_seo_title_is_refused_on_that_field(
+def test_a_discount_written_into_the_name_or_the_seo_text_is_refused_on_that_field(
     spotify, field, value
 ):
     setattr(spotify, field, value)
@@ -129,9 +132,36 @@ def test_a_discount_written_into_the_name_or_seo_title_is_refused_on_that_field(
     assert refused.value.message_dict == {field: [REFUSAL]}
 
 
-def test_a_name_and_seo_title_without_a_discount_are_kept(spotify):
+def test_a_discount_written_into_a_plans_title_is_refused_on_that_field(spotify):
+    """The sheet and the buy box print the title beside the computed badge, so
+    this one stood «۳ ماهه ۲۰٪ تخفیف» next to «۱۴٪ تخفیف»."""
+    quarter = spotify.plans.get(title="۳ ماهه")
+    quarter.title = "۳ ماهه ۲۰٪ تخفیف"
+    with pytest.raises(ValidationError) as refused:
+        quarter.full_clean()
+    assert refused.value.message_dict == {"title": [REFUSAL]}
+
+
+def test_the_plans_own_form_in_the_panel_refuses_a_discount_in_the_title(client, operator, spotify):
+    quarter = spotify.plans.get(title="۳ ماهه")
+    url = reverse("admin:catalog_plan_change", args=[quarter.pk])
+    data = form_of(client, url, "plan_form")
+    data["title"] = ["۳ ماهه ۲۰٪ تخفیف"]
+
+    response = client.post(url, data)
+
+    assert response.status_code == 200, "the panel saved a discount into the plan's title"
+    assert REFUSAL in errors_under(response.content.decode(), "title")
+    quarter.refresh_from_db()
+    assert quarter.title == "۳ ماهه"
+
+
+def test_names_and_titles_without_a_discount_are_kept(spotify):
     spotify.name, spotify.seo_title = "Spotify Premium", "خرید Spotify Premium"
+    spotify.seo_description = "Spotify Premium روی اکانت خودتان."
     spotify.full_clean()
+    for plan in spotify.plans.all():
+        plan.full_clean()
 
 
 def _open(page, live_server, product):

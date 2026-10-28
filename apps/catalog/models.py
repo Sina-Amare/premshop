@@ -120,15 +120,15 @@ def check_seo_title(row: Category | Product) -> None:
         )
 
 
-def check_no_discount_in_names(row: Product) -> None:
+def check_no_typed_discount(row: Product | Plan, *fields: str) -> None:
     """A discount is worked out from the plan's own prices and printed beside them.
-    Typed into a name it outlives the offer and can contradict that figure."""
+    Typed into the text it outlives the offer and can contradict that figure."""
     refused = {
         field: _(
-            "درصد تخفیف را در نام یا عنوان سئو ننویسید. "
-            "سایت آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+            "تخفیف را اینجا ننویسید. "
+            "سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
         )
-        for field in ("name", "seo_title")
+        for field in fields
         if any(mark in normalize_for_search(getattr(row, field)) for mark in ("٪", "%", "تخفیف"))
     }
     if refused:
@@ -629,7 +629,7 @@ class Product(ChecksNameTheirField, models.Model):
                 )
         check_slug_is_latin(self)
         check_seo_title(self)
-        check_no_discount_in_names(self)
+        check_no_typed_discount(self, "name", "seo_title", "seo_description")
         if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
             raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
         # The product form's half of the publishing rule: this row's own fields.
@@ -1019,6 +1019,10 @@ class Plan(ChecksNameTheirField, PageRow):
         # beside Persian is reordered by the bidi algorithm, and the em dash
         # that used to stand between them read «۱ — Claude Pro ماهه».
         return f"{self.title}، \u2068{self.product}\u2069"
+
+    def clean(self) -> None:
+        super().clean()
+        check_no_typed_discount(self, "title")
 
     @transaction.atomic
     def save(self, *args: Any, **kwargs: Any) -> None:
