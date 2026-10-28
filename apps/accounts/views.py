@@ -1,4 +1,4 @@
-"""Thin controllers: parse a form, call one service, render. No rules here."""
+"""Account forms and sign-in responses."""
 
 from __future__ import annotations
 

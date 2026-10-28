@@ -4,7 +4,7 @@ How to run PremShop locally, the commands you will use, the traps this particula
 
 ## Setup
 
-Development and CI use Python 3.14, pinned in `.python-version`. The package metadata still allows Python 3.11 and later, and black, ruff and mypy still target 3.11; that is not evidence that older versions pass the gate. The lockfile also selects an older django-unfold below Python 3.12. Use the pinned version, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
+Development and CI support Python 3.14 only, pinned in `.python-version`. Package metadata and the formatter, linter and type checker target the same minor version. Use the pinned version, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
 
 ```bash
 cp .env.example .env            # then fill SECRET_KEY, DATABASE_URL and the EMAIL_ values

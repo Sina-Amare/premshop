@@ -160,7 +160,7 @@ def validate_image_upload(file: Any) -> None:
                 # The header alone passes a file cut off in transit, which
                 # then failed in pre_save as a server error.
                 image.load()
-    except (OSError, SyntaxError, Image.DecompressionBombError):
+    except OSError, SyntaxError, Image.DecompressionBombError:
         kind, width, height = None, 0, 0
     finally:
         file.seek(0)

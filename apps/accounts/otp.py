@@ -149,7 +149,7 @@ def send_login_code(email: str) -> Issued:
     send_templated_email(
         "otp_code",
         to=[email],
-        context={"code": issued.code, "ttl_minutes": issued.ttl_minutes, "login_url": ""},
+        context={"code": issued.code, "ttl_minutes": issued.ttl_minutes},
     )
     return issued
 

@@ -136,7 +136,6 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
     "otp_code": {
         "code": "418305",
         "ttl_minutes": 10,
-        "login_url": "https://premshop.ir/enter/preview-token",
     },
     "item_delivered": {
         "order_number": "PS-1405-0217",

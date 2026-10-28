@@ -75,7 +75,7 @@
   --font-body: "Vazirmatn", "Vazirmatn Fallback", Tahoma, sans-serif;
   --font-head: "Estedad", "Estedad Fallback", "Vazirmatn", Tahoma, sans-serif;
 
-  /* Nine spacing values. Nothing outside this set appears in the stylesheet. */
+  /* Shared spacing values; component rules also use optical adjustments. */
   --spacing-1: 4px;  --spacing-2: 8px;  --spacing-3: 12px;
   --spacing-4: 16px; --spacing-5: 24px; --spacing-6: 32px;
   --spacing-7: 48px; --spacing-8: 64px; --spacing-9: 96px;
@@ -88,6 +88,9 @@
      code cells nearly vanished, where WCAG 1.4.11 asks 3:1. */
   --color-ground: #ffffff;
   --color-surface: #ffffff;
+  --color-disabled: #a8a29e;
+  --color-invert-hover: #e9e9e8;
+  --color-invert-active: #dcdcda;
   --color-fill-subtle: #f5f5f4;
   --color-line: #e7e5e4;
   --color-line-strong: #d4d4d4;
@@ -142,11 +145,7 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);   /* enters fast, lands slowly */
 
-  /* The only shadow in the stylesheet, and it has exactly one consumer: the
-     shelf panel that crosses the seam between the ink band and the page. Two
-     layers, tinted from ink rather than black, no bloom. Everywhere else
-     structure is still carried by a hairline — delete this token and only the
-     shelf changes. */
+  /* Soft elevation for the floating product tiles. */
   --shadow-lift: 0 1px 2px rgba(19, 19, 19, 0.04), 0 18px 40px -22px rgba(19, 19, 19, 0.3);
 }
 @media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; --hdr-h: 118px; } }
@@ -360,7 +359,7 @@
     transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease),
                 color var(--dur) var(--ease);
   }
-  .btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  .btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-surface); }
   .btn--primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
   .btn--primary:active { background: var(--color-accent-active); border-color: var(--color-accent-active); }
   /* The ring needs a ground-coloured gap to stay visible on a filled button. */
@@ -377,15 +376,15 @@
      acid accent on near-black that every generated dark hero already has. */
   .btn--invert { background: var(--color-ground); border-color: var(--color-ground);
                  color: var(--color-ink); }
-  .btn--invert:hover { background: #e9e9e8; border-color: #e9e9e8; }
-  .btn--invert:active { background: #dcdcda; border-color: #dcdcda; }
+  .btn--invert:hover { background: var(--color-invert-hover); border-color: var(--color-invert-hover); }
+  .btn--invert:active { background: var(--color-invert-active); border-color: var(--color-invert-active); }
   .btn--invert:focus-visible { outline: none;
     box-shadow: 0 0 0 2px var(--color-deep), 0 0 0 4px var(--color-ground); }
   /* Contact is instant and release is not: nothing in the interface should
      take longer to answer a press than the press itself. */
   .btn:active { transform: translateY(1px); transition-duration: 0ms; }
   .btn[disabled] { background: var(--color-fill-subtle); border-color: var(--color-line);
-                   color: #a8a29e; cursor: not-allowed; }
+                   color: var(--color-disabled); cursor: not-allowed; }
 
   /* --- Fields: a hairline box, no shadow, no fill ---------------------- */
   /* Inputs are where a shop is judged for competence, so they follow the same
@@ -402,7 +401,7 @@
     padding: 11px 14px 9px;
     transition: border-color var(--dur) var(--ease);
   }
-  .field__input::placeholder { color: #a8a29e; }
+  .field__input::placeholder { color: var(--color-disabled); }
   .field__input:hover { border-color: var(--color-muted); }
   /* Focus is a 2px ring in the accent, the border and one pixel outside it:
      5.47:1 on white. The tint halo it replaces was 1.08:1, and the border's
@@ -582,7 +581,7 @@
   /* A department heading inside a list the visitor is already reading, so it
      is deliberately quieter than .section__title: no rule, smaller type, and
      a link out to the full department. The chevron points to the start of the
-     line and nudges that way on hover, matching .dept__go. */
+     line and nudges that way on hover. */
   .shelf + .shelf { margin-block-start: var(--spacing-7); }
   /* Wider cards inside a department than in the flat grid. Departments here
      hold two or three products, and four narrow columns left every row with
@@ -696,17 +695,6 @@
   @media (max-width: 760px) { .deals { grid-template-columns: 1fr; gap: var(--spacing-4);
                                        padding: var(--spacing-4); } }
 
-  /* --- The promise strip, where an Iranian buyer looks first ----------------
-     Items at their own width rather than four columns: it holds only what is
-     true of every product, which is fewer than four things today. */
-  .promises { background: var(--color-fill-subtle);
-              border-block: 1px solid var(--color-line); }
-  .promises__row { display: flex; flex-wrap: wrap;
-                   gap: var(--spacing-3) var(--spacing-7); padding-block: var(--spacing-5); }
-  .promises__row > div { display: flex; align-items: center; gap: var(--spacing-3);
-                         font-size: 14px; line-height: 1.6; color: var(--color-ink); }
-  .promises__row svg { inline-size: 26px; block-size: 26px; flex: none; color: var(--color-accent); }
-
   @media (max-width: 1000px) {
     .hero { padding-block: var(--spacing-7); }
     .hero__inner { grid-template-columns: 1fr; gap: var(--spacing-6); }
@@ -727,7 +715,7 @@
     .nebula__item img,
     .nebula__item:nth-child(3n + 2) img,
     .nebula__item:nth-child(4n + 3) img { max-inline-size: 32px; max-block-size: 32px; }
-    .promises__row { padding-block: var(--spacing-4); }
+
   }
   /* Ambient motion is a desktop affordance: on a phone it sits under the thumb
      during the first scroll and costs battery nobody asked to spend. */
@@ -739,65 +727,6 @@
   .grid { display: grid; gap: var(--spacing-4);
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
   .grid--cats { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
-
-  /* --- Departments, as shelves ----------------------------------------------
-     Four rows in one ruled container, each showing the actual marks it holds.
-     Not four identical tinted cards: that shape is the most-copied layout on
-     the web, and it forces each department to *describe* its contents in a
-     sentence when it could simply show them. The tint survives as a hover
-     wash, which is where a colour earns its place — it answers a gesture.
-
-     The marks lift one after another on hover, 40ms apart. It is the same
-     idea as the code cells confirming one digit at a time: a cascade reads as
-     a thing responding, where six at once reads as a state flipping.
-     -------------------------------------------------------------------------- */
-  .depts { border: 1px solid var(--color-line); border-radius: var(--radius-lg);
-           overflow: hidden; background: var(--color-surface); }
-  .dept { display: grid; align-items: center; gap: var(--spacing-4);
-          grid-template-columns: minmax(7rem, auto) 1fr auto auto;
-          padding: var(--spacing-4) var(--spacing-5);
-          text-decoration: none; color: inherit;
-          transition: background-color var(--dur) var(--ease); }
-  .dept + .dept { border-block-start: 1px solid var(--color-line); }
-  .dept:hover { background: var(--dept-tint, var(--color-fill-subtle)); }
-  .dept:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
-  .dept__name { font-family: var(--font-head); font-size: 19px; font-weight: 600;
-                line-height: 1.4; color: var(--color-ink); }
-  .dept__marks { display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
-  .dept__mark { inline-size: 38px; block-size: 38px; flex: none; display: grid; place-items: center;
-                background: var(--color-surface); border: 1px solid var(--color-line);
-                border-radius: 11px;
-                transition: transform var(--dur-lg) var(--ease-out),
-                            border-color var(--dur) var(--ease); }
-  .dept__mark img { inline-size: auto; block-size: auto;
-                    max-inline-size: 21px; max-block-size: 21px; }
-  .dept__mono { font-family: var(--font-head); font-size: 15px; font-weight: 600;
-                color: var(--color-muted); line-height: 1; }
-  .dept:hover .dept__mark { transform: translateY(-3px); border-color: var(--color-line-strong); }
-  .dept__mark:nth-child(2) { transition-delay: 40ms; }
-  .dept__mark:nth-child(3) { transition-delay: 80ms; }
-  .dept__mark:nth-child(4) { transition-delay: 120ms; }
-  .dept__mark:nth-child(5) { transition-delay: 160ms; }
-  .dept__count { font-size: 14px; line-height: 1.5; color: var(--color-muted);
-                 font-variant-numeric: tabular-nums; white-space: nowrap; }
-  /* The page is RTL unconditionally, so forward is left and the glyph is
-     drawn that way. A ‹ character would not do: it is Bidi_Mirrored and the
-     renderer would turn it round. */
-  .dept__go { inline-size: 20px; block-size: 20px; color: var(--color-line-strong);
-              transition: color var(--dur) var(--ease), transform var(--dur-lg) var(--ease-out); }
-  .dept:hover .dept__go { color: var(--color-ink); transform: translateX(-3px); }
-  .dept--a { --dept-tint: #eef6f4; }
-  .dept--b { --dept-tint: #eef2fb; }
-  .dept--c { --dept-tint: #fdf0ef; }
-  .dept--d { --dept-tint: #f6f1fb; }
-  @media (max-width: 760px) {
-    .dept { grid-template-columns: 1fr auto; gap: var(--spacing-2) var(--spacing-3);
-            padding: var(--spacing-4); }
-    .dept__name { grid-column: 1; }
-    .dept__count { grid-column: 2; grid-row: 1; }
-    .dept__marks { grid-column: 1 / -1; grid-row: 2; }
-    .dept__go { display: none; }
-  }
 
   /* The starting plan and another plan's offer remain separate. */
   .grid:has(> .pcard) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -857,16 +786,6 @@
   .tile--lg { inline-size: 72px; block-size: 72px; }
   .tile--lg img { max-inline-size: 42px; max-block-size: 42px; }
   .tile--lg.tile--mono { font-size: 28px; }
-
-  /* --- Filter chips ---------------------------------------------------------- */
-  .chips { display: flex; flex-wrap: wrap; gap: var(--spacing-2); margin-block-end: var(--spacing-5); }
-  .chip { font-size: 13px; line-height: 1.4; padding: 6px 12px 4px; border-radius: var(--radius-sm);
-          border: 1px solid var(--color-line-strong); color: var(--color-secondary);
-          text-decoration: none; background: var(--color-surface);
-          transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
-  .chip:hover { border-color: var(--color-muted); color: var(--color-ink); }
-  .chip.is-active { border-color: var(--color-accent); color: var(--color-accent);
-                    background: var(--color-accent-tint); }
 
   /* --- Product page ---------------------------------------------------------- */
   .pdp { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--spacing-5) var(--spacing-7);
