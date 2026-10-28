@@ -88,7 +88,9 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
             cart = services.cart_summary(services.get_cart(request))
             if cart.has_purchasable_items:
                 label = "جمع سبد خرید" if cart.ready else "جمع محصولات قابل خرید"
-                data["total"] = f"{label}: {format_toman(cart.total)}"
+                # A no-break space keeps «تومان» on the figure's line in every browser.
+                total = format_toman(cart.total).replace(" ", "\u00a0")
+                data["total"] = f"{label}: {total}"
             if plan:
                 # Separate lines, so a Latin product name cannot set the sentence's direction.
                 data |= {

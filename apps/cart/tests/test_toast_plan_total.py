@@ -18,6 +18,13 @@ LOGO = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
     '<circle cx="12" cy="12" r="12" fill="#1db954"/></svg>'
 )
+# The rounded top of the glyphs from start to end of an element's text, which tells its lines apart.
+TOP = """(el, [start, end]) => {
+  const range = document.createRange();
+  range.setStart(el.firstChild, start);
+  range.setEnd(el.firstChild, end);
+  return Math.round(range.getClientRects()[0].top);
+}"""
 
 
 def _add(client, plan):
@@ -48,8 +55,8 @@ def plain(plan):
 
 def test_each_addition_reports_the_whole_carts_total(client, plan, plain):
     Plan.objects.filter(pk=plan.pk).update(sale_price=490000, promo_price=420000)
-    assert _add(client, plan)["total"] == "جمع سبد خرید: ۴۲۰,۰۰۰ تومان"
-    assert _add(client, plain)["total"] == "جمع سبد خرید: ۶۱۰,۰۰۰ تومان"
+    assert _add(client, plan)["total"] == "جمع سبد خرید: ۴۲۰,۰۰۰\u00a0تومان"
+    assert _add(client, plain)["total"] == "جمع سبد خرید: ۶۱۰,۰۰۰\u00a0تومان"
     assert _summary_label(client) == "جمع سبد خرید"
 
 
@@ -59,7 +66,7 @@ def test_a_row_that_needs_fixing_leaves_its_amount_out_under_the_cart_pages_labe
     _add(client, plain)
     Plan.objects.filter(pk=plain.pk).update(is_available=False)
     total = _add(client, plan)["total"]
-    assert total == "جمع محصولات قابل خرید: ۲۰۰,۰۰۰ تومان"
+    assert total == "جمع محصولات قابل خرید: ۲۰۰,۰۰۰\u00a0تومان"
     assert total.startswith(_summary_label(client) + ": ")
 
 
@@ -108,7 +115,7 @@ def test_the_plan_row_the_cart_line_and_the_toast_state_one_figure(plan):
         figures[each.title] = {
             _figure(row.split("data-plan-price", 1)[1]),
             _figure(line),
-            total.removeprefix("جمع سبد خرید: ").removesuffix(" تومان"),
+            total.removeprefix("جمع سبد خرید: ").removesuffix("\u00a0تومان"),
         }
     assert figures == {"یک ماهه": {"۴۲۰,۰۰۰"}, "سه ماهه": {"۱۹۰,۰۰۰"}, "آزمایشی": {"رایگان"}}
 
@@ -162,18 +169,7 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
         assert detail.evaluate("el => el.scrollWidth <= el.clientWidth")
         total = toast.locator("[data-toast-total]")
         expect(total).to_be_visible()
-        expect(total).to_have_text("جمع سبد خرید: ۴۲۰,۰۰۰ تومان")
-        # However the line wraps, the figure keeps its unit beside it.
-        assert total.evaluate("""el => {
-              const text = el.firstChild, at = text.data.indexOf('تومان');
-              const top = (start, end) => {
-                const range = document.createRange();
-                range.setStart(text, start);
-                range.setEnd(text, end);
-                return Math.round(range.getClientRects()[0].top);
-              };
-              return top(at - 2, at - 1) === top(at, at + 1);
-            }""")
+        expect(total).to_have_text("جمع سبد خرید: ۴۲۰,۰۰۰\u00a0تومان")
         expect(page.locator("#cart-announcement")).to_have_text(
             "Spotify Premium، ۳ ماهه به سبد خرید اضافه شد."
         )
@@ -184,6 +180,11 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
             assert box["width"] == 380
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         page.screenshot(path=str(SHOTS / f"{width}.png"))
+        # However the line wraps, the figure keeps its unit beside it: narrowed until it breaks
+        # at every space it may, with no `text-wrap: pretty`, which Safari before 26 lacks.
+        total.evaluate("el => el.style.cssText = 'text-wrap: wrap; inline-size: min-content'")
+        unit = total.text_content().index("تومان")
+        assert total.evaluate(TOP, [unit - 2, unit - 1]) == total.evaluate(TOP, [unit, unit + 1])
         assert not errors
     finally:
         page.close()
