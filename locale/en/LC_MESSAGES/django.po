@@ -254,6 +254,9 @@ msgstr "The most per order must be between 1 and 10."
 msgid "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
 msgstr "A plan that needs customer details can be bought only once per order."
 
+msgid "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید. صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
+msgstr "Do not ask the customer for an account password or a code the service sends. The product page tells customers not to enter these on the site."
+
 msgid "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
 msgstr "The product name is not in Latin letters, so write the slug yourself, like “chatgpt-plus”."
 

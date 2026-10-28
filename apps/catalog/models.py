@@ -53,6 +53,12 @@ _PERSIAN = re.compile(r"[\u0600-\u06ff]")
 # delivery can fill in the text. A page that still holds one is not published.
 PLACEHOLDER = re.compile(r"\[(?:تصمیم مالک|وابسته به تصمیم|از تحویل آزمایشی)[^\]\n]*\]?")
 
+# What the product page tells the buyer never to type into this site
+# (catalog/_activation_answer.html), so no plan may ask for it. Matched on the
+# label as normalize_for_search folds it, so «كد‌تأیید» arrives as «کد تایید».
+# Persian words match inside a word, Latin ones only whole: «otp» is in «SpotPlayer».
+ASKS_FOR_A_SECRET = re.compile(r"رمز|پسورد|کد ورود|کد تا[یئ]ید|\b(?:password|otp)\b")
+
 # A time-sensitive product's claims must have been checked this recently to publish.
 FACTS_FRESH_DAYS = 7
 
@@ -1020,10 +1026,6 @@ class Plan(ChecksNameTheirField, PageRow):
         # that used to stand between them read «۱ — Claude Pro ماهه».
         return f"{self.title}، \u2068{self.product}\u2069"
 
-    def clean(self) -> None:
-        super().clean()
-        check_no_typed_discount(self, "title")
-
     @transaction.atomic
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.pk and self.stock_quantity is not None:
@@ -1035,6 +1037,20 @@ class Plan(ChecksNameTheirField, PageRow):
             if fields is not None:
                 kwargs["update_fields"] = {*fields, "price_confirmed_at"}
         super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        super().clean()
+        check_no_typed_discount(self, "title")
+        # Whatever the product's status: a draft's label is what goes live.
+        if ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label)):
+            raise ValidationError(
+                {
+                    "customer_input_label": _(
+                        "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید."
+                        " صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
+                    )
+                }
+            )
 
     def _price_is_new(self) -> bool:
         if self._state.adding:

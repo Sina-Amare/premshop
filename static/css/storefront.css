@@ -251,10 +251,7 @@ html body .v-search input:focus{box-shadow:none}
 .v-help{font-size:12px}
 .buybox__help a{display:inline-flex;align-items:center;gap:7px;min-height:44px}
 .buybox__facts{margin:0 0 18px;padding-block-end:14px;border-bottom:1px solid var(--v-line);font-size:13px;line-height:1.9}
-.buybox__facts>div{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.buybox__facts dt{display:flex;align-items:center;gap:6px;color:var(--v-text)}
 .buybox__facts .v-icon{width:16px;height:16px}
-.buybox__facts dd{margin:0;font-weight:500}
 .page-head__intro .v-icon--telegram{width:16px;height:16px;display:inline-block;vertical-align:middle;margin-inline-end:4px}
 .v-footer nav a:has(.v-icon--telegram){display:flex;align-items:center;gap:7px}
 .v-footer nav .v-icon--telegram{width:16px;height:16px}
@@ -446,3 +443,11 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 /* The cart's total, in the plan's grey on a row of its own: beside a logo, «مشاهده‌ی سبد» and the close button the text column is too narrow for it. The server joins the figure to «تومان» with a no-break space, so no line ends between them. */
 .cart-toast>[data-toast-total]{grid-column:1/-1;font-size:13px;line-height:1.8;color:var(--v-text)}
 @media(max-width:719px){.cart-toast>[data-toast-total]{font-size:12px}}
+
+/* The account row is a <details>, so it opens without JavaScript; its chevron turns as the header's does. */
+.buybox__facts summary{display:flex;align-items:center;gap:6px;min-height:44px;color:var(--v-text);cursor:pointer;list-style:none}
+.buybox__facts summary::-webkit-details-marker{display:none}
+.buybox__facts summary>.v-icon:last-child{width:12px;height:12px;transform:rotate(90deg)}
+.buybox__facts[open] summary>.v-icon:last-child{transform:rotate(-90deg)}
+.buybox__type{margin-inline-start:auto;color:var(--v-ink);font-weight:500}
+.buybox__facts p{margin:0;color:var(--v-text)}
