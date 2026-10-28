@@ -8,7 +8,7 @@ from django import template
 from django.utils import timezone
 
 from apps.catalog.models import Plan, Product
-from apps.catalog.pricing import effective_price
+from apps.catalog.pricing import effective_price, monthly_price
 
 register = template.Library()
 
@@ -45,3 +45,27 @@ def card_price_steps(product: Product) -> list[dict[str, object]]:
             }
         )
     return steps
+
+
+@register.filter
+def monthly_price_steps(plan: Plan, plans: list[Plan]) -> list[dict[str, object]]:
+    """The plan's monthly figure now and after each discount among `plans` ends,
+    each with the seconds it lasts, so the countdown can change it with the
+    price beside it. Empty for a plan that has no monthly figure."""
+    now = timezone.now()
+    ends = sorted(
+        {
+            p.promo_ends_at
+            for p in plans
+            if p.promo_price is not None and p.promo_ends_at and p.promo_ends_at > now
+        }
+    )
+    steps: list[dict[str, object]] = []
+    for moment in [now, *ends]:
+        value = monthly_price(plan, plans, at=moment)
+        if steps and steps[-1]["value"] == value:
+            continue
+        if steps:
+            steps[-1]["left"] = max(0, int((moment - now).total_seconds()))
+        steps.append({"value": value, "left": None})
+    return steps if any(step["value"] for step in steps) else []

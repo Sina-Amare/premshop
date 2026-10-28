@@ -389,3 +389,4 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 
 .pcard .pcard__art,.v-track .pcard__art{aspect-ratio:2/1}@media(max-width:760px){.pcard .pcard__art,.v-track .pcard__art{aspect-ratio:16/9}}
 .acct__hint a{color:var(--v-accent)}
+.plan__monthly{display:block;margin-top:2px;font-size:13px;line-height:1.7;color:var(--color-secondary)}.plan--off .plan__monthly{display:none}.plan__saving{white-space:nowrap}
