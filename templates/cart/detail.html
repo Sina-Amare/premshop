@@ -14,7 +14,7 @@
   <div class="cart-layout">
     <section class="cart-lines" aria-label="اقلام سبد خرید">
     {% for line in cart.lines %}
-      <article class="cart-line{% if line.unavailable %} cart-line--unavailable{% endif %}" data-cart-plan="{{ line.plan_id }}" data-cart-maximum="{{ line.max_quantity }}" data-cart-price="{{ line.unit_price|toman_plain }}" aria-label="{% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">
+      <article class="cart-line{% if line.unavailable %} cart-line--unavailable{% endif %}" data-cart-plan="{{ line.plan_id }}" data-cart-maximum="{{ line.max_quantity }}" data-cart-price="{{ line.unit_price|toman_plain }}|{{ line.original_price|toman_plain }}|{{ line.plan.promo_ends_at|date:'U' }}" aria-label="{% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">
         <div class="cart-line__art"{% if line.plan %} style="--brand: {{ line.plan.product.card_colour }}"{% endif %} aria-hidden="true">
           {% if line.plan %}{% include 'catalog/_card_art.html' with product=line.plan.product %}{% else %}<span>−</span>{% endif %}
         </div>
@@ -23,8 +23,7 @@
           {% else %}<h2>محصول ناموجود</h2>{% endif %}
           {% if line.unavailable %}<p class="cart-line__stock">ناموجود</p><p class="cart-line__warning">برای ادامه‌ی خرید، این مورد را حذف کنید.</p><a class="cart-line__restock" href="{{ support.telegram_url }}" rel="noopener">می‌خواید بدونید کی دوباره موجود می‌شه؟ به پشتیبانی پیام بدید.</a>
           {% elif line.quantity_invalid %}<p class="cart-line__warning">تعداد را کاهش دهید.</p>
-          {% else %}
-            {% if line.quantity > 1 %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}
+          {% else %}{% include 'cart/_unit_price.html' %}
           {% endif %}
         </div>
         {% if line.purchasable %}<div class="cart-line__amount"><span class="cart-line__amount-label">جمع {{ line.quantity|fa_digits }} عدد</span><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
@@ -52,6 +51,7 @@
     </section>
     <aside class="cart-summary" aria-label="جمع سبد خرید">
       <h2>خلاصه‌ی سبد</h2>
+      {% include 'cart/_saving.html' %}
       <div class="cart-summary__label">{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات قابل خرید{% endif %}</div>
       <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="ابتدا محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div>
       {% if not cart.ready %}<p class="cart-summary__blocked">بعضی موارد سبد نیاز به اصلاح دارند.</p>{% endif %}

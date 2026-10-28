@@ -224,11 +224,24 @@ class CartLine:
     def purchasable(self) -> bool:
         return not (self.unavailable or self.quantity_invalid)
 
+    @property
+    def original_price(self) -> Decimal:
+        return self.plan.sale_price if self.plan else self.unit_price
+
+    @property
+    def saving(self) -> Decimal:
+        return (self.original_price - self.unit_price) * self.quantity
+
 
 @dataclass(frozen=True)
 class CartSummary:
     lines: list[CartLine]
     total: Decimal
+
+    @property
+    def saving(self) -> Decimal:
+        # Over the same lines as the total, so it never claims a discount on an item left out.
+        return sum((line.saving for line in self.lines if line.purchasable), Decimal(0))
 
     @property
     def has_purchasable_items(self) -> bool:

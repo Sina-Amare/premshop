@@ -79,6 +79,8 @@
         active.matches('.cart-remove,.cart-apply') ? '.' + active.classList[0] : '') : '';
     cartPage.replaceChildren(...fresh.childNodes);
     cartPage.dataset.cartRevision = fresh.dataset.cartRevision;
+    // The rebuilt discount clocks start ticking, as on a fresh page.
+    document.dispatchEvent(new Event('prices:updated'));
     edited.forEach(([id, value]) => { const input = document.getElementById(id); if (input) input.value = value; });
     errors.forEach(([id, text]) => {
       const error = cartPage.querySelector(`[data-cart-plan="${Number(id)}"] .cart-line__error`);
@@ -137,7 +139,7 @@
       const option = data.options[line.dataset.cartPlan];
       if (!option) { changed ||= line.dataset.cartMaximum !== '0'; return; }
       changed ||= +line.dataset.cartMaximum !== option.maximum;
-      changed ||= line.dataset.cartPrice !== option.price_text;
+      changed ||= line.dataset.cartPrice !== option.price_key;
     });
     if (cartPage && (changed || forceCart)) return await updateCart(generation, message, accepted);
   };

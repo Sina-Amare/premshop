@@ -1,0 +1,9 @@
+{% load fa %}{% comment %}
+A cart line's unit price. Under a discount the list price sits struck beside the
+price charged, with the discount's clock, at any quantity; otherwise it shows
+only when the line holds more than one.
+
+Not catalog/_price.html: its countdown would swap this one figure at zero while
+the line and cart totals wait for the cart's own re-read.
+Params: line.
+{% endcomment %}{% if line.saving %}<p class="cart-line__unit cart-line__unit--promoted">هر عدد <span class="cart-money"><del class="price__was"><span class="sr-only">قیمت قبلی </span>{{ line.original_price|toman_plain }}</del><span class="sr-only">قیمت با تخفیف </span>{{ line.unit_price|price_html }}</span>{% include 'catalog/_deadline.html' with plan=line.plan %}</p>{% elif line.quantity > 1 %}<p class="cart-line__unit">هر عدد <span class="cart-money">{{ line.unit_price|price_html }}</span></p>{% endif %}

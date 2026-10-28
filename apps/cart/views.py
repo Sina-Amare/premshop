@@ -113,7 +113,6 @@ def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
                 "price_html": render_to_string(
                     "catalog/_price.html", {"plan": option.plan}
                 ).strip(),
-                "price_text": format_toman(option.plan.effective_price, with_unit=False),
                 "promotion_html": render_to_string(
                     "catalog/_purchase_promotion.html", {"plan": option.plan}
                 ).strip(),
