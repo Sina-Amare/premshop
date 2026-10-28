@@ -13,6 +13,11 @@ from apps.catalog.models import Category, Plan, Product
 pytestmark = pytest.mark.django_db
 
 SHOTS = Path("screenshots/toast-total")
+# media/ is not in the repository, so a browser test serves the logo it names.
+LOGO = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
+    '<circle cx="12" cy="12" r="12" fill="#1db954"/></svg>'
+)
 
 
 def _add(client, plan):
@@ -126,6 +131,10 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
     )
     SHOTS.mkdir(parents=True, exist_ok=True)
     page = browser.new_page(viewport={"width": width, "height": height})
+    page.route(
+        f"**{product.image.url}",
+        lambda route: route.fulfill(content_type="image/svg+xml", body=LOGO),
+    )
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     toast = page.locator("#cart-toast")
@@ -142,6 +151,10 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
         else:
             page.locator(".buybox__cta").click()
         expect(toast).to_be_visible()
+        # A broken logo raises no page error, so the image is checked as loaded.
+        image = toast.locator("[data-toast-image]")
+        expect(image).to_have_js_property("complete", True)
+        assert image.evaluate("img => img.naturalWidth") > 0
         page.evaluate("document.fonts.ready")
         expect(toast.locator("[data-toast-title]")).to_have_text("به سبد خرید اضافه شد")
         detail = toast.locator("[data-toast-detail]")
