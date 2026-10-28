@@ -69,3 +69,18 @@ def monthly_price_steps(plan: Plan, plans: list[Plan]) -> list[dict[str, object]
             steps[-1]["left"] = max(0, int((moment - now).total_seconds()))
         steps.append({"value": value, "left": None})
     return steps if any(step["value"] for step in steps) else []
+
+
+@register.filter
+def card_offer(offer: Plan, product: Product) -> dict[str, object]:
+    """Whether a card's offer line prints its plan's price, and until when.
+
+    Not while the «از» line names the same plan, or one figure is printed
+    twice. `until` is the seconds until an expiry moves the «از» line onto this
+    plan; the countdown then swaps the figures for the percentage.
+    """
+    steps = card_price_steps(product)
+    return {
+        "priced": not steps or steps[0]["plan"] != offer,
+        "until": next((step["left"] for step in steps[1:] if step["plan"] == offer), None),
+    }

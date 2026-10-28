@@ -12,7 +12,7 @@
     {% for offer in product.discounted_plans %}
     <div class="pcard__promotion" data-promotion{% if offer.promo_seconds_left is not None %} data-left="{{ offer.promo_seconds_left }}"{% endif %}{% if not forloop.first %} hidden{% endif %}>
       <span class="pcard__offer" aria-hidden="true">{% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
-      <span class="pcard__deal"><bdi>{{ offer.title }}</bdi> با {% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
+      {% include "catalog/_card_offer.html" %}
       {% include "catalog/_deadline.html" with plan=offer %}
     </div>
     {% endfor %}

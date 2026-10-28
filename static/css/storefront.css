@@ -394,3 +394,7 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .cart-line__unit--promoted{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}.cart-line__unit--promoted .cart-money{align-items:baseline}.cart-line__unit .price__was{font-size:12px}.cart-line__unit .deadline{font-size:11px;padding-inline:8px}
 /* The saving comes out of the total below it, so it reads quieter than the total. */
 .cart-summary__saving{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:0 0 20px;padding-bottom:20px;border-bottom:1px solid var(--v-line);font-size:14px;color:var(--v-text)}.cart-summary__saving .price__num{font-size:18px;font-weight:600}.cart-summary__saving .price__cur{font-size:12px}
+
+/* A card's offer line prices its plan: inline text, so on a narrow card it breaks between the struck original and the figure charged, never inside one. */
+.pcard__deal{max-inline-size:100%}.pcard__deal .price__was{font-size:11px;margin-inline-end:var(--spacing-1)}
+.pcard__deal-now{font:800 14px/1.2 var(--font-head);color:var(--color-ink);font-variant-numeric:tabular-nums}

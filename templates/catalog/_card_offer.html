@@ -1,0 +1,10 @@
+{% load fa prices %}{% comment %}
+A card's offer line: the discounted plan, and what it costs now beside the
+price it replaces, struck. Without the figures while the «از» line under it
+names the same plan, so one price is never printed twice; when an expiry is
+due to move the «از» line onto this plan, the countdown in base.html swaps the
+figures for the percentage at that moment (`card_offer` in prices.py).
+
+The amounts come from `effective_price`, through `Plan.effective_price`.
+Params: offer, product.
+{% endcomment %}{% with line=offer|card_offer:product price=offer.effective_price %}<span class="pcard__deal"><bdi>{{ offer.title }}</bdi>{% if line.priced %}<span class="pcard__deal-price"{% if line.until is not None %} data-left="{{ line.until }}" data-after=" با {% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف"{% endif %}>: <del class="price__was"><span class="sr-only">قیمت قبلی </span>{{ offer.sale_price|toman_plain }}</del> <span class="sr-only">قیمت با تخفیف </span>{% if price %}<span class="pcard__deal-now">{{ price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="pcard__deal-now">رایگان</span>{% endif %}</span>{% else %} با {% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف{% endif %}</span>{% endwith %}
