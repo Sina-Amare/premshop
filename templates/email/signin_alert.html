@@ -1,7 +1,7 @@
 {% extends "email/base.html" %}{% load fa %}
 
 {% block title %}ورود جدید به حساب شما{% endblock %}
-{% block preheader %}کسی با کد ورود وارد حساب شما شد. اگر شما نبودید، اول رمز ایمیلتان را عوض کنید.{% endblock %}
+{% block preheader %}کسی با کد ورود وارد حساب شما شد. اگر خودتان نبودید، اول رمز ایمیلتان را عوض کنید.{% endblock %}
 
 {% comment %}
 C14, and it exists because the owner argued for it at review round 1 (ADR-0012):
@@ -22,12 +22,12 @@ new code and sign straight back in after the shop password changes.
 
 <p style="margin:0 0 12px 0;font-size:16px;line-height:1.95;color:#57534E;">در {{ signed_in_at|jalali }}، ساعت {{ signed_in_at|time:"H:i"|fa_digits }}، کسی با کد ورود وارد حساب شما شد.</p>
 
-<p style="margin:0 0 24px 0;font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان بودید، این ایمیل فقط برای اطلاع شماست.</p>
+<p style="margin:0 0 24px 0;font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان بودید، لازم نیست کاری انجام دهید.</p>
 
 {% comment %}Neutral, not amber: amber means a clock is running, and nothing here is timed.{% endcomment %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
   <tr>
-    <td bgcolor="#FAFAF9" style="background-color:#FAFAF9;border:1px solid #E7E5E4;border-radius:10px;padding:14px 18px 12px 18px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.9;color:#1C1917;">اگر شما نبودید، همین حالا اول رمز ایمیلتان و بعد رمز عبور PremShop را عوض کنید و به پشتیبانی خبر بدهید. با عوض کردن رمز عبور PremShop از همه‌ی دستگاه‌های دیگر خارج می‌شوید.</td>
+    <td bgcolor="#FAFAF9" style="background-color:#FAFAF9;border:1px solid #E7E5E4;border-radius:10px;padding:14px 18px 12px 18px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.9;color:#1C1917;">اگر خودتان نبودید، همین حالا اول رمز ایمیلتان و بعد رمز عبور PremShop را عوض کنید و به پشتیبانی خبر بدهید. با عوض کردن رمز عبور PremShop از همه‌ی دستگاه‌های دیگر خارج می‌شوید.</td>
   </tr>
 </table>
 

@@ -2,5 +2,4 @@
   <div class="pcard__art">
     {% if product.image %}<img src="{{ product.image.url }}" alt="" {% if not first %}loading="lazy" {% endif %}decoding="async" width="76" height="76">
     {% else %}<span class="pcard__mono" aria-hidden="true">{{ product.name|slice:":1" }}</span>{% endif %}
-    <span class="pcard__shop" aria-hidden="true">{{ ""|shop_title }}</span>
   </div>

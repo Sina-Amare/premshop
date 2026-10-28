@@ -11,7 +11,7 @@ from django.conf import settings
 
 from apps.core.formatting import to_persian_digits
 
-TELEGRAM_HANDLE = "premshop"
+TELEGRAM_HANDLE = "premshop_support"
 # The operator answers between these hours, every day, Tehran time.
 OPENS, CLOSES = 10, 22
 

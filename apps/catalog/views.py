@@ -12,15 +12,21 @@ from __future__ import annotations
 from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils.cache import patch_cache_control
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
+from apps.catalog.pricing import effective_price
 from apps.catalog.search import without_filler
+from apps.catalog.seo import breadcrumb_schema, product_breadcrumb, product_metadata, website_schema
 from apps.core import ratelimit
 
 SEARCH_RESULT_CAP = 50
+SUGGESTION_CAP = 5
+SUGGESTION_MIN_LENGTH = 2
 HOME_PRODUCT_CAP = 24
 
 
@@ -77,6 +83,10 @@ def home(request: HttpRequest) -> HttpResponse:
     # on its own — a shop that advertises an expired discount has done worse
     # than not advertising one.
     discounted = [p for p in featured if p.discounted_plans]
+    # The hero's "cheaper" is this number, not an adjective nothing backs.
+    offer_peak = max(
+        (plan.discount_percent for p in discounted for plan in p.discounted_plans), default=0
+    )
     # Grouped by department rather than one flat grid, which also retired the
     # separate «دسته‌بندی‌ها» block above it: that block and this one listed
     # the same four departments in the same order, four hundred pixels apart.
@@ -91,8 +101,10 @@ def home(request: HttpRequest) -> HttpResponse:
             "featured": featured,
             "shelf": shelf,
             "discounted": discounted,
+            "offer_peak": offer_peak,
             "by_category": by_category,
             "quick_plan_products": featured,
+            "structured_data": website_schema(),
         },
     )
 
@@ -108,6 +120,9 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
             "current_category": cat.slug,
             "products": products,
             "quick_plan_products": products,
+            "structured_data": breadcrumb_schema(
+                [(cat.name, reverse("category", args=[cat.slug]))]
+            ),
         },
     )
 
@@ -125,7 +140,15 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
         _for_cards(shown).prefetch_related("specs", "sections", "questions"), slug=slug
     )
     response = render(
-        request, "catalog/product.html", product_context(obj, related=_related_to(obj))
+        request,
+        "catalog/product.html",
+        {
+            **product_context(obj, related=_related_to(obj)),
+            "structured_data": product_breadcrumb(obj) if obj.is_public else None,
+            # A quick-plans row links here with its plan; the buy box decides
+            # whether that plan can be chosen.
+            "wanted_plan": request.GET.get("plan", ""),
+        },
     )
     if not obj.is_public:
         # The preview is on the public address, so nothing between here and the
@@ -136,7 +159,7 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
 
 def product_context(obj: Product, *, related: list[Product] | None = None) -> dict[str, object]:
     plans = list(obj.plans.all())  # prefetched: available and not, so the disabled state can render
-    available = [p for p in plans if p.is_available]
+    available = [p for p in plans if p.is_in_stock]
     # The quantity control is rendered server-side only when some plan can
     # actually take more than one, so a visitor with JavaScript off never sees
     # a stepper that cannot do anything.
@@ -170,6 +193,7 @@ def product_context(obj: Product, *, related: list[Product] | None = None) -> di
         "questions": sorted(obj.questions.all(), key=lambda q: (q.sort_order, q.pk)),
         "quick_plan_products": [obj, *(related or [])],
         "usage_notes": obj.usage_notes_shown,
+        **product_metadata(obj),
     }
 
 
@@ -239,7 +263,47 @@ def search(request: HttpRequest) -> HttpResponse:
             "results": results,
             "limited": limited,
             "everything": everything,
+            # Telegram pre-enters ?text= on a username link into the chat's
+            # input bar (core.telegram.org/api/links), so a miss reaches
+            # support already saying what was wanted.
+            "telegram_draft": f"سلام، دنبال \u2068{query}\u2069 هستم.",
             "quick_plan_products": results or everything,
         },
         status=429 if limited else 200,
     )
+
+
+def search_suggest(request: HttpRequest) -> JsonResponse:
+    """The header's list while the buyer types: the first rows of the same search.
+
+    Same matching and the same `public()` filter as the results page. Typing
+    asks far more often than a person submits, so the list spends a budget of
+    its own; it only reads the page's, and stays quiet once that is spent, so it
+    is never a way round it. A query too short to mean anything once its filler
+    words are dropped is answered before either budget or the database.
+    """
+    terms = without_filler(request.GET.get("q", "").strip()[:100])
+    if len(terms) < SUGGESTION_MIN_LENGTH:
+        return JsonResponse({"results": []})
+    ip = ratelimit.client_ip(request)
+    if not ratelimit.remaining(ratelimit.SEARCH_PER_IP, ip) or not ratelimit.hit(
+        ratelimit.SEARCH_SUGGEST_PER_IP, ip
+    ):
+        return JsonResponse({"results": []}, status=429)
+    found = _for_cards().search(terms)[:SUGGESTION_CAP]
+    return JsonResponse({"results": [_suggestion(product) for product in found]})
+
+
+def _suggestion(product: Product) -> dict[str, str]:
+    # Rendered here rather than built in the script, so the row is escaped by
+    # the template and the mark is the card's own include.
+    plans = product.available_plans()
+    row = {
+        "product": product,
+        "price": min(effective_price(plan) for plan in plans) if plans else None,
+        "several": len(plans) > 1,
+    }
+    return {
+        "url": product.get_absolute_url(),
+        "html": render_to_string("catalog/_suggestion.html", row),
+    }

@@ -29,7 +29,7 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.files.base import ContentFile
 from django.core.validators import RegexValidator, URLValidator, validate_slug
 from django.db import models, transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import Truncator, slugify
@@ -52,6 +52,14 @@ _PERSIAN = re.compile(r"[\u0600-\u06ff]")
 # What the content writers leave where only the owner's decision or the trial
 # delivery can fill in the text. A page that still holds one is not published.
 PLACEHOLDER = re.compile(r"\[(?:تصمیم مالک|وابسته به تصمیم|از تحویل آزمایشی)[^\]\n]*\]?")
+
+# What the product page tells the buyer never to type into this site
+# (catalog/_activation_answer.html), so no plan may ask for it. Matched on the
+# label as normalize_for_search folds it, so «كد‌تأیید» arrives as «کد تایید».
+# Persian words match inside a word, Latin ones only whole: «otp» is in «SpotPlayer».
+ASKS_FOR_A_SECRET = re.compile(
+    r"رمز|پا?سورد|گذر ?واژه|کد ورود|کد تا[یئ]ید|کد یک ?بار ?مصرف|\b(?:passwords?|otp)\b"
+)
 
 # A time-sensitive product's claims must have been checked this recently to publish.
 FACTS_FRESH_DAYS = 7
@@ -118,6 +126,21 @@ def check_seo_title(row: Category | Product) -> None:
         raise ValidationError(
             {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
         )
+
+
+def check_no_typed_discount(row: Product | Plan, *fields: str) -> None:
+    """A discount is worked out from the plan's own prices and printed beside them.
+    Typed into the text it outlives the offer and can contradict that figure."""
+    refused = {
+        field: _(
+            "تخفیف را اینجا ننویسید. "
+            "سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+        )
+        for field in fields
+        if any(mark in normalize_for_search(getattr(row, field)) for mark in ("٪", "%", "تخفیف"))
+    }
+    if refused:
+        raise ValidationError(refused)
 
 
 def validate_image_upload(file: Any) -> None:
@@ -370,7 +393,7 @@ class Product(ChecksNameTheirField, models.Model):
         FULL_PERIOD = "full_period", _("تا پایان دوره")
 
     CHECK_FIELDS: ClassVar[dict[str, str]] = {
-        "product_delivery_hours_1_to_72": "delivery_hours",
+        "product_delivery_hours_1_to_48": "delivery_hours",
         "product_status_valid": "status",
     }
     # What a visitor reads of this row, and so where a placeholder must not be.
@@ -424,7 +447,7 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         max_side=512,
         help_text=_(
-            "لوگوی محصول، PNG،\u200f JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+            "لوگوی محصول، PNG،\u200f JPEG یا WebP. مربع، با حاشیه‌ی شفاف. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
         ),
     )
     brand_colour = models.CharField(
@@ -458,7 +481,7 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."),
+        help_text=_("بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -569,15 +592,11 @@ class Product(ChecksNameTheirField, models.Model):
             )
         ]
         constraints = [
-            # The cap is the delivery promise on every product page: zero would
-            # read as instant, and anything past the cap breaks a promise the
-            # shop prints. Raised from 48 to 72 on the owner's ruling,
-            # 2026-10-18 (ADR-0009, amended) — the FAQ quotes this number to
-            # customers, so the two move together or the page starts lying.
+            # Keep the database limit and the shared delivery promise together.
             models.CheckConstraint(
-                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=72),
-                name="product_delivery_hours_1_to_72",
-                violation_error_message=_("مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."),
+                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=48),
+                name="product_delivery_hours_1_to_48",
+                violation_error_message=_("مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد."),
             ),
             # `choices=` binds only the admin form; the database binds everything.
             models.CheckConstraint(
@@ -614,6 +633,7 @@ class Product(ChecksNameTheirField, models.Model):
                 )
         check_slug_is_latin(self)
         check_seo_title(self)
+        check_no_typed_discount(self, "name", "seo_title", "seo_description")
         if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
             raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
         # The product form's half of the publishing rule: this row's own fields.
@@ -683,7 +703,7 @@ class Product(ChecksNameTheirField, models.Model):
         row, the admin's inline formsets for the rows under it.
         """
         problems = list(self.fact_problems().values())
-        if not self.available_plans():
+        if not any(plan.is_available for plan in self.plans.all()):
             problems.append(str(NO_AVAILABLE_PLAN))
         rows = [
             self,
@@ -726,7 +746,7 @@ class Product(ChecksNameTheirField, models.Model):
     def available_plans(self) -> list[Plan]:
         """Iterates plans.all() so a prefetch is honoured — a card grid of thirty
         products must not become thirty queries."""
-        return [plan for plan in self.plans.all() if plan.is_available]
+        return [plan for plan in self.plans.all() if plan.is_in_stock]
 
     @property
     def cheapest_plan(self) -> Plan | None:
@@ -875,7 +895,9 @@ class Plan(ChecksNameTheirField, PageRow):
         _("موجودی کل"),
         null=True,
         blank=True,
-        help_text=_("تعداد کل قابل فروش، شامل تعداد رزروشده. خالی یعنی بدون محدودیت موجودی."),
+        help_text=_(
+            "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+        ),
     )
     is_available = models.BooleanField(
         _("موجود"),
@@ -897,17 +919,12 @@ class Plan(ChecksNameTheirField, PageRow):
         default=False,
         help_text=_("برای فعال‌سازی چیزی از مشتری لازم است؟"),
     )
-    # The page prints it inside «برای فعال‌سازی، … را می‌پرسیم.», so a whole
-    # sentence here broke that sentence on the product page.
     customer_input_label = models.CharField(
         _("چه چیزی از مشتری بپرسیم؟"),
         max_length=200,
         blank=True,
         default="",
-        help_text=_(
-            "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. "
-            "مثل: ایمیل اکانت Spotify"
-        ),
+        help_text=_("عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),
@@ -1011,7 +1028,6 @@ class Plan(ChecksNameTheirField, PageRow):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.pk and self.stock_quantity is not None:
             Plan.objects.select_for_update().get(pk=self.pk)
-            self._check_reserved_stock()
         # A price someone has just typed is a price someone has just checked.
         fields = kwargs.get("update_fields")
         if (fields is None or set(fields) & set(PRICE_FIELDS)) and self._price_is_new():
@@ -1020,6 +1036,20 @@ class Plan(ChecksNameTheirField, PageRow):
                 kwargs["update_fields"] = {*fields, "price_confirmed_at"}
         super().save(*args, **kwargs)
 
+    def clean(self) -> None:
+        super().clean()
+        check_no_typed_discount(self, "title")
+        # Whatever the product's status: a draft's label is what goes live.
+        if ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label)):
+            raise ValidationError(
+                {
+                    "customer_input_label": _(
+                        "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید."
+                        " صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
+                    )
+                }
+            )
+
     def _price_is_new(self) -> bool:
         if self._state.adding:
             return True
@@ -1027,27 +1057,8 @@ class Plan(ChecksNameTheirField, PageRow):
         return stored is None or any(stored[name] != getattr(self, name) for name in PRICE_FIELDS)
 
     @property
-    def reserved_stock(self) -> int:
-        if not self.pk:
-            return 0
-        return int(
-            self.cartitem_set.filter(reserved_until__gt=timezone.now()).aggregate(
-                total=Sum("quantity")
-            )["total"]
-            or 0
-        )
-
-    def clean(self) -> None:
-        super().clean()
-        self._check_reserved_stock()
-
-    def _check_reserved_stock(self) -> None:
-        if self.pk and self.stock_quantity is not None:
-            reserved = self.reserved_stock
-            if self.stock_quantity < reserved:
-                raise ValidationError(
-                    {"stock_quantity": _("موجودی کل نمی‌تواند کمتر از تعداد رزروشده باشد.")}
-                )
+    def is_in_stock(self) -> bool:
+        return self.is_available and (self.stock_quantity is None or self.stock_quantity > 0)
 
     @property
     def effective_price(self) -> Decimal:

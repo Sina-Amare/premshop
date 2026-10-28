@@ -35,8 +35,8 @@ behind one, so the message reports what happened and accuses nobody.
 {% elif query and not results %}
   <header class="page-head">
     <h1 class="page-head__title">محصولی پیدا نکردیم</h1>
-    <p class="small page-head__intro">جستجو برای: <bdi class="v-query">{{ query }}</bdi></p>
-    <div class="v-search-recovery"><p>دنبال سرویس دیگه‌ای هستید؟ توی تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
+    <p class="small page-head__intro">جستجوی شما: <bdi class="v-query">{{ query }}</bdi></p>
+    <div class="v-search-recovery"><p>دنبال سرویس دیگه‌ای هستید؟ توی تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
     {% if everything %}<p class="small page-head__intro">می‌تونید این محصولات رو هم ببینید:</p>{% endif %}
   </header>
   {% if everything %}

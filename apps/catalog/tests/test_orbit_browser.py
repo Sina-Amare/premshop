@@ -8,6 +8,49 @@ from apps.core.tests.test_accessibility_browser import STYLED
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
+def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live_server):
+    category = Category.objects.create(name="سرویس‌ها", slug="services")
+    names = [
+        "ChatGPT Plus",
+        "Claude Pro",
+        "Gemini Advanced",
+        "GitHub Copilot",
+        "JetBrains All Products",
+        "Spotify Premium",
+        "YouTube Premium",
+        "Netflix",
+        "Apple Gift Card",
+        "Google Play Gift Card",
+    ]
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=name, slug=f"service-{i}", status="active")
+            for i, name in enumerate(names)
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    held = []
+    try:
+        page.add_init_script(
+            "window.homeShift=0;new PerformanceObserver(xs=>xs.getEntries().forEach(x=>{if(!x.hadRecentInput)window.homeShift+=x.value})).observe({type:'layout-shift',buffered:true});"
+        )
+        page.route("**/static/js/cart.js", lambda route: held.append(route))
+        page.goto(live_server.url + "/", wait_until="commit")
+        page.wait_for_function(
+            "performance.getEntriesByType('paint').some(x=>x.name==='first-contentful-paint')"
+        )
+        assert len(held) == 1
+        held.pop().continue_()
+        page.wait_for_load_state()
+        page.evaluate("() => document.fonts.ready")
+        page.wait_for_timeout(500)
+        assert page.evaluate("window.homeShift") < 0.1
+    finally:
+        for route in held:
+            route.continue_()
+        page.close()
+
+
 @pytest.mark.parametrize("count", [0, 1, 3, 6, 8, 9, 24, 60])
 def test_every_service_is_reachable_once_with_static_phone_groups(browser, live_server, count):
     category = Category.objects.create(name="سرگرمی", slug="fun")
@@ -181,9 +224,10 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert page.locator(".nebula__item:visible").count() == 6
         spacing = page.evaluate("""() => {
             const hero = document.querySelector('.v-hero').getBoundingClientRect();
-            const heading = document.querySelector('.v-hero h1').getBoundingClientRect();
+            // The copy block's top: the line above the headline since U8.
+            const first = document.querySelector('.v-hero__copy').firstElementChild.getBoundingClientRect();
             const actions = document.querySelector('.v-hero__actions').getBoundingClientRect();
-            return {height: hero.height, above: heading.top - hero.top,
+            return {height: hero.height, above: first.top - hero.top,
                     below: hero.bottom - actions.bottom};
         }""")
         assert spacing["height"] <= 620, spacing
@@ -191,9 +235,10 @@ def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browse
         assert 34 <= spacing["below"] - spacing["above"] <= 38, spacing
         assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
         controls = page.locator(".v-orbit-controls").bounding_box()
+        tools = page.locator(".v-scene-tools").bounding_box()
         caption = page.locator(".v-scene-caption").bounding_box()
         assert controls and caption and controls["width"] < 240
-        assert abs(controls["x"] + controls["width"] / 2 - caption["x"] - caption["width"] / 2) < 1
+        assert abs(tools["x"] + tools["width"] / 2 - caption["x"] - caption["width"] / 2) < 1
         assert (
             page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
         )
@@ -300,5 +345,29 @@ def test_orbit_suspends_offscreen_and_on_a_visibility_event(browser, live_server
         )
         page.wait_for_timeout(250)
         assert item.evaluate("e=>e.style.transform") != frozen
+    finally:
+        page.close()
+
+
+def test_late_fonts_do_not_move_the_home_hero(browser, live_server):
+    """In the wider fallback face the hero's two facts wrapped onto two lines,
+    so the copy grew a line and shifted when the web fonts arrived."""
+    category = Category.objects.create(name="سرویس‌ها", slug="services")
+    Product.objects.bulk_create(
+        [
+            Product(category=category, name=name, slug=f"service-{i}", status="active")
+            for i, name in enumerate(["ChatGPT Plus", "Claude Pro", "Spotify Premium", "Netflix"])
+        ]
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.add_init_script(
+            "window.homeShift=0;new PerformanceObserver(xs=>xs.getEntries().forEach(x=>{if(!x.hadRecentInput)window.homeShift+=x.value})).observe({type:'layout-shift',buffered:true});"
+        )
+        page.route("**/*.woff2", lambda route: (page.wait_for_timeout(1000), route.continue_()))
+        page.goto(live_server.url + "/")
+        page.evaluate("() => document.fonts.ready")
+        page.wait_for_timeout(300)
+        assert page.evaluate("window.homeShift") < 0.01
     finally:
         page.close()

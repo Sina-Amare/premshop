@@ -70,7 +70,7 @@ def test_a_mismatched_repeat_speaks_the_shops_words(client, user):
         },
     ).content.decode()
 
-    assert "تکرار رمز عبور یکسان نیست." in body
+    assert "رمز عبور و تکرار آن یکسان نیستند." in body
     assert "گذرواژه" not in body
 
 
@@ -104,7 +104,7 @@ def test_a_mismatch_stays_under_the_repeat(client, user):
         },
     ).context["form"]
 
-    assert form.errors == {"new_password2": ["تکرار رمز عبور یکسان نیست."]}
+    assert form.errors == {"new_password2": ["رمز عبور و تکرار آن یکسان نیستند."]}
 
 
 @pytest.mark.parametrize("name", ["login", "login-code"])

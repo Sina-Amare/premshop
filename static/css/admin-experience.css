@@ -1,12 +1,13 @@
 @import url("product-art.css");
-:root{--panel-accent:#2459d3;--panel-line:#dfe3e9;--panel-surface:#fff;--panel-soft:#f5f6f8;--panel-ink:#20252e;--panel-text:#566170}
-html.dark{--panel-accent:#91aff1;--panel-line:#394354;--panel-surface:#181d26;--panel-soft:#202733;--panel-ink:#edf1f7;--panel-text:#bcc6d5}
+:root{--panel-accent:#2459d3;--panel-line:#dfe3e9;--panel-surface:#fff;--panel-soft:#f5f6f8;--panel-ink:#20252e;--panel-text:#566170;--panel-danger:#bd2d35}
+html.dark{--panel-accent:#91aff1;--panel-line:#394354;--panel-surface:#181d26;--panel-soft:#202733;--panel-ink:#edf1f7;--panel-text:#bcc6d5;--panel-danger:#ff939a}
+html body :is(.errorlist,.errorlist *,.errornote){color:var(--panel-danger)}
 body{background:var(--panel-soft);color:var(--panel-ink)}
 html body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select){border-color:#8490a0;transition:background-color 140ms}
 html.dark body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select){border-color:#69778d}
 html body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select):focus,html.dark body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select):focus{outline:none;--tw-ring-shadow:0 0 #0000;--tw-ring-offset-shadow:0 0 #0000;border-color:var(--panel-accent);box-shadow:0 0 0 1px var(--panel-accent)}
-html body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select),html body [aria-invalid=true],html.dark body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select),html.dark body [aria-invalid=true]{border-color:#bd2d35}
-html body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus,html.dark body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus{border-color:#bd2d35;box-shadow:0 0 0 1px #bd2d35}
+html body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select),html body [aria-invalid=true],html.dark body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select),html.dark body [aria-invalid=true]{border-color:var(--panel-danger)}
+html body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus,html.dark body .errors :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus{border-color:var(--panel-danger);box-shadow:0 0 0 1px var(--panel-danger)}
 html body :is(input[type=checkbox],input[type=radio],button,a):focus-visible{outline:2px solid var(--panel-accent);outline-offset:2px}
 html body a,html body a:hover{text-decoration:none}
 html body fieldset{border-color:var(--panel-line);background:var(--panel-surface);border-radius:8px;scroll-margin-top:110px}
@@ -51,7 +52,7 @@ html body:has(#login-form) input{background:var(--panel-surface)}
 .brand-preview__controls label{display:flex;align-items:center;gap:8px}
 .brand-preview__controls input{width:44px;height:36px;padding:3px;cursor:pointer}
 .brand-preview__canvas{background:white;border:1px solid #dfe3e9;border-radius:8px;overflow:hidden;color:#20252e}
-.brand-preview [data-brand-error]{font-size:12px;color:#bd2d35;margin-top:8px}
+.brand-preview [data-brand-error]{font-size:12px;color:var(--panel-danger);margin-top:8px}
 .snapshot-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-block:16px 24px;padding:16px;background:var(--panel-soft);border:1px solid var(--panel-line);border-radius:8px;font-size:13px}
 .snapshot-toolbar button,.snapshot-panel button{min-height:40px;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);cursor:pointer}
 .snapshot-toolbar button:hover,.snapshot-panel button:hover{border-color:var(--panel-accent)}
@@ -89,7 +90,7 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-number{font-weight:600;font-variant-numeric:tabular-nums;color:var(--panel-ink)}
 .order-list-mobile{display:none}
 .order-status{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;font-weight:400;padding:3px 9px;margin:2px 0;background:var(--panel-soft);border:1px solid var(--panel-line);border-radius:5px;color:var(--panel-text)}
-.order-status[data-state=cancelled]{border-style:dashed}
+.order-status[data-state=CANCELLED]{border-style:dashed}
 .order-history{border:1px solid var(--panel-line);border-radius:8px;background:var(--panel-surface);margin-top:24px;padding:0 24px 8px}
 .order-history>header{padding:18px 0;border-bottom:1px solid var(--panel-line)}
 .order-history h2{font:600 15px/1.8 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink);margin:0}
@@ -122,3 +123,23 @@ body.app-orders.model-order.change-form .order-list-mobile{display:none}
   .order-items .form-row>.field-purchase{grid-column:1/-1}
   .order-items .panel-cell-label{font-size:11px;color:var(--panel-text);font-weight:400;margin-bottom:5px}
 }
+.panel-dashboard{display:flex;flex-direction:column;gap:20px;min-width:0}
+.panel-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.panel-stats a{display:flex;flex-direction:column;gap:6px;padding:16px 18px;background:var(--panel-surface);border:1px solid var(--panel-line);border-radius:8px;color:var(--panel-text);font-size:13px;transition:border-color 140ms}
+.panel-stats a:hover{border-color:var(--panel-accent)}
+.panel-stats strong{font:600 26px/1.3 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink)}
+.panel-attention{padding:18px 20px;background:var(--panel-surface);border:1px solid var(--panel-line);border-radius:8px}
+.panel-attention h2{margin:0 0 6px;font:600 15px/1.8 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink)}
+.panel-attention h3{margin:14px 0 4px;font-size:13px;font-weight:600;color:var(--panel-text)}
+.panel-attention ul{margin:0;padding:0;list-style:none}
+.panel-attention li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:10px 0;border-top:1px solid var(--panel-line);font-size:14px}
+.panel-attention li a{color:var(--panel-accent)}
+.panel-attention li span{color:var(--panel-text);font-size:13px}
+.panel-attention p{margin:6px 0 0;color:var(--panel-text);font-size:14px}
+@media(max-width:900px){.panel-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Service logos are drawn for a light ground; on Unfold's dark tile the black ones (Apple, ChatGPT, Copilot) vanished. */
+html.dark #result_list span.rounded.border:has(> img),html.dark .field-image img{background:#f5f6f8;border-color:#394354}
+html.dark .field-image img{padding:4px;border-radius:6px}
+#nav-sidebar-inner .select-none.min-w-0>.truncate{direction:ltr;text-align:right}
+#recent-actions-module{height:auto}
+#recent-actions-module li a::after{content:'';position:absolute;inset:0}

@@ -3,15 +3,16 @@
 <a class="pcard__link" href="{% url 'product' product.slug %}">
   {% include 'catalog/_card_art.html' %}
   <div class="pcard__body">
-    <span class="pcard__cat">{{ product.category.name }}</span>
+    {% if not in_category %}<span class="pcard__cat">{{ product.category.name }}</span>{% endif %}
     <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>
+    {% if product.short_description %}<p class="pcard__description">{{ product.short_description|bdi }}</p>{% endif %}
     <p class="pcard__terms">{{ product.delivery_sentence }}</p>
   </div>
   <div class="pcard__foot">
     {% for offer in product.discounted_plans %}
     <div class="pcard__promotion" data-promotion{% if offer.promo_seconds_left is not None %} data-left="{{ offer.promo_seconds_left }}"{% endif %}{% if not forloop.first %} hidden{% endif %}>
       <span class="pcard__offer" aria-hidden="true">{% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
-      <span class="pcard__deal"><bdi>{{ offer.title }}</bdi> با {% if offer.discount_percent %}{{ offer.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>
+      {% include "catalog/_card_offer.html" %}
       {% include "catalog/_deadline.html" with plan=offer %}
     </div>
     {% endfor %}
@@ -22,5 +23,5 @@
     {% empty %}<span class="badge badge--neutral">ناموجود</span>{% endfor %}
   </div>
 </a>
-{% if quick_plan_products %}<button type="button" class="pcard__quick" data-quick-open="{{ product.pk }}" aria-label="دیدن پلن‌ها: {{ product.name }}" aria-haspopup="dialog" aria-controls="quick-plans" hidden>دیدن پلن‌ها{% include 'storefront/icon.html' with name='arrow' %}</button>{% endif %}
+{% if quick_plan_products %}<button type="button" class="pcard__quick" data-quick-open="{{ product.pk }}" aria-label="گزینه‌های خرید: {{ product.name }}" aria-haspopup="dialog" aria-controls="quick-plans" hidden>گزینه‌های خرید{% include 'storefront/icon.html' with name='arrow' %}</button>{% endif %}
 </article>

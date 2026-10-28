@@ -58,7 +58,6 @@ def test_cart_contains_only_identity_plan_quantity_and_timestamps(plan):
         "plan",
         "quantity",
         "added_at",
-        "reserved_until",
     }
     cart = get_cart(request)
     assert cart.session_key == request.session.session_key
@@ -278,3 +277,15 @@ def test_first_add_is_merged_even_if_login_already_cached_the_session(client, pl
     assert response.status_code == 302
     assert Cart.objects.count() == 1
     assert CartItem.objects.get(cart__user=buyer).quantity == 1
+
+
+def test_changing_a_line_that_is_gone_says_so_instead_of_reporting_success(plan):
+    """A stale tab pressed «+» on a line another tab had removed and was told
+    the quantity had been updated."""
+    request = request_for()
+    with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
+        set_quantity(request, plan_id=plan.pk, quantity=2)
+    add_to_cart(request, plan_id=plan.pk)
+    remove_from_cart(request, plan_id=plan.pk)
+    with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
+        set_quantity(request, plan_id=plan.pk, quantity=2)

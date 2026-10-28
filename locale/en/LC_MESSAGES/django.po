@@ -169,8 +169,8 @@ msgstr "Part of the page address, in Latin letters, like “chatgpt-plus”. Lea
 msgid "شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"
 msgstr "Spellings a customer might type, separated by commas: ⁨چت جی‌پی‌تی، چت جیپت، gpt⁩"
 
-msgid "بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."
-msgstr "1 to 72 hours. Err on the long side."
+msgid "بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."
+msgstr "1 to 48 hours. Err on the long side."
 
 # Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
 # isolates, so the bidi algorithm keeps it in order inside the sentence.
@@ -227,8 +227,11 @@ msgstr "Does activation need anything from the customer?"
 msgid "عبارت کوتاه، نه جمله. روی سایت می‌آید: برای فعال‌سازی، … را می‌پرسیم. مثل: ایمیل اکانت Spotify"
 msgstr "A short phrase, not a sentence. The site prints: ⁨برای فعال‌سازی، … را می‌پرسیم.⁩ Like: ⁨ایمیل اکانت Spotify⁩"
 
-msgid "مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."
-msgstr "The delivery deadline must be between 1 and 72 hours."
+msgid "عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."
+msgstr "A short label, such as Spotify account email."
+
+msgid "مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد."
+msgstr "The delivery deadline must be between 1 and 48 hours."
 
 msgid "وضعیت محصول معتبر نیست."
 msgstr "The product status is not valid."
@@ -250,6 +253,9 @@ msgstr "The most per order must be between 1 and 10."
 
 msgid "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
 msgstr "A plan that needs customer details can be bought only once per order."
+
+msgid "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید. صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
+msgstr "Do not ask the customer for an account password or a code the service sends. The product page tells customers not to enter these on the site."
 
 msgid "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
 msgstr "The product name is not in Latin letters, so write the slug yourself, like “chatgpt-plus”."
@@ -425,7 +431,7 @@ msgstr "The sections are added at the end of these products:"
 msgid "بخش‌های محتوا"
 msgstr "content sections"
 
-msgid "بررسی واقعیت‌ها"
+msgid "نیاز به بررسی"
 msgstr "Fact check"
 
 msgid "بعد از پرداخت"
@@ -476,6 +482,9 @@ msgstr "The check date cannot be after today."
 msgid "نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند."
 msgstr "Leave out the shop’s name. The site adds it to the end of the title itself."
 
+msgid "تخفیف را اینجا ننویسید. سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+msgstr "Leave the discount out of this field. The site works out its percentage from the plan’s discounted price and shows it beside the price."
+
 msgid "روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."
 msgstr "The day the text’s claims were last checked against the sources."
 
@@ -506,8 +515,8 @@ msgstr "Prices of %(count)s plans confirmed."
 msgid "قیمت‌ها را امروز بررسی کردم"
 msgstr "I checked these prices today"
 
-msgid "لوگوی محصول، PNG،‏ JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
-msgstr "The product’s logo, PNG, JPEG or WebP. The site shows it at a fixed size."
+msgid "لوگوی محصول، PNG،‏ JPEG یا WebP. مربع، با حاشیه‌ی شفاف. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+msgstr "The product’s logo, PNG, JPEG or WebP. Square, with transparent padding. The site shows it at a fixed size."
 
 msgid "متن آزاد"
 msgstr "Free text"
@@ -636,7 +645,7 @@ msgstr "Terms and information review"
 msgid "نام‌های جستجو"
 msgstr "Search names"
 
-msgid "عنوان و توضیح جستجو"
+msgid "عنوان و توضیح سئو"
 msgstr "Search title and description"
 
 msgid "بخش‌های فرم محصول"
@@ -963,6 +972,12 @@ msgstr "Previous status: %(state)s"
 msgid "%(available)s قابل خرید، %(reserved)s رزرو شده"
 msgstr "%(available)s available, %(reserved)s reserved"
 
+msgid "%(available)s عدد قابل خرید"
+msgstr "%(available)s available to buy"
+
+msgid "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+msgstr "Units available for sale. Adding to a cart does not reserve stock. Leave blank for unlimited stock."
+
 msgid "بدون محدودیت موجودی"
 msgstr "Unlimited stock"
 
@@ -983,3 +998,36 @@ msgstr "Total stock cannot be lower than reserved stock."
 
 msgid "وضعیت موجودی"
 msgstr "Stock status"
+
+msgid "حساب کاربری"
+msgstr "Account"
+
+msgid "دسترسی"
+msgstr "Access"
+
+msgid "تاریخ‌ها"
+msgstr "Dates"
+
+msgid "محصول منتشرشده"
+msgstr "Published products"
+
+msgid "تخفیف فعال"
+msgstr "Active discounts"
+
+msgid "پلن ناموجود"
+msgstr "Unavailable plans"
+
+msgid "نیاز به رسیدگی"
+msgstr "Needs attention"
+
+msgid "پلن‌های ناموجود"
+msgstr "Unavailable plans"
+
+msgid "تخفیف‌هایی که تا ۴۸ ساعت دیگر تمام می‌شوند"
+msgstr "Discounts ending within 48 hours"
+
+msgid "پیش‌نویس‌ها"
+msgstr "Drafts"
+
+msgid "فعلاً موردی برای رسیدگی نیست."
+msgstr "Nothing needs attention right now."

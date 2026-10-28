@@ -4,8 +4,11 @@ from django.urls import reverse
 def test_shared_shell_names_the_brand_and_keeps_real_destinations(client, db):
     response = client.get(reverse("home"))
     body = response.content.decode()
-    assert "اشتراک بعدی‌تون" in body
-    assert "پلن مناسب‌تون رو انتخاب کنید" in body
+    hero = body.split('class="v-hero__copy"', 1)[1].split('class="v-hero__actions"', 1)[0]
+    assert "اشتراک دلاری" in hero and "پرداخت تومانی" in hero
+    # The owner's ruling: the home page introduces the shop, never one product.
+    assert not any(name in hero for name in ("ChatGPT", "Gemini", "Claude", "Spotify"))
+    assert "اشتراک ابزارهای هوش مصنوعی" in body
     assert 'class="v-search"' in body
     assert 'href="/faq/"' in body
     assert 'name="q"' in body
@@ -59,3 +62,14 @@ def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client,
     assert body.count('class="nebula__item"') == 30
     assert "data-orbit-next" in body
     assert "data-orbit-range" in body
+
+
+def test_the_first_paint_waits_for_the_orbit_marker(client, db):
+    """rel=expect names the marker the inline orbit script leaves behind it;
+    with the two apart, the logos jumped into place after the first paint."""
+    body = client.get(reverse("home")).content.decode()
+    head = body.split("</head>", 1)[0]
+    assert '<link rel="expect" href="#orbit-placed" blocking="render">' in head
+    assert body.index('id="orbit-placed"') > body.index(
+        "document.querySelector('[data-hero-scene]')"
+    )

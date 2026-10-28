@@ -1,8 +1,10 @@
 {% extends "base.html" %}{% load fa richtext cart %}
 
-{% block title %}{{ product.seo_title|default:product.name }}{% endblock %}
-{% block meta_description %}{{ product.seo_description|default:product.short_description }}{% endblock %}
+{% block title %}{{ product_meta_title }}{% endblock %}
+{% block meta_description %}{{ product_meta_description }}{% endblock %}
 {% block meta_robots %}{% if preview or snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
+{# Only the buy box script keeps «انتخاب شما» in step with the checked radio. #}
+{% block head_extra %}<noscript><style>.buybox__selection{display:none!important}</style></noscript>{% endblock %}
 
 {% block content %}
 {% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
@@ -53,6 +55,15 @@
       {% if product.renewable %}<div data-preview-field="renewable" class="fact"><dt class="fact__k">تمدید</dt><dd class="fact__v">روی همین اکانت، با قیمت روز</dd></div>{% else %}{% include 'admin/catalog/preview_slot.html' with field='renewable' %}{% endif %}
     </dl>
 
+
+    {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
+    {% if snapshot %}<div data-preview-target="sections">{% endif %}
+    {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
+
+    {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
+    {% if snapshot %}</div>{% endif %}
+
+    {# The full table after the benefits: what the product does sells, the specs confirm; key specs are chips above. #}
     {% if specs or snapshot %}
     <section class="pdp__section">
       <h2 class="pdp__h2">مشخصات</h2>
@@ -64,13 +75,6 @@
     </section>
     {% endif %}
 
-    {% comment %}The operator's sections in the operator's order; «پیش از خرید» has a fixed place below.{% endcomment %}
-    {% if snapshot %}<div data-preview-target="sections">{% endif %}
-    {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
-
-    {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
-    {% if snapshot %}</div>{% endif %}
-
     {% comment %}
     The product's own questions, then the shop's: when it arrives and, where it
     applies, whether the buyer's password is needed. The operator's delivery
@@ -81,8 +85,8 @@
       <h2 class="pdp__h2" id="questions-title">سؤال‌های پرتکرار</h2>
       <dl class="faq">
         {% for question in questions %}<div data-preview-row="{{ question.preview_key }}" data-preview-field="sort_order"><dt data-preview-field="question">{{ question.question|bdi }}</dt><dd data-preview-field="answer" class="rich">{{ question.answer|markdown:"" }}</dd></div>{% endfor %}
-        <div><dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd data-preview-field="delivery_note">{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت بعد از تأیید پرداخت. اگه این زمان بیرون از ساعت {{ support.hours_range }} تموم بشه، تا {{ support.opens }} صبح تحویل می‌دیم.{% endif %}</dd></div>
-        {% if product.delivery_type == "on_customer_account" %}<div><dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd>فقط {{ available_plans.0.customer_input_label|default:"ایمیل اکانت" }} رو می‌پرسیم.</dd></div>{% endif %}
+        <div><dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd class="faq__answer" data-preview-field="delivery_note">{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت.{% endif %}</dd></div>
+        {% if product.delivery_type == "on_customer_account" %}<div><dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd class="faq__answer">{% include 'catalog/_activation_answer.html' %}</dd></div>{% endif %}
       </dl>
     </section>
 
@@ -90,9 +94,10 @@
 
   <aside class="pdp__buy">
     <div class="card buybox">
-      {% cart_purchase plans as purchase %}
+      {% if product.delivery_type %}<details class="buybox__facts"><summary>{% include 'storefront/icon.html' with name='info' %}<span>{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</span><span class="buybox__type">{{ product.get_delivery_type_display }}</span>{% include 'storefront/icon.html' with name='chevron' %}</summary>{% include 'catalog/_delivery_type_note.html' %}</details>{% endif %}
+      {% cart_purchase plans wanted_plan as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
-      <form class="buybox__form" method="post" action="{% url 'cart-add' %}" data-cart-add{% if snapshot %} data-snapshot{% endif %}>
+      <form class="buybox__form" id="buy-form" method="post" action="{% url 'cart-add' %}" data-cart-add{% if snapshot %} data-snapshot{% endif %}>
         {% csrf_token %}
         {% if plans or snapshot %}
         <fieldset data-preview-target="plans" class="plans">
@@ -100,52 +105,52 @@
           {% for option in purchase.options %}{% with plan=option.plan %}
             <label data-preview-row="{{ plan.preview_key }}" data-preview-field="sort_order" class="plan{% if not option.selectable %} plan--off{% endif %}">
               <input type="radio" name="plan" value="{{ plan.id }}"
-                     {% if not option.selectable %}disabled{% elif option == available_plans.0 %}checked{% endif %}
+                     {% if not option.selectable %}disabled{% elif option == purchase.chosen %}checked{% endif %}
                      data-max="{{ option.max_add }}" data-in-cart="{{ option.in_cart }}"
+                     data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.sale_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
                      data-asks="{{ plan.customer_input_label }}">
               <span class="plan__details">
                 <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
-                  <span data-preview-field="sale_price is_available stock_quantity">{% if option.selectable %}{% include "catalog/_price.html" with plan=plan %}
-                  {% else %}<span class="plan__off">فعلاً ناموجود</span>{% endif %}</span>
+                  <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price data-preview-container{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
                 </span>
-                {% if option.selectable and plan.promotion_is_active %}
-                <span data-preview-field="promo_price promo_starts_at promo_ends_at" class="plan__promotion"><span class="badge badge--neutral" data-offer-badge{% if plan.promo_seconds_left is not None %} data-left="{{ plan.promo_seconds_left }}"{% endif %}>{% if plan.discount_percent %}{{ plan.discount_percent|fa_digits }}٪ {% endif %}تخفیف</span>{% include "catalog/_deadline.html" with plan=plan %}</span>
-                {% else %}{% include 'admin/catalog/preview_slot.html' with field='promo_price promo_starts_at promo_ends_at' inline=True %}{% endif %}
+                {% include 'catalog/_monthly_price.html' with plan=plan plans=plans %}
+                <span data-plan-promotion data-preview-container{% if not option.selectable %} hidden{% endif %}>{% include 'catalog/_purchase_promotion.html' with plan=plan %}</span>
               </span>
             </label>
           {% endwith %}{% endfor %}
         </fieldset>
         {% endif %}
 
-        {% if available_plans or snapshot %}
+        {% if plans or snapshot %}
         {% if max_quantity > 1 or snapshot %}
         <div data-preview-target="quantity" data-preview-field="max_quantity" class="buybox__row" id="qty-row"{% if purchase.initial_maximum < 2 %} hidden{% endif %}>
           <label class="buybox__label" for="qty">تعداد</label>
-          <div class="stepper">
+          <div class="stepper" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
-            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr">
+            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
           </div>
         </div>
+        <p class="micro buybox__limit" id="qty-limit" hidden></p>
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
-        <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
-          <p class="micro">انتخاب شما</p>
-          <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
-        </div>
-        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot or available_plans.0.max_add == 0 %} disabled{% endif %}>{% if available_plans.0.max_add == 0 %}در سبد خرید شماست{% else %}افزودن به سبد خرید{% endif %}</button>
+        {% include 'catalog/_buybox_selection.html' %}
+        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif purchase.chosen.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
         {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
+        <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not purchase.chosen or purchase.chosen.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
         {% endif %}
+        <p class="cart-add-error" role="alert" hidden></p>
       </form>
       {% endwith %}
-      <p class="micro buybox__note">{{ product.delivery_sentence }}{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
+      <p class="micro buybox__note">{{ product.delivery_note|default:delivery_commitment }}<br>پرداخت تومانی، بدون کارت ارزی{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>
+  {% include "catalog/_buy_bar.html" %}
 </div>
 
 {% if related %}
@@ -185,41 +190,73 @@
   var asks = form.querySelector('#asks-hint');
   var selection = form.querySelector('.buybox__selection');
   var submit = form.querySelector('.buybox__cta');
+  var cartLink = form.querySelector('.buybox__cart');
+  var limit = form.querySelector('#qty-limit');
+  // With one option the summary would only repeat it.
+  var single = form.querySelectorAll('input[name=plan]').length < 2;
   function currentPlan() { return form.querySelector('input[name=plan]:checked'); }
 
-  // Each plan carries its own ceiling and its own question. Switching plan
-  // can turn the quantity control off entirely — a gift card takes five, the
-  // subscription next to it takes one — so the row is hidden rather than
-  // disabled: a greyed-out stepper is a control the buyer tries to use.
-  function applyPlan() {
+  function applyPlan(event) {
     var plan = currentPlan();
-    if (!plan) { if (submit) { submit.disabled = true; submit.textContent = 'ناموجود'; } return; }
-    if (selection) {
-      var row = plan.closest('.plan');
-      selection.querySelector('[data-selected-title]').textContent = row.querySelector('.plan__title').textContent;
+    if (!plan || plan.disabled) {
+      if (submit) { submit.disabled = form.hasAttribute('data-snapshot'); submit.setAttribute('aria-disabled', 'true'); submit.hidden = false; submit.textContent = 'ناموجود'; }
+      if (selection) selection.hidden = true;
+      if (cartLink) cartLink.hidden = true;
+      if (qtyRow && qty) {
+        if (qtyRow.contains(document.activeElement) && submit) submit.focus({preventScroll:true});
+        qtyRow.hidden = true;
+        qty.disabled = true;
+      }
+      if (limit) limit.hidden = true;
+      if (asks) asks.hidden = true;
+      return;
+    }
+    var row = plan.closest('.plan');
+    var parts = row.querySelectorAll('[data-plan-price] .price__num, [data-plan-price] .price__cur');
+    var title = row.querySelector('.plan__title').textContent;
+    var key = title + Array.from(parts).map(function (part) { return part.textContent; }).join('|');
+    if (selection && selection.dataset.value !== key) {
+      selection.querySelector('[data-selected-title]').textContent = title;
       var price = selection.querySelector('[data-selected-price]');
       price.replaceChildren();
-      row.querySelectorAll('.price__num, .price__cur').forEach(function (part) {
+      parts.forEach(function (part) {
         price.appendChild(part.cloneNode(true));
       });
-      selection.hidden = false;
+      selection.dataset.value = key;
+      selection.hidden = single;
     }
+    if (selection && selection.hidden !== single) selection.hidden = single;
     var max = parseInt(plan.getAttribute('data-max'), 10) || 0;
     if (submit && !form.hasAttribute('data-snapshot')) {
-      submit.disabled = max < 1 || form.dataset.pending === 'true';
-      submit.textContent = max > 0 ? 'افزودن به سبد خرید' : (+plan.dataset.inCart > 0 ? 'در سبد خرید شماست' : 'ناموجود');
+      var pending = form.dataset.pending === 'true';
+      var full = max < 1 && +plan.dataset.inCart > 0;
+      var focused = document.activeElement === submit;
+      submit.disabled = false;
+      submit.setAttribute('aria-disabled', String(pending || max < 1));
+      submit.hidden = full && !pending;
+      submit.textContent = max > 0 || full ? 'افزودن به سبد خرید' : 'ناموجود';
+      if (cartLink) {
+        cartLink.hidden = !full || pending;
+        if (focused && submit.hidden) cartLink.focus({preventScroll:true});
+      }
     }
     if (qtyRow && qty) {
-      qtyRow.hidden = max < 2;
+      qtyRow.hidden = max < 2 && !qtyRow.contains(document.activeElement) && (max === 0 || (parseInt(qty.value, 10) || 1) <= 1);
+      qty.disabled = max < 1;
       qty.max = String(Math.max(1, max));
-      if (parseInt(qty.value, 10) > Math.max(1, max)) qty.value = String(Math.max(1, max));
+      if (event && event.type === 'change' && parseInt(qty.value, 10) > Math.max(1, max)) qty.value = String(Math.max(1, max));
       form.querySelectorAll('.stepper__btn').forEach(function (button) {
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
+      if (limit) {
+        var text = max > 0 ? 'حداکثر تعداد قابل افزودن: ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد' : 'حداکثر تعداد در سبد خرید شماست.';
+        if (limit.textContent !== text) limit.textContent = text;
+        limit.hidden = qtyRow.hidden && max > 0;
+      }
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' رو می‌پرسیم.' : '';
+      asks.textContent = question ? 'اطلاعات فعال‌سازی: ' + question : '';
       asks.hidden = !question;
     }
   }

@@ -72,6 +72,9 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         page.screenshot(path=str(directory / f"detail-{width}.png"), full_page=True)
         page.goto(live_server.url + listing)
         assert page.locator("#result_list").is_visible()
+        cancelled = page.locator('.order-status[data-state="CANCELLED"]:visible').first
+        assert cancelled.is_visible()
+        assert cancelled.evaluate("el => getComputedStyle(el).borderTopStyle") == "dashed"
         page.screenshot(path=str(directory / f"list-{width}.png"), full_page=True)
         assert not errors
     finally:

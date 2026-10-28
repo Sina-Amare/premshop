@@ -54,7 +54,7 @@ def test_hidden_product_facts_never_reappear_in_a_cart(client, plan):
     body = client.get("/cart/").content.decode()
     assert "private-draft-name" not in body
     assert plan.title not in body
-    assert "این محصول فعلاً موجود نیست." in body
+    assert 'class="cart-line__stock">ناموجود</p>' in body
     assert client.post("/cart/remove/", {"plan": plan.pk}).status_code == 302
     assert not CartItem.objects.exists()
 
@@ -99,7 +99,7 @@ def test_add_json_stays_on_product_and_reports_authoritative_count_and_limits(cl
     assert data["count"] == 2
     assert data["options"][str(plan.pk)]["max_add"] == 1
     assert data["options"][str(other.pk)]["selectable"] is True
-    assert data["message"] == "به سبد خرید اضافه شد."
+    assert data["message"] == f"{plan.product.name}، {plan.title} به سبد خرید اضافه شد."
 
 
 def test_stock_json_failure_leaves_cart_unchanged_and_uses_plain_persian(client, plan):
@@ -115,7 +115,7 @@ def test_cart_uses_one_clear_unavailable_message_without_accounting_jargon(clien
     client.post("/cart/add/", {"plan": plan.pk})
     type(plan).objects.filter(pk=plan.pk).update(is_available=False)
     body = client.get("/cart/").content.decode()
-    assert "این محصول فعلاً موجود نیست." in body
+    assert 'class="cart-line__stock">ناموجود</p>' in body
     assert "خارج از" not in body and "مبلغ این قلم" not in body
 
 
@@ -125,7 +125,7 @@ def test_availability_is_private_current_and_does_not_reveal_drafts(client, plan
     client.post("/cart/add/", {"plan": plan.pk})
     stranger = Client()
     state = stranger.get("/cart/availability/", {"plan": plan.pk})
-    assert state.json()["options"][str(plan.pk)]["max_add"] == 1
+    assert state.json()["options"][str(plan.pk)]["max_add"] == 2
     assert state.json()["count"] == 0
     assert "no-store" in state["Cache-Control"]
     assert "sessionid" not in state.cookies
@@ -144,3 +144,25 @@ def test_json_add_still_requires_csrf(plan):
     )
     assert response.status_code == 403
     assert not Cart.objects.exists()
+
+
+def test_add_json_names_the_item_apart_from_the_status(client, plan):
+    data = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json").json()
+    assert (data["title"], data["item"], data["option"], data["image"]) == (
+        "به سبد خرید اضافه شد",
+        plan.product.name,
+        plan.title,
+        "",
+    )
+
+
+def test_an_empty_cart_hides_the_header_count(client):
+    body = client.get("/cart/").content.decode()
+    assert '<span class="v-cart__count" aria-hidden="true" hidden>' in body
+
+
+def test_cart_summary_shows_the_order_step_as_not_yet_open(client, plan):
+    client.post("/cart/add/", {"plan": plan.pk})
+    body = client.get("/cart/").content.decode()
+    assert '<button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>' in body
+    assert "ثبت سفارش هنوز فعال نیست." in body

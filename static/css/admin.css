@@ -567,3 +567,5 @@ html .calendarnav-next::after {
     margin-block-end: 0.5rem;
   }
 }
+
+img.object-cover[src*="/media/products/"]{object-fit:contain}

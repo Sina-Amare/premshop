@@ -18,8 +18,8 @@ from typing import Any, ClassVar, cast
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.db import connection
-from django.db.models import Max, Q, QuerySet, Sum
+from django.db import connection, transaction
+from django.db.models import Max, Q, QuerySet
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
@@ -257,12 +257,8 @@ class PlanForm(forms.ModelForm):
 def stock_levels(obj: Plan) -> str:
     if obj.stock_quantity is None:
         return gettext("بدون محدودیت موجودی")
-    reserved = getattr(obj, "cart_reserved", None)
-    if reserved is None:
-        reserved = obj.reserved_stock
-    return gettext("%(available)s قابل خرید، %(reserved)s رزرو شده") % {
-        "available": to_persian_digits(max(0, obj.stock_quantity - reserved)),
-        "reserved": to_persian_digits(reserved),
+    return gettext("%(available)s عدد قابل خرید") % {
+        "available": to_persian_digits(obj.stock_quantity)
     }
 
 
@@ -360,7 +356,7 @@ class ProductQuestionInline(StackedInline):
 
 
 class StaleFactsFilter(admin.SimpleListFilter):
-    title = _("بررسی واقعیت‌ها")
+    title = _("نیاز به بررسی")
     parameter_name = "facts"
 
     def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, Any]]:
@@ -615,7 +611,7 @@ class ProductAdmin(PreviewAdminMixin):
         ),
         (_("نام‌های جستجو"), {"fields": ["aliases"], "classes": ["collapse"]}),
         (
-            _("عنوان و توضیح جستجو"),
+            _("عنوان و توضیح سئو"),
             {"fields": ["seo_title", "seo_description"], "classes": ["collapse"]},
         ),
     ]
@@ -754,25 +750,30 @@ class ProductAdmin(PreviewAdminMixin):
             }
             return TemplateResponse(request, "admin/catalog/product/copy_sections.html", context)
         source = form.cleaned_data["source"]
-        for target in targets:
-            copies, skipped = copy_sections_onto(source, target)
-            with translation.override(None):
-                kind = str(ProductSection._meta.verbose_name)
-                added = [{"added": {"name": kind, "object": str(copy)}} for copy in copies]
-            self.log_change(request, target, added)
-            names = {
-                "count": to_persian_digits(len(copies)),
-                "source": f"\u2068{source}\u2069",
-                "target": f"\u2068{target}\u2069",
-            }
-            message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
-            if skipped:
-                message += " " + gettext("«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد.") % {
-                    "target": names["target"]
+        notices = []
+        with transaction.atomic():
+            for target in targets:
+                copies, skipped = copy_sections_onto(source, target)
+                with translation.override(None):
+                    kind = str(ProductSection._meta.verbose_name)
+                    added = [{"added": {"name": kind, "object": str(copy)}} for copy in copies]
+                self.log_change(request, target, added)
+                names = {
+                    "count": to_persian_digits(len(copies)),
+                    "source": f"\u2068{source}\u2069",
+                    "target": f"\u2068{target}\u2069",
                 }
+                message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
+                if skipped:
+                    message += " " + gettext(
+                        "«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد."
+                    ) % {"target": names["target"]}
+                notices.append(message)
+        for message in notices:
             messages.success(request, message)
         return None
 
+    @transaction.atomic
     def _set_status(
         self, request: HttpRequest, queryset: QuerySet[Product], status: Product.Status
     ) -> None:
@@ -932,13 +933,7 @@ class ProductAdmin(PreviewAdminMixin):
 
 @admin.register(Plan)
 class PlanAdmin(PreviewAdminMixin):
-    """A read-across of every plan, which the product form cannot give.
-
-    Editing stays on the product, where a plan belongs next to the thing it
-    prices — this page exists for the two questions a product form can never
-    answer: which discounts are running right now, and where the margin is
-    thin. Both needed opening twelve forms before.
-    """
+    """Prices, stock and availability across the catalogue."""
 
     form = PlanForm
     list_display = [
@@ -952,25 +947,26 @@ class PlanAdmin(PreviewAdminMixin):
     ]
     readonly_fields = ["stock_levels"]
     stock_levels = staticmethod(stock_levels)
+    fieldsets = [
+        (None, {"fields": ["product", ("title", "duration_days")]}),
+        (_("قیمت"), {"fields": [("cost_price", "sale_price")]}),
+        (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
+        (
+            _("موجودی و تعداد"),
+            {"fields": [("stock_quantity", "max_quantity"), "stock_levels", "is_available"]},
+        ),
+        (
+            _("اطلاعات مشتری و تأمین"),
+            {"fields": ["requires_customer_input", "customer_input_label", "supplier_url"]},
+        ),
+        (_("ترتیب نمایش"), {"fields": ["sort_order"]}),
+    ]
     list_filter = ["is_available", "product__category", StalePriceFilter]
     actions = ["confirm_prices"]
     search_fields = ["title"]
     list_select_related = ["product"]
     list_fullwidth = True
     ordering = ["product__name", "sort_order"]
-
-    def get_queryset(self, request: Any) -> Any:
-        return (
-            super()
-            .get_queryset(request)
-            .annotate(
-                cart_reserved=Sum(
-                    "cartitem__quantity",
-                    filter=Q(cartitem__reserved_until__gt=timezone.now()),
-                    default=0,
-                )
-            )
-        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         # A plan with no product is meaningless; it is added on the product.

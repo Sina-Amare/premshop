@@ -31,8 +31,9 @@
   {# Each card's name is an h3; without this the outline jumps from the h1. #}
   <h2 class="sr-only">محصولات {{ category.name }}</h2>
   <div class="grid">
-    {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first %}{% endfor %}
+    {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first in_category=True %}{% endfor %}
   </div>
+  {% include "catalog/_request_product.html" %}
 {% else %}
   <div class="card empty">
     <p class="prose" style="margin:0">توی این دسته فعلاً محصولی نداریم.</p>

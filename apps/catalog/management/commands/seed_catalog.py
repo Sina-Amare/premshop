@@ -7,7 +7,7 @@ category or product whose slug already exists is left exactly as it is, with
 its plans, specs and image, because the operator may have edited it and an
 order line holds its plan by PROTECT. `--reset` wipes what it made first.
 
-Brand marks are downloaded once into MEDIA_ROOT, which is not committed, and
+Base catalogue marks are copied from retained files into MEDIA_ROOT and
 served from there — the running site never reaches a CDN, because most of them
 are unreachable from Iran. If the network is unavailable the product simply has
 no image, which the cards are designed for.
@@ -27,37 +27,29 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection
 from django.utils import timezone
 
-from apps.catalog.models import Category, Plan, Product, ProductSpec
+from apps.catalog.demo_content import PRODUCT_COPY
+from apps.catalog.models import Category, Plan, Product, ProductSection, ProductSpec
 
-# One source per brand, because no single icon set has all twelve in colour.
-# gilbarbara/logos carries the full-colour marks; lobehub has the AI brands the
-# icon CDNs never added. The CDN we used before (cdn.simpleicons.org) answers
-# 404 for openai, adobe and midjourney — which is exactly why three products
-# fell back to a letter — and serves one flat colour per mark even when it
-# answers, so it structurally cannot give us the four-colour Google Play
-# triangle. Every URL below was fetched and the file inspected on 2026-10-13.
+# The base catalogue uses retained assets; extended demo services have a URL fallback.
 GB = "https://cdn.jsdelivr.net/gh/gilbarbara/logos@main/logos/"
 LH = "https://unpkg.com/@lobehub/icons-static-svg@1.95.1/icons/"
-
-# slug → (url, pad). Five of these marks are bare glyphs that float in
-# whitespace (the Apple apple, the Adobe A, the OpenAI knot) and three bring
-# their own coloured container (the Spotify circle, the YouTube rectangle, the
-# JetBrains square). Rendered at one size the glyphs tower over the containers
-# and the containers read as stickers lost in a box, so the padding that evens
-# them out is baked into the file at download time — see `_normalise_mark`.
+MARK_DIR = Path(__file__).resolve().parents[2] / "marks"
 MARKS = {
-    "claude-pro": (GB + "claude-icon.svg", 0.16),
-    "chatgpt-plus": (GB + "openai-icon.svg", 0.16),
-    "gemini-advanced": (LH + "gemini-color.svg", 0.10),
-    "github-copilot": (GB + "github-copilot.svg", 0.16),
-    "jetbrains-all": (GB + "jetbrains.svg", 0),
-    "spotify-premium": (GB + "spotify-icon.svg", 0),
-    "youtube-premium": (GB + "youtube-icon.svg", 0.06),
-    "netflix": ("https://cdn.simpleicons.org/netflix", 0.16),
-    "apple-gift-card": (GB + "apple.svg", 0.27),
-    "google-play-gift-card": (GB + "google-play-icon.svg", 0.16),
-    "midjourney": (GB + "midjourney.svg", 0.16),
-    "adobe-cc": (GB + "adobe-icon.svg", 0.16),
+    slug: (MARK_DIR / f"{slug}.svg", pad)
+    for slug, pad in {
+        "claude-pro": 0.16,
+        "chatgpt-plus": 0.16,
+        "gemini-advanced": 0.10,
+        "github-copilot": 0.16,
+        "jetbrains-all": 0.18,
+        "spotify-premium": 0.10,
+        "youtube-premium": 0.06,
+        "netflix": 0.16,
+        "apple-gift-card": 0.27,
+        "google-play-gift-card": 0.16,
+        "midjourney": 0.16,
+        "adobe-cc": 0.16,
+    }.items()
 }
 
 T = Product.DeliveryType
@@ -73,16 +65,19 @@ def _normalise_mark(svg: bytes, pad: float) -> bytes:
     per-brand CSS rule, and the knowledge of what each file looks like belongs
     where the file is acquired, not in the stylesheet.
     """
-    if not pad:
-        return svg
     match = re.search(rb'viewBox="\s*([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)\s*"', svg)
     if not match:
         return svg
     x, y, w, h = (float(value) for value in match.groups())
-    box = (
-        f'viewBox="{x - w * pad:g} {y - h * pad:g} ' f'{w * (1 + 2 * pad):g} {h * (1 + 2 * pad):g}"'
-    )
-    return svg[: match.start()] + box.encode() + svg[match.end() :]
+    size = max(w, h) * (1 + 2 * pad)
+    box = f'viewBox="{x + w / 2 - size / 2:g} {y + h / 2 - size / 2:g} {size:g} {size:g}"'
+    svg = svg[: match.start()] + box.encode() + svg[match.end() :]
+    root = re.search(rb"<svg\b[^>]*>", svg)
+    if root is None:
+        return svg
+    tag = re.sub(rb'\s(?:width|height)="[^"]*"', b"", root.group())
+    tag = tag.replace(b"<svg", f'<svg width="{size:g}" height="{size:g}"'.encode(), 1)
+    return svg[: root.start()] + tag + svg[root.end() :]
 
 
 CATEGORIES = [
@@ -125,14 +120,15 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="Gemini Advanced",
         slug="gemini-advanced",
+        brand_colour="#3186ff",
         renewable=True,
         aliases="جمینای، جمنای، جیمینای، gemini، هوش مصنوعی گوگل",
         category="ai",
-        delivery=T.ON_CUSTOMER_ACCOUNT,
+        delivery="",
         warranty=W.DAYS_7,
         hours=24,
-        short="Gemini Advanced به همراه ۲ ترابایت فضای Google One.",
-        specs=[("فضای ابری", "۲ ترابایت")],
+        short="Gemini Advanced با امکانات Google AI Pro، بسته به پلن انتخابی.",
+        specs=[("فضای ابری", "بسته به پلن انتخابی")],
         plans=[("۱ ماهه", 30, 700000, 1190000, None), ("۲ ماهه", 60, 1300000, 2290000, None)],
         input="آدرس Gmail",
     ),
@@ -184,6 +180,7 @@ PRODUCTS: list[dict[str, Any]] = [
     dict(
         name="YouTube Premium",
         slug="youtube-premium",
+        brand_colour="#ff0033",
         renewable=True,
         aliases="یوتیوب پریمیوم، یوتیوب پرمیوم، یوتوب، یوتیوب بدون تبلیغات، youtube، پریمیوم، پرمیوم",
         category="media",
@@ -392,6 +389,7 @@ class Command(BaseCommand):
         now = timezone.now()
         added = 0
         for spec in products:
+            copy = PRODUCT_COPY.get(spec["slug"], {})
             product, created = Product.objects.get_or_create(
                 slug=spec["slug"],
                 defaults={
@@ -399,20 +397,25 @@ class Command(BaseCommand):
                     "brand_colour": spec.get("brand_colour", ""),
                     "usage_notes": spec.get("usage_notes", ""),
                     "category": categories[spec["category"]],
-                    "short_description": spec["short"],
+                    "short_description": copy.get("short", spec["short"]),
                     "delivery_type": spec["delivery"],
                     "aliases": spec.get("aliases", ""),
                     "warranty": spec["warranty"],
                     "delivery_hours": spec["hours"],
                     "status": spec.get("status", Product.Status.ACTIVE),
                     "renewable": spec.get("renewable", False),
-                    "seo_title": f"خرید {spec['name']}",
-                    "seo_description": spec["short"][:160],
+                    "seo_title": copy.get("title", f"خرید {spec['name']}"),
+                    "seo_description": copy.get("description", spec["short"][:160]),
+                    "sources": copy.get("sources", ""),
                 },
             )
             if not created:
                 continue
             added += 1
+            if copy:
+                ProductSection.objects.create(
+                    product=product, kind="benefits", title=copy["heading"], body=copy["body"]
+                )
             for order, row in enumerate(spec["specs"]):
                 title, value, *key = row
                 ProductSpec.objects.create(
@@ -449,18 +452,21 @@ class Command(BaseCommand):
             )
         )
 
-    def _attach_icon(self, product: Product, url: str, pad: float) -> None:
+    def _attach_icon(self, product: Product, url: str | Path, pad: float) -> None:
         target = Path(settings.MEDIA_ROOT) / "products" / f"{product.slug}.svg"
         target.parent.mkdir(parents=True, exist_ok=True)
         body: bytes | None = None
         try:
-            # Some logo hosts answer 403 to a library's default user agent.
-            request = urllib.request.Request(  # noqa: S310  # nosec B310
-                url, headers={"User-Agent": "premshop-seed"}
-            )
-            opened = urllib.request.urlopen(request, timeout=15)  # noqa: S310  # nosec B310
-            with opened as response:
-                body = response.read()
+            if isinstance(url, Path):
+                body = url.read_bytes()
+            else:
+                request = urllib.request.Request(  # noqa: S310  # nosec B310
+                    url, headers={"User-Agent": "premshop-seed"}
+                )
+                with urllib.request.urlopen(  # noqa: S310  # nosec B310
+                    request, timeout=15
+                ) as response:
+                    body = response.read()
         except Exception as exc:  # noqa: BLE001 — no image is a designed state, not a failure
             self.stderr.write(f"  no mark for {product.name}: {type(exc).__name__}")
         # A 404 from a logo host is an HTML page, and `startswith(b"<svg")` is

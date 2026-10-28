@@ -372,6 +372,26 @@ def test_publishing_writes_the_status(client, operator, catalogue):
     assert draft.status == Product.Status.ACTIVE
 
 
+@pytest.mark.parametrize("surface", ["form", "action"])
+def test_publication_keeps_enabled_zero_stock_choices_visible(client, operator, catalogue, surface):
+    draft = catalogue["draft"]
+    draft.plans.update(stock_quantity=0)
+    assert not draft.publish_problems()
+    if surface == "form":
+        data = form_of(client, change_url(draft))
+        data["status"] = [Product.Status.ACTIVE]
+        response = client.post(change_url(draft), data)
+        assert response.status_code == 302
+    else:
+        client.post(
+            reverse("admin:catalog_product_changelist"),
+            {"action": "publish", "_selected_action": [str(draft.pk)]},
+        )
+    draft.refresh_from_db()
+    assert draft.status == Product.Status.ACTIVE
+    assert not draft.available_plans()
+
+
 def test_unpublishing_takes_it_off_the_site(client, operator, catalogue):
     live = catalogue["live"]
 
@@ -417,6 +437,35 @@ def test_publishing_what_is_already_live_writes_nothing(client, operator, catalo
     )
 
     assert history_of(live) == []
+
+
+def test_bulk_publication_rolls_back_statuses_and_history_together(
+    client, operator, catalogue, monkeypatch
+):
+    from apps.catalog.admin import ProductAdmin
+
+    products = [catalogue["draft"], catalogue["gone"]]
+    original_statuses = {product.pk: product.status for product in products}
+    original_log = ProductAdmin.log_change
+    calls = []
+
+    def failing_history(self, request, obj, message):
+        original_log(self, request, obj, message)
+        calls.append(obj.pk)
+        if len(calls) == 2:
+            raise RuntimeError("history failure")
+
+    monkeypatch.setattr(ProductAdmin, "log_change", failing_history)
+    with pytest.raises(RuntimeError, match="history failure"):
+        client.post(
+            reverse("admin:catalog_product_changelist"),
+            {"action": "publish", "_selected_action": [str(product.pk) for product in products]},
+        )
+    assert (
+        dict(Product.objects.filter(pk__in=original_statuses).values_list("pk", "status"))
+        == original_statuses
+    )
+    assert all(not history_of(product) for product in products)
 
 
 def history_of(obj: Any) -> list[LogEntry]:
@@ -889,6 +938,15 @@ def test_the_panel_counts_per_address_whatever_its_case(client, staff_account):
     assert "_auth_user_id" not in client.session
 
 
+def test_the_panel_accepts_the_accounts_email_in_mixed_case(client, staff_account):
+    response = client.post(
+        reverse("admin:login"), {"username": "PaNel@EXAMPLE.test", "password": PASSWORD}
+    )
+
+    assert response.status_code == 302
+    assert client.session.get("_auth_user_id") == str(staff_account.pk)
+
+
 def test_only_a_real_sign_in_clears_the_budget(client, staff_account):
     """A post with the address and no password skips the password check. If
     it also cleared the budget, an empty submission after every nine guesses
@@ -977,7 +1035,7 @@ def test_the_password_change_errors_say_ramz_obour(client, operator):
 
     body = response.content.decode()
     assert "رمز عبور فعلی اشتباه است." in body
-    assert "تکرار رمز عبور یکسان نیست." in body
+    assert "رمز عبور و تکرار آن یکسان نیستند." in body
     for leak in ("گذرواژه", "لطفاً", "Please correct"):
         assert leak not in body, leak
 
@@ -1477,7 +1535,8 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the live product's form"
-    assert "برای انتشار دوباره، این موارد رو اصلاح کنید" in readiness.group(0)
+    assert "برای انتشار دوباره" in readiness.group(0)
+    assert "این موارد رو اصلاح کنید:" in readiness.group(0)
     assert "قبل از انتشار" not in readiness.group(0)
     assert "نکات استفاده رو بنویسید." in readiness.group(0)
 
@@ -1587,6 +1646,36 @@ def test_a_copy_never_gives_a_product_a_second_before_buying(client, operator, c
 
     assert list(target.sections.values_list("body", flat=True)) == ["خودش"]
     assert any("کپی نشد" in str(m) for m in response.context["messages"])
+
+
+def test_section_copies_and_history_roll_back_across_all_targets(
+    client, operator, catalogue, monkeypatch
+):
+    from apps.catalog.admin import ProductAdmin
+
+    source, first, second = catalogue["live"], catalogue["draft"], catalogue["gone"]
+    ProductSection.objects.create(product=source, kind="benefits", body="متن نمونه")
+    original = ProductAdmin.log_change
+    writes = []
+    requests = []
+
+    def fail_second(self, request, obj, message):
+        requests.append(request)
+        writes.append(obj.pk)
+        if len(writes) == 2:
+            raise RuntimeError("Synthetic history failure")
+        return original(self, request, obj, message)
+
+    monkeypatch.setattr(ProductAdmin, "log_change", fail_second)
+    with pytest.raises(RuntimeError, match="Synthetic history failure"):
+        copy_from(client, source, first, second)
+
+    assert len(writes) == 2
+    assert not first.sections.exists() and not second.sections.exists()
+    assert not history_of(first) and not history_of(second)
+    from django.contrib.messages import SUCCESS, get_messages
+
+    assert not [message for message in get_messages(requests[0]) if message.level == SUCCESS]
 
 
 def test_sections_are_never_copied_onto_a_live_page(client, operator, catalogue):
@@ -1798,3 +1887,36 @@ def test_a_section_image_without_its_description_is_refused(client, operator, ca
     assert response.status_code == 200
     assert "متن جایگزین" in errors_under(response.content.decode(), f"{row}-image_alt")
     assert not draft.sections.exists()
+
+
+def test_the_panel_opens_on_what_needs_attention(client, operator, catalogue):
+    """The first page repeated the sidebar's links. It now counts the
+    catalogue and lists what needs the operator: a sold-out plan, a discount
+    about to end and an unpublished draft, each linked to its form."""
+    live = catalogue["live"]
+    sold = live.plans.get()
+    Plan.objects.filter(pk=sold.pk).update(stock_quantity=0)
+    ending = Plan.objects.create(
+        product=live,
+        title="۳ ماهه",
+        cost_price=Decimal("100"),
+        sale_price=Decimal("500000"),
+        promo_price=Decimal("400000"),
+        promo_ends_at=timezone.now() + timedelta(hours=20),
+    )
+    later = Plan.objects.create(
+        product=live,
+        title="۶ ماهه",
+        cost_price=Decimal("100"),
+        sale_price=Decimal("900000"),
+        promo_price=Decimal("800000"),
+        promo_ends_at=timezone.now() + timedelta(days=9),
+    )
+
+    body = client.get(reverse("admin:index")).content.decode()
+
+    attention = body.split('class="panel-attention"', 1)[1]
+    assert reverse("admin:catalog_plan_change", args=[sold.pk]) in attention
+    assert reverse("admin:catalog_plan_change", args=[ending.pk]) in attention
+    assert reverse("admin:catalog_plan_change", args=[later.pk]) not in attention
+    assert reverse("admin:catalog_product_change", args=[catalogue["draft"].pk]) in attention

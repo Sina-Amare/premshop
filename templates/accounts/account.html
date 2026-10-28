@@ -35,7 +35,7 @@ below.
   <div class="acct__next">
     <div>
       <h2 class="acct__next-t">رمز عبور</h2>
-      <p class="small" style="margin: 0">با رمز عبور، بدون منتظر ماندن برای کد وارد می‌شوید.</p>
+      <p class="small" style="margin: 0">با رمز عبور، برای ورود لازم نیست منتظر کد بمانید.</p>
     </div>
     <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
   </div>
@@ -46,5 +46,5 @@ below.
   <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>
   <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
 </div>
-<p class="small acct__hint"><a href="{% url 'faq' %}">پرسش‌های متداول</a></p>
+<p class="small acct__hint"><a href="{% url 'faq' %}">سؤال‌های پرتکرار</a></p>
 {% endblock %}

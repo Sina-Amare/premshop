@@ -131,7 +131,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (match?.[1] === 'specs') {
         control.setAttribute('aria-describedby',`${control.getAttribute('aria-describedby') || ''} spec-placement-note`.trim());
       }
+      const line=control.closest('.field-line');
+      const fieldContainer = line?.querySelector(':scope > .grow') || control.closest('td,.field-box') || control.parentElement;
+      if ([...fieldContainer.querySelectorAll(':scope > .field-placement')].some(note => note.dataset.placementField === field)) continue;
       const note = document.createElement('div');note.className='field-placement';
+      note.dataset.placementField = field;
       if (match?.[1] !== 'specs') {const explanation = document.createElement('p');explanation.textContent=placement[1];note.append(explanation);}
       if (placement[0]) {
         const label = control.labels?.[0]?.textContent.trim() || control.closest('table')?.querySelectorAll('thead th')[control.closest('td')?.cellIndex]?.textContent.trim() || placement[1];
@@ -139,8 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click',()=>open(button,{key:placement[0],field:match ? match[3] : control.name.replace(/_[01]$/,''),label,row:match ? `${match[1]}-${match[2]}` : model==='plan'?'plan':null}));
         note.append(button);
       }
-      const line=control.closest('.field-line');
-      const fieldContainer = line?.querySelector(':scope > .grow') || control.closest('td,.field-box') || control.parentElement;
       fieldContainer.append(note);
     }
   };
@@ -165,13 +167,27 @@ document.addEventListener('DOMContentLoaded', () => {
     colour.addEventListener('input',update);
     picker.addEventListener('input',()=>{colour.value=picker.value;colour.dispatchEvent(new Event('input',{bubbles:true}));colour.dispatchEvent(new Event('change',{bubbles:true}));});
     art.querySelector('[data-brand-reset]').addEventListener('click',()=>{colour.value='';colour.dispatchEvent(new Event('input',{bubbles:true}));colour.dispatchEvent(new Event('change',{bubbles:true}));});
-    const image = form.querySelector('[name=image]');let blob;
-    image?.addEventListener('change',()=>{
-      if (blob) URL.revokeObjectURL(blob);
-      if (!image.files[0] || !/^image\/(png|jpeg|webp)$/.test(image.files[0].type)) return;
-      blob=URL.createObjectURL(image.files[0]);
-      let logo=art.querySelector('img');if (!logo) {logo=document.createElement('img');logo.alt='';art.querySelector('.pcard__art').prepend(logo);art.querySelector('.pcard__mono')?.remove();}logo.src=blob;
-    });
+    const image = form.querySelector('[name=image]'), clear = form.querySelector('[name="image-clear"]');
+    const canvas = art.querySelector('.pcard__art');
+    const savedArt = canvas.querySelector('img,.pcard__mono')?.cloneNode(true);
+    let blob;
+    const updateImage = () => {
+      if (blob) { URL.revokeObjectURL(blob); blob = undefined; }
+      const file = image?.files[0];
+      let content;
+      if (file && /^image\/(png|jpeg|webp)$/.test(file.type)) {
+        content = document.createElement('img');content.alt = '';
+        blob = URL.createObjectURL(file);content.src = blob;
+      } else if (!clear?.checked && savedArt) content = savedArt.cloneNode(true);
+      else {
+        content = document.createElement('span');content.className = 'pcard__mono';
+        content.textContent = form.querySelector('[name=name]')?.value.slice(0,1) || '';
+      }
+      canvas.querySelector('img,.pcard__mono')?.remove();
+      canvas.prepend(content);
+    };
+    image?.addEventListener('change',updateImage);
+    clear?.addEventListener('change',updateImage);
     update();
   }
 });

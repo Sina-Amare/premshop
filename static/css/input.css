@@ -839,7 +839,6 @@
     .pcard__foot .price__num { font-size: 18px; }
     .pcard__foot .price__cur, .pcard__pre { font-size: 10px; }
     .pcard__offer { inset-block-start: 8px; inset-inline-start: 8px; font-size: 10px; }
-    .pcard__shop { inset-inline-end: 8px; inset-block-end: 5px; font-size: 9px; }
     .pcard__promotion .deadline { font-size: 10px; }
   }
 
@@ -851,7 +850,7 @@
           background: var(--color-surface); border: 1px solid var(--color-line);
           border-radius: var(--radius-lg); flex: none;
           transition: border-color var(--dur) var(--ease); }
-  .tile img { inline-size: auto; block-size: auto;
+  .tile img { inline-size: 100%; block-size: 100%;
               max-inline-size: 28px; max-block-size: 28px; object-fit: contain; }
   .tile--mono { font-family: var(--font-head); font-size: 20px; font-weight: 600;
                 color: var(--color-secondary); background: var(--color-fill-subtle); }
@@ -890,6 +889,8 @@
   .spec th { text-align: start; font-weight: 400; color: var(--color-muted); inline-size: 34%;
              padding-inline-end: var(--spacing-4); }
   .spec td { color: var(--color-ink); }
+  .spec tbody tr:last-child th { border-block-end: 0; }
+  .table.spec tbody tr:hover td { background: none; }
   .faq dt { font-weight: 500; color: var(--color-ink); margin-block-start: var(--spacing-4); }
   .faq dd { margin: var(--spacing-1) 0 0; color: var(--color-secondary); font-size: 15px; line-height: 1.8; }
   .faq dt:first-child { margin-block-start: 0; }
@@ -1014,10 +1015,9 @@
     font-variant-numeric: tabular-nums;
   }
   .badge--neutral { background: var(--color-fill-subtle); border-color: var(--color-line-strong); color: var(--color-secondary); }
-  /* A fact the operator marked important. Ink rather than tinted: it is not
-     a status, it is a property of the thing being sold, and the colour
-     budget belongs to the brand marks. */
-  .badge--key { background: var(--color-surface); border-color: var(--color-ink); color: var(--color-ink); }
+  /* A fact the operator marked important: the neutral chip in ink and weight,
+     so it reads as the same family instead of a black-framed outlier. */
+  .badge--key { background: var(--color-fill-subtle); border-color: var(--color-line-strong); color: var(--color-ink); font-weight: 600; }
   .badge--accent  { background: var(--color-accent-tint); border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-ground)); color: var(--color-accent); }
   .badge--ok      { background: color-mix(in oklab, var(--color-ok) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-ok) 28%, var(--color-ground)); color: var(--color-ok-text); }
   .badge--danger  { background: color-mix(in oklab, var(--color-danger) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-danger) 28%, var(--color-ground)); color: var(--color-danger-text); }

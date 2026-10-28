@@ -75,8 +75,9 @@ def dead_links(client, html: str) -> list[str]:
     dead = []
     for href in parser.hrefs:
         if urlsplit(href).scheme in {"http", "https"}:
-            # The one place the shop sends a buyer off-site.
-            if href != support.details()["telegram_url"]:
+            # The one place the shop sends a buyer off-site; a draft message
+            # in the query does not change where it goes.
+            if urlsplit(href)._replace(query="").geturl() != support.details()["telegram_url"]:
                 dead.append(f"{href}: an external link nobody reviewed")
         elif href.startswith("#"):
             if href[1:] not in parser.ids:
@@ -93,10 +94,13 @@ def test_every_link_on_the_page_resolves(client, shop, page):
 
 def test_the_checker_catches_each_kind_of_dead_link(client, shop):
     """The control: a page that does not exist, an anchor with no target and
-    an unreviewed external link, beside one link that is fine."""
+    two unreviewed external links, one of them a draft to a stranger, beside
+    two links that are fine."""
     planted = (
         f'<a href="{reverse("home")}">ok</a><a href="/terms/">x</a>'
         '<a href="#nowhere">x</a><a href="https://example.com/">x</a>'
+        f'<a href="{support.details()["telegram_url"]}?text=x">ok</a>'
+        '<a href="https://t.me/someone_else?text=x">x</a>'
     )
 
-    assert len(dead_links(client, planted)) == 3
+    assert len(dead_links(client, planted)) == 4

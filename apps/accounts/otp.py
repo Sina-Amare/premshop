@@ -40,9 +40,12 @@ def _key(email: str) -> str:
     return f"otp:{email.lower().strip()}"
 
 
-def _attempts_key(email: str) -> str:
-    # Its own prefix, so no address can spell its way into the other key.
-    return f"otp-attempts:{email.lower().strip()}"
+def _record_key(email: str, issuance: str) -> str:
+    return f"otp-code:{issuance}:{email.lower().strip()}"
+
+
+def _attempts_key(email: str, issuance: str) -> str:
+    return f"otp-attempts:{issuance}:{email.lower().strip()}"
 
 
 def _digest(code: str) -> str:
@@ -65,9 +68,10 @@ def issue(email: str) -> Issued:
     # The deadline travels WITH the code. Django's cache API cannot read an entry's
     # remaining lifetime back, on Redis included, so the attempt counter takes its
     # lifetime from here rather than guessing it.
+    issuance = secrets.token_urlsafe(16)
     record = {"digest": _digest(code), "expires_at": expires_at}
-    cache.set(_key(email), record, timeout=CODE_TTL_SECONDS)
-    cache.delete(_attempts_key(email))  # a new code starts with a full budget
+    cache.set(_record_key(email, issuance), record, timeout=CODE_TTL_SECONDS)
+    cache.set(_key(email), issuance, timeout=CODE_TTL_SECONDS)
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
@@ -78,14 +82,15 @@ def verify(email: str, code: str) -> bool:
     spends MAX_ATTEMPTS deletes the code: otherwise the per-request rate limit
     is the only thing between an attacker and a million tries at a six-digit
     number, and a counter lost on its own would revive a guessed-out code.
-    Requests arriving together read the same record, so nothing here is decided
-    by what they read: the count is an atomic increment in its own key, and only
-    the request whose delete removed the record has spent the code. The record
-    is written by issue() alone, so a guess can never save a stale copy over a
-    newer code.
+    Each issuance owns its record and attempt budget. A stale request can never
+    delete a replacement; only the request deleting its record spends a code.
     """
     key = _key(email)
-    record = cache.get(key)
+    issuance = cache.get(key)
+    if not isinstance(issuance, str):
+        return False
+    record_key = _record_key(email, issuance)
+    record = cache.get(record_key)
     if not record:
         return False
 
@@ -95,19 +100,19 @@ def verify(email: str, code: str) -> bool:
     if remaining <= 0:
         return False
 
-    attempt = _count_attempt(email, remaining)
-    if attempt > MAX_ATTEMPTS:
+    attempt = _count_attempt(email, issuance, remaining)
+    if attempt > MAX_ATTEMPTS or cache.get(key) != issuance:
         return False
 
     matches = constant_time_compare(record["digest"], _digest(normalize_digits(code)))
     if not matches and attempt == MAX_ATTEMPTS:
-        cache.delete(key)
-    return matches and cache.delete(key)
+        cache.delete(record_key)
+    return bool(matches and cache.delete(record_key))
 
 
-def _count_attempt(email: str, ttl: int) -> int:
+def _count_attempt(email: str, issuance: str, ttl: int) -> int:
     """This attempt's number. Two requests at the same instant get two numbers."""
-    key = _attempts_key(email)
+    key = _attempts_key(email, issuance)
     if cache.add(key, 1, timeout=ttl):
         return 1
     try:

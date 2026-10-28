@@ -44,6 +44,20 @@ def test_colour_preview_keeps_last_valid_tint_and_reset_uses_the_storefront_neut
     assert art.evaluate("e=>getComputedStyle(e).backgroundColor") != first
 
 
+@pytest.mark.parametrize("discounted", [False, True])
+def test_unavailable_plan_promotion_fields_have_visible_preview_targets(
+    open_panel, product, discounted
+):
+    Plan.objects.filter(product=product).update(
+        is_available=False, promo_price=1000000 if discounted else None
+    )
+    page = open_panel(change_form(product))
+    page.locator('[data-snapshot-field="plans-0-promo_price"]').click()
+    frame = page.frame_locator(".snapshot-panel iframe")
+    expect(frame.locator(".snapshot-highlight")).to_be_visible()
+    expect(frame.locator("[data-plan-promotion]")).to_be_visible()
+
+
 @pytest.mark.parametrize("width", [390, 1440])
 def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, product, width):
     page = open_panel(change_form(product), width=width)
@@ -140,7 +154,7 @@ def test_only_current_sidebar_destination_has_the_selected_surface(open_panel, p
 def test_panel_guidance_is_natural_and_publishing_requirements_stay_precise(open_panel, product):
     page = open_panel(change_form(product))
     expect(page.locator("label[for=id_slug]")).to_contain_text("نام در لینک")
-    expect(page.locator(".field-delivery_hours")).to_contain_text("بین ۱ تا ۷۲ ساعت")
+    expect(page.locator(".field-delivery_hours")).to_contain_text("بین ۱ تا ۴۸ ساعت")
     expect(page.locator(".field-delivery_note")).to_contain_text("اگه این بخش رو پر کنید")
     expect(page.locator(".panel-readiness")).to_contain_text("نکات استفاده رو بنویسید")
     expect(page.locator(".field-usage_notes")).to_contain_text("موضوعیت ندارد")
@@ -161,7 +175,7 @@ def test_plan_guidance_applies_to_costs_and_supplier_links(open_panel, product):
 
 def test_title_error_requires_removing_the_store_name(open_panel, product):
     page = open_panel(change_form(product))
-    page.locator(".panel-section-jumps a").filter(has_text="عنوان و توضیح جستجو").click()
+    page.locator(".panel-section-jumps a").filter(has_text="عنوان و توضیح سئو").click()
     page.fill("#id_seo_title", "PremShop Plus")
     page.locator("#submit-row button[name=_continue]").click()
     expect(page.locator(".field-seo_title")).to_contain_text("نام فروشگاه رو اینجا ننویسید")

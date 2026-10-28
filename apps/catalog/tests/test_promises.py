@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 # Where the shell prints promises: the strip over every page, the footer row
 # and the home page's row.
-SITE_WIDE = ("v-support", "v-footer__contact")
+SITE_WIDE = ("v-support", "v-footer__contact", "v-hero__proof")
 
 # Claims nothing backs yet. Payment waits on the gateway (S5) and on the
 # owner's ruling about what to say before it; refunds and warranty terms on
@@ -118,6 +118,16 @@ def test_the_delivery_cap_is_the_one_the_database_enforces(catalogue):
     product.delivery_hours = DELIVERY_CAP_HOURS + 1
     with pytest.raises(IntegrityError), transaction.atomic():
         product.save()
+
+
+def test_the_delivery_promise_is_48_hours_without_a_clock_cutoff(client, catalogue):
+    assert DELIVERY_CAP_HOURS == 48
+    product = catalogue.get(slug="card")
+    for path in ["/", "/faq/", product.get_absolute_url()]:
+        body = client.get(path).content.decode()
+        assert "در اولین فرصت، حداکثر تا ۴۸ ساعت پس از تأیید پرداخت." in body
+        assert "اگر پرداختتان تا ساعت" not in body
+        assert "صبح تحویل می‌دهیم" not in body
 
 
 def test_the_shell_prints_only_what_the_source_holds(client, catalogue):

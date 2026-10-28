@@ -21,6 +21,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
+from apps.catalog.promises import PROMISES
 from apps.core import ratelimit
 from apps.core.email import render_email
 from apps.core.errors import server_error
@@ -30,6 +31,9 @@ pytestmark = pytest.mark.django_db
 
 # (form, why). Words, not substrings: «رو» is inside «روی» and «روز».
 BANNED = [
+    ("می‌تونین", "«می‌تونید»"),
+    ("می‌خواین", "«می‌خواید»"),
+    ("ببینین", "«ببینید»"),
     ("—", "an em dash in Persian text: «،» or a full stop, and «|» in a title"),
     ("بهترین", "a number, not a superlative"),
     ("سریع‌ترین", "a number, not a superlative"),
@@ -73,11 +77,21 @@ class _Said(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.depth, self.parts, self.title, self.in_title = 0, [], "", False
+        self.metadata = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in self.SKIP:
             self.depth += 1
         self.in_title = tag == "title"
+        attributes = dict(attrs)
+        if tag == "meta" and (attributes.get("name") or attributes.get("property")) in {
+            "description",
+            "og:title",
+            "og:description",
+            "twitter:title",
+            "twitter:description",
+        }:
+            self.metadata.append(attributes.get("content") or "")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.SKIP and self.depth:
@@ -106,6 +120,56 @@ def offences(text: str, *, written: bool = False) -> list[str]:
             if re.search(rf"(?<![\w‌]){re.escape(form)}(?![\w‌])", text)
         ]
     return found
+
+
+class _Commitments(HTMLParser):
+    CLASSES = {
+        "faq__answer",
+        "qa__a",
+        "delivery-answer",
+        "price",
+        "deadline",
+        "deadline__said",
+        "cart-line__warning",
+        "cart-line__error",
+        "cart-summary__blocked",
+        "cart-notice",
+        "cart-add-error",
+        "v-hero__lead",
+    }
+    VOID = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.stack, self.parts = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in self.VOID:
+            classes = set(dict(attrs).get("class", "").split())
+            self.stack.append(bool(self.CLASSES & classes) or any(self.stack))
+
+    def handle_endtag(self, tag):
+        if tag not in self.VOID and self.stack:
+            self.stack.pop()
+
+    def handle_data(self, data):
+        if any(self.stack):
+            self.parts.append(data)
 
 
 @pytest.fixture
@@ -197,7 +261,7 @@ def test_every_storefront_page_speaks_written_persian(client, shop):
     for name, body in pages.items():
         text, title = said(body)
         assert text, f"nothing read on {name}"
-        found = offences(text) + [f"title: {o}" for o in offences(title)]
+        found = offences(text) + [f"title: {o}" for o in offences(title, written=True)]
         if found:
             bad[name] = found
     assert not bad
@@ -223,6 +287,97 @@ def test_every_email_speaks_written_persian_in_both_halves():
     assert not bad
 
 
+def test_activation_answer_does_not_make_a_blanket_password_promise(client):
+    body = client.get(reverse("faq")).content.decode()
+    answer = re.search(
+        r"برای فعال‌سازی باید رمز اکانتم رو بدم؟</summary>\s*<div[^>]*><p[^>]*>(.*?)</p>",
+        body,
+        re.S,
+    )
+    assert answer, "the activation question was not checked"
+    text = said(answer[1])[0]
+    assert "نه، فقط ایمیل" not in text
+    assert "سایت" in text and "وارد نکنید" in text
+    assert not offences(text, written=True)
+
+
+def test_product_activation_answer_does_not_promise_email_is_sufficient(client, shop):
+    body = client.get("/p/chatgpt-plus/").content.decode()
+    answer = re.search(
+        r"برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd[^>]*>(.*?)</dd>", body, re.S
+    )
+    assert answer, "the product activation answer was not checked"
+    text = said(answer[1])[0]
+    assert "فقط" not in text
+    assert "سایت" in text and "وارد نکنید" in text
+
+
+def test_faq_describes_access_limits_without_vpn_guidance(client):
+    text = said(client.get(reverse("faq")).content.decode())[0]
+    assert "محدودیت" in text
+    assert "فیلترشکن" not in text
+
+
+def test_conversational_guidance_and_written_commitments_have_distinct_rules():
+    assert not offences("سرویس موردنظرتون رو می‌تونید انتخاب کنید.")
+    assert offences("سرویس موردنظرتون رو می‌تونید انتخاب کنید.", written=True)
+    assert PROMISES
+    assert not [
+        (promise.text, offences(promise.text, written=True))
+        for promise in PROMISES
+        if offences(promise.text, written=True)
+    ]
+
+
+def test_money_and_deadline_regions_keep_written_persian(client, shop):
+    captured, bad = 0, {}
+    for name, body in rendered_pages(client).items():
+        parser = _Commitments()
+        parser.feed(body)
+        captured += len(parser.parts)
+        found = offences(" ".join(parser.parts), written=True)
+        if found:
+            bad[name] = found
+    assert captured > 10, "no purchase facts were checked"
+    assert not bad
+
+
+def test_product_delivery_answer_is_written(client, shop):
+    body = client.get("/p/chatgpt-plus/").content.decode()
+    answer = re.search(r'<dt id="delivery">.*?</dt><dd[^>]*>(.*?)</dd>', body, re.S)
+    assert answer, "the delivery commitment was not checked"
+    assert not offences(said(answer[1])[0], written=True)
+
+
+def test_seo_titles_and_metadata_keep_written_persian(client, shop):
+    checked, bad = 0, {}
+    for name, body in rendered_pages(client).items():
+        parser = _Said()
+        parser.feed(body)
+        checked += len(parser.metadata)
+        found = offences(" ".join([parser.title, *parser.metadata]), written=True)
+        if found:
+            bad[name] = found
+    assert checked > 20, "no SEO attributes were checked"
+    assert not bad
+
+
+def test_seo_scan_reads_attributes_and_titles_without_scanning_guidance():
+    parser = _Said()
+    parser.feed(
+        '<title>می‌شه</title><meta name="description" content="این رو ببینید"><p>همون رو ببینید.</p>'
+    )
+    assert offences(parser.title, written=True) == ["می‌شه"]
+    assert offences(" ".join(parser.metadata), written=True) == ["رو"]
+
+
+def test_commitment_scan_catches_nested_text_without_banning_casual_guidance():
+    parser = _Commitments()
+    parser.feed('<p>این رو ببینید.</p><span class="price">این <bdi>می‌شه</bdi> خرید.</span>')
+    assert "رو" not in parser.parts
+    assert offences(" ".join(parser.parts), written=True) == ["می‌شه"]
+
+
 # A quoted string with a Persian letter in it, inside a page's script.
 SCRIPT_STRING = re.compile(r"""(['"`])((?:(?!\1).)*?[؀-ۿ](?:(?!\1).)*?)\1""")
 
@@ -232,7 +387,12 @@ def script_strings() -> list[tuple[str, str]]:
     the rendered-page scan above never sees."""
     root = Path(settings.BASE_DIR)
     found = []
-    for path in [*(root / "templates").rglob("*.html"), *(root / "static" / "js").rglob("*.js")]:
+    templates = root / "templates"
+    for path in [
+        *templates.rglob("*.html"),
+        *templates.rglob("*.js"),
+        *(root / "static" / "js").rglob("*.js"),
+    ]:
         text = path.read_text(encoding="utf-8")
         blocks = (
             [text] if path.suffix == ".js" else re.findall(r"<script\b.*?</script>", text, re.S)

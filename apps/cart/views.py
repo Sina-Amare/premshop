@@ -4,13 +4,14 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from django.utils import timezone
+from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.cart import services
 from apps.catalog.models import Plan, Product
-from apps.core.formatting import to_persian_digits
+from apps.catalog.templatetags.prices import monthly_price_key
+from apps.core.formatting import format_toman, to_persian_digits
 
 
 class LineForm(forms.Form):
@@ -20,10 +21,15 @@ class LineForm(forms.Form):
 
 
 def _page(request: HttpRequest, *, error: str = "", status: int = 200) -> HttpResponse:
+    cart = services.get_cart(request)
     return render(
         request,
         "cart/detail.html",
-        {"cart": services.cart_summary(services.get_cart(request)), "error": error},
+        {
+            "cart": services.cart_summary(cart),
+            "cart_revision": cart.updated_at.isoformat() if cart else "",
+            "error": error,
+        },
         status=status,
     )
 
@@ -66,17 +72,42 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
         plans = list(
             Plan.objects.filter(
                 product__plans__pk=kwargs["plan_id"], product__in=Product.objects.public()
-            )
+            ).select_related("product")
         )
         data = _state(request, plans)
-        data["message"] = "به سبد خرید اضافه شد."
+        plan = next((plan for plan in plans if plan.pk == kwargs["plan_id"]), None)
+        name = f"{plan.product.name}، {plan.title}" if plan else "محصول"
+        removed = operation is services.remove_from_cart or kwargs.get("quantity") == 0
+        if removed:
+            data["message"] = f"{name} از سبد خرید حذف شد."
+        elif operation is services.set_quantity:
+            data["message"] = f"تعداد {name} در سبد خرید به‌روز شد."
+        else:
+            data["message"] = f"{name} به سبد خرید اضافه شد."
+            # Worded as the cart page's summary; where that shows a dash, the toast states no total.
+            cart = services.cart_summary(services.get_cart(request))
+            if cart.has_purchasable_items:
+                label = "جمع سبد خرید" if cart.ready else "جمع محصولات قابل خرید"
+                # A no-break space keeps «تومان» on the figure's line in every browser.
+                total = format_toman(cart.total).replace(" ", "\u00a0")
+                data["total"] = f"{label}: {total}"
+            if plan:
+                # Separate lines, so a Latin product name cannot set the sentence's direction.
+                data |= {
+                    "title": "به سبد خرید اضافه شد",
+                    "item": plan.product.name,
+                    "option": plan.title,
+                    "image": plan.product.image.url if plan.product.image else "",
+                }
         return JsonResponse(data)
     return redirect("cart")
 
 
 def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
     count = services.cart_count(request)
+    cart = services.get_cart(request)
     return {
+        "revision": cart.updated_at.isoformat() if cart else "",
         "count": count,
         "count_text": to_persian_digits(count),
         "count_label": f"سبد خرید، {to_persian_digits(count)} عدد",
@@ -87,11 +118,28 @@ def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
                 "maximum": option.maximum,
                 "available": option.plan.is_available and option.maximum > 0,
                 "selectable": option.selectable,
-                "reserved_until": (
-                    option.reserved_until.isoformat() if option.reserved_until else None
+                "price_html": render_to_string(
+                    "catalog/_price.html", {"plan": option.plan}
+                ).strip(),
+                "promotion_html": render_to_string(
+                    "catalog/_purchase_promotion.html", {"plan": option.plan}
+                ).strip(),
+                # Against the plans asked for, which on a product page are all of its plans.
+                "monthly_html": render_to_string(
+                    "catalog/_monthly_price.html", {"plan": option.plan, "plans": plans}
+                ).strip(),
+                "monthly_key": monthly_price_key(option.plan, plans),
+                "price_key": (
+                    format_toman(option.plan.effective_price, with_unit=False)
+                    + "|"
+                    + format_toman(option.plan.sale_price, with_unit=False)
+                    + "|"
+                    + (
+                        str(int(option.plan.promo_ends_at.timestamp()))
+                        if option.plan.promo_ends_at
+                        else ""
+                    )
                 ),
-                "expired": option.plan.stock_quantity is not None
-                and (option.reserved_until is None or option.reserved_until <= timezone.now()),
             }
             for option in services.purchase_options(request, plans)
         },

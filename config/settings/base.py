@@ -318,6 +318,8 @@ UNFOLD = {
         lambda request: static("js/admin.js"),
         lambda request: static("js/admin-experience.js"),
     ],
+    # The first page counts the catalogue and lists what needs the operator.
+    "DASHBOARD_CALLBACK": "apps.catalog.dashboard.dashboard_callback",
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     # Matches --radius-sm on the storefront, so the two do not look like two

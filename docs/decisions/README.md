@@ -12,7 +12,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0006](0006-card-to-card-payment-design.md) | ~~Card-to-card: DB-enforced uniqueness, pending-only expiry, revive, card snapshots~~ — **superseded by [0019](0019-payment-gateway.md)** |
 | [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; 2026-10-26 amendment: implemented key rotation and manual incoming activation details |
 | [0008](0008-content-free-messages-and-magic-link.md) | No credential values in software messages; constrained magic link; 2026-10-26 incoming manual activation exception |
-| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-18: delivery cap 72 hours; 2026-10-20, evening: the delivery note is printed as written)* |
+| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-28: delivery cap 48 hours for every product; 2026-10-20, evening: the delivery note is printed as written)* |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log; outbox with dedupe keys; accepted on-commit gap |
 | [0011](0011-buy-now-checkout-no-cart.md) | ~~Buy-now + quantity; no cart~~ — **superseded by [0018](0018-shopping-cart-and-guest-checkout.md)**; its item-status argument still stands *(amended 2026-10-23: the planned persistent cart needs its own tables and migration)* |
 | [0012](0012-auth-email-otp.md) | Email identity; inline checkout OTP; new-sign-in alert guard *(amended 2026-10-23: code sign-in restores access, not forgotten-password replacement; Iranian-host deliverability remains untested)* |
@@ -21,7 +21,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
 | [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal action colour; amber means time *(amended 2026-10-13: white canvas and neutral ramp; 2026-10-14: ink surfaces and two general radii; 2026-10-23: constellation radii remain an unresolved divergence)* |
 | [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production *(amended 2026-10-23: PostgreSQL rationale corrected; daily Redis container, in-memory test cache)* |
-| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cart, guest merge and anonymous browsing; 2026-10-26 amendments: guest-only expiry, session locking, shared twenty-minute stock holds and in-place additions |
+| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cart, guest merge and anonymous browsing; 2026-10-27 amendment: untimed selections without stock holds, visible unavailable rows and atomic stock claims deferred to checkout |
 | [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
 | [0020](0020-discount-codes.md) | Scoped discount codes computed server-side; `DiscountRedemption` rows; `used_count` under row lock; total floored at zero |
 | [0021](0021-promotional-pricing.md) | Promo price + window on `Plan`; one `effective_price` rule *(amended 2026-10-23: countdowns; 2026-10-24: separate plan offers and successive server-computed card expiry prices)* |

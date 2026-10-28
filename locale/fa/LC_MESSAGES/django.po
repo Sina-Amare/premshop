@@ -459,7 +459,7 @@ msgid "Your old password was entered incorrectly. Please enter it again."
 msgstr "رمز عبور فعلی اشتباه است."
 
 msgid "The two password fields didn’t match."
-msgstr "تکرار رمز عبور یکسان نیست."
+msgstr "رمز عبور و تکرار آن یکسان نیستند."
 
 msgid "Enter the same password as before, for verification."
 msgstr "همان رمز عبور جدید را دوباره بنویسید."
@@ -562,8 +562,8 @@ msgstr "شرایط و بررسی اطلاعات"
 msgid "نام‌های جستجو"
 msgstr "نام‌های جستجو"
 
-msgid "عنوان و توضیح جستجو"
-msgstr "عنوان و توضیح جستجو"
+msgid "عنوان و توضیح سئو"
+msgstr "عنوان و توضیح سئو"
 
 msgid "بخش‌های فرم محصول"
 msgstr "بخش‌های فرم محصول"
@@ -628,7 +628,7 @@ msgstr "اطلاعات مشتری و تأمین‌کننده"
 msgid "واقعیت‌ها"
 msgstr "اطلاعات و شرایط محصول"
 
-msgid "بررسی واقعیت‌ها"
+msgid "نیاز به بررسی"
 msgstr "بررسی اطلاعات"
 
 msgid "استثنای بازگشت وجه"
@@ -926,7 +926,7 @@ msgid "«%(product)s» تا این‌ها درست نشود، دوباره من�
 msgstr "برای انتشار دوباره‌ی «%(product)s»، این موارد رو اصلاح کنید."
 
 msgid "تا این‌ها درست نشود، دوباره منتشر نمی‌شود."
-msgstr "برای انتشار دوباره، این موارد رو اصلاح کنید."
+msgstr "این موارد رو اصلاح کنید:"
 
 msgid "رنگ را مانند #10a37f وارد کنید."
 msgstr "کد رنگ رو به شکل ⁦#10a37f⁩ وارد کنید."

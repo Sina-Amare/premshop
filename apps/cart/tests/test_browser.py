@@ -29,8 +29,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
     page.on("pageerror", lambda error: errors.append(str(error)))
 
     def inspect(state):
-        path = "/cart/quantity/" if state == "error" else "/cart/"
-        assert page.url == live_server.url + path
+        assert page.url == live_server.url + "/cart/"
         expect(page.locator("h1")).to_contain_text("سبد خرید")
         if state != "empty":
             expect(page.locator(".cart-heading__count")).to_have_text("۲ محصول")
@@ -90,24 +89,27 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
             ".cart-apply"
         ).click()
         expect(page.locator(".v-cart__count")).to_have_text("۳")
+        expect(page.locator(".cart-line__amount-label").first).to_have_text("جمع ۲ عدد")
         inspect("populated")
-        page.get_by_role("button", name="افزایش تعداد یک ماهه", exact=True).click()
+        page.locator(f'[data-cart-plan="{plan.pk}"] [name=step][value="1"]').click()
         expect(page.locator(f"#quantity-{plan.pk}")).to_have_value("3")
-        page.get_by_role("button", name="کاهش تعداد یک ماهه", exact=True).click()
+        page.locator(f'[data-cart-plan="{plan.pk}"] [name=step][value="-1"]').click()
         expect(page.locator(f"#quantity-{plan.pk}")).to_have_value("2")
         page.locator(f"#quantity-{plan.pk}").evaluate(
             "el => { el.max = '10'; el.value = '4'; el.form.requestSubmit(); }"
         )
         expect(page.get_by_role("alert")).to_contain_text("حداکثر تعداد")
         inspect("error")
-        assert page.locator(f"#quantity-{plan.pk}").input_value() == "2"
+        assert page.locator(f"#quantity-{plan.pk}").input_value() == "4"
         Plan.objects.filter(pk=plan.pk).update(sale_price=999999999990)
         page.goto(live_server.url + "/cart/")
         inspect("large-price")
         Plan.objects.filter(pk=plan.pk).update(sale_price=200000)
         Product.objects.filter(pk=plan.product_id).update(status=Product.Status.DRAFT)
         page.goto(live_server.url + "/cart/")
-        expect(page.locator(".cart-line").first).to_contain_text("این محصول فعلاً موجود نیست.")
+        expect(page.locator(".cart-line").first.locator(".cart-line__stock")).to_have_text(
+            "ناموجود"
+        )
         assert plan.product.name not in page.locator("main").inner_text()
         inspect("unavailable")
         page.get_by_role("button", name="حذف محصول ناموجود", exact=True).click()

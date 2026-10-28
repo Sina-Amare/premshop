@@ -70,3 +70,11 @@ Sign-in never creates a new twenty-minute window. If every contributing hold has
 ### Follow-up — 2026-10-26: account locks and admin history
 
 Account serialization uses PostgreSQL FOR NO KEY UPDATE. It still serializes cart edits/merges and prevents concurrent user changes, while permitting foreign-key checks on that user. A stronger FOR UPDATE created a cycle when the same operator edited stock and their own cart: the cart held User while waiting on Plan; admin held Plan while its history row waited on User. Both edit and merge interleavings reproduced the deadlock before the correction. Session, Cart and Plan lock modes stay as specified above.
+
+### Amendment — 2026-10-27: selections without stock reservations
+
+A cart records purchase intentions without reserving stock. There is no cart deadline or countdown, and adding a selection does not reduce availability for another customer. Current stock, publication status, per-line limits and server prices are checked on additions, edits and reads. The reservation column is removed; reversing that migration restores a nullable column, while a database backup preserves its former timestamps.
+
+Stock changes never silently remove a selection. Unavailable rows stay visible with a restock-support link and an explicit removal action. Invalid quantities stay visible for correction. Either condition blocks the cart's readiness to proceed, even when other rows have a valid subtotal. A login merge keeps selections up to the per-line policy limit without clamping them to stock; a stock shortage remains visible for the customer to resolve.
+
+The alternative was to retain timed holds with a less technical duration label. Untimed selections avoid expiry confusion and stock being held by customers who are still browsing. Checkout remains unbuilt and must atomically recheck and claim stock when it creates an order, with its own bounded payment lifecycle. Cart availability alone must never authorize a payment or guarantee delivery. Revisit cart holds only if measured demand makes an order-stage claim insufficient.

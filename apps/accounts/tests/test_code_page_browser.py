@@ -57,6 +57,28 @@ def request_code(page, live_server, email: str) -> None:
     page.wait_for_url("**/login/code/verify/")
 
 
+def test_resend_stays_disabled_while_its_request_is_pending(page, live_server, user):
+    page.clock.install()
+    request_code(page, live_server, user.email)
+    page.clock.fast_forward("01:01")
+    held = []
+    page.route("**/login/code/resend/", lambda route: held.append(route))
+    page.click("#resend")
+    page.wait_for_timeout(50)
+    assert len(held) == 1
+    try:
+        page.clock.fast_forward("00:03")
+        assert page.locator("#resend").is_disabled()
+        assert page.locator("#resend").inner_text() == "در حال ارسال…"
+        page.locator("#resend-form").evaluate(
+            "form => form.dispatchEvent(new Event('submit', {cancelable:true}))"
+        )
+        page.wait_for_timeout(50)
+        assert len(held) == 1
+    finally:
+        held[0].fulfill(json={"ok": False, "error": "کد فرستاده نشد."})
+
+
 def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     SHOTS.mkdir(parents=True, exist_ok=True)
     request_code(page, live_server, user.email)

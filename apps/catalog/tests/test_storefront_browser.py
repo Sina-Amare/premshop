@@ -9,6 +9,7 @@ too many in the buy box, which pushed the whole product page sideways at
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from decimal import Decimal
 
@@ -319,7 +320,7 @@ def test_a_ticking_clock_is_not_part_of_any_name(browser, live_server, discounte
             if scope == ".plans":
                 assert "قیمت قبلی" in heard and "قیمت با تخفیف" in heard, heard
             else:
-                assert "پلن ۱ ماهه" in heard and "۲۰٪ تخفیف" in heard, heard
+                assert "۱ ماهه" in heard and "۲۰٪ تخفیف" in heard, heard
     finally:
         context.close()
 
@@ -428,5 +429,62 @@ def test_a_wide_table_scrolls_inside_its_section_on_a_small_phone(browser, live_
         assert page.evaluate("document.documentElement.scrollWidth") <= 320
         box = page.locator(".rich__scroll")
         assert box.evaluate("e => e.scrollWidth > e.clientWidth"), "the table fits: nothing tested"
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    ("viewport", "gives_way"), [(PHONE, True), ({"width": 1280, "height": 900}, False)]
+)
+def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
+    browser, live_server, discounted, viewport, gives_way
+):
+    """A 170px sticky header kept a fifth of a phone screen while reading."""
+    context = browser.new_context(viewport=viewport, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        header = page.locator(".v-header")
+        page.mouse.wheel(0, 1200)
+        away = re.compile(r"\bv-header--away\b")
+        if gives_way:
+            expect(header).to_have_class(away)
+            page.mouse.wheel(0, -300)
+        page.wait_for_timeout(300)
+        expect(header).not_to_have_class(away)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("viewport", [PHONE, {"width": 1280, "height": 900}])
+def test_a_category_opens_with_one_header_row_above_its_cards(
+    browser, live_server, discounted, viewport
+):
+    """The owner rejected tall side panels for the categories: the name, the
+    count and «همه‌ی محصولات» share one row above the cards."""
+    context = browser.new_context(viewport=viewport, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/")
+        section = page.locator(".v-category-section").first
+        head = section.locator(".v-section__head").bounding_box()
+        track = section.locator(".v-track").bounding_box()
+        title = section.locator(".v-category-heading h2").bounding_box()
+        link = section.locator(".v-view-all").bounding_box()
+        assert head["y"] + head["height"] <= track["y"] + 1
+        assert head["height"] < 120, "a header row, not a panel"
+        assert link["y"] < title["y"] + title["height"] and title["y"] < link["y"] + link["height"]
+    finally:
+        context.close()
+
+
+def test_one_option_is_not_repeated_as_the_selection(browser, live_server, discounted):
+    context = browser.new_context(viewport=PHONE)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        expect(page.locator(".buybox__cta")).to_be_visible()
+        expect(page.locator(".buybox__selection")).to_be_hidden()
     finally:
         context.close()
