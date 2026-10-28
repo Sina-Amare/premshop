@@ -19,6 +19,12 @@
     input.setAttribute('aria-expanded', String(open));
     if (!open) highlight(-1);
   };
+  // Also drops the pause and the request in flight, or their answer reopens the list.
+  const close = () => {
+    clearTimeout(timer);
+    request?.abort();
+    toggle(false);
+  };
   const show = results => {
     // Each row is the server's autoescaped template, the only markup this inserts.
     list.innerHTML = results.map(item => item.html).join('');
@@ -64,10 +70,10 @@
     } else if (event.key === 'Enter' && !list.hidden && active >= 0) {
       event.preventDefault();
       location.assign(options()[active].dataset.url);
-    } else if (event.key === 'Escape' && !list.hidden) {
+    } else if (event.key === 'Escape') {
       // Without this a search field also empties itself on Escape.
-      event.preventDefault();
-      toggle(false);
+      if (!list.hidden) event.preventDefault();
+      close();
     }
   });
   // Pressing an option must not move focus off the field, or the list closes under the pointer.
@@ -76,8 +82,8 @@
     const option = event.target.closest('[role=option]');
     if (option) location.assign(option.dataset.url);
   });
-  document.addEventListener('pointerdown', event => { if (!form.contains(event.target)) toggle(false); });
-  form.addEventListener('focusout', event => { if (!form.contains(event.relatedTarget)) toggle(false); });
+  document.addEventListener('pointerdown', event => { if (!form.contains(event.target)) close(); });
+  form.addEventListener('focusout', event => { if (!form.contains(event.relatedTarget)) close(); });
   // Closed before the page is left, so Back does not restore it open over the page.
-  addEventListener('pagehide', () => toggle(false));
+  addEventListener('pagehide', close);
 })();

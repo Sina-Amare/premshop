@@ -185,5 +185,5 @@ document.querySelectorAll('form').forEach(function (form) {
   });
 });
 </script>
-{% include 'cart/toast.html' %}<script src="{% static 'js/cart.js' %}" defer></script><script src="{% static 'js/storefront.js' %}" defer></script><script src="{% static 'js/search.js' %}" defer></script><script src="{% static 'js/rails.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
+{% include 'cart/toast.html' %}<script src="{% static 'js/cart.js' %}" defer></script><script src="{% static 'js/storefront.js' %}" defer></script>{# The preview cancels links and submits only, and a suggestion row is neither. #}{% if not snapshot %}<script src="{% static 'js/search.js' %}" defer></script>{% endif %}<script src="{% static 'js/rails.js' %}" defer></script>{% if snapshot %}<script src="{% static 'js/snapshot-frame.js' %}"></script>{% endif %}</body>
 </html>

@@ -11,6 +11,9 @@ from playwright.sync_api import expect
 
 from apps.catalog.models import Category, Plan, Product
 from apps.catalog.pricing import effective_price
+from apps.catalog.tests.test_admin import catalogue as catalogue
+from apps.catalog.tests.test_admin import form_of
+from apps.catalog.tests.test_admin import operator as operator
 from apps.core import ratelimit
 from apps.core.formatting import format_toman
 from apps.core.tests.test_accessibility_browser import axe
@@ -149,21 +152,54 @@ def test_an_operator_written_name_is_escaped_before_the_page_inserts_it(client, 
 
 
 @pytest.mark.django_db
-def test_suggestions_spend_the_search_budget(client, category):
+def test_the_list_spends_a_budget_of_its_own(client, category):
+    """A pause in typing is a request, far more of them than a person submits,
+    so typing must not be what locks the buyer out of the results page."""
     make(category, "Spotify Premium", "spotify")
-    for _ in range(ratelimit.SEARCH_PER_IP.times):
+    assert (
+        ratelimit.SEARCH_SUGGEST_PER_IP.times > ratelimit.SEARCH_PER_IP.times
+    ), "or this proves nothing"
+    for _ in range(ratelimit.SEARCH_SUGGEST_PER_IP.times):
         assert suggest(client, "spot").status_code == 200
 
     limited = suggest(client, "spot")
 
     assert limited.status_code == 429
     assert limited.json() == {"results": []}
-    assert client.get(reverse("search"), {"q": "spot"}).status_code == 429, "one budget"
+    assert client.get(reverse("search"), {"q": "spot"}).status_code == 200, "the page's budget"
 
 
-# «ـس» is a tatweel and one letter: the tatweel folds away.
 @pytest.mark.django_db
-@pytest.mark.parametrize("query", ["", "s", "  s  ", "ـس"])
+def test_once_the_results_page_is_limited_the_list_is_too(client, category):
+    """Read, not spent: the list is never a way round the page's limit."""
+    make(category, "Spotify Premium", "spotify")
+    for _ in range(ratelimit.SEARCH_PER_IP.times):
+        ratelimit.hit(ratelimit.SEARCH_PER_IP, "127.0.0.1")
+
+    limited = suggest(client, "spot")
+
+    assert limited.status_code == 429
+    assert limited.json() == {"results": []}
+
+
+@pytest.mark.django_db
+def test_the_admin_preview_leaves_the_list_out(client, operator, catalogue):
+    """The preview cancels every link and submit, and a row is neither, so with
+    the list a click would take the preview to the live product page."""
+    product = catalogue["draft"]
+    data = form_of(client, reverse("admin:catalog_product_change", args=[product.pk]))
+
+    preview = client.post(reverse("admin:catalog_product_preview", args=[product.pk]), data)
+
+    assert "js/snapshot-frame.js" in preview.content.decode(), "positive control: the preview"
+    assert "js/search.js" not in preview.content.decode()
+    assert "js/search.js" in client.get(reverse("home")).content.decode()
+
+
+# «ـس» is a tatweel and one letter: the tatweel folds away. Filler words are
+# dropped before searching, so «اکانت س» searches for one letter.
+@pytest.mark.django_db
+@pytest.mark.parametrize("query", ["", "s", "  s  ", "ـس", "اکانت س", "خرید"])
 def test_a_short_query_suggests_nothing_and_costs_nothing(
     client, category, query, django_assert_num_queries
 ):
@@ -175,9 +211,8 @@ def test_a_short_query_suggests_nothing_and_costs_nothing(
 
     assert response.status_code == 200
     assert response.json() == {"results": []}
-    assert (
-        ratelimit.remaining(ratelimit.SEARCH_PER_IP, "127.0.0.1") == ratelimit.SEARCH_PER_IP.times
-    )
+    for limit in (ratelimit.SEARCH_PER_IP, ratelimit.SEARCH_SUGGEST_PER_IP):
+        assert ratelimit.remaining(limit, "127.0.0.1") == limit.times, limit.name
 
 
 # --- The page, in Chromium --------------------------------------------------------
@@ -269,8 +304,8 @@ def test_enter_with_nothing_highlighted_goes_to_the_results_page(browser, live_s
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 def test_the_field_waits_for_two_letters_and_a_pause(browser, live_server, shelf):
-    """Every request spends the results page's budget too, so a word typed
-    quickly is one request, not one per letter."""
+    """Every request spends a per-IP budget, so a word typed quickly is one
+    request, not one per letter."""
     context, page, field = open_home(browser, live_server, DESKTOP)
     sent = []
     page.on("request", lambda r: sent.append(r.url) if "/search/suggest/" in r.url else None)
@@ -283,6 +318,52 @@ def test_the_field_waits_for_two_letters_and_a_pause(browser, live_server, shelf
         expect(page.locator("#search-suggest")).to_be_visible()
         page.wait_for_timeout(400)
         assert len(sent) == 1 and sent[0].endswith("?q=spotify"), sent
+    finally:
+        context.close()
+
+
+# Each way of leaving comes inside the pause after «i», before its request.
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("leave", ["Escape", "Shift+Tab", "tap"])
+def test_closing_inside_the_pause_keeps_the_list_closed(browser, live_server, shelf, leave):
+    """Otherwise the answer reopens the list after the buyer has moved on, where
+    with focus elsewhere only a pointer can close it."""
+    context, page, field = open_home(browser, live_server, PHONE)
+    listbox = page.locator("#search-suggest")
+    try:
+        field.press_sequentially("spot")
+        expect(listbox).to_be_visible()
+        field.press_sequentially("i")
+        if leave == "tap":
+            page.locator(".v-hero__lead").click()
+        else:
+            field.press(leave)
+        page.wait_for_timeout(500)
+
+        expect(listbox).to_be_hidden()
+        expect(field).to_have_attribute("aria-expanded", "false")
+    finally:
+        context.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_an_answer_that_lands_after_escape_does_not_reopen_the_list(browser, live_server, shelf):
+    context, page, field = open_home(browser, live_server, DESKTOP)
+    listbox = page.locator("#search-suggest")
+    held = []
+    page.route(lambda url: url.endswith("?q=spoti"), lambda route: held.append(route))
+    try:
+        field.press_sequentially("spot")
+        expect(listbox).to_be_visible()
+        with page.expect_request(lambda r: r.url.endswith("?q=spoti")):
+            field.press_sequentially("i")
+        field.press("Escape")
+        held[0].continue_()
+        page.wait_for_timeout(500)
+
+        expect(listbox).to_be_hidden()
     finally:
         context.close()
 

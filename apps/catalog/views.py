@@ -20,7 +20,7 @@ from django.utils.cache import patch_cache_control
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
 from apps.catalog.pricing import effective_price
-from apps.catalog.search import normalize_for_search, without_filler
+from apps.catalog.search import without_filler
 from apps.catalog.seo import breadcrumb_schema, product_breadcrumb, product_metadata, website_schema
 from apps.core import ratelimit
 
@@ -276,16 +276,21 @@ def search(request: HttpRequest) -> HttpResponse:
 def search_suggest(request: HttpRequest) -> JsonResponse:
     """The header's list while the buyer types: the first rows of the same search.
 
-    Same matching, same `public()` filter and the same per-IP budget as the
-    results page, so the list is never a way round any of them. A query too
-    short to mean anything is answered before the budget or the database.
+    Same matching and the same `public()` filter as the results page. Typing
+    asks far more often than a person submits, so the list spends a budget of
+    its own; it only reads the page's, and stays quiet once that is spent, so it
+    is never a way round it. A query too short to mean anything once its filler
+    words are dropped is answered before either budget or the database.
     """
-    query = request.GET.get("q", "").strip()[:100]
-    if len(normalize_for_search(query)) < SUGGESTION_MIN_LENGTH:
+    terms = without_filler(request.GET.get("q", "").strip()[:100])
+    if len(terms) < SUGGESTION_MIN_LENGTH:
         return JsonResponse({"results": []})
-    if not ratelimit.hit(ratelimit.SEARCH_PER_IP, ratelimit.client_ip(request)):
+    ip = ratelimit.client_ip(request)
+    if not ratelimit.remaining(ratelimit.SEARCH_PER_IP, ip) or not ratelimit.hit(
+        ratelimit.SEARCH_SUGGEST_PER_IP, ip
+    ):
         return JsonResponse({"results": []}, status=429)
-    found = _for_cards().search(without_filler(query))[:SUGGESTION_CAP]
+    found = _for_cards().search(terms)[:SUGGESTION_CAP]
     return JsonResponse({"results": [_suggestion(product) for product in found]})
 
 
