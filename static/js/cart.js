@@ -34,7 +34,7 @@
     Object.assign(toast.querySelector('[data-toast-total]'), {textContent: data.total || '', hidden: !data.total});
     toast.hidden = false;
     positionToast();
-    announcement.textContent = data.message;
+    announcement.textContent = data.message + (data.total ? ' ' + data.total : '');
     scheduleHide();
   };
   toast.querySelector('[data-toast-close]').addEventListener('click', () => {

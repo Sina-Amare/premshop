@@ -171,7 +171,7 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
         expect(total).to_be_visible()
         expect(total).to_have_text("جمع سبد خرید: ۴۲۰,۰۰۰\u00a0تومان")
         expect(page.locator("#cart-announcement")).to_have_text(
-            "Spotify Premium، ۳ ماهه به سبد خرید اضافه شد."
+            "Spotify Premium، ۳ ماهه به سبد خرید اضافه شد. جمع سبد خرید: ۴۲۰,۰۰۰\u00a0تومان"
         )
         box = toast.bounding_box()
         assert box["x"] >= 0 and box["x"] + box["width"] <= width
