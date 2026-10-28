@@ -75,11 +75,12 @@ def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
     return None
 
 
-def login_with_password(request: HttpRequest, email: str, password: str) -> User | None:
+@transaction.atomic
+def authenticate_password(request: HttpRequest, email: str, password: str) -> User | None:
     email = otp.normalize_email(email)
     if refusal := password_attempt_refusal(request, email):
         raise RateLimited(refusal)
-    user = otp.user_for(email)
+    user = User.objects.select_for_update(no_key=True).filter(email__iexact=email).first()
     if user is not None and user.is_active:
         authenticated = user.check_password(password)
     else:
@@ -87,9 +88,16 @@ def login_with_password(request: HttpRequest, email: str, password: str) -> User
         authenticated = False
     if not authenticated:
         return None
+    return user
+
+
+def login_with_password(request: HttpRequest, email: str, password: str) -> User | None:
     with login_session(request):
+        user = authenticate_password(request, email, password)
+        if user is None:
+            return None
         django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
+    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, otp.normalize_email(email))
     return user
 
 

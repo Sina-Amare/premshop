@@ -301,3 +301,122 @@ def test_recovery_browser_with_html_fallback(
         assert customer.check_password(PASSWORD)
     finally:
         page.close()
+
+
+def test_password_change_accepts_an_older_password_hash(client, customer, settings):
+    from django.contrib.auth.hashers import PBKDF2PasswordHasher
+
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
+    customer.password = PBKDF2PasswordHasher().encode("previous-passphrase-420!", "old-salt", 1)
+    customer.save(update_fields=["password"])
+    client.force_login(customer)
+    response = client.post(
+        reverse("account-password"),
+        {
+            "old_password": "previous-passphrase-420!",
+            "new_password1": PASSWORD,
+            "new_password2": PASSWORD,
+        },
+    )
+    assert response.status_code == 302
+    customer.refresh_from_db()
+    assert customer.check_password(PASSWORD)
+    assert client.get(reverse("account")).status_code == 200
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("surface", ["storefront", "panel"])
+def test_login_hash_upgrade_cannot_overwrite_successful_recovery(
+    client, customer, settings, monkeypatch, surface
+):
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from importlib import import_module
+    from queue import Queue
+    from threading import Event
+
+    from django.contrib.auth.hashers import PBKDF2PasswordHasher
+    from django.contrib.auth.models import AnonymousUser
+    from django.core.exceptions import PermissionDenied
+    from django.db import connection
+    from django.test import RequestFactory
+
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
+    old_hash = PBKDF2PasswordHasher().encode("previous-passphrase-420!", "old-salt", 1)
+    customer.password = old_hash
+    customer.is_staff = surface == "panel"
+    customer.save(update_fields=["password", "is_staff"])
+    client.force_login(customer)
+    code = request_code(client)
+    key = client.session.session_key
+    entered, release = Event(), Event()
+    pids = Queue()
+    original = PBKDF2PasswordHasher.verify
+
+    def held_verify(hasher, password, encoded):
+        if encoded == old_hash:
+            entered.set()
+            assert release.wait(15)
+        return original(hasher, password, encoded)
+
+    monkeypatch.setattr(PBKDF2PasswordHasher, "verify", held_verify)
+
+    def compete(recovering):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_backend_pid()")
+                pids.put(cursor.fetchone()[0])
+                cursor.execute("SET statement_timeout = '20s'")
+            request = RequestFactory().post("/")
+            request.user = User.objects.get(pk=customer.pk) if recovering else AnonymousUser()
+            request.session = import_module(settings.SESSION_ENGINE).SessionStore(
+                key if recovering else None
+            )
+            if recovering:
+                try:
+                    return services.complete_password_recovery(
+                        request, code=code, password=PASSWORD
+                    )
+                except PermissionDenied:
+                    return None
+            if surface == "panel":
+                return Client().post(
+                    reverse("admin:login"),
+                    {
+                        "username": customer.email,
+                        "password": "previous-passphrase-420!",
+                    },
+                )
+            return services.login_with_password(request, customer.email, "previous-passphrase-420!")
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        login = pool.submit(compete, False)
+        login_pid = pids.get(timeout=10)
+        assert entered.wait(10)
+        recovery = pool.submit(compete, True)
+        recovery_pid = pids.get(timeout=10)
+        try:
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                if recovery.done():
+                    break
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_blocking_pids(%s)", [recovery_pid])
+                    if login_pid in cursor.fetchone()[0]:
+                        break
+                time.sleep(0.01)
+            else:
+                pytest.fail("Neither recovery completion nor a password lock was observed.")
+        finally:
+            release.set()
+        login.result(timeout=15)
+        recovered = recovery.result(timeout=15)
+    customer.refresh_from_db()
+    if recovered is not None:
+        assert customer.check_password(
+            PASSWORD
+        ), "A successful reset must remain the stored password."
+    else:
+        assert client.get(reverse("account")).status_code == 302

@@ -8,6 +8,7 @@ from typing import Any
 
 from django import forms
 from django.contrib.auth import forms as auth_forms
+from django.contrib.auth.hashers import check_password
 
 from apps.accounts import otp
 from apps.accounts.models import User
@@ -110,6 +111,15 @@ class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordCha
       systems bolted together, which is exactly the impression the shop cannot
       afford.
     """
+
+    def clean_old_password(self) -> str:
+        password = self.cleaned_data["old_password"]
+        # Hash upgrades write the account; only the locked service may do that.
+        if not check_password(password, self.user.password):
+            raise forms.ValidationError(
+                self.error_messages["password_incorrect"], code="password_incorrect"
+            )
+        return password
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
