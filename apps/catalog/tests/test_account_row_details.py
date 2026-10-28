@@ -45,7 +45,7 @@ ROWS = {
     T.ON_CUSTOMER_ACCOUNT: ("اکانت", ON_ACCOUNT),
     T.READY_ACCOUNT: (
         "اکانت",
-        "یک اکانت آماده تحویل می‌گیرید و با اطلاعات ورود اکانت که به شما می‌دهیم، وارد آن می‌شوید.",
+        "یک اکانت آماده تحویل می‌گیرید و با اطلاعات ورود اکانتی که به شما می‌دهیم، وارد آن می‌شوید.",
     ),
     T.CODE_LICENSE: (
         "نوع تحویل",
@@ -204,6 +204,12 @@ def plan_asking(label: str, status=Product.Status.ACTIVE) -> Plan:
         "كد‌ورود",
         "OTP",
         "کد otp",
+        "پاسورد اکانت",
+        "گذرواژه‌ی اکانت",
+        "گذر‌واژه",
+        "کد یک‌بار مصرف",
+        "کد یکبار مصرف ارسال‌شده به ایمیل",
+        "Spotify passwords",
     ],
 )
 def test_a_plan_may_not_ask_for_a_password_or_a_login_code(label, status):
@@ -295,6 +301,7 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
     chevron = summary.locator("svg").last
     note = row.locator("p")
     first_plan = page.locator(".plan").first
+    cta = page.locator(".buybox__cta")
     try:
         page.goto(url)
         assert page.evaluate(STYLED)
@@ -320,13 +327,19 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
 
         page.keyboard.press("Enter")
         expect(note).to_be_visible()
+        if viewport is DESKTOP:
+            # The row sits at the top of the box, so a buyer opens it before scrolling.
+            assert page.evaluate("scrollY") == 0
+            expect(cta).to_be_in_viewport(ratio=1)
         assert row.evaluate("e => e.open")
         assert chevron.evaluate("e => getComputedStyle(e).transform") != pointing
         assert note.evaluate("e => getComputedStyle(e).fontSize") == "13px"
         assert note.evaluate("e => getComputedStyle(e).color") == page.evaluate(
             COLOUR_OF, "--v-text"
         )
-        assert first_plan.bounding_box()["y"] >= closed + note.bounding_box()["height"]
+        # The note pushes the plans down rather than covering them.
+        opened, plan_top = note.bounding_box(), first_plan.bounding_box()["y"]
+        assert plan_top > closed and plan_top >= opened["y"] + opened["height"]
         # The plan's own hint stays where it was.
         expect(page.locator("#asks-hint")).to_have_text(f"اطلاعات فعال‌سازی: {ASKS}")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -338,7 +351,6 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
                 "e => Math.abs(e.getBoundingClientRect().top - parseFloat(getComputedStyle(e).top)) < 1"
             )
             assert stuck, "the buy box is not stuck"
-            cta = page.locator(".buybox__cta")
             expect(cta).to_have_text("افزودن به سبد خرید")
             expect(cta).to_be_in_viewport(ratio=1)
             page.screenshot(path=str(SHOTS / f"open-stuck-{width}.png"))

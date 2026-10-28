@@ -57,7 +57,9 @@ PLACEHOLDER = re.compile(r"\[(?:تصمیم مالک|وابسته به تصمیم
 # (catalog/_activation_answer.html), so no plan may ask for it. Matched on the
 # label as normalize_for_search folds it, so «كد‌تأیید» arrives as «کد تایید».
 # Persian words match inside a word, Latin ones only whole: «otp» is in «SpotPlayer».
-ASKS_FOR_A_SECRET = re.compile(r"رمز|پسورد|کد ورود|کد تا[یئ]ید|\b(?:password|otp)\b")
+ASKS_FOR_A_SECRET = re.compile(
+    r"رمز|پا?سورد|گذر ?واژه|کد ورود|کد تا[یئ]ید|کد یک ?بار ?مصرف|\b(?:passwords?|otp)\b"
+)
 
 # A time-sensitive product's claims must have been checked this recently to publish.
 FACTS_FRESH_DAYS = 7

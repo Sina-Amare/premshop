@@ -450,4 +450,6 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .buybox__facts summary>.v-icon:last-child{width:12px;height:12px;transform:rotate(90deg)}
 .buybox__facts[open] summary>.v-icon:last-child{transform:rotate(-90deg)}
 .buybox__type{margin-inline-start:auto;color:var(--v-ink);font-weight:500}
-.buybox__facts p{margin:0;color:var(--v-text)}
+.buybox__facts p{margin:0;color:var(--v-text);line-height:1.7}
+/* Open, the row gives back 12px under it, so at 1440x900 the add button stays above the fold. */
+.buybox__facts[open]{margin-block-end:12px;padding-block-end:8px}
