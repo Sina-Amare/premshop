@@ -24,7 +24,7 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
     assert response.status_code == 200
     text = response.content.decode()
     assert "private-target@example.test" not in text and "customer_input" not in text
-    assert "سرویس نمونه" in text and "سابقهٔ سفارش" in text
+    assert "سرویس نمونه" in text and "سابقه‌ی سفارش" in text
     assert 'name="_save"' not in text
     assert 'class="order-timeline"' in text
     assert "مشخصات سفارش" in text and "مبلغ‌های سفارش" in text

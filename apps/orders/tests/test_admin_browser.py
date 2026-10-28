@@ -52,7 +52,7 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         page.goto(live_server.url + detail)
         page.evaluate("document.fonts.ready")
         assert page.url.endswith(detail)
-        assert "سابقهٔ سفارش" in page.locator("body").inner_text()
+        assert "سابقه‌ی سفارش" in page.locator("body").inner_text()
         assert "سرویس نمونه" in page.locator("body").inner_text()
         assert "never-render-this@example.test" not in page.content()
         assert page.locator("html").get_attribute("dir") == "rtl"
