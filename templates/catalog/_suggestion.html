@@ -1,0 +1,7 @@
+{% load fa %}{% comment %}
+One row of the header's live list, rendered by `catalog.views.search_suggest` and
+put in place by static/js/search.js. The mark is the card's own include. The price
+is the cheapest available plan's effective price, worded as the card words it:
+«از» only when there is another plan to choose, «رایگان» for nothing, and
+«ناموجود» when no plan can be bought.
+{% endcomment %}<li class="v-suggest__option" role="option"><div class="v-suggest__art" style="--brand: {{ product.card_colour }}">{% include 'catalog/_card_art.html' %}</div><span class="v-suggest__text"><span class="v-suggest__name"><bdi>{{ product.name }}</bdi></span><span class="v-suggest__cat">{{ product.category.name }}</span></span><span class="v-suggest__price">{% if price is None %}<span class="badge badge--neutral">ناموجود</span>{% else %}{% if several and price %}از {% endif %}{{ price|price_html }}{% endif %}</span></li>
