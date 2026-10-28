@@ -184,7 +184,8 @@ class UiText(HTMLParser):
         self.parts.extend(
             value
             for key, value in attrs
-            if key in {"title", "alt", "placeholder", "aria-label"} and value
+            if (key.startswith("data-") or key in {"title", "alt", "placeholder", "aria-label"})
+            and value
         )
 
 
@@ -199,6 +200,13 @@ def test_copy_scan_reaches_templates_scripts_and_python_messages(ui_source_strin
     assert any(where.endswith(".js") for where, _ in ui_source_strings)
     assert any("accounts" in where and "views.py:" in where for where, _ in ui_source_strings)
     assert len(ui_source_strings) > 300
+
+
+@pytest.mark.parametrize("attribute", ["data-busy", "data-after", "data-name", "aria-label"])
+def test_copy_scan_includes_labels_that_scripts_or_assistive_technology_show(attribute):
+    parser = UiText()
+    parser.feed(f'<button {attribute}="رمز عبور تازه">ثبت</button>')
+    assert any(re.search(pattern, text) for pattern, _ in BANNED for text in parser.parts)
 
 
 def test_help_text_stays_one_short_sentence():
