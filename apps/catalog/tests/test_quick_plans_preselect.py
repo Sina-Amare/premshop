@@ -138,3 +138,28 @@ def test_a_tapped_sheet_row_lands_on_the_product_with_that_plan(
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
     finally:
         page.close()
+
+
+def test_without_scripts_the_summary_is_not_shown(client, offers):
+    # Only the script keeps the summary in step with the radio a visitor checks.
+    head = _page(client, offers, offers.plans.get(title="۳ ماهه").pk).split("</head>", 1)[0]
+    hidden_without_scripts = "".join(re.findall(r"<noscript>(.*?)</noscript>", head, re.S))
+    assert re.search(r"<style>[^<]*\.buybox__selection\{display:none", hidden_without_scripts)
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+def test_without_scripts_the_plan_is_chosen_and_no_summary_names_another(
+    browser, live_server, offers
+):
+    first, longer = offers.plans.order_by("sort_order")
+    context = browser.new_context(java_script_enabled=False, viewport={"width": 390, "height": 844})
+    try:
+        page = context.new_page()
+        page.goto(f"{live_server.url}{reverse('product', args=[offers.slug])}?plan={longer.pk}")
+        expect(page.locator(f'input[name=plan][value="{longer.pk}"]')).to_be_checked()
+        page.locator("label.plan", has_text="۱ ماهه").click()
+        expect(page.locator(f'input[name=plan][value="{first.pk}"]')).to_be_checked()
+        expect(page.locator(".buybox__selection")).to_be_hidden()
+    finally:
+        context.close()

@@ -3,6 +3,8 @@
 {% block title %}{{ product_meta_title }}{% endblock %}
 {% block meta_description %}{{ product_meta_description }}{% endblock %}
 {% block meta_robots %}{% if preview or snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
+{# Only the buy box script keeps «انتخاب شما» in step with the checked radio. #}
+{% block head_extra %}<noscript><style>.buybox__selection{display:none!important}</style></noscript>{% endblock %}
 
 {% block content %}
 {% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
