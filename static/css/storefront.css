@@ -395,7 +395,7 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .pcard__deal{max-inline-size:100%}.pcard__deal .price__was{font-size:11px;margin-inline-end:var(--spacing-1)}
 .pcard__deal-now{font:800 14px/1.2 var(--font-head);color:var(--color-ink);font-variant-numeric:tabular-nums}
 
-/* The phone's buy bar. Flat and square, because it touches the viewport's edges. */
+/* The buy bar, up to 900px. Flat and square, because it touches the viewport's edges. */
 .buy-bar{position:fixed;z-index:30;inset-inline:0;inset-block-end:0;display:flex;align-items:center;gap:12px;padding:8px var(--gutter);padding-block-end:calc(8px + env(safe-area-inset-bottom));background:var(--v-light);border-block-start:1px solid var(--v-line)}
 .buy-bar__plan{flex:1;min-width:0;margin:0}
 .buy-bar__title{display:block;overflow:hidden;font-size:13px;line-height:1.6;color:var(--v-text);text-overflow:ellipsis;white-space:nowrap}
@@ -453,3 +453,14 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .buybox__facts p{margin:0;color:var(--v-text);line-height:1.7}
 /* Open, the row gives back 12px under it, so at 1440x900 the add button stays above the fold. */
 .buybox__facts[open]{margin-block-end:12px;padding-block-end:8px}
+
+/* From 1150px down the header's support block has no room, so the same link ends the categories row, after the FAQ. */
+.v-navline .v-support{display:none;min-height:44px}
+.v-help{margin-inline-start:auto}
+.v-mobile-cats nav .v-mobile-cats__faq{display:none}
+@media(max-width:1150px){.v-navline .v-support{display:flex}}
+/* On a phone the FAQ leaves the row and closes the categories list. The link's 44px target reaches up into the header's padding, so the 41px row and the 170px header keep their height. */
+@media(max-width:760px){.v-help{display:none}.v-navline .v-support{margin-block-start:-3px;padding-block-start:3px}.v-mobile-cats nav .v-mobile-cats__faq{display:flex;border-block-start:1px solid var(--v-line)}}
+.v-footer__contact>a+p{text-wrap:balance}
+/* Up to 900px the bar is wider than a paragraph's 32rem cap, which would strand the button mid-bar. */
+.buy-bar__plan{max-inline-size:none}

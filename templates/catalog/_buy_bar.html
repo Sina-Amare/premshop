@@ -1,8 +1,8 @@
 {% comment %}
-On a phone the buy box scrolls away. storefront.js shows this bar while the box's own
-button is out of sight and fills it from the checked plan's server-rendered row; the
-button belongs to the buy form, so cart.js handles it as the box's own. A snapshot
-cannot buy, so it gets none.
+Up to 900px the buy box does not stick, so it scrolls away. storefront.js shows this
+bar while the box's own button is out of sight and fills it from the checked plan's
+server-rendered row; the button belongs to the buy form, so cart.js handles it as the
+box's own. A snapshot cannot buy, so it gets none.
 {% endcomment %}{% if not snapshot %}
 <section class="buy-bar" aria-label="خرید سریع" data-buy-bar hidden>
   <p class="buy-bar__plan"><span class="buy-bar__title"><bdi></bdi></span><span class="price"></span></p>

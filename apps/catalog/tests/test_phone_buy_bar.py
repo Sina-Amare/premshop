@@ -1,4 +1,4 @@
-"""On a phone the buy box's button follows the reader down the product page."""
+"""Up to 900px the buy box's button follows the reader down the product page."""
 
 import re
 from datetime import timedelta
@@ -253,19 +253,20 @@ def test_a_refused_add_brings_the_box_and_its_message_into_view(browser, live_se
         page.close()
 
 
-def test_the_bar_leaves_from_761_pixels(browser, live_server, product):
+def test_the_bar_leaves_from_901_pixels(browser, live_server, product):
     page = browser.new_page(viewport=PHONE)
     bar = page.locator("[data-buy-bar]")
     try:
         page.goto(live_server.url + product.get_absolute_url())
         leave_the_buy_box(page)
         expect(bar).to_be_visible()
-        page.set_viewport_size({"width": 761, "height": 844})
-        leave_the_buy_box(page)
+        page.set_viewport_size({"width": 901, "height": 844})
+        # From 901px the box sticks, so it leaves the screen only with the page's end.
+        scroll_to(page, 10**6)
         assert cta_out_of_sight(page)
         settle(page)
         expect(bar).to_be_hidden()
-        page.set_viewport_size({"width": 760, "height": 844})
+        page.set_viewport_size({"width": 900, "height": 844})
         leave_the_buy_box(page)
         expect(bar).to_be_visible()
     finally:

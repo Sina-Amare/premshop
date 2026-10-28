@@ -27,6 +27,7 @@ def test_no_template_spells_out_a_support_detail():
     details = support.details()
     literals = {
         details["telegram"],
+        details["only_handle"],
         details["telegram_url"].split("//", 1)[1],
         details["email"],
         details["hours_range"],
