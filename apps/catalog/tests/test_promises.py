@@ -120,6 +120,14 @@ def test_the_delivery_cap_is_the_one_the_database_enforces(catalogue):
         product.save()
 
 
+def test_the_delivery_promise_is_48_hours_without_a_clock_cutoff(client, catalogue):
+    assert DELIVERY_CAP_HOURS == 48
+    product = catalogue.get(slug="card")
+    body = client.get(product.get_absolute_url()).content.decode()
+    assert "در اولین فرصت، حداکثر تا ۴۸ ساعت پس از تأیید پرداخت." in body
+    assert "اگر پرداختتان تا ساعت" not in body
+
+
 def test_the_shell_prints_only_what_the_source_holds(client, catalogue):
     """Every word in the site-wide regions comes from the promise source or the
     support details. A literal typed into a template, the way «گارانتی تا

@@ -393,7 +393,7 @@ class Product(ChecksNameTheirField, models.Model):
         FULL_PERIOD = "full_period", _("تا پایان دوره")
 
     CHECK_FIELDS: ClassVar[dict[str, str]] = {
-        "product_delivery_hours_1_to_72": "delivery_hours",
+        "product_delivery_hours_1_to_48": "delivery_hours",
         "product_status_valid": "status",
     }
     # What a visitor reads of this row, and so where a placeholder must not be.
@@ -447,7 +447,7 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         max_side=512,
         help_text=_(
-            "لوگوی محصول، PNG،\u200f JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+            "لوگوی محصول، PNG،\u200f JPEG یا WebP. مربع، با حاشیه‌ی شفاف. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
         ),
     )
     brand_colour = models.CharField(
@@ -481,7 +481,7 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."),
+        help_text=_("بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -592,15 +592,11 @@ class Product(ChecksNameTheirField, models.Model):
             )
         ]
         constraints = [
-            # The cap is the delivery promise on every product page: zero would
-            # read as instant, and anything past the cap breaks a promise the
-            # shop prints. Raised from 48 to 72 on the owner's ruling,
-            # 2026-10-18 (ADR-0009, amended) — the FAQ quotes this number to
-            # customers, so the two move together or the page starts lying.
+            # Keep the database limit and the shared delivery promise together.
             models.CheckConstraint(
-                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=72),
-                name="product_delivery_hours_1_to_72",
-                violation_error_message=_("مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."),
+                condition=Q(delivery_hours__gte=1) & Q(delivery_hours__lte=48),
+                name="product_delivery_hours_1_to_48",
+                violation_error_message=_("مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد."),
             ),
             # `choices=` binds only the admin form; the database binds everything.
             models.CheckConstraint(

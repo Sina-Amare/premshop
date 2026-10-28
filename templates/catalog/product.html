@@ -146,7 +146,7 @@
         <p class="cart-add-error" role="alert" hidden></p>
       </form>
       {% endwith %}
-      <p class="micro buybox__note">{{ product.delivery_sentence }}<br>پرداخت تومانی، بدون کارت ارزی{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
+      <p class="micro buybox__note">{{ product.delivery_note|default:delivery_commitment }}<br>پرداخت تومانی، بدون کارت ارزی{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>

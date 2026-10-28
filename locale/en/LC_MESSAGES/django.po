@@ -169,8 +169,8 @@ msgstr "Part of the page address, in Latin letters, like “chatgpt-plus”. Lea
 msgid "شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"
 msgstr "Spellings a customer might type, separated by commas: ⁨چت جی‌پی‌تی، چت جیپت، gpt⁩"
 
-msgid "بین ۱ تا ۷۲ ساعت. دست‌بالا بنویسید."
-msgstr "1 to 72 hours. Err on the long side."
+msgid "بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."
+msgstr "1 to 48 hours. Err on the long side."
 
 # Persian quoted inside English is wrapped in U+2068 and U+2069, invisible
 # isolates, so the bidi algorithm keeps it in order inside the sentence.
@@ -230,8 +230,8 @@ msgstr "A short phrase, not a sentence. The site prints: ⁨برای فعال‌
 msgid "عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."
 msgstr "A short label, such as Spotify account email."
 
-msgid "مهلت تحویل باید بین ۱ تا ۷۲ ساعت باشد."
-msgstr "The delivery deadline must be between 1 and 72 hours."
+msgid "مهلت تحویل باید بین ۱ تا ۴۸ ساعت باشد."
+msgstr "The delivery deadline must be between 1 and 48 hours."
 
 msgid "وضعیت محصول معتبر نیست."
 msgstr "The product status is not valid."
@@ -515,8 +515,8 @@ msgstr "Prices of %(count)s plans confirmed."
 msgid "قیمت‌ها را امروز بررسی کردم"
 msgstr "I checked these prices today"
 
-msgid "لوگوی محصول، PNG،‏ JPEG یا WebP. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
-msgstr "The product’s logo, PNG, JPEG or WebP. The site shows it at a fixed size."
+msgid "لوگوی محصول، PNG،‏ JPEG یا WebP. مربع، با حاشیه‌ی شفاف. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
+msgstr "The product’s logo, PNG, JPEG or WebP. Square, with transparent padding. The site shows it at a fixed size."
 
 msgid "متن آزاد"
 msgstr "Free text"

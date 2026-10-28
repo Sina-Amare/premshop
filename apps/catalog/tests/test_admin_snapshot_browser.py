@@ -154,7 +154,7 @@ def test_only_current_sidebar_destination_has_the_selected_surface(open_panel, p
 def test_panel_guidance_is_natural_and_publishing_requirements_stay_precise(open_panel, product):
     page = open_panel(change_form(product))
     expect(page.locator("label[for=id_slug]")).to_contain_text("نام در لینک")
-    expect(page.locator(".field-delivery_hours")).to_contain_text("بین ۱ تا ۷۲ ساعت")
+    expect(page.locator(".field-delivery_hours")).to_contain_text("بین ۱ تا ۴۸ ساعت")
     expect(page.locator(".field-delivery_note")).to_contain_text("اگه این بخش رو پر کنید")
     expect(page.locator(".panel-readiness")).to_contain_text("نکات استفاده رو بنویسید")
     expect(page.locator(".field-usage_notes")).to_contain_text("موضوعیت ندارد")

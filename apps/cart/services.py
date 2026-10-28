@@ -239,6 +239,13 @@ class CartSummary:
     total: Decimal
 
     @property
+    def subtotal(self) -> Decimal:
+        return sum(
+            (line.original_price * line.quantity for line in self.lines if line.purchasable),
+            Decimal(0),
+        )
+
+    @property
     def saving(self) -> Decimal:
         # Over the same lines as the total, so it never claims a discount on an item left out.
         return sum((line.saving for line in self.lines if line.purchasable), Decimal(0))

@@ -51,7 +51,7 @@ def test_stock_loss_keeps_the_item_with_restock_support_and_explicit_removal(cli
     assert line.unavailable and not response.context["cart"].ready
     assert CartItem.objects.get(pk=item_id).quantity == 1
     body = response.content.decode()
-    assert "ناموجود" in body and "دوباره موجود" in body
+    assert "ناموجود" in body and "زمان موجود شدن دوباره را از پشتیبانی بپرسید." in body
     assert support.details()["telegram_url"] in body
     assert 'class="cart-remove"' in body
     plan.stock_quantity = 3

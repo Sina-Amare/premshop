@@ -552,7 +552,7 @@ def test_an_operator_note_replaces_the_hours_everywhere_it_is_shown(client, cate
 
 
 def test_the_note_never_touches_the_real_deadline(product):
-    """The operator panel counts down from `delivery_hours`, and the 72-hour
+    """The operator panel counts down from `delivery_hours`, and the 48-hour
     promise is a database CHECK on it. A note is display only, so the number
     it overrides stays exactly where the deadline arithmetic will look."""
     product.delivery_note = "هر وقت رسید"

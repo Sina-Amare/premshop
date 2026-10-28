@@ -94,9 +94,10 @@ def cta_out_of_sight(page):
     )
 
 
-def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, product):
+@pytest.mark.parametrize("width", [390, 761, 900])
+def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, product, width):
     SHOTS.mkdir(parents=True, exist_ok=True)
-    context = browser.new_context(viewport=PHONE, has_touch=True)
+    context = browser.new_context(viewport={"width": width, "height": 844}, has_touch=True)
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -118,7 +119,7 @@ def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, prod
         expect(region.locator("bdi")).to_have_text("یک ماهه")
         expect(region.locator(".price__num")).to_have_text("۲۰۰,۰۰۰")
         box = region.bounding_box()
-        assert box["x"] == 0 and box["width"] == PHONE["width"]
+        assert box["x"] == 0 and box["width"] == width
         assert abs(box["y"] + box["height"] - PHONE["height"]) < 1
         assert button.bounding_box()["height"] >= 44
         assert region.evaluate("el => getComputedStyle(el).backgroundColor") == "rgb(255, 255, 255)"
@@ -253,19 +254,19 @@ def test_a_refused_add_brings_the_box_and_its_message_into_view(browser, live_se
         page.close()
 
 
-def test_the_bar_leaves_from_761_pixels(browser, live_server, product):
+def test_the_bar_leaves_from_901_pixels(browser, live_server, product):
     page = browser.new_page(viewport=PHONE)
     bar = page.locator("[data-buy-bar]")
     try:
         page.goto(live_server.url + product.get_absolute_url())
         leave_the_buy_box(page)
         expect(bar).to_be_visible()
-        page.set_viewport_size({"width": 761, "height": 844})
+        page.set_viewport_size({"width": 901, "height": 844})
         leave_the_buy_box(page)
         assert cta_out_of_sight(page)
         settle(page)
         expect(bar).to_be_hidden()
-        page.set_viewport_size({"width": 760, "height": 844})
+        page.set_viewport_size({"width": 900, "height": 844})
         leave_the_buy_box(page)
         expect(bar).to_be_visible()
     finally:

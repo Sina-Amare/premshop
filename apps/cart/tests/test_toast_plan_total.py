@@ -23,7 +23,7 @@ TOP = """(el, [start, end]) => {
   const range = document.createRange();
   range.setStart(el.firstChild, start);
   range.setEnd(el.firstChild, end);
-  return Math.round(range.getClientRects()[0].top);
+  return Math.round(range.getClientRects()[0].top - el.getBoundingClientRect().top);
 }"""
 
 

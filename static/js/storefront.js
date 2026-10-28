@@ -72,6 +72,7 @@
   const bar = document.querySelector('[data-buy-bar]');
   const cta = document.querySelector('.buybox__cta');
   if (bar && cta) {
+    const compact = matchMedia('(max-width: 900px)');
     const add = bar.querySelector('button');
     const error = cta.form.querySelector('.cart-add-error');
     let away = false;
@@ -85,7 +86,7 @@
     const update = () => {
       fill();
       add.setAttribute('aria-disabled', cta.getAttribute('aria-disabled') ?? 'false');
-      bar.hidden = !(phone.matches && away && !cta.disabled && !cta.hidden && cta.textContent.trim() === add.textContent.trim());
+      bar.hidden = !(compact.matches && away && !cta.disabled && !cta.hidden && cta.textContent.trim() === add.textContent.trim());
       // Scrolled to only when it is out of sight, so the moved focus is never off screen.
       if (bar.hidden && bar.contains(document.activeElement)) (cta.hidden ? cta.form.querySelector('.buybox__cart') : cta)?.focus({preventScroll: !away});
     };
@@ -103,6 +104,7 @@
     new MutationObserver(() => { sight.unobserve(cta); sight.observe(cta); })
       .observe(cta, {attributes: true, childList: true, characterData: true, subtree: true});
     phone.addEventListener('change', watch);
+    compact.addEventListener('change', watch);
     ['change', 'cart:availability'].forEach(type => cta.form.addEventListener(type, fill));
     document.addEventListener('prices:changed', fill);
     // A refusal is written in the box, out of sight while the bar shows, so the page goes to it.

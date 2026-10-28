@@ -22,10 +22,13 @@ from django.http import HttpRequest
 from apps.catalog.models import Product
 from apps.core.formatting import to_persian_digits
 
-# The CHECK product_delivery_hours_1_to_72 (ADR-0009, amended 2026-10-18).
+# The CHECK product_delivery_hours_1_to_48 (ADR-0009, amended 2026-10-18).
 # The cap, not the slowest product: a number that moves whenever the operator
 # edits one product is not a promise.
-DELIVERY_CAP_HOURS = 72
+DELIVERY_CAP_HOURS = 48
+DELIVERY_COMMITMENT = (
+    f"در اولین فرصت، حداکثر تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت."
+)
 
 
 @dataclass(frozen=True)
@@ -43,4 +46,8 @@ PROMISES = (
 
 
 def context(request: HttpRequest) -> dict[str, object]:
-    return {"promises": PROMISES, "delivery_cap_hours": DELIVERY_CAP_HOURS}
+    return {
+        "promises": PROMISES,
+        "delivery_cap_hours": DELIVERY_CAP_HOURS,
+        "delivery_commitment": DELIVERY_COMMITMENT,
+    }

@@ -253,11 +253,20 @@ def test_the_marks_are_normalised_so_a_shelf_of_them_looks_even():
 
     padded = _normalise_mark(svg, 0.25)
 
-    assert b'viewBox="-64 -50 384 300"' in padded
+    assert b'viewBox="-64 -92 384 384"' in padded
+    assert b'width="384"' in padded and b'height="384"' in padded
     assert b'fill="#FA0F00"' in padded, "colour must survive — it is the point"
     assert b'<path d="M0 0"/>' in padded
-    # A mark that already carries its own coloured container is left alone.
-    assert _normalise_mark(svg, 0) == svg
+    square = _normalise_mark(svg, 0)
+    assert b'viewBox="0 -28 256 256"' in square
+    assert b'width="256"' in square and b'height="256"' in square
+
+
+def test_an_em_sized_mark_gets_numeric_dimensions():
+    svg = b'<svg width="1em" height="1em" viewBox="0 0 24 24"><path/></svg>'
+    mark = _normalise_mark(svg, 0)
+    assert b'width="24"' in mark and b'height="24"' in mark
+    assert b"1em" not in mark
 
 
 def test_a_mark_without_a_viewbox_is_passed_through_rather_than_mangled():

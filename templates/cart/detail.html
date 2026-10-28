@@ -6,7 +6,7 @@
   <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>سبد خرید</span></nav>
   <header class="cart-heading">
     <h1>سبد خرید{% if cart.lines %}<span class="cart-heading__count">{{ cart.lines|length|fa_digits }} محصول</span>{% endif %}</h1>
-    {% if cart.lines %}<a href="{% url 'home' %}#products" class="cart-back" aria-label="بازگشت به محصولات" title="بازگشت به محصولات">{% include 'storefront/icon.html' with name='arrow' %}</a>{% endif %}
+    {% if cart.lines %}<a href="{% url 'home' %}#products" class="cart-back">{% include 'storefront/icon.html' with name='arrow' %}<span>بازگشت به محصولات</span></a>{% endif %}
   </header>
   {% if error %}<p class="cart-notice cart-notice--error" role="alert">{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
@@ -19,16 +19,16 @@
           {% if line.plan %}{% include 'catalog/_card_art.html' with product=line.plan.product %}{% else %}<span>−</span>{% endif %}
         </div>
         <div class="cart-line__facts">
-          {% if line.plan %}<h2><a href="{{ line.plan.product.get_absolute_url }}"><bdi>{{ line.plan.product.name }}</bdi></a></h2><p class="cart-line__details"><span class="cart-line__plan"><bdi>{{ line.plan.title }}</bdi></span>{% if line.plan.product.delivery_type %}<span>{{ line.plan.product.get_delivery_type_display }}</span>{% endif %}</p><p class="cart-line__delivery">{% include 'storefront/icon.html' with name='clock' %}{{ line.plan.product.delivery_sentence }}</p>
+          {% if line.plan %}<h2><a href="{{ line.plan.product.get_absolute_url }}"><bdi>{{ line.plan.product.name }}</bdi></a></h2><p class="cart-line__details"><span class="cart-line__plan"><bdi>{{ line.plan.title }}</bdi></span>{% if line.plan.product.delivery_type %}، <span>{{ line.plan.product.get_delivery_type_display }}</span>{% endif %}</p><p class="cart-line__delivery">{% include 'storefront/icon.html' with name='clock' %}{{ line.plan.product.delivery_sentence }}</p>
           {% else %}<h2>محصول ناموجود</h2>{% endif %}
-          {% if line.unavailable %}<p class="cart-line__stock">ناموجود</p><p class="cart-line__warning">برای ادامه‌ی خرید، این مورد را حذف کنید.</p><a class="cart-line__restock" href="{{ support.telegram_url }}" rel="noopener">می‌خواید بدونید کی دوباره موجود می‌شه؟ به پشتیبانی پیام بدید.</a>
+          {% if line.unavailable %}<p class="cart-line__stock">ناموجود</p><p class="cart-line__warning">برای ادامه‌ی خرید، این مورد را حذف کنید.</p><a class="cart-line__restock" href="{{ support.telegram_url }}" rel="noopener">زمان موجود شدن دوباره را از پشتیبانی بپرسید.</a>
           {% elif line.quantity_invalid %}<p class="cart-line__warning">تعداد را کاهش دهید.</p>
           {% else %}{% include 'cart/_unit_price.html' %}
           {% endif %}
         </div>
-        {% if line.purchasable %}<div class="cart-line__amount"><span class="cart-line__amount-label">جمع {{ line.quantity|fa_digits }} عدد</span><span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
+        {% if line.purchasable %}<div class="cart-line__amount">{% if line.quantity > 1 %}<span class="cart-line__amount-label">جمع {{ line.quantity|fa_digits }} عدد</span>{% endif %}<span class="cart-money{% if line.line_total|toman_plain|length > 11 %} cart-money--long{% endif %}">{{ line.line_total|price_html }}</span></div>{% endif %}
         <div class="cart-line__controls">
-          {% if line.unavailable %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>
+          {% if line.unavailable %}{% if line.quantity > 1 %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
           {% elif line.plan.max_quantity > 1 or line.quantity_invalid %}
           <form method="post" action="{% url 'cart-quantity' %}" class="cart-quantity">
             {% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}">
@@ -42,7 +42,7 @@
           </form>
           <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">حداکثر تعداد قابل خرید: {{ line.max_quantity|fa_digits }} عدد</p>
           <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است.</p>
-          {% else %}<p class="cart-fixed-quantity">{{ line.quantity|fa_digits }} عدد</p>{% endif %}
+          {% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}<span>حذف</span></button></form>
         </div>
         <p class="cart-line__error" role="alert" hidden></p>
@@ -56,16 +56,17 @@
       <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="ابتدا محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div>
       {% if not cart.ready %}<p class="cart-summary__blocked">بعضی موارد سبد نیاز به اصلاح دارند.</p>{% endif %}
       <button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>
-      <a class="btn btn--secondary cart-summary__more" href="{% url 'home' %}#products">افزودن محصول دیگر{% include 'storefront/icon.html' with name='plus' %}</a>
       <p class="cart-summary__pending">{% include 'storefront/icon.html' with name='info' %}<span>ثبت سفارش هنوز فعال نیست.</span></p>
+      <div class="cart-summary__help">{% for promise in promises %}<p>{% include 'storefront/icon.html' with name='clock' %}<span>{{ promise.text }}</span></p>{% endfor %}<a class="cart-summary__support" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}<span><span class="cart-summary__support-name">پشتیبانی در تلگرام</span>: {{ support.hours }}</span></a></div>
     </aside>
   </div>
   {% else %}
   <div class="cart-empty">
     <span class="cart-empty__icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 22h34l3 32H12l3-32Z"/><path d="M23 25V17a9 9 0 0 1 18 0v8"/><path d="M25 36h14"/></svg></span>
     <h2>سبد خرید شما خالی است</h2>
-    <a class="btn btn--primary" href="{% url 'home' %}#products">مشاهده‌ی محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
     <p>برای شروع، یک محصول انتخاب کنید.</p>
+    <a class="btn btn--primary" href="{% url 'home' %}#products">مشاهده‌ی محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
+    {% if not user.is_authenticated %}<p class="cart-empty__signin">اگر پیش‌تر با حساب کاربری خود محصولی انتخاب کرده‌اید، پس از <a href="{% url 'login' %}?next={{ request.path|urlencode }}">ورود به حساب</a> آن را همین‌جا می‌بینید.</p>{% endif %}
   </div>
   {% endif %}
 </div>
