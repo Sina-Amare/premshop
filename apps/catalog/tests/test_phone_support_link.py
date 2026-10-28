@@ -1,17 +1,13 @@
-"""Support one tap away on every phone page, and a footer that names the only handle.
+"""Support one tap away on every phone page.
 
 From 1150px down the header's own support block has no room, so the same link
 ends the categories row; on a phone the FAQ link gives up its place there and
-becomes the last row of the opened categories list. The footer says no other
-account messages for the shop, because for a buyer who came from Telegram a
-fake support account asking for a password is the realistic way to lose an
-account.
+becomes the last row of the opened categories list.
 """
 
 import re
 from itertools import pairwise
 from pathlib import Path
-from unittest import mock
 
 import pytest
 from django.urls import reverse
@@ -208,24 +204,9 @@ def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width
         page.close()
 
 
-@pytest.mark.parametrize("path", [*PAGES, "/faq/", "/search/?q=zzzz", "/login/", "/no-such-page/"])
-def test_every_footer_says_the_handle_is_the_only_one(client, shop, path):
-    details = support.details()
-    body = client.get(path).content.decode()
+def test_the_footer_stops_at_the_handle(client, shop):
+    """No other account writing to customers is not confirmed yet, so the footer claims nothing of it."""
+    body = client.get("/").content.decode()
 
     contact = re.search(r'<div class="v-footer__contact">(.*?)</div>', body, re.S).group(1)
-    sentence = re.escape(details["only_handle"])
-    assert re.search(rf"{re.escape(details['telegram'])}</bdi></a><p>{sentence}</p>$", contact)
-
-
-def test_the_sentence_comes_from_the_support_details(client, shop):
-    planted = {**support.details(), "only_handle": "planted"}
-    with mock.patch.object(support, "details", return_value=planted):
-        body = client.get("/").content.decode()
-
-    assert "<p>planted</p></div>" in body
-    assert "آیدی دیگری" not in body
-
-
-def test_the_sentence_is_the_one_written_for_the_footer():
-    assert support.details()["only_handle"] == "جز این آیدی، آیدی دیگری از طرف ما پیام نمی‌دهد."
+    assert contact.endswith(f"{support.details()['telegram']}</bdi></a>"), contact

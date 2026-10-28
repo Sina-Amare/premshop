@@ -127,7 +127,6 @@ def test_the_shell_prints_only_what_the_source_holds(client, catalogue):
     allowed = [
         support.details()["hours"],
         support.details()["telegram"],
-        support.details()["only_handle"],
         "پشتیبانی",
         "·",
         *(p.text for p in PROMISES),

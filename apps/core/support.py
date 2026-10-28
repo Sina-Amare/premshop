@@ -22,9 +22,6 @@ def details() -> dict[str, str]:
     hours_range = f"{opens} تا {to_persian_digits(CLOSES)}"
     return {
         "telegram": f"@{TELEGRAM_HANDLE}",
-        # A fake support account asking for a password is how a buyer from Telegram loses
-        # an account. True only while no other account writes to customers: a bot changes it.
-        "only_handle": "جز این آیدی، آیدی دیگری از طرف ما پیام نمی‌دهد.",
         "telegram_url": f"https://t.me/{TELEGRAM_HANDLE}",
         "email": settings.SUPPORT_EMAIL,
         # «هر روز، ساعت ۱۰ تا ۲۲», the glossary's form for a page to print whole.
