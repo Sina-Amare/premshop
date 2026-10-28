@@ -12,7 +12,7 @@
 </div></section>
 {# Inline, and in Chromium the head's rel=expect holds the first paint until #orbit-placed, so the logos do not jump into place. #}<script>{% include 'storefront/orbit.js' %}</script><span id="orbit-placed" hidden></span>
 <div class="v-wrap">
-  <section class="v-discover" aria-labelledby="discover-title"><div><h2 id="discover-title">دسته‌بندی محصولات</h2></div><div class="v-category-links">{% for cat in nav_categories %}<a href="{% url 'category' cat.slug %}"><span class="v-category-icon">{% include 'storefront/category-icon.html' with slug=cat.slug %}</span><span>{{ cat.name }}<small>{{ cat.product_count|fa_digits }} محصول</small></span>{% include 'storefront/icon.html' with name='arrow' %}</a>{% endfor %}</div></section>
+  <section class="v-discover" aria-labelledby="discover-title"><div><h2 id="discover-title">دسته‌بندی محصولات</h2></div><div class="v-category-links">{% for cat in nav_categories %}<a href="{% url 'category' cat.slug %}"><span class="v-category-icon">{% include 'storefront/category-icon.html' with slug=cat.slug %}</span><span>{{ cat.name }}<small>{{ cat.product_count|fa_digits }} محصول</small></span>{% include 'storefront/icon.html' with name='arrow' %}</a>{% endfor %}</div>{% include 'catalog/_request_product.html' %}</section>
 </div>
 {% if discounted %}
 <section class="v-offers-band" id="offers"><div class="v-wrap v-section" data-rail aria-labelledby="offers-title">

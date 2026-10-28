@@ -259,6 +259,10 @@ def search(request: HttpRequest) -> HttpResponse:
             "results": results,
             "limited": limited,
             "everything": everything,
+            # Telegram pre-enters ?text= on a username link into the chat's
+            # input bar (core.telegram.org/api/links), so a miss reaches
+            # support already saying what was wanted.
+            "telegram_draft": f"سلام، دنبال \u2068{query}\u2069 هستم.",
             "quick_plan_products": results or everything,
         },
         status=429 if limited else 200,

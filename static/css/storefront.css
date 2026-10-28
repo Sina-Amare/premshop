@@ -414,3 +414,9 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .quick-plans__choice{display:block;margin:-16px;padding:16px}
 .quick-plans__choice:focus-visible{outline-offset:-2px}
 .quick-plans__choice:hover strong{color:var(--v-accent)}
+
+/* The request row: the quiet last line of a list, sending a service the shop does not list to support. */
+.v-request{display:flex;flex-wrap:wrap;align-items:center;gap:0 16px}
+@media(min-width:1151px){.v-discover{row-gap:12px}.v-discover>.v-request{grid-column:2}}
+.v-request p{margin:0;font-size:13px;line-height:1.9;color:var(--v-text)}
+.grid+.v-request{margin-block-start:var(--spacing-5)}
