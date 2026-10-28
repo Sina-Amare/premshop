@@ -10,12 +10,15 @@ cannot afford on the pages where someone decides whether to pay a stranger.
 from __future__ import annotations
 
 import re
+from base64 import b64decode, b64encode
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 from django.conf import settings
 from django.urls import reverse
+from PIL import Image
 
 from apps.catalog.management.commands.seed_catalog import MARKS, PRODUCTS, _normalise_mark
 from apps.catalog.models import Category, Plan, Product
@@ -275,6 +278,38 @@ def test_a_mark_without_a_viewbox_is_passed_through_rather_than_mangled():
     assert _normalise_mark(svg, 0.2) == svg
 
 
+def _has_colour(body):
+    embedded = re.search(rb'data:image/png;base64,([^"\s]+)', body)
+    if embedded:
+        with Image.open(BytesIO(b64decode(embedded[1]))) as image:
+            return any(
+                r != g or g != b for r, g, b, a in image.convert("RGBA").get_flattened_data() if a
+            )
+    return bool(re.search(rb"#(?!000000\b|000\b)[0-9A-Fa-f]{3,6}", body))
+
+
+def test_the_retained_marks_all_normalise_to_numeric_square_boxes():
+    for slug, (source, pad) in MARKS.items():
+        body = _normalise_mark(source.read_bytes(), pad)
+        box = re.search(rb'viewBox="([^"]+)"', body)[1].split()
+        assert box[2] == box[3], slug
+        assert b'width="' + box[2] + b'"' in body, slug
+        assert b'height="' + box[3] + b'"' in body, slug
+        assert b"1em" not in body, slug
+    source, pad = MARKS["netflix"]
+    assert _has_colour(_normalise_mark(source.read_bytes(), pad))
+
+
+@pytest.mark.parametrize(
+    "pixel,expected", [((229, 9, 20, 255), True), ((0, 0, 0, 255), False), ((229, 9, 20, 0), False)]
+)
+def test_the_colour_check_reads_embedded_pixels(pixel, expected):
+    output = BytesIO()
+    Image.new("RGBA", (1, 1), pixel).save(output, format="PNG")
+    body = b'<image href="data:image/png;base64,' + b64encode(output.getvalue()) + b'"/>'
+    assert _has_colour(body) is expected
+
+
 @pytest.mark.skipif(
     not (Path(settings.MEDIA_ROOT) / "products").exists(), reason="catalog not seeded"
 )
@@ -300,7 +335,7 @@ def test_the_downloaded_marks_are_svgs_in_their_own_colours():
         assert b"viewBox" in body, path.name
         assert b"<html" not in body[:400].lower(), f"{path.name} is an error page"
         if path.stem not in monochrome:
-            assert re.search(rb"#(?!000000\b|000\b)[0-9A-Fa-f]{3,6}", body), path.name
+            assert _has_colour(body), path.name
 
 
 # --- Performance budget ------------------------------------------------------

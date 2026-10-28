@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from django.urls import reverse
@@ -6,7 +7,8 @@ from playwright.sync_api import expect
 
 from apps.cart.models import Cart, CartItem
 from apps.cart.services import cart_summary
-from apps.catalog.models import Plan
+from apps.cart.tests.test_cart_discount import _open_cart
+from apps.catalog.models import Plan, Product
 from apps.catalog.promises import PROMISES
 from apps.core.support import details
 
@@ -98,5 +100,55 @@ def test_cart_controls_and_total_fit_the_new_layout(browser, live_server, plan, 
         page.locator(".cart-remove").click()
         expect(page.locator(".cart-empty")).to_be_visible()
         assert page.locator(".cart-empty .btn").get_attribute("href") == "/#products"
+    finally:
+        page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("width", [390, 1440])
+def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
+    browser, live_server, client, plan, width
+):
+    selected = [plan]
+    for number in range(3):
+        product = Product.objects.create(
+            category=plan.product.category,
+            name=f"سرویس نمونه {number}",
+            slug=f"cart-example-{number}",
+            status=Product.Status.ACTIVE,
+        )
+        selected.append(
+            Plan.objects.create(
+                product=product,
+                title="سه ماهه",
+                cost_price=1,
+                sale_price=999999999990 if number == 2 else 300000,
+                max_quantity=3,
+            )
+        )
+    for option in selected:
+        client.post("/cart/add/", {"plan": option.pk, "quantity": 2})
+    selected[2].is_available = False
+    selected[2].save()
+    page = _open_cart(browser, live_server, client, width)
+    try:
+        assert page.url == live_server.url + "/cart/"
+        expect(page.locator("h1")).to_contain_text("سبد خرید")
+        expect(page.locator(".cart-line")).to_have_count(4)
+        expect(page.locator(".cart-line--unavailable")).to_have_count(1)
+        expect(page.locator(".cart-line__restock")).to_have_text(
+            "زمان موجود شدن دوباره را از پشتیبانی بپرسید."
+        )
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        for amount in page.locator(".cart-money").all():
+            assert amount.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
+            box = amount.bounding_box()
+            assert box["x"] >= 0 and box["x"] + box["width"] <= width + 1
+        output = Path(".playwright-mcp/u9/screenshots")
+        output.mkdir(parents=True, exist_ok=True)
+        page.screenshot(
+            path=str(output / f"cart-four-unavailable-long-{width}.png"), full_page=True
+        )
     finally:
         page.close()
