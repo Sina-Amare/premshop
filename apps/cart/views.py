@@ -84,6 +84,11 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
             data["message"] = f"تعداد {name} در سبد خرید به‌روز شد."
         else:
             data["message"] = f"{name} به سبد خرید اضافه شد."
+            # Worded as the cart page's summary; where that shows a dash, the toast states no total.
+            cart = services.cart_summary(services.get_cart(request))
+            if cart.has_purchasable_items:
+                label = "جمع سبد خرید" if cart.ready else "جمع محصولات قابل خرید"
+                data["total"] = f"{label}: {format_toman(cart.total)}"
             if plan:
                 # Separate lines, so a Latin product name cannot set the sentence's direction.
                 data |= {

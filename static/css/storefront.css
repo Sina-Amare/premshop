@@ -439,3 +439,10 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .v-suggest__price .badge{font-size:12px;padding:1px 8px}
 /* The sheet's rows carry the buy box's monthly line and discount badge, under the row's larger price. */
 .quick-plans__list .plan__monthly{margin-top:4px}.quick-plans__list .plan__promotion{margin-block-start:10px}
+
+/* The add toast names the whole plan: its line wraps rather than cutting «۳ ماهه» to «۳ ما…», and breaks after the product's name, never inside the plan's. */
+.cart-toast__message [data-toast-detail]{white-space:normal;overflow-wrap:anywhere}
+.cart-toast__message [data-toast-detail] bdi:last-child{display:inline-block}
+/* The cart's total, under the plan in the same grey; «pretty» keeps the figure from leaving «تومان» alone on a line. */
+.cart-toast__message [data-toast-total]{display:block;font-size:13px;line-height:1.8;color:var(--v-text);text-wrap:pretty}
+@media(max-width:719px){.cart-toast__message [data-toast-total]{font-size:12px}}

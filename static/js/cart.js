@@ -30,6 +30,8 @@
       const [item, option] = [data.item, data.option].map(text => Object.assign(document.createElement('bdi'), {textContent: text}));
       detail.replaceChildren(item, '، ', option);
     }
+    // The server words the total from the cart page's own summary; the script only places it.
+    Object.assign(toast.querySelector('[data-toast-total]'), {textContent: data.total || '', hidden: !data.total});
     toast.hidden = false;
     positionToast();
     announcement.textContent = data.message;
