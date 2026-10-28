@@ -141,6 +141,9 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
         {
             **product_context(obj, related=_related_to(obj)),
             "structured_data": product_breadcrumb(obj) if obj.is_public else None,
+            # A quick-plans row links here with its plan; the buy box decides
+            # whether that plan can be chosen.
+            "wanted_plan": request.GET.get("plan", ""),
         },
     )
     if not obj.is_public:

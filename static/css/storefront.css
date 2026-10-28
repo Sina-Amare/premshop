@@ -410,3 +410,7 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 /* 65px is the bar's height: a 48px button, 8px above and below, and its hairline. */
 :root:has(.buy-bar:not([hidden])){scroll-padding-block-end:calc(65px + env(safe-area-inset-bottom))}
 :root:has(.buy-bar:not([hidden])) body{padding-block-end:calc(65px + env(safe-area-inset-bottom))}
+/* A plan that can be bought opens its product page with that plan chosen; the link fills the row. */
+.quick-plans__choice{display:block;margin:-16px;padding:16px}
+.quick-plans__choice:focus-visible{outline-offset:-2px}
+.quick-plans__choice:hover strong{color:var(--v-accent)}

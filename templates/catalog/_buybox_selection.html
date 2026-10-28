@@ -1,0 +1,9 @@
+{% load fa %}{% comment %}
+«انتخاب شما» for the chosen plan, rendered by the server so the page paints
+with it. The script in product.html rewrites it on every change from the
+chosen row's charged price, never the struck original, so the two agree.
+A single option is not repeated here. Reads `purchase` from the buy box.
+{% endcomment %}{% with chosen=purchase.chosen.plan %}{% with price=chosen.effective_price %}<div class="buybox__selection"{% if not chosen or purchase.options|length < 2 %} hidden{% endif %} aria-live="polite" aria-atomic="true">
+          <p class="micro">انتخاب شما</p>
+          <div class="buybox__selected"><bdi data-selected-title>{{ chosen.title }}</bdi><span class="price" data-selected-price>{% if chosen %}{% if price %}<span class="price__num">{{ price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="price__num">رایگان</span>{% endif %}{% endif %}</span></div>
+        </div>{% endwith %}{% endwith %}

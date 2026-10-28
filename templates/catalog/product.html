@@ -93,7 +93,7 @@
   <aside class="pdp__buy">
     <div class="card buybox">
       {% if product.delivery_type %}<dl class="buybox__facts"><div><dt>{% include 'storefront/icon.html' with name='info' %}{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</dt><dd>{{ product.get_delivery_type_display }}</dd></div></dl>{% endif %}
-      {% cart_purchase plans as purchase %}
+      {% cart_purchase plans wanted_plan as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
       <form class="buybox__form" id="buy-form" method="post" action="{% url 'cart-add' %}" data-cart-add{% if snapshot %} data-snapshot{% endif %}>
         {% csrf_token %}
@@ -103,7 +103,7 @@
           {% for option in purchase.options %}{% with plan=option.plan %}
             <label data-preview-row="{{ plan.preview_key }}" data-preview-field="sort_order" class="plan{% if not option.selectable %} plan--off{% endif %}">
               <input type="radio" name="plan" value="{{ plan.id }}"
-                     {% if not option.selectable %}disabled{% elif option == available_plans.0 %}checked{% endif %}
+                     {% if not option.selectable %}disabled{% elif option == purchase.chosen %}checked{% endif %}
                      data-max="{{ option.max_add }}" data-in-cart="{{ option.in_cart }}"
                      data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.sale_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
                      data-asks="{{ plan.customer_input_label }}">
@@ -133,13 +133,10 @@
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
         <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
-        <div class="buybox__selection" hidden aria-live="polite" aria-atomic="true">
-          <p class="micro">انتخاب شما</p>
-          <div class="buybox__selected"><bdi data-selected-title></bdi><span class="price" data-selected-price></span></div>
-        </div>
-        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif available_plans.0.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
+        {% include 'catalog/_buybox_selection.html' %}
+        {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif purchase.chosen.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
         {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
-        <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not available_plans or available_plans.0.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
+        <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not purchase.chosen or purchase.chosen.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
         <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
