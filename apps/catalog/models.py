@@ -365,11 +365,12 @@ class ProductQuerySet(models.QuerySet["Product"]):
         # Bounded: a 100-character query is already capped by the view, and no
         # real search needs more than a handful of words to be precise.
         for word in needle.split()[:8]:
-            matches = matches.filter(search_text__icontains=word)
+            matches = matches.filter(search_text__contains=word)
         if matches.exists():
             return matches
         return (
-            self.annotate(closeness=TrigramWordSimilarity(needle, "search_text"))
+            self.filter(search_text__trigram_word_similar=needle)
+            .annotate(closeness=TrigramWordSimilarity(needle, "search_text"))
             .filter(closeness__gte=FUZZY_THRESHOLD)
             .order_by("-closeness", "name")
         )

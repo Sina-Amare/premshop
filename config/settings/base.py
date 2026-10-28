@@ -191,6 +191,7 @@ CSRF_FAILURE_VIEW = "apps.core.errors.csrf_failure"
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {"default": database_from_url(env("DATABASE_URL", required=True))}
+DATABASES["default"]["OPTIONS"] = {"options": "-c pg_trgm.word_similarity_threshold=0.3"}
 
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
 

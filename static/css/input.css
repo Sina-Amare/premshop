@@ -146,6 +146,7 @@
   --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);   /* enters fast, lands slowly */
 
   /* Soft elevation for the floating product tiles. */
+  --shadow-tile-hover: 0 2px 4px rgba(19, 19, 19, 0.05), 0 26px 50px -24px rgba(19, 19, 19, 0.38);
   --shadow-lift: 0 1px 2px rgba(19, 19, 19, 0.04), 0 18px 40px -22px rgba(19, 19, 19, 0.3);
 }
 @media (max-width: 760px) { :root { --gutter: 14px; --strip-h: 34px; --hdr-h: 118px; } }
@@ -660,7 +661,7 @@
   .nebula__item:nth-child(4n + 3) img { max-inline-size: 50px; max-block-size: 50px; }
   .nebula__item:hover, .nebula__item:focus-visible {
     transform: translateY(-4px) scale(1.03);
-    box-shadow: 0 2px 4px rgba(19, 19, 19, 0.05), 0 26px 50px -24px rgba(19, 19, 19, 0.38);
+    box-shadow: var(--shadow-tile-hover);
   }
   .nebula__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
   @keyframes nebula-float {
