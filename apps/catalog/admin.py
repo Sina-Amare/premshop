@@ -17,6 +17,7 @@ from typing import Any, ClassVar, cast
 
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.actions import delete_selected
 from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
@@ -616,7 +617,7 @@ class ProductAdmin(PreviewAdminMixin):
     # delivery type were filters too, and at a dozen products the filter
     # column stood taller than the result.
     list_filter = ["status", "category", StaleFactsFilter]
-    actions = ["publish", "unpublish", "copy_sections"]
+    actions = ["publish", "unpublish", "copy_sections", "delete_selected"]
     form = ProductForm
     # Only switches the search box on: get_search_results asks the shop's own
     # search, which ignores these fields.
@@ -629,6 +630,7 @@ class ProductAdmin(PreviewAdminMixin):
     # The product form is long enough to lose work in. The browser asks before
     # a half-finished product is abandoned.
     warn_unsaved_form = True
+
     # What still stands between a draft and publishing, at the top of its form.
     change_form_before_template = "admin/catalog/product/readiness.html"
     fieldsets = [
@@ -877,6 +879,19 @@ class ProductAdmin(PreviewAdminMixin):
         printing «۱۸ اکتبر ۲۰۲۶» at an operator who works in Mehr and Aban —
         a Gregorian month name is a date they have to convert in their head."""
         return format_html('<span class="panel-date">{}</span>', format_jalali(obj.updated_at))
+
+    def get_deleted_objects(self, objs: Any, request: HttpRequest) -> Any:
+        if request.method == "POST":
+            ids = [obj.pk for obj in objs]
+            list(Product.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
+            list(Plan.objects.select_for_update().filter(product_id__in=ids).order_by("pk"))
+        return super().get_deleted_objects(objs, request)
+
+    @admin.action(permissions=["delete"], description=_("حذف محصولات انتخاب‌شده"))
+    def delete_selected(self, request: HttpRequest, queryset: QuerySet[Product]) -> Any:
+        # Django's bulk action otherwise checks protection before its transaction.
+        with transaction.atomic():
+            return delete_selected(self, request, queryset)
 
     def get_queryset(self, request: Any) -> Any:
         return super().get_queryset(request).prefetch_related("plans")

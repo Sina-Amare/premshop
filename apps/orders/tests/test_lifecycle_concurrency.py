@@ -10,7 +10,8 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.db.models.query import QuerySet
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -188,7 +189,7 @@ def test_a_checkout_identifier_cannot_be_claimed_by_two_customers(buyer, plan, m
     assert Order.objects.count() == 1 and OrderItemEvent.objects.count() == 1
 
 
-@pytest.mark.parametrize("editor", ["product", "discount"])
+@pytest.mark.parametrize("editor", ["product", "discount", "delete_single", "delete_bulk"])
 def test_admin_and_checkout_use_the_same_lock_order(buyer, plan, monkeypatch, editor):
     operator = User.objects.create_superuser("operator@example.test")
     code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=100)
@@ -217,6 +218,18 @@ def test_admin_and_checkout_use_the_same_lock_order(buyer, plan, monkeypatch, ed
         )
 
     def edit():
+        if editor.startswith("delete_"):
+            client = Client()
+            client.force_login(operator)
+            url = (
+                reverse("admin:catalog_product_delete", args=[plan.product_id])
+                if editor == "delete_single"
+                else reverse("admin:catalog_product_changelist")
+            )
+            data = {"post": "yes"}
+            if editor == "delete_bulk":
+                data.update(action="delete_selected", _selected_action=[str(plan.product_id)])
+            return client.post(url, data).status_code == 200
         request = RequestFactory().post("/")
         request.user = operator
         with transaction.atomic():
@@ -247,6 +260,25 @@ def test_admin_and_checkout_use_the_same_lock_order(buyer, plan, monkeypatch, ed
             release.set()
         assert first.result(timeout=15) is not None
         assert second.result(timeout=15) is True
+    assert Product.objects.filter(pk=plan.product_id).exists()
+    assert Plan.objects.filter(pk=plan.pk).exists()
+
+
+@pytest.mark.parametrize("bulk", [False, True])
+def test_product_deletion_without_orders_still_removes_its_plans(plan, bulk):
+    client = Client()
+    client.force_login(User.objects.create_superuser("operator@example.test"))
+    url = (
+        reverse("admin:catalog_product_changelist")
+        if bulk
+        else reverse("admin:catalog_product_delete", args=[plan.product_id])
+    )
+    data = {"post": "yes"}
+    if bulk:
+        data.update(action="delete_selected", _selected_action=[str(plan.product_id)])
+    assert client.post(url, data).status_code == 302
+    assert not Product.objects.filter(pk=plan.product_id).exists()
+    assert not Plan.objects.filter(pk=plan.pk).exists()
 
 
 def test_expiring_old_orders_and_buying_opposite_plans_lock_the_combined_resources(

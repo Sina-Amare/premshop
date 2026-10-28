@@ -1130,3 +1130,6 @@ msgstr "Discount value"
 
 msgid "محصولات مشمول تخفیف"
 msgstr "Eligible products"
+
+msgid "حذف محصولات انتخاب‌شده"
+msgstr "Delete selected products"
