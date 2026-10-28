@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.cart import services
 from apps.catalog.models import Plan, Product
+from apps.catalog.templatetags.prices import monthly_price_key
 from apps.core.formatting import format_toman, to_persian_digits
 
 
@@ -116,6 +117,11 @@ def _state(request: HttpRequest, plans: list[Plan]) -> dict[str, object]:
                 "promotion_html": render_to_string(
                     "catalog/_purchase_promotion.html", {"plan": option.plan}
                 ).strip(),
+                # Against the plans asked for, which on a product page are all of its plans.
+                "monthly_html": render_to_string(
+                    "catalog/_monthly_price.html", {"plan": option.plan, "plans": plans}
+                ).strip(),
+                "monthly_key": monthly_price_key(option.plan, plans),
                 "price_key": (
                     format_toman(option.plan.effective_price, with_unit=False)
                     + "|"

@@ -5,5 +5,8 @@ much less that is than the one-month plan. Both figures come from
 ends; the countdown in base.html then shows the next (`data-promotion`, as a
 card's offers do). A row that cannot be bought hides it with its price, and
 the saving wraps as one clause rather than leaving «ماهانه» on a line alone.
+What else moves it (a price edited, a discount starting or ended early, the
+one-month plan selling out) comes with the availability poll, which redraws
+the wrapper, present even without a line, when its key changes (cart.js).
 Params: plan, plans.
-{% endcomment %}{% with steps=plan|monthly_price_steps:plans %}{% if steps %}<span class="plan__monthly">{% for step in steps %}<span data-promotion{% if step.left is not None %} data-left="{{ step.left }}"{% endif %}{% if not forloop.first %} hidden{% endif %}>{% if step.value %}ماهی حدود {{ step.value.price|toman }}{% if step.value.saving %}، <span class="plan__saving">{{ step.value.saving|fa_digits }}٪ کمتر از خرید ماهانه</span>{% endif %}{% endif %}</span>{% endfor %}</span>{% endif %}{% endwith %}
+{% endcomment %}<span data-plan-monthly data-monthly-key="{{ plan|monthly_price_key:plans }}">{% with steps=plan|monthly_price_steps:plans %}{% if steps %}<span class="plan__monthly">{% for step in steps %}<span data-promotion{% if step.left is not None %} data-left="{{ step.left }}"{% endif %}{% if not forloop.first %} hidden{% endif %}>{% if step.value %}ماهی حدود {{ step.value.price|toman }}{% if step.value.saving %}، <span class="plan__saving">{{ step.value.saving|fa_digits }}٪ کمتر از خرید ماهانه</span>{% endif %}{% endif %}</span>{% endfor %}</span>{% endif %}{% endwith %}</span>

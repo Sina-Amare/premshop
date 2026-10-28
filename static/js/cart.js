@@ -127,6 +127,8 @@
         }
         const unavailable = row.querySelector('.plan__off');
         if (unavailable) unavailable.hidden = !radio.disabled;
+        const monthly = row.querySelector('[data-plan-monthly]');
+        if (option && monthly && monthly.dataset.monthlyKey !== option.monthly_key) monthly.outerHTML = option.monthly_html;
       });
       if (!form.querySelector('[name=plan]:checked:not(:disabled)')) {
         const first = form.querySelector('[name=plan]:not(:disabled)');
