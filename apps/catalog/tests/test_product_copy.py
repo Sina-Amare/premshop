@@ -3,6 +3,24 @@ import re
 from apps.catalog.demo_content import PRODUCT_COPY
 
 
+def test_the_shared_delivery_answer_has_no_extension_past_the_cap():
+    from django.template.loader import render_to_string
+
+    from apps.catalog.promises import DELIVERY_CAP_HOURS, DELIVERY_COMMITMENT
+    from apps.core.support import details
+
+    body = render_to_string(
+        "catalog/_delivery_answer.html",
+        {
+            "delivery_cap_hours": DELIVERY_CAP_HOURS,
+            "delivery_commitment": DELIVERY_COMMITMENT,
+            "support": details(),
+        },
+    )
+    assert DELIVERY_COMMITMENT in body
+    assert "صبح تحویل می‌دهیم" not in body
+
+
 def test_product_copy_has_sources_and_written_search_descriptions():
     assert {
         "chatgpt-plus",

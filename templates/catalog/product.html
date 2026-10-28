@@ -85,7 +85,7 @@
       <h2 class="pdp__h2" id="questions-title">سؤال‌های پرتکرار</h2>
       <dl class="faq">
         {% for question in questions %}<div data-preview-row="{{ question.preview_key }}" data-preview-field="sort_order"><dt data-preview-field="question">{{ question.question|bdi }}</dt><dd data-preview-field="answer" class="rich">{{ question.answer|markdown:"" }}</dd></div>{% endfor %}
-        <div><dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd class="faq__answer" data-preview-field="delivery_note">{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت. اگر این مدت بیرون از ساعت {{ support.hours_range }} تمام شود، تا {{ support.opens }} صبح تحویل می‌دهیم.{% endif %}</dd></div>
+        <div><dt id="delivery">چقدر طول می‌کشه تا محصول رو تحویل بگیرم؟</dt><dd class="faq__answer" data-preview-field="delivery_note">{% if product.delivery_note %}{{ product.delivery_note }}{% else %}تا {{ product.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت.{% endif %}</dd></div>
         {% if product.delivery_type == "on_customer_account" %}<div><dt>برای فعال‌سازی باید رمز اکانتم رو بدم؟</dt><dd class="faq__answer">{% include 'catalog/_activation_answer.html' %}</dd></div>{% endif %}
       </dl>
     </section>
