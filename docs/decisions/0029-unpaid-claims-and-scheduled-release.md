@@ -17,3 +17,5 @@ Replace unused Celery with one Redis-backed Huey consumer, one worker and explic
 **Consequences:** Downtime can delay release; checkout still locks and checks stock/deadlines. Large backlogs take several sweeps. Consistency failures stay visible for review while later rows continue. Deployment needs a supervised consumer, Redis and an observed successful sweep. Gateway initiation/verification stays disabled until coordinated with expiry; later payment failures retry the same order without extending its deadline. Paid fulfilment/refunds and public launch remain separate work.
 
 Sources: [Django row locking](https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-for-update), [Huey Django integration](https://huey.readthedocs.io/en/latest/contrib.html).
+
+**Amendment — 2026-10-29.** Unsuccessful expiry attempts record a timestamp and rotate behind unattempted overdue rows. Batches stay bounded even when every row fails validation; subsequent sweeps reach later orders and eventually retry the failed rows. Financial snapshots and deadlines are unchanged.

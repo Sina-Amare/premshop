@@ -123,6 +123,7 @@ class Order(models.Model):
     checkout_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     submission_digest = models.CharField(max_length=64, blank=True, default="", editable=False)
     unpaid_expires_at = models.DateTimeField(default=unpaid_deadline, db_index=True)
+    expiry_last_attempt_at = models.DateTimeField(null=True, blank=True, editable=False)
     cancelled_at = models.DateTimeField(null=True, blank=True, editable=False)
     consent_text = models.TextField(blank=True, default="", editable=False)
     consent_version = models.CharField(max_length=20, blank=True, default="", editable=False)

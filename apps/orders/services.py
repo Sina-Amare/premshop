@@ -14,7 +14,7 @@ from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, F, OuterRef
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 
@@ -553,15 +553,19 @@ def expire_unpaid_orders(*, limit: int = 100) -> int:
     ids = list(
         Order.objects.filter(unpaid_expires_at__lte=at)
         .filter(Exists(pending))
-        .order_by("unpaid_expires_at", "pk")
+        .order_by(F("expiry_last_attempt_at").asc(nulls_first=True), "unpaid_expires_at", "pk")
         .values_list("pk", flat=True)[:limit]
     )
     processed = 0
     for order_id in ids:
         try:
-            processed += _cancel(order_id=order_id, due_at=at) is not None
+            if _cancel(order_id=order_id, due_at=at) is not None:
+                processed += 1
+                continue
         except ValidationError as error:
             logger.error(
                 "Unpaid expiry needs review for order %s: %s", order_id, type(error).__name__
             )
+        # Failed rows rotate behind unattempted rows, then receive another turn.
+        Order.objects.filter(pk=order_id).update(expiry_last_attempt_at=at)
     return processed

@@ -112,6 +112,35 @@ def test_expiry_batches_catch_up_and_a_bad_order_does_not_block_later_orders(
     assert services.expire_unpaid_orders(limit=2) == 0
 
 
+def test_a_full_failed_batch_does_not_starve_later_orders_or_skip_failed_retries(
+    buyer, plan, monkeypatch
+):
+    from apps.accounts.models import User
+    from apps.orders import services
+
+    first = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    other = User.objects.create_user("other@example.test")
+    second = place_order(user=other, lines=[OrderLine(plan, 1)], activation_consent=True)
+    Order.objects.update(unpaid_expires_at=timezone.now())
+    cancel = services._cancel
+    attempts = []
+
+    def skip_bad_order(**kwargs):
+        attempts.append(kwargs["order_id"])
+        if kwargs["order_id"] == first.pk:
+            raise ValidationError("needs consistency review")
+        return cancel(**kwargs)
+
+    monkeypatch.setattr(services, "_cancel", skip_bad_order)
+    assert services.expire_unpaid_orders(limit=1) == 0
+    assert services.expire_unpaid_orders(limit=1) == 1
+    assert second.items.get().status == OrderItem.Status.CANCELLED
+    assert services.expire_unpaid_orders(limit=1) == 0
+    assert attempts == [first.pk, second.pk, first.pk]
+    monkeypatch.setattr(services, "_cancel", cancel)
+    assert services.expire_unpaid_orders(limit=1) == 1
+
+
 def test_failed_sweep_does_not_claim_success_or_hide_the_backlog(buyer, plan, monkeypatch):
     from huey.contrib.djhuey import HUEY
 

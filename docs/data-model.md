@@ -222,6 +222,7 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 | checkout_id | UUID, unique | — | uuid4 | permanent submission identity |
 | submission_digest | varchar(64) | — | blank for legacy | keyed validated request digest from checkout |
 | unpaid_expires_at | TS, indexed | — | created_at + 24 hours | retries never extend it |
+| expiry_last_attempt_at | TS | yes | null | unsuccessful sweeps rotate behind unattempted rows, then retry |
 | cancelled_at | TS | yes | null | whole-order release time |
 | consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable for legacy | blank / null | exact accepted wording/version/time; no invented legacy consent |
 | discount_snapshot | JSON | — | {} | frozen code/arithmetic/scope facts |
