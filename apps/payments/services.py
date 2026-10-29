@@ -113,11 +113,9 @@ def quote_checkout(*, user: User, discount_code: str = "") -> CheckoutQuote:
     return CheckoutQuote(purchase, signing.dumps(payload, salt=QUOTE_SALT, compress=True))
 
 
-@transaction.atomic
 def prepare_checkout(*, user: User) -> None:
     """An explicit review POST can release this customer's overdue claims."""
-    account = _account(user, lock=True)
-    Cart.objects.select_for_update().filter(user=account).first()
+    account = _account(user, lock=False)
     expire_unpaid_orders(user_id=account.pk)
 
 
