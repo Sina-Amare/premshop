@@ -37,10 +37,12 @@
         <div class="checkout-summary-heading"><h2>سبد خرید</h2><a class="cart-back" href="{% url 'cart' %}">ویرایش سبد خرید</a></div>
         {% for line in cart.lines %}
         <article class="checkout-preview__item">
-          <div class="checkout-preview__art" aria-hidden="true">{% if line.plan %}{% include 'catalog/_card_art.html' with product=line.plan.product %}{% endif %}</div>
+          <div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% if line.plan %}{% include 'catalog/_card_art.html' with product=line.plan.product %}{% endif %}</div>
           <div class="checkout-preview__facts">
             {% if line.plan %}<h3><a href="{{ line.plan.product.get_absolute_url }}"><bdi>{{ line.plan.product.name }}</bdi></a></h3><p><bdi>{{ line.plan.title }}</bdi></p>{% else %}<h3>محصول ناموجود</h3>{% endif %}
-            <p>تعداد: {{ line.quantity|fa_digits }}</p>
+          </div>
+          <div class="checkout-preview__purchase">
+            <span>تعداد: {{ line.quantity|fa_digits }}</span>
             {% if line.purchasable %}<div class="checkout-preview__amount">{{ line.line_total|price_html }}</div>{% elif line.unavailable %}<p class="checkout-preview__warning">ناموجود</p>{% else %}<p class="checkout-preview__warning">تعداد را کاهش دهید.</p>{% endif %}
           </div>
         </article>

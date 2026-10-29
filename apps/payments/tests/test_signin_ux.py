@@ -243,7 +243,9 @@ def test_long_mixed_cart_preview_keeps_controls_and_prices_within_viewport(
     browser, live_server, plan, width
 ):
     plan.product.name = "اشتراک ابزار برنامه‌نویسی GitHub Copilot Enterprise برای تیم‌های بزرگ"
-    plan.product.save(update_fields=["name"])
+    plan.product.image = "products/checkout-mark.svg"
+    plan.product.brand_colour = "#d97757"
+    plan.product.save(update_fields=["name", "image", "brand_colour"])
     plan.title = "یک‌ساله؛ " + "LongUnbrokenPlanName" * 4
     plan.sale_price = 999999999999
     plan.save(update_fields=["title", "sale_price"])
@@ -261,10 +263,23 @@ def test_long_mixed_cart_preview_keeps_controls_and_prices_within_viewport(
     )
     page = context.new_page()
     try:
+        page.route(
+            "**/media/products/checkout-mark.svg",
+            lambda route: route.fulfill(
+                content_type="image/svg+xml",
+                body='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">'
+                '<circle cx="20" cy="20" r="18" fill="#d97757"/></svg>',
+            ),
+        )
         page.goto(live_server.url + reverse("checkout"))
         expect(page.locator("[data-checkout-cart]")).to_contain_text(plan.title)
         expect(page.get_by_role("link", name="ورود با رمز عبور", exact=True)).to_be_visible()
         page.evaluate("document.fonts.ready")
+        art = page.locator(".checkout-preview__art .pcard__art")
+        image = art.locator("img")
+        expect(image).to_be_visible()
+        assert image.bounding_box()["width"] >= 28
+        assert art.evaluate("el => getComputedStyle(el).backgroundColor") != "rgba(0, 0, 0, 0)"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         directory = Path(settings.BASE_DIR) / "screenshots" / "checkout-signin"
         directory.mkdir(parents=True, exist_ok=True)
