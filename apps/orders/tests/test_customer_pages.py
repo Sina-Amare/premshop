@@ -314,6 +314,21 @@ def test_legacy_category_fallback_and_mixed_terminal_status_use_only_frozen_fact
     groups = grouped_items([item, cancelled])
     assert groups[0]["name"] == "محصولات سفارش"
     assert len(groups[0]["lines"]) == 2
-    assert status_label([item, cancelled]) == "پایان‌یافته"
+    assert status_label([item.status, cancelled.status]) == "پایان‌یافته"
     cancelled.status = OrderItem.Status.PENDING_PAYMENT
-    assert status_label([item, cancelled]) == "منتظر پرداخت"
+    assert status_label([item.status, cancelled.status]) == "منتظر پرداخت"
+
+
+def test_public_tracking_does_not_distinguish_one_from_repeated_identical_units(
+    client, buyer, plan
+):
+    import time_machine
+
+    other = User.objects.create_user("one-unit@example.test")
+    with time_machine.travel("2026-10-29 08:00:00", tick=False):
+        one = purchase(other, plan)
+        many = purchase(buyer, plan, 2)
+    first = client.get(reverse("order-tracking", args=[one.tracking_token]))
+    second = client.get(reverse("order-tracking", args=[many.tracking_token]))
+    assert len(first.context["tracking"]) == len(second.context["tracking"]) == 1
+    assert first.content == second.content

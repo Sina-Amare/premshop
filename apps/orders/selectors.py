@@ -48,8 +48,8 @@ def current_order(user: User) -> Order | None:
     return customer_orders(user).filter(Exists(active)).first()
 
 
-def status_label(items: Iterable[OrderItem]) -> str:
-    statuses = {item.status for item in items}
+def status_label(values: Iterable[str]) -> str:
+    statuses = set(values)
     if len(statuses) == 1:
         return str(_LABELS[next(iter(statuses))])
     for stage in _STAGES:
@@ -98,7 +98,7 @@ def customer_summary(order: Order) -> dict[str, Any]:
     statuses = {item.status for item in items}
     return {
         "order": order,
-        "status": status_label(items),
+        "status": status_label(statuses),
         "groups": grouped_items(items),
         "can_cancel": bool(items)
         and OrderItem.Status.PENDING_PAYMENT in statuses
@@ -132,19 +132,33 @@ def order_for_tracking(token: str) -> list[dict[str, Any]] | None:
         .order_by("pk")
         .values("pk", "product_snapshot__name", "status", "created_at")
     )
-    events: dict[int, list[dict[str, Any]]] = {}
+    groups: dict[str, dict[str, Any]] = {}
+    names = {}
+    for row in rows:
+        name = row["product_snapshot__name"]
+        names[row["pk"]] = name
+        group = groups.setdefault(
+            name,
+            {"name": name, "statuses": set(), "created_at": row["created_at"], "timeline": []},
+        )
+        group["statuses"].add(row["status"])
+    seen = set()
     for item_id, status, at in (
         OrderItemEvent.objects.filter(order_item__order_id=order_id)
         .order_by("created_at", "pk")
         .values_list("order_item_id", "to_status", "created_at")
     ):
-        events.setdefault(item_id, []).append({"status": str(_LABELS[status]), "at": at})
+        name = names[item_id]
+        key = (name, status, at.replace(second=0, microsecond=0))
+        if key not in seen:
+            seen.add(key)
+            groups[name]["timeline"].append({"status": str(_LABELS[status]), "at": at})
     return [
         {
-            "name": row["product_snapshot__name"],
-            "status": str(_LABELS[row["status"]]),
-            "created_at": row["created_at"],
-            "timeline": events.get(row["pk"], []),
+            "name": group["name"],
+            "status": status_label(group["statuses"]),
+            "created_at": group["created_at"],
+            "timeline": group["timeline"],
         }
-        for row in rows
+        for group in groups.values()
     ]
