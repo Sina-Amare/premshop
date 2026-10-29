@@ -416,7 +416,7 @@ msgstr "First “this product is not for you if…”, then the limits and what 
 msgid "این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."
 msgstr "This product already has a “Before you buy” section. Edit that one."
 
-msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی‌نشده‌اند."
+msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
 msgstr "This product is time-sensitive and its claims have not been checked in the last 7 days."
 
 msgid "با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."

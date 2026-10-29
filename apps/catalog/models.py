@@ -691,7 +691,7 @@ class Product(ChecksNameTheirField, models.Model):
             )
         if self.time_sensitive and not self.facts_are_fresh:
             problems["facts_checked_on"] = gettext(
-                "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی‌نشده‌اند."
+                "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
             )
         return problems
 

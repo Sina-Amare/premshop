@@ -55,6 +55,7 @@ BANNED = [
     (r"(?<![\w‌])تازه(?:‌(?:ای|ها|های))?(?![\w‌])", "«جدید»"),
     (r"پیدا نشد", "«پیدا نکردیم»"),
     (r"(?<=\w)هٔ|(?<=\w)ۀ", "ezafe with «ه‌ی»"),
+    (r"بررسی‌نشده‌اند", "finite verb with a space: «بررسی نشده‌اند»"),
     # ZWNJ, the mistake that makes Persian look machine-set.
     (r"(?<![\w‌])می [اآبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", "a half-space: «می‌…»"),
 ]
@@ -250,6 +251,7 @@ def test_quantities_are_written_in_persian_digits():
         ("این رکورد حذف شد.", "رکورد"),
         ("رمز عبور تازه", "تازه"),
         ("رنگ تازه‌ای", "تازه‌ای"),
+        ("در این هفته بررسی‌نشده‌اند.", "finite verb spacing"),
     ],
 )
 def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
@@ -267,6 +269,8 @@ def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
         "چقدر برای خودتان آب می‌خورد.",
         "تیک را بردارید تا خریدنی نباشد.",
         "بین ۱ تا ۷۲ ساعت.",
+        "این ادعاها بررسی نشده‌اند.",
+        "بررسی‌نشده",
     ],
 )
 def test_the_lint_leaves_good_persian_alone(text):
