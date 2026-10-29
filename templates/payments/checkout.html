@@ -66,7 +66,7 @@
           <label class="checkout-consent">{{ form.activation_consent }}<span>{{ form.activation_consent.label }}</span></label>
           {% if form.activation_consent.errors %}<div id="{{ form.activation_consent.auto_id }}_error">{% for message in form.activation_consent.errors %}<p class="field__error">{{ message }}</p>{% endfor %}</div>{% endif %}
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button>
-          <p class="small">مهلت پرداخت پس از ثبت سفارش: ۲۴ ساعت. این مرحله پرداختی انجام نمی‌دهد.</p>
+          <p class="small">مهلت پرداخت پس از ثبت سفارش: ۲۴ ساعت. در این مرحله پرداختی انجام نمی‌شود.</p>
         {% endif %}
       </aside>
     </form>

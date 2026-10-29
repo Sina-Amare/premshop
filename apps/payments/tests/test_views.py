@@ -289,3 +289,10 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     with pytest.raises(UnpaidOrderExists) as caught:
         quote_checkout(user=buyer)
     assert explanation in caught.value.messages[0]
+
+
+def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, buyer, plan, cart):
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    assert "در این مرحله پرداختی انجام نمی‌شود." in response.content.decode()
+    assert "۲۴ ساعت" in response.content.decode()
