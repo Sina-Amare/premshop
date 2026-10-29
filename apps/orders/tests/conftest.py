@@ -35,4 +35,6 @@ def plan():
         cost_price=Decimal("100000"),
         duration_days=30,
         max_quantity=3,
+        input_type=Plan.InputType.NONE,
+        telegram_required=False,
     )

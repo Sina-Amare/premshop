@@ -344,7 +344,13 @@ class PlanInline(StackedInline):
         (_("تخفیف"), {"fields": ["promo_price", ("promo_starts_at", "promo_ends_at")]}),
         (
             _("اطلاعات مشتری و تأمین"),
-            {"fields": [("requires_customer_input", "customer_input_label"), "supplier_url"]},
+            {
+                "fields": [
+                    ("input_type", "telegram_required"),
+                    "customer_input_label",
+                    "supplier_url",
+                ]
+            },
         ),
     ]
 
@@ -1029,7 +1035,7 @@ class PlanAdmin(PreviewAdminMixin):
         ),
         (
             _("اطلاعات مشتری و تأمین"),
-            {"fields": ["requires_customer_input", "customer_input_label", "supplier_url"]},
+            {"fields": ["input_type", "telegram_required", "customer_input_label", "supplier_url"]},
         ),
         (_("ترتیب نمایش"), {"fields": ["sort_order"]}),
     ]

@@ -6,12 +6,20 @@ from django.core.exceptions import FieldError, ImproperlyConfigured
 from django.core.management import call_command
 from django.db import connection
 
+from apps.catalog.models import Plan
 from apps.core.fields import EncryptedTextField, key_id
 from apps.core.observability import sentry_options
 from apps.orders.models import OrderItem
 from apps.orders.services import OrderLine, place_order
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def email_input(plan):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
 
 
 def raw_input(item):

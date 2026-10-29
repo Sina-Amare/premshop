@@ -6,6 +6,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.catalog.models import Plan
 from apps.orders.services import OrderLine, cancel_unpaid_item, place_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -39,11 +40,22 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
         assert page.locator("#changelist").is_visible()
         page.screenshot(path=str(directory / f"empty-{width}.png"), full_page=True)
         plan.title = "پلن یک ماهه برای فعال‌سازی حساب شخصی با نام طولانی در سرویس Example Pro"
+        plan.input_type = Plan.InputType.EMAIL
+        plan.max_quantity = 1
         plan.save()
+        other = Plan.objects.create(
+            product=plan.product,
+            title="پلن بدون ورودی",
+            sale_price=200000,
+            cost_price=100000,
+            max_quantity=2,
+            input_type=Plan.InputType.NONE,
+            telegram_required=False,
+        )
         order = place_order(
             activation_consent=True,
             user=buyer,
-            lines=[OrderLine(plan, 3, "never-render-this@example.test")],
+            lines=[OrderLine(plan, 1, "never-render-this@example.test"), OrderLine(other, 2)],
         )
         cancel_unpaid_item(
             item_id=order.items.first().pk,

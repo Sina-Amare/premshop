@@ -97,6 +97,8 @@ def login_password(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
+        if _wants_json(request):
+            return JsonResponse({"ok": True, "next": _safe_next(request)})
         return redirect(_safe_next(request))
 
     # Back from «ایمیل اشتباه است؟» on the code page: the address the code went
@@ -104,12 +106,14 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
     form = EmailForm(
         request.POST or None, initial={"email": request.session.get(PENDING_EMAIL_KEY)}
     )
+    status = 400
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
         try:
             issued = services.request_login_code(request, email)
         except services.RateLimited as exc:
             form.add_error(None, exc.message)
+            status = 429
         else:
             request.session[PENDING_EMAIL_KEY] = email
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
@@ -117,8 +121,19 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             # session with the address rather than the URL. It is validated
             # here, on the way in, and never re-read from the request after.
             request.session[PENDING_NEXT_KEY] = _safe_next(request)
+            if _wants_json(request):
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "expires_in": _seconds_left(issued.expires_at),
+                        "cooldown": RESEND_COOLDOWN_SECONDS,
+                    }
+                )
             return redirect("login-code-verify")
 
+    if request.method == "POST" and _wants_json(request):
+        error = next((error for errors in form.errors.values() for error in errors), PAGE_EXPIRED)
+        return JsonResponse({"ok": False, "error": str(error)}, status=status)
     return render(
         request, "accounts/login_code_request.html", {"form": form, "next": _safe_next(request)}
     )
@@ -129,6 +144,8 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
 def login_code_verify(request: HttpRequest) -> HttpResponse:
     email = request.session.get(PENDING_EMAIL_KEY)
     if not email:
+        if request.method == "POST" and _wants_json(request):
+            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         return redirect("login-code")
 
     form = CodeForm(request.POST or None)

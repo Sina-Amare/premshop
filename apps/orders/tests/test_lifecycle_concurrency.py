@@ -36,6 +36,8 @@ def separate_plan(plan):
         sale_price=200000,
         cost_price=100000,
         stock_quantity=1,
+        input_type=Plan.InputType.NONE,
+        telegram_required=False,
     )
 
 

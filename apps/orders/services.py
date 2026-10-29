@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, cast
@@ -20,6 +22,7 @@ from django.utils.crypto import constant_time_compare
 
 from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
+from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product
 from apps.catalog.pricing import effective_price
 from apps.orders.models import DiscountCode, DiscountRedemption, Order, OrderItem, OrderItemEvent
@@ -34,14 +37,14 @@ logger = logging.getLogger(__name__)
 class OrderLine:
     plan: Plan
     quantity: int
-    customer_input: str | None = None
+    customer_input: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
 class PricedLine:
     plan: Plan
     quantity: int
-    customer_input: str
+    customer_input: str = field(repr=False)
     price: Decimal
     snapshot: dict[str, Any]
 
@@ -78,6 +81,13 @@ class Purchase:
             "consent_text": CONSENT_TEXT,
         }
 
+    def terms_digest(self) -> str:
+        return hashlib.sha256(
+            json.dumps(
+                self.terms(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+        ).hexdigest()
+
 
 class UnpaidOrderExists(ValidationError):
     def __init__(self, order: Order) -> None:
@@ -111,7 +121,9 @@ def _snapshot(plan: Plan) -> dict[str, Any]:
         "usage_notes": product.usage_notes,
         "refund_note": product.refund_note,
         "requires_customer_input": plan.requires_customer_input,
-        "customer_input_label": plan.customer_input_label,
+        "input_type": plan.input_type,
+        "telegram_required": plan.telegram_required,
+        "customer_input_label": plan.activation_input_label,
         "specs": [{"title": spec.title, "value": spec.value} for spec in product.specs.all()],
     }
 
@@ -195,6 +207,7 @@ def _price(
         plan = plans.get(line.plan.pk or 0)
         if plan is None or not plan.is_available or not plan.product.is_public:
             raise ValidationError("این پلن الان قابل خرید نیست.")
+        plan.validate_input_configuration()
         if type(line.quantity) is not int or not 1 <= line.quantity <= plan.max_quantity:
             raise ValidationError("تعداد انتخاب‌شده برای این پلن مجاز نیست.")
         if plan.stock_quantity is not None and plan.stock_quantity < line.quantity:
@@ -202,8 +215,6 @@ def _price(
         value = "" if line.customer_input is None else line.customer_input
         if not isinstance(value, str) or len(value) > 2000:
             raise ValidationError("اطلاعات فعال‌سازی درست نیست.")
-        if plan.requires_customer_input and (not value.strip() or line.quantity != 1):
-            raise ValidationError("اطلاعات فعال‌سازی را برای یک اکانت وارد کنید.")
         price = _money(effective_price(plan, at=at))
         _money(plan.cost_price)
         subtotal = _money(subtotal + price * line.quantity)
@@ -266,7 +277,7 @@ def place_order(
     activation_consent: bool = False,
     checkout_id: uuid.UUID | None = None,
     submission_digest: str = "",
-    expected_terms: dict[str, Any] | None = None,
+    expected_terms: dict[str, Any] | str | None = None,
 ) -> Order:
     account = (
         User.objects.select_for_update(no_key=True).filter(pk=user.pk, is_active=True).first()
@@ -345,11 +356,16 @@ def place_order(
     if name and (code is None or code.code != name):
         raise ValidationError("کد تخفیف معتبر نیست.")
     purchase = _price(user_id=account.pk, lines=lines, plans=plans, code=code, at=at)
-    if expected_terms is not None and purchase.terms() != expected_terms:
+    current_terms = purchase.terms_digest() if isinstance(expected_terms, str) else purchase.terms()
+    if expected_terms is not None and current_terms != expected_terms:
         raise ValidationError(
             "قیمت یا شرایط خرید تغییر کرده است. خلاصه‌ی جدید را بررسی و دوباره تأیید کنید.",
             code="quote_changed",
         )
+    inputs = {
+        line.plan.pk: normalize_customer_input(line.plan.input_type, line.customer_input)
+        for line in purchase.lines
+    }
     try:
         with transaction.atomic():
             order = Order.objects.create(
@@ -391,7 +407,7 @@ def place_order(
                 price_snapshot=line.price,
                 cost_snapshot=line.plan.cost_price,
                 product_snapshot=line.snapshot,
-                customer_input=line.customer_input,
+                customer_input=inputs[line.plan.pk],
                 stock_debited=debited,
             )
             OrderItemEvent.objects.create(
@@ -543,16 +559,18 @@ def cancel_unpaid_item(*, item_id: int, actor: User, note: str = "") -> OrderIte
     return OrderItem.objects.defer("customer_input").get(pk=item_id)
 
 
-def expire_unpaid_orders(*, limit: int = 100) -> int:
+def expire_unpaid_orders(*, limit: int = 100, user_id: int | None = None) -> int:
     if type(limit) is not int or not 1 <= limit <= 1000:
         raise ValueError("Expiry batches must hold between 1 and 1000 orders.")
     at = timezone.now()
     pending = OrderItem.objects.filter(
         order_id=OuterRef("pk"), status=OrderItem.Status.PENDING_PAYMENT
     )
+    orders = Order.objects.filter(unpaid_expires_at__lte=at)
+    if user_id is not None:
+        orders = orders.filter(user_id=user_id)
     ids = list(
-        Order.objects.filter(unpaid_expires_at__lte=at)
-        .filter(Exists(pending))
+        orders.filter(Exists(pending))
         .order_by(F("expiry_last_attempt_at").asc(nulls_first=True), "unpaid_expires_at", "pk")
         .values_list("pk", flat=True)[:limit]
     )

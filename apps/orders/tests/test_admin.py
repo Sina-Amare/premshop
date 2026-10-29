@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.catalog.models import Plan
 from apps.orders.models import Order
 from apps.orders.services import OrderLine, place_order
 
@@ -11,6 +12,9 @@ pytestmark = pytest.mark.django_db
 def test_order_admin_is_read_only_searchable_and_never_discloses_input(
     client, buyer, plan, settings
 ):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
     order = place_order(
         activation_consent=True,
         user=buyer,

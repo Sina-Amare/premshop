@@ -1,0 +1,9 @@
+{% extends "accounts/_account_base.html" %}{% load fa %}
+{% block title %}سفارش {{ order.order_number|fa_digits }}{% endblock %}
+{% block heading %}سفارش {{ order.order_number|fa_digits }}{% endblock %}
+{% block section %}
+<p>تاریخ ثبت: {{ order.created_at|jalali }}</p>
+{% for item in items %}<article class="checkout-item"><h2><bdi>{{ item.product_snapshot.name }}</bdi></h2><p><bdi>{{ item.product_snapshot.plan_title }}</bdi>؛ {{ item.get_status_display }}</p><p>{{ item.price_snapshot|price_html }}</p></article>{% endfor %}
+<p>مبلغ نهایی سفارش: {{ order.total_amount|price_html }}</p>
+<p><a href="{% url 'home' %}">بازگشت به فروشگاه</a></p>
+{% endblock %}

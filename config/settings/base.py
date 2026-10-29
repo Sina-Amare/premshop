@@ -119,6 +119,7 @@ INSTALLED_APPS = [
     "apps.catalog",
     "apps.cart",
     "apps.orders",
+    "apps.payments",
     "huey.contrib.djhuey",
     "apps.core",
 ]

@@ -108,7 +108,7 @@
                      {% if not option.selectable %}disabled{% elif option == purchase.chosen %}checked{% endif %}
                      data-max="{{ option.max_add }}" data-in-cart="{{ option.in_cart }}"
                      data-price-key="{{ plan.effective_price|toman_plain }}|{{ plan.sale_price|toman_plain }}|{{ plan.promo_ends_at|date:'U' }}"
-                     data-asks="{{ plan.customer_input_label }}">
+                     data-asks="{{ plan.activation_input_label }}">
               <span class="plan__details">
                 <span class="plan__line"><span data-preview-field="title" class="plan__title"><bdi>{{ plan.title }}</bdi></span>
                   <span data-preview-field="sale_price is_available stock_quantity"><span data-plan-price data-preview-container{% if not option.selectable %} hidden{% endif %}>{% include "catalog/_price.html" with plan=plan %}</span><span class="plan__off"{% if option.selectable %} hidden{% endif %}>فعلاً ناموجود</span></span>
@@ -134,7 +134,7 @@
         <p class="micro buybox__limit" id="qty-limit" hidden></p>
         {% endif %}
         {# What this plan needs from the buyer, in the operator's own words. #}
-        <p data-preview-target="customer-input" data-preview-field="requires_customer_input customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
+        <p data-preview-target="customer-input" data-preview-field="input_type telegram_required customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         {% include 'catalog/_buybox_selection.html' %}
         {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif purchase.chosen.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
         {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}

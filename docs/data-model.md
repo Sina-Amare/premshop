@@ -150,6 +150,8 @@ Login codes live in **Redis, not tables**, for 10 minutes (`CODE_TTL_SECONDS` in
 
 ### `catalog` — **built at S3** (ADR-0025)
 
+**Checkout declarations — 2026-10-29.** `Plan.input_type` is `unreviewed`, `none`, `email` or `username`; `telegram_required` is nullable until reviewed. Existing rows remain unreviewed without inferring anything from their descriptions or old labels. Checkout refuses unreviewed or inconsistent declarations. For reviewed types, `requires_customer_input` is a compatibility flag derived from the type; email/username plans retain the one-unit rule. Database checks reject unknown types and reviewed rows without an explicit Telegram requirement or matching flag. The operator edits both declarations in standalone/inline forms. Secret-seeking labels are refused. Services normalize the declared non-secret value, encrypt it, and freeze the type, effective label and Telegram requirement with each unit. A quote can be reviewed before entering the value; creation requires and validates it.
+
 Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `catalog` migrations; the CHECK constraints are listed in §3. What the code cannot say, or says in one place that every later step must honour:
 
 > **Money** everywhere in this document is `DecimalField(max_digits=12, decimal_places=0)`: whole toman, exact arithmetic, the unit visible in the schema. One `MoneyField()` definition in `apps/catalog/models.py` is reused by every money column.

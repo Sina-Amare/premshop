@@ -28,6 +28,8 @@ def test_multiline_creation_uses_fresh_prices_and_freezes_purchase_facts(buyer, 
         title="سه ماهه",
         cost_price=300000,
         sale_price=600000,
+        input_type=Plan.InputType.NONE,
+        telegram_required=False,
     )
     Plan.objects.filter(pk=plan.pk).update(sale_price=250000, promo_price=220000)
     order = place_order(
@@ -78,7 +80,9 @@ def test_empty_duplicate_lines_and_inactive_buyer_are_refused(buyer, plan):
 
 
 def test_required_input_and_quantity_are_checked_from_database(buyer, plan):
-    Plan.objects.filter(pk=plan.pk).update(requires_customer_input=True, max_quantity=1)
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
     for line in (OrderLine(plan, 1), OrderLine(plan, 2, "target@example.test")):
         with pytest.raises(ValidationError):
             place_order(activation_consent=True, user=buyer, lines=[line])

@@ -416,7 +416,7 @@ msgstr "First “this product is not for you if…”, then the limits and what 
 msgid "این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."
 msgstr "This product already has a “Before you buy” section. Edit that one."
 
-msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
+msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی‌نشده‌اند."
 msgstr "This product is time-sensitive and its claims have not been checked in the last 7 days."
 
 msgid "با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."
@@ -1133,3 +1133,51 @@ msgstr "Eligible products"
 
 msgid "حذف محصولات انتخاب‌شده"
 msgstr "Delete selected products"
+
+msgid "ایمیل"
+msgstr "Email"
+
+msgid "ایمیل اکانت"
+msgstr "Account email"
+
+msgid "بدون نیاز به اطلاعات"
+msgstr "No input"
+
+msgid "بررسی‌نشده"
+msgstr "Not reviewed"
+
+msgid "تا تعیین نوع اطلاعات و نیاز به تلگرام، ثبت سفارش این پلن بسته است."
+msgstr "Checkout is blocked until the input type and Telegram requirement are set."
+
+msgid "لازم است"
+msgstr "Required"
+
+msgid "لازم نیست"
+msgstr "Not required"
+
+msgid "نام کاربری"
+msgstr "Username"
+
+msgid "نام کاربری اکانت"
+msgstr "Account username"
+
+msgid "نوع اطلاعات فعال‌سازی"
+msgstr "Activation input type"
+
+msgid "نوع اطلاعات فعال‌سازی معتبر نیست."
+msgstr "The activation input type is invalid."
+
+msgid "نوع اطلاعات فعال‌سازی و نیاز به تلگرام را بررسی کنید."
+msgstr "Review the activation input type and Telegram requirement."
+
+msgid "نیاز به تلگرام برای فعال‌سازی"
+msgstr "Telegram required for activation"
+
+msgid "نیاز به تلگرام را بر اساس روش تحویل همین پلن تعیین کنید."
+msgstr "Set the Telegram requirement according to this plan's delivery method."
+
+msgid "نیاز به تلگرام را مشخص کنید."
+msgstr "Specify whether Telegram is required."
+
+msgid "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
+msgstr "A plan requiring input can only be purchased once per order."
