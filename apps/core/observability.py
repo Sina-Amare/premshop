@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import re
 import traceback
+from copy import copy
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -109,15 +110,17 @@ def redact_url(text: str) -> str:
 
 
 class PrivateLinkFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = redact_url(record.getMessage())
-        record.args = ()
+    def filter(self, record: logging.LogRecord) -> logging.LogRecord:
+        sanitized = copy(record)
+        sanitized.msg = redact_url(record.getMessage())
+        sanitized.args = ()
         if record.exc_info:
-            record.exc_text = redact_url("".join(traceback.format_exception(*record.exc_info)))
-            record.exc_info = None
+            sanitized.exc_text = redact_url("".join(traceback.format_exception(*record.exc_info)))
+        elif record.exc_text:
+            sanitized.exc_text = redact_url(record.exc_text)
         if record.stack_info:
-            record.stack_info = redact_url(record.stack_info)
-        return True
+            sanitized.stack_info = redact_url(record.stack_info)
+        return sanitized
 
 
 def scrub(data: Any, *, _depth: int = 0) -> Any:

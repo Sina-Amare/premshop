@@ -40,3 +40,42 @@ def test_configured_access_and_exception_logs_redact_tracking_links():
             assert "RuntimeError" in stream.getvalue()
         finally:
             handler.setStream(previous)
+
+
+def test_logged_exceptions_keep_sentry_stack_frames_without_tracking_tokens():
+    import json
+
+    import sentry_sdk
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.transport import Transport
+
+    from apps.core.observability import sentry_options
+
+    captured = []
+
+    class Capture(Transport):
+        def capture_envelope(self, envelope):
+            for item in envelope.items:
+                if item.headers.get("type") == "event":
+                    captured.append(item.payload.json)
+
+    client = sentry_sdk.Client(
+        **sentry_options(dsn="https://public@example.test/1", environment="test"),
+        transport=Capture(),
+        default_integrations=False,
+        integrations=[LoggingIntegration(event_level=logging.ERROR)],
+    )
+    with sentry_sdk.isolation_scope() as scope:
+        scope.set_client(client)
+        try:
+            raise RuntimeError("Failed /track/SENTRY-TOKEN_123/")
+        except RuntimeError:
+            logging.getLogger("apps.core.middleware").exception(
+                "Tracking failed on /track/SENTRY-TOKEN_123/"
+            )
+    client.close()
+    assert len(captured) == 1
+    exception = captured[0]["exception"]["values"][0]
+    assert exception["type"] == "RuntimeError"
+    assert exception["stacktrace"]["frames"]
+    assert "SENTRY-TOKEN_123" not in json.dumps(captured)
