@@ -1,7 +1,10 @@
 from typing import Any
 
 from django import forms
+from django.core.exceptions import ValidationError
 
+from apps.accounts.validators import normalize_mobile_phone
+from apps.catalog.inputs import normalize_customer_input
 from apps.orders.services import CONSENT_TEXT, Purchase
 
 
@@ -34,11 +37,13 @@ class CheckoutForm(forms.Form):
     def __init__(self, *args: Any, purchase: Purchase | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.input_fields = []
+        self.input_types: dict[str, str] = {}
         if purchase:
             for line in purchase.lines:
                 if line.plan.input_type == "none":
                     continue
                 name = f"customer_input_{line.plan.pk}"
+                self.input_types[name] = line.plan.input_type
                 self.fields[name] = forms.CharField(
                     label=line.plan.activation_input_label,
                     max_length=254 if line.plan.input_type == "email" else 151,
@@ -53,3 +58,17 @@ class CheckoutForm(forms.Form):
                     ),
                 )
                 self.input_fields.append((line, self[name]))
+
+    def clean_phone(self) -> str:
+        return normalize_mobile_phone(self.cleaned_data["phone"])
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        for name, kind in self.input_types.items():
+            if name not in cleaned:
+                continue
+            try:
+                cleaned[name] = normalize_customer_input(kind, cleaned[name])
+            except ValidationError as error:
+                self.add_error(name, error)
+        return cleaned

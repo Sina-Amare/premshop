@@ -150,3 +150,43 @@ def test_consent_and_input_errors_preserve_cart_without_echoing_input_in_errors(
     assert "ایمیل اکانت را درست وارد کنید" in response.content.decode()
     assert "invalid-private-input" not in str(response.context["error"])
     assert cart.items.exists() and not Order.objects.exists()
+
+
+def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer, plan, cart):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
+    other = Plan.objects.create(
+        product=plan.product,
+        title="پلن دوم",
+        sale_price=100000,
+        cost_price=50000,
+        input_type="email",
+        telegram_required=False,
+    )
+    CartItem.objects.create(cart=cart, plan=other)
+    client.force_login(buyer)
+    accepted = quote_checkout(user=buyer)
+    response = client.post(
+        reverse("checkout"),
+        {
+            "action": "checkout",
+            "quote": accepted.token,
+            "checkout_id": uuid.uuid4(),
+            "activation_consent": "on",
+            "phone": "0912",
+            f"customer_input_{plan.pk}": "valid@example.test",
+            f"customer_input_{other.pk}": "invalid-private-input",
+        },
+    )
+    assert response.status_code == 400
+    form = response.context["form"]
+    valid = form[f"customer_input_{plan.pk}"]
+    invalid = form[f"customer_input_{other.pk}"]
+    assert not valid.errors and 'aria-invalid="true"' not in str(valid)
+    assert invalid.errors and 'aria-invalid="true"' in str(invalid)
+    assert f"{invalid.auto_id}_error" in str(invalid)
+    assert form["phone"].errors and 'aria-invalid="true"' in str(form["phone"])
+    assert valid.value() == "valid@example.test" and not form["activation_consent"].value()
+    assert "invalid-private-input" not in str(invalid.errors)
+    assert not Order.objects.exists() and cart.items.count() == 2

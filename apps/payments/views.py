@@ -44,6 +44,15 @@ def _page(
         for line in quote.purchase.lines:
             key = f"customer_input_{line.plan.pk}"
             initial[key] = request.POST.get(key, "")[:2000]
+    form = CheckoutForm(initial=initial, purchase=quote.purchase if quote else None)
+    if request.method == "POST" and request.POST.get("action") == "checkout" and error:
+        submitted = CheckoutForm(request.POST, purchase=quote.purchase if quote else None)
+        submitted.is_valid()
+        # Keep field errors while presenting a new quote and unticked consent.
+        form.errors.update(submitted.errors)
+        for _, bound in form.input_fields:
+            if bound.errors:
+                bound.field.widget.attrs["aria-describedby"] += f" {bound.auto_id}_error"
     return render(
         request,
         "payments/checkout.html",
@@ -51,7 +60,7 @@ def _page(
             "quote": quote,
             "existing": existing,
             "error": error,
-            "form": CheckoutForm(initial=initial, purchase=quote.purchase if quote else None),
+            "form": form,
             "cart": cart_summary(get_cart(request)),
             "email_form": EmailForm(),
             "code_form": CodeForm(),
