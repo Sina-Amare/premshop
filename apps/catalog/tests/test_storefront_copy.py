@@ -45,6 +45,7 @@ BANNED = [
     ("شماره تماس", "«شماره‌ی موبایل»"),
     ("عضو از", "«تاریخ عضویت»"),
     ("کد تأیید", "«کد ورود»"),
+    ("تازه", "«جدید»"),
     ("برمی‌گرده", "«برمی‌گردانیم», with its condition"),
     ("ضمانت بازگشت وجه", "«بازگشت وجه», with its condition"),
     ("تومن", "«تومان»"),
@@ -283,7 +284,13 @@ def test_every_email_speaks_written_persian_in_both_halves():
         )
         if found:
             bad[name] = found
-    assert len(EMAIL_PREVIEWS) == 3
+    assert {
+        "otp_code",
+        "signin_alert",
+        "item_delivered",
+        "password_reset",
+        "password_changed",
+    } <= set(EMAIL_PREVIEWS)
     assert not bad
 
 

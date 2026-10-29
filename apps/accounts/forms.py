@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import re
-import unicodedata
 from typing import Any
 
 from django import forms
 from django.contrib.auth import forms as auth_forms
+from django.contrib.auth.hashers import check_password
 
 from apps.accounts import otp
 from apps.accounts.models import User
+from apps.accounts.validators import normalize_mobile_phone
 
 
 class EmailForm(forms.Form):
@@ -111,6 +111,15 @@ class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordCha
       afford.
     """
 
+    def clean_old_password(self) -> str:
+        password = self.cleaned_data["old_password"]
+        # Hash upgrades write the account; only the locked service may do that.
+        if not check_password(password, self.user.password):
+            raise forms.ValidationError(
+                self.error_messages["password_incorrect"], code="password_incorrect"
+            )
+        return password
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.error_messages = {
@@ -150,6 +159,13 @@ class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordFor
             field.widget.attrs["class"] = "field__input"
 
 
+class PasswordRecoveryForm(StyledSetPasswordForm, CodeForm):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["code"].label = "کد بازیابی"
+        self.order_fields(["code", "new_password1", "new_password2"])
+
+
 class ProfileForm(forms.ModelForm):
     """The parts of the account a customer may edit themselves. Today: the phone.
 
@@ -181,15 +197,4 @@ class ProfileForm(forms.ModelForm):
         fields = ["phone"]
 
     def clean_phone(self) -> str:
-        # Direction marks and other invisible format characters come along with
-        # a number copied from a contact card or a chat on a right-to-left phone.
-        typed = otp.normalize_digits(self.cleaned_data.get("phone") or "")
-        value = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
-        if not value:
-            return ""
-        # [0-9], not \d or isdigit(): both accept digits from other scripts, and
-        # isdigit() accepts «²».
-        mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", value))
-        if not mobile:
-            raise forms.ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
-        return "0" + mobile.group(1)
+        return normalize_mobile_phone(self.cleaned_data.get("phone") or "")

@@ -127,7 +127,7 @@ msgid "No data"
 msgstr "هنوز موردی ثبت نشده"
 
 msgid "No results found"
-msgstr "چیزی پیدا نشد"
+msgstr "چیزی پیدا نکردیم"
 
 msgid "No, take me back"
 msgstr "انصراف و بازگشت"
@@ -235,7 +235,7 @@ msgid "This item will be deleted."
 msgstr "این مورد حذف می‌شه."
 
 msgid "This page yielded into no results. Create a new item or reset your filters."
-msgstr "چیزی پیدا نشد. یک مورد جدید اضافه کنید یا فیلترها رو پاک کنید."
+msgstr "چیزی پیدا نکردیم. یک مورد جدید اضافه کنید یا فیلترها رو پاک کنید."
 
 msgid "Time"
 msgstr "ساعت"
@@ -911,7 +911,7 @@ msgid "هر محصول حداکثر یک بخش «پیش از خرید» دار�
 msgstr "هر محصول فقط یک بخش «قبل از خرید» می‌تونه داشته باشه."
 
 msgid "هیچ محصول دیگری بخش محتوا ندارد."
-msgstr "محصول دیگه‌ای با بخش محتوا پیدا نشد."
+msgstr "محصول دیگری با بخش محتوا پیدا نکردیم."
 
 msgid "هیچ پلن موجودی ندارد."
 msgstr "برای انتشار، حداقل یک پلن با وضعیت «موجود» لازمه."

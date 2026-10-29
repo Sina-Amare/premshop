@@ -59,7 +59,7 @@ def field_placements(model: str) -> dict[str, tuple[str, str]]:
                 _("تعداد مجاز و اطلاعات لازم برای پلن انتخاب‌شده"),
             ),
             (
-                "requires_customer_input,customer_input_label",
+                "input_type,telegram_required,customer_input_label",
                 "customer-input",
                 _("تعداد مجاز و اطلاعات لازم برای پلن انتخاب‌شده"),
             ),

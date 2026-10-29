@@ -160,7 +160,7 @@ def validate_image_upload(file: Any) -> None:
                 # The header alone passes a file cut off in transit, which
                 # then failed in pre_save as a server error.
                 image.load()
-    except (OSError, SyntaxError, Image.DecompressionBombError):
+    except OSError, SyntaxError, Image.DecompressionBombError:
         kind, width, height = None, 0, 0
     finally:
         file.seek(0)
@@ -365,11 +365,12 @@ class ProductQuerySet(models.QuerySet["Product"]):
         # Bounded: a 100-character query is already capped by the view, and no
         # real search needs more than a handful of words to be precise.
         for word in needle.split()[:8]:
-            matches = matches.filter(search_text__icontains=word)
+            matches = matches.filter(search_text__contains=word)
         if matches.exists():
             return matches
         return (
-            self.annotate(closeness=TrigramWordSimilarity(needle, "search_text"))
+            self.filter(search_text__trigram_word_similar=needle)
+            .annotate(closeness=TrigramWordSimilarity(needle, "search_text"))
             .filter(closeness__gte=FUZZY_THRESHOLD)
             .order_by("-closeness", "name")
         )
@@ -859,6 +860,12 @@ class ProductSpec(PageRow):
 
 
 class Plan(ChecksNameTheirField, PageRow):
+    class InputType(models.TextChoices):
+        UNREVIEWED = "unreviewed", _("بررسی‌نشده")
+        NONE = "none", _("بدون نیاز به اطلاعات")
+        EMAIL = "email", _("ایمیل")
+        USERNAME = "username", _("نام کاربری")
+
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="plans", verbose_name=_("محصول")
     )
@@ -892,11 +899,11 @@ class Plan(ChecksNameTheirField, PageRow):
         ),
     )
     stock_quantity = models.PositiveIntegerField(
-        _("موجودی کل"),
+        _("موجودی قابل فروش"),
         null=True,
         blank=True,
         help_text=_(
-            "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
+            "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
         ),
     )
     is_available = models.BooleanField(
@@ -913,6 +920,20 @@ class Plan(ChecksNameTheirField, PageRow):
         _("حداکثر تعداد در هر سفارش"),
         default=1,
         help_text=_("۱ یعنی مشتری تعداد نمی‌بیند."),
+    )
+    input_type = models.CharField(
+        _("نوع اطلاعات فعال‌سازی"),
+        max_length=12,
+        choices=InputType.choices,
+        default=InputType.UNREVIEWED,
+        help_text=_("تا تعیین نوع اطلاعات و نیاز به تلگرام، ثبت سفارش این پلن بسته است."),
+    )
+    telegram_required = models.BooleanField(
+        _("نیاز به تلگرام برای فعال‌سازی"),
+        null=True,
+        blank=True,
+        choices=[(None, _("بررسی‌نشده")), (True, _("لازم است")), (False, _("لازم نیست"))],
+        help_text=_("نیاز به تلگرام را بر اساس روش تحویل همین پلن تعیین کنید."),
     )
     requires_customer_input = models.BooleanField(
         _("نیاز به اطلاعات مشتری"),
@@ -951,6 +972,8 @@ class Plan(ChecksNameTheirField, PageRow):
         "plan_max_quantity_1_to_10": "max_quantity",
         "plan_customer_input_is_one_per_order": "max_quantity",
         "plan_stock_not_negative": "stock_quantity",
+        "plan_input_type_known": "input_type",
+        "plan_reviewed_input_consistent": "input_type",
     }
 
     class Meta:
@@ -958,6 +981,23 @@ class Plan(ChecksNameTheirField, PageRow):
         verbose_name_plural = _("پلن‌ها")
         ordering = ["sort_order", "id"]
         constraints = [
+            models.CheckConstraint(
+                condition=Q(input_type__in=["unreviewed", "none", "email", "username"]),
+                name="plan_input_type_known",
+                violation_error_message=_("نوع اطلاعات فعال‌سازی معتبر نیست."),
+            ),
+            models.CheckConstraint(
+                condition=Q(input_type="unreviewed")
+                | (
+                    Q(telegram_required__isnull=False)
+                    & (
+                        Q(input_type="none", requires_customer_input=False)
+                        | Q(input_type__in=["email", "username"], requires_customer_input=True)
+                    )
+                ),
+                name="plan_reviewed_input_consistent",
+                violation_error_message=_("نوع اطلاعات فعال‌سازی و نیاز به تلگرام را بررسی کنید."),
+            ),
             # A promotion is a lower price or it is nothing. Zero, negative, or
             # at-or-above the list price is refused by the database itself, so
             # no admin form, shell or import can put the shop in a state where
@@ -1028,8 +1068,18 @@ class Plan(ChecksNameTheirField, PageRow):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.pk and self.stock_quantity is not None:
             Plan.objects.select_for_update().get(pk=self.pk)
-        # A price someone has just typed is a price someone has just checked.
         fields = kwargs.get("update_fields")
+        if self.input_type != self.InputType.UNREVIEWED and (
+            fields is None or set(fields) & {"input_type", "requires_customer_input"}
+        ):
+            self.requires_customer_input = self.input_type in (
+                self.InputType.EMAIL,
+                self.InputType.USERNAME,
+            )
+            if fields is not None:
+                fields = {*fields, "requires_customer_input"}
+                kwargs["update_fields"] = fields
+        # A price someone has just typed is a price someone has just checked.
         if (fields is None or set(fields) & set(PRICE_FIELDS)) and self._price_is_new():
             self.price_confirmed_at = timezone.now()
             if fields is not None:
@@ -1039,16 +1089,46 @@ class Plan(ChecksNameTheirField, PageRow):
     def clean(self) -> None:
         super().clean()
         check_no_typed_discount(self, "title")
+        errors = {}
+        if self.input_type != self.InputType.UNREVIEWED:
+            self.requires_customer_input = self.input_type in (
+                self.InputType.EMAIL,
+                self.InputType.USERNAME,
+            )
+            if self.telegram_required is None:
+                errors["telegram_required"] = _("نیاز به تلگرام را مشخص کنید.")
+            if self.requires_customer_input and self.max_quantity != 1:
+                errors["max_quantity"] = _(
+                    "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
+                )
         # Whatever the product's status: a draft's label is what goes live.
         if ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label)):
-            raise ValidationError(
-                {
-                    "customer_input_label": _(
-                        "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید."
-                        " صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
-                    )
-                }
+            errors["customer_input_label"] = _(
+                "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید."
+                " صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
             )
+        if errors:
+            raise ValidationError(errors)
+
+    def validate_input_configuration(self) -> None:
+        if (
+            self.input_type
+            not in (self.InputType.NONE, self.InputType.EMAIL, self.InputType.USERNAME)
+            or type(self.telegram_required) is not bool
+            or self.requires_customer_input != (self.input_type != self.InputType.NONE)
+            or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
+        ):
+            raise ValidationError("این پلن فعلاً قابل خرید نیست. از پشتیبانی راهنمایی بگیرید.")
+
+    @property
+    def activation_input_label(self) -> str:
+        if self.input_type == self.InputType.NONE:
+            return ""
+        labels: dict[str, str] = {
+            self.InputType.EMAIL: gettext("ایمیل اکانت"),
+            self.InputType.USERNAME: gettext("نام کاربری اکانت"),
+        }
+        return self.customer_input_label or labels.get(self.input_type, "")
 
     def _price_is_new(self) -> bool:
         if self._state.adding:

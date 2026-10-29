@@ -1,0 +1,6 @@
+{% extends "orders/_document.html" %}{% load fa %}
+{% block title %}پیگیری سفارش{% endblock %}
+{% block content %}<h1>پیگیری سفارش</h1>
+{% for item in tracking %}<section class="order-line"><h2><bdi>{{ item.name }}</bdi></h2><p class="order-status">{{ item.status }}</p><p>تاریخ ثبت: {{ item.created_at|jalali }}، ساعت {{ item.created_at|date:"H:i"|fa_digits }}</p>
+<ol class="order-timeline">{% for event in item.timeline %}<li><span>{{ event.status }}</span><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></section>{% endfor %}
+{% endblock %}

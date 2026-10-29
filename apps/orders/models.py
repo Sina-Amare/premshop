@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import secrets
+import uuid
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import connection, models
 from django.db.models import F, Q
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.catalog.models import MoneyField
@@ -26,13 +29,17 @@ def tracking_token() -> str:
     return secrets.token_urlsafe(16)
 
 
+def unpaid_deadline() -> datetime:
+    return timezone.now() + timedelta(hours=24)
+
+
 class DiscountCode(models.Model):
     class Kind(models.TextChoices):
         PERCENT = "percent", _("درصدی")
         FIXED = "fixed", _("مبلغ ثابت")
 
     class Scope(models.TextChoices):
-        ALL = "all", _("همهٔ محصولات")
+        ALL = "all", _("همه‌ی محصولات")
         SELECTED = "selected", _("محصولات انتخاب‌شده")
 
     code = models.CharField(
@@ -41,15 +48,17 @@ class DiscountCode(models.Model):
     kind = models.CharField(_("نوع"), max_length=8, choices=Kind.choices)
     value = MoneyField(verbose_name=_("مقدار"))
     scope = models.CharField(_("دامنه"), max_length=8, choices=Scope.choices, default=Scope.ALL)
-    products = models.ManyToManyField("catalog.Product", blank=True)
-    max_uses = models.PositiveIntegerField(null=True, blank=True)
-    used_count = models.PositiveIntegerField(default=0)
-    per_user_limit = models.PositiveIntegerField(null=True, blank=True)
-    min_order_amount = MoneyField(null=True, blank=True)
-    valid_from = models.DateTimeField(null=True, blank=True)
-    valid_until = models.DateTimeField(null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    products = models.ManyToManyField("catalog.Product", verbose_name=_("محصولات"), blank=True)
+    max_uses = models.PositiveIntegerField(_("حداکثر تعداد استفاده"), null=True, blank=True)
+    used_count = models.PositiveIntegerField(_("تعداد استفاده‌ی فعال"), default=0)
+    per_user_limit = models.PositiveIntegerField(
+        _("حداکثر استفاده برای هر مشتری"), null=True, blank=True
+    )
+    min_order_amount = MoneyField(verbose_name=_("حداقل مبلغ سفارش"), null=True, blank=True)
+    valid_from = models.DateTimeField(_("شروع اعتبار"), null=True, blank=True)
+    valid_until = models.DateTimeField(_("پایان اعتبار"), null=True, blank=True)
+    is_active = models.BooleanField(_("فعال"), default=True)
+    created_at = models.DateTimeField(_("زمان ایجاد"), auto_now_add=True)
 
     class Meta:
         verbose_name = _("کد تخفیف")
@@ -106,11 +115,20 @@ class Order(models.Model):
         verbose_name=_("مشتری"),
     )
     order_number = models.BigIntegerField(
-        _("شمارهٔ سفارش"), default=next_order_number, unique=True, editable=False
+        _("شماره‌ی سفارش"), default=next_order_number, unique=True, editable=False
     )
     tracking_token = models.CharField(
         max_length=32, default=tracking_token, unique=True, editable=False
     )
+    checkout_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    submission_digest = models.CharField(max_length=64, blank=True, default="", editable=False)
+    unpaid_expires_at = models.DateTimeField(default=unpaid_deadline, db_index=True)
+    expiry_last_attempt_at = models.DateTimeField(null=True, blank=True, editable=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True, editable=False)
+    consent_text = models.TextField(blank=True, default="", editable=False)
+    consent_version = models.CharField(max_length=20, blank=True, default="", editable=False)
+    consent_accepted_at = models.DateTimeField(null=True, editable=False)
+    discount_snapshot = models.JSONField(default=dict, blank=True, editable=False)
     subtotal = MoneyField(verbose_name=_("جمع اقلام"))
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.PROTECT, null=True, blank=True)
     discount_amount = MoneyField(verbose_name=_("تخفیف"), default=0)
@@ -118,7 +136,7 @@ class Order(models.Model):
     channel = models.CharField(
         _("مسیر ثبت"), max_length=8, choices=Channel.choices, default=Channel.WEB
     )
-    created_at = models.DateTimeField(_("زمان ثبت"), auto_now_add=True)
+    created_at = models.DateTimeField(_("زمان ثبت"), default=timezone.now, editable=False)
 
     class Meta:
         verbose_name = _("سفارش")
@@ -172,6 +190,7 @@ class OrderItem(models.Model):
     cost_snapshot = MoneyField(verbose_name=_("قیمت تأمین زمان خرید"))
     product_snapshot = models.JSONField(_("اطلاعات زمان خرید"))
     customer_input = EncryptedTextField(blank=True, default="")
+    stock_debited = models.BooleanField(default=False, editable=False)
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
     )
@@ -264,12 +283,17 @@ class OrderItemEvent(models.Model):
 
 class DiscountRedemption(models.Model):
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.PROTECT)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    order = models.OneToOneField(Order, on_delete=models.PROTECT)
-    amount = MoneyField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name=_("مشتری"), on_delete=models.PROTECT
+    )
+    order = models.OneToOneField(Order, verbose_name=_("سفارش"), on_delete=models.PROTECT)
+    amount = MoneyField(verbose_name=_("مبلغ تخفیف"))
+    created_at = models.DateTimeField(_("زمان استفاده"), auto_now_add=True)
+    released_at = models.DateTimeField(_("زمان آزادسازی"), null=True, blank=True, editable=False)
 
     class Meta:
+        verbose_name = _("استفاده از کد تخفیف")
+        verbose_name_plural = _("سوابق استفاده از کد تخفیف")
         constraints = [
             models.CheckConstraint(
                 condition=Q(amount__gte=0), name="discount_redemption_not_negative"
@@ -279,3 +303,16 @@ class DiscountRedemption(models.Model):
 
     def __str__(self) -> str:
         return f"سفارش {to_persian_digits(self.order_id)}"
+
+
+class UnpaidExpirySweep(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    last_success_at = models.DateTimeField(_("آخرین بررسی موفق"))
+    processed_count = models.PositiveSmallIntegerField(_("سفارش‌های لغوشده"))
+    overdue_count = models.PositiveIntegerField(_("سفارش‌های گذشته از مهلت"))
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(id=1), name="unpaid_sweep_singleton")]
+
+    def __str__(self) -> str:
+        return "بررسی مهلت پرداخت"

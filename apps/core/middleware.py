@@ -9,9 +9,55 @@ from django.conf import settings
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils.cache import patch_cache_control
 from redis.exceptions import RedisError
 
+from apps.core.observability import redact_url
+
 logger = logging.getLogger(__name__)
+
+
+class OrderPagePrivacy:
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        tracking = request.path.lower().startswith("/track/")
+        if tracking and response.status_code >= 400:
+            retained = {
+                name: response[name]
+                for name in ("Allow", "Strict-Transport-Security", "Cross-Origin-Opener-Policy")
+                if name in response
+            }
+            response = render(
+                None,
+                "orders/tracking_error.html",
+                {
+                    "unavailable": response.status_code >= 500,
+                    "limited": response.status_code == 429,
+                },
+                status=response.status_code,
+            )
+            for name, value in retained.items():
+                response[name] = value
+            if response.status_code == 429:
+                response["Retry-After"] = "60"
+        if tracking or request.path.startswith("/account/orders/"):
+            patch_cache_control(
+                response,
+                private=True,
+                no_store=True,
+                no_cache=True,
+                max_age=0,
+                must_revalidate=True,
+            )
+            response["X-Robots-Tag"] = "noindex, nofollow"
+            if tracking:
+                response["Referrer-Policy"] = "no-referrer"
+            response["X-Frame-Options"] = "DENY"
+            response["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 class RejectNul:
@@ -60,7 +106,9 @@ class CacheUnavailableMiddleware:
         if not isinstance(exception, RedisError):
             return None
         # Loud in the log and in error tracking, quiet and honest on screen.
-        logger.error("cache unavailable on %s: %s", request.path, exception)
+        logger.error(
+            "cache unavailable on %s (%s)", redact_url(request.path), type(exception).__name__
+        )
         return render(request, "503.html", status=503)
 
 

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, close_old_connections, connections, transaction
 from django.test import Client, RequestFactory
 from django.utils import timezone
@@ -260,21 +260,80 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
 
 
 def test_first_add_is_merged_even_if_login_already_cached_the_session(client, plan, buyer):
-    from apps.accounts.models import User
+    from apps.accounts import services
 
     key = client.session.session_key
     guest = request_for(session=SessionStore(session_key=key))
-    real_check = User.check_password
+    real_login = services.login_with_password
 
-    def check_with_concurrent_add(user, password):
-        valid = real_check(user, password)
-        if valid:
-            add_to_cart(guest, plan_id=plan.pk)
-        return valid
+    def login_after_concurrent_add(request, email, password):
+        assert request.session.get(GUEST_CART_ID) is None
+        add_to_cart(guest, plan_id=plan.pk)
+        return real_login(request, email, password)
 
-    with patch.object(User, "check_password", check_with_concurrent_add):
+    with patch.object(services, "login_with_password", login_after_concurrent_add):
         response = client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
     assert response.status_code == 302
+    assert Cart.objects.count() == 1
+    assert CartItem.objects.get(cart__user=buyer).quantity == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_login_waits_for_guest_write_then_merges_the_fresh_session(plan, buyer):
+    import time
+    from queue import Queue
+    from threading import Event
+
+    from django.db import connection
+
+    from apps.accounts.services import login_with_password
+
+    session = SessionStore()
+    session.save()
+    key = session.session_key
+    login_request = request_for(session=SessionStore(session_key=key))
+    assert login_request.session.get(GUEST_CART_ID) is None
+    written, release = Event(), Event()
+    pids = Queue()
+
+    def compete(login):
+        close_old_connections()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_backend_pid()")
+                pids.put(cursor.fetchone()[0])
+                cursor.execute("SET statement_timeout = '12s'")
+            if login:
+                user = login_with_password(login_request, buyer.email, "CartPassword!2026")
+                login_request.session.save()
+                return user.pk
+            with transaction.atomic():
+                add_to_cart(request_for(session=SessionStore(session_key=key)), plan_id=plan.pk)
+                written.set()
+                assert release.wait(10)
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        guest = pool.submit(compete, False)
+        guest_pid = pids.get(timeout=10)
+        assert written.wait(10)
+        login = pool.submit(compete, True)
+        login_pid = pids.get(timeout=10)
+        try:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_blocking_pids(%s)", [login_pid])
+                    if guest_pid in cursor.fetchone()[0]:
+                        break
+                time.sleep(0.01)
+            else:
+                pytest.fail("Login did not wait for the guest session write.")
+        finally:
+            release.set()
+        guest.result(timeout=10)
+        assert login.result(timeout=10) == buyer.pk
     assert Cart.objects.count() == 1
     assert CartItem.objects.get(cart__user=buyer).quantity == 1
 
@@ -289,3 +348,25 @@ def test_changing_a_line_that_is_gone_says_so_instead_of_reporting_success(plan)
     remove_from_cart(request, plan_id=plan.pk)
     with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
         set_quantity(request, plan_id=plan.pk, quantity=2)
+
+
+@pytest.mark.parametrize("action", ["add", "quantity", "remove", "merge"])
+def test_deactivation_after_request_start_preserves_both_carts(plan, buyer, action):
+    request = request_for(buyer)
+    add_to_cart(request, plan_id=plan.pk)
+    guest = request_for()
+    add_to_cart(guest, plan_id=plan.pk)
+    guest_cart = get_cart(guest)
+    before = list(CartItem.objects.order_by("pk").values_list("pk", "cart_id", "quantity"))
+    type(buyer).objects.filter(pk=buyer.pk).update(is_active=False)
+    assert buyer.is_active
+    operations = {
+        "add": lambda: add_to_cart(request, plan_id=plan.pk),
+        "quantity": lambda: set_quantity(request, plan_id=plan.pk, quantity=2),
+        "remove": lambda: remove_from_cart(request, plan_id=plan.pk),
+        "merge": lambda: merge_carts(user=buyer, guest_cart_id=guest_cart.pk),
+    }
+    with pytest.raises(PermissionDenied):
+        operations[action]()
+    assert list(CartItem.objects.order_by("pk").values_list("pk", "cart_id", "quantity")) == before
+    assert Cart.objects.filter(pk=guest_cart.pk, user__isnull=True).exists()

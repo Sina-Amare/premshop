@@ -4,7 +4,7 @@ How to run PremShop locally, the commands you will use, the traps this particula
 
 ## Setup
 
-Development and CI use Python 3.14, pinned in `.python-version`. The package metadata still allows Python 3.11 and later, and black, ruff and mypy still target 3.11; that is not evidence that older versions pass the gate. The lockfile also selects an older django-unfold below Python 3.12. Use the pinned version, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
+Development and CI support Python 3.14 only, pinned in `.python-version`. Package metadata and the formatter, linter and type checker target the same minor version. Use the pinned version, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
 
 ```bash
 cp .env.example .env            # then fill SECRET_KEY, DATABASE_URL and the EMAIL_ values
@@ -131,7 +131,7 @@ Catalog editors have a separate unsaved-preview action. Protected POST routes va
 
 The order list in the operator panel is read-only. It searches by order number or customer email and shows the buyer account email, frozen purchase names, prices and item states. Order identity and amounts have named sections; the chronological timeline follows the items. Customer activation input is excluded from admin queries, pages and search. No button confirms a payment.
 
-Use `orders.services.place_order` with `OrderLine` objects in development; it re-reads catalog prices and creates one item per unit. `cancel_unpaid_item` takes the real actor account and an item id, with a reason note for staff. Customer cancellation checks ownership. Paid-state transitions, public order pages and checkout are not available yet.
+Use `orders.services.place_order` with `OrderLine` objects in development; it re-reads catalog prices and creates one item per unit. `place_order` requires explicit `activation_consent=True`. `cancel_unpaid_order` takes the real actor account and an order id, with a reason note for an operator acting for a customer. The older item entry delegates to whole-order cancellation. Customer cancellation checks ownership. The `/checkout/` page uses `payments.services.checkout` for atomic cart consumption and redirects to an owner-only order detail. Plan input and Telegram declarations must be reviewed before checkout; migrations do not guess them. Paid-state transitions and gateway payments remain unavailable.
 
 Set FIELD_ENCRYPTION_KEY to a Fernet key generated locally (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Keep it out of git and separate from SECRET_KEY. Retired keys go in the comma-separated FIELD_ENCRYPTION_KEY_FALLBACKS. After changing the active key, run `python manage.py reencrypt_fields --batch-size 200`; repeat safely if interrupted. Remove a retired key only after every dependent row is rotated and backups requiring that key have expired. Production use still requires an offline key copy and a successful decrypting restore.
 
@@ -140,6 +140,20 @@ Set FIELD_ENCRYPTION_KEY to a Fernet key generated locally (`python -c "from cry
 
 Product-page additions stay in place with one compact toast and a cart link; without JavaScript, the POST opens /cart/. Quantity controls and removal use CSRF-protected POST forms. A guest cart survives browser restart for 30 days; password or code login claims or combines it with the account cart. Authenticated session duration is unchanged. The header counts units. Prices are read fresh on each render. Checkout and payment are not connected.
 
-Enter a plan's available count under «موجودی و تعداد» in the product admin; blank means unlimited. Cart additions do not reserve or consume stock, and selections have no purchase deadline. Current availability and prices are rechecked on reads and mutations. Unavailable rows stay visible with restock-support and removal actions; they block readiness to proceed until resolved. Checkout must atomically recheck and claim stock before an order can enter payment; that step remains unbuilt.
+Enter a plan's available count under «موجودی و تعداد» in the product admin; blank means unlimited. Cart additions do not reserve or consume stock, and selections have no purchase deadline. Current availability and prices are rechecked on reads and mutations. Unavailable rows stay visible with restock-support and removal actions; they block readiness to proceed until resolved. Order creation atomically rechecks and claims finite stock; checkout cart consumption is the next integration boundary. A stale stock form preserves checkout changes unless the operator intentionally changes the quantity; conflicting intentional edits require a reload.
 
-Run `python manage.py purge_guest_carts` to remove guest carts inactive for over 30 days. It reports a count and can be repeated; account carts stay. Automatic daily scheduling and clearsessions still need the job runner before launch.
+Run `python manage.py purge_guest_carts` to remove guest carts inactive for over 30 days. It reports a count and can be repeated; account carts stay. Huey schedules this purge and expired-session cleanup daily.
+
+## Background worker
+
+Start one consumer against the same environment/database as the web process:
+
+```bash
+.venv/Scripts/python.exe manage.py run_huey
+```
+
+Keep it in a separate terminal during development. Production needs a supervised process with restart enabled; do not start a second scheduler for the same database. Huey uses Redis and explicit asynchronous mode even with DEBUG enabled. Queue names separate databases; Redis credentials are never part of the name. A database replacement therefore needs its own consumer configuration.
+
+Unpaid expiry runs every minute in batches of 100, with each order released in its own transaction. Guest-cart and expired-session cleanup run daily at 03:00 and 03:10 UTC. The order list reports the last successful sweep and current overdue backlog; a warning after three minutes calls for checking the consumer and Redis. A backlog can take several sweeps to drain. An order needing manual consistency review stays visible; later orders still run. A database outage does not record a successful sweep.
+
+Stop gracefully with Ctrl+C (SIGINT) and allow current work to finish before restarting. A worker outage delays stock/coupon release, while checkout still checks stored stock and deadlines under locks. Restart scans database deadlines; no order is deleted and no deadline is renewed. Verify a successful sweep and a drained backlog after every restart. `/healthz` checks database/cache connectivity only; it does not prove worker freshness. Public launch still requires supervised worker verification and the encryption-key escrow/decrypting restore.

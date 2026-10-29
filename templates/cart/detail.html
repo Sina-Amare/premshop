@@ -55,8 +55,7 @@
       <div class="cart-summary__label">{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات قابل خرید{% endif %}</div>
       <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="ابتدا محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div>
       {% if not cart.ready %}<p class="cart-summary__blocked">بعضی موارد سبد نیاز به اصلاح دارند.</p>{% endif %}
-      <button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>
-      <p class="cart-summary__pending">{% include 'storefront/icon.html' with name='info' %}<span>ثبت سفارش هنوز فعال نیست.</span></p>
+      {% if cart.ready %}<a class="btn btn--primary" href="{% url 'checkout' %}">ادامه و ثبت سفارش</a>{% else %}<button class="btn btn--primary" type="button" disabled>ادامه و ثبت سفارش</button>{% endif %}
       <div class="cart-summary__help">{% for promise in promises %}<p>{% include 'storefront/icon.html' with name='clock' %}<span>{{ promise.text }}</span></p>{% endfor %}<a class="cart-summary__support" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}<span><span class="cart-summary__support-name">پشتیبانی در تلگرام</span>: {{ support.hours }}</span></a></div>
     </aside>
   </div>

@@ -20,6 +20,8 @@ from django.urls import reverse_lazy
 from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy as _
 
+from config.queue import queue_name
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEMO_CATALOG = False
 
@@ -117,6 +119,8 @@ INSTALLED_APPS = [
     "apps.catalog",
     "apps.cart",
     "apps.orders",
+    "apps.payments",
+    "huey.contrib.djhuey",
     "apps.core",
 ]
 
@@ -140,6 +144,7 @@ MIDDLEWARE = [
     # detail page at S5 is the one that will want to. At that point either that
     # view opts out of compression or the credential does not go in the HTML.
     "django.middleware.gzip.GZipMiddleware",
+    "apps.core.middleware.OrderPagePrivacy",
     "django.middleware.security.SecurityMiddleware",
     # Before everything else that might touch the cache, so its 503 wins over a
     # traceback no matter which view raised.
@@ -174,9 +179,9 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                # The header's shelves row and `support`, the one definition
-                # of where a customer reaches a person; see apps/core/context.py.
+                # Shared site facts and catalog navigation.
                 "apps.core.context.shell",
+                "apps.catalog.context.navigation",
                 "apps.cart.context.context",
                 # What the shop promises on every page; see apps/catalog/promises.py.
                 "apps.catalog.promises.context",
@@ -191,8 +196,18 @@ CSRF_FAILURE_VIEW = "apps.core.errors.csrf_failure"
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {"default": database_from_url(env("DATABASE_URL", required=True))}
+DATABASES["default"]["OPTIONS"] = {"options": "-c pg_trgm.word_similarity_threshold=0.3"}
 
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
+
+HUEY = {
+    "name": queue_name(DATABASES["default"]),
+    "huey_class": "huey.RedisHuey",
+    "connection": {"url": REDIS_URL},
+    "immediate": False,
+    "results": False,
+    "consumer": {"workers": 1, "worker_type": "thread"},
+}
 
 # OTP codes and rate-limit counters go through Django's cache API rather than a
 # raw redis client. Two reasons: an expiring code should evaporate on its own
@@ -353,6 +368,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:orders_order_changelist"),
                     },
                     {
+                        "title": _("کدهای تخفیف"),
+                        "icon": "local_offer",
+                        "link": reverse_lazy("admin:orders_discountcode_changelist"),
+                    },
+                    {
                         "title": capfirst(_("محصولات")),
                         "icon": "inventory_2",
                         "link": reverse_lazy("admin:catalog_product_changelist"),
@@ -406,6 +426,7 @@ UNFOLD = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {"private_links": {"()": "apps.core.observability.PrivateLinkFilter"}},
     "formatters": {
         "standard": {
             "format": "{asctime} {levelname} {name} {message}",
@@ -413,10 +434,16 @@ LOGGING = {
         },
     },
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "filters": ["private_links"],
+        },
     },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
     "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }

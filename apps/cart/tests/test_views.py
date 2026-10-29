@@ -161,8 +161,7 @@ def test_an_empty_cart_hides_the_header_count(client):
     assert '<span class="v-cart__count" aria-hidden="true" hidden>' in body
 
 
-def test_cart_summary_shows_the_order_step_as_not_yet_open(client, plan):
+def test_cart_summary_links_to_checkout(client, plan):
     client.post("/cart/add/", {"plan": plan.pk})
     body = client.get("/cart/").content.decode()
-    assert '<button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>' in body
-    assert "ثبت سفارش هنوز فعال نیست." in body
+    assert 'href="/checkout/">ادامه و ثبت سفارش</a>' in body

@@ -6,12 +6,20 @@ from django.core.exceptions import FieldError, ImproperlyConfigured
 from django.core.management import call_command
 from django.db import connection
 
+from apps.catalog.models import Plan
 from apps.core.fields import EncryptedTextField, key_id
 from apps.core.observability import sentry_options
 from apps.orders.models import OrderItem
 from apps.orders.services import OrderLine, place_order
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def email_input(plan):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
 
 
 def raw_input(item):
@@ -21,7 +29,9 @@ def raw_input(item):
 
 
 def test_ciphertext_is_randomized_and_readable_outside_the_field(buyer, plan, settings):
-    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
+    item = place_order(
+        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
+    ).items.get()
     raw = raw_input(item)
     prefix, token = raw.split("$", 1)
     assert prefix == key_id(settings.FIELD_ENCRYPTION_KEY)
@@ -37,7 +47,9 @@ def test_ciphertext_is_randomized_and_readable_outside_the_field(buyer, plan, se
 
 
 def test_old_key_reads_and_rotation_rewrites_only_old_ciphertext(buyer, plan, settings):
-    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
+    item = place_order(
+        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
+    ).items.get()
     old_key = settings.FIELD_ENCRYPTION_KEY
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     settings.FIELD_ENCRYPTION_KEY_FALLBACKS = [old_key]
@@ -55,7 +67,9 @@ def test_old_key_reads_and_rotation_rewrites_only_old_ciphertext(buyer, plan, se
 
 
 def test_missing_key_and_corrupt_ciphertext_fail_without_disclosing_values(buyer, plan, settings):
-    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
+    item = place_order(
+        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
+    ).items.get()
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     with pytest.raises(ImproperlyConfigured) as exc:
         item.refresh_from_db()

@@ -1,16 +1,14 @@
-"""Thin controllers: parse a form, call one service, render. No rules here."""
+"""Account forms and sign-in responses."""
 
 from __future__ import annotations
 
-import secrets
 import time
 from typing import cast
 
 from django.contrib import messages
-from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -23,13 +21,13 @@ from apps.accounts.forms import (
     CodeForm,
     EmailForm,
     PasswordLoginForm,
+    PasswordRecoveryForm,
     ProfileForm,
     StyledPasswordChangeForm,
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
-from apps.core import ratelimit
-from apps.core.sessions import login_session
+from apps.orders.selectors import current_order, customer_summary
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -49,12 +47,6 @@ CODE_RESENT = "کد جدید را فرستادیم."
 # Shown on the code page by its script and on the email page without one, so
 # it names the page that ran out.
 PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر معتبر نیست. دوباره ایمیلتان را وارد کنید."
-
-# A real hash of a value nobody knows. Comparing a submitted password against it
-# when there is no live account to check makes the miss cost the same work as a
-# genuine check; without it a nonexistent account answers measurably faster, which
-# is a user-enumeration oracle. Built once at import, never per request.
-_DUMMY_HASH = make_password(secrets.token_urlsafe(16))
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -86,27 +78,12 @@ def login_password(request: HttpRequest) -> HttpResponse:
     form = PasswordLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
-        if refusal := services.password_attempt_refusal(request, email):
-            form.add_error(None, refusal)
+        try:
+            user = services.login_with_password(request, email, form.cleaned_data["password"])
+        except services.RateLimited as exc:
+            form.add_error(None, exc.message)
         else:
-            user = User.objects.filter(email__iexact=email).first()
-            # Exactly ONE password hash per attempt, whatever the outcome. Any
-            # difference in work is a difference in response time, and that tells a
-            # stranger which addresses shop here. A live account costs its own check
-            # (for an account with no password Django fakes that hash itself); every
-            # other case costs one check against a throwaway hash. Never both — the
-            # old code ran the throwaway after every failure, so a real account with
-            # a wrong password cost two hashes and answered slower than a stranger.
-            if user is not None and user.is_active:
-                authenticated = user.check_password(form.cleaned_data["password"])
-            else:
-                check_password(form.cleaned_data["password"], _DUMMY_HASH)
-                authenticated = False
-            if authenticated:
-                # Session-key rotation and login receivers must roll back together.
-                with login_session(request):
-                    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-                ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
+            if user is not None:
                 return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)
 
@@ -121,6 +98,8 @@ def login_password(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
+        if _wants_json(request):
+            return JsonResponse({"ok": True, "next": _safe_next(request)})
         return redirect(_safe_next(request))
 
     # Back from «ایمیل اشتباه است؟» on the code page: the address the code went
@@ -128,12 +107,14 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
     form = EmailForm(
         request.POST or None, initial={"email": request.session.get(PENDING_EMAIL_KEY)}
     )
+    status = 400
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
         try:
             issued = services.request_login_code(request, email)
         except services.RateLimited as exc:
             form.add_error(None, exc.message)
+            status = 429
         else:
             request.session[PENDING_EMAIL_KEY] = email
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
@@ -141,8 +122,19 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             # session with the address rather than the URL. It is validated
             # here, on the way in, and never re-read from the request after.
             request.session[PENDING_NEXT_KEY] = _safe_next(request)
+            if _wants_json(request):
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "expires_in": _seconds_left(issued.expires_at),
+                        "cooldown": RESEND_COOLDOWN_SECONDS,
+                    }
+                )
             return redirect("login-code-verify")
 
+    if request.method == "POST" and _wants_json(request):
+        error = next((error for errors in form.errors.values() for error in errors), PAGE_EXPIRED)
+        return JsonResponse({"ok": False, "error": str(error)}, status=status)
     return render(
         request, "accounts/login_code_request.html", {"form": form, "next": _safe_next(request)}
     )
@@ -153,6 +145,8 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
 def login_code_verify(request: HttpRequest) -> HttpResponse:
     email = request.session.get(PENDING_EMAIL_KEY)
     if not email:
+        if request.method == "POST" and _wants_json(request):
+            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         return redirect("login-code")
 
     form = CodeForm(request.POST or None)
@@ -265,11 +259,20 @@ def account(request: HttpRequest) -> HttpResponse:
     user = cast(User, request.user)  # @login_required guarantees this
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        form.save(commit=False).save(update_fields=["phone"])
         saved = "ذخیره شد" if user.phone else "حذف شد"
         messages.success(request, f"شماره‌ی موبایل {saved}.")
         return redirect(reverse("account"))
-    return render(request, "accounts/account.html", {"profile_form": form, "section": "profile"})
+    current = current_order(user)
+    return render(
+        request,
+        "accounts/account.html",
+        {
+            "profile_form": form,
+            "section": "profile",
+            "current_order": customer_summary(current) if current else None,
+        },
+    )
 
 
 @never_cache
@@ -283,10 +286,52 @@ def account_password(request: HttpRequest) -> HttpResponse:
     form_class = StyledPasswordChangeForm if had_password else StyledSetPasswordForm
     form = form_class(user, request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()
-        # Changing a password rotates the session hash, which signs out every
-        # other device and would sign out this tab too. Re-issue it here only.
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
-        return redirect(reverse("account-password"))
+        try:
+            services.change_password(
+                request,
+                password=form.cleaned_data["new_password1"],
+                old_password=form.cleaned_data.get("old_password", ""),
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
+            return redirect(reverse("account-password"))
     return render(request, "accounts/account_password.html", {"form": form, "section": "password"})
+
+
+@never_cache
+@login_required
+@require_http_methods(["GET", "POST"])
+def account_password_recovery(request: HttpRequest) -> HttpResponse:
+    user = cast(User, request.user)
+    changing = request.method == "POST" and request.POST.get("action") == "change"
+    form = PasswordRecoveryForm(user, request.POST if changing else None)
+    status = 200
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "request":
+                services.request_password_recovery(request)
+                messages.success(request, "کد جدید را به ایمیلتان فرستادیم. تا ۱۰ دقیقه معتبر است.")
+            elif changing and form.is_valid():
+                result = services.complete_password_recovery(
+                    request,
+                    code=form.cleaned_data["code"],
+                    password=form.cleaned_data["new_password1"],
+                )
+                if result is not None:
+                    messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
+                    return redirect("account-password")
+                form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
+        except services.RateLimited as exc:
+            if changing:
+                form.add_error(None, exc.message)
+            else:
+                messages.error(request, exc.message)
+            status = 429
+    return render(
+        request,
+        "accounts/password_recovery.html",
+        {"form": form, "section": "password"},
+        status=status,
+    )

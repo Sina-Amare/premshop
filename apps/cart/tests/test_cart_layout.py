@@ -54,8 +54,7 @@ def test_summary_shows_its_arithmetic_and_confirmed_help(client, plan, discount)
     assert PROMISES[0].text in body
     assert details()["hours"] in body and details()["telegram_url"] in body
     assert "افزودن محصول دیگر" not in body
-    assert '<button class="btn btn--primary" type="button" disabled>ثبت سفارش</button>' in body
-    assert "ثبت سفارش هنوز فعال نیست." in body
+    assert 'href="/checkout/">ادامه و ثبت سفارش</a>' in body
     assert "cart-line__amount-label" not in body and "cart-fixed-quantity" not in body
     client.post("/cart/quantity/", {"plan": plan.pk, "quantity": 2})
     assert "جمع ۲ عدد" in client.get("/cart/").content.decode()

@@ -12,7 +12,10 @@ deep in a local variable is redacted the same as one in a form field.
 
 from __future__ import annotations
 
+import logging
 import re
+import traceback
+from copy import copy
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -68,7 +71,7 @@ _CAMEL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 #: Single-use delivery links are bearer capabilities (ADR-0008): a full URL in
 #: an error report would let anyone holding the report open the credential view.
-_DELIVERY_LINK_RE = re.compile(r"(/d/)[^/\s?\"']+")
+_PRIVATE_LINK_RE = re.compile(r"((?:/|%2f)(?:d|track)(?:/|%2f))[^/\s?\"'&#]+", re.IGNORECASE)
 
 _MAX_DEPTH = 12
 
@@ -89,8 +92,35 @@ def _is_sensitive_key(key: str) -> bool:
 
 
 def redact_url(text: str) -> str:
-    """Replace the token in any /d/<token>/ delivery link with a placeholder."""
-    return _DELIVERY_LINK_RE.sub(r"\1" + REDACTED, text)
+    """Remove delivery and tracking tokens, including encoded return links."""
+
+    def unescape(match: re.Match[str]) -> str:
+        character = chr(int(match[1], 16))
+        return (
+            character
+            if character.isascii() and (character.isalnum() or character in "/_-%")
+            else match[0]
+        )
+
+    decoded = text
+    for _ in range(2):
+        decoded = re.sub(r"%([0-9a-f]{2})", unescape, decoded, flags=re.IGNORECASE)
+    source = decoded if _PRIVATE_LINK_RE.search(decoded) else text
+    return _PRIVATE_LINK_RE.sub(r"\1" + REDACTED, source)
+
+
+class PrivateLinkFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> logging.LogRecord:
+        sanitized = copy(record)
+        sanitized.msg = redact_url(record.getMessage())
+        sanitized.args = ()
+        if record.exc_info:
+            sanitized.exc_text = redact_url("".join(traceback.format_exception(*record.exc_info)))
+        elif record.exc_text:
+            sanitized.exc_text = redact_url(record.exc_text)
+        if record.stack_info:
+            sanitized.stack_info = redact_url(record.stack_info)
+        return sanitized
 
 
 def scrub(data: Any, *, _depth: int = 0) -> Any:

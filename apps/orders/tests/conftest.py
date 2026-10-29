@@ -26,7 +26,7 @@ def plan():
         name="سرویس نمونه",
         slug="sample",
         status=Product.Status.ACTIVE,
-        warranty="هفت روز",
+        warranty=Product.Warranty.DAYS_7,
     )
     return Plan.objects.create(
         product=product,
@@ -35,4 +35,6 @@ def plan():
         cost_price=Decimal("100000"),
         duration_days=30,
         max_quantity=3,
+        input_type=Plan.InputType.NONE,
+        telegram_required=False,
     )

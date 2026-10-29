@@ -20,10 +20,14 @@ example is a real value. Those are the half that matters most.
 
 from __future__ import annotations
 
+import ast
 import re
+from html.parser import HTMLParser
+from pathlib import Path
 
 import pytest
 from django.apps import apps
+from django.conf import settings
 
 from apps.catalog.tests.test_panel_translations import ROOT, compile_messages, persian_msgids
 
@@ -33,7 +37,7 @@ BANNED = [
     (r"می‌باشد", "«است», or drop the copula"),
     (r"نمایید|فرمایید", "«کنید»"),
     (r"می‌گردد(?<!بر می‌گردد)|گردید\b", "«می‌شود» / «شد»"),
-    (r"(?<![\w‌])جهت(?= )", "«برای»"),
+    (r"(?<![\w‌])جهت(?= )(?!(?: نوشتار| متن| راست| چپ))", "«برای»"),
     (r"توسط", "active voice: name who did it"),
     (r"انجام می‌پذیرد", "a plain verb"),
     (r"گزارشات|پیشنهادات|سفارشات|آزمایشات", "a Persian plural in «ها»"),
@@ -48,7 +52,10 @@ BANNED = [
     (r"بهترین|سریع‌ترین", "a number, not a superlative"),
     # The glossary's panel words (docs/design-language.md, Voice 2026-10-20).
     (r"رکورد", "«مورد»"),
-    (r"(?<![\w‌])تازه(?![\w‌])", "«جدید»"),
+    (r"(?<![\w‌])تازه(?:‌(?:ای|ها|های))?(?![\w‌])", "«جدید»"),
+    (r"پیدا نشد", "«پیدا نکردیم»"),
+    (r"(?<=\w)هٔ|(?<=\w)ۀ", "ezafe with «ه‌ی»"),
+    (r"بررسی‌نشده‌اند", "finite verb with a space: «بررسی نشده‌اند»"),
     # ZWNJ, the mistake that makes Persian look machine-set.
     (r"(?<![\w‌])می [اآبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", "a half-space: «می‌…»"),
 ]
@@ -128,6 +135,81 @@ def test_no_panel_string_uses_a_banned_form(pattern, instead):
     assert not bad, f"write {instead} — {bad}"
 
 
+@pytest.fixture(scope="module")
+def ui_source_strings():
+    root = Path(settings.BASE_DIR)
+    found = []
+    for base, suffixes in (("templates", {".html", ".txt"}), ("static/js", {".js"})):
+        for path in sorted((root / base).rglob("*")):
+            if path.suffix not in suffixes:
+                continue
+            source = path.read_text(encoding="utf-8")
+            source = re.sub(
+                r"{% comment %}.*?{% endcomment %}|{#.*?#}|<!--.*?-->", "", source, flags=re.S
+            )
+            source = re.sub(r"/\*.*?\*/|(?m:^[\t ]*//[^\n]*$)", "", source, flags=re.S)
+            if path.suffix == ".html":
+                parser = UiText()
+                parser.feed(source)
+                found.extend((str(path.relative_to(root)), text) for text in parser.parts)
+            else:
+                found.extend((str(path.relative_to(root)), line) for line in source.splitlines())
+    for path in sorted((root / "apps").rglob("*.py")):
+        if {"tests", "migrations"} & set(path.parts):
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        docs = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.body and isinstance(node.body[0], ast.Expr):
+                    docs.add(id(node.body[0].value))
+        found.extend(
+            (f"{path.relative_to(root)}:{node.lineno}", node.value)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in docs
+        )
+    return [(where, text) for where, text in found if re.search(r"[\u0600-\u06ff]", text)]
+
+
+class UiText(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.parts = []
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+    def handle_starttag(self, tag, attrs):
+        self.parts.extend(
+            value
+            for key, value in attrs
+            if (key.startswith("data-") or key in {"title", "alt", "placeholder", "aria-label"})
+            and value
+        )
+
+
+@pytest.mark.parametrize("pattern,instead", BANNED)
+def test_customer_and_email_sources_use_the_same_persian(ui_source_strings, pattern, instead):
+    bad = [where for where, text in ui_source_strings if re.search(pattern, text)]
+    assert not bad, f"write {instead} — {bad}"
+
+
+def test_copy_scan_reaches_templates_scripts_and_python_messages(ui_source_strings):
+    assert any(where.endswith("password_recovery.html") for where, _ in ui_source_strings)
+    assert any(where.endswith(".js") for where, _ in ui_source_strings)
+    assert any("accounts" in where and "views.py:" in where for where, _ in ui_source_strings)
+    assert len(ui_source_strings) > 300
+
+
+@pytest.mark.parametrize("attribute", ["data-busy", "data-after", "data-name", "aria-label"])
+def test_copy_scan_includes_labels_that_scripts_or_assistive_technology_show(attribute):
+    parser = UiText()
+    parser.feed(f'<button {attribute}="رمز عبور تازه">ثبت</button>')
+    assert any(re.search(pattern, text) for pattern, _ in BANNED for text in parser.parts)
+
+
 def test_help_text_stays_one_short_sentence():
     """Measured, not felt: real Persian admin help runs to a median of 12
     words and this project's own strings matched it before the cap existed.
@@ -168,6 +250,8 @@ def test_quantities_are_written_in_persian_digits():
         ("تحویل در سریع‌ترین زمان", "superlative"),
         ("این رکورد حذف شد.", "رکورد"),
         ("رمز عبور تازه", "تازه"),
+        ("رنگ تازه‌ای", "تازه‌ای"),
+        ("در این هفته بررسی‌نشده‌اند.", "finite verb spacing"),
     ],
 )
 def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
@@ -185,6 +269,8 @@ def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
         "چقدر برای خودتان آب می‌خورد.",
         "تیک را بردارید تا خریدنی نباشد.",
         "بین ۱ تا ۷۲ ساعت.",
+        "این ادعاها بررسی نشده‌اند.",
+        "بررسی‌نشده",
     ],
 )
 def test_the_lint_leaves_good_persian_alone(text):

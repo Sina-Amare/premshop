@@ -23,7 +23,7 @@ def field_keys() -> tuple[str, dict[str, Fernet]]:
         if not current or len({key_id(key) for key in keys}) != len(keys):
             raise ValueError
         return key_id(current), {key_id(key): Fernet(key.encode()) for key in keys}
-    except (ValueError, TypeError, AttributeError):
+    except ValueError, TypeError, AttributeError:
         raise ImproperlyConfigured("Configure distinct valid field encryption keys.") from None
 
 
@@ -46,7 +46,7 @@ class EncryptedTextField(models.TextField):
             if prefix not in keys:
                 raise ImproperlyConfigured(f"Field encryption key {prefix} is missing.")
             return keys[prefix].decrypt(token.encode()).decode()
-        except (ValueError, InvalidToken, UnicodeError):
+        except ValueError, InvalidToken, UnicodeError:
             raise ImproperlyConfigured("Cannot decrypt encrypted field.") from None
 
     def get_lookup(self, lookup_name: str) -> Any:

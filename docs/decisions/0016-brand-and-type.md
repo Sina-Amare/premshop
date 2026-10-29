@@ -20,3 +20,6 @@
 ## Amendment — 2026-10-25
 
 The storefront now uses cobalt (#2459d3) on white and graphite, retaining the existing fonts and pale product-brand artwork. The operator panel follows the same colors in light and dark themes. Focus has one continuous edge; controls retain visible keyboard focus and a 44px primary target. Service plates are a deliberate rounded exception to the working surfaces. Storefront and panel instructions use consistent, respectful conversational Persian; email, legal and formal notices keep written Persian. The earlier palette and voice decisions remain above as history.
+
+
+**Amendment — 2026-10-28: unused styles removed.** The unused department rows, category icon, filter chips and former promise-strip styles are removed. Current product shelves and storefront remain the active design. Shared spacing tokens allow component-level optical adjustments; floating tiles and controls have their existing local shadows.

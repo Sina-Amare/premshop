@@ -104,7 +104,10 @@ def test_too_many_guesses_answer_429_in_json(waiting):
 
     assert response.status_code == 429
     assert response.json()["ok"] is False
-    assert "پشت سر هم" in response.json()["error"]
+    assert (
+        response.json()["error"]
+        == "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+    )
 
 
 def test_without_the_accept_header_the_view_still_answers_html(waiting):

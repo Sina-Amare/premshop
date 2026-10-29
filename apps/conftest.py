@@ -10,6 +10,20 @@ from playwright.sync_api import Browser, Error, sync_playwright
 
 
 @pytest.fixture(autouse=True)
+def memory_tasks(monkeypatch: Any) -> None:
+    from huey.contrib.djhuey import HUEY
+    from huey.storage import MemoryStorage
+
+    monkeypatch.setattr(HUEY, "storage", MemoryStorage(HUEY.name))
+
+
+@pytest.fixture(autouse=True)
+def ordinary_catalog(settings: Any) -> None:
+    """Review notices are opt-in, independent of the local preview's .env."""
+    settings.DEMO_CATALOG = False
+
+
+@pytest.fixture(autouse=True)
 def clean_cache(settings: Any) -> Iterator[None]:
     """Every test runs against an empty in-memory cache, never a real Redis.
 

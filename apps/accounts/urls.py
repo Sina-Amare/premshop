@@ -19,4 +19,9 @@ urlpatterns = [
         name="account-profile",
     ),
     path("account/password/", views.account_password, name="account-password"),
+    path(
+        "account/password/recovery/",
+        views.account_password_recovery,
+        name="account-password-recovery",
+    ),
 ]

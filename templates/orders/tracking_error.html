@@ -1,0 +1,3 @@
+{% extends "orders/_document.html" %}
+{% block title %}پیگیری سفارش{% endblock %}
+{% block content %}<h1>پیگیری سفارش</h1><p role="status">{% if unavailable %}نمایش وضعیت سفارش فعلاً ممکن نیست. کمی بعد دوباره امتحان کنید.{% elif limited %}تعداد درخواست‌ها بیش از حد مجاز است. یک دقیقه دیگر دوباره امتحان کنید.{% else %}این پیوند معتبر نیست یا سفارش در دسترس نیست.{% endif %}</p>{% endblock %}

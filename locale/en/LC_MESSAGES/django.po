@@ -879,7 +879,7 @@ msgstr "Bot"
 msgid "زمان ثبت"
 msgstr "Created at"
 
-msgid "سابقهٔ سفارش"
+msgid "سابقه‌ی سفارش"
 msgstr "Order history"
 
 msgid "سایت"
@@ -897,7 +897,7 @@ msgstr "Orders"
 msgid "سیستم"
 msgstr "System"
 
-msgid "شمارهٔ سفارش"
+msgid "شماره‌ی سفارش"
 msgstr "Order number"
 
 msgid "قیمت تأمین زمان خرید"
@@ -936,7 +936,7 @@ msgstr "Awaiting payment"
 msgid "مهلت پرداخت تمام شده"
 msgstr "Payment window expired"
 
-msgid "همهٔ محصولات"
+msgid "همه‌ی محصولات"
 msgstr "All products"
 
 msgid "وضعیت آیتم‌ها"
@@ -1031,3 +1031,153 @@ msgstr "Drafts"
 
 msgid "فعلاً موردی برای رسیدگی نیست."
 msgstr "Nothing needs attention right now."
+
+msgid "آخرین بررسی موفق"
+msgstr "Last successful sweep"
+
+msgid "سفارش‌های لغوشده"
+msgstr "Cancelled orders"
+
+msgid "سفارش‌های گذشته از مهلت"
+msgstr "Overdue orders"
+
+msgid "موجودی قابل فروش"
+msgstr "Available stock"
+
+msgid "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
+msgstr "Excludes units already committed to orders. Leave blank for unlimited stock."
+
+msgid "آخرین بررسی مهلت پرداخت"
+msgstr "Last unpaid-order sweep"
+
+msgid "استفاده از کد تخفیف"
+msgstr "Discount redemption"
+
+msgid "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
+msgstr "Enter a percentage for a percent discount, or toman for a fixed discount."
+
+msgid "بررسی خودکار به‌روز نیست. وضعیت اجرای آن را بررسی کنید."
+msgstr "The automatic sweep is overdue. Check that it is running."
+
+msgid "تعداد استفاده‌ی فعال"
+msgstr "Active redemptions"
+
+msgid "حداقل مبلغ سفارش"
+msgstr "Minimum order subtotal"
+
+msgid "حداقل یک محصول برای این کد تخفیف انتخاب کنید."
+msgstr "Select at least one product for this discount code."
+
+msgid "حداکثر استفاده برای هر مشتری"
+msgstr "Redemption limit per customer"
+
+msgid "حداکثر تعداد استفاده"
+msgstr "Total redemption limit"
+
+msgid "خالی یعنی بدون محدودیت. استفاده‌های لغوشده حساب نمی‌شوند."
+msgstr "Leave blank for unlimited use. Cancelled redemptions do not count."
+
+msgid "زمان آزادسازی"
+msgstr "Released at"
+
+msgid "زمان استفاده"
+msgstr "Redeemed at"
+
+msgid "زمان ایجاد"
+msgstr "Created at"
+
+msgid "ساعت"
+msgstr "Time"
+
+msgid "سفارش‌های گذشته از مهلت پرداخت"
+msgstr "Orders past their payment deadline"
+
+msgid "سوابق استفاده از کد تخفیف"
+msgstr "Discount redemption history"
+
+msgid "شروع اعتبار"
+msgstr "Valid from"
+
+msgid "عددی بزرگ‌تر از صفر وارد کنید."
+msgstr "Enter a number greater than zero."
+
+msgid "مبلغ تخفیف"
+msgstr "Discount amount"
+
+msgid "هنوز اجرا نشده است"
+msgstr "Not run yet"
+
+msgid "پایان اعتبار"
+msgstr "Valid until"
+
+msgid "پایان اعتبار باید پس از شروع آن باشد."
+msgstr "The end of validity must be after its start."
+
+msgid "بررسی مهلت پرداخت"
+msgstr "Payment deadline sweep"
+
+msgid "درصد"
+msgstr "Percent"
+
+msgid "بدون محدودیت"
+msgstr "Unlimited"
+
+msgid "صفر یا عددی بزرگ‌تر وارد کنید."
+msgstr "Enter zero or a greater number."
+
+msgid "میزان تخفیف"
+msgstr "Discount value"
+
+msgid "محصولات مشمول تخفیف"
+msgstr "Eligible products"
+
+msgid "حذف محصولات انتخاب‌شده"
+msgstr "Delete selected products"
+
+msgid "ایمیل"
+msgstr "Email"
+
+msgid "ایمیل اکانت"
+msgstr "Account email"
+
+msgid "بدون نیاز به اطلاعات"
+msgstr "No input"
+
+msgid "بررسی‌نشده"
+msgstr "Not reviewed"
+
+msgid "تا تعیین نوع اطلاعات و نیاز به تلگرام، ثبت سفارش این پلن بسته است."
+msgstr "Checkout is blocked until the input type and Telegram requirement are set."
+
+msgid "لازم است"
+msgstr "Required"
+
+msgid "لازم نیست"
+msgstr "Not required"
+
+msgid "نام کاربری"
+msgstr "Username"
+
+msgid "نام کاربری اکانت"
+msgstr "Account username"
+
+msgid "نوع اطلاعات فعال‌سازی"
+msgstr "Activation input type"
+
+msgid "نوع اطلاعات فعال‌سازی معتبر نیست."
+msgstr "The activation input type is invalid."
+
+msgid "نوع اطلاعات فعال‌سازی و نیاز به تلگرام را بررسی کنید."
+msgstr "Review the activation input type and Telegram requirement."
+
+msgid "نیاز به تلگرام برای فعال‌سازی"
+msgstr "Telegram required for activation"
+
+msgid "نیاز به تلگرام را بر اساس روش تحویل همین پلن تعیین کنید."
+msgstr "Set the Telegram requirement according to this plan's delivery method."
+
+msgid "نیاز به تلگرام را مشخص کنید."
+msgstr "Specify whether Telegram is required."
+
+msgid "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
+msgstr "A plan requiring input can only be purchased once per order."

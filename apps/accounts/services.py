@@ -10,9 +10,15 @@ forgotten rate-limit call in one view is the whole defence gone.
 from __future__ import annotations
 
 import logging
+import secrets
 
 from django.conf import settings
+from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, update_session_auth_hash
 from django.contrib.auth import login as django_login
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
@@ -24,6 +30,9 @@ from apps.core.email import send_templated_email
 from apps.core.sessions import login_session
 
 logger = logging.getLogger(__name__)
+
+# Unknown and inactive accounts must cost the same hash work as a live account.
+_DUMMY_HASH = make_password(secrets.token_urlsafe(16))
 
 
 class RateLimited(Exception):
@@ -41,15 +50,14 @@ TOO_MANY_CODES = (
     "برای این ایمیل چند بار پشت سر هم کد خواسته شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
 TOO_MANY_CODES_FROM_NETWORK = (
-    "از این شبکه کد ورود زیادی خواسته شده است. یک ساعت دیگر دوباره امتحان کنید."
+    "از این شبکه درخواست‌های زیادی برای دریافت کد ثبت شده است. یک ساعت دیگر دوباره امتحان کنید."
 )
-TOO_MANY_WRONG_CODES = (
-    "برای این ایمیل چند بار پشت سر هم کد اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+TOO_MANY_ATTEMPTS = (
+    "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
-TOO_MANY_WRONG_PASSWORDS = (
-    "برای این ایمیل چند بار پشت سر هم رمز اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+TOO_MANY_FROM_NETWORK = (
+    "تعداد تلاش‌ها از این شبکه بیش از حد مجاز است. یک ساعت دیگر دوباره امتحان کنید."
 )
-TOO_MANY_FROM_NETWORK = "از این شبکه تلاش ورود زیادی شده است. یک ساعت دیگر دوباره امتحان کنید."
 
 
 def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
@@ -58,10 +66,43 @@ def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
     The storefront's sign-in and the panel's share these budgets under the same
     keys, so an account has one budget wherever it is guessed at."""
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
-        return TOO_MANY_WRONG_PASSWORDS
+        return TOO_MANY_ATTEMPTS
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
         return TOO_MANY_FROM_NETWORK
     return None
+
+
+@transaction.atomic
+def authenticate_password(request: HttpRequest, email: str, password: str) -> User | None:
+    email = otp.normalize_email(email)
+    if refusal := password_attempt_refusal(request, email):
+        raise RateLimited(refusal)
+    user = User.objects.select_for_update(no_key=True).filter(email__iexact=email).first()
+    if user is not None and user.is_active:
+        authenticated = user.check_password(password)
+    else:
+        check_password(password, _DUMMY_HASH)
+        authenticated = False
+    if not authenticated:
+        return None
+    return user
+
+
+def login_with_password(request: HttpRequest, email: str, password: str) -> User | None:
+    with login_session(request):
+        user = authenticate_password(request, email, password)
+        if user is None:
+            return None
+        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, otp.normalize_email(email))
+    return user
+
+
+def _code_request_budget(request: HttpRequest, email: str) -> None:
+    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL, email):
+        raise RateLimited(TOO_MANY_CODES)
+    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ratelimit.client_ip(request)):
+        raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
 
 
 def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
@@ -83,14 +124,86 @@ def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
     are for: three per address per fifteen minutes, ten per IP per hour.
     """
     email = otp.normalize_email(email)
-    ip = ratelimit.client_ip(request)
-
-    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL, email):
-        raise RateLimited(TOO_MANY_CODES)
-    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ip):
-        raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
+    _code_request_budget(request, email)
 
     return otp.send_login_code(email)
+
+
+def _recovery_user(request: HttpRequest) -> User:
+    user_id = request.user.pk
+    if user_id is None:
+        raise PermissionDenied
+    user = User.objects.select_for_update(no_key=True).filter(pk=user_id, is_active=True).first()
+    if (
+        user is None
+        or request.session.get(SESSION_KEY) != str(user.pk)
+        or request.session.get(HASH_SESSION_KEY) != user.get_session_auth_hash()
+    ):
+        raise PermissionDenied
+    return user
+
+
+def _recovery_binding(request: HttpRequest, user: User) -> str:
+    return f"{request.session.session_key}:{user.get_session_auth_hash()}"
+
+
+def request_password_recovery(request: HttpRequest) -> otp.Issued:
+    with login_session(request):
+        user = _recovery_user(request)
+        _code_request_budget(request, user.email)
+        return otp.send_login_code(
+            user.email, purpose="password_reset", binding=_recovery_binding(request, user)
+        )
+
+
+def complete_password_recovery(request: HttpRequest, *, code: str, password: str) -> User | None:
+    with login_session(request):
+        user = _recovery_user(request)
+        validate_password(password, user)
+        if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email):
+            raise RateLimited(TOO_MANY_ATTEMPTS)
+        if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
+            raise RateLimited(TOO_MANY_FROM_NETWORK)
+        if not otp.verify(
+            user.email, code, purpose="password_reset", binding=_recovery_binding(request, user)
+        ):
+            return None
+        _replace_password(request, user, password)
+        ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email)
+    return user
+
+
+def change_password(request: HttpRequest, *, password: str, old_password: str = "") -> User:
+    with login_session(request):
+        user = _recovery_user(request)
+        if user.has_usable_password() and not user.check_password(old_password):
+            raise ValidationError("رمز عبور فعلی اشتباه است.")
+        validate_password(password, user)
+        _replace_password(request, user, password)
+    return user
+
+
+def _replace_password(request: HttpRequest, user: User, password: str) -> None:
+    user.set_password(password)
+    user.save(update_fields=["password"])
+    update_session_auth_hash(request, user)
+    request.session.save()
+    transaction.on_commit(lambda: _send_password_notice(user))
+
+
+def _send_password_notice(user: User) -> None:
+    try:
+        send_templated_email(
+            "password_changed", to=[user.email], context={"changed_at": timezone.now()}
+        )
+    except Exception as error:  # noqa: BLE001 — notification cannot undo the password change
+        status = getattr(error, "smtp_code", None)
+        logger.error(
+            "password change notice not sent for user %s: %s%s",
+            user.pk,
+            type(error).__name__,
+            f" (SMTP {status})" if isinstance(status, int) else "",
+        )
 
 
 def complete_code_login(request: HttpRequest, email: str, code: str) -> User | None:
@@ -99,7 +212,7 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     ip = ratelimit.client_ip(request)
 
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
-        raise RateLimited(TOO_MANY_WRONG_CODES)
+        raise RateLimited(TOO_MANY_ATTEMPTS)
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ip):
         raise RateLimited(TOO_MANY_FROM_NETWORK)
 

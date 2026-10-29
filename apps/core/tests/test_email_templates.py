@@ -75,6 +75,14 @@ def test_the_code_reaches_both_halves_in_persian_digits():
     assert "418305" not in text
 
 
+@pytest.mark.parametrize("name", ["otp_code", "password_reset"])
+def test_code_mail_warns_against_sharing_without_an_inbox_access_claim(name):
+    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    for body in (text, html):
+        assert "این کد را به کسی ندهید." in body
+        assert "بدون دسترسی به ایمیل" not in body
+
+
 def test_replies_go_to_the_support_mailbox():
     send_templated_email(
         "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]
@@ -234,3 +242,13 @@ def test_the_delivery_link_lifetime_matches_the_adr():
     _, text, html = render_email("item_delivered", EMAIL_PREVIEWS["item_delivered"])
     for part in (text, html):
         assert "۷۲" in part
+
+
+@pytest.mark.parametrize("name", ["signin_alert", "password_changed"])
+def test_security_notice_names_support_instead_of_denying_site_signin(name):
+    from django.utils.html import strip_tags
+
+    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    for body in (text, strip_tags(html)):
+        assert "پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد." in body
+        assert "کد شما را نمی‌پرسد" not in body

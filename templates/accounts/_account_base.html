@@ -1,14 +1,4 @@
-{% extends "base.html" %}{% comment %}
-The account shell. Navigation on the inline-start, which in this right-to-left
-page puts it on the right, where every Persian dashboard keeps it.
-
-Two sections, not three: «پیشخوان» was a word that described nothing and a
-page that listed the same phone number as the one next to it. سفارش‌ها (S4b)
-and اشتراک‌ها (S9) are sections that will be genuinely different, and each
-costs one entry here. Nothing is listed before it exists.
-
-The section is a <div>: base.html already holds the page's one <main>.
-{% endcomment %}
+{% extends "base.html" %}
 
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
@@ -22,6 +12,7 @@ The section is a <div>: base.html already holds the page's one <main>.
       <span class="acct__email" title="{{ request.user.email }}"><bdi>{{ request.user.email }}</bdi></span>
     </div>
     <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
+    <a href="{% url 'order-list' %}"{% if section == "orders" %} aria-current="page"{% endif %}>سفارش‌ها</a>
     <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
     <form method="post" action="{% url 'logout' %}" class="acct__out">
       {% csrf_token %}

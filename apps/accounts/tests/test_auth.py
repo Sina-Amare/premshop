@@ -23,7 +23,7 @@ from django.test import Client
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
-from apps.accounts import otp, services, views
+from apps.accounts import otp, services
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.email import render_email
@@ -126,7 +126,7 @@ def test_every_password_attempt_costs_exactly_one_hash(client, user, monkeypatch
     computations is exact and is what the time difference is made of. It was two for
     a real account with a wrong password, and two for an account with no password
     (Django already fakes one hash for those; the view added a second)."""
-    monkeypatch.setattr(views, "_DUMMY_HASH", make_password("nobody-knows-this"))
+    monkeypatch.setattr(services, "_DUMMY_HASH", make_password("nobody-knows-this"))
     email, password = user.email, "not-the-password"
     if case == "unknown":
         email = "stranger@example.test"
@@ -778,3 +778,20 @@ def test_an_empty_search_goes_to_the_shelf_instead_of_a_blank_page(client):
 
     assert response.status_code == 302
     assert response.headers["Location"] == reverse("home")
+
+
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_shared_attempt_limit_does_not_blame_the_new_authentication_method(rf, method):
+    email = "attempts@example.test"
+    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times):
+        assert ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
+    request = rf.post("/login/")
+    if method == "code":
+        with pytest.raises(services.RateLimited) as caught:
+            services.complete_code_login(request, email, "123456")
+        message = caught.value.message
+    else:
+        message = services.password_attempt_refusal(request, email)
+    assert "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است." in message
+    assert "۱۵ دقیقه" in message
+    assert "اشتباه" not in message

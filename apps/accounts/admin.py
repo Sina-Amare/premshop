@@ -19,9 +19,9 @@ from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.forms import AuthenticationForm
 
+from apps.accounts import services
 from apps.accounts.models import User
 from apps.accounts.otp import normalize_email
-from apps.accounts.services import password_attempt_refusal
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, to_persian_digits
 
@@ -42,15 +42,19 @@ class PanelLoginForm(AuthenticationForm):
     def clean(self) -> dict[str, Any]:
         username = normalize_email(self.cleaned_data.get("username", ""))
         self.cleaned_data["username"] = username
-        if username and self.cleaned_data.get("password"):
-            if refusal := password_attempt_refusal(self.request, username):
-                raise ValidationError(refusal, code="rate_limited")
-        cleaned = super().clean()
+        if username and (password := self.cleaned_data.get("password")):
+            try:
+                self.user_cache = services.authenticate_password(self.request, username, password)
+            except services.RateLimited as error:
+                raise ValidationError(error.message, code="rate_limited") from None
+            if self.user_cache is None:
+                raise self.get_invalid_login_error()
+            self.confirm_login_allowed(self.user_cache)
         # Only a sign-in that passed. A post with no password skips the check
         # and returns cleanly too; clearing on it would undo the limit.
         if self.get_user() is not None:
             ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, username)
-        return cleaned
+        return self.cleaned_data
 
 
 admin.site.login_form = PanelLoginForm
@@ -68,6 +72,11 @@ class UserAdmin(ModelAdmin):
         (_("دسترسی"), {"fields": ("is_active", "is_staff")}),
         (_("تاریخ‌ها"), {"fields": ("joined", "last_seen")}),
     )
+
+    def save_model(self, request: HttpRequest, obj: User, form: Any, change: bool) -> None:
+        changed = set(form.changed_data) & {"phone", "is_active", "is_staff"}
+        if changed:
+            obj.save(update_fields=changed)
 
     @admin.display(description=_("تاریخ عضویت"), ordering="date_joined")
     def joined(self, obj: User) -> str:
