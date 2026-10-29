@@ -143,6 +143,19 @@ def test_activation_input_is_not_in_line_debug_representation(plan):
     assert "private-target" not in repr(OrderLine(plan, 1, "private-target@example.test"))
 
 
+def test_reviewed_no_input_hides_legacy_hint_without_erasing_it(client, buyer, plan):
+    Plan.objects.filter(pk=plan.pk).update(customer_input_label="ایمیل اکانت قبلی")
+    plan.refresh_from_db()
+    assert plan.activation_input_label == ""
+    assert plan.customer_input_label == "ایمیل اکانت قبلی"
+    response = client.get(plan.product.get_absolute_url())
+    assert response.status_code == 200
+    assert 'data-asks=""' in response.content.decode()
+    assert "ایمیل اکانت قبلی" not in response.content.decode()
+    purchase = quote_order(user=buyer, lines=[OrderLine(plan, 1)])
+    assert purchase.lines[0].snapshot["customer_input_label"] == ""
+
+
 @pytest.mark.django_db(transaction=True)
 def test_requirement_migration_preserves_legacy_values_without_guessing_configuration(plan):
     configure(plan, "email")

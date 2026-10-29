@@ -1122,6 +1122,8 @@ class Plan(ChecksNameTheirField, PageRow):
 
     @property
     def activation_input_label(self) -> str:
+        if self.input_type == self.InputType.NONE:
+            return ""
         labels: dict[str, str] = {
             self.InputType.EMAIL: gettext("ایمیل اکانت"),
             self.InputType.USERNAME: gettext("نام کاربری اکانت"),
