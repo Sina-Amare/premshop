@@ -268,3 +268,35 @@ def test_long_mixed_cart_preview_keeps_controls_and_prices_within_viewport(
         page.screenshot(path=str(directory / f"long-{width}.png"), full_page=True)
     finally:
         context.close()
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_inline_signin_disables_the_visible_submit_while_request_is_pending(
+    browser, live_server, method
+):
+    context = browser.new_context()
+    page = context.new_page()
+    held = []
+    try:
+        page.goto(live_server.url + reverse("checkout") + "?method=" + method)
+        page.route(
+            "**/login/" if method == "password" else "**/login/code/",
+            lambda route: held.append(route),
+        )
+        form = page.locator("[data-inline-email]")
+        form.get_by_label("ایمیل", exact=True).fill("buyer@example.test")
+        if method == "password":
+            form.get_by_label("رمز عبور", exact=True).fill(PASSWORD)
+        submit = form.locator('[type="submit"]')
+        submit.click()
+        expect(form).to_have_attribute("aria-busy", "true")
+        expect(submit).to_be_disabled()
+        if method == "password":
+            expect(page.get_by_role("button", name="نمایش رمز عبور", exact=True)).to_be_enabled()
+        assert len(held) == 1
+        held[0].fulfill(status=400, json={"ok": False, "error": "ایمیل یا رمز عبور اشتباه است."})
+        expect(submit).to_be_enabled()
+        expect(form).not_to_have_attribute("aria-busy", "true")
+    finally:
+        context.close()

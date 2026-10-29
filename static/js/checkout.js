@@ -73,7 +73,7 @@
   for (const form of [email, code, resend]) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const button = form.querySelector('button');
+      const button = form.querySelector('button[type="submit"]');
       if (button.disabled) return;
       button.disabled = true;
       form.setAttribute('aria-busy', 'true');
