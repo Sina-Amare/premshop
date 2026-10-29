@@ -9,9 +9,46 @@
   const resend = root.querySelector('[data-inline-resend]');
   const status = root.querySelector('[data-login-status]');
   const edit = root.querySelector('[data-inline-edit]');
+  const password = root.querySelector('[data-login-password]');
+  const methods = [...root.querySelectorAll('a[data-login-method]')];
+  let codeSent = false;
   let resendAt = 0;
   let timer;
+  function chooseMethod(method) {
+    const withPassword = method === 'password';
+    root.dataset.loginMethod = method;
+    email.action = withPassword ? root.dataset.passwordUrl : root.dataset.codeUrl;
+    email.hidden = !withPassword && codeSent;
+    password.hidden = !withPassword;
+    const input = password.querySelector('input');
+    input.disabled = !withPassword;
+    if (!withPassword) {
+      input.value = '';
+      input.type = 'password';
+      const eye = password.querySelector('.field__eye');
+      eye?.setAttribute('aria-pressed', 'false');
+      eye?.setAttribute('aria-label', 'نمایش رمز عبور');
+    }
+    email.querySelector('[data-login-submit]').textContent = withPassword ? 'ورود' : 'دریافت کد ورود';
+    code.hidden = resend.hidden = edit.hidden = withPassword || !codeSent;
+    methods.forEach(link => {
+      if (link.dataset.loginMethod === method) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+    status.hidden = true;
+  }
+  methods.forEach(link => link.addEventListener('click', event => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    if (root.querySelector('[aria-busy=true]')) return;
+    chooseMethod(link.dataset.loginMethod);
+    history.replaceState(null, '', link.href);
+    const target = !code.hidden ? code.querySelector('input[name=code]') :
+      !password.hidden && email.querySelector('input[name=email]').value ? password.querySelector('input') : email.querySelector('input[name=email]');
+    target.focus();
+  }));
   edit.addEventListener('click', () => {
+    codeSent = false;
     email.hidden = false;
     code.hidden = true;
     resend.hidden = true;
@@ -36,7 +73,7 @@
   for (const form of [email, code, resend]) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const button = form.querySelector('button');
+      const button = form.querySelector('button[type="submit"]');
       if (button.disabled) return;
       button.disabled = true;
       form.setAttribute('aria-busy', 'true');
@@ -58,6 +95,7 @@
           window.location.assign(window.location.pathname);
           return;
         }
+        codeSent = true;
         email.hidden = true;
         code.hidden = false;
         resend.hidden = false;
