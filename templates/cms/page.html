@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load fa richtext %}
+
+{% block title %}{{ page.title }}{% endblock %}
+{% block meta_description %}{{ page.description }}{% endblock %}
+{% block meta_robots %}{% if preview %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
+
+{% block content %}
+{% if preview %}
+<div class="preview-bar" role="status"><div class="wrap"><span class="badge badge--key">پیش‌نویس</span> این صفحه منتشر نشده است. متن و شرایط آن هنوز نهایی نیست.{% if perms.cms.change_page %} <a href="{% url 'admin:cms_page_change' page.pk %}">ویرایش در پنل</a>{% endif %}</div></div>
+{% endif %}
+<div class="wrap page">
+  <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span aria-current="page">{{ page.title }}</span></nav>
+  <article class="legal-page">
+    <header class="page-head"><h1 class="page-head__title">{{ page.title }}</h1></header>
+    {% if page.body %}<div class="legal-page__body">{{ page.body|markdown:"23" }}</div>{% elif preview %}<p class="prose">متن این صفحه هنوز نوشته نشده است.</p>{% endif %}
+    {% if page.slug == "contact" %}
+    <section class="legal-page__support" aria-labelledby="contact-support">
+      <h2 id="contact-support">راه‌های ارتباط با پشتیبانی</h2>
+      <p>{{ support.hours }} به وقت تهران</p>
+      <p><a href="{{ support.telegram_url }}" rel="noopener">تلگرام: <bdi dir="ltr">{{ support.telegram }}</bdi></a></p>
+      {% if support.email %}<p><a href="mailto:{{ support.email }}">ایمیل: <bdi dir="ltr">{{ support.email }}</bdi></a></p>{% endif %}
+    </section>
+    {% endif %}
+  </article>
+</div>
+{% endblock %}

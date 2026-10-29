@@ -107,7 +107,7 @@ def test_the_sheet_still_only_links_each_plan_to_its_product_page(client, spotif
 def test_the_monthly_line_reads_the_plans_already_fetched(
     client, spotify, django_assert_num_queries
 ):
-    with django_assert_num_queries(5):  # the count before the sheet carried the line
+    with django_assert_num_queries(6):  # Includes published legal-page navigation.
         body = client.get(reverse("home")).content.decode()
     assert QUARTER in _text(_sheet(body))
 

@@ -1181,3 +1181,57 @@ msgstr "Specify whether Telegram is required."
 
 msgid "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
 msgstr "A plan requiring input can only be purchased once per order."
+
+msgid "آخرین ویرایش"
+msgstr "Last edited"
+
+msgid "آدرس صفحه"
+msgstr "Page address"
+
+msgid "آدرس صفحه پس از افزودن تغییر نمی‌کند."
+msgstr "A page address cannot change after creation."
+
+msgid "انتشار پس از تأیید متن و آماده‌شدن فرایندهای اعلام‌شده در آن."
+msgstr "Publish after the text is approved and the stated processes are operational."
+
+msgid "برای انتشار، این قسمت را کامل کنید."
+msgstr "Complete this field before publishing."
+
+msgid "تماس با ما"
+msgstr "Contact us"
+
+msgid "توضیح صفحه برای نتیجه‌ی جستجو و پیش‌نمایش لینک."
+msgstr "Page description for search results and link previews."
+
+msgid "حریم خصوصی"
+msgstr "Privacy"
+
+msgid "درباره ما"
+msgstr "About us"
+
+msgid "صفحه"
+msgstr "Page"
+
+msgid "صفحه‌ها"
+msgstr "Pages"
+
+msgid "صفحه‌های فروشگاه"
+msgstr "Shop pages"
+
+msgid "قوانین خرید"
+msgstr "Purchase terms"
+
+msgid "لغو سفارش و بازگشت وجه"
+msgstr "Cancellation and refunds"
+
+msgid "متن با مارک‌داون: ## برای تیتر، - برای فهرست و [عنوان](آدرس) برای لینک."
+msgstr "Markdown text: ## for a heading, - for a list and [title](address) for a link."
+
+msgid "متن صفحه"
+msgstr "Page text"
+
+msgid "منتشرشده"
+msgstr "Published"
+
+msgid "پیش از انتشار، جای خالی تصمیم یا اطلاعات را پر کنید."
+msgstr "Resolve missing decisions or information before publishing."

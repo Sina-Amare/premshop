@@ -33,6 +33,7 @@ def favicon(request: HttpRequest) -> HttpResponse:
 urlpatterns = [
     path("favicon.ico", favicon),
     path("", include("apps.catalog.urls")),
+    path("", include("apps.cms.urls")),
     # set_language, which the operator panel's language switch posts to. Unfold
     # reverses this name on every sidebar render, so without it the whole admin
     # raises NoReverseMatch the moment SHOW_LANGUAGES is on.

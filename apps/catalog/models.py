@@ -38,6 +38,7 @@ from django.utils.translation import gettext_lazy as _
 from PIL import Image, ImageOps
 
 from apps.catalog.search import normalize_for_search
+from apps.core.content import PLACEHOLDER
 from apps.core.formatting import to_persian_digits
 
 # How close a misspelling has to be before the shop offers it as the answer.
@@ -48,10 +49,6 @@ FUZZY_THRESHOLD = 0.4
 
 # A Persian or Arabic letter. A name with one has no Latin slug to give.
 _PERSIAN = re.compile(r"[\u0600-\u06ff]")
-
-# What the content writers leave where only the owner's decision or the trial
-# delivery can fill in the text. A page that still holds one is not published.
-PLACEHOLDER = re.compile(r"\[(?:تصمیم مالک|وابسته به تصمیم|از تحویل آزمایشی)[^\]\n]*\]?")
 
 # What the product page tells the buyer never to type into this site
 # (catalog/_activation_answer.html), so no plan may ask for it. Matched on the
