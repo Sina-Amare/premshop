@@ -14,12 +14,12 @@
       <section class="checkout-box" data-checkout-login>
         <h2>برای ثبت سفارش وارد شوید</h2><p>کد ورود را به ایمیلتان می‌فرستیم. پس از ورود، سبد خرید و مبلغ نهایی را بررسی می‌کنید.</p>
         <p role="status" data-login-status hidden></p>
-        <form method="post" action="{% url 'login-code' %}" data-inline-email>
+        <form method="post" action="{% url 'login-code' %}" data-inline-email novalidate>
           {% csrf_token %}<input type="hidden" name="next" value="{% url 'checkout' %}">
           {% include 'accounts/_field.html' with field=email_form.email %}
           <button class="btn btn--primary" type="submit">دریافت کد ورود</button>
         </form>
-        <form method="post" action="{% url 'login-code-verify' %}" data-inline-code hidden>
+        <form method="post" action="{% url 'login-code-verify' %}" data-inline-code novalidate hidden>
           {% csrf_token %}{% include 'accounts/_field.html' with field=code_form.code %}
           <button class="btn btn--primary" type="submit">تأیید کد و ادامه</button>
         </form>

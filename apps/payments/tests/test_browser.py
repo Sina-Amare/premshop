@@ -40,6 +40,31 @@ def screenshot(page, label, width):
     page.screenshot(path=str(directory / f"{label}-{width}.png"), full_page=True)
 
 
+@pytest.mark.parametrize("javascript", [True, False])
+def test_inline_invalid_fields_use_persian_errors_in_english_browser(
+    browser, live_server, javascript, monkeypatch, mailoutbox
+):
+    monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
+    context = browser.new_context(locale="en-US", java_script_enabled=javascript)
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("checkout"))
+        page.get_by_label("ایمیل", exact=True).fill("invalid")
+        page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
+        if javascript:
+            expect(page.locator("[data-login-status]")).to_contain_text("این ایمیل معتبر نیست")
+            page.get_by_label("ایمیل", exact=True).fill("buyer@example.test")
+            page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
+            expect(page.locator("[data-inline-code]")).to_be_visible()
+            page.get_by_role("button", name="تأیید کد و ادامه").click()
+            expect(page.locator("[data-login-status]")).to_contain_text("کد را وارد کنید")
+        else:
+            expect(page).to_have_url(live_server.url + reverse("login-code"))
+            expect(page.locator(".field__error")).to_contain_text("این ایمیل معتبر نیست")
+    finally:
+        context.close()
+
+
 @pytest.mark.parametrize("width", [390, 1440])
 def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     browser,
