@@ -242,3 +242,13 @@ def test_the_delivery_link_lifetime_matches_the_adr():
     _, text, html = render_email("item_delivered", EMAIL_PREVIEWS["item_delivered"])
     for part in (text, html):
         assert "۷۲" in part
+
+
+@pytest.mark.parametrize("name", ["signin_alert", "password_changed"])
+def test_security_notice_names_support_instead_of_denying_site_signin(name):
+    from django.utils.html import strip_tags
+
+    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    for body in (text, strip_tags(html)):
+        assert "پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد." in body
+        assert "کد شما را نمی‌پرسد" not in body
