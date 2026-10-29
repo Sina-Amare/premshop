@@ -1,6 +1,6 @@
 (() => {
   const form = document.querySelector('[data-cart-add]:not([data-snapshot])');
-  const cartPage = document.querySelector('.cart-page');
+  const cartPage = document.querySelector('[data-cart-revision]');
   const lines = () => [...document.querySelectorAll('[data-cart-plan]')];
   if (!form && !cartPage) return;
   const toast = document.getElementById('cart-toast');
@@ -64,7 +64,7 @@
     const response = await fetch('/cart/', {cache: 'no-store'});
     if (!response.ok) return false;
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const fresh = doc.querySelector('.cart-page');
+    const fresh = doc.querySelector('[data-cart-revision]');
     if (!fresh || started !== generation) return false;
     const edited = [...cartPage.querySelectorAll('input[name=quantity]')]
       .filter(input => accepted && input.id === accepted.id ?

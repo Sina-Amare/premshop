@@ -73,19 +73,31 @@ def _safe_next(request: HttpRequest) -> str:
 @require_http_methods(["GET", "POST"])
 def login_password(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
+        if _wants_json(request):
+            return JsonResponse({"ok": True, "next": _safe_next(request)})
         return redirect(_safe_next(request))
 
     form = PasswordLoginForm(request.POST or None)
+    status = 400
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
         try:
             user = services.login_with_password(request, email, form.cleaned_data["password"])
         except services.RateLimited as exc:
             form.add_error(None, exc.message)
+            status = 429
         else:
             if user is not None:
+                if _wants_json(request):
+                    return JsonResponse({"ok": True, "next": _safe_next(request)})
                 return redirect(_safe_next(request))
             form.add_error(None, WRONG_CREDENTIALS)
+
+    if request.method == "POST" and _wants_json(request):
+        error = next(
+            (error for errors in form.errors.values() for error in errors), WRONG_CREDENTIALS
+        )
+        return JsonResponse({"ok": False, "error": str(error)}, status=status)
 
     # The destination rides a hidden field, because the form posts to this URL
     # without its query string.
