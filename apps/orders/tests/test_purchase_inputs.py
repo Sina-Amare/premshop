@@ -26,7 +26,7 @@ def test_unreviewed_legacy_plan_cannot_be_quoted_or_purchased(buyer, plan):
     Plan.objects.filter(pk=plan.pk).update(input_type="unreviewed", telegram_required=None)
     for operation in (quote_order, place_order):
         kwargs = {"activation_consent": True} if operation is place_order else {}
-        with pytest.raises(ValidationError, match="تنظیمات اطلاعات"):
+        with pytest.raises(ValidationError, match="از پشتیبانی راهنمایی بگیرید"):
             operation(user=buyer, lines=[OrderLine(plan, 1)], **kwargs)
     assert not Order.objects.exists()
 
@@ -135,7 +135,7 @@ def test_admin_requires_review_and_maps_quantity_error_to_visible_field(plan):
 def test_reviewed_no_input_does_not_retain_a_stale_secret_label(buyer, plan):
     configure(plan, "none", False)
     Plan.objects.filter(pk=plan.pk).update(customer_input_label="رمز عبور اکانت")
-    with pytest.raises(ValidationError, match="تنظیمات اطلاعات"):
+    with pytest.raises(ValidationError, match="از پشتیبانی راهنمایی بگیرید"):
         quote_order(user=buyer, lines=[OrderLine(plan, 1)])
 
 

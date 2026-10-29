@@ -1118,7 +1118,7 @@ class Plan(ChecksNameTheirField, PageRow):
             or self.requires_customer_input != (self.input_type != self.InputType.NONE)
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
-            raise ValidationError("تنظیمات اطلاعات فعال‌سازی این پلن هنوز تأیید نشده است.")
+            raise ValidationError("این پلن فعلاً قابل خرید نیست. از پشتیبانی راهنمایی بگیرید.")
 
     @property
     def activation_input_label(self) -> str:

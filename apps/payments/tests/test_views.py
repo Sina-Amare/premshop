@@ -259,3 +259,19 @@ def test_invalid_discount_keeps_activation_fields_visible_without_an_accepted_qu
     assert response.context["form"][name].value() == "target@example.test"
     assert 'name="action" value="checkout"' not in response.content.decode()
     assert cart.items.exists() and not Order.objects.exists()
+
+
+def test_checkout_prints_custom_delivery_once_and_hides_inapplicable_notes(
+    client, buyer, plan, cart
+):
+    note = "تحویل پس از هماهنگی با مشتری"
+    Product.objects.filter(pk=plan.product_id).update(
+        delivery_note=note, usage_notes="موضوعیت ندارد."
+    )
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    body = response.content.decode()
+    assert body.count(note) == 1
+    assert "موضوعیت ندارد" not in body and "<summary>نکات استفاده</summary>" not in body
+    snapshot = response.context["quote"].purchase.lines[0].snapshot
+    assert snapshot["delivery_note"] == note and snapshot["usage_notes"] == "موضوعیت ندارد."

@@ -41,9 +41,8 @@
             <p>قیمت هر عدد: {{ line.price|price_html }}</p>
             {% if line.snapshot.delivery_type %}<p>روش تحویل: {{ line.plan.product.get_delivery_type_display }}</p>{% endif %}
             <p>{{ line.plan.product.delivery_sentence }}</p>
-            {% if line.snapshot.delivery_note %}<p>{{ line.snapshot.delivery_note }}</p>{% endif %}
             {% if line.snapshot.warranty %}<p>گارانتی: {% if line.snapshot.warranty == "none" %}ندارد{% else %}{{ line.plan.product.get_warranty_display }}{% endif %}</p>{% endif %}
-            {% if line.snapshot.usage_notes %}<details><summary>نکات استفاده</summary><div>{{ line.snapshot.usage_notes|markdown:"" }}</div></details>{% endif %}
+            {% if line.plan.product.usage_notes_shown %}<details><summary>نکات استفاده</summary><div>{{ line.plan.product.usage_notes_shown|markdown:"" }}</div></details>{% endif %}
             {% if line.snapshot.refund_note %}<details><summary>شرایط لغو و بازگشت وجه</summary><div>{{ line.snapshot.refund_note|markdown:"" }}</div></details>{% endif %}
             {% if line.snapshot.telegram_required %}<p class="checkout-telegram">فعال‌سازی این پلن به هماهنگی در تلگرام نیاز دارد.</p>{% endif %}
           </article>
