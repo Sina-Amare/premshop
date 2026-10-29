@@ -275,3 +275,17 @@ def test_checkout_prints_custom_delivery_once_and_hides_inapplicable_notes(
     assert "موضوعیت ندارد" not in body and "<summary>نکات استفاده</summary>" not in body
     snapshot = response.context["quote"].purchase.lines[0].snapshot
     assert snapshot["delivery_note"] == note and snapshot["usage_notes"] == "موضوعیت ندارد."
+
+
+def test_unpaid_order_message_explains_the_block_without_a_false_action(client, buyer, plan, cart):
+    from apps.orders.services import OrderLine, UnpaidOrderExists, place_order
+
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    explanation = "تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید."
+    assert explanation in response.content.decode()
+    assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
+    with pytest.raises(UnpaidOrderExists) as caught:
+        quote_checkout(user=buyer)
+    assert explanation in caught.value.messages[0]

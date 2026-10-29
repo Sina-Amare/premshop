@@ -8,7 +8,7 @@
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
   {% if existing %}
-    <section class="checkout-box"><h2>یک سفارش منتظر پرداخت دارید</h2><p>برای ثبت سفارش دیگر، ابتدا سفارش فعلی را بررسی یا لغو کنید. سبد خرید شما حفظ شده است.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
+    <section class="checkout-box"><h2>یک سفارش منتظر پرداخت دارید</h2><p>تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید. سبد خرید شما حفظ شده است.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout">
       <section class="checkout-box" data-checkout-login>

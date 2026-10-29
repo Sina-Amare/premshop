@@ -92,7 +92,7 @@ class Purchase:
 class UnpaidOrderExists(ValidationError):
     def __init__(self, order: Order) -> None:
         self.order = order
-        super().__init__("یک سفارش منتظر پرداخت دارید. ابتدا آن را بررسی یا لغو کنید.")
+        super().__init__("تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید.")
 
 
 def _money(value: Decimal) -> Decimal:
