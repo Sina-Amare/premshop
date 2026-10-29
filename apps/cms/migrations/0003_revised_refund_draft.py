@@ -23,9 +23,9 @@ REVISED = (
 
 
 def _replace(apps, schema_editor, old, new):
-    Page = apps.get_model("cms", "Page")
+    pages = apps.get_model("cms", "Page").objects.using(schema_editor.connection.alias)
     # Only the untouched seed is replaced; an edited page is the owner's text.
-    Page.objects.using(schema_editor.connection.alias).filter(slug="refunds", body=old).update(body=new)
+    pages.filter(slug="refunds", body=old).update(body=new)
 
 
 def revise(apps, schema_editor):
