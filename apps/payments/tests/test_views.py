@@ -210,3 +210,30 @@ def test_discount_actions_say_apply_or_remove_and_show_the_result(client, buyer,
     assert response.context["form"]["discount_code"].value() == ""
     assert not response.context["form"]["activation_consent"].value()
     assert cart.items.exists() and not Order.objects.exists()
+
+
+def test_correct_code_for_deactivated_account_preserves_guest_cart_and_does_not_sign_in(
+    client, buyer, plan, cart, monkeypatch, mailoutbox
+):
+    monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
+    client.post(reverse("cart-add"), {"plan": plan.pk})
+    guest = Cart.objects.get(user__isnull=True)
+    response = client.post(
+        reverse("login-code"),
+        {
+            "email": buyer.email,
+            "next": reverse("checkout"),
+        },
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.json()["ok"] is True
+    User.objects.filter(pk=buyer.pk).update(is_active=False)
+    for _ in range(2):
+        refused = client.post(
+            reverse("login-code-verify"), {"code": "123456"}, HTTP_ACCEPT="application/json"
+        )
+        assert refused.json()["ok"] is False
+        assert "_auth_user_id" not in client.session
+    assert Cart.objects.filter(pk=guest.pk, user__isnull=True).exists()
+    assert guest.items.get().quantity == cart.items.get().quantity == 1
+    assert User.objects.count() == 1 and len(mailoutbox) == 1
