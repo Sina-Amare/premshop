@@ -6,7 +6,7 @@ from django.urls import reverse
 from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan, Product
-from apps.orders.models import Order
+from apps.orders.models import DiscountCode, Order
 from apps.payments.services import quote_checkout
 
 pytestmark = pytest.mark.django_db
@@ -190,3 +190,23 @@ def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer,
     assert valid.value() == "valid@example.test" and not form["activation_consent"].value()
     assert "invalid-private-input" not in str(invalid.errors)
     assert not Order.objects.exists() and cart.items.count() == 2
+
+
+def test_discount_actions_say_apply_or_remove_and_show_the_result(client, buyer, cart):
+    DiscountCode.objects.create(code="SAVE", kind="fixed", value=10000)
+    client.force_login(buyer)
+    body = client.get(reverse("checkout")).content.decode()
+    assert "اعمال کد تخفیف" in body
+    assert "به‌روزرسانی خلاصه" not in body
+    response = client.post(
+        reverse("checkout"), {"action": "apply_discount", "discount_code": "SAVE"}
+    )
+    assert response.status_code == 200 and response.context["quote"].purchase.total == 190000
+    assert "حذف کد تخفیف" in response.content.decode()
+    response = client.post(
+        reverse("checkout"), {"action": "remove_discount", "discount_code": "SAVE"}
+    )
+    assert response.status_code == 200 and response.context["quote"].purchase.total == 200000
+    assert response.context["form"]["discount_code"].value() == ""
+    assert not response.context["form"]["activation_consent"].value()
+    assert cart.items.exists() and not Order.objects.exists()

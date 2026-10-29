@@ -53,12 +53,13 @@
           {% for line, field in form.input_fields %}<p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p>{% include 'accounts/_field.html' %}{% endfor %}
         </section>{% endif %}
         <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش در حساب فعلی شما ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
-        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا رفع خطای بالا، سفارشی ثبت نمی‌شود.</p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></section>{% endif %}
+        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا رفع خطای بالا، سفارشی ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
       </div>
       <aside class="cart-summary" aria-label="خلاصه‌ی سفارش">
         <h2>خلاصه‌ی سفارش</h2>
         {% include 'accounts/_field.html' with field=form.discount_code %}
-        <button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>بررسی کد و به‌روزرسانی خلاصه</button>
+        <button class="btn btn--secondary" type="submit" name="action" value="apply_discount" formnovalidate>اعمال کد تخفیف</button>
+        {% if form.discount_code.value %}<button class="btn btn--ghost" type="submit" name="action" value="remove_discount" formnovalidate>حذف کد تخفیف</button>{% endif %}
         {% if quote %}
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
           <div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div>

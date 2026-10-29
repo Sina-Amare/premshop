@@ -79,7 +79,11 @@ def checkout(request: HttpRequest) -> HttpResponse:
     user = request.user
     code = request.POST.get("discount_code", "")[:32]
     action = request.POST.get("action")
-    if action == "review":
+    if action in ("review", "apply_discount", "remove_discount"):
+        if action == "remove_discount":
+            code = ""
+        if action == "apply_discount" and not code.strip():
+            return _page(request, error="کد تخفیف را وارد کنید.", status=400)
         try:
             services.prepare_checkout(user=user)
         except ValidationError as exc:
