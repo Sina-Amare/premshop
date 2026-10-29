@@ -455,3 +455,5 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:1150px){.v-navline .v-support{display:flex}}
 /* On a phone the FAQ leaves the row and closes the categories list. The link's 44px target reaches up into the header's padding, so the 41px row and the 170px header keep their height. */
 @media(max-width:760px){.v-help{display:none}.v-navline .v-support{margin-block-start:-3px;padding-block-start:3px}.v-mobile-cats nav .v-mobile-cats__faq{display:flex;border-block-start:1px solid var(--v-line)}}
+
+.checkout-summary-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.checkout-summary-heading h2{margin:0}

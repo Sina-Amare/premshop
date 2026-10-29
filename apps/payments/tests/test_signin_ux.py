@@ -126,6 +126,9 @@ def test_cart_polling_never_replaces_checkout_or_discards_typed_values(
     try:
         page.clock.install()
         page.goto(live_server.url + reverse("checkout"))
+        summary = page.locator(".cart-summary")
+        expect(summary.get_by_role("link", name="ویرایش سبد خرید", exact=True)).to_be_visible()
+        expect(page.locator(".cart-heading a")).to_have_count(0)
         field = (
             page.locator('[name="phone"]')
             if authenticated
