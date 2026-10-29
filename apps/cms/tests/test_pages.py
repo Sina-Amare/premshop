@@ -3,12 +3,34 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.cms.models import Page
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.mark.parametrize("published", [False, True])
+def test_legal_navigation_adds_one_query_with_zero_or_five_public_pages(client, published):
+    for slug, title in Page.Slug.choices:
+        Page.objects.update_or_create(
+            slug=slug,
+            defaults={
+                "title": title,
+                "body": "متن نهایی صفحه.",
+                "description": "توضیح صفحه.",
+                "is_published": published,
+            },
+        )
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(reverse("home"))
+    assert response.status_code == 200
+    assert len([q for q in queries if '"cms_page"' in q["sql"]]) == 1
+    for slug in Page.Slug.values:
+        assert (f'href="/{slug}/"' in response.content.decode()) is published
 
 
 @pytest.fixture

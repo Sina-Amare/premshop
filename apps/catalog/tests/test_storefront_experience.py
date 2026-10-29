@@ -57,7 +57,7 @@ def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client,
     with CaptureQueriesContext(connection) as queries:
         response = client.get(reverse("home"))
     assert [p.pk for p in response.context["shelf"]] == expected
-    assert len(queries) == 5
+    assert len(queries) == 6  # Includes published legal-page navigation.
     body = response.content.decode()
     assert body.count('class="nebula__item"') == 30
     assert "data-orbit-next" in body
