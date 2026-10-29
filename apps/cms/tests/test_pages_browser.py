@@ -11,6 +11,30 @@ pytestmark = [pytest.mark.browser, pytest.mark.django_db(transaction=True)]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
+def test_published_footer_links_wrap_as_a_row(browser, live_server, width):
+    for slug, title in Page.Slug.choices:
+        Page.objects.update_or_create(
+            slug=slug,
+            defaults={
+                "title": title,
+                "body": "متن نهایی صفحه.",
+                "description": "توضیح صفحه.",
+                "is_published": True,
+            },
+        )
+    context = browser.new_context(viewport={"width": width, "height": 900})
+    try:
+        page = context.new_page()
+        assert page.goto(live_server.url + "/refunds/").status == 200
+        links = page.locator(".v-footer__legal")
+        assert links.locator("a").count() == 5
+        assert links.evaluate("el => getComputedStyle(el).flexDirection") == "row"
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
 def test_drafts_and_long_persian_are_readable_without_javascript(browser, live_server, width):
     operator = User.objects.create_superuser("pages@example.test", "test-only")
     for slug, title in Page.Slug.choices:
