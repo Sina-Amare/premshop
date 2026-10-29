@@ -33,9 +33,9 @@
     <form method="post" id="checkout-form" class="cart-layout" novalidate>
       {% csrf_token %}{{ form.quote }}{{ form.checkout_id }}
       <div class="checkout-fields">
-        {% if quote %}
+        {% if purchase %}
         <section class="checkout-box" aria-labelledby="checkout-products"><h2 id="checkout-products">محصولات سفارش</h2>
-          {% for line in quote.purchase.lines %}
+          {% for line in purchase.lines %}
           <article class="checkout-item">
             <h3><bdi>{{ line.snapshot.name }}</bdi></h3><p><bdi>{{ line.snapshot.plan_title }}</bdi>؛ تعداد: {{ line.quantity|fa_digits }}</p>
             <p>قیمت هر عدد: {{ line.price|price_html }}</p>

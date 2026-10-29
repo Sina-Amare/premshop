@@ -33,6 +33,12 @@ def _page(
             error = error or " ".join(exc.messages)
             if request.method == "POST" and status == 200:
                 status = 400
+    purchase = quote.purchase if quote else None
+    if purchase is None and discount_code and request.user.is_authenticated and existing is None:
+        try:
+            purchase = services.quote_checkout(user=request.user).purchase
+        except ValidationError:
+            pass
     initial = {
         "checkout_id": uuid.uuid4(),
         "quote": quote.token if quote else "",
@@ -40,13 +46,13 @@ def _page(
         "phone": request.POST.get("phone", "")[:32],
         "activation_consent": False,
     }
-    if quote:
-        for line in quote.purchase.lines:
+    if purchase:
+        for line in purchase.lines:
             key = f"customer_input_{line.plan.pk}"
             initial[key] = request.POST.get(key, "")[:2000]
-    form = CheckoutForm(initial=initial, purchase=quote.purchase if quote else None)
+    form = CheckoutForm(initial=initial, purchase=purchase)
     if request.method == "POST" and request.POST.get("action") == "checkout" and error:
-        submitted = CheckoutForm(request.POST, purchase=quote.purchase if quote else None)
+        submitted = CheckoutForm(request.POST, purchase=purchase)
         submitted.is_valid()
         # Keep field errors while presenting a new quote and unticked consent.
         form.errors.update(submitted.errors)
@@ -58,6 +64,7 @@ def _page(
         "payments/checkout.html",
         {
             "quote": quote,
+            "purchase": purchase,
             "existing": existing,
             "error": error,
             "form": form,

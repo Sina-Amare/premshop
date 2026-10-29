@@ -237,3 +237,25 @@ def test_correct_code_for_deactivated_account_preserves_guest_cart_and_does_not_
     assert Cart.objects.filter(pk=guest.pk, user__isnull=True).exists()
     assert guest.items.get().quantity == cart.items.get().quantity == 1
     assert User.objects.count() == 1 and len(mailoutbox) == 1
+
+
+def test_invalid_discount_keeps_activation_fields_visible_without_an_accepted_quote(
+    client, buyer, plan, cart
+):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
+    client.force_login(buyer)
+    name = f"customer_input_{plan.pk}"
+    response = client.post(
+        reverse("checkout"),
+        {
+            "action": "apply_discount",
+            "discount_code": "WRONG",
+            name: "target@example.test",
+        },
+    )
+    assert response.status_code == 400 and response.context["quote"] is None
+    assert response.context["form"][name].value() == "target@example.test"
+    assert 'name="action" value="checkout"' not in response.content.decode()
+    assert cart.items.exists() and not Order.objects.exists()
