@@ -348,3 +348,10 @@ def test_invoice_identifies_each_line_in_a_mixed_terminal_order(client, buyer, p
     assert {line["status"] for line in lines} == {"تحویل داده شده", "لغو شده"}
     body = response.content.decode()
     assert "وضعیت: تحویل داده شده" in body and "وضعیت: لغو شده" in body
+
+
+def test_https_redirects_also_protect_private_tracking_headers(client, settings):
+    settings.SECURE_SSL_REDIRECT = True
+    response = client.get("/track/redirect-token/")
+    assert response.status_code == 301
+    privacy_headers(response)

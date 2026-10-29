@@ -144,8 +144,8 @@ MIDDLEWARE = [
     # detail page at S5 is the one that will want to. At that point either that
     # view opts out of compression or the credential does not go in the HTML.
     "django.middleware.gzip.GZipMiddleware",
-    "django.middleware.security.SecurityMiddleware",
     "apps.core.middleware.OrderPagePrivacy",
+    "django.middleware.security.SecurityMiddleware",
     # Before everything else that might touch the cache, so its 503 wins over a
     # traceback no matter which view raised.
     "apps.core.middleware.CacheUnavailableMiddleware",

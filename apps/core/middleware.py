@@ -25,7 +25,11 @@ class OrderPagePrivacy:
         response = self.get_response(request)
         tracking = request.path.lower().startswith("/track/")
         if tracking and response.status_code >= 400:
-            allowed = response.get("Allow")
+            retained = {
+                name: response[name]
+                for name in ("Allow", "Strict-Transport-Security", "Cross-Origin-Opener-Policy")
+                if name in response
+            }
             response = render(
                 None,
                 "orders/tracking_error.html",
@@ -35,8 +39,8 @@ class OrderPagePrivacy:
                 },
                 status=response.status_code,
             )
-            if allowed:
-                response["Allow"] = allowed
+            for name, value in retained.items():
+                response[name] = value
             if response.status_code == 429:
                 response["Retry-After"] = "60"
         if tracking or request.path.startswith("/account/orders/"):
