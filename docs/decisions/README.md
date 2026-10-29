@@ -10,9 +10,9 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0004](0004-no-drf-in-phase-1.md) | No DRF/API until a real out-of-process consumer exists |
 | [0005](0005-money-in-toman.md) | Toman everywhere; rial only at the gateway adapter *(amended: discount field now exists — 0020; the instructions-page boundary is gone)* |
 | [0006](0006-card-to-card-payment-design.md) | ~~Card-to-card: DB-enforced uniqueness, pending-only expiry, revive, card snapshots~~ — **superseded by [0019](0019-payment-gateway.md)** |
-| [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; 2026-10-26 amendment: implemented key rotation and manual incoming activation details |
+| [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; key rotation and manual incoming activation details; 2026-10-29 amendment: cancelled input and interim deletion enforcement |
 | [0008](0008-content-free-messages-and-magic-link.md) | No credential values in software messages; constrained magic link; 2026-10-26 incoming manual activation exception |
-| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-28: delivery cap 48 hours for every product; 2026-10-20, evening: the delivery note is printed as written)* |
+| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-29: interim manual enforcement; 2026-10-28: delivery cap 48 hours for every product; 2026-10-20, evening: delivery note printed as written)* |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log; outbox with dedupe keys; accepted on-commit gap |
 | [0011](0011-buy-now-checkout-no-cart.md) | ~~Buy-now + quantity; no cart~~ — **superseded by [0018](0018-shopping-cart-and-guest-checkout.md)**; its item-status argument still stands *(amended 2026-10-23: the planned persistent cart needs its own tables and migration)* |
 | [0012](0012-auth-email-otp.md) | Email identity; inline checkout OTP; new-sign-in alert guard *(amended 2026-10-23: code sign-in restores access, not forgotten-password replacement; Iranian-host deliverability remains untested)* |
@@ -33,6 +33,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address *(amended 2026-10-22: `iran_stance` became `usage_notes`, «نکات استفاده»; the stance's sources requirement was dropped)* |
 | [0029](0029-unpaid-claims-and-scheduled-release.md) | Fixed unpaid deadlines, whole-order stock/discount release, checkout replay and Huey scheduling |
+| [0030](0030-legal-page-drafts.md) | Fixed legal-page URLs, private staff previews, separate publishing authority and purchase-record boundary |
 
 ## Legacy shorthand map
 

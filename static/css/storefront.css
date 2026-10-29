@@ -253,6 +253,21 @@ html body .v-search input:focus{box-shadow:none}
 .buybox__facts{margin:0 0 18px;padding-block-end:14px;border-bottom:1px solid var(--v-line);font-size:13px;line-height:1.9}
 .buybox__facts .v-icon{width:16px;height:16px}
 .page-head__intro .v-icon--telegram{width:16px;height:16px;display:inline-block;vertical-align:middle;margin-inline-end:4px}
+
+.legal-page{max-inline-size:44rem}
+.legal-page__body,.legal-page__support{font-size:17px;line-height:1.85;overflow-wrap:anywhere}
+.legal-page__body h2,.legal-page__support h2{font-family:var(--font-head);font-size:23px;font-weight:600;line-height:1.7;margin-block:2rem .75rem}
+.legal-page__body h3{font-size:19px;font-weight:700;line-height:1.8;margin-block:1.5rem .5rem}
+.legal-page__body p,.legal-page__body ul,.legal-page__body ol{margin-block:0 1rem}
+.legal-page__body ul,.legal-page__body ol{padding-inline-start:1.5rem}
+.legal-page__body ul{list-style:disc}
+.legal-page__body ol{list-style:decimal}
+.legal-page__body table{display:block;max-inline-size:100%;overflow-x:auto;border-collapse:collapse}
+.legal-page__body th,.legal-page__body td{padding:.5rem;border:1px solid var(--color-line)}
+.legal-page__support{border-block-start:1px solid var(--color-line);margin-block-start:2rem}
+.v-footer__legal{display:flex;flex-wrap:wrap;gap:12px 24px;padding-block:24px;border-block-start:1px solid var(--color-on-deep-line)}
+.v-footer__legal a{color:inherit;text-decoration:none;font-size:14px}
+.v-footer__legal a:hover{text-decoration:underline}
 .v-footer nav a:has(.v-icon--telegram){display:flex;align-items:center;gap:7px}
 .v-footer nav .v-icon--telegram{width:16px;height:16px}
 html body [aria-invalid=true]:focus,html body .field--error :is(input,textarea,select):focus{border-color:var(--color-danger,#bd2d35);box-shadow:0 0 0 1px var(--color-danger,#bd2d35)}

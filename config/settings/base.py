@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "apps.accounts",
     "apps.catalog",
+    "apps.cms",
     "apps.cart",
     "apps.orders",
     "apps.payments",
@@ -182,6 +183,7 @@ TEMPLATES = [
                 # Shared site facts and catalog navigation.
                 "apps.core.context.shell",
                 "apps.catalog.context.navigation",
+                "apps.cms.context.navigation",
                 "apps.cart.context.context",
                 # What the shop promises on every page; see apps/catalog/promises.py.
                 "apps.catalog.promises.context",
@@ -387,6 +389,12 @@ UNFOLD = {
                         "title": capfirst(_("دسته‌بندی‌ها")),
                         "icon": "category",
                         "link": reverse_lazy("admin:catalog_category_changelist"),
+                    },
+                    {
+                        "title": _("صفحه‌های فروشگاه"),
+                        "icon": "article",
+                        "link": reverse_lazy("admin:cms_page_changelist"),
+                        "permission": lambda request: request.user.has_perm("cms.view_page"),
                     },
                 ],
             },

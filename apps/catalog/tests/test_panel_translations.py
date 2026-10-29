@@ -26,6 +26,9 @@ PANEL_CODE = [
     "apps/catalog/admin_preview.py",
     "apps/catalog/placements.py",
     "apps/accounts/admin.py",
+    "apps/cms/apps.py",
+    "apps/cms/models.py",
+    "apps/cms/admin.py",
     # The apps' names in the path, and the sidebar's titles.
     "apps/catalog/apps.py",
     "apps/accounts/apps.py",
