@@ -420,3 +420,75 @@ def test_login_hash_upgrade_cannot_overwrite_successful_recovery(
         ), "A successful reset must remain the stored password."
     else:
         assert client.get(reverse("account")).status_code == 302
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("surface", ["profile", "admin"])
+def test_stale_customer_edit_cannot_restore_a_password_replaced_by_recovery(
+    client, customer, monkeypatch, surface
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from django.db import connection
+
+    from apps.accounts.admin import UserAdmin
+    from apps.accounts.forms import ProfileForm
+
+    code = request_code(client)
+    stale = Client()
+    stale.force_login(customer)
+    editor = stale
+    entered, release = Event(), Event()
+    if surface == "profile":
+        original = ProfileForm.save
+
+        def held(form, *args, **kwargs):
+            entered.set()
+            assert release.wait(15)
+            return original(form, *args, **kwargs)
+
+        monkeypatch.setattr(ProfileForm, "save", held)
+        url = reverse("account")
+        data = {"phone": "09123456789"}
+    else:
+        operator = User.objects.create_superuser(
+            "profile-operator@example.test", "operator-passphrase-420!"
+        )
+        editor = Client()
+        editor.force_login(operator)
+        original = UserAdmin.save_model
+
+        def held(admin, *args, **kwargs):
+            entered.set()
+            assert release.wait(15)
+            return original(admin, *args, **kwargs)
+
+        monkeypatch.setattr(UserAdmin, "save_model", held)
+        url = reverse("admin:accounts_user_change", args=[customer.pk])
+        data = {"phone": "09123456789", "is_active": "on", "_save": ""}
+
+    def edit():
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET statement_timeout = '20s'")
+            return editor.post(url, data).status_code
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(edit)
+        try:
+            assert entered.wait(10)
+            assert submit(client, code).status_code == 302
+            fresh = User.objects.get(pk=customer.pk)
+            assert fresh.check_password(PASSWORD)
+        finally:
+            release.set()
+        assert pending.result(timeout=15) == 302
+    customer.refresh_from_db()
+    assert customer.phone == "09123456789"
+    assert customer.check_password(PASSWORD), "The stale edit restored the old password."
+    assert not customer.check_password("previous-passphrase-420!")
+    assert stale.get(reverse("account")).status_code == 302
+    assert client.get(reverse("account")).status_code == 200

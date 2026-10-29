@@ -73,6 +73,11 @@ class UserAdmin(ModelAdmin):
         (_("تاریخ‌ها"), {"fields": ("joined", "last_seen")}),
     )
 
+    def save_model(self, request: HttpRequest, obj: User, form: Any, change: bool) -> None:
+        changed = set(form.changed_data) & {"phone", "is_active", "is_staff"}
+        if changed:
+            obj.save(update_fields=changed)
+
     @admin.display(description=_("تاریخ عضویت"), ordering="date_joined")
     def joined(self, obj: User) -> str:
         """Jalali, like every date the shop shows its operator. The page

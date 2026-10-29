@@ -259,7 +259,7 @@ def account(request: HttpRequest) -> HttpResponse:
     user = cast(User, request.user)  # @login_required guarantees this
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        form.save(commit=False).save(update_fields=["phone"])
         saved = "ذخیره شد" if user.phone else "حذف شد"
         messages.success(request, f"شماره‌ی موبایل {saved}.")
         return redirect(reverse("account"))
