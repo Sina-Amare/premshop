@@ -332,3 +332,19 @@ def test_public_tracking_does_not_distinguish_one_from_repeated_identical_units(
     second = client.get(reverse("order-tracking", args=[many.tracking_token]))
     assert len(first.context["tracking"]) == len(second.context["tracking"]) == 1
     assert first.content == second.content
+
+
+def test_invoice_identifies_each_line_in_a_mixed_terminal_order(client, buyer, plan):
+    order = purchase(buyer, plan, 2)
+    first, second = order.items.order_by("pk")
+    OrderItem.objects.filter(pk=first.pk).update(status=OrderItem.Status.DELIVERED)
+    OrderItem.objects.filter(pk=second.pk).update(
+        status=OrderItem.Status.CANCELLED,
+        cancel_reason=OrderItem.CancelReason.CUSTOMER_BEFORE_PAYMENT,
+    )
+    client.force_login(buyer)
+    response = client.get(reverse("order-invoice", args=[order.order_number]))
+    lines = response.context["invoice_data"]["lines"]
+    assert {line["status"] for line in lines} == {"تحویل داده شده", "لغو شده"}
+    body = response.content.decode()
+    assert "وضعیت: تحویل داده شده" in body and "وضعیت: لغو شده" in body

@@ -3,7 +3,7 @@
 {% block content %}<h1>فاکتور سفارش</h1>
 <p>شماره‌ی سفارش: {{ order.order_number|fa_digits }}</p><p>تاریخ ثبت: {{ order.created_at|jalali }}</p>
 <p class="order-status">{{ status }}</p><p class="order-warning">{{ notice }}</p>
-{% for line in invoice_data.lines %}<article class="order-line"><h2><bdi>{{ line.name }}</bdi></h2><p><bdi>{{ line.plan }}</bdi></p><p>تعداد: {{ line.quantity }}</p><p>قیمت هر عدد: {{ line.price }}</p><p>جمع این محصول: {{ line.amount }}</p></article>{% endfor %}
+{% for line in invoice_data.lines %}<article class="order-line"><h2><bdi>{{ line.name }}</bdi></h2><p><bdi>{{ line.plan }}</bdi></p><p>وضعیت: {{ line.status }}</p><p>تعداد: {{ line.quantity }}</p><p>قیمت هر عدد: {{ line.price }}</p><p>جمع این محصول: {{ line.amount }}</p></article>{% endfor %}
 <dl class="order-totals"><div><dt>جمع محصولات</dt><dd>{{ invoice_data.subtotal }}</dd></div><div><dt>تخفیف</dt><dd>{{ invoice_data.discount }}</dd></div><div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ invoice_data.total }}</dd></div></dl>
 <div class="order-actions"><button type="button" class="btn btn--primary" data-invoice-download hidden>دانلود تصویر فاکتور</button><a href="{% url 'order-detail' order.order_number %}">بازگشت به سفارش</a></div>
 <p role="status" data-invoice-status></p><noscript><p>برای دانلود تصویر فاکتور، جاوااسکریپت مرورگر را روشن کنید.</p></noscript>

@@ -100,6 +100,7 @@ def invoice(request: HttpRequest, order_number: int) -> HttpResponse:
                 "name": line["facts"].get("name", ""),
                 "plan": line["facts"].get("plan_title", ""),
                 "quantity": to_persian_digits(line["quantity"]),
+                "status": line["status_label"],
                 "price": format_toman(line["price"]),
                 "amount": format_toman(line["amount"]),
             }

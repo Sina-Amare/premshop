@@ -145,3 +145,34 @@ def test_font_failure_keeps_html_and_offers_an_export_retry(browser, live_server
         assert not downloads
     finally:
         context.close()
+
+
+def test_export_draws_each_mixed_order_line_status(browser, live_server, buyer, plan):
+    from apps.orders.models import OrderItem
+
+    order = place_order(user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True)
+    first, second = order.items.order_by("pk")
+    OrderItem.objects.filter(pk=first.pk).update(status=OrderItem.Status.DELIVERED)
+    OrderItem.objects.filter(pk=second.pk).update(
+        status=OrderItem.Status.CANCELLED,
+        cancel_reason=OrderItem.CancelReason.CUSTOMER_BEFORE_PAYMENT,
+    )
+    context = context_for(browser, live_server, buyer, 390)
+    page = context.new_page()
+    page.add_init_script("""(() => {
+        window.invoiceTexts = [];
+        const draw = CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+            window.invoiceTexts.push(text);
+            return draw.call(this, text, ...args);
+        };
+    })();""")
+    try:
+        page.goto(live_server.url + reverse("order-invoice", args=[order.order_number]))
+        with page.expect_download():
+            page.get_by_role("button", name="دانلود تصویر فاکتور").click()
+        texts = page.evaluate("window.invoiceTexts")
+        assert "وضعیت: تحویل داده شده" in texts
+        assert "وضعیت: لغو شده" in texts
+    finally:
+        context.close()
