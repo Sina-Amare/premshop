@@ -26,7 +26,7 @@ def plan():
         name="سرویس نمونه",
         slug="sample",
         status=Product.Status.ACTIVE,
-        warranty="هفت روز",
+        warranty=Product.Warranty.DAYS_7,
     )
     return Plan.objects.create(
         product=product,

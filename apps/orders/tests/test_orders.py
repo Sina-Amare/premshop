@@ -49,7 +49,7 @@ def test_multiline_creation_uses_fresh_prices_and_freezes_purchase_facts(buyer, 
     assert item.price_snapshot == 220000 and item.cost_snapshot == 100000
     assert item.product_snapshot == before
     assert before["name"] == "سرویس نمونه" and before["plan_title"] == "یک ماهه"
-    assert before["warranty"] == "هفت روز"
+    assert before["warranty"] == "days_7"
 
 
 @pytest.mark.parametrize("quantity", [0, -1, 4, True, "1", 1.5])

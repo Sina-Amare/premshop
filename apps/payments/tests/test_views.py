@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
-from apps.catalog.models import Plan
+from apps.catalog.models import Plan, Product
 from apps.orders.models import Order
 from apps.payments.services import quote_checkout
 
@@ -28,6 +28,26 @@ def test_guest_checkout_has_inline_code_and_html_fallback(client):
     assert 'name="next" value="/checkout/"' in body
     assert "no-store" in response.headers["Cache-Control"]
     assert client.post(reverse("checkout"), {"action": "checkout"}).status_code == 302
+
+
+@pytest.mark.parametrize(
+    ("code", "label"),
+    [
+        ("none", "ندارد"),
+        ("days_7", "۷ روز"),
+        ("full_period", "تا پایان دوره"),
+    ],
+)
+def test_checkout_shows_persian_warranty_labels_and_preserves_snapshot_code(
+    client, buyer, plan, cart, code, label
+):
+    Product.objects.filter(pk=plan.product_id).update(warranty=code)
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    body = response.content.decode()
+    assert f"گارانتی: {label}" in body
+    assert f"ضمانت: {code}" not in body
+    assert response.context["quote"].purchase.lines[0].snapshot["warranty"] == code
 
 
 def test_inline_code_request_preserves_safe_next_and_returns_json(client, mailoutbox):
