@@ -153,11 +153,20 @@ def import_legacy_subscription(
 ```
 Launch backfill (D12): creates user if needed, Order `channel="legacy"`, one DELIVERED item with `expires_at` so renewal reminders fire. The only legal creation→DELIVERED path (actor=system): writes exactly one `OrderItemEvent(from=NULL, to=DELIVERED, note='backfill')`; creates no payment rows and sends no notifications. Idempotent per (email, product, expires_at).
 
-**orders selectors** (`selectors.py`):
+**orders selectors** (`selectors.py`) are built for customer pages:
 
 | Selector | Returns |
 |---|---|
-| `customer_orders(user)` / `order_for_tracking(token)` | customer list; tracking page gets status timeline + product name ONLY, uniform not-found (D12). Order display status for n>1 derives from items by stage precedence — PENDING_PAYMENT < QUEUED < AWAITING_INPUT < REPLACEMENT_REQUESTED < DELIVERED, terminal label only when all items are terminal — multi-plan carts make this the normal case, not the exception (ADR-0018) |
+| `customer_orders(user)` | Owner-filtered orders with prefetched frozen item facts; the view paginates 20 orders and groups units within their frozen category. Each order total appears once. |
+| `current_order(user)` / `current_unpaid_order(user)` | Latest nonterminal customer order for the account summary; earliest unexpired unpaid order for checkout's existing-order check. |
+| `customer_summary(order)` / `customer_timeline(order)` | Frozen purchase groups, stage status and safe status/time history. Encrypted input, supplier costs and operator notes are not read. A terminal aggregate appears only when all units are terminal; mixed terminal outcomes use «پایان‌یافته» with each line's own status. |
+| `order_for_tracking(token)` | Explicit projection of frozen product name, safe status and creation/event times; no order model, plan title, quantity, price, account/contact/input, private note or invoice access reaches the public template. |
+
+Customer list/detail/invoice queries constrain ownership in SQL, including for staff using the customer area. Whole-order cancellation requires a CSRF-protected confirmed POST and calls the shared cancellation service. GET never expires or cancels orders. Overdue pending rows show an ended deadline while the worker catches up.
+
+Public `/track/<token>/` uses independent IP and keyed-token rate limits. Invalid tokens have one body; every response, including exceptions/method errors, receives no-store/noindex/no-referrer headers. Tracking error bodies contain no support/contact or request details. Application access/exception logging and error-report URL scrubbing redact raw and encoded tracking links. A deployment proxy must also redact private-link paths in its own access logs.
+
+The owner-only invoice uses a standalone HTML document with frozen names, plans, unit quantities/prices and order totals. No account/contact, customer input, tracking token, supplier cost or support identifier appears in its HTML or export payload. Native browser Canvas loads the existing local Persian font before producing PNG, wraps mixed-language text and bounds canvas pixel memory; failure leaves the HTML readable. Unpaid/cancelled state and a payment-evidence disclaimer remain visible. There is no server browser, rendering dependency or payment evidence route.
 
 The operator-side selectors are intent only here: the operator queue and its stat bar, the dashboard aggregates and the overdue list (S7), stale awaiting-input items for the input-timeout ladder (S8), and the renewal scan `items_expiring` (S10). They are read-only queries in `selectors.py` that the panel and the beat tasks render from (ADR-0002). Full earlier draft: `git show 027c5d1:docs/services-and-modules.md` (§2 orders selectors). It is re-specified when each selector's step (S7–S10) is planned.
 

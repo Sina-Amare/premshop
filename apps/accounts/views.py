@@ -27,6 +27,7 @@ from apps.accounts.forms import (
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
+from apps.orders.selectors import current_order, customer_summary
 
 # The address a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
@@ -262,7 +263,16 @@ def account(request: HttpRequest) -> HttpResponse:
         saved = "ذخیره شد" if user.phone else "حذف شد"
         messages.success(request, f"شماره‌ی موبایل {saved}.")
         return redirect(reverse("account"))
-    return render(request, "accounts/account.html", {"profile_form": form, "section": "profile"})
+    current = current_order(user)
+    return render(
+        request,
+        "accounts/account.html",
+        {
+            "profile_form": form,
+            "section": "profile",
+            "current_order": customer_summary(current) if current else None,
+        },
+    )
 
 
 @never_cache

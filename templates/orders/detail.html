@@ -1,9 +1,22 @@
-{% extends "accounts/_account_base.html" %}{% load fa %}
+{% extends "accounts/_account_base.html" %}{% load fa static %}
 {% block title %}سفارش {{ order.order_number|fa_digits }}{% endblock %}
 {% block heading %}سفارش {{ order.order_number|fa_digits }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/orders.css' %}">{% endblock %}
 {% block section %}
-<p>تاریخ ثبت: {{ order.created_at|jalali }}</p>
-{% for item in items %}<article class="checkout-item"><h2><bdi>{{ item.product_snapshot.name }}</bdi></h2><p><bdi>{{ item.product_snapshot.plan_title }}</bdi>؛ {{ item.get_status_display }}</p><p>{{ item.price_snapshot|price_html }}</p></article>{% endfor %}
-<p>مبلغ نهایی سفارش: {{ order.total_amount|price_html }}</p>
-<p><a href="{% url 'home' %}">بازگشت به فروشگاه</a></p>
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+<div class="card order-card"><p class="order-status">{{ status }}</p>
+<p>تاریخ ثبت: {{ order.created_at|jalali }}، ساعت {{ order.created_at|date:"H:i"|fa_digits }}</p>
+{% if can_cancel %}<p>سفارش ثبت شده و هنوز پرداخت نشده است.</p>
+{% if overdue %}<p class="order-warning">مهلت پرداخت تمام شده است.</p>{% else %}<p>مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}</p>{% endif %}
+<p class="small">پرداخت آنلاین هنوز فعال نیست.</p>{% endif %}
+{% include "orders/_groups.html" %}
+<dl class="order-totals"><div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div>{% if order.discount_amount %}<div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div></dl>
+<div class="order-actions"><a class="btn btn--secondary" href="{% url 'order-invoice' order.order_number %}">مشاهده‌ی فاکتور</a><a href="{% url 'order-list' %}">همه‌ی سفارش‌ها</a></div>
+</div>
+{% if can_cancel %}<details class="card order-card"><summary>لغو سفارش</summary>
+<p>با لغو سفارش، همه‌ی محصولات آن لغو می‌شوند. برای خرید دوباره باید سفارش جدیدی ثبت کنید.</p>
+<form method="post" action="{% url 'order-cancel' order.order_number %}">{% csrf_token %}<button class="btn btn--secondary order-cancel" type="submit" name="confirm" value="yes">بله، لغو سفارش</button></form>
+</details>{% endif %}
+<section class="card order-card"><h2>پیگیری سفارش</h2><p>هر کسی این پیوند را داشته باشد، نام محصولات و وضعیت سفارش را می‌بیند.</p><a href="{% url 'order-tracking' order.tracking_token %}" rel="noreferrer">پیوند پیگیری سفارش</a></section>
+{% if timeline %}<section class="card order-card"><h2>تاریخچه‌ی سفارش</h2><ol class="order-timeline">{% for event in timeline %}<li><p><bdi>{{ event.name }}</bdi>؛ {{ event.status }}</p><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></section>{% endif %}
 {% endblock %}

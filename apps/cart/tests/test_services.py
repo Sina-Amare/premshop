@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, close_old_connections, connections, transaction
 from django.test import Client, RequestFactory
 from django.utils import timezone
@@ -348,3 +348,25 @@ def test_changing_a_line_that_is_gone_says_so_instead_of_reporting_success(plan)
     remove_from_cart(request, plan_id=plan.pk)
     with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
         set_quantity(request, plan_id=plan.pk, quantity=2)
+
+
+@pytest.mark.parametrize("action", ["add", "quantity", "remove", "merge"])
+def test_deactivation_after_request_start_preserves_both_carts(plan, buyer, action):
+    request = request_for(buyer)
+    add_to_cart(request, plan_id=plan.pk)
+    guest = request_for()
+    add_to_cart(guest, plan_id=plan.pk)
+    guest_cart = get_cart(guest)
+    before = list(CartItem.objects.order_by("pk").values_list("pk", "cart_id", "quantity"))
+    type(buyer).objects.filter(pk=buyer.pk).update(is_active=False)
+    assert buyer.is_active
+    operations = {
+        "add": lambda: add_to_cart(request, plan_id=plan.pk),
+        "quantity": lambda: set_quantity(request, plan_id=plan.pk, quantity=2),
+        "remove": lambda: remove_from_cart(request, plan_id=plan.pk),
+        "merge": lambda: merge_carts(user=buyer, guest_cart_id=guest_cart.pk),
+    }
+    with pytest.raises(PermissionDenied):
+        operations[action]()
+    assert list(CartItem.objects.order_by("pk").values_list("pk", "cart_id", "quantity")) == before
+    assert Cart.objects.filter(pk=guest_cart.pk, user__isnull=True).exists()

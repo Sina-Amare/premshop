@@ -1,0 +1,12 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl" translate="no"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">
+<title>{% block title %}{% endblock %} | PremShop</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}">
+<link rel="stylesheet" href="{% static 'css/orders.css' %}">
+</head><body><main class="order-document" id="main">
+<p class="order-brand"><bdi>PremShop</bdi></p>
+{% block content %}{% endblock %}
+</main>{% block scripts %}{% endblock %}</body></html>

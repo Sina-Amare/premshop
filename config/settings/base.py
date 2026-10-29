@@ -145,6 +145,7 @@ MIDDLEWARE = [
     # view opts out of compression or the credential does not go in the HTML.
     "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.OrderPagePrivacy",
     # Before everything else that might touch the cache, so its 503 wins over a
     # traceback no matter which view raised.
     "apps.core.middleware.CacheUnavailableMiddleware",
@@ -425,6 +426,7 @@ UNFOLD = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {"private_links": {"()": "apps.core.observability.PrivateLinkFilter"}},
     "formatters": {
         "standard": {
             "format": "{asctime} {levelname} {name} {message}",
@@ -432,10 +434,16 @@ LOGGING = {
         },
     },
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "filters": ["private_links"],
+        },
     },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
     "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }

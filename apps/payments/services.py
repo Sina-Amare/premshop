@@ -12,7 +12,6 @@ from django.conf import settings
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 
@@ -20,7 +19,8 @@ from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
 from apps.cart.models import Cart, CartItem
 from apps.catalog.inputs import normalize_customer_input
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order
+from apps.orders.selectors import current_unpaid_order
 from apps.orders.services import (
     OrderLine,
     Purchase,
@@ -70,22 +70,6 @@ def _account(user: User, *, lock: bool) -> User:
     if account is None:
         raise PermissionDenied
     return account
-
-
-def current_unpaid_order(user: User) -> Order | None:
-    pending = OrderItem.objects.filter(
-        order_id=OuterRef("pk"),
-        status=OrderItem.Status.PENDING_PAYMENT,
-    )
-    return (
-        Order.objects.filter(
-            user_id=user.pk,
-            unpaid_expires_at__gt=timezone.now(),
-        )
-        .filter(Exists(pending))
-        .order_by("pk")
-        .first()
-    )
 
 
 def quote_checkout(*, user: User, discount_code: str = "") -> CheckoutQuote:

@@ -4,21 +4,8 @@
 {% block heading %}اطلاعات حساب{% endblock %}
 
 {% block section %}
-{% comment %}
-Every value here is a field the User model holds. There is no order table
-yet (S4b), no subscription table (S9) and no ticket system (ADR-0014), so
-there is nothing here shaped like one — and no completion meter, because
-three of the four things such a meter would count can never be completed
-today. «آخرین ورود» is absent for the same reason: Django writes last_login
-at the moment of login, so it would read «لحظاتی پیش» every single time.
 
-The phone number appears once, in the field that edits it. It used to be
-printed on an overview page as well, which meant one fact in two places and
-no way to tell which one was authoritative. «روش ورود» is gone for a
-related reason: it described the login system rather than the account, and
-the only part of it the customer can act on is the «ثبت رمز عبور» card
-below.
-{% endcomment %}
+{% if current_order %}<section class="card acct__card"><h2 class="acct__h2">سفارش در جریان</h2><p>سفارش {{ current_order.order.order_number|fa_digits }}؛ {{ current_order.status }}</p><p>مبلغ نهایی: {{ current_order.order.total_amount|price_html }}</p><a href="{% url 'order-detail' current_order.order.order_number %}">مشاهده‌ی سفارش</a></section>{% endif %}
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
