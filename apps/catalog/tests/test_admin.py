@@ -892,7 +892,7 @@ def test_the_panel_refuses_the_eleventh_attempt_even_with_the_right_password(cli
     )
 
     assert "_auth_user_id" not in client.session
-    assert services.TOO_MANY_WRONG_PASSWORDS in response.content.decode()
+    assert services.TOO_MANY_ATTEMPTS in response.content.decode()
 
 
 def test_the_panel_refuses_a_network_that_spent_its_budget(client, staff_account):

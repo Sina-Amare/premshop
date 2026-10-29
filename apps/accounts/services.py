@@ -52,11 +52,8 @@ TOO_MANY_CODES = (
 TOO_MANY_CODES_FROM_NETWORK = (
     "از این شبکه درخواست‌های زیادی برای دریافت کد ثبت شده است. یک ساعت دیگر دوباره امتحان کنید."
 )
-TOO_MANY_WRONG_CODES = (
-    "برای این ایمیل چند بار پشت سر هم کد اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
-)
-TOO_MANY_WRONG_PASSWORDS = (
-    "برای این ایمیل چند بار پشت سر هم رمز اشتباه وارد شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+TOO_MANY_ATTEMPTS = (
+    "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
 TOO_MANY_FROM_NETWORK = (
     "تعداد تلاش‌ها از این شبکه بیش از حد مجاز است. یک ساعت دیگر دوباره امتحان کنید."
@@ -69,7 +66,7 @@ def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
     The storefront's sign-in and the panel's share these budgets under the same
     keys, so an account has one budget wherever it is guessed at."""
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
-        return TOO_MANY_WRONG_PASSWORDS
+        return TOO_MANY_ATTEMPTS
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
         return TOO_MANY_FROM_NETWORK
     return None
@@ -164,7 +161,7 @@ def complete_password_recovery(request: HttpRequest, *, code: str, password: str
         user = _recovery_user(request)
         validate_password(password, user)
         if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email):
-            raise RateLimited(TOO_MANY_WRONG_CODES)
+            raise RateLimited(TOO_MANY_ATTEMPTS)
         if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
             raise RateLimited(TOO_MANY_FROM_NETWORK)
         if not otp.verify(
@@ -215,7 +212,7 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     ip = ratelimit.client_ip(request)
 
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
-        raise RateLimited(TOO_MANY_WRONG_CODES)
+        raise RateLimited(TOO_MANY_ATTEMPTS)
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ip):
         raise RateLimited(TOO_MANY_FROM_NETWORK)
 
