@@ -354,7 +354,7 @@ def place_order(
     current_terms = purchase.terms_digest() if isinstance(expected_terms, str) else purchase.terms()
     if expected_terms is not None and current_terms != expected_terms:
         raise ValidationError(
-            "قیمت یا شرایط خرید تغییر کرده است. خلاصه‌ی جدید را بررسی و دوباره تأیید کنید.",
+            "قیمت یا شرایط خرید تغییر کرده است. تغییرات را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
             code="quote_changed",
         )
     inputs = {

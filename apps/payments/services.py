@@ -59,7 +59,7 @@ def _cart_digest(cart: Cart, items: list[CartItem]) -> str:
 
 def _changed() -> ValidationError:
     return ValidationError(
-        "سبد خرید، قیمت یا شرایط خرید تغییر کرده است. خلاصه‌ی جدید را بررسی و دوباره تأیید کنید.",
+        "سبد خرید، قیمت یا شرایط خرید تغییر کرده است. تغییرات را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
         code="quote_changed",
     )
 
@@ -130,7 +130,7 @@ def _payload(token: str, user: User) -> dict[str, Any]:
             raise signing.BadSignature
         return payload
     except signing.BadSignature, ValueError, TypeError:
-        raise ValidationError("خلاصه‌ی خرید معتبر نیست. صفحه را دوباره باز کنید.") from None
+        raise ValidationError("صفحه را دوباره باز کنید و اطلاعات سفارش را بررسی کنید.") from None
 
 
 def _check_quote_age(token: str) -> None:
@@ -138,7 +138,7 @@ def _check_quote_age(token: str) -> None:
         signing.loads(token, salt=QUOTE_SALT, max_age=QUOTE_AGE)
     except signing.SignatureExpired:
         raise ValidationError(
-            "مهلت تأیید خلاصه‌ی خرید تمام شده است. خلاصه‌ی جدید را بررسی کنید.",
+            "قیمت و موجودی را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
             code="quote_changed",
         ) from None
 

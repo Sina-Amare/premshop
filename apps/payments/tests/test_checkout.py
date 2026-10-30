@@ -77,7 +77,7 @@ def test_quotes_from_another_contract_version_cannot_create_orders(buyer, plan, 
     old = services.CheckoutQuote(
         quote.purchase, signing.dumps(payload, salt=services.QUOTE_SALT, compress=True)
     )
-    with pytest.raises(ValidationError, match="خرید معتبر نیست"):
+    with pytest.raises(ValidationError, match="صفحه را دوباره باز کنید"):
         submit(buyer, old)
     assert cart.items.exists() and not Order.objects.exists()
 
@@ -126,8 +126,9 @@ def test_expired_or_tampered_quote_and_inactive_account_are_refused(buyer, cart)
     with time_machine.travel("2026-10-29 10:00:00+00:00", tick=False):
         quote = services.quote_checkout(user=buyer)
     with time_machine.travel("2026-10-29 10:15:01+00:00", tick=False):
-        with pytest.raises(ValidationError, match="مهلت"):
+        with pytest.raises(ValidationError) as error:
             submit(buyer, quote)
+        assert error.value.code == "quote_changed"
     with pytest.raises(ValidationError):
         submit(buyer, quote, quote=quote.token + "x")
     User.objects.filter(pk=buyer.pk).update(is_active=False)
@@ -150,8 +151,9 @@ def test_quote_expiring_while_waiting_for_purchase_locks_rolls_back_every_claim(
             return original(**kwargs)
 
         monkeypatch.setattr(orders, "_price", delayed)
-        with pytest.raises(ValidationError, match="مهلت"):
+        with pytest.raises(ValidationError) as error:
             submit(buyer, quote)
+        assert error.value.code == "quote_changed"
     assert cart.items.exists() and not Order.objects.exists()
     plan.refresh_from_db()
     code.refresh_from_db()
