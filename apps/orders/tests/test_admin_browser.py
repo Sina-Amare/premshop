@@ -53,7 +53,6 @@ def test_order_panel_empty_populated_and_long_history(browser, live_server, buye
             telegram_required=False,
         )
         order = place_order(
-            activation_consent=True,
             user=buyer,
             lines=[OrderLine(plan, 1, "never-render-this@example.test"), OrderLine(other, 2)],
         )

@@ -32,9 +32,7 @@ def test_multiline_creation_uses_fresh_prices_and_freezes_purchase_facts(buyer, 
         telegram_required=False,
     )
     Plan.objects.filter(pk=plan.pk).update(sale_price=250000, promo_price=220000)
-    order = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 2), OrderLine(other, 1)]
-    )
+    order = place_order(user=buyer, lines=[OrderLine(plan, 2), OrderLine(other, 1)])
     assert order.order_number >= 1001
     assert order.subtotal == order.total_amount == Decimal("1040000")
     assert order.discount_amount == 0 and order.discount_code_id is None
@@ -55,7 +53,7 @@ def test_multiline_creation_uses_fresh_prices_and_freezes_purchase_facts(buyer, 
 @pytest.mark.parametrize("quantity", [0, -1, 4, True, "1", 1.5])
 def test_invalid_quantity_changes_nothing(buyer, plan, quantity):
     with pytest.raises(ValidationError):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, quantity)])
+        place_order(user=buyer, lines=[OrderLine(plan, quantity)])
     assert not Order.objects.exists() and not OrderItemEvent.objects.exists()
 
 
@@ -66,17 +64,17 @@ def test_fresh_availability_is_required(buyer, plan, target):
     else:
         Product.objects.filter(pk=plan.product_id).update(status=target)
     with pytest.raises(ValidationError):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+        place_order(user=buyer, lines=[OrderLine(plan, 1)])
     assert not Order.objects.exists()
 
 
 def test_empty_duplicate_lines_and_inactive_buyer_are_refused(buyer, plan):
     for lines in ([], [OrderLine(plan, 1), OrderLine(plan, 1)]):
         with pytest.raises(ValidationError):
-            place_order(activation_consent=True, user=buyer, lines=lines)
+            place_order(user=buyer, lines=lines)
     User.objects.filter(pk=buyer.pk).update(is_active=False)
     with pytest.raises(PermissionDenied):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+        place_order(user=buyer, lines=[OrderLine(plan, 1)])
 
 
 def test_required_input_and_quantity_are_checked_from_database(buyer, plan):
@@ -85,17 +83,15 @@ def test_required_input_and_quantity_are_checked_from_database(buyer, plan):
     )
     for line in (OrderLine(plan, 1), OrderLine(plan, 2, "target@example.test")):
         with pytest.raises(ValidationError):
-            place_order(activation_consent=True, user=buyer, lines=[line])
-    order = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
-    )
+            place_order(user=buyer, lines=[line])
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")])
     assert order.items.get().customer_input == "target@example.test"
 
 
 def test_failure_writing_creation_event_rolls_back_order_and_items(buyer, plan):
     with patch("apps.orders.services.OrderItemEvent.objects.create", side_effect=RuntimeError):
         with pytest.raises(RuntimeError):
-            place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 2)])
+            place_order(user=buyer, lines=[OrderLine(plan, 2)])
     assert not Order.objects.exists() and not OrderItem.objects.exists()
 
 
@@ -110,7 +106,7 @@ def test_failure_writing_creation_event_rolls_back_order_and_items(buyer, plan):
     ],
 )
 def test_database_rejects_invalid_order_facts(buyer, plan, changes):
-    order = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     with pytest.raises(IntegrityError), transaction.atomic():
         Order.objects.filter(pk=order.pk).update(**changes)
 
@@ -138,23 +134,23 @@ def test_discount_code_normalization_and_uniqueness():
     ],
 )
 def test_database_rejects_invalid_item_facts(buyer, plan, changes):
-    item = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1)]).items.get()
     with pytest.raises(IntegrityError), transaction.atomic():
         OrderItem.objects.filter(pk=item.pk).update(**changes)
 
 
 def test_separate_purchases_remain_independent_and_no_browser_amount_is_accepted(buyer, plan):
-    first = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    first = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     cancel_unpaid_item(item_id=first.items.get().pk, actor=buyer)
-    second = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    second = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     assert first.pk != second.pk and first.order_number != second.order_number
     assert first.tracking_token != second.tracking_token
     with pytest.raises(TypeError):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)], total_amount=1)
+        place_order(user=buyer, lines=[OrderLine(plan, 1)], total_amount=1)
 
 
 def test_owner_cancel_is_atomic_idempotent_and_attributed(buyer, plan):
-    order = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     item = order.items.get()
     cancel_unpaid_item(item_id=item.pk, actor=buyer)
     cancel_unpaid_item(item_id=item.pk, actor=buyer)
@@ -168,7 +164,7 @@ def test_owner_cancel_is_atomic_idempotent_and_attributed(buyer, plan):
 
 
 def test_other_customer_and_forged_operator_cannot_cancel(buyer, plan):
-    item = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1)]).items.get()
     other = User.objects.create_user("other@example.test")
     other.is_staff = True
     with pytest.raises(PermissionDenied):
@@ -177,7 +173,7 @@ def test_other_customer_and_forged_operator_cannot_cancel(buyer, plan):
 
 
 def test_operator_needs_reason_and_no_paid_state_can_be_cancelled(buyer, plan):
-    item = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1)]).items.get()
     staff = User.objects.create_user("staff@example.test", is_staff=True)
     with pytest.raises(ValidationError):
         cancel_unpaid_item(item_id=item.pk, actor=staff)
@@ -189,7 +185,7 @@ def test_operator_needs_reason_and_no_paid_state_can_be_cancelled(buyer, plan):
 
 
 def test_failure_writing_cancel_event_preserves_pending_state(buyer, plan):
-    item = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1)]).items.get()
     with patch("apps.orders.services.OrderItemEvent.objects.create", side_effect=RuntimeError):
         with pytest.raises(RuntimeError):
             cancel_unpaid_item(item_id=item.pk, actor=buyer)
@@ -207,7 +203,7 @@ def test_failure_writing_cancel_event_preserves_pending_state(buyer, plan):
     ],
 )
 def test_database_preserves_audit_history(buyer, plan, sql):
-    order = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     item = order.items.get()
     key = (
         order.pk
@@ -226,7 +222,7 @@ def test_database_preserves_audit_history(buyer, plan, sql):
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_cancellation_writes_one_event(buyer, plan):
-    item = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1)]).items.get()
     barrier = Barrier(2)
 
     def cancel():

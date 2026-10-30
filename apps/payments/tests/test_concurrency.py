@@ -23,7 +23,6 @@ def buy(user, quote, key):
         user=user,
         quote=quote.token,
         checkout_id=key,
-        activation_consent=True,
         customer_inputs={},
     )
 

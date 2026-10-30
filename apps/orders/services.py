@@ -27,8 +27,6 @@ from apps.catalog.models import Plan, Product
 from apps.catalog.pricing import effective_price
 from apps.orders.models import DiscountCode, DiscountRedemption, Order, OrderItem, OrderItemEvent
 
-CONSENT_VERSION = "2026-10-29"
-CONSENT_TEXT = "درخواست می‌کنم فعال‌سازی سفارش پس از تأیید پرداخت آغاز شود."
 MAX_AMOUNT = Decimal("999999999999")
 logger = logging.getLogger(__name__)
 
@@ -77,8 +75,6 @@ class Purchase:
             "discount": str(self.discount),
             "discount_terms": self.discount_snapshot,
             "total": str(self.total),
-            "consent_version": CONSENT_VERSION,
-            "consent_text": CONSENT_TEXT,
         }
 
     def terms_digest(self) -> str:
@@ -276,7 +272,6 @@ def place_order(
     phone: str = "",
     channel: str = Order.Channel.WEB,
     discount_code: str = "",
-    activation_consent: bool = False,
     checkout_id: uuid.UUID | None = None,
     submission_digest: str = "",
     expected_terms: dict[str, Any] | str | None = None,
@@ -295,8 +290,6 @@ def place_order(
             user=account, checkout_id=checkout_id, submission_digest=submission_digest
         ):
             return replay
-    if activation_consent is not True:
-        raise ValidationError("شروع فعال‌سازی پس از تأیید پرداخت را تأیید کنید.")
     if (
         channel not in (Order.Channel.WEB, Order.Channel.BOT)
         or not lines
@@ -361,7 +354,7 @@ def place_order(
     current_terms = purchase.terms_digest() if isinstance(expected_terms, str) else purchase.terms()
     if expected_terms is not None and current_terms != expected_terms:
         raise ValidationError(
-            "قیمت یا شرایط خرید تغییر کرده است. خلاصه‌ی جدید را بررسی و دوباره تأیید کنید.",
+            "قیمت یا شرایط خرید تغییر کرده است. تغییرات را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
             code="quote_changed",
         )
     inputs = {
@@ -380,9 +373,6 @@ def place_order(
                 channel=channel,
                 created_at=at,
                 unpaid_expires_at=at + timedelta(hours=24),
-                consent_text=CONSENT_TEXT,
-                consent_version=CONSENT_VERSION,
-                consent_accepted_at=at,
                 **(
                     {"checkout_id": checkout_id, "submission_digest": submission_digest}
                     if checkout_id

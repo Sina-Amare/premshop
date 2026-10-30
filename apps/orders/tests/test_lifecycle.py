@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db
 
 def test_creation_debits_finite_stock_and_whole_cancellation_restores_once(buyer, plan):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=3)
-    order = services.place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 2)])
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 2)])
     plan.refresh_from_db()
     assert plan.stock_quantity == 1
     assert order.items.filter(stock_debited=True).count() == 2
@@ -33,7 +33,7 @@ def test_release_respects_the_original_claim_and_current_stock_policy(
     buyer, plan, origin, current, after
 ):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=origin)
-    order = services.place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=current)
     services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
     plan.refresh_from_db()
@@ -42,17 +42,13 @@ def test_release_respects_the_original_claim_and_current_stock_policy(
 
 def test_one_unpaid_order_and_exact_deadline_without_retry_extension(buyer, plan):
     with time_machine.travel("2026-10-29 08:00:00", tick=False) as clock:
-        first = services.place_order(
-            activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]
-        )
+        first = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
         assert first.unpaid_expires_at == first.created_at + timedelta(hours=24)
         with pytest.raises(services.UnpaidOrderExists) as error:
-            services.place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+            services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
         assert error.value.order.pk == first.pk
         clock.shift(24 * 3600)
-        second = services.place_order(
-            activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)]
-        )
+        second = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
         assert second.pk != first.pk
         assert first.items.get().cancel_reason == OrderItem.CancelReason.EXPIRED_UNPAID
         assert first.unpaid_expires_at == first.created_at + timedelta(hours=24)
@@ -63,9 +59,7 @@ def test_expiry_is_repeatable_and_retains_discount_history(buyer, plan):
         code="SAVE", kind="fixed", value=100, max_uses=1, per_user_limit=1
     )
     with time_machine.travel("2026-10-29 08:00:00", tick=False) as clock:
-        order = services.place_order(
-            activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)], discount_code="save"
-        )
+        order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="save")
         clock.shift(24 * 3600 - 1)
         assert services.expire_unpaid_orders() == 0
         clock.shift(1)
@@ -75,9 +69,7 @@ def test_expiry_is_repeatable_and_retains_discount_history(buyer, plan):
         assert redemption.released_at is not None
         code.refresh_from_db()
         assert code.used_count == 0
-        other = services.place_order(
-            activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE"
-        )
+        other = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
         assert other.discount_amount == 100
         assert DiscountRedemption.objects.count() == 2
 
@@ -90,9 +82,7 @@ def test_discount_arithmetic_uses_promotion_and_half_up_rounding(
 ):
     Plan.objects.filter(pk=plan.pk).update(sale_price=200, promo_price=price)
     DiscountCode.objects.create(code="SAVE", kind=kind, value=value)
-    order = services.place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE"
-    )
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     assert order.subtotal == price
     assert order.discount_amount == discount
     assert order.total_amount == price - discount
@@ -103,12 +93,10 @@ def test_zero_total_and_overflow_do_not_consume_resources(buyer, plan):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=2)
     code = DiscountCode.objects.create(code="FREE", kind="percent", value=100)
     with pytest.raises(ValidationError):
-        services.place_order(
-            activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)], discount_code=code.code
-        )
+        services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code.code)
     Plan.objects.filter(pk=plan.pk).update(sale_price=Decimal("999999999999"))
     with pytest.raises(ValidationError):
-        services.place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 2)])
+        services.place_order(user=buyer, lines=[OrderLine(plan, 2)])
     plan.refresh_from_db()
     code.refresh_from_db()
     assert plan.stock_quantity == 2 and code.used_count == 0
@@ -122,7 +110,6 @@ def test_failed_purchase_writes_roll_back_stock_discount_and_history(buyer, plan
     with patch(f"apps.orders.services.{target}.objects.create", side_effect=RuntimeError):
         with pytest.raises(RuntimeError):
             services.place_order(
-                activation_consent=True,
                 user=buyer,
                 lines=[OrderLine(plan, 1)],
                 discount_code=code.code,
@@ -137,9 +124,7 @@ def test_failed_purchase_writes_roll_back_stock_discount_and_history(buyer, plan
 def test_failed_cancellation_event_rolls_back_the_entire_release(buyer, plan):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=2)
     code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=100)
-    order = services.place_order(
-        user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True, discount_code=code.code
-    )
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 2)], discount_code=code.code)
     with patch("apps.orders.services.OrderItemEvent.objects.create", side_effect=RuntimeError):
         with pytest.raises(RuntimeError):
             services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
@@ -153,18 +138,34 @@ def test_failed_cancellation_event_rolls_back_the_entire_release(buyer, plan):
     assert OrderItemEvent.objects.count() == 2
 
 
-@pytest.mark.parametrize("consent", [False, None, 1, "on"])
-def test_consent_must_be_explicitly_accepted_before_any_order_is_created(buyer, plan, consent):
-    with pytest.raises(ValidationError, match="تأیید کنید"):
-        services.place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=consent)
-    assert not Order.objects.exists()
+def test_order_creation_neither_requires_nor_records_activation_consent(buyer, plan):
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    assert order.consent_text == ""
+    assert order.consent_version == ""
+    assert order.consent_accepted_at is None
+
+
+def test_new_orders_preserve_historical_consent(buyer, plan):
+    old = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    Order.objects.filter(pk=old.pk).update(
+        consent_text="درخواست می‌کنم فعال‌سازی سفارش پس از تأیید پرداخت آغاز شود.",
+        consent_version="2026-10-29",
+        consent_accepted_at=old.created_at,
+    )
+    services.cancel_unpaid_order(order_id=old.pk, actor=buyer)
+    new = services.place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    old.refresh_from_db()
+    assert old.consent_version == "2026-10-29"
+    assert old.consent_text == "درخواست می‌کنم فعال‌سازی سفارش پس از تأیید پرداخت آغاز شود."
+    assert old.consent_accepted_at == old.created_at
+    assert (new.consent_text, new.consent_version, new.consent_accepted_at) == ("", "", None)
 
 
 @pytest.mark.parametrize("action", ["expiry", "customer"])
 def test_legacy_partially_cancelled_order_releases_only_its_remaining_pending_items(
     buyer, plan, action
 ):
-    order = services.place_order(user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True)
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 2)])
     first = order.items.order_by("pk").first()
     OrderItem.objects.filter(pk=first.pk).update(
         status=OrderItem.Status.CANCELLED,
