@@ -472,3 +472,4 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:760px){.v-help{display:none}.v-navline .v-support{margin-block-start:-3px;padding-block-start:3px}.v-mobile-cats nav .v-mobile-cats__faq{display:flex;border-block-start:1px solid var(--v-line)}}
 
 .checkout-summary-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.checkout-summary-heading h2{margin:0}
+.cart-summary .small+.btn{margin-block-start:16px}.cart-summary .btn+.small{margin-block-start:12px}

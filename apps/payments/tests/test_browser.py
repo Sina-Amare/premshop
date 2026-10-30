@@ -167,6 +167,11 @@ def test_long_checkout_without_consent_and_empty_cart_remain_readable(
     try:
         page.goto(live_server.url + reverse("checkout"))
         assert page.get_by_role("checkbox").count() == 0
+        note = page.get_by_text("قیمت و موجودی را هنگام ثبت سفارش").bounding_box()
+        button = page.get_by_role("button", name="ثبت سفارش", exact=True).bounding_box()
+        deadline = page.get_by_text("مهلت پرداخت پس از ثبت سفارش").bounding_box()
+        assert button["y"] - (note["y"] + note["height"]) >= 12
+        assert deadline["y"] - (button["y"] + button["height"]) >= 12
         screenshot(page, "long-review", width, tmp_path)
         cart.items.all().delete()
         page.reload()
