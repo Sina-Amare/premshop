@@ -90,7 +90,6 @@ def test_last_resource_is_rechecked_after_the_competing_transaction_commits(
         return services.place_order(
             user=user,
             lines=[OrderLine(chosen, 1)],
-            activation_consent=True,
             discount_code=code.code if resource == "coupon" else "",
         )
 
@@ -119,9 +118,7 @@ def test_last_resource_is_rechecked_after_the_competing_transaction_commits(
 def test_cancellation_racing_expiry_releases_the_order_only_once(buyer, plan, monkeypatch):
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=2)
     code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=100, max_uses=1)
-    order = services.place_order(
-        user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True, discount_code=code.code
-    )
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 2)], discount_code=code.code)
     Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
     entered, release = Event(), Event()
     pids = Queue()
@@ -179,7 +176,6 @@ def test_a_checkout_identifier_cannot_be_claimed_by_two_customers(buyer, plan, m
                 lambda user=user, chosen=chosen: services.place_order(
                     user=user,
                     lines=[OrderLine(chosen, 1)],
-                    activation_consent=True,
                     checkout_id=checkout_id,
                     submission_digest="a" * 64,
                 ),
@@ -215,9 +211,7 @@ def test_admin_and_checkout_use_the_same_lock_order(buyer, plan, monkeypatch, ed
 
     def checkout():
         state.checkout = True
-        return services.place_order(
-            user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True, discount_code=code.code
-        )
+        return services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code.code)
 
     def edit():
         if editor.startswith("delete_"):
@@ -290,9 +284,7 @@ def test_expiring_old_orders_and_buying_opposite_plans_lock_the_combined_resourc
     second_plan = separate_plan(plan)
     Plan.objects.update(stock_quantity=None)
     for user, chosen in [(buyer, plan), (other, second_plan)]:
-        order = services.place_order(
-            user=user, lines=[OrderLine(chosen, 1)], activation_consent=True
-        )
+        order = services.place_order(user=user, lines=[OrderLine(chosen, 1)])
         Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
     barrier = Barrier(2)
     original = services._plans
@@ -309,7 +301,7 @@ def test_expiring_old_orders_and_buying_opposite_plans_lock_the_combined_resourc
                 in_connection,
                 pids,
                 lambda user=user, chosen=chosen: services.place_order(
-                    user=user, lines=[OrderLine(chosen, 1)], activation_consent=True
+                    user=user, lines=[OrderLine(chosen, 1)]
                 ),
             )
             for user, chosen in [(buyer, second_plan), (other, plan)]

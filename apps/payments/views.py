@@ -44,7 +44,6 @@ def _page(
         "quote": quote.token if quote else "",
         "discount_code": discount_code,
         "phone": request.POST.get("phone", "")[:32],
-        "activation_consent": False,
     }
     if purchase:
         for line in purchase.lines:
@@ -58,7 +57,7 @@ def _page(
     if request.method == "POST" and request.POST.get("action") == "checkout" and error:
         submitted = CheckoutForm(request.POST, purchase=purchase)
         submitted.is_valid()
-        # Keep field errors while presenting a new quote and unticked consent.
+        # Keep field errors while presenting a new quote.
         form.errors.update(submitted.errors)
         for _, bound in form.input_fields:
             if bound.errors:
@@ -114,7 +113,6 @@ def checkout(request: HttpRequest) -> HttpResponse:
             quote=form.cleaned_data["quote"],
             checkout_id=form.cleaned_data["checkout_id"],
             phone=form.cleaned_data["phone"],
-            activation_consent=form.cleaned_data["activation_consent"],
             customer_inputs={
                 key.removeprefix("customer_input_"): request.POST.get(key, "")
                 for key in request.POST

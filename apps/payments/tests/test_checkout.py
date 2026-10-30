@@ -31,7 +31,6 @@ def submit(buyer, accepted, **changes):
         "user": buyer,
         "quote": accepted.token,
         "checkout_id": uuid.uuid4(),
-        "activation_consent": True,
         "customer_inputs": {},
     }
     data.update(changes)
@@ -44,7 +43,7 @@ def test_checkout_commits_one_purchase_and_identical_retry_keeps_deadline(buyer,
     key = uuid.uuid4()
     order = submit(buyer, quote, checkout_id=key, phone="۰۹۱۲۳۴۵۶۷۸۹")
     assert order.total_amount == 200000 and not cart.items.exists()
-    assert order.consent_accepted_at == order.created_at
+    assert order.consent_accepted_at is None
     assert order.unpaid_expires_at == order.created_at + timedelta(hours=24)
     assert order.items.get().stock_debited is True
     buyer.refresh_from_db()
@@ -61,13 +60,32 @@ def test_key_reuse_changed_content_and_other_owner_are_refused(buyer, cart):
     quote = services.quote_checkout(user=buyer)
     key = uuid.uuid4()
     order = submit(buyer, quote, checkout_id=key)
-    for changes in ({"phone": "09123456789"}, {"activation_consent": False}):
-        with pytest.raises(ValidationError):
-            submit(buyer, quote, checkout_id=key, **changes)
+    with pytest.raises(ValidationError):
+        submit(buyer, quote, checkout_id=key, phone="09123456789")
     other = User.objects.create_user("other@example.test")
     with pytest.raises(ValidationError):
         submit(other, quote, checkout_id=key)
     assert Order.objects.get(pk=order.pk).user == buyer
+
+
+@pytest.mark.parametrize("version", [1, 999])
+def test_quotes_from_another_contract_version_cannot_create_orders(buyer, plan, cart, version):
+    quote = services.quote_checkout(user=buyer)
+    payload = signing.loads(quote.token, salt=services.QUOTE_SALT)
+    assert payload["version"] == 2
+    payload["version"] = version
+    old = services.CheckoutQuote(
+        quote.purchase, signing.dumps(payload, salt=services.QUOTE_SALT, compress=True)
+    )
+    with pytest.raises(ValidationError, match="خرید معتبر نیست"):
+        submit(buyer, old)
+    assert cart.items.exists() and not Order.objects.exists()
+
+
+def test_purchase_digest_contains_product_terms_without_consent(buyer, cart):
+    terms = services.quote_checkout(user=buyer).purchase.terms()
+    assert "consent_text" not in terms and "consent_version" not in terms
+    assert "refund_note" in terms["lines"][0]["facts"]
 
 
 def test_two_tabs_cannot_consume_one_cart_twice_even_after_cancellation(buyer, cart):

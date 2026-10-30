@@ -29,9 +29,7 @@ def raw_input(item):
 
 
 def test_ciphertext_is_randomized_and_readable_outside_the_field(buyer, plan, settings):
-    item = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
-    ).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
     raw = raw_input(item)
     prefix, token = raw.split("$", 1)
     assert prefix == key_id(settings.FIELD_ENCRYPTION_KEY)
@@ -47,9 +45,7 @@ def test_ciphertext_is_randomized_and_readable_outside_the_field(buyer, plan, se
 
 
 def test_old_key_reads_and_rotation_rewrites_only_old_ciphertext(buyer, plan, settings):
-    item = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
-    ).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
     old_key = settings.FIELD_ENCRYPTION_KEY
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     settings.FIELD_ENCRYPTION_KEY_FALLBACKS = [old_key]
@@ -67,9 +63,7 @@ def test_old_key_reads_and_rotation_rewrites_only_old_ciphertext(buyer, plan, se
 
 
 def test_missing_key_and_corrupt_ciphertext_fail_without_disclosing_values(buyer, plan, settings):
-    item = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]
-    ).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     with pytest.raises(ImproperlyConfigured) as exc:
         item.refresh_from_db()

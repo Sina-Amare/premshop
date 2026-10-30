@@ -86,7 +86,7 @@ def quote_checkout(*, user: User, discount_code: str = "") -> CheckoutQuote:
         discount_code=discount_code,
     )
     payload = {
-        "version": 1,
+        "version": 2,
         "user": account.pk,
         "cart": cart.pk,
         "cart_digest": _cart_digest(cart, items),
@@ -110,7 +110,7 @@ def _payload(token: str, user: User) -> dict[str, Any]:
         payload = signing.loads(token, salt=QUOTE_SALT)
         if (
             not isinstance(payload, dict)
-            or payload.get("version") != 1
+            or payload.get("version") != 2
             or payload.get("user") != user.pk
             or type(payload.get("cart")) is not int
             or not re.fullmatch(r"[0-9a-f]{64}", payload.get("cart_digest", ""))
@@ -150,7 +150,6 @@ def checkout(
     quote: str,
     checkout_id: uuid.UUID,
     customer_inputs: Mapping[str, str | None],
-    activation_consent: bool = False,
     phone: str = "",
     discount_code: str | None = None,
 ) -> Order:
@@ -165,7 +164,7 @@ def checkout(
     if not isinstance(checkout_id, uuid.UUID) or not isinstance(customer_inputs, Mapping):
         raise ValidationError("اطلاعات ثبت سفارش درست نیست.")
     allowed = {str(line[0]) for line in payload["inputs"]}
-    if set(customer_inputs) - allowed or type(activation_consent) is not bool:
+    if set(customer_inputs) - allowed:
         raise ValidationError("اطلاعات ثبت سفارش درست نیست.")
     inputs = {
         str(plan_id): normalize_customer_input(kind, customer_inputs.get(str(plan_id)))
@@ -177,7 +176,6 @@ def checkout(
             "quote": payload,
             "inputs": inputs,
             "phone": phone,
-            "consent": activation_consent,
         }
     )
     digests = [
@@ -211,7 +209,6 @@ def checkout(
         ],
         phone=phone,
         discount_code=payload["code"],
-        activation_consent=activation_consent,
         checkout_id=checkout_id,
         submission_digest=digest,
         expected_terms=payload["terms"],

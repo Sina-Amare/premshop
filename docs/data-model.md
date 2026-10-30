@@ -2,7 +2,7 @@
 
 > **At a glance.** The phase-1 tables and the database rules that protect them.
 > **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Built cart/orders — 2026-10-29:** cart 0003 stores untimed selections without holds. Order creation claims available finite stock, applies locked discounts and records fixed deadlines/consent. Whole unpaid cancellation/expiry restores actual claims and retains redemption history. Checkout cart consumption and customer pages are the next integration boundaries.
+> **Built cart/orders — 2026-10-29:** cart 0003 stores untimed selections without holds. Order creation claims available finite stock, applies locked discounts and records fixed deadlines. Activation consent is no longer collected; historical evidence is retained. Whole unpaid cancellation/expiry restores actual claims and retains redemption history. Checkout cart consumption and customer pages are the next integration boundaries.
 > **Built content — 2026-10-29:** `cms.Page` holds five legal drafts with protected staff previews and separate publishing authority (ADR-0030). Content approval and operational readiness still gate public release.
 > **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
@@ -227,7 +227,7 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 | unpaid_expires_at | TS, indexed | — | created_at + 24 hours | retries never extend it |
 | expiry_last_attempt_at | TS | yes | null | unsuccessful sweeps rotate behind unattempted rows, then retry |
 | cancelled_at | TS | yes | null | whole-order release time |
-| consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable for legacy | blank / null | exact accepted wording/version/time; no invented legacy consent |
+| consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable | blank / null | historical accepted wording/version/time retained; new orders leave all three empty |
 | discount_snapshot | JSON | — | {} | frozen code/arithmetic/scope facts |
 | subtotal | Money | — | | = sum of item price_snapshots, before discount |
 | discount_code | FK DiscountCode, **PROTECT** | yes | null | a code that has been spent can never be deleted (ADR-0020) |

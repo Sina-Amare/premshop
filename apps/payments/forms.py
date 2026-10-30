@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
-from apps.orders.services import CONSENT_TEXT, Purchase
+from apps.orders.services import Purchase
 
 
 class CheckoutForm(forms.Form):
@@ -27,11 +27,6 @@ class CheckoutForm(forms.Form):
         widget=forms.TextInput(
             attrs={"class": "field__input", "dir": "ltr", "type": "tel", "autocomplete": "tel"}
         ),
-    )
-    activation_consent = forms.BooleanField(
-        label=CONSENT_TEXT,
-        required=True,
-        error_messages={"required": "شروع فعال‌سازی پس از تأیید پرداخت را تأیید کنید."},
     )
 
     def __init__(self, *args: Any, purchase: Purchase | None = None, **kwargs: Any) -> None:

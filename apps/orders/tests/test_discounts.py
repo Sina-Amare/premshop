@@ -30,7 +30,6 @@ def test_selected_scope_caps_fixed_discount_and_tests_minimum_before_the_code(bu
         user=buyer,
         lines=[OrderLine(plan, 1), OrderLine(other, 1)],
         discount_code=" save ",
-        activation_consent=True,
     )
     assert (order.subtotal, order.discount_amount, order.total_amount) == (300, 100, 200)
     code.value = Decimal(1)
@@ -59,9 +58,7 @@ def test_coupon_rejection_is_specific_and_preserves_resources(buyer, plan, chang
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
     code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=100, **changes)
     with pytest.raises(ValidationError, match=error):
-        services.place_order(
-            user=buyer, lines=[OrderLine(plan, 1)], discount_code=code.code, activation_consent=True
-        )
+        services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code.code)
     plan.refresh_from_db()
     assert plan.stock_quantity == 1
     assert not Order.objects.exists() and not DiscountRedemption.objects.exists()
@@ -69,38 +66,31 @@ def test_coupon_rejection_is_specific_and_preserves_resources(buyer, plan, chang
 
 def test_per_customer_limit_counts_active_history_beyond_the_unpaid_order(buyer, plan):
     DiscountCode.objects.create(code="SAVE", kind="fixed", value=100, per_user_limit=1)
-    order = services.place_order(
-        user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE", activation_consent=True
-    )
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     OrderItem.objects.filter(order=order).update(status=OrderItem.Status.QUEUED)
     with pytest.raises(ValidationError, match="ظرفیت مجاز"):
-        services.place_order(
-            user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE", activation_consent=True
-        )
+        services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     assert DiscountRedemption.objects.count() == 1
 
 
 @pytest.mark.parametrize("code", ["MISSING", "bad!", "ab", "x" * 40])
 def test_unknown_and_malformed_codes_do_not_silently_disappear(buyer, plan, code):
     with pytest.raises(ValidationError, match="کد تخفیف معتبر نیست"):
-        services.place_order(
-            user=buyer, lines=[OrderLine(plan, 1)], discount_code=code, activation_consent=True
-        )
+        services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code)
     assert not Order.objects.exists()
 
 
-def test_idempotent_replay_precedes_empty_lines_consent_and_expiry_checks(buyer, plan):
+def test_idempotent_replay_precedes_empty_lines_and_expiry_checks(buyer, plan):
     checkout_id = uuid.uuid4()
     order = services.place_order(
         user=buyer,
         lines=[OrderLine(plan, 1)],
-        activation_consent=True,
         checkout_id=checkout_id,
         submission_digest="a" * 64,
     )
-    assert order.consent_text == services.CONSENT_TEXT
-    assert order.consent_version == services.CONSENT_VERSION
-    assert order.consent_accepted_at == order.created_at
+    assert order.consent_text == ""
+    assert order.consent_version == ""
+    assert order.consent_accepted_at is None
     services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
     replay = services.place_order(
         user=buyer, lines=[], checkout_id=checkout_id, submission_digest="a" * 64
@@ -133,9 +123,7 @@ def test_operator_can_create_normalized_coupon_and_history_stays_read_only(clien
     response = client.post(url, data)
     assert response.status_code == 302, response.context["adminform"].form.errors
     code = DiscountCode.objects.get(code="SAVE")
-    order = services.place_order(
-        user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE", activation_consent=True
-    )
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     change = reverse("admin:orders_discountcode_change", args=[code.pk])
     data = form_of(client, change, form_id="discountcode_form")
     assert "used_count" not in data and not any(name.endswith("-amount") for name in data)

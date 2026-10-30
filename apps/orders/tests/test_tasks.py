@@ -39,7 +39,7 @@ def test_worker_restart_catches_up_and_duplicate_sweeps_are_harmless(buyer, plan
     assert isinstance(HUEY.storage, MemoryStorage)
     assert HUEY.immediate is False
     with time_machine.travel("2026-10-29 08:00:00", tick=False) as clock:
-        order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+        order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
         sweep_unpaid_orders()
         assert order.items.get().status == OrderItem.Status.PENDING_PAYMENT
         clock.shift(25 * 3600)
@@ -89,10 +89,10 @@ def test_expiry_batches_catch_up_and_a_bad_order_does_not_block_later_orders(
     from apps.accounts.models import User
     from apps.orders import services
 
-    orders = [place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)]
+    orders = [place_order(user=buyer, lines=[OrderLine(plan, 1)])]
     for number in range(2):
         user = User.objects.create_user(f"other{number}@example.test")
-        orders.append(place_order(user=user, lines=[OrderLine(plan, 1)], activation_consent=True))
+        orders.append(place_order(user=user, lines=[OrderLine(plan, 1)]))
     Order.objects.update(unpaid_expires_at=timezone.now())
     cancel = services._cancel
 
@@ -118,9 +118,9 @@ def test_a_full_failed_batch_does_not_starve_later_orders_or_skip_failed_retries
     from apps.accounts.models import User
     from apps.orders import services
 
-    first = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    first = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     other = User.objects.create_user("other@example.test")
-    second = place_order(user=other, lines=[OrderLine(plan, 1)], activation_consent=True)
+    second = place_order(user=other, lines=[OrderLine(plan, 1)])
     Order.objects.update(unpaid_expires_at=timezone.now())
     cancel = services._cancel
     attempts = []
@@ -147,7 +147,7 @@ def test_failed_sweep_does_not_claim_success_or_hide_the_backlog(buyer, plan, mo
     from apps.orders import tasks
     from apps.orders.models import UnpaidExpirySweep
 
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
     monkeypatch.setattr(tasks, "expire_unpaid_orders", lambda: 0)
     tasks.sweep_unpaid_orders()

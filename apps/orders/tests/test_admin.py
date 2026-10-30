@@ -16,7 +16,6 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
         input_type="email", requires_customer_input=True, max_quantity=1
     )
     order = place_order(
-        activation_consent=True,
         user=buyer,
         lines=[OrderLine(plan, 1, "private-target@example.test")],
     )
@@ -44,7 +43,7 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
 
 
 def test_customer_and_staff_without_permission_cannot_inspect_orders(client, buyer, plan):
-    order = place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     detail = reverse("admin:orders_order_change", args=[order.pk])
     assert client.get(detail).status_code == 302
     client.force_login(buyer)
@@ -60,7 +59,7 @@ def test_operator_sees_live_expiry_backlog_and_stale_sweep_warning(client, buyer
 
     from apps.orders.models import UnpaidExpirySweep
 
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
     client.force_login(User.objects.create_superuser("operator@example.test"))
     url = reverse("admin:orders_order_changelist")

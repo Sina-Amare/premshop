@@ -25,9 +25,8 @@ def configure(plan, kind="email", telegram=True):
 def test_unreviewed_legacy_plan_cannot_be_quoted_or_purchased(buyer, plan):
     Plan.objects.filter(pk=plan.pk).update(input_type="unreviewed", telegram_required=None)
     for operation in (quote_order, place_order):
-        kwargs = {"activation_consent": True} if operation is place_order else {}
         with pytest.raises(ValidationError, match="از پشتیبانی راهنمایی بگیرید"):
-            operation(user=buyer, lines=[OrderLine(plan, 1)], **kwargs)
+            operation(user=buyer, lines=[OrderLine(plan, 1)])
     assert not Order.objects.exists()
 
 
@@ -35,9 +34,8 @@ def test_quote_needs_no_input_but_purchase_validates_and_encrypts_it(buyer, plan
     configure(plan)
     terms = quote_order(user=buyer, lines=[OrderLine(plan, 1)]).terms()
     with pytest.raises(ValidationError, match="ایمیل"):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1)])
+        place_order(user=buyer, lines=[OrderLine(plan, 1)])
     item = place_order(
-        activation_consent=True,
         user=buyer,
         lines=[OrderLine(plan, 1, " Target@EXAMPLE.test ")],
         expected_terms=terms,
@@ -68,7 +66,7 @@ def test_invalid_or_unsolicited_input_preserves_stock_and_history(buyer, plan, k
     configure(plan, kind)
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
     with pytest.raises(ValidationError):
-        place_order(activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, value)])
+        place_order(user=buyer, lines=[OrderLine(plan, 1, value)])
     plan.refresh_from_db()
     assert plan.stock_quantity == 1 and not Order.objects.exists()
 
@@ -79,16 +77,13 @@ def test_username_is_normalized_and_requirement_changes_need_new_confirmation(bu
     configure(plan, "email", False)
     with pytest.raises(ValidationError) as error:
         place_order(
-            activation_consent=True,
             user=buyer,
             lines=[OrderLine(plan, 1, "@target.name")],
             expected_terms=terms,
         )
     assert error.value.code == "quote_changed"
     configure(plan, "username", False)
-    item = place_order(
-        activation_consent=True, user=buyer, lines=[OrderLine(plan, 1, " @target.name ")]
-    ).items.get()
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1, " @target.name ")]).items.get()
     assert item.customer_input == "target.name"
 
 

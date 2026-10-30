@@ -19,6 +19,30 @@ def cart(buyer, plan):
     return cart
 
 
+def test_checkout_does_not_display_an_activation_acknowledgement(client, buyer, cart):
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    assert "activation_consent" not in response.context["form"].fields
+    assert "درخواست می‌کنم فعال‌سازی" not in response.content.decode()
+    assert 'type="checkbox"' not in response.content.decode()
+
+
+@pytest.mark.parametrize("obsolete_field", [False, True])
+def test_checkout_without_consent_never_records_acceptance(client, buyer, cart, obsolete_field):
+    client.force_login(buyer)
+    quote = quote_checkout(user=buyer)
+    data = {"action": "checkout", "quote": quote.token, "checkout_id": uuid.uuid4()}
+    if obsolete_field:
+        data["activation_consent"] = "on"
+    response = client.post(reverse("checkout"), data)
+    assert response.status_code == 302
+    order = Order.objects.get()
+    assert order.consent_text == ""
+    assert order.consent_version == ""
+    assert order.consent_accepted_at is None
+    assert not cart.items.exists()
+
+
 def test_guest_checkout_has_inline_code_and_html_fallback(client):
     response = client.get(reverse("checkout"))
     assert response.status_code == 200
@@ -71,12 +95,12 @@ def test_inline_code_request_preserves_safe_next_and_returns_json(client, mailou
     assert verify.json()["ok"] is False
 
 
-def test_review_and_confirmation_use_server_totals_and_unticked_consent(client, buyer, plan, cart):
+def test_review_and_confirmation_use_server_totals_without_consent(client, buyer, plan, cart):
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
     assert response.status_code == 200
     assert "۲۰۰,۰۰۰" in response.content.decode()
-    assert not response.context["form"]["activation_consent"].value()
+    assert "activation_consent" not in response.context["form"].fields
     quote = response.context["quote"]
     response = client.post(
         reverse("checkout"),
@@ -84,7 +108,6 @@ def test_review_and_confirmation_use_server_totals_and_unticked_consent(client, 
             "action": "checkout",
             "quote": quote.token,
             "checkout_id": uuid.uuid4(),
-            "activation_consent": "on",
             "total_amount": "1",
         },
     )
@@ -108,12 +131,11 @@ def test_stale_summary_requires_new_explicit_submission(client, buyer, plan, car
             "action": "checkout",
             "quote": accepted.token,
             "checkout_id": uuid.uuid4(),
-            "activation_consent": "on",
         },
     )
     assert response.status_code == 409
     assert "۲۵۰,۰۰۰" in response.content.decode()
-    assert not response.context["form"]["activation_consent"].value()
+    assert "activation_consent" not in response.context["form"].fields
     assert response.context["quote"].token != accepted.token
     assert cart.items.exists() and not Order.objects.exists()
 
@@ -128,9 +150,7 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     assert cart.items.exists() and not Order.objects.exists()
 
 
-def test_consent_and_input_errors_preserve_cart_without_echoing_input_in_errors(
-    client, buyer, plan, cart
-):
+def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buyer, plan, cart):
     Plan.objects.filter(pk=plan.pk).update(
         input_type="email", requires_customer_input=True, max_quantity=1
     )
@@ -142,7 +162,6 @@ def test_consent_and_input_errors_preserve_cart_without_echoing_input_in_errors(
             "action": "checkout",
             "quote": accepted.token,
             "checkout_id": uuid.uuid4(),
-            "activation_consent": "on",
             f"customer_input_{plan.pk}": "invalid-private-input",
         },
     )
@@ -173,7 +192,6 @@ def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer,
             "action": "checkout",
             "quote": accepted.token,
             "checkout_id": uuid.uuid4(),
-            "activation_consent": "on",
             "phone": "0912",
             f"customer_input_{plan.pk}": "valid@example.test",
             f"customer_input_{other.pk}": "invalid-private-input",
@@ -187,7 +205,7 @@ def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer,
     assert invalid.errors and 'aria-invalid="true"' in str(invalid)
     assert f"{invalid.auto_id}_error" in str(invalid)
     assert form["phone"].errors and 'aria-invalid="true"' in str(form["phone"])
-    assert valid.value() == "valid@example.test" and not form["activation_consent"].value()
+    assert valid.value() == "valid@example.test" and "activation_consent" not in form.fields
     assert "invalid-private-input" not in str(invalid.errors)
     assert not Order.objects.exists() and cart.items.count() == 2
 
@@ -208,7 +226,7 @@ def test_discount_actions_say_apply_or_remove_and_show_the_result(client, buyer,
     )
     assert response.status_code == 200 and response.context["quote"].purchase.total == 200000
     assert response.context["form"]["discount_code"].value() == ""
-    assert not response.context["form"]["activation_consent"].value()
+    assert "activation_consent" not in response.context["form"].fields
     assert cart.items.exists() and not Order.objects.exists()
 
 
@@ -280,7 +298,7 @@ def test_checkout_prints_custom_delivery_once_and_hides_inapplicable_notes(
 def test_unpaid_order_message_explains_the_block_without_a_false_action(client, buyer, plan, cart):
     from apps.orders.services import OrderLine, UnpaidOrderExists, place_order
 
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
     explanation = "تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید."

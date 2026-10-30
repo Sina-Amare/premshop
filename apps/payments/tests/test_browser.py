@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from django.conf import settings
 from django.test import Client
@@ -9,7 +7,6 @@ from playwright.sync_api import expect
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan
 from apps.orders.models import Order
-from apps.orders.services import CONSENT_TEXT
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
@@ -30,13 +27,11 @@ def guest_context(browser, live_server, buyer, plan, width, *, javascript=True):
     return context, account, key
 
 
-def screenshot(page, label, width):
+def screenshot(page, label, width, directory):
     assert page.url.endswith(reverse("checkout"))
     expect(page.get_by_role("heading", name="ثبت سفارش", exact=True)).to_be_visible()
     page.evaluate("document.fonts.ready")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-    directory = Path(settings.BASE_DIR) / "screenshots" / "checkout"
-    directory.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(directory / f"{label}-{width}.png"), full_page=True)
 
 
@@ -74,6 +69,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     width,
     monkeypatch,
     mailoutbox,
+    tmp_path,
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
     context, cart, guest_key = guest_context(browser, live_server, buyer, plan, width)
@@ -82,7 +78,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     page.on("pageerror", lambda error: errors.append(str(error)))
     try:
         page.goto(live_server.url + reverse("checkout"))
-        screenshot(page, "guest", width)
+        screenshot(page, "guest", width, tmp_path)
         page.get_by_label("ایمیل", exact=True).fill(buyer.email)
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page.locator("[data-inline-code]")).to_be_visible()
@@ -95,23 +91,21 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         assert cart.items.get().quantity == 2
         cookies = {row["name"]: row["value"] for row in context.cookies()}
         assert cookies[settings.SESSION_COOKIE_NAME] != guest_key
-        assert not page.get_by_label(CONSENT_TEXT).is_checked()
-        screenshot(page, "review", width)
+        assert page.locator('[name="activation_consent"]').count() == 0
+        screenshot(page, "review", width, tmp_path)
         page.get_by_label("کد تخفیف", exact=True).fill("WRONG")
         page.get_by_role("button", name="اعمال کد تخفیف").click()
         expect(page.locator("[data-checkout-error]")).to_contain_text("کد تخفیف معتبر نیست")
         assert not page.get_by_role("button", name="ثبت سفارش", exact=True).count()
-        screenshot(page, "discount-error", width)
+        screenshot(page, "discount-error", width, tmp_path)
         page.get_by_role("button", name="حذف کد تخفیف").click()
         Plan.objects.filter(pk=plan.pk).update(sale_price=250000)
-        page.get_by_label(CONSENT_TEXT).check()
         page.get_by_role("button", name="ثبت سفارش", exact=True).click()
         expect(page.locator("[data-checkout-error]")).to_contain_text("تغییر کرده است")
-        assert not page.get_by_label(CONSENT_TEXT).is_checked()
+        assert page.locator('[name="activation_consent"]').count() == 0
         expect(page.locator(".cart-summary__total")).to_contain_text("۵۰۰,۰۰۰")
-        screenshot(page, "stale", width)
-        page.get_by_label(CONSENT_TEXT).focus()
-        page.keyboard.press("Space")
+        screenshot(page, "stale", width, tmp_path)
+        page.get_by_role("button", name="ثبت سفارش", exact=True).focus()
         page.get_by_role("button", name="ثبت سفارش", exact=True).click()
         expect(page).to_have_url(
             live_server.url + reverse("order-detail", args=[Order.objects.get().order_number])
@@ -122,11 +116,12 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         context.close()
 
 
+@pytest.mark.parametrize("width", [390, 1440])
 def test_no_javascript_signin_returns_to_checkout_and_can_submit(
-    browser, live_server, buyer, plan, monkeypatch, mailoutbox
+    browser, live_server, buyer, plan, width, monkeypatch, mailoutbox
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
-    context, cart, _ = guest_context(browser, live_server, buyer, plan, 390, javascript=False)
+    context, cart, _ = guest_context(browser, live_server, buyer, plan, width, javascript=False)
     page = context.new_page()
     try:
         page.goto(live_server.url + reverse("checkout"))
@@ -137,9 +132,45 @@ def test_no_javascript_signin_returns_to_checkout_and_can_submit(
         page.get_by_role("button", name="ورود", exact=True).click()
         expect(page).to_have_url(live_server.url + reverse("checkout"))
         assert cart.items.get().quantity == 2
-        page.get_by_label(CONSENT_TEXT).check()
+        assert page.get_by_role("checkbox").count() == 0
         page.get_by_role("button", name="ثبت سفارش", exact=True).click()
         assert Order.objects.count() == 1 and not cart.items.exists()
         assert len(mailoutbox) == 1
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_long_checkout_without_consent_and_empty_cart_remain_readable(
+    browser, live_server, buyer, plan, width, tmp_path
+):
+    from apps.catalog.models import Product
+
+    Product.objects.filter(pk=plan.product_id).update(
+        name="اشتراک سالانه ChatGPT Plus با امکانات بیشتر"
+    )
+    client = Client()
+    client.force_login(buyer)
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    context = browser.new_context(viewport={"width": width, "height": 1000})
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                "url": live_server.url,
+            }
+        ]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("checkout"))
+        assert page.get_by_role("checkbox").count() == 0
+        screenshot(page, "long-review", width, tmp_path)
+        cart.items.all().delete()
+        page.reload()
+        expect(page.get_by_text("سبد خرید شما خالی است.", exact=True)).to_be_visible()
+        screenshot(page, "empty", width, tmp_path)
     finally:
         context.close()

@@ -28,7 +28,7 @@ def test_stale_stock_form_preserves_checkout_or_requests_operator_review(
     prefix = plan_prefix(data, plan) + "-" if inline else ""
     stock = prefix + "stock_quantity"
     assert data[stock] == ["3"]
-    place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    place_order(user=buyer, lines=[OrderLine(plan, 1)])
     data[stock] = ["6" if intentional else "3"]
     data[prefix + "title"] = ["اشتراک یک‌ماهه"]
     response = client.post(url, data)

@@ -44,7 +44,7 @@ def capture(page, name, width):
 def test_order_journey_invoice_png_tracking_and_whole_cancellation(
     browser, live_server, buyer, plan, width
 ):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 2)])
     context = context_for(browser, live_server, buyer, width)
     page = context.new_page()
     errors = []
@@ -90,7 +90,7 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
 
 
 def test_invoice_remains_readable_without_javascript(browser, live_server, buyer, plan):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     context = context_for(browser, live_server, buyer, 390, javascript=False)
     page = context.new_page()
     try:
@@ -105,7 +105,7 @@ def test_invoice_remains_readable_without_javascript(browser, live_server, buyer
 def test_long_mixed_language_invoice_export_keeps_every_line_within_browser_limits(
     browser, live_server, buyer, plan
 ):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     context = context_for(browser, live_server, buyer, 390)
     page = context.new_page()
     try:
@@ -128,7 +128,7 @@ def test_long_mixed_language_invoice_export_keeps_every_line_within_browser_limi
 
 
 def test_font_failure_keeps_html_and_offers_an_export_retry(browser, live_server, buyer, plan):
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     context = context_for(browser, live_server, buyer, 390)
     page = context.new_page()
     downloads = []
@@ -150,7 +150,7 @@ def test_font_failure_keeps_html_and_offers_an_export_retry(browser, live_server
 def test_export_draws_each_mixed_order_line_status(browser, live_server, buyer, plan):
     from apps.orders.models import OrderItem
 
-    order = place_order(user=buyer, lines=[OrderLine(plan, 2)], activation_consent=True)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 2)])
     first, second = order.items.order_by("pk")
     OrderItem.objects.filter(pk=first.pk).update(status=OrderItem.Status.DELIVERED)
     OrderItem.objects.filter(pk=second.pk).update(

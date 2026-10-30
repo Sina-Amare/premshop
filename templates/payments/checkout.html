@@ -86,8 +86,6 @@
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
           <div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div>
           <p class="small">برای تأیید این خلاصه ۱۵ دقیقه فرصت دارید. قیمت و موجودی هنگام ثبت نهایی بررسی می‌شوند.</p>
-          <label class="checkout-consent">{{ form.activation_consent }}<span>{{ form.activation_consent.label }}</span></label>
-          {% if form.activation_consent.errors %}<div id="{{ form.activation_consent.auto_id }}_error">{% for message in form.activation_consent.errors %}<p class="field__error">{{ message }}</p>{% endfor %}</div>{% endif %}
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button>
           <p class="small">مهلت پرداخت پس از ثبت سفارش: ۲۴ ساعت. در این مرحله پرداختی انجام نمی‌شود.</p>
         {% endif %}

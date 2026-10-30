@@ -20,9 +20,7 @@ pytestmark = pytest.mark.django_db
 
 
 def purchase(buyer, plan, quantity=1):
-    return services.place_order(
-        user=buyer, lines=[OrderLine(plan, quantity)], activation_consent=True
-    )
+    return services.place_order(user=buyer, lines=[OrderLine(plan, quantity)])
 
 
 def privacy_headers(response):
