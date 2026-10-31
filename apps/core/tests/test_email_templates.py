@@ -182,11 +182,10 @@ def test_no_template_anywhere_uses_a_multiline_hash_comment():
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
-def test_every_font_stack_survives_gmail_dropping_the_web_font(name):
-    """Gmail supports no @font-face at all — web, Android or iOS (caniemail.com).
+def test_every_font_stack_names_platform_faces_after_vazirmatn(name):
+    """Emails load no web font, so Vazirmatn shows only where it is installed.
 
-    Vazirmatn is linked for the clients that DO honour it (Apple Mail, Outlook.com,
-    Samsung Mail), so every declaration must still name a platform face after it.
+    Every declaration must still name a platform face after it.
     Tahoma may appear only as the last resort: leading with it is what produced the
     first rejected draft, and a stack is decided by what comes first, not by what
     is present.

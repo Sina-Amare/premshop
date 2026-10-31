@@ -126,7 +126,7 @@ The owner reviewed the built shop and asked for a quieter, more professional sur
 - **Colour belongs to the goods.** Product brand marks render in their own brand colours; the interface around them stays achromatic. Teal survives as the single primary action and inline links; amber still means time and nothing else.
 - **Two motion tokens:** `--dur` 140ms for colour and state, `--dur-lg` 220ms for anything that moves or reveals. The easing is `cubic-bezier(0.2, 0, 0, 1)` — a soft stop, no overshoot, no bounce.
 
-Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian. The storefront's Estedad and Vazirmatn are self-hosted, so rendering does not depend on Google's font delivery. The email template separately links Vazirmatn from Google Fonts for clients that load it; that optional link is not the storefront's font source and establishes no guarantee about current connectivity from Iran.
+Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian. The storefront's Estedad and Vazirmatn are self-hosted, so rendering does not depend on Google's font delivery.
 
 ## The stance
 
@@ -237,7 +237,7 @@ Used **once per page region** — a second instance reads as sloppiness rather t
 
 Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). It keeps hairlines, the ledger line, no tracking on Persian prose, and **amber for time and only time** — the code expiry and the delivery-link expiry. Its templates retain the warm-stone ramp (#1C1917, #57534E, #78716C, #FAFAF9), prose at 1.95, a 10px card and button radius, and the button padded `13px 26px 11px` (`templates/email/base.html`, `_button.html`; the reasoning is ADR-0023's). These differ from the storefront's neutral ramp and prose metrics.
 
-The template links Vazirmatn from Google Fonts for clients that load web fonts. Its inline stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`; clients that ignore the link use the installed faces. Estedad is absent. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
+The template loads no web font. Its inline stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first of these installed on their device. Estedad is absent. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
 
 **The wordmark is `PremShop`, in Latin, everywhere** (owner's ruling at the S2 review): site header, footer, email sender name, subjects, masthead. One name, one spelling; the Latin form is the anchor in an inbox full of Persian subjects. Persian prose refers to the shop the same way.
 
