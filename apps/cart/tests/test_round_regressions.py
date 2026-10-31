@@ -28,7 +28,7 @@ def test_stock_added_later_revalidates_the_saved_selection(client, plan):
 def test_mutation_feedback_names_the_selection_and_the_actual_operation(client, plan):
     for route, word, quantity in [
         ("add", "اضافه شد", 1),
-        ("quantity", "به‌روز شد", 2),
+        ("quantity", "تغییر کرد", 2),
         ("remove", "حذف شد", 0),
     ]:
         data = client.post(

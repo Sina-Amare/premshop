@@ -68,7 +68,7 @@ def detail(request: HttpRequest, order_number: int) -> HttpResponse:
 def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
-    error = "برای لغو سفارش، تأیید نهایی را انتخاب کنید."
+    error = "برای لغو سفارش، دکمه‌ی «بله، لغو سفارش» را بزنید."
     if request.POST.get("confirm") == "yes":
         try:
             cancel_unpaid_order(order_id=order.pk, actor=cast(User, request.user))

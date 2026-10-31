@@ -11,11 +11,11 @@ def normalize_customer_input(kind: str, value: str | None) -> str:
     if value is None:
         value = ""
     if not isinstance(value, str) or len(value) > 2000 or "\x00" in value:
-        raise ValidationError("اطلاعات فعال‌سازی معتبر نیست.")
+        raise ValidationError("اطلاعات فعال‌سازی درست نیست.")
     value = unicodedata.normalize("NFC", value.strip())
     if kind == "none":
         if value:
-            raise ValidationError("این پلن به اطلاعات فعال‌سازی نیاز ندارد.")
+            raise ValidationError("این گزینه به اطلاعات فعال‌سازی نیاز ندارد.")
         return ""
     if kind == "email":
         try:

@@ -47,7 +47,7 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
         page.get_by_label("ایمیل", exact=True).fill("invalid")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         if javascript:
-            expect(page.locator("[data-login-status]")).to_contain_text("این ایمیل معتبر نیست")
+            expect(page.locator("[data-login-status]")).to_contain_text("این ایمیل درست نیست")
             page.get_by_label("ایمیل", exact=True).fill("buyer@example.test")
             page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
             expect(page.locator("[data-inline-code]")).to_be_visible()
@@ -55,7 +55,7 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
             expect(page.locator("[data-login-status]")).to_contain_text("کد را وارد کنید")
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
-            expect(page.locator(".field__error")).to_contain_text("این ایمیل معتبر نیست")
+            expect(page.locator(".field__error")).to_contain_text("این ایمیل درست نیست")
     finally:
         context.close()
 
@@ -95,7 +95,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         screenshot(page, "review", width, tmp_path)
         page.get_by_label("کد تخفیف", exact=True).fill("WRONG")
         page.get_by_role("button", name="اعمال کد تخفیف").click()
-        expect(page.locator("[data-checkout-error]")).to_contain_text("کد تخفیف معتبر نیست")
+        expect(page.locator("[data-checkout-error]")).to_contain_text("این کد تخفیف درست نیست")
         assert not page.get_by_role("button", name="ثبت سفارش", exact=True).count()
         screenshot(page, "discount-error", width, tmp_path)
         page.get_by_role("button", name="حذف کد تخفیف").click()
@@ -167,9 +167,14 @@ def test_long_checkout_without_consent_and_empty_cart_remain_readable(
     try:
         page.goto(live_server.url + reverse("checkout"))
         assert page.get_by_role("checkbox").count() == 0
+        tile = page.locator(".checkout-item .checkout-preview__art").bounding_box()
+        card = page.locator(".checkout-item").first.bounding_box()
+        assert tile["width"] >= 48 and tile["height"] >= 48
+        assert card["x"] < tile["x"] and tile["x"] + tile["width"] < card["x"] + card["width"]
+        assert card["y"] < tile["y"] and tile["y"] + tile["height"] < card["y"] + card["height"]
         note = page.get_by_text("قیمت و موجودی را هنگام ثبت سفارش").bounding_box()
         button = page.get_by_role("button", name="ثبت سفارش", exact=True).bounding_box()
-        deadline = page.get_by_text("مهلت پرداخت پس از ثبت سفارش").bounding_box()
+        deadline = page.get_by_text("پس از ثبت سفارش ۲۴ ساعت").bounding_box()
         assert button["y"] - (note["y"] + note["height"]) >= 12
         assert deadline["y"] - (button["y"] + button["height"]) >= 12
         screenshot(page, "long-review", width, tmp_path)

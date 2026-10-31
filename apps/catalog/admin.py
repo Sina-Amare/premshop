@@ -288,7 +288,7 @@ class PlanForm(forms.ModelForm):
                 elif current.stock_quantity != snapshot["stock"]:
                     self.add_error(
                         "stock_quantity",
-                        "موجودی تغییر کرده است. مقدار فعلی را بررسی کنید و صفحه را دوباره باز کنید.",
+                        "موجودی تغییر کرده است. صفحه را دوباره باز کنید و مقدار جدید را ببینید.",
                     )
             else:
                 self.instance.stock_quantity = current.stock_quantity
@@ -300,9 +300,7 @@ class PlanForm(forms.ModelForm):
 def stock_levels(obj: Plan) -> str:
     if obj.stock_quantity is None:
         return gettext("بدون محدودیت موجودی")
-    return gettext("%(available)s عدد قابل خرید") % {
-        "available": to_persian_digits(obj.stock_quantity)
-    }
+    return gettext("%(available)s تا مانده") % {"available": to_persian_digits(obj.stock_quantity)}
 
 
 class PlanInline(StackedInline):

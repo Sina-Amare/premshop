@@ -36,9 +36,21 @@ def customer_orders(user: User) -> QuerySet[Order]:
     return Order.objects.filter(user_id=user.pk).prefetch_related(
         Prefetch(
             "items",
-            queryset=OrderItem.objects.only(
-                "pk", "order_id", "price_snapshot", "product_snapshot", "status", "created_at"
-            ).order_by("pk"),
+            queryset=OrderItem.objects.select_related("plan__product")
+            .only(
+                "pk",
+                "order_id",
+                "price_snapshot",
+                "product_snapshot",
+                "status",
+                "created_at",
+                "plan",
+                "plan__product",
+                "plan__product__name",
+                "plan__product__image",
+                "plan__product__brand_colour",
+            )
+            .order_by("pk"),
         )
     )
 
@@ -77,6 +89,7 @@ def grouped_items(items: Iterable[OrderItem]) -> list[dict[str, Any]]:
         if line is None:
             line = {
                 "facts": facts,
+                "product": item.plan.product if item.plan_id else None,
                 "quantity": 0,
                 "price": item.price_snapshot,
                 "amount": Decimal(0),
@@ -99,6 +112,7 @@ def customer_summary(order: Order) -> dict[str, Any]:
     return {
         "order": order,
         "status": status_label(statuses),
+        "mixed_status": len(statuses) > 1,
         "groups": grouped_items(items),
         "can_cancel": bool(items)
         and OrderItem.Status.PENDING_PAYMENT in statuses

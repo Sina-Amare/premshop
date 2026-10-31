@@ -1009,7 +1009,7 @@ def test_a_signed_in_customer_is_told_in_persian_why_the_panel_refused(client):
         reverse("admin:login"), {"username": "customer@example.test", "password": PASSWORD}
     ).content.decode()
 
-    assert "اما این حساب به پنل دسترسی نداره. با حساب مدیر وارد بشید." in body
+    assert "اما این حساب به پنل دسترسی ندارد. با حساب مدیر وارد شوید." in body
     for leak in ("نداریدو", "صفحه فوق", "مایلید", "authenticated"):
         assert leak not in body, leak
 

@@ -73,8 +73,8 @@ class PreviewAdminMixin(ModelAdmin):
             "open": _("دیدن در پیش‌نمایش"),
             "stale": _("فرم تغییر کرده؛ برای دیدن نسخه‌ی جدید، پیش‌نمایش رو به‌روز کنید."),
             "busy": _("در حال آماده‌کردن پیش‌نمایش…"),
-            "fresh": _("این نسخه از فرم آماده‌ست. هنوز چیزی ذخیره نشده."),
-            "failed": _("پیش‌نمایش به‌روز نشد. نسخه‌ی قبلی همچنان نمایش داده می‌شه."),
+            "fresh": _("پیش‌نمایش به‌روزه. هنوز چیزی ذخیره نشده."),
+            "failed": _("پیش‌نمایش به‌روز نشد. فعلاً همون نسخه‌ی قبلی رو می‌بینید."),
             "absent": _("این بخش با اطلاعات فعلی نمایش داده نمی‌شه. راهنمای کنار فیلد رو ببینید."),
             "empty": _(
                 "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
@@ -109,7 +109,7 @@ class PreviewAdminMixin(ModelAdmin):
             for row_form in formset.forms:
                 submitted_id = row_form.data.get(row_form.add_prefix("id"))
                 if submitted_id and submitted_id not in allowed_ids:
-                    row_form.add_error(None, _("این ردیف متعلق به این محصول نیست."))
+                    row_form.add_error(None, _("این ردیف مال این محصول نیست."))
             valid = formset.is_valid() and valid
         errors: list[dict[str, Any]] = []
         for bound in [form, *(row for formset in formsets for row in formset.forms)]:

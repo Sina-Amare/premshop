@@ -792,6 +792,6 @@ def test_shared_attempt_limit_does_not_blame_the_new_authentication_method(rf, m
         message = caught.value.message
     else:
         message = services.password_attempt_refusal(request, email)
-    assert "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است." in message
+    assert "برای این ایمیل چند بار پشت سر هم تلاش شده است." in message
     assert "۱۵ دقیقه" in message
     assert "اشتباه" not in message

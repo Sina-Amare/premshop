@@ -251,7 +251,7 @@ msgstr "A plan lasts at least one day, or leave it empty for no end."
 msgid "حداکثر تعداد باید بین ۱ تا ۱۰ باشد."
 msgstr "The most per order must be between 1 and 10."
 
-msgid "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
+msgid "از پلنی که اطلاعات مشتری می‌خواهد، در هر سفارش فقط یکی می‌شود خرید."
 msgstr "A plan that needs customer details can be bought only once per order."
 
 msgid "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید. صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
@@ -663,7 +663,7 @@ msgstr "Change history"
 msgid "انتخاب رنگ"
 msgstr "Choose color"
 
-msgid "انتخاب پلن و قیمت محصول؛ تخفیف فقط در بازه‌ی معتبر نمایش داده می‌شه."
+msgid "انتخاب پلن و قیمت محصول؛ تخفیف فقط توی بازه‌ی خودش دیده می‌شه."
 msgstr "Product plans and prices; discounts appear only during their valid window."
 
 msgid "اگه روشن باشه، این مشخصه کنار نام محصول هم دیده می‌شه."
@@ -672,19 +672,19 @@ msgstr "Also show this fact beside the product name."
 msgid "این بخش با اطلاعات فعلی نمایش داده نمی‌شه. راهنمای کنار فیلد رو ببینید."
 msgstr "This section is absent with the current values. Check the field guidance."
 
-msgid "این ردیف متعلق به این محصول نیست."
+msgid "این ردیف مال این محصول نیست."
 msgstr "This row does not belong to this product."
 
-msgid "این نسخه از فرم آماده‌ست. هنوز چیزی ذخیره نشده."
+msgid "پیش‌نمایش به‌روزه. هنوز چیزی ذخیره نشده."
 msgstr "This form snapshot is ready. Nothing has been saved."
 
 msgid "بالای صفحه‌ی محصول و کارت محصول"
 msgstr "Product header and product card"
 
-msgid "بخش پایانی لینک دسته‌بندی؛ تغییرش لینک قبلی رو از دسترس خارج می‌کنه."
+msgid "بخش آخر لینک دسته‌بندی؛ اگه عوضش کنید، لینک قبلی دیگه باز نمی‌شه."
 msgstr "The final part of the category URL. Changing it breaks the previous address."
 
-msgid "بخش پایانی لینک محصول؛ تغییرش لینک قبلی رو از دسترس خارج می‌کنه."
+msgid "بخش آخر لینک محصول؛ اگه عوضش کنید، لینک قبلی دیگه باز نمی‌شه."
 msgstr "The final part of the product URL. Changing it breaks the previous address."
 
 msgid "بخش پیش از خرید؛ نکات خالی یا «موضوعیت ندارد» نمایش داده نمی‌شن."
@@ -696,13 +696,13 @@ msgstr "Alternative search names; these do not appear on the product page."
 msgid "بستن"
 msgstr "Close"
 
-msgid "تأثیر هر فیلد رو همین‌جا ببینید. پیش‌نمایش چیزی رو ذخیره نمی‌کنه."
+msgid "نتیجه‌ی تغییرها رو همین‌جا ببینید. پیش‌نمایش چیزی رو ذخیره نمی‌کنه."
 msgstr "See where each field appears. Previewing does not save changes."
 
 msgid "تاریخ آخرین بررسی اطلاعات؛ پایین توضیحات محصول"
 msgstr "Last information review date, below the product description"
 
-msgid "ترتیب دسته‌های دارای محصول فعال در منوی سایت؛ دسته‌ی خالی وارد منو نمی‌شه."
+msgid "ترتیب دسته‌ها در منوی سایت؛ دسته‌ای که محصول فعال نداره وارد منو نمی‌شه."
 msgstr "Navigation order for categories with public products; empty categories stay out of the menu."
 
 msgid "ترتیب ردیف‌های جدول مشخصات"
@@ -735,7 +735,7 @@ msgstr "Neutral color"
 msgid "رنگ رو با # و شش رقم وارد کنید؛ مثل #10a37f."
 msgstr "Enter # followed by six hexadecimal digits, such as #10a37f."
 
-msgid "روی الزام بررسی به‌روز اطلاعات برای انتشار اثر می‌ذاره."
+msgid "موقع انتشار اثر داره؛ روی سایت چیزی نشون نمی‌ده."
 msgstr "Controls whether publishing requires recently checked information."
 
 msgid "زمان تأیید قیمت؛ قدیمی‌ترین تأیید معتبر کنار قیمت‌ها نمایش داده می‌شه."
@@ -756,19 +756,19 @@ msgstr "Active products appear on the site; drafts and unavailable products stay
 msgid "فقط برای آماده‌کردن پیام تحویل؛ مشتری توی صفحه‌ی محصول نمی‌بینه."
 msgstr "Used to prepare the delivery message; absent from the product page."
 
-msgid "فقط توی پنل، برای خرید و محاسبه‌ی سود؛ مشتری بهش دسترسی نداره."
+msgid "فقط توی پنل، برای خرید و حساب سود؛ مشتری نمی‌بینه."
 msgstr "Panel only, for purchasing and margin calculations; customers cannot access this."
 
-msgid "محصولی که این پلن زیر اون نمایش داده می‌شه."
+msgid "این پلن زیر همین محصول میاد."
 msgstr "The product under which this plan appears."
 
-msgid "مدت واقعی اشتراک برای عملیات فروش؛ عنوانی که مشتری می‌بینه جداست."
+msgid "مدت واقعی اشتراک، برای قیمت ماهانه و سفارش؛ عنوانی که مشتری می‌بینه جداست."
 msgstr "Actual subscription duration for sales operations; the visible title is separate."
 
 msgid "معرفی کوتاه زیر نام محصول؛ توضیح پیش‌فرض نتایج جستجو هم هست."
 msgstr "Short product introduction and fallback search description."
 
-msgid "منابع بررسی، فقط توی پنل؛ مشتری بهشون دسترسی نداره."
+msgid "منابع بررسی فقط توی پنل می‌مونن."
 msgstr "Information sources, for the panel only; customers cannot access them."
 
 msgid "نمای تقریبی در نتایج جستجو"
@@ -789,7 +789,7 @@ msgstr "This question and answer in the product FAQ"
 msgid "پیش‌نمایش به‌روز نشد. خطاهای فرم رو اصلاح کنید."
 msgstr "Preview was not refreshed. Correct the form errors."
 
-msgid "پیش‌نمایش به‌روز نشد. نسخه‌ی قبلی همچنان نمایش داده می‌شه."
+msgid "پیش‌نمایش به‌روز نشد. فعلاً همون نسخه‌ی قبلی رو می‌بینید."
 msgstr "Preview was not refreshed. The previous version remains visible."
 
 msgid "پیش‌نمایش تغییرات"
@@ -834,7 +834,7 @@ msgstr "Purchase details"
 msgid "اطلاعات مشتری دریافت نشده"
 msgstr "Customer information not received"
 
-msgid "امکان تأمین نیست"
+msgid "تأمین نشد"
 msgstr "Supply unavailable"
 
 msgid "بازپرداخت شده"
@@ -852,7 +852,7 @@ msgstr "Subtotal"
 msgid "جمع نهایی"
 msgstr "Total"
 
-msgid "دامنه"
+msgid "روی کدام محصولات"
 msgstr "Scope"
 
 msgid "در صف انجام"
@@ -972,7 +972,7 @@ msgstr "Previous status: %(state)s"
 msgid "%(available)s قابل خرید، %(reserved)s رزرو شده"
 msgstr "%(available)s available, %(reserved)s reserved"
 
-msgid "%(available)s عدد قابل خرید"
+msgid "%(available)s تا مانده"
 msgstr "%(available)s available to buy"
 
 msgid "تعداد قابل فروش. افزودن به سبد خرید موجودی را رزرو نمی‌کند. خالی یعنی بدون محدودیت موجودی."
@@ -1041,10 +1041,10 @@ msgstr "Cancelled orders"
 msgid "سفارش‌های گذشته از مهلت"
 msgstr "Overdue orders"
 
-msgid "موجودی قابل فروش"
+msgid "موجودی"
 msgstr "Available stock"
 
-msgid "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
+msgid "هر سفارش ثبت‌شده خودش از این عدد کم می‌شود. خالی یعنی موجودی محدود نیست."
 msgstr "Excludes units already committed to orders. Leave blank for unlimited stock."
 
 msgid "آخرین بررسی مهلت پرداخت"
@@ -1056,7 +1056,7 @@ msgstr "Discount redemption"
 msgid "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
 msgstr "Enter a percentage for a percent discount, or toman for a fixed discount."
 
-msgid "بررسی خودکار به‌روز نیست. وضعیت اجرای آن را بررسی کنید."
+msgid "بررسی خودکار به‌روز نیست. ببینید هنوز اجرا می‌شود یا نه."
 msgstr "The automatic sweep is overdue. Check that it is running."
 
 msgid "تعداد استفاده‌ی فعال"
@@ -1092,7 +1092,7 @@ msgstr "Time"
 msgid "سفارش‌های گذشته از مهلت پرداخت"
 msgstr "Orders past their payment deadline"
 
-msgid "سوابق استفاده از کد تخفیف"
+msgid "سابقه‌ی استفاده از کد تخفیف"
 msgstr "Discount redemption history"
 
 msgid "شروع اعتبار"
@@ -1128,7 +1128,7 @@ msgstr "Enter zero or a greater number."
 msgid "میزان تخفیف"
 msgstr "Discount value"
 
-msgid "محصولات مشمول تخفیف"
+msgid "روی کدام محصولات"
 msgstr "Eligible products"
 
 msgid "حذف محصولات انتخاب‌شده"
@@ -1146,7 +1146,7 @@ msgstr "No input"
 msgid "بررسی‌نشده"
 msgstr "Not reviewed"
 
-msgid "تا تعیین نوع اطلاعات و نیاز به تلگرام، ثبت سفارش این پلن بسته است."
+msgid "تا نوع اطلاعات و نیاز به تلگرام را مشخص نکنید، این پلن سفارش نمی‌گیرد."
 msgstr "Checkout is blocked until the input type and Telegram requirement are set."
 
 msgid "لازم است"
@@ -1173,13 +1173,13 @@ msgstr "Review the activation input type and Telegram requirement."
 msgid "نیاز به تلگرام برای فعال‌سازی"
 msgstr "Telegram required for activation"
 
-msgid "نیاز به تلگرام را بر اساس روش تحویل همین پلن تعیین کنید."
+msgid "بسته به روش تحویل همین پلن، انتخاب کنید تلگرام لازم است یا نه."
 msgstr "Set the Telegram requirement according to this plan's delivery method."
 
 msgid "نیاز به تلگرام را مشخص کنید."
 msgstr "Specify whether Telegram is required."
 
-msgid "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
+msgid "این پلن اطلاعات فعال‌سازی می‌خواهد، پس حداکثر تعداد در هر سفارش باید ۱ باشد."
 msgstr "A plan requiring input can only be purchased once per order."
 
 msgid "آخرین ویرایش"
@@ -1191,7 +1191,7 @@ msgstr "Page address"
 msgid "آدرس صفحه پس از افزودن تغییر نمی‌کند."
 msgstr "A page address cannot change after creation."
 
-msgid "انتشار پس از تأیید متن و آماده‌شدن فرایندهای اعلام‌شده در آن."
+msgid "وقتی منتشر کنید که متن تأیید شده و کارهایی که در آن گفته‌ایم آماده باشد."
 msgstr "Publish after the text is approved and the stated processes are operational."
 
 msgid "برای انتشار، این قسمت را کامل کنید."
@@ -1233,5 +1233,5 @@ msgstr "Page text"
 msgid "منتشرشده"
 msgstr "Published"
 
-msgid "پیش از انتشار، جای خالی تصمیم یا اطلاعات را پر کنید."
+msgid "پیش از انتشار، جاهای خالی داخل کروشه را پر کنید."
 msgstr "Resolve missing decisions or information before publishing."

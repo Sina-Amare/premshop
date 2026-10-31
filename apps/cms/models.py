@@ -34,7 +34,7 @@ class Page(models.Model):
     is_published = models.BooleanField(
         _("منتشرشده"),
         default=False,
-        help_text=_("انتشار پس از تأیید متن و آماده‌شدن فرایندهای اعلام‌شده در آن."),
+        help_text=_("وقتی منتشر کنید که متن تأیید شده و کارهایی که در آن گفته‌ایم آماده باشد."),
     )
     updated_at = models.DateTimeField(_("آخرین ویرایش"), auto_now=True)
 
@@ -76,6 +76,6 @@ class Page(models.Model):
                 if not value.strip():
                     errors[name] = _("برای انتشار، این قسمت را کامل کنید.")
                 elif PLACEHOLDER.search(value):
-                    errors[name] = _("پیش از انتشار، جای خالی تصمیم یا اطلاعات را پر کنید.")
+                    errors[name] = _("پیش از انتشار، جاهای خالی داخل کروشه را پر کنید.")
         if errors:
             raise ValidationError(errors)

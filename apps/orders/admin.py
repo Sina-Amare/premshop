@@ -202,7 +202,7 @@ class DiscountForm(forms.ModelForm):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["value"].label = _("میزان تخفیف")
-        self.fields["scope"].label = _("محصولات مشمول تخفیف")
+        self.fields["scope"].label = _("روی کدام محصولات")
         self.fields["value"].help_text = _(
             "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
         )

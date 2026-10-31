@@ -143,3 +143,7 @@ html.dark .field-image img{padding:4px;border-radius:6px}
 #nav-sidebar-inner .select-none.min-w-0>.truncate{direction:ltr;text-align:right}
 #recent-actions-module{height:auto}
 #recent-actions-module li a::after{content:'';position:absolute;inset:0}
+
+.app-cms .field-body textarea{min-block-size:60vh;inline-size:100%;max-inline-size:none;line-height:1.9}
+.app-cms .field-body .flex-grow,.app-cms .field-body .max-w-2xl{max-inline-size:none}
+html body .order-status{font-size:12px}

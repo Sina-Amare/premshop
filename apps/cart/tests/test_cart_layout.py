@@ -137,7 +137,7 @@ def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
         expect(page.locator(".cart-line")).to_have_count(4)
         expect(page.locator(".cart-line--unavailable")).to_have_count(1)
         expect(page.locator(".cart-line__restock")).to_have_text(
-            "زمان موجود شدن دوباره را از پشتیبانی بپرسید."
+            "از پشتیبانی بپرسید کی دوباره موجود می‌شود."
         )
         if width == 390:
             long_line = page.locator(".cart-line").last

@@ -79,7 +79,7 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
         page.get_by_role("button", name="بله، لغو سفارش").click()
         expect(page.locator(".acct__main [role=status]")).to_contain_text("سفارش لغو شد.")
         capture(page, "cancelled", width)
-        page.get_by_role("link", name="پیوند پیگیری سفارش").click()
+        page.get_by_role("link", name="لینک پیگیری سفارش").click()
         expect(page.get_by_role("heading", name="پیگیری سفارش", exact=True)).to_be_visible()
         expect(page.locator("main")).to_contain_text("لغو شده")
         assert buyer.email not in page.content() and order.tracking_token not in page.content()
@@ -137,9 +137,7 @@ def test_font_failure_keeps_html_and_offers_an_export_retry(browser, live_server
     try:
         page.goto(live_server.url + reverse("order-invoice", args=[order.order_number]))
         page.get_by_role("button", name="دانلود تصویر فاکتور").click()
-        expect(page.locator("[data-invoice-status]")).to_contain_text(
-            "متن فاکتور در همین صفحه در دسترس است"
-        )
+        expect(page.locator("[data-invoice-status]")).to_contain_text("متن فاکتور در همین صفحه هست")
         expect(page.get_by_role("button", name="دانلود تصویر فاکتور")).to_be_enabled()
         expect(page.locator("[data-order-total]")).to_contain_text("۲۰۰,۰۰۰")
         assert not downloads

@@ -81,13 +81,13 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
         if removed:
             data["message"] = f"{name} از سبد خرید حذف شد."
         elif operation is services.set_quantity:
-            data["message"] = f"تعداد {name} در سبد خرید به‌روز شد."
+            data["message"] = f"تعداد {name} در سبد خرید تغییر کرد."
         else:
             data["message"] = f"{name} به سبد خرید اضافه شد."
             # Worded as the cart page's summary; where that shows a dash, the toast states no total.
             cart = services.cart_summary(services.get_cart(request))
             if cart.has_purchasable_items:
-                label = "جمع سبد خرید" if cart.ready else "جمع محصولات قابل خرید"
+                label = "جمع سبد خرید" if cart.ready else "جمع محصولات آماده‌ی خرید"
                 # A no-break space keeps «تومان» on the figure's line in every browser.
                 total = format_toman(cart.total).replace(" ", "\u00a0")
                 data["total"] = f"{label}: {total}"

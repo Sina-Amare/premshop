@@ -19,7 +19,7 @@ class EmailForm(forms.Form):
         max_length=254,
         error_messages={
             "required": "ایمیل را وارد کنید.",
-            "invalid": "این ایمیل معتبر نیست.",
+            "invalid": "این ایمیل درست نیست.",
         },
         widget=forms.EmailInput(
             attrs={

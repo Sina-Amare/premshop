@@ -42,6 +42,8 @@ BANNED = [
     (r"انجام می‌پذیرد", "a plain verb"),
     (r"گزارشات|پیشنهادات|سفارشات|آزمایشات", "a Persian plural in «ها»"),
     (r"لطفاً", "nothing — the panel talks to its owner"),
+    (r"قابل (?:افزودن|خرید|استفاده)", "what the person can do: «می‌تونید بخرید»"),
+    (r"موجودی فعلی:|امکان‌پذیر نیست", "a sentence a person would say"),
     (r"متأسفانه", "the cause instead of an apology"),
     (r"شیء|اشیاء", "«مورد» — «object» is a programming word"),
     (r"وب‌گاه", "«سایت» / «پنل»"),

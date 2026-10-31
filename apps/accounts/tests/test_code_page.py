@@ -106,7 +106,7 @@ def test_too_many_guesses_answer_429_in_json(waiting):
     assert response.json()["ok"] is False
     assert (
         response.json()["error"]
-        == "تعداد تلاش‌ها برای این ایمیل بیش از حد مجاز است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+        == "برای این ایمیل چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
     )
 
 
@@ -207,7 +207,7 @@ def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
 
     assert response.redirect_chain[-1][0] == reverse("login-code")
     # Printed on the email page, so it names the page that ran out.
-    assert "صفحه‌ی کد ورود دیگر معتبر نیست." in response.content.decode()
+    assert "صفحه‌ی کد ورود دیگر کار نمی‌کند." in response.content.decode()
 
 
 def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):

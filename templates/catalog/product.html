@@ -146,7 +146,7 @@
         <p class="cart-add-error" role="alert" hidden></p>
       </form>
       {% endwith %}
-      <p class="micro buybox__note">{{ product.delivery_note|default:delivery_commitment }}<br>پرداخت تومانی، بدون کارت ارزی{% if before_buying_shown %}<br><a href="#before-buying">گارانتی و شرایط خرید</a>{% endif %}</p>
+      {% if before_buying_shown %}<p class="micro buybox__note"><a href="#before-buying">گارانتی و شرایط خرید</a></p>{% endif %}
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
   </aside>
@@ -249,14 +249,14 @@
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
       if (limit) {
-        var text = max > 0 ? 'حداکثر تعداد قابل افزودن: ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' عدد' : 'حداکثر تعداد در سبد خرید شماست.';
+        var text = max > 0 ? 'از این گزینه تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' تا می‌تونید بخرید.' : 'بیشتر از این نمی‌تونید از این گزینه بخرید.';
         if (limit.textContent !== text) limit.textContent = text;
         limit.hidden = qtyRow.hidden && max > 0;
       }
     }
     if (asks) {
       var question = plan.getAttribute('data-asks') || '';
-      asks.textContent = question ? 'اطلاعات فعال‌سازی: ' + question : '';
+      asks.textContent = question ? 'برای فعال‌سازی، ' + question + ' را از شما می‌خواهیم.' : '';
       asks.hidden = !question;
     }
   }

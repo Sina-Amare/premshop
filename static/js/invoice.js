@@ -94,7 +94,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       status.textContent = 'تصویر فاکتور آماده شد.';
     } catch (_) {
-      status.textContent = 'ساخت تصویر فاکتور ممکن نشد. دوباره امتحان کنید؛ متن فاکتور در همین صفحه در دسترس است.';
+      status.textContent = 'تصویر فاکتور ساخته نشد. دوباره امتحان کنید. متن فاکتور در همین صفحه هست.';
     } finally {
       button.disabled = false;
     }

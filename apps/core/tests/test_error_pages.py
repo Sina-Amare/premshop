@@ -50,7 +50,7 @@ def test_a_stale_form_is_a_persian_page_with_a_way_back(db):
     body = response.content.decode()
 
     assert response.status_code == 403
-    assert "این فرم دیگر معتبر نیست" in body
+    assert "این فرم دیگر کار نمی‌کند" in body
     assert 'href="/"' in body, "a dead end is not an error page"
     assert not [word for word in ENGLISH if word in body]
 
@@ -66,7 +66,7 @@ def test_a_stale_form_in_the_panel_leads_back_to_the_panel(db):
     body = response.content.decode()
 
     assert response.status_code == 403
-    assert "این فرم دیگر معتبر نیست" in body
+    assert "این فرم دیگر کار نمی‌کند" in body
     assert f'href="{reverse("admin:index")}"' in body
     assert "بازگشت به فهرست محصولات" not in body
 

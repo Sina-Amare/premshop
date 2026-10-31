@@ -123,9 +123,13 @@ def test_the_delivery_cap_is_the_one_the_database_enforces(catalogue):
 def test_the_delivery_promise_is_48_hours_without_a_clock_cutoff(client, catalogue):
     assert DELIVERY_CAP_HOURS == 48
     product = catalogue.get(slug="card")
+    for path in ["/", "/faq/"]:
+        assert "در اولین فرصت، حداکثر تا ۴۸ ساعت پس از تأیید پرداخت." in (
+            client.get(path).content.decode()
+        )
     for path in ["/", "/faq/", product.get_absolute_url()]:
         body = client.get(path).content.decode()
-        assert "در اولین فرصت، حداکثر تا ۴۸ ساعت پس از تأیید پرداخت." in body
+        assert "ساعت پس از تأیید پرداخت" in body
         assert "اگر پرداختتان تا ساعت" not in body
         assert "صبح تحویل می‌دهیم" not in body
 

@@ -66,7 +66,7 @@ def test_a_row_that_needs_fixing_leaves_its_amount_out_under_the_cart_pages_labe
     _add(client, plain)
     Plan.objects.filter(pk=plain.pk).update(is_available=False)
     total = _add(client, plan)["total"]
-    assert total == "جمع محصولات قابل خرید: ۲۰۰,۰۰۰\u00a0تومان"
+    assert total == "جمع محصولات آماده‌ی خرید: ۲۰۰,۰۰۰\u00a0تومان"
     assert total.startswith(_summary_label(client) + ": ")
 
 

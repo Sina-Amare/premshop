@@ -105,7 +105,10 @@ def checkout(request: HttpRequest) -> HttpResponse:
     if action != "checkout" or not form.is_valid():
         error = " ".join(str(value) for values in form.errors.values() for value in values)
         return _page(
-            request, discount_code=code, error=error or "درخواست ثبت سفارش معتبر نیست.", status=400
+            request,
+            discount_code=code,
+            error=error or "اطلاعات ثبت سفارش درست نیست. صفحه را دوباره باز کنید.",
+            status=400,
         )
     try:
         order = services.checkout(
