@@ -8,7 +8,7 @@
 
 ## 1. App Map
 
-Dependency direction is a strict order. An app may import only from apps **above** it in this list (plus stdlib/Django/libs). Panel sits at the top and imports everyone; nothing imports panel. `cms` and `catalog` are domain-leaf apps.
+Dependency direction is a strict order, with one exception in the accounts row. An app may import only from apps **above** it in this list (plus stdlib/Django/libs). Panel sits at the top and imports everyone; nothing imports panel. `cms` and `catalog` are domain-leaf apps.
 
 ```
 core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifications  →  panel

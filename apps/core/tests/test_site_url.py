@@ -47,6 +47,15 @@ def test_production_refuses_to_boot_without_usable_field_keys(reload_base, broke
         load_prod()
 
 
+def test_production_boots_with_a_distinct_fallback_during_a_rotation(reload_base):
+    fallback = Fernet.generate_key().decode()
+    reload_base(
+        **{**PRODUCTION, "FIELD_ENCRYPTION_KEY_FALLBACKS": fallback},
+        SITE_URL="https://premshop.ir",
+    )
+    assert load_prod().field_keys == [PRODUCTION["FIELD_ENCRYPTION_KEY"], fallback]
+
+
 def test_production_refuses_to_boot_without_site_url(reload_base):
     reload_base(**PRODUCTION, SITE_URL="")
     with pytest.raises(ImproperlyConfigured, match="SITE_URL"):
