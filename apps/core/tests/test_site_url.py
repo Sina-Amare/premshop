@@ -10,15 +10,18 @@ from __future__ import annotations
 import importlib
 
 import pytest
+from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
-# Every check in prod.py that runs before SITE_URL's, satisfied, so a failure here
-# can only be SITE_URL's own and not whichever variable the machine lacks.
+# Every other check in prod.py, satisfied, so a failure here can only be the one a
+# test breaks and not whichever variable the machine lacks.
 PRODUCTION = {
     "ALLOWED_HOSTS": "premshop.ir",
     "EMAIL_HOST_USER": "relay-user",
     "EMAIL_HOST_PASSWORD": "relay-pass",
     "DEFAULT_FROM_EMAIL": "PremShop <support@premshop.ir>",
+    "FIELD_ENCRYPTION_KEY": Fernet.generate_key().decode(),
+    "FIELD_ENCRYPTION_KEY_FALLBACKS": "",
     "SENTRY_DSN": "",
 }
 
@@ -27,6 +30,20 @@ def load_prod():
     import config.settings.prod as prod
 
     return importlib.reload(prod)
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        {"FIELD_ENCRYPTION_KEY": ""},
+        {"FIELD_ENCRYPTION_KEY": "not-a-fernet-key"},
+        {"FIELD_ENCRYPTION_KEY_FALLBACKS": "not-a-fernet-key"},
+    ],
+)
+def test_production_refuses_to_boot_without_usable_field_keys(reload_base, broken):
+    reload_base(**{**PRODUCTION, **broken}, SITE_URL="https://premshop.ir")
+    with pytest.raises(ImproperlyConfigured, match="FIELD_ENCRYPTION_KEY"):
+        load_prod()
 
 
 def test_production_refuses_to_boot_without_site_url(reload_base):
