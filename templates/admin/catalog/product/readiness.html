@@ -9,7 +9,9 @@ fields thousands of pixels apart on a phone.
 {% if readiness is not None %}
     <div class="panel-readiness bg-blue-100 leading-relaxed px-3 py-2.5 rounded-default text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
         {% if readiness %}
-            {% if readiness_live %}
+            {% if readiness_unavailable %}
+                <h2 class="font-semibold">{% translate "صفحه‌ی این محصول نمایش داده نمی‌شود" %}</h2>
+            {% elif readiness_live %}
                 <h2 class="font-semibold">{% translate "اگر از سایت برداشته شود" %}</h2>
                 <p>{% translate "تا این‌ها درست نشود، دوباره منتشر نمی‌شود." %}</p>
             {% else %}

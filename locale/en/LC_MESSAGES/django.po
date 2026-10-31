@@ -1235,3 +1235,9 @@ msgstr "Published"
 
 msgid "پیش از انتشار، جاهای خالی داخل کروشه را پر کنید."
 msgstr "Resolve missing decisions or information before publishing."
+
+msgid "صفحه‌ی این محصول نمایش داده نمی‌شود"
+msgstr "This product page is not shown"
+
+msgid "پیش‌نویس روی سایت دیده نمی‌شه. ناموجود، اگه آماده‌ی انتشار باشه، صفحه داره ولی فروخته نمی‌شه."
+msgstr "Drafts are hidden. Unavailable products have a public page only when ready to publish, and cannot be bought."

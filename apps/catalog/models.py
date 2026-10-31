@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 import secrets
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
@@ -329,10 +329,18 @@ class Category(models.Model):
 
 class ProductQuerySet(models.QuerySet["Product"]):
     def public(self) -> ProductQuerySet:
-        """What a visitor may see. Draft and unavailable products never leak
-        through a URL, a search, or a category listing — one filter, used by
-        every public view."""
+        """Products for sale, used by listings and purchase validation."""
         return self.filter(status=Product.Status.ACTIVE)
+
+    def public_pages(self) -> Iterator[Product]:
+        """Yield public pages; unavailable content must pass the publishing rule."""
+        for product in (
+            self.filter(status__in=[Product.Status.ACTIVE, Product.Status.UNAVAILABLE])
+            .select_related("category")
+            .prefetch_related("plans", "specs", "sections", "questions")
+        ):
+            if product.is_public or not product.publish_problems():
+                yield product
 
     def search(self, query: str) -> ProductQuerySet:
         """Exact first, then close enough.

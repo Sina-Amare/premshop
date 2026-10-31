@@ -11,6 +11,7 @@ from django.templatetags.static import static as static_url
 from django.urls import include, path
 
 from apps.core import views as core_views
+from config import seo
 
 
 def staff_or_debug(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
@@ -31,6 +32,8 @@ def favicon(request: HttpRequest) -> HttpResponse:
 
 
 urlpatterns = [
+    path("sitemap.xml", seo.sitemap, name="sitemap"),
+    path("robots.txt", seo.robots, name="robots"),
     path("favicon.ico", favicon),
     path("", include("apps.catalog.urls")),
     path("", include("apps.cms.urls")),

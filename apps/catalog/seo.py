@@ -73,7 +73,11 @@ def product_metadata(product: Product) -> dict:
     return {
         "product_meta_title": product.seo_title or f"خرید {name}",
         "product_meta_description": product.seo_description or product.short_description,
-        "share_image": image if product.is_public and finders.find(image) else "img/share.png",
+        "share_image": (
+            image
+            if product.status != Product.Status.DRAFT and finders.find(image)
+            else "img/share.png"
+        ),
     }
 
 
