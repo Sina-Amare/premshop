@@ -16,14 +16,14 @@ import pytest
 from django.urls import reverse
 
 from apps.catalog.models import Category, Plan, Product
-from apps.catalog.promises import DELIVERY_CAP_HOURS, PROMISES
+from apps.catalog.promises import DELIVERY_CAP_HOURS, HERO_LEAD, PROMISES
 from apps.core import support
 
 pytestmark = pytest.mark.django_db
 
 # Where the shell prints promises: the strip over every page, the footer row
-# and the home page's row.
-SITE_WIDE = ("v-support", "v-footer__contact", "v-hero__proof")
+# and the home page's row and lead.
+SITE_WIDE = ("v-support", "v-footer__contact", "v-hero__proof", "v-hero__lead")
 
 # Claims nothing backs yet. Payment waits on the gateway (S5) and on the
 # owner's ruling about what to say before it; refunds and warranty terms on
@@ -143,6 +143,7 @@ def test_the_shell_prints_only_what_the_source_holds(client, catalogue):
         support.details()["telegram"],
         "پشتیبانی",
         "·",
+        HERO_LEAD,
         *(p.text for p in PROMISES),
     ]
     seen = set()

@@ -37,6 +37,9 @@ class Promise:
     holds_for: Callable[[Product], bool]
 
 
+# The sentence under the home headline, read as true of every product like the row below it.
+HERO_LEAD = "شما انتخاب کنید، ما تحویل می‌دهیم. زمان و شرایطش را پیش از پرداخت می‌بینید."
+
 PROMISES = (
     Promise(
         f"تحویل حداکثر {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت",
@@ -47,6 +50,7 @@ PROMISES = (
 
 def context(request: HttpRequest) -> dict[str, object]:
     return {
+        "hero_lead": HERO_LEAD,
         "promises": PROMISES,
         "delivery_cap_hours": DELIVERY_CAP_HOURS,
         "delivery_commitment": DELIVERY_COMMITMENT,
