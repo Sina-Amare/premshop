@@ -37,7 +37,8 @@ class Promise:
     holds_for: Callable[[Product], bool]
 
 
-# The sentence under the home headline, read as true of every product like the row below it.
+# Under the home headline, read as true of every product. It states no number, so no
+# condition checks it: read it against a gift card and a plan needing details when changing it.
 HERO_LEAD = "شما انتخاب کنید، ما تحویل می‌دهیم. زمان و شرایطش را پیش از پرداخت می‌بینید."
 
 PROMISES = (
