@@ -75,7 +75,7 @@ def test_panel_shows_slug_editability_and_unavailable_page_reasons(
         else:
             expect(page.locator('input[name="slug"]')).to_have_count(0)
             expect(page.get_by_text(product.slug, exact=True)).to_be_visible()
-        expect(page.locator(".field-status")).to_contain_text("قابل خرید نیست")
+        expect(page.locator(".field-status")).to_contain_text("فروخته نمی‌شه")
         if state == "incomplete":
             expect(page.locator(".panel-readiness")).to_contain_text(
                 "صفحه‌ی این محصول نمایش داده نمی‌شود"
