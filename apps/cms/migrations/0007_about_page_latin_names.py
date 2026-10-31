@@ -6,23 +6,21 @@ drafts = import_module("apps.cms.migrations.0004_legal_page_drafts")
 plain = import_module("apps.cms.migrations.0006_plain_legal_pages")
 
 PREVIOUS = plain.DRAFTS
-DRAFTS = {
-    **PREVIOUS,
-    "about": {
-        **PREVIOUS["about"],
-        "body": PREVIOUS["about"]["body"].replace(
-            "گیفت کارت اپل و گوگل پلی", "گیفت کارت Apple و Google Play"
-        ),
-    },
+ABOUT = {
+    **PREVIOUS["about"],
+    "body": PREVIOUS["about"]["body"].replace(
+        "گیفت کارت اپل و گوگل پلی", "گیفت کارت Apple و Google Play"
+    ),
 }
+DRAFTS = {**PREVIOUS, "about": ABOUT}
 
 
 def revise(apps, schema_editor):
-    drafts._replace(apps, schema_editor, PREVIOUS, DRAFTS)
+    drafts._replace(apps, schema_editor, {"about": PREVIOUS["about"]}, {"about": ABOUT})
 
 
 def restore(apps, schema_editor):
-    drafts._replace(apps, schema_editor, DRAFTS, PREVIOUS)
+    drafts._replace(apps, schema_editor, {"about": ABOUT}, {"about": PREVIOUS["about"]})
 
 
 class Migration(migrations.Migration):
