@@ -733,7 +733,7 @@ def test_a_persian_slug_saved_before_slugs_were_latin_still_saves(
 
 
 def test_a_persian_slug_cannot_be_changed_to_another(client, operator, catalogue):
-    product = catalogue["live"]
+    product = catalogue["draft"]
     Product.objects.filter(pk=product.pk).update(slug="ابزار-توسعه")
     data = form_of(client, change_url(product))
     data["slug"] = ["ابزار-تازه"]
