@@ -546,7 +546,7 @@ def test_a_placeholder_is_named_with_its_section_and_field(ready):
     ProductSection.objects.create(product=ready, kind="before_buying", body="[تصمیم مالک، تصمیم ۴]")
 
     assert ready.publish_problems() == [
-        "بخش محتوا «\u2068قبل از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» رو کامل کنید."
+        "بخش محتوا «\u2068پیش از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» رو کامل کنید."
     ]
 
 

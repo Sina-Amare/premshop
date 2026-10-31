@@ -3,7 +3,7 @@
 <section class="mb-6 border border-base-200 dark:border-base-800 rounded-default p-4" aria-label="{% translate 'بررسی مهلت پرداخت' %}">
   <p>{% translate "آخرین بررسی مهلت پرداخت" %}: {% if expiry_state %}{{ expiry_state.last_success_at|jalali }}، {% translate "ساعت" %} {{ expiry_state.last_success_at|time:"H:i"|fa_digits }}{% else %}{% translate "هنوز اجرا نشده است" %}{% endif %}</p>
   <p>{% translate "سفارش‌های گذشته از مهلت پرداخت" %}: {{ expiry_backlog|fa_digits }}</p>
-  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار به‌روز نیست. وضعیت اجرای آن را بررسی کنید." %}</p>{% endif %}
+  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار به‌روز نیست. ببینید هنوز اجرا می‌شود یا نه." %}</p>{% endif %}
 </section>
 {{ block.super }}
 {% endblock %}

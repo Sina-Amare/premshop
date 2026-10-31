@@ -341,7 +341,9 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
         opened, plan_top = note.bounding_box(), first_plan.bounding_box()["y"]
         assert plan_top > closed and plan_top >= opened["y"] + opened["height"]
         # The plan's own hint stays where it was.
-        expect(page.locator("#asks-hint")).to_have_text(f"اطلاعات فعال‌سازی: {ASKS}")
+        expect(page.locator("#asks-hint")).to_have_text(
+            f"برای فعال‌سازی، {ASKS} را از شما می‌خواهیم."
+        )
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         page.screenshot(path=str(SHOTS / f"open-{width}.png"))
         if viewport is DESKTOP:

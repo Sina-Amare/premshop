@@ -896,12 +896,10 @@ class Plan(ChecksNameTheirField, PageRow):
         ),
     )
     stock_quantity = models.PositiveIntegerField(
-        _("موجودی قابل فروش"),
+        _("موجودی"),
         null=True,
         blank=True,
-        help_text=_(
-            "واحدهای سفارش‌های ثبت‌شده در این عدد حساب نمی‌شوند. خالی یعنی بدون محدودیت موجودی."
-        ),
+        help_text=_("هر سفارش ثبت‌شده خودش از این عدد کم می‌شود. خالی یعنی موجودی محدود نیست."),
     )
     is_available = models.BooleanField(
         _("موجود"),
@@ -923,14 +921,14 @@ class Plan(ChecksNameTheirField, PageRow):
         max_length=12,
         choices=InputType.choices,
         default=InputType.UNREVIEWED,
-        help_text=_("تا تعیین نوع اطلاعات و نیاز به تلگرام، ثبت سفارش این پلن بسته است."),
+        help_text=_("تا نوع اطلاعات و نیاز به تلگرام را مشخص نکنید، این پلن سفارش نمی‌گیرد."),
     )
     telegram_required = models.BooleanField(
         _("نیاز به تلگرام برای فعال‌سازی"),
         null=True,
         blank=True,
         choices=[(None, _("بررسی‌نشده")), (True, _("لازم است")), (False, _("لازم نیست"))],
-        help_text=_("نیاز به تلگرام را بر اساس روش تحویل همین پلن تعیین کنید."),
+        help_text=_("بسته به روش تحویل همین پلن، انتخاب کنید تلگرام لازم است یا نه."),
     )
     requires_customer_input = models.BooleanField(
         _("نیاز به اطلاعات مشتری"),
@@ -1050,7 +1048,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 condition=Q(requires_customer_input=False) | Q(max_quantity=1),
                 name="plan_customer_input_is_one_per_order",
                 violation_error_message=_(
-                    "پلنی که به اطلاعات مشتری نیاز دارد، در هر سفارش فقط یکی قابل خرید است."
+                    "از پلنی که اطلاعات مشتری می‌خواهد، در هر سفارش فقط یکی می‌شود خرید."
                 ),
             ),
         ]
@@ -1096,7 +1094,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 errors["telegram_required"] = _("نیاز به تلگرام را مشخص کنید.")
             if self.requires_customer_input and self.max_quantity != 1:
                 errors["max_quantity"] = _(
-                    "از پلنی که اطلاعات فعال‌سازی می‌خواهد، در هر سفارش فقط یک عدد می‌توان خرید."
+                    "این پلن اطلاعات فعال‌سازی می‌خواهد، پس حداکثر تعداد در هر سفارش باید ۱ باشد."
                 )
         # Whatever the product's status: a draft's label is what goes live.
         if ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label)):
@@ -1115,7 +1113,9 @@ class Plan(ChecksNameTheirField, PageRow):
             or self.requires_customer_input != (self.input_type != self.InputType.NONE)
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
-            raise ValidationError("این پلن فعلاً قابل خرید نیست. از پشتیبانی راهنمایی بگیرید.")
+            raise ValidationError(
+                "این گزینه را فعلاً نمی‌توانید بخرید. از پشتیبانی راهنمایی بگیرید."
+            )
 
     @property
     def activation_input_label(self) -> str:

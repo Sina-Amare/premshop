@@ -98,7 +98,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
         page.locator(f"#quantity-{plan.pk}").evaluate(
             "el => { el.max = '10'; el.value = '4'; el.form.requestSubmit(); }"
         )
-        expect(page.get_by_role("alert")).to_contain_text("حداکثر تعداد")
+        expect(page.get_by_role("alert")).to_contain_text("حداکثر")
         inspect("error")
         assert page.locator(f"#quantity-{plan.pk}").input_value() == "4"
         Plan.objects.filter(pk=plan.pk).update(sale_price=999999999990)

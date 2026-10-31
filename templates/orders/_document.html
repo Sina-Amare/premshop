@@ -7,6 +7,6 @@
 <link rel="stylesheet" href="{% static 'css/storefront.css' %}">
 <link rel="stylesheet" href="{% static 'css/orders.css' %}">
 </head><body><main class="order-document" id="main">
-<p class="order-brand"><bdi>PremShop</bdi></p>
+<p class="order-brand"><a href="{% url 'home' %}"><bdi>PremShop</bdi></a></p>
 {% block content %}{% endblock %}
 </main>{% block scripts %}{% endblock %}</body></html>

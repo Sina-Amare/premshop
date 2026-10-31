@@ -1,14 +1,15 @@
 {% load fa %}
-{% for group in groups %}<section class="order-category"><h2>{{ group.name }}</h2>
+{% for group in groups %}<section class="order-category">{% if not compact %}<h2>{{ group.name }}</h2>{% endif %}
 {% for line in group.lines %}<article class="order-line">
-<h3><bdi>{{ line.facts.name }}</bdi></h3><p><bdi>{{ line.facts.plan_title }}</bdi></p>
-<p>تعداد: {{ line.quantity|fa_digits }} <span class="order-status">{{ line.status_label }}</span></p>
+<div class="checkout-preview__art" style="--brand: {{ line.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.product %}</div>
+<div class="order-line__facts"><h3><bdi>{{ line.facts.name }}</bdi></h3><p><bdi>{{ line.facts.plan_title }}</bdi>{% if line.quantity > 1 %}، تعداد: {{ line.quantity|fa_digits }}{% endif %}</p>
 {% if not compact %}
-<p>قیمت هر عدد: {{ line.price|price_html }}</p><p>جمع این محصول: {{ line.amount|price_html }}</p>
-<details><summary>اطلاعات زمان خرید</summary>
+<details><summary>شرایط زمان خرید</summary>
 {% if line.delivery %}<p>روش تحویل: {{ line.delivery }}</p>{% endif %}
 {% if line.facts.delivery_note %}<p>{{ line.facts.delivery_note }}</p>{% elif line.facts.delivery_hours %}<p>تحویل تا {{ line.facts.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت</p>{% endif %}
 {% if line.warranty %}<p>گارانتی: {{ line.warranty }}</p>{% endif %}
-{% if line.facts.telegram_required %}<p>فعال‌سازی این پلن به هماهنگی در تلگرام نیاز دارد.</p>{% endif %}
+{% if line.facts.telegram_required %}<p>برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.</p>{% endif %}
 </details>
-{% endif %}</article>{% endfor %}</section>{% endfor %}
+{% endif %}</div>
+<div class="order-line__end">{% if mixed_status %}<span class="order-status">{{ line.status_label }}</span>{% endif %}{% if not compact %}<div class="order-line__amount">{{ line.amount|price_html }}</div>{% if line.quantity > 1 %}<small>قیمت هر عدد: {{ line.price|price_html }}</small>{% endif %}{% endif %}</div>
+</article>{% endfor %}</section>{% endfor %}

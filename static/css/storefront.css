@@ -460,8 +460,8 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 /* Open, the row gives back 12px under it, so at 1440x900 the add button stays above the fold. */
 .buybox__facts[open]{margin-block-end:12px;padding-block-end:8px}
 
-.checkout-fields{display:grid;gap:24px;min-width:0}.checkout-box{padding:24px;border:1px solid var(--v-line);border-radius:var(--radius-lg);min-width:0}.checkout-box h2{margin:0 0 16px;font:600 21px/1.7 var(--font-head)}.checkout-box p{line-height:1.9;overflow-wrap:anywhere}.checkout-item{padding-block:16px;border-top:1px solid var(--v-line);overflow-wrap:anywhere}.checkout-item h3{font:600 18px/1.8 var(--font-head);margin:0 0 4px}.checkout-item p{margin:4px 0}.checkout-item summary{cursor:pointer;min-height:44px;padding-block:8px}.checkout-totals{margin:24px 0 16px}.checkout-totals>div{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;padding-block:8px}.checkout-totals dd{margin:0}.checkout-totals .price__num{font-size:18px}.checkout-box .field{margin-block:16px}.checkout-telegram{font-weight:500}.checkout-page .cart-summary{position:static}
-@media(max-width:760px){.checkout-box{padding:18px}.checkout-box h2{font-size:19px}}
+.checkout-fields{display:grid;gap:24px;min-width:0}.checkout-box{padding:24px;border:1px solid var(--v-line);border-radius:var(--radius-lg);min-width:0}.checkout-box h2{margin:0 0 16px;font:600 21px/1.7 var(--font-head)}.checkout-box p{line-height:1.9;overflow-wrap:anywhere}.checkout-item{margin-block-start:12px;padding:16px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:var(--v-soft);overflow-wrap:anywhere}.checkout-item__head{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:14px}.checkout-item h3{font:600 16px/1.7 var(--font-head);margin:0}.checkout-item__name{min-width:0}.checkout-item__name p{margin:2px 0 0;font-size:14px;line-height:1.8;color:var(--v-text)}.checkout-item__amount{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:end}.checkout-item__amount .price__num{font-size:17px}.checkout-item__amount small{display:block;font-size:12px;color:var(--v-text)}.checkout-item__amount small .price__num{font-size:12px;font-weight:400}.checkout-item__amount small .price__cur{font-size:11px}.checkout-item__facts{display:flex;flex-wrap:wrap;gap:6px 20px;margin:14px 0 0;padding:12px 0 0;list-style:none;border-top:1px solid var(--v-line);font-size:13px;line-height:1.8;color:var(--v-text)}.checkout-item__facts li{display:flex;align-items:flex-start;gap:6px}.checkout-item__facts .v-icon{flex:none;width:14px;height:14px;margin-top:4px}.checkout-item details{margin-block-start:4px;font-size:13px;color:var(--v-text)}.checkout-item details:last-of-type{margin-block-end:-8px}.checkout-item p{margin:4px 0}.checkout-item summary{cursor:pointer;min-height:44px;padding-block:8px}.checkout-input{margin-block-start:18px}.checkout-input__head{display:flex;align-items:center;gap:10px;margin-block-end:10px}.checkout-input__head p{margin:0;font-weight:500;color:var(--v-ink)}.checkout-input__head .checkout-preview__art{flex:none;inline-size:36px;block-size:36px}.checkout-input__head .checkout-preview__art .pcard__art img{inline-size:22px;block-size:22px;max-inline-size:22px;max-block-size:22px}.checkout-input__head .pcard__mono{font-size:16px}.checkout-totals{margin:24px 0 16px}.checkout-totals>div{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;padding-block:8px}.checkout-totals dd{margin:0}.checkout-totals .price__num{font-size:18px}.checkout-box .field{margin-block:16px}.checkout-telegram{font-weight:500}
+@media(max-width:760px){.checkout-box{padding:18px}.checkout-box h2{font-size:19px}.checkout-item{padding:14px}.checkout-item__head{grid-template-columns:48px minmax(0,1fr);gap:12px}.checkout-item .checkout-preview__art{inline-size:48px;block-size:48px}.checkout-item__amount{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}.checkout-item__facts{flex-direction:column}}
 .checkout-login{max-inline-size:560px;inline-size:100%;justify-self:center}.checkout-login__body{max-inline-size:440px;margin-inline:auto}.checkout-login__methods{display:flex;gap:4px;padding:4px;margin-block:20px 24px;background:var(--v-soft);border:1px solid var(--v-line);border-radius:var(--radius-sm)}.checkout-login__methods a{display:flex;flex:1;align-items:center;justify-content:center;min-block-size:44px;padding:8px 6px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;line-height:1.7;text-align:center;color:var(--v-text)}.checkout-login__methods a[aria-current=page]{background:var(--v-light);color:var(--v-accent);box-shadow:0 1px 3px rgb(19 31 49 / 10%)}.checkout-login__body .btn{inline-size:100%;justify-content:center;min-block-size:48px}.checkout-login [data-login-status]{font-size:14px}.checkout-preview__item{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:start;gap:12px;margin-block:12px;padding:14px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:var(--v-soft)}.checkout-preview__art{inline-size:56px;block-size:56px;border:1px solid var(--v-line);border-radius:var(--radius-sm);overflow:hidden;background:var(--v-light)}.checkout-preview__art .pcard__art{inline-size:100%;block-size:100%;aspect-ratio:1;border:0}.checkout-preview__art .pcard__art img{inline-size:32px;block-size:32px;max-inline-size:32px;max-block-size:32px;object-fit:contain}.checkout-preview__art .pcard__mono{font-size:24px;line-height:1}.checkout-preview__purchase{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px solid var(--v-line);font-size:13px;color:var(--v-text)}.checkout-preview__facts{min-width:0;overflow-wrap:anywhere}.checkout-preview__facts h3{font:600 15px/1.8 var(--font-head);margin:0 0 4px}.checkout-preview__facts p{font-size:13px;color:var(--v-text);line-height:1.8;margin:4px 0}.checkout-preview__amount{min-width:0;overflow-wrap:anywhere}.checkout-preview .price__num{font-size:16px}.checkout-preview__total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;padding-top:20px;border-top:1px solid var(--v-line);font-size:14px}.checkout-preview__purchase .checkout-preview__warning{color:var(--color-danger-text)}
 /* From 1150px down the header's support block has no room, so the same link ends the categories row, after the FAQ. */
 .v-navline .v-support{display:none;min-height:44px}
@@ -473,3 +473,159 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 
 .checkout-summary-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.checkout-summary-heading h2{margin:0}
 .cart-summary .small+.btn{margin-block-start:16px}.cart-summary .btn+.small{margin-block-start:12px}
+
+/* Prices: the face's zero is a narrow dot, so tabular widths read as letter-spacing. Clocks keep tabular. */
+.price__num,.pcard__deal-now,.price__was,.cart-summary__ledger .price__num{font-variant-numeric:proportional-nums}
+
+/* The 12px floor the design language already states. */
+.v-brand small,.v-category-heading>div>p,.v-footer__bottom,
+.pcard__pre,.pcard__terms,.pcard__offer,.pcard__deal,.pcard__deal .price__was,.pcard__from,.pcard__promotion .deadline,
+.v-track .pcard__from,.v-track .pcard__terms,.v-track .pcard__offer,.v-track .pcard__promotion .deadline,
+.plan__promotion .badge,.pcard .badge,.v-category-links small,.v-category-heading small,.v-section__head p:not(.v-eyebrow){font-size:12px}
+:root .price__cur,.pcard__foot .price__cur,.v-suggest__price .price__cur,.checkout-item__amount small .price__cur,.buy-bar .price__cur,.cart-money .price__cur{font-size:max(12px,.72em)}
+
+/* One product row on every page after the cart: 48px tile, name in the cart's 17px, plan 14px, figure 18px, hairlines between. */
+.cart-line h2,.checkout-item h3{font:600 17px/1.6 var(--font-head);margin:0;color:var(--v-ink);overflow-wrap:anywhere}
+.cart-line__amount .price__num,.checkout-item__amount .price__num{font-size:18px;line-height:1.7}
+.cart-line__amount .cart-money--long .price__num{font-size:16px}
+
+.checkout-box:has(>.checkout-item){padding:0;overflow:hidden}
+.checkout-box:has(>.checkout-item)>h2{margin:0;padding:18px 24px 14px}
+.checkout-item{margin:0;padding:14px 24px 16px;border:0;border-block-start:1px solid var(--v-line);border-radius:0;background:none}
+.checkout-item__head{grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:0 12px}
+.checkout-item .checkout-preview__art{inline-size:48px;block-size:48px}
+.checkout-item__facts{margin:4px 0 0;padding:0;padding-inline-start:60px;border:0;gap:0 16px}
+.checkout-item details{margin:0;padding-inline-start:60px}
+.checkout-item details:last-of-type{margin-block-end:-8px}
+
+/* Interface sentences are 14px grey, not 17px body prose louder than the heading above them. */
+.checkout-box{padding-block-start:18px}
+.checkout-box>h2{margin-block-end:4px;font:600 20px/1.7 var(--font-head)}
+.checkout-box>p{margin:0;font-size:14px;line-height:1.9;color:var(--v-text)}
+.checkout-box>.btn{margin-block-start:16px}
+.checkout-box>p:has(>a){margin-block-start:8px}
+.checkout-box a:not(.btn){color:var(--v-accent)}
+
+/* Activation fields: two columns on desktop, the product named at label size. */
+.checkout-box:has(>.checkout-input){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.checkout-box:has(>.checkout-input)>:is(h2,p){grid-column:1/-1}
+.checkout-input{margin-block-start:16px;min-width:0}
+.checkout-input__head{gap:8px;margin-block-end:8px}
+.checkout-input__head p{font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.checkout-input__head .checkout-preview__art{inline-size:28px;block-size:28px;border-radius:var(--radius-sm)}
+.checkout-input__head .checkout-preview__art .pcard__art img{inline-size:18px;block-size:18px;max-inline-size:18px;max-block-size:18px}
+.checkout-input .field{margin:0}
+.checkout-box>.field{max-inline-size:26rem;margin-block:16px 0}
+
+/* The summary stays in sight on a long order and takes less height. */
+@media(min-width:1001px){.checkout-page .cart-summary{position:sticky;top:calc(var(--hdr-h) + 24px);max-block-size:calc(100vh - var(--hdr-h) - 40px);overflow-y:auto}}
+.checkout-code{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:0 8px}
+.checkout-code .field{margin:0}
+/* 28px is the field label's height and gap, so the button lines up with the input. */
+.cart-summary .checkout-code .btn{width:auto;min-height:46px;margin-block-start:28px;padding-inline:12px;font-size:13px;white-space:nowrap}
+.cart-summary .checkout-code+.btn--ghost{min-height:44px;margin-block-start:4px}
+.checkout-totals{margin:16px 0 0;padding-block-start:8px;border-block-start:1px solid var(--v-line)}
+.checkout-totals>div{padding-block:4px;font-size:14px;color:var(--v-text)}
+.checkout-totals .price__num{font:500 15px/1.8 var(--font-body);color:var(--v-ink)}
+.checkout-totals+.small{margin-block:4px 0;font-size:12px;line-height:1.8}
+.cart-summary .cart-cta+.small{margin-block:12px 0;font-size:12px;line-height:1.8}
+.cart-summary__grand{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 12px;margin-block:12px}
+.cart-summary__grand .cart-summary__total{margin:0;margin-inline-start:auto}
+.cart-summary .cart-summary__label{color:var(--v-ink);font-weight:500}
+/* The checkout's label is longer than the cart's; at 26px label and figure stay on one row. */
+.checkout-page .cart-summary__total .price__num{font-size:26px}
+.checkout-summary-heading{margin-bottom:8px}
+.checkout-page .cart-summary{padding-block-start:14px}
+
+/* Many products on a phone: from three lines up the total and the real action sit in a bottom bar, as on the product page. */
+@media(max-width:760px){
+  .cart-cta--bar{position:fixed;z-index:30;inset-inline:0;inset-block-end:0;display:flex;align-items:center;gap:12px;padding:8px var(--gutter);padding-block-end:calc(8px + env(safe-area-inset-bottom));background:var(--v-light);border-block-start:1px solid var(--v-line)}
+  .cart-cta--bar .cart-summary__grand{display:block;flex:1;min-width:0;margin:0}
+  .cart-cta--bar .cart-summary__label{font-size:12px;font-weight:400;line-height:1.6;color:var(--v-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cart-cta--bar .cart-summary__total{justify-content:flex-start}
+  .cart-cta--bar .cart-summary__total .price__num{font-size:18px;line-height:1.5}
+  .cart-summary .cart-cta--bar .btn{flex:none;width:auto;min-height:48px;margin:0;padding-inline:16px;white-space:nowrap}
+  :root:has(.cart-cta--bar){scroll-padding-block-end:calc(65px + env(safe-area-inset-bottom))}
+  :root:has(.cart-cta--bar) body{padding-block-end:calc(65px + env(safe-area-inset-bottom))}
+  /* While a field is being typed in, the keyboard needs the room. */
+  :root:has(.checkout-page :is(input,textarea):focus) .cart-cta--bar{display:none}
+  /* Three facts per product were three lines per product. */
+  .checkout-box:has(>.checkout-item)>h2{padding:16px 16px 12px}
+  .checkout-item{padding:12px 16px 14px}
+  .checkout-item__head{grid-template-columns:48px minmax(0,1fr) auto}
+  .checkout-item__amount{grid-column:auto;flex-direction:column;align-items:flex-end;gap:0}
+  .checkout-item__facts{flex-direction:row;margin-block-start:2px;padding-inline-start:60px}
+  .checkout-box:has(>.checkout-input){grid-template-columns:minmax(0,1fr)}
+  .checkout-box>.field{max-inline-size:none}
+}
+
+/* Guest checkout preview: the same rows, no boxes inside the box. */
+.checkout-preview__item{grid-template-columns:48px minmax(0,1fr);align-items:start;gap:0 12px;margin:0;padding:12px 0;border:0;border-block-start:1px solid var(--v-line);border-radius:0;background:none}
+.checkout-preview__item .checkout-preview__art{inline-size:48px;block-size:48px}
+.checkout-preview__facts h3{margin:0;font:600 17px/1.6 var(--font-head)}
+.checkout-preview__facts p{margin:0;font-size:14px}
+.checkout-preview__purchase{grid-column:2;justify-content:space-between;margin-block-start:2px;padding:0;border:0}
+.checkout-preview__amount{margin-inline-start:auto}
+.checkout-preview .price__num{font-size:18px}
+.checkout-login{justify-self:stretch;max-inline-size:none}
+.checkout-login__body{margin-inline:0}
+
+/* States: the alert takes focus for screen readers, and that must not paint a blue box over a red bar. */
+.cart-notice:focus{outline:none}
+.cart-notice{max-inline-size:40rem}
+.cart-layout:not(:has(>.cart-summary)){grid-template-columns:minmax(0,1fr)}
+.cart-layout:not(:has(>.cart-summary))>.checkout-fields,.checkout-page>.checkout-box{max-inline-size:40rem}
+.checkout-page>.checkout-box{padding-block-end:24px}
+
+/* Account: the save button had no room under it, and four menu items wrapped on a phone. */
+.acct__form--spaced{margin-block-end:32px}
+@media(max-width:860px){
+  .acct__nav{gap:0 4px}
+  .acct__nav a{display:inline-flex;align-items:center;min-height:44px;padding:4px 8px 2px;font-size:14px}
+  .acct__out{margin-inline-start:auto}
+  .acct__out .btn{min-height:44px;padding:4px 8px 2px;font-size:14px}
+}
+
+/* Cart line: amount at the end edge and remove directly under it, so a column of figures reads straight. */
+@media(min-width:1001px){
+  .cart-line{grid-template-columns:56px minmax(0,1fr) auto;grid-template-areas:"art facts amount" "art facts remove";gap:0 16px}
+  .cart-line__amount{align-self:start}
+  .cart-remove-form{align-self:end;justify-self:end;margin:0;margin-inline-end:-8px;margin-block-end:-10px}
+  .cart-quantity,.cart-quantity-limit,.cart-quantity-draft,.cart-fixed-quantity{grid-column:2/3;margin-block-start:8px}
+}
+.cart-line__art:has(>span){background:var(--v-soft);border:1px solid var(--v-line)}
+
+/* 44px targets, grown into their surroundings so nothing around them moves. */
+.crumbs a{padding-block:12px;margin-block:-12px}
+.stepper__btn{inline-size:44px;min-block-size:44px}
+.stepper__input{min-block-size:44px}
+.field__eye{inset-inline-end:1px;inline-size:44px;block-size:44px}
+.shelf__all,.buybox__note a,.v-hero__deal{display:inline-flex;align-items:center;min-block-size:44px}
+.auth-card + :is(p,div) a,.auth-card :is(.small,.micro) a{display:inline-flex;align-items:center;min-block-size:32px}
+@media(max-width:760px){
+  .v-account{min-height:44px;margin-block:-12px}
+  .v-brand{min-height:44px;margin-block:-8px}
+  .v-footer nav{gap:0}
+  .v-footer nav a{display:flex;align-items:center;min-height:44px}
+  .v-footer nav h3{margin-bottom:0}
+  .v-footer__contact>a{min-height:44px}
+}
+
+/* The footer's sales band is for people still choosing, not for the pages after that choice. */
+:root:has(.cart-page,.acct) .v-footer__top{display:none}
+:root:has(.cart-page,.acct) .v-footer__grid{padding-block-start:0}
+
+/* A long plan title wraps instead of widening the page. */
+.plan__title{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+
+/* FAQ: the question and its plus sign belong together; the 1200px box put them a screen apart. */
+.qa{max-inline-size:52rem}
+
+/* Specification values line up at the end edge, like the ledger above them. */
+.spec td{text-align:end}
+
+/* Phone: one page-title size. */
+@media(max-width:760px){.page-head__title,.pdp__title{font-size:28px}}
+
+/* The buy box's support line starts where everything else starts. */
+.buybox__help{margin-inline:0;text-align:start}

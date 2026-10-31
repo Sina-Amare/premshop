@@ -43,6 +43,18 @@ def test_checkout_without_consent_never_records_acceptance(client, buyer, cart, 
     assert not cart.items.exists()
 
 
+def test_review_anchors_each_product_with_its_logo_total_and_facts(client, buyer, plan, cart):
+    Plan.objects.filter(pk=plan.pk).update(max_quantity=3)
+    cart.items.update(quantity=2)
+    client.force_login(buyer)
+    body = client.get(reverse("checkout")).content.decode()
+    item = body.split('class="checkout-item"', 1)[1].split("</article>", 1)[0]
+    assert "checkout-preview__art" in item
+    assert "۴۰۰,۰۰۰" in item and "هرکدام" in item and "تعداد: ۲" in item
+    assert 'class="checkout-item__facts"' in item and "v-icon" in item
+    assert "قیمت هر عدد" not in item
+
+
 def test_guest_checkout_has_inline_code_and_html_fallback(client):
     response = client.get(reverse("checkout"))
     assert response.status_code == 200
@@ -144,7 +156,7 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     client.force_login(buyer)
     response = client.post(reverse("checkout"), {"action": "review", "discount_code": "WRONG"})
     assert response.status_code == 400
-    assert "کد تخفیف معتبر نیست" in response.content.decode()
+    assert "این کد تخفیف درست نیست" in response.content.decode()
     assert response.context["quote"] is None
     assert 'name="action" value="checkout"' not in response.content.decode()
     assert cart.items.exists() and not Order.objects.exists()
@@ -312,5 +324,5 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
 def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, buyer, plan, cart):
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    assert "در این مرحله پرداختی انجام نمی‌شود." in response.content.decode()
+    assert "در این مرحله چیزی پرداخت نمی‌کنید." in response.content.decode()
     assert "۲۴ ساعت" in response.content.decode()

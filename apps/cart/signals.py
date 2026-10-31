@@ -20,5 +20,5 @@ def merge_guest_cart(sender: type[User], request: HttpRequest, user: User, **kwa
     if reduced:
         messages.info(
             request,
-            "تعداد بعضی محصولات با توجه به موجودی و محدودیت خرید تغییر کرد. سبد خریدتان را بررسی کنید.",
+            "تعداد بعضی محصولات را به اندازه‌ی موجودی و سقف خرید کم کردیم. سبد خریدتان را بررسی کنید.",
         )

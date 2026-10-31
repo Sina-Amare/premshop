@@ -8,7 +8,7 @@
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
   {% if existing %}
-    <section class="checkout-box"><h2>یک سفارش منتظر پرداخت دارید</h2><p>تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید. سبد خرید شما حفظ شده است.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
+    <section class="checkout-box"><h2>یک سفارش منتظر پرداخت دارید</h2><p>تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید. سبد خریدتان سر جایش است.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
       <section class="checkout-box checkout-login" data-checkout-login data-login-method="{{ login_method }}" data-code-url="{% url 'login-code' %}" data-password-url="{% url 'login' %}">
@@ -42,54 +42,58 @@
             {% if line.plan %}<h3><a href="{{ line.plan.product.get_absolute_url }}"><bdi>{{ line.plan.product.name }}</bdi></a></h3><p><bdi>{{ line.plan.title }}</bdi></p>{% else %}<h3>محصول ناموجود</h3>{% endif %}
           </div>
           <div class="checkout-preview__purchase">
-            <span>تعداد: {{ line.quantity|fa_digits }}</span>
-            {% if line.purchasable %}<div class="checkout-preview__amount">{{ line.line_total|price_html }}</div>{% elif line.unavailable %}<p class="checkout-preview__warning">ناموجود</p>{% else %}<p class="checkout-preview__warning">تعداد را کاهش دهید.</p>{% endif %}
+            {% if line.quantity > 1 %}<span>تعداد: {{ line.quantity|fa_digits }}</span>{% endif %}
+            {% if line.purchasable %}<div class="checkout-preview__amount">{{ line.line_total|price_html }}</div>{% elif line.unavailable %}<p class="checkout-preview__warning">ناموجود</p>{% else %}<p class="checkout-preview__warning">تعداد را کم کنید.</p>{% endif %}
           </div>
         </article>
         {% empty %}<p>سبد خرید شما خالی است</p><a href="{% url 'home' %}#products">مشاهده‌ی محصولات</a>{% endfor %}
         {% if cart.lines %}
-        <div class="checkout-preview__total"><span>{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات قابل خرید{% endif %}</span><div class="cart-money">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}—{% endif %}</div></div>
+        <div class="checkout-preview__total"><span>{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات آماده‌ی خرید{% endif %}</span><div class="cart-money">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}—{% endif %}</div></div>
         {% endif %}
       </aside>
     </div>
   {% else %}
     <form method="post" id="checkout-form" class="cart-layout" novalidate>
-      {% csrf_token %}{{ form.quote }}{{ form.checkout_id }}
+      {% csrf_token %}{{ form.quote }}{{ form.checkout_id }}<button type="submit" name="action" value="review" formnovalidate hidden tabindex="-1"></button>
       <div class="checkout-fields">
         {% if purchase %}
         <section class="checkout-box" aria-labelledby="checkout-products"><h2 id="checkout-products">محصولات سفارش</h2>
           {% for line in purchase.lines %}
           <article class="checkout-item">
-            <h3><bdi>{{ line.snapshot.name }}</bdi></h3><p><bdi>{{ line.snapshot.plan_title }}</bdi>؛ تعداد: {{ line.quantity|fa_digits }}</p>
-            <p>قیمت هر عدد: {{ line.price|price_html }}</p>
-            {% if line.snapshot.delivery_type %}<p>روش تحویل: {{ line.plan.product.get_delivery_type_display }}</p>{% endif %}
-            <p>{{ line.plan.product.delivery_sentence }}</p>
-            {% if line.snapshot.warranty %}<p>گارانتی: {% if line.snapshot.warranty == "none" %}ندارد{% else %}{{ line.plan.product.get_warranty_display }}{% endif %}</p>{% endif %}
+            <div class="checkout-item__head">
+              <div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.plan.product %}</div>
+              <div class="checkout-item__name"><h3><bdi>{{ line.snapshot.name }}</bdi></h3><p><bdi>{{ line.snapshot.plan_title }}</bdi>{% if line.quantity > 1 %}، تعداد: {{ line.quantity|fa_digits }}{% endif %}</p></div>
+              <div class="checkout-item__amount">{{ line.amount|price_html }}{% if line.quantity > 1 %}<small>هرکدام {{ line.price|price_html }}</small>{% endif %}</div>
+            </div>
+            <ul class="checkout-item__facts">
+              {% if line.snapshot.delivery_type %}<li>{% if line.snapshot.delivery_type == "gift_card" or line.snapshot.delivery_type == "code_license" %}{% include 'storefront/icon.html' with name='gift' %}{% else %}{% include 'storefront/icon.html' with name='user' %}{% endif %}<span>{{ line.plan.product.get_delivery_type_display }}</span></li>{% endif %}
+              <li>{% include 'storefront/icon.html' with name='clock' %}<span>{{ line.plan.product.delivery_sentence }}</span></li>
+              {% if line.snapshot.warranty %}<li>{% include 'storefront/icon.html' with name='check' %}<span>گارانتی: {% if line.snapshot.warranty == "none" %}ندارد{% else %}{{ line.plan.product.get_warranty_display }}{% endif %}</span></li>{% endif %}
+            </ul>
             {% if line.plan.product.usage_notes_shown %}<details><summary>نکات استفاده</summary><div>{{ line.plan.product.usage_notes_shown|markdown:"" }}</div></details>{% endif %}
             {% if line.snapshot.refund_note %}<details><summary>شرایط لغو و بازگشت وجه</summary><div>{{ line.snapshot.refund_note|markdown:"" }}</div></details>{% endif %}
-            {% if line.snapshot.telegram_required %}<p class="checkout-telegram">فعال‌سازی این پلن به هماهنگی در تلگرام نیاز دارد.</p>{% endif %}
+            {% if line.snapshot.telegram_required %}<p class="checkout-telegram">برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.</p>{% endif %}
           </article>
           {% endfor %}
         </section>
         {% if form.input_fields %}<section class="checkout-box"><h2>اطلاعات فعال‌سازی</h2><p>رمز عبور و کدهای ورود سرویس را در سایت وارد نکنید.</p>
-          {% for line, field in form.input_fields %}<p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p>{% include 'accounts/_field.html' %}{% endfor %}
+          {% for line, field in form.input_fields %}<div class="checkout-input"><div class="checkout-input__head"><div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.plan.product %}</div><p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p></div>{% include 'accounts/_field.html' %}</div>{% endfor %}
         </section>{% endif %}
-        <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش در حساب فعلی شما ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
-        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا رفع خطای بالا، سفارشی ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
+        <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش در همین حساب کاربری ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
+        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا خطای بالا برطرف نشود، سفارش ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
       </div>
-      <aside class="cart-summary" aria-label="خلاصه‌ی سفارش">
+      {% if purchase %}<aside class="cart-summary" aria-label="خلاصه‌ی سفارش">
         <div class="checkout-summary-heading"><h2>خلاصه‌ی سفارش</h2><a class="cart-back" href="{% url 'cart' %}">ویرایش سبد خرید</a></div>
-        {% include 'accounts/_field.html' with field=form.discount_code %}
-        <button class="btn btn--secondary" type="submit" name="action" value="apply_discount" formnovalidate>اعمال کد تخفیف</button>
+        <div class="checkout-code">{% include 'accounts/_field.html' with field=form.discount_code %}<button class="btn btn--secondary" type="submit" name="action" value="apply_discount" formnovalidate>اعمال کد تخفیف</button></div>
         {% if form.discount_code.value %}<button class="btn btn--ghost" type="submit" name="action" value="remove_discount" formnovalidate>حذف کد تخفیف</button>{% endif %}
         {% if quote %}
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
-          <div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div>
           <p class="small">قیمت و موجودی را هنگام ثبت سفارش دوباره بررسی می‌کنیم.</p>
-          <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button>
-          <p class="small">مهلت پرداخت پس از ثبت سفارش: ۲۴ ساعت. در این مرحله پرداختی انجام نمی‌شود.</p>
+          <div class="cart-cta{% if purchase.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div></div>
+          <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button></div>
+          <p class="small">پس از ثبت سفارش ۲۴ ساعت برای پرداخت فرصت دارید. در این مرحله چیزی پرداخت نمی‌کنید.</p>
         {% endif %}
-      </aside>
+      </aside>{% endif %}
     </form>
   {% endif %}
 </div>

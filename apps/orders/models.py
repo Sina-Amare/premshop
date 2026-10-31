@@ -47,7 +47,9 @@ class DiscountCode(models.Model):
     )
     kind = models.CharField(_("نوع"), max_length=8, choices=Kind.choices)
     value = MoneyField(verbose_name=_("مقدار"))
-    scope = models.CharField(_("دامنه"), max_length=8, choices=Scope.choices, default=Scope.ALL)
+    scope = models.CharField(
+        _("روی کدام محصولات"), max_length=8, choices=Scope.choices, default=Scope.ALL
+    )
     products = models.ManyToManyField("catalog.Product", verbose_name=_("محصولات"), blank=True)
     max_uses = models.PositiveIntegerField(_("حداکثر تعداد استفاده"), null=True, blank=True)
     used_count = models.PositiveIntegerField(_("تعداد استفاده‌ی فعال"), default=0)
@@ -174,7 +176,7 @@ class OrderItem(models.Model):
         EXPIRED_UNPAID = "expired_unpaid", _("مهلت پرداخت تمام شده")
         CUSTOMER_BEFORE_PAYMENT = "customer_before_payment", _("درخواست مشتری پیش از پرداخت")
         CUSTOMER_AFTER_PAYMENT = "customer_after_payment", _("درخواست مشتری پس از پرداخت")
-        SUPPLY_FAILURE = "supply_failure", _("امکان تأمین نیست")
+        SUPPLY_FAILURE = "supply_failure", _("تأمین نشد")
         INPUT_TIMEOUT = "input_timeout", _("اطلاعات مشتری دریافت نشده")
         WARRANTY_REFUND = "warranty_refund", _("بازپرداخت گارانتی")
         OPERATOR = "operator", _("پشتیبانی لغو کرد")
@@ -293,7 +295,7 @@ class DiscountRedemption(models.Model):
 
     class Meta:
         verbose_name = _("استفاده از کد تخفیف")
-        verbose_name_plural = _("سوابق استفاده از کد تخفیف")
+        verbose_name_plural = _("سابقه‌ی استفاده از کد تخفیف")
         constraints = [
             models.CheckConstraint(
                 condition=Q(amount__gte=0), name="discount_redemption_not_negative"

@@ -23,7 +23,7 @@ class CheckoutForm(forms.Form):
         label="شماره‌ی موبایل (اختیاری)",
         max_length=32,
         required=False,
-        help_text="این شماره فقط در صورتی ذخیره می‌شود که شماره‌ای در حساب شما ثبت نشده باشد.",
+        help_text="فقط اگر در حساب کاربری شما شماره‌ای ثبت نشده باشد، این شماره را ذخیره می‌کنیم.",
         widget=forms.TextInput(
             attrs={"class": "field__input", "dir": "ltr", "type": "tel", "autocomplete": "tel"}
         ),

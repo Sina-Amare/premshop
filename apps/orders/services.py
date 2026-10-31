@@ -46,6 +46,10 @@ class PricedLine:
     price: Decimal
     snapshot: dict[str, Any]
 
+    @property
+    def amount(self) -> Decimal:
+        return self.price * self.quantity
+
 
 @dataclass(frozen=True)
 class Purchase:
@@ -100,7 +104,7 @@ def _money(value: Decimal) -> Decimal:
         or value > MAX_AMOUNT
         or value != value.to_integral_value()
     ):
-        raise ValidationError("مبلغ سفارش خارج از محدوده‌ی مجاز است.")
+        raise ValidationError("مبلغ این سفارش از حد مجاز بیشتر است.")
     return value
 
 
@@ -128,10 +132,10 @@ def _snapshot(plan: Plan) -> dict[str, Any]:
 
 def _code_name(value: str) -> str:
     if not isinstance(value, str) or len(value) > 32:
-        raise ValidationError("کد تخفیف معتبر نیست.")
+        raise ValidationError("این کد تخفیف درست نیست.")
     value = value.strip().upper()
     if value and not re.fullmatch(r"[A-Z0-9]{4,8}", value):
-        raise ValidationError("کد تخفیف معتبر نیست.")
+        raise ValidationError("این کد تخفیف درست نیست.")
     return value
 
 
@@ -147,15 +151,15 @@ def _discount(
     if code.valid_until and at >= code.valid_until:
         raise ValidationError("مهلت استفاده از این کد تخفیف تمام شده است.")
     if code.max_uses is not None and code.used_count >= code.max_uses:
-        raise ValidationError("ظرفیت استفاده از این کد تخفیف تمام شده است.")
+        raise ValidationError("ظرفیت این کد تخفیف تمام شده است.")
     uses = DiscountRedemption.objects.filter(
         discount_code=code, user_id=user_id, released_at__isnull=True
     )
     if code.per_user_limit is not None and uses.count() >= code.per_user_limit:
-        raise ValidationError("شما قبلاً از ظرفیت مجاز این کد تخفیف استفاده کرده‌اید.")
+        raise ValidationError("شما قبلاً به تعداد مجاز از این کد تخفیف استفاده کرده‌اید.")
     subtotal = sum((line.price * line.quantity for line in lines), Decimal(0))
     if code.min_order_amount is not None and subtotal < code.min_order_amount:
-        raise ValidationError("مبلغ سفارش به حداقل لازم برای این کد تخفیف نمی‌رسد.")
+        raise ValidationError("مبلغ سفارش برای استفاده از این کد تخفیف کافی نیست.")
     product_ids = (
         sorted(code.products.values_list("pk", flat=True))
         if code.scope == DiscountCode.Scope.SELECTED
@@ -170,7 +174,7 @@ def _discount(
         Decimal(0),
     )
     if eligible <= 0:
-        raise ValidationError("این کد تخفیف برای محصولات انتخاب‌شده قابل استفاده نیست.")
+        raise ValidationError("این کد تخفیف برای این محصولات کار نمی‌کند.")
     amount = (
         (eligible * code.value / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
         if code.kind == DiscountCode.Kind.PERCENT
@@ -198,16 +202,16 @@ def _price(
         raise ValidationError("اطلاعات سفارش درست نیست.")
     ids = [line.plan.pk for line in lines]
     if len(set(ids)) != len(ids):
-        raise ValidationError("هر پلن را فقط یک بار به سفارش اضافه کنید.")
+        raise ValidationError("هر گزینه را فقط یک بار به سفارش اضافه کنید.")
     prepared = []
     subtotal = Decimal(0)
     for line in sorted(lines, key=lambda line: line.plan.pk or 0):
         plan = plans.get(line.plan.pk or 0)
         if plan is None or not plan.is_available or not plan.product.is_public:
-            raise ValidationError("این پلن الان قابل خرید نیست.")
+            raise ValidationError("این گزینه فعلاً موجود نیست.")
         plan.validate_input_configuration()
         if type(line.quantity) is not int or not 1 <= line.quantity <= plan.max_quantity:
-            raise ValidationError("تعداد انتخاب‌شده برای این پلن مجاز نیست.")
+            raise ValidationError("از این گزینه نمی‌توانید این تعداد بخرید.")
         if plan.stock_quantity is not None and plan.stock_quantity < line.quantity:
             raise ValidationError("موجودی این محصول برای تعداد انتخاب‌شده کافی نیست.")
         value = "" if line.customer_input is None else line.customer_input
@@ -220,7 +224,7 @@ def _price(
     discount, snapshot = _discount(code, user_id, prepared, at)
     purchase = Purchase(tuple(prepared), subtotal, code, _money(discount), snapshot)
     if purchase.total == 0:
-        raise ValidationError("ثبت سفارش با مبلغ نهایی صفر امکان‌پذیر نیست.")
+        raise ValidationError("سفارش با مبلغ نهایی صفر ثبت نمی‌شود.")
     return purchase
 
 
@@ -244,7 +248,7 @@ def quote_order(*, user: User, lines: Sequence[OrderLine], discount_code: str = 
     name = _code_name(discount_code)
     code = DiscountCode.objects.filter(code=name).first() if name else None
     if name and code is None:
-        raise ValidationError("کد تخفیف معتبر نیست.")
+        raise ValidationError("این کد تخفیف درست نیست.")
     return _price(
         user_id=user.pk,
         lines=lines,
@@ -260,7 +264,9 @@ def replay_checkout(*, user: User, checkout_id: uuid.UUID, submission_digest: st
         order.user_id != user.pk
         or not constant_time_compare(order.submission_digest, submission_digest)
     ):
-        raise ValidationError("شناسه‌ی ثبت سفارش با این درخواست مطابقت ندارد.")
+        raise ValidationError(
+            "این فرم قبلاً با اطلاعات دیگری فرستاده شده است. صفحه را دوباره باز کنید."
+        )
     return order
 
 
@@ -305,7 +311,7 @@ def place_order(
         else None
     )
     if name and requested_code_id is None:
-        raise ValidationError("کد تخفیف معتبر نیست.")
+        raise ValidationError("این کد تخفیف درست نیست.")
     pending = OrderItem.objects.filter(
         order_id=OuterRef("pk"), status=OrderItem.Status.PENDING_PAYMENT
     )
@@ -349,7 +355,7 @@ def place_order(
             raise UnpaidOrderExists(order)
     code = codes.get(requested_code_id) if requested_code_id is not None else None
     if name and (code is None or code.code != name):
-        raise ValidationError("کد تخفیف معتبر نیست.")
+        raise ValidationError("این کد تخفیف درست نیست.")
     purchase = _price(user_id=account.pk, lines=lines, plans=plans, code=code, at=at)
     current_terms = purchase.terms_digest() if isinstance(expected_terms, str) else purchase.terms()
     if expected_terms is not None and current_terms != expected_terms:
@@ -437,7 +443,7 @@ def _release(
         item.status not in (OrderItem.Status.PENDING_PAYMENT, OrderItem.Status.CANCELLED)
         for item in items
     ):
-        raise ValidationError("فقط سفارش منتظر پرداخت از این مسیر لغو می‌شود.")
+        raise ValidationError("فقط سفارشی که منتظر پرداخت است از اینجا لغو می‌شود.")
     # Legacy orders may already contain individually cancelled units.
     pending = [item for item in items if item.status == OrderItem.Status.PENDING_PAYMENT]
     quantities = Counter(item.plan_id for item in pending if item.stock_debited)
@@ -447,14 +453,16 @@ def _release(
             quantity = plan.stock_quantity + quantities[plan_id]
             if quantity > 2147483647:
                 raise ValidationError(
-                    "موجودی ثبت‌شده بیش از حد مجاز است. پشتیبانی باید موجودی را بررسی کند."
+                    "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا موجودی را بررسی کند."
                 )
             plan.stock_quantity = quantity
             Plan.objects.filter(pk=plan_id).update(stock_quantity=quantity)
     redemption = DiscountRedemption.objects.filter(order=order, released_at__isnull=True).first()
     if redemption is not None:
         if code is None or code.used_count < 1:
-            raise ValidationError("شمارنده‌ی کد تخفیف به بررسی پشتیبانی نیاز دارد.")
+            raise ValidationError(
+                "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا کد تخفیف را بررسی کند."
+            )
         redemption.released_at = at
         redemption.save(update_fields=["released_at"])
         code.used_count -= 1

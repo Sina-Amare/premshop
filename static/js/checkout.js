@@ -64,7 +64,7 @@
       const left = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
       const button = resend.querySelector('button');
       button.disabled = left > 0;
-      button.textContent = left ? `ارسال دوباره تا ${left.toLocaleString('fa-IR')} ثانیه دیگر` : 'ارسال دوباره‌ی کد';
+      button.textContent = left ? `${left.toLocaleString('fa-IR')} ثانیه تا ارسال دوباره` : 'ارسال دوباره‌ی کد';
       if (!left) clearInterval(timer);
     };
     tick();
@@ -87,7 +87,7 @@
         if (!response.headers.get('Content-Type')?.includes('application/json')) throw new Error();
         const data = await response.json();
         if (!data.ok) {
-          status.textContent = data.error || 'درخواست انجام نشد. دوباره امتحان کنید.';
+          status.textContent = data.error || 'مشکلی پیش آمد. دوباره امتحان کنید.';
           return;
         }
         if (form === code || data.next) {
@@ -100,11 +100,11 @@
         code.hidden = false;
         resend.hidden = false;
         edit.hidden = false;
-        status.textContent = 'کد ورود فرستاده شد. کد را از ایمیلتان وارد کنید.';
+        status.textContent = 'کد ورود را به ایمیلتان فرستادیم. آن را در کادر زیر وارد کنید.';
         cooldown(data.cooldown || 60);
         code.querySelector('input[name=code]').focus();
       } catch {
-        status.textContent = 'پاسخ دریافت نشد. دوباره امتحان کنید یا از صفحه‌ی ورود استفاده کنید.';
+        status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';
       } finally {
         form.removeAttribute('aria-busy');
         if (form !== resend || Date.now() >= resendAt) button.disabled = false;

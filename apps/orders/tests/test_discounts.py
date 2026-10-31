@@ -49,9 +49,9 @@ def test_selected_scope_caps_fixed_discount_and_tests_minimum_before_the_code(bu
         ({"is_active": False}, "فعال نیست"),
         ({"valid_from": timezone.now() + timedelta(days=1)}, "هنوز نرسیده"),
         ({"valid_until": timezone.now() - timedelta(seconds=1)}, "تمام شده"),
-        ({"max_uses": 1, "used_count": 1}, "ظرفیت استفاده"),
-        ({"min_order_amount": 300000}, "حداقل لازم"),
-        ({"scope": "selected"}, "قابل استفاده نیست"),
+        ({"max_uses": 1, "used_count": 1}, "ظرفیت این کد"),
+        ({"min_order_amount": 300000}, "کافی نیست"),
+        ({"scope": "selected"}, "این محصولات"),
     ],
 )
 def test_coupon_rejection_is_specific_and_preserves_resources(buyer, plan, changes, error):
@@ -68,14 +68,14 @@ def test_per_customer_limit_counts_active_history_beyond_the_unpaid_order(buyer,
     DiscountCode.objects.create(code="SAVE", kind="fixed", value=100, per_user_limit=1)
     order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     OrderItem.objects.filter(order=order).update(status=OrderItem.Status.QUEUED)
-    with pytest.raises(ValidationError, match="ظرفیت مجاز"):
+    with pytest.raises(ValidationError, match="تعداد مجاز"):
         services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     assert DiscountRedemption.objects.count() == 1
 
 
 @pytest.mark.parametrize("code", ["MISSING", "bad!", "ab", "x" * 40])
 def test_unknown_and_malformed_codes_do_not_silently_disappear(buyer, plan, code):
-    with pytest.raises(ValidationError, match="کد تخفیف معتبر نیست"):
+    with pytest.raises(ValidationError, match="این کد تخفیف درست نیست"):
         services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code)
     assert not Order.objects.exists()
 
@@ -101,7 +101,7 @@ def test_idempotent_replay_precedes_empty_lines_and_expiry_checks(buyer, plan):
         (buyer, "b" * 64),
         (User.objects.create_user("other@example.test"), "a" * 64),
     ]:
-        with pytest.raises(ValidationError, match="مطابقت ندارد"):
+        with pytest.raises(ValidationError, match="قبلاً با اطلاعات دیگری"):
             services.place_order(
                 user=user, lines=[], checkout_id=checkout_id, submission_digest=digest
             )

@@ -2,12 +2,12 @@
 {% block title %}سفارش‌ها{% endblock %}{% block heading %}سفارش‌ها{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{% static 'css/orders.css' %}">{% endblock %}
 {% block section %}
-{% for summary in summaries %}<article class="card order-card">
+{% for summary in summaries %}<article class="card order-card order-card--summary">
 <header class="order-heading"><h2><a href="{% url 'order-detail' summary.order.order_number %}">سفارش {{ summary.order.order_number|fa_digits }}</a></h2><span class="order-status">{{ summary.status }}</span></header>
 <p class="small">ثبت در {{ summary.order.created_at|jalali }}</p>
-{% include "orders/_groups.html" with groups=summary.groups compact=True %}
-<p class="order-total" data-order-total>مبلغ نهایی سفارش: {{ summary.order.total_amount|price_html }}</p>
-<a href="{% url 'order-detail' summary.order.order_number %}">مشاهده‌ی سفارش</a>
+{% include "orders/_groups.html" with groups=summary.groups compact=True mixed_status=summary.mixed_status %}
+<footer class="order-card__foot"><p class="order-total" data-order-total>مبلغ نهایی سفارش: {{ summary.order.total_amount|price_html }}</p>
+<a href="{% url 'order-detail' summary.order.order_number %}">مشاهده‌ی سفارش</a></footer>
 </article>{% empty %}<div class="card order-card"><p>هنوز سفارشی ثبت نکرده‌اید.</p><a class="btn btn--primary" href="{% url 'home' %}">دیدن محصولات</a></div>{% endfor %}
 {% if page.has_other_pages %}<nav class="order-actions" aria-label="صفحه‌های سفارش‌ها">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">صفحه‌ی قبل</a>{% endif %}<span>صفحه‌ی {{ page.number|fa_digits }} از {{ page.paginator.num_pages|fa_digits }}</span>{% if page.has_next %}<a href="?page={{ page.next_page_number }}">صفحه‌ی بعد</a>{% endif %}</nav>{% endif %}
 {% endblock %}

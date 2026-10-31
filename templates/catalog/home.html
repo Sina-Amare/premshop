@@ -17,7 +17,7 @@
 {% if discounted %}
 <section class="v-offers-band" id="offers"><div class="v-wrap v-section" data-rail aria-labelledby="offers-title">
   <div class="v-section__head"><div><h2 id="offers-title"><span class="v-section-mark">{% include 'storefront/icon.html' with name='tag' %}</span>تخفیف‌های فعلی</h2><p>{{ discounted|length|fa_digits }} محصول</p></div>{% include 'storefront/controls.html'  %}</div>
-  <div class="v-track" data-rail-track tabindex="0" aria-label="محصولات دارای تخفیف">{% for product in discounted %}{% include 'catalog/_card.html' with first=True %}{% empty %}<div class="v-empty">فعلاً محصولی برای فروش نداریم.</div>{% endfor %}</div>{% include 'storefront/meter.html' %}
+  <div class="v-track" data-rail-track tabindex="0" aria-label="محصولات با تخفیف">{% for product in discounted %}{% include 'catalog/_card.html' with first=True %}{% empty %}<div class="v-empty">فعلاً محصولی برای فروش نداریم.</div>{% endfor %}</div>{% include 'storefront/meter.html' %}
 </div></section>
 {% endif %}
 <div class="v-wrap v-catalog" id="products"><div class="v-catalog__intro"><h2>محصولات فروشگاه</h2></div>

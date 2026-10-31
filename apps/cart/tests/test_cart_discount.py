@@ -187,9 +187,14 @@ def test_a_discount_ending_on_the_cart_page_rereads_the_cart_at_once(
 @pytest.mark.django_db(transaction=True)
 def test_the_charged_price_outweighs_the_struck_list_price(browser, live_server, client, plan):
     promoted = Plan.objects.create(
-        product=plan.product, title="سه‌ماهه", cost_price=1, sale_price=500000, promo_price=400000
+        product=plan.product,
+        title="سه‌ماهه",
+        cost_price=1,
+        sale_price=500000,
+        promo_price=400000,
+        max_quantity=2,
     )
-    client.post("/cart/add/", {"plan": promoted.pk})
+    client.post("/cart/add/", {"plan": promoted.pk, "quantity": 2})
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     page = _open_cart(browser, live_server, client, 390)
     weight = "node => getComputedStyle(node).fontWeight"

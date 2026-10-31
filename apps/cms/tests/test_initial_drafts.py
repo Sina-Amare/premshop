@@ -16,7 +16,7 @@ def test_initial_content_is_private_and_the_refund_draft_cannot_be_published():
     assert {p.slug for p in pages} == set(Page.Slug.values)
     assert not any(p.is_published for p in pages)
     refund = Page.objects.get(slug="refunds")
-    assert "## تأمین نشدن سفارش" in refund.body
+    assert "## چه وقت مبلغ را برمی‌گردانیم" in refund.body
     assert "پیشنهاد" not in refund.body, "both rejected openings are gone"
     assert "[تصمیم مالک:" in refund.body
 
@@ -40,7 +40,7 @@ def test_revising_the_refund_draft_reverses_and_preserves_edits():
 
 
 def review_migration():
-    return import_module("apps.cms.migrations.0004_legal_page_drafts")
+    return import_module("apps.cms.migrations.0006_plain_legal_pages")
 
 
 def run_migration(function):
@@ -125,20 +125,20 @@ def test_review_migration_does_not_recreate_a_deleted_page():
     assert not Page.objects.filter(slug="about").exists()
 
 
-def test_terms_and_refunds_share_the_later_of_payment_and_required_details_clock():
-    migration = review_migration()
-    for slug in ("terms", "refunds"):
-        assert migration.DELIVERY_CLOCK in migration.DRAFTS[slug]["body"]
-        assert (
-            "گارانتی هر محصول از تحویل موفق یا تکمیل فعال‌سازی شروع می‌شود."
-            in migration.DRAFTS[slug]["body"]
-        )
-    assert "پس از تأیید پرداخت و دریافت اطلاعات لازم" in migration.DELIVERY_CLOCK
-    assert "تأیید پرداخت" in migration.DELIVERY_CLOCK
-    assert "دریافت اطلاعات" in migration.DELIVERY_CLOCK
-    assert "۴۸ ساعت" in migration.DELIVERY_CLOCK
-    assert "۲۱ روز تقویمی" in migration.DRAFTS["refunds"]["body"]
-    assert "یک روز کاری" in migration.DRAFTS["refunds"]["body"]
+def test_each_fact_lives_on_one_page():
+    drafts = review_migration().DRAFTS
+    terms, refunds = drafts["terms"]["body"], drafts["refunds"]["body"]
+    for fact in (
+        "۴۸ ساعت",
+        "بعد از تأیید پرداخت و رسیدن اطلاعات لازم",
+        "گارانتی هر محصول از تحویل موفق",
+    ):
+        assert fact in terms and fact not in refunds
+    for fact in ("۲۱ روز تقویمی", "یک روز کاری", "تا پیش از پرداخت می‌توانید سفارش را"):
+        assert fact in refunds and fact not in terms
+    assert "(/refunds/)" in terms and "(/terms/)" in refunds
+    for slug in ("privacy", "about", "contact"):
+        assert "۴۸ ساعت" not in drafts[slug]["body"] and "۲۱ روز" not in drafts[slug]["body"]
 
 
 @pytest.mark.parametrize(("slug", "paragraphs"), [("privacy", 3), ("about", 1), ("contact", 1)])

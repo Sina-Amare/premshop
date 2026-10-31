@@ -336,8 +336,8 @@ def test_the_buy_box_links_to_the_conditions(client, product):
     )
 
 
-def test_the_buy_box_says_how_the_buyer_pays_beside_the_button(client, product):
-    """The market's first promise, next to the action as Baymard advises."""
+def test_the_buy_box_does_not_repeat_the_shop_under_the_button(client, product):
+    """Delivery is already on the page, and toman payment on the home page and footer."""
     body = page(client, product)
-    note = body.split('class="micro buybox__note"', 1)[1].split("</p>", 1)[0]
-    assert "پرداخت تومانی، بدون کارت ارزی" in note
+    assert "پرداخت تومانی، بدون کارت ارزی" not in body
+    assert "در اولین فرصت" not in body

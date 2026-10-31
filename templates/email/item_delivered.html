@@ -1,7 +1,7 @@
 {% extends "email/base.html" %}{% load fa %}
 
 {% block title %}سفارش شما آماده است{% endblock %}
-{% block preheader %}اطلاعات سفارش {{ order_number }} آماده‌ی دریافت است.{% endblock %}
+{% block preheader %}اطلاعات سفارش {{ order_number }} آماده است.{% endblock %}
 
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">سفارش شما آماده است</h1>
@@ -28,7 +28,7 @@ sanctioned convenience, and its constraints are stated where they are felt.
   </tr>
 </table>
 
-<p style="margin:18px 0 0 0;font-size:13px;line-height:1.9;color:#78716C;">یا از حساب کاربری: <a href="{{ order_url }}" style="color:#0F766E;text-decoration:none;">سفارش {{ order_number }}</a></p>
+<p style="margin:18px 0 0 0;font-size:13px;line-height:1.9;color:#78716C;">یا از حساب کاربری: <a href="{{ order_url }}" style="color:#2459D3;text-decoration:none;">سفارش {{ order_number }}</a></p>
 
 <div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
 
