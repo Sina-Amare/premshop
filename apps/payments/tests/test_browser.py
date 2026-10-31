@@ -5,7 +5,8 @@ from django.urls import reverse
 from playwright.sync_api import expect
 
 from apps.cart.models import Cart, CartItem
-from apps.catalog.models import Plan
+from apps.catalog.models import Plan, Product
+from apps.cms.models import Page
 from apps.orders.models import Order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -33,6 +34,137 @@ def screenshot(page, label, width, directory):
     page.evaluate("document.fonts.ready")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
     page.screenshot(path=str(directory / f"{label}-{width}.png"), full_page=True)
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("javascript", [True, False])
+def test_checkout_terms_stay_in_summary_outside_phone_bar(
+    browser, live_server, buyer, plan, width, javascript, tmp_path
+):
+    Page.objects.filter(slug="terms").delete()
+    terms = Page.objects.create(
+        slug="terms",
+        title="قوانین خرید",
+        body="توضیحات هر محصول را پیش از خرید بخوانید.",
+        description="شرایط خرید از PremShop",
+        is_published=True,
+    )
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    for index in range(2):
+        product = Product.objects.create(
+            category=plan.product.category,
+            name=f"سرویس نمونه {index + 2}",
+            slug=f"sample-{index + 2}",
+            status=Product.Status.ACTIVE,
+        )
+        extra = Plan.objects.create(
+            product=product,
+            title=plan.title,
+            sale_price=plan.sale_price,
+            cost_price=plan.cost_price,
+            input_type=Plan.InputType.NONE,
+            telegram_required=False,
+        )
+        CartItem.objects.create(cart=cart, plan=extra)
+    client = Client()
+    client.force_login(buyer)
+    context = browser.new_context(
+        viewport={"width": width, "height": 1000}, java_script_enabled=javascript
+    )
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.session.session_key,
+                "url": live_server.url,
+            }
+        ]
+    )
+    page = context.new_page()
+    try:
+        for state in ("published", "private", "missing"):
+            if state == "private":
+                terms.is_published = False
+                terms.save()
+            elif state == "missing":
+                terms.delete()
+            page.goto(live_server.url + reverse("checkout"))
+            summary = page.get_by_role("complementary", name="خلاصه‌ی سفارش")
+            link = summary.get_by_role("link", name="قوانین خرید", exact=True)
+            if state == "published":
+                expect(link).to_have_attribute("href", reverse("cms:terms"))
+                link.scroll_into_view_if_needed()
+                expect(link).to_be_in_viewport()
+                assert link.bounding_box()["height"] >= 44
+                assert link.evaluate("el => getComputedStyle(el).color") == (
+                    summary.get_by_role("link", name="ویرایش سبد خرید").evaluate(
+                        "el => getComputedStyle(el).color"
+                    )
+                )
+                assert link.evaluate("el => el.closest('.cart-cta') === null")
+                assert (
+                    link.evaluate("el => getComputedStyle(el.parentElement).position") == "static"
+                )
+                if width == 390:
+                    bar = summary.locator(".cart-cta--bar")
+                    assert bar.evaluate("el => getComputedStyle(el).position") == "fixed"
+                    assert link.bounding_box()["y"] + link.bounding_box()["height"] <= (
+                        bar.bounding_box()["y"]
+                    )
+            else:
+                expect(link).to_have_count(0)
+            expect(page.get_by_role("checkbox")).to_have_count(0)
+            screenshot(page, f"terms-{state}-js-{javascript}", width, tmp_path)
+    finally:
+        context.close()
+
+
+def test_checkout_terms_open_without_losing_typed_details(browser, live_server, buyer, plan):
+    """Checkout is no-store, so Back reloads it empty and typed details would be gone."""
+    Page.objects.filter(slug="terms").delete()
+    Page.objects.create(
+        slug="terms",
+        title="قوانین خرید",
+        body="توضیحات هر محصول را پیش از خرید بخوانید.",
+        description="شرایط خرید از PremShop",
+        is_published=True,
+    )
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type=Plan.InputType.EMAIL,
+        requires_customer_input=True,
+        telegram_required=False,
+        customer_input_label="ایمیل حساب",
+        max_quantity=1,
+    )
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    client = Client()
+    client.force_login(buyer)
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.session.session_key,
+                "url": live_server.url,
+            }
+        ]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("checkout"))
+        details = page.locator(f"#id_customer_input_{plan.pk}")
+        details.fill("typed@example.test")
+        summary = page.get_by_role("complementary", name="خلاصه‌ی سفارش")
+        with context.expect_page(timeout=5000) as terms_tab:
+            summary.get_by_role("link", name="قوانین خرید", exact=True).click()
+        expect(terms_tab.value).to_have_url(live_server.url + reverse("cms:terms"))
+        assert terms_tab.value.evaluate("window.opener") is None
+        assert page.url.endswith(reverse("checkout"))
+        assert details.input_value() == "typed@example.test"
+    finally:
+        context.close()
 
 
 @pytest.mark.parametrize("javascript", [True, False])

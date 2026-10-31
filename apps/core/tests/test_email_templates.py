@@ -42,6 +42,35 @@ def test_every_template_renders_all_three_parts(name):
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
+def test_email_does_not_request_google_fonts(name):
+    _, _, html = render_email(name, EMAIL_PREVIEWS[name])
+    assert "fonts.googleapis.com" not in html
+    assert "fonts.gstatic.com" not in html
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
+@pytest.mark.parametrize("width", [390, 1440])
+def test_email_fallback_layout_remains_readable(browser, name, width, tmp_path):
+    from playwright.sync_api import expect
+
+    _, _, html = render_email(name, EMAIL_PREVIEWS[name])
+    context = browser.new_context(viewport={"width": width, "height": 1000})
+    page = context.new_page()
+    requests = []
+    page.on("request", lambda request: requests.append(request.url))
+    try:
+        page.set_content(html)
+        expect(page.locator("h1")).to_be_visible()
+        assert page.locator("html").get_attribute("dir") == "rtl"
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+        assert not requests
+        page.screenshot(path=str(tmp_path / f"email-{name}-{width}.png"), full_page=True)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_no_template_leaks_an_unrendered_placeholder(name):
     """A misspelled context key renders as empty, not as an error. Catch the shape."""
     _, text, html = render_email(name, EMAIL_PREVIEWS[name])
@@ -153,11 +182,10 @@ def test_no_template_anywhere_uses_a_multiline_hash_comment():
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
-def test_every_font_stack_survives_gmail_dropping_the_web_font(name):
-    """Gmail supports no @font-face at all — web, Android or iOS (caniemail.com).
+def test_every_font_stack_names_platform_faces_after_vazirmatn(name):
+    """Emails load no web font, so Vazirmatn shows only where it is installed.
 
-    Vazirmatn is linked for the clients that DO honour it (Apple Mail, Outlook.com,
-    Samsung Mail), so every declaration must still name a platform face after it.
+    Every declaration must still name a platform face after it.
     Tahoma may appear only as the last resort: leading with it is what produced the
     first rejected draft, and a stack is decided by what comes first, not by what
     is present.
@@ -170,7 +198,7 @@ def test_every_font_stack_survives_gmail_dropping_the_web_font(name):
     assert stacks, "no font-family declaration found at all"
     for stack in stacks:
         faces = [face.strip().strip("'\"") for face in stack.split(",")]
-        assert "Vazirmatn" in faces, f"the brand face must be preferred: {stack}"
+        assert faces[0] == "Vazirmatn", f"the brand face must be preferred: {stack}"
         assert faces[-1] in {"sans-serif", "serif"}, f"no generic family at the end: {stack}"
         assert len(faces) >= 5, f"too few fallbacks to cover every platform: {stack}"
         if "Tahoma" in faces:

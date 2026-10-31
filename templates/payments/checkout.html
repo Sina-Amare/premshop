@@ -92,6 +92,7 @@
           <div class="cart-cta{% if purchase.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div></div>
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button></div>
           <p class="small">پس از ثبت سفارش ۲۴ ساعت برای پرداخت فرصت دارید. در این مرحله چیزی پرداخت نمی‌کنید.</p>
+          {% for legal_page in legal_pages %}{% if legal_page.slug == 'terms' %}<p class="small"><a class="cart-back" href="{{ legal_page.get_absolute_url }}" target="_blank" rel="noopener">قوانین خرید</a></p>{% endif %}{% endfor %}
         {% endif %}
       </aside>{% endif %}
     </form>
