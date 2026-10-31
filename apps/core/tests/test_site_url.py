@@ -38,6 +38,7 @@ def load_prod():
         {"FIELD_ENCRYPTION_KEY": ""},
         {"FIELD_ENCRYPTION_KEY": "not-a-fernet-key"},
         {"FIELD_ENCRYPTION_KEY_FALLBACKS": "not-a-fernet-key"},
+        {"FIELD_ENCRYPTION_KEY_FALLBACKS": PRODUCTION["FIELD_ENCRYPTION_KEY"]},
     ],
 )
 def test_production_refuses_to_boot_without_usable_field_keys(reload_base, broken):

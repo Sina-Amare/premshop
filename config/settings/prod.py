@@ -57,12 +57,15 @@ if not SITE_URL.startswith("https://"):
 
 # A missing key would otherwise surface as a 500 on the first order that needs input.
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", required=True)
+field_keys = [FIELD_ENCRYPTION_KEY, *env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")]
 try:
-    for key in (FIELD_ENCRYPTION_KEY, *env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")):
+    for key in field_keys:
         Fernet(key.encode())
+    if len(set(field_keys)) != len(field_keys):
+        raise ValueError
 except ValueError:
     raise ImproperlyConfigured(
-        "FIELD_ENCRYPTION_KEY and its fallbacks must be valid Fernet keys."
+        "FIELD_ENCRYPTION_KEY and its fallbacks must be valid, distinct Fernet keys."
     ) from None
 
 # Error reporting: sentry-sdk speaking to self-hosted GlitchTip (ADR-0015).
