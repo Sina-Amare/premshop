@@ -198,7 +198,7 @@ def test_every_font_stack_names_platform_faces_after_vazirmatn(name):
     assert stacks, "no font-family declaration found at all"
     for stack in stacks:
         faces = [face.strip().strip("'\"") for face in stack.split(",")]
-        assert "Vazirmatn" in faces, f"the brand face must be preferred: {stack}"
+        assert faces[0] == "Vazirmatn", f"the brand face must be preferred: {stack}"
         assert faces[-1] in {"sans-serif", "serif"}, f"no generic family at the end: {stack}"
         assert len(faces) >= 5, f"too few fallbacks to cover every platform: {stack}"
         if "Tahoma" in faces:
