@@ -120,6 +120,53 @@ def test_checkout_terms_stay_in_summary_outside_phone_bar(
         context.close()
 
 
+def test_checkout_terms_open_without_losing_typed_details(browser, live_server, buyer, plan):
+    """Checkout is no-store, so Back reloads it empty and typed details would be gone."""
+    Page.objects.filter(slug="terms").delete()
+    Page.objects.create(
+        slug="terms",
+        title="قوانین خرید",
+        body="توضیحات هر محصول را پیش از خرید بخوانید.",
+        description="شرایط خرید از PremShop",
+        is_published=True,
+    )
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type=Plan.InputType.EMAIL,
+        requires_customer_input=True,
+        telegram_required=False,
+        customer_input_label="ایمیل حساب",
+        max_quantity=1,
+    )
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    client = Client()
+    client.force_login(buyer)
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.session.session_key,
+                "url": live_server.url,
+            }
+        ]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("checkout"))
+        details = page.locator(f"#id_customer_input_{plan.pk}")
+        details.fill("typed@example.test")
+        summary = page.get_by_role("complementary", name="خلاصه‌ی سفارش")
+        with context.expect_page(timeout=5000) as terms_tab:
+            summary.get_by_role("link", name="قوانین خرید", exact=True).click()
+        expect(terms_tab.value).to_have_url(live_server.url + reverse("cms:terms"))
+        assert terms_tab.value.evaluate("window.opener") is None
+        assert page.url.endswith(reverse("checkout"))
+        assert details.input_value() == "typed@example.test"
+    finally:
+        context.close()
+
+
 @pytest.mark.parametrize("javascript", [True, False])
 def test_inline_invalid_fields_use_persian_errors_in_english_browser(
     browser, live_server, javascript, monkeypatch, mailoutbox
