@@ -129,6 +129,10 @@ def test_terms_and_refunds_share_the_later_of_payment_and_required_details_clock
     migration = review_migration()
     for slug in ("terms", "refunds"):
         assert migration.DELIVERY_CLOCK in migration.DRAFTS[slug]["body"]
+        assert (
+            "گارانتی هر محصول از تحویل موفق یا تکمیل فعال‌سازی شروع می‌شود."
+            in migration.DRAFTS[slug]["body"]
+        )
     assert "پس از تأیید پرداخت و دریافت اطلاعات لازم" in migration.DELIVERY_CLOCK
     assert "تأیید پرداخت" in migration.DELIVERY_CLOCK
     assert "دریافت اطلاعات" in migration.DELIVERY_CLOCK
