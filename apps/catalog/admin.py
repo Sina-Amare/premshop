@@ -897,6 +897,10 @@ class ProductAdmin(PreviewAdminMixin):
     def get_queryset(self, request: Any) -> Any:
         return super().get_queryset(request).prefetch_related("plans")
 
+    def get_readonly_fields(self, request: HttpRequest, obj: Product | None = None) -> Any:
+        fields = super().get_readonly_fields(request, obj)
+        return [*fields, "slug"] if obj and obj.status != Product.Status.DRAFT else fields
+
     def get_form(self, request: Any, obj: Any = None, change: bool = False, **kwargs: Any) -> Any:
         if request.method == "POST" and obj and connection.in_atomic_block:
             Product.objects.select_for_update().get(pk=obj.pk)
@@ -918,6 +922,10 @@ class ProductAdmin(PreviewAdminMixin):
         if "brand_colour" in form.base_fields:
             field = form.base_fields["brand_colour"]
             field.widget = BrandColourWidget(obj, attrs=field.widget.attrs)
+        if "status" in form.base_fields:
+            form.base_fields["status"].help_text = _(
+                "پیش‌نویس روی سایت دیده نمی‌شه. ناموجود، اگه آماده‌ی انتشار باشه، صفحه داره ولی فروخته نمی‌شه."
+            )
         return form
 
     def render_change_form(
@@ -941,6 +949,7 @@ class ProductAdmin(PreviewAdminMixin):
             context["readiness_live"] = True
         elif not form.is_bound:
             context["readiness"] = obj.publish_problems() if obj else None
+            context["readiness_unavailable"] = obj and obj.status == Product.Status.UNAVAILABLE
         elif form.data.get("status") == Product.Status.ACTIVE and not (obj and obj.is_live_in_db()):
             formsets = [inline.formset for inline in context["inline_admin_formsets"]]
             context["readiness"] = refusal_reasons(form, formsets) or None

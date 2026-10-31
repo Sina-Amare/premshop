@@ -95,6 +95,10 @@
   <aside class="pdp__buy">
     <div class="card buybox">
       {% if product.delivery_type %}<details class="buybox__facts"><summary>{% include 'storefront/icon.html' with name='info' %}<span>{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</span><span class="buybox__type">{{ product.get_delivery_type_display }}</span>{% include 'storefront/icon.html' with name='chevron' %}</summary>{% include 'catalog/_delivery_type_note.html' %}</details>{% endif %}
+      {% if product.status == "unavailable" and not snapshot %}
+      <button type="button" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
+      <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+      {% else %}
       {% cart_purchase plans wanted_plan as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
       <form class="buybox__form" id="buy-form" method="post" action="{% url 'cart-add' %}" data-cart-add{% if snapshot %} data-snapshot{% endif %}>
@@ -146,6 +150,7 @@
         <p class="cart-add-error" role="alert" hidden></p>
       </form>
       {% endwith %}
+      {% endif %}
       {% if before_buying_shown %}<p class="micro buybox__note"><a href="#before-buying">گارانتی و شرایط خرید</a></p>{% endif %}
     </div>
     <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>

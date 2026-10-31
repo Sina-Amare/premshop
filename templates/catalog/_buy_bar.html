@@ -3,7 +3,7 @@ On a phone the buy box scrolls away. storefront.js shows this bar while the box'
 button is out of sight and fills it from the checked plan's server-rendered row; the
 button belongs to the buy form, so cart.js handles it as the box's own. A snapshot
 cannot buy, so it gets none.
-{% endcomment %}{% if not snapshot %}
+{% endcomment %}{% if not snapshot and product.status != "unavailable" %}
 <section class="buy-bar" aria-label="خرید سریع" data-buy-bar hidden>
   <p class="buy-bar__plan"><span class="buy-bar__title"><bdi></bdi></span><span class="price"></span></p>
   <button type="submit" form="buy-form" class="btn btn--primary">افزودن به سبد خرید</button>
