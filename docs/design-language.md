@@ -45,7 +45,7 @@ The half of this a pattern can see is a test: `apps/catalog/tests/test_storefron
 | Phone number | «شماره‌ی موبایل» | «شماره تماس», «شماره موبایل» |
 | Member since | «تاریخ عضویت» | «عضو از» |
 | Sign-in code | «کد ورود» | «کد تأیید» |
-| A product taken off sale | «ناموجود»: its page stays, with the buy box disabled, and lists leave it out. Until the storefront shows such a page, an unavailable product is a 404. | «ناموجود» meaning hidden |
+| A product taken off sale | «ناموجود»: its page stays only when it meets the publishing requirements, with buying disabled and sale listings excluding it. An incomplete unavailable product is a 404; the panel explains why. | «ناموجود» meaning hidden |
 | Nothing found | «پیدا نکردیم» | «پیدا نشد», «رو نداریم» |
 | Search | «جستجو» | |
 | Support hours | «هر روز، ساعت ۱۰ تا ۲۲» | «هر روز ۱۰ تا ۲۲», «بین ساعت ۱۰ تا ۲۲» |

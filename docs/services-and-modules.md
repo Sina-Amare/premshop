@@ -8,6 +8,8 @@
 
 ## 1. App Map
 
+Crawler entry points are composed in `config/seo.py`: a loc-only sitemap combines catalog public pages and published CMS pages, and robots allows all crawlers. Product detail and sitemap use `ProductQuerySet.public_pages()`; sale listings and purchase validation retain `public()` and `is_public`. ADR-0028 records unavailable-page eligibility and panel slug editing.
+
 Dependency direction is a strict order, with one exception in the accounts row. An app may import only from apps **above** it in this list (plus stdlib/Django/libs). Panel sits at the top and imports everyone; nothing imports panel. `cms` and `catalog` are domain-leaf apps.
 
 ```

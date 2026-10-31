@@ -1,18 +1,11 @@
-"""Thin controllers for the public catalog: fetch, filter through `public()`, render.
-
-Every visitor-facing query goes through `Product.objects.public()`. A draft
-product must never leak — not through a category listing, not through a search,
-not through a guessed URL — and one filter used everywhere is how that stays
-true when the fourth and fifth views are added. The one exception is the
-operator's preview of a draft on its own address, in `product`.
-"""
+"""Catalog listings use for-sale products; detail also admits eligible unavailable pages."""
 
 from __future__ import annotations
 
 from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -128,29 +121,29 @@ def category(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 def product(request: HttpRequest, slug: str) -> HttpResponse:
-    # The operator previews a draft at the address it will be published on. For
-    # anyone else a draft does not exist, and «ناموجود» stays hidden for everyone.
     may_preview = request.user.is_staff and request.user.has_perm("catalog.view_product")
-    shown = (
-        Product.objects.filter(status__in=[Product.Status.ACTIVE, Product.Status.DRAFT])
-        if may_preview
-        else Product.objects.public()
+    shown = _for_cards(Product.objects.filter(slug=slug)).prefetch_related(
+        "specs", "sections", "questions"
     )
-    obj = get_object_or_404(
-        _for_cards(shown).prefetch_related("specs", "sections", "questions"), slug=slug
-    )
+    obj = next(shown.public_pages(), None)
+    if obj is None and may_preview:
+        obj = shown.filter(status=Product.Status.DRAFT).first()
+    if obj is None:
+        raise Http404
     response = render(
         request,
         "catalog/product.html",
         {
             **product_context(obj, related=_related_to(obj)),
-            "structured_data": product_breadcrumb(obj) if obj.is_public else None,
+            "structured_data": (
+                product_breadcrumb(obj) if obj.status != Product.Status.DRAFT else None
+            ),
             # A quick-plans row links here with its plan; the buy box decides
             # whether that plan can be chosen.
             "wanted_plan": request.GET.get("plan", ""),
         },
     )
-    if not obj.is_public:
+    if obj.status == Product.Status.DRAFT:
         # The preview is on the public address, so nothing between here and the
         # browser may keep it for whoever asks for that address next.
         patch_cache_control(response, private=True, no_store=True)
@@ -168,7 +161,7 @@ def product_context(obj: Product, *, related: list[Product] | None = None) -> di
     before_buying = next((s for s in sections if s.kind == "before_buying"), None)
     return {
         "product": obj,
-        "preview": not obj.is_public,
+        "preview": obj.status == Product.Status.DRAFT,
         "plans": plans,
         "available_plans": available,
         "any_plan_takes_more_than_one": max(ceilings) > 1,
