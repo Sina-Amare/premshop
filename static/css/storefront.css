@@ -629,3 +629,4 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 
 /* The buy box's support line starts where everything else starts. */
 .buybox__help{margin-inline:0;text-align:start}
+.v-track .pcard__shop{font-size:10px;inset-inline-end:11px;inset-block-end:8px}
