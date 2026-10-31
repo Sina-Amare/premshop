@@ -6,6 +6,7 @@ from django.urls import reverse
 from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan, Product
+from apps.cms.models import Page
 from apps.orders.models import DiscountCode, Order
 from apps.payments.services import quote_checkout
 
@@ -17,6 +18,26 @@ def cart(buyer, plan):
     cart = Cart.objects.create(user=buyer)
     CartItem.objects.create(cart=cart, plan=plan)
     return cart
+
+
+@pytest.mark.parametrize("state", ["published", "private", "missing"])
+def test_checkout_terms_link_follows_publication_without_consent(client, buyer, cart, state):
+    Page.objects.filter(slug="terms").delete()
+    if state != "missing":
+        Page.objects.create(
+            slug="terms",
+            title="قوانین خرید",
+            body="توضیحات هر محصول را پیش از خرید بخوانید.",
+            description="شرایط خرید از PremShop",
+            is_published=state == "published",
+        )
+    client.force_login(buyer)
+    response = client.get(reverse("checkout"))
+    body = response.content.decode()
+    summary = body.split('<aside class="cart-summary"', 1)[1].split("</aside>", 1)[0]
+    assert (f'href="{reverse("cms:terms")}"' in summary) == (state == "published")
+    assert 'type="checkbox"' not in summary
+    assert "activation_consent" not in response.context["form"].fields
 
 
 def test_checkout_does_not_display_an_activation_acknowledgement(client, buyer, cart):

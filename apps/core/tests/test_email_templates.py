@@ -42,6 +42,35 @@ def test_every_template_renders_all_three_parts(name):
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
+def test_email_does_not_request_google_fonts(name):
+    _, _, html = render_email(name, EMAIL_PREVIEWS[name])
+    assert "fonts.googleapis.com" not in html
+    assert "fonts.gstatic.com" not in html
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
+@pytest.mark.parametrize("width", [390, 1440])
+def test_email_fallback_layout_remains_readable(browser, name, width, tmp_path):
+    from playwright.sync_api import expect
+
+    _, _, html = render_email(name, EMAIL_PREVIEWS[name])
+    context = browser.new_context(viewport={"width": width, "height": 1000})
+    page = context.new_page()
+    requests = []
+    page.on("request", lambda request: requests.append(request.url))
+    try:
+        page.set_content(html)
+        expect(page.locator("h1")).to_be_visible()
+        assert page.locator("html").get_attribute("dir") == "rtl"
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+        assert not requests
+        page.screenshot(path=str(tmp_path / f"email-{name}-{width}.png"), full_page=True)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_no_template_leaks_an_unrendered_placeholder(name):
     """A misspelled context key renders as empty, not as an error. Catch the shape."""
     _, text, html = render_email(name, EMAIL_PREVIEWS[name])

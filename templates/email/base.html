@@ -19,15 +19,6 @@ Reasoning and the audit behind it: ADR-0023, amendment 2026-09-18.
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light only">
 <title>{% block title %}PremShop{% endblock %}</title>
-{% comment %}
-Vazirmatn for the clients that honour a web font: Apple Mail (macOS + iOS),
-Outlook.com and Samsung Mail. Gmail supports NO @font-face at all — web, Android
-or iOS (caniemail.com/features/css-at-font-face) — so it ignores this and falls
-through the stack below. Verified reachable from inside Iran: the CSS answers in
-~1.8s and the Arabic woff2 is 46KB. Declaring it costs Gmail readers nothing and
-gives everyone else the real brand face.
-{% endcomment %}
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap">
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
   body { margin:0 !important; padding:0 !important; width:100% !important; }
