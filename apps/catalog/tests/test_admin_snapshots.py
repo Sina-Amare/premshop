@@ -1,5 +1,7 @@
 """Unsaved previews validate the editor without changing its stored catalog."""
 
+import re
+
 import pytest
 from django.contrib.admin.models import LogEntry
 from django.db import connection
@@ -15,8 +17,9 @@ from apps.catalog.tests.test_admin import operator as operator
 pytestmark = pytest.mark.django_db
 
 
-def test_product_snapshot_uses_posted_values_without_writing(client, operator, catalogue):
-    obj = catalogue["draft"]
+@pytest.mark.parametrize("state", ["draft", "gone"])
+def test_product_snapshot_uses_posted_values_without_writing(client, operator, catalogue, state):
+    obj = catalogue[state]
     data = form_of(client, reverse("admin:catalog_product_change", args=[obj.pk]))
     data["name"] = "Snapshot service"
     data["brand_colour"] = "#ff2200"
@@ -30,11 +33,15 @@ def test_product_snapshot_uses_posted_values_without_writing(client, operator, c
     assert "۳۴۵,۶۷۸" in body
     assert "--brand: #ff2200" in body
     assert 'data-preview-target="card"' in body
+    assert 'data-preview-target="plans"' in body
+    assert 'data-preview-target="quantity"' in body
+    assert 'data-preview-target="customer-input"' in body
+    assert re.search(r'<button[^>]*class="[^"]*buybox__cta[^>]*disabled', body)
     assert not any(
         q["sql"].lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for q in queries
     )
     obj.refresh_from_db()
-    assert obj.name == "draft"
+    assert obj.name == state
     assert LogEntry.objects.count() == before
     assert "no-store" in response["Cache-Control"]
     assert response["X-Robots-Tag"] == "noindex, nofollow"
@@ -107,12 +114,13 @@ def test_category_snapshot_overlays_eligible_navigation_without_new_products(
     assert category.name != "Unsaved category"
 
 
+@pytest.mark.parametrize("state", ["draft", "gone"])
 def test_plan_snapshot_uses_parent_permissions_and_never_exposes_internal_values(
-    client, operator, catalogue, monkeypatch
+    client, operator, catalogue, monkeypatch, state
 ):
     from django.contrib import admin
 
-    plan = catalogue["draft"].plans.get()
+    plan = catalogue[state].plans.get()
     data = form_of(client, reverse("admin:catalog_plan_change", args=[plan.pk]), "plan_form")
     data.update(
         title="Special preview plan",
@@ -124,6 +132,8 @@ def test_plan_snapshot_uses_parent_permissions_and_never_exposes_internal_values
     assert response.status_code == 200
     body = response.content.decode()
     assert "Special preview plan" in body
+    assert 'data-preview-target="plans"' in body
+    assert re.search(r'<button[^>]*class="[^"]*buybox__cta[^>]*disabled', body)
     assert "123456789" not in body and "۱۲۳,۴۵۶,۷۸۹" not in body and "private-supplier" not in body
     plan.refresh_from_db()
     assert plan.title != "Special preview plan"
