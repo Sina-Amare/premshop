@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection
 
 from apps.cms.models import Page
+from apps.core.content import PLACEHOLDER
 
 pytestmark = pytest.mark.django_db
 
@@ -136,12 +137,33 @@ def test_terms_and_refunds_share_the_later_of_payment_and_required_details_clock
     assert "یک روز کاری" in migration.DRAFTS["refunds"]["body"]
 
 
-def test_privacy_draft_names_data_services_without_claiming_active_error_reporting():
+@pytest.mark.parametrize(("slug", "paragraphs"), [("privacy", 3), ("about", 1), ("contact", 1)])
+def test_short_information_pages_keep_one_marker_without_sections(slug, paragraphs):
+    page = Page.objects.get(slug=slug)
+    assert len(PLACEHOLDER.findall(page.body)) == 1
+    assert "##" not in page.body
+    text = PLACEHOLDER.sub("", page.body).strip()
+    assert len(text.split("\n\n")) == paragraphs
+    if slug in {"about", "contact"}:
+        assert text.count(".") == 2
+    assert page.description.count(".") == 1
+
+
+def test_privacy_draft_explains_necessary_data_without_technical_details():
     body = Page.objects.get(slug="privacy").body
     for name in ("SMTP2GO", "Sentry", "GlitchTip", "Google Fonts"):
-        assert name in body
-    assert "گزارش خودکار خطا در حال حاضر فعال نیست" in body
-    assert "از ابزار تحلیل رفتار بازدیدکنندگان استفاده نمی‌کنیم" in body
+        assert name not in body
+    assert "رمزگذاری‌شده" in body
+    assert "نمی‌فروشیم" in body
+    assert "اگر وارد کرده باشید" in body
+    assert "کوکی" in body
+    assert "IP" in body
+
+
+def test_contact_marker_keeps_all_unconfirmed_seller_facts():
+    marker = PLACEHOLDER.search(Page.objects.get(slug="contact").body).group()
+    for field in ("نام فروشنده", "نشانی", "کد پستی", "تلفن ثابت", "راه ثبت شکایت"):
+        assert field in marker
 
 
 def test_reapplying_initial_content_preserves_edits():

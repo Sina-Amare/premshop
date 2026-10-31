@@ -10,7 +10,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0004](0004-no-drf-in-phase-1.md) | No DRF/API until a real out-of-process consumer exists |
 | [0005](0005-money-in-toman.md) | Toman everywhere; rial only at the gateway adapter *(amended: discount field now exists — 0020; the instructions-page boundary is gone)* |
 | [0006](0006-card-to-card-payment-design.md) | ~~Card-to-card: DB-enforced uniqueness, pending-only expiry, revive, card snapshots~~ — **superseded by [0019](0019-payment-gateway.md)** |
-| [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; key rotation and manual incoming activation details; 2026-10-29 amendment: cancelled input and interim deletion enforcement |
+| [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; key rotation and manual incoming activation details; 2026-10-31 amendment: retention remains internal, short public privacy; 2026-10-29: cancelled input and interim deletion enforcement |
 | [0008](0008-content-free-messages-and-magic-link.md) | No credential values in software messages; constrained magic link; 2026-10-26 incoming manual activation exception |
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-31: later of payment and required details; missing-input refund exception; 2026-10-29: interim manual enforcement; 2026-10-28: delivery cap 48 hours for every product; 2026-10-20, evening: delivery note printed as written)* |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log; outbox with dedupe keys; accepted on-commit gap |

@@ -48,24 +48,25 @@ def test_complete_legal_drafts_and_descriptions_render_privately(
             )
             assert response.headers["x-robots-tag"] == "noindex, nofollow"
             assert {"private", "no-store"} <= set(response.headers["cache-control"].split(", "))
-            landmark = {
-                "terms": "مهلت تحویل",
-                "refunds": "انصراف پس از پرداخت",
-                "privacy": "ایمیل و سرویس ارسال آن",
-                "about": "درباره‌ی پرم‌شاپ",
-                "contact": "پرسش و پیگیری سفارش",
-            }[slug]
-            assert page.get_by_role("heading", name=landmark, exact=True).is_visible()
+            if slug in {"terms", "refunds"}:
+                landmark = "مهلت تحویل" if slug == "terms" else "انصراف پس از پرداخت"
+                assert page.get_by_role("heading", name=landmark, exact=True).is_visible()
+            else:
+                assert page.locator(".legal-page__body h2, .legal-page__body h3").count() == 0
             assert "Vazirmatn" in page.locator("body").evaluate(
                 "el => getComputedStyle(el).fontFamily"
             )
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             if slug == "privacy":
                 assert (
-                    page.locator(".legal-page__body bdi")
-                    .filter(has_text="SMTP2GO")
-                    .first.is_visible()
+                    page.locator(".legal-page__body bdi").filter(has_text="IP").first.is_visible()
                 )
+                assert (
+                    page.get_by_role("link", name="به پشتیبانی پیام بدهید").get_attribute("href")
+                    == "/contact/"
+                )
+            elif slug == "contact":
+                assert page.locator(".legal-page__support").is_visible()
         context.clear_cookies()
         for slug in migration.DRAFTS:
             assert page.goto(live_server.url + f"/{slug}/?preview=1").status == 404
