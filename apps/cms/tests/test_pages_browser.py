@@ -1,3 +1,4 @@
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,68 @@ from apps.accounts.models import User
 from apps.cms.models import Page
 
 pytestmark = [pytest.mark.browser, pytest.mark.django_db(transaction=True)]
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("javascript", [False, True])
+def test_complete_legal_drafts_and_descriptions_render_privately(
+    browser, live_server, width, javascript
+):
+    migration = import_module("apps.cms.migrations.0004_legal_page_drafts")
+    for slug, draft in migration.DRAFTS.items():
+        Page.objects.update_or_create(slug=slug, defaults={**draft, "is_published": False})
+    operator = User.objects.create_superuser("copy-review@example.test", "test-only")
+    client = Client()
+    client.force_login(operator)
+    context = browser.new_context(
+        viewport={"width": width, "height": 900}, java_script_enabled=javascript
+    )
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                "url": live_server.url,
+            }
+        ]
+    )
+    try:
+        page = context.new_page()
+        for slug, draft in migration.DRAFTS.items():
+            url = live_server.url + f"/{slug}/"
+            response = page.goto(url)
+            assert response.status == 200
+            assert page.url == url
+            assert page.locator("h1").inner_text() == draft["title"]
+            assert (
+                page.locator("meta[name='description']").get_attribute("content")
+                == draft["description"]
+            )
+            assert response.headers["x-robots-tag"] == "noindex, nofollow"
+            assert {"private", "no-store"} <= set(response.headers["cache-control"].split(", "))
+            landmark = {
+                "terms": "مهلت تحویل",
+                "refunds": "انصراف پس از پرداخت",
+                "privacy": "ایمیل و سرویس ارسال آن",
+                "about": "درباره‌ی پرم‌شاپ",
+                "contact": "پرسش و پیگیری سفارش",
+            }[slug]
+            assert page.get_by_role("heading", name=landmark, exact=True).is_visible()
+            assert "Vazirmatn" in page.locator("body").evaluate(
+                "el => getComputedStyle(el).fontFamily"
+            )
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+            if slug == "privacy":
+                assert (
+                    page.locator(".legal-page__body bdi")
+                    .filter(has_text="SMTP2GO")
+                    .first.is_visible()
+                )
+        context.clear_cookies()
+        for slug in migration.DRAFTS:
+            assert page.goto(live_server.url + f"/{slug}/?preview=1").status == 404
+    finally:
+        context.close()
 
 
 @pytest.mark.parametrize("width", [390, 1440])
@@ -38,7 +101,10 @@ def test_published_footer_links_wrap_as_a_row(browser, live_server, width):
 def test_drafts_and_long_persian_are_readable_without_javascript(browser, live_server, width):
     operator = User.objects.create_superuser("pages@example.test", "test-only")
     for slug, title in Page.Slug.choices:
-        Page.objects.get_or_create(slug=slug, defaults={"title": title})
+        Page.objects.update_or_create(
+            slug=slug,
+            defaults={"title": title, "body": "", "description": "", "is_published": False},
+        )
     refund = Page.objects.get(slug="refunds")
     refund.body = (
         "## پیش از فعال‌سازی\n\n"
