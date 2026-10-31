@@ -616,11 +616,8 @@ class ProductAdmin(PreviewAdminMixin):
         "facts_checked",
         "updated",
     ]
-    # Status and department are the two ways this list gets sliced, and the
-    # third finds the pages whose claims have gone unchecked. Warranty and
-    # delivery type were filters too, and at a dozen products the filter
-    # column stood taller than the result.
-    list_filter = ["status", "category", StaleFactsFilter]
+    # Warranty and delivery type are not columns, so these are how to find them.
+    list_filter = ["status", "category", "warranty", "delivery_type", StaleFactsFilter]
     actions = ["publish", "unpublish", "copy_sections", "delete_selected"]
     form = ProductForm
     # Only switches the search box on: get_search_results asks the shop's own

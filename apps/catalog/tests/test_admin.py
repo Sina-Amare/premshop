@@ -185,6 +185,13 @@ def test_the_product_list_renders_for_an_operator(client, operator, catalogue):
     assert "live" in body and "draft" in body
 
 
+def test_the_product_list_filters_by_warranty_and_delivery_type(client, operator, catalogue):
+    response = client.get(reverse("admin:catalog_product_changelist"))
+
+    filtered = {getattr(spec, "field_path", None) for spec in response.context["cl"].filter_specs}
+    assert {"warranty", "delivery_type"} <= filtered
+
+
 def test_every_status_keeps_its_own_colour(client, operator, catalogue):
     """Unfold resolves the badge with a dict lookup and falls through to
     neutral grey when it misses. The map is keyed off the enum, so a renamed

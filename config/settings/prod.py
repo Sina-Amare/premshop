@@ -5,6 +5,7 @@ required secret is missing the process refuses to start rather than running
 with an insecure default.
 """
 
+from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
@@ -53,6 +54,19 @@ if not DEFAULT_FROM_EMAIL.strip().rstrip(">").endswith("@premshop.ir"):  # noqa:
 SITE_URL = site_url(env("SITE_URL", required=True))
 if not SITE_URL.startswith("https://"):
     raise ImproperlyConfigured(f"SITE_URL must be https in production. Got: {SITE_URL!r}")
+
+# A missing key would otherwise surface as a 500 on the first order that needs input.
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", required=True)
+field_keys = [FIELD_ENCRYPTION_KEY, *env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")]
+try:
+    for key in field_keys:
+        Fernet(key.encode())
+    if len(set(field_keys)) != len(field_keys):
+        raise ValueError
+except ValueError:
+    raise ImproperlyConfigured(
+        "FIELD_ENCRYPTION_KEY and its fallbacks must be valid, distinct Fernet keys."
+    ) from None
 
 # Error reporting: sentry-sdk speaking to self-hosted GlitchTip (ADR-0015).
 # No DSN configured means no reporting — never a crash at startup.

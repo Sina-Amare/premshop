@@ -50,6 +50,14 @@ def shop():
     return product
 
 
+def test_a_card_names_the_shop_and_a_small_tile_does_not(client, shop):
+    home = client.get(reverse("home")).content.decode()
+    assert '<span class="pcard__shop" aria-hidden="true">PremShop</span>' in home
+
+    client.post(reverse("cart-add"), {"plan": shop.plans.get().pk})
+    assert "pcard__shop" not in client.get(reverse("cart")).content.decode()
+
+
 # --- The shelf ---------------------------------------------------------------
 
 
