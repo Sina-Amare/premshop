@@ -29,6 +29,7 @@ import pytest
 from django.apps import apps
 from django.conf import settings
 
+from apps.catalog.demo_content import PRODUCT_COPY
 from apps.catalog.tests.test_panel_translations import ROOT, compile_messages, persian_msgids
 
 # Each entry: the marker, and what to write instead. The message is the point —
@@ -280,3 +281,23 @@ def test_the_lint_leaves_good_persian_alone(text):
     strongest signal that a person wrote this; only the bookish forms go."""
     assert not any(re.search(p, text) for p, _ in BANNED), text
     assert not LATIN_DIGIT_IN_PERSIAN.search(text), text
+
+
+PERSIAN_NAMES = re.compile(
+    r"کلود|یوتیوب|اسپاتیفای|نتفلیکس|کوپایلت|جمینای|چت[‌ ]?جی|گیت‌هاب|جت‌برینز|میدجرنی|ادوبی|گوگل پلی"
+)
+
+
+def test_product_and_tool_names_stay_in_latin_on_the_page():
+    """Persian spellings belong in search aliases and page titles, which shoppers search with."""
+    for slug, copy in PRODUCT_COPY.items():
+        for key in ("short", "heading", "body"):
+            assert not PERSIAN_NAMES.search(copy.get(key, "")), (slug, key)
+    for path in Path(settings.BASE_DIR, "templates").rglob("*.html"):
+        text = re.sub(
+            r"{% block (?:title|meta_description) %}.*?{% endblock %}",
+            "",
+            path.read_text("utf-8"),
+            flags=re.S,
+        )
+        assert not PERSIAN_NAMES.search(text), path.name

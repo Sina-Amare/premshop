@@ -40,7 +40,7 @@ def test_revising_the_refund_draft_reverses_and_preserves_edits():
 
 
 def review_migration():
-    return import_module("apps.cms.migrations.0006_plain_legal_pages")
+    return import_module("apps.cms.migrations.0007_about_page_latin_names")
 
 
 def run_migration(function):
