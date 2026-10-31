@@ -96,6 +96,12 @@ def test_checkout_terms_stay_in_summary_outside_phone_bar(
                 expect(link).to_have_attribute("href", reverse("cms:terms"))
                 link.scroll_into_view_if_needed()
                 expect(link).to_be_in_viewport()
+                assert link.bounding_box()["height"] >= 44
+                assert link.evaluate("el => getComputedStyle(el).color") == (
+                    summary.get_by_role("link", name="ویرایش سبد خرید").evaluate(
+                        "el => getComputedStyle(el).color"
+                    )
+                )
                 assert link.evaluate("el => el.closest('.cart-cta') === null")
                 assert (
                     link.evaluate("el => getComputedStyle(el.parentElement).position") == "static"
