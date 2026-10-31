@@ -1,6 +1,7 @@
 """Crawler entry points composed from each app's public pages."""
 
-from xml.etree.ElementTree import Element, SubElement, tostring
+# Only constructs XML from public URLs; no XML input is parsed.
+from xml.etree.ElementTree import Element, SubElement, tostring  # nosec B405
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
