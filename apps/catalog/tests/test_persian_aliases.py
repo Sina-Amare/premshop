@@ -19,6 +19,7 @@ pytestmark = pytest.mark.django_db
 def catalog(settings, monkeypatch):
     settings.DEBUG = True
     settings.DEMO_CATALOG = True
+    connection.ensure_connection()
     with monkeypatch.context() as target:
         target.setitem(connection.settings_dict, "NAME", "test_premshop_ui_review")
         call_command("seed_catalog", extended=True, no_images=True, stdout=StringIO())
