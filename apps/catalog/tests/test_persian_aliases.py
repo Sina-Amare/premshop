@@ -19,8 +19,9 @@ pytestmark = pytest.mark.django_db
 def catalog(settings, monkeypatch):
     settings.DEBUG = True
     settings.DEMO_CATALOG = True
-    monkeypatch.setitem(connection.settings_dict, "NAME", "test_premshop_ui_review")
-    call_command("seed_catalog", extended=True, no_images=True, stdout=StringIO())
+    with monkeypatch.context() as target:
+        target.setitem(connection.settings_dict, "NAME", "test_premshop_ui_review")
+        call_command("seed_catalog", extended=True, no_images=True, stdout=StringIO())
     return Product.objects.public()
 
 
@@ -81,7 +82,7 @@ def test_use_words_find_relevant_samples(catalog, query, slugs):
     assert slugs <= set(catalog.search(query).values_list("slug", flat=True))
 
 
-def test_seeded_aliases_have_persian_letters_and_preserve_operator_edits(catalog):
+def test_seeded_aliases_have_persian_letters_and_preserve_operator_edits(catalog, monkeypatch):
     assert len(EXTENDED_PRODUCTS) == 14
     for spec in EXTENDED_PRODUCTS:
         product = catalog.get(slug=spec["slug"])
@@ -90,7 +91,9 @@ def test_seeded_aliases_have_persian_letters_and_preserve_operator_edits(catalog
     product.aliases = "نام انتخابی اپراتور"
     product.save()
     before = list(Product.objects.order_by("pk").values())
-    call_command("seed_catalog", extended=True, no_images=True, stdout=StringIO())
+    with monkeypatch.context() as target:
+        target.setitem(connection.settings_dict, "NAME", "test_premshop_ui_review")
+        call_command("seed_catalog", extended=True, no_images=True, stdout=StringIO())
     assert list(Product.objects.order_by("pk").values()) == before
 
 
@@ -132,6 +135,21 @@ def test_partial_product_save_refreshes_searchable_fields(catalog):
     product.save(update_fields=["category"])
     product.refresh_from_db()
     assert "گیفت کارت" in product.search_text
+
+
+def test_partial_product_save_indexes_only_persisted_sources(catalog):
+    product = catalog.get(slug="perplexity-pro")
+    product.name = "Unsaved name"
+    product.short_description = "Unsaved description"
+    product.category = Category.objects.get(slug="gift")
+    product.aliases = "نام فارسی جدید"
+    product.save(update_fields=["aliases"])
+    product.refresh_from_db()
+    assert "unsaved" not in product.search_text
+    assert "گیفت کارت" not in product.search_text
+    assert "perplexity pro" in product.search_text
+    assert "هوش مصنوعی" in product.search_text
+    assert "نام فارسی جدید" in product.search_text
 
 
 @pytest.mark.parametrize("aliases", ["", " \n ", "perplexity", "!،؟. ۱۲۳ 123 ـَ"])

@@ -637,9 +637,17 @@ class Product(ChecksNameTheirField, models.Model):
             "category_id",
             "search_text",
         }:
-            category_name = Category.objects.values_list("name", flat=True).get(pk=self.category_id)
+            source = self
+            if fields is not None:
+                source = Product.objects.get(pk=self.pk)
+                for field in ("name", "short_description", "aliases", "category_id"):
+                    if field in fields or (field == "category_id" and "category" in fields):
+                        setattr(source, field, getattr(self, field))
+            category_name = Category.objects.values_list("name", flat=True).get(
+                pk=source.category_id
+            )
             self.search_text = normalize_for_search(
-                f"{self.name} {self.short_description} {self.aliases} {category_name}"
+                f"{source.name} {source.short_description} {source.aliases} {category_name}"
             )
             if fields is not None:
                 kwargs["update_fields"] = {*fields, "search_text"}
