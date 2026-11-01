@@ -320,7 +320,17 @@ class Category(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slug_for_save(self.name)
-        super().save(*args, **kwargs)
+        fields = kwargs.get("update_fields")
+        renamed = (
+            self.pk is not None
+            and (fields is None or "name" in fields)
+            and not Category.objects.filter(pk=self.pk, name=self.name).exists()
+        )
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if renamed:
+                for product in self.products.all():
+                    product.save(update_fields=["search_text"])
 
     def clean(self) -> None:
         check_slug_is_latin(self)
@@ -618,9 +628,21 @@ class Product(ChecksNameTheirField, models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slug_for_save(self.name)
-        self.search_text = normalize_for_search(
-            f"{self.name} {self.short_description} {self.aliases}"
-        )
+        fields = kwargs.get("update_fields")
+        if fields is None or set(fields) & {
+            "name",
+            "short_description",
+            "aliases",
+            "category",
+            "category_id",
+            "search_text",
+        }:
+            category_name = Category.objects.values_list("name", flat=True).get(pk=self.category_id)
+            self.search_text = normalize_for_search(
+                f"{self.name} {self.short_description} {self.aliases} {category_name}"
+            )
+            if fields is not None:
+                kwargs["update_fields"] = {*fields, "search_text"}
         super().save(*args, **kwargs)
 
     def get_absolute_url(self) -> str:
@@ -690,6 +712,8 @@ class Product(ChecksNameTheirField, models.Model):
             problems["delivery_type"] = gettext("نوع تحویل انتخاب نشده است.")
         if not self.short_description.strip():
             problems["short_description"] = gettext("جمع‌بندی یک‌خطی خالی است.")
+        if not re.search("[اآأإءؤئبپتثجچحخدذرزژسشصضطظعغفقکكگلمنوهیيىةۀ]", self.aliases):
+            problems["aliases"] = gettext("حداقل یک نام فارسی برای جستجو بنویسید.")
         if not self.usage_notes.strip():
             problems["usage_notes"] = gettext(
                 "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."

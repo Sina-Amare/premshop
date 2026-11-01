@@ -150,7 +150,7 @@ PRODUCTS: list[dict[str, Any]] = [
         name="JetBrains All Products",
         slug="jetbrains-all",
         max_quantity=3,
-        aliases="جت برینز، جتبرینز، intellij، pycharm، webstorm، jetbrains، پای چارم",
+        aliases="جت برینز، جتبرینز، intellij، pycharm، webstorm، jetbrains، پای چارم، اینتلیج",
         category="dev",
         delivery=T.CODE_LICENSE,
         warranty=W.FULL_PERIOD,
@@ -294,22 +294,28 @@ EXTENDED_MARKS = {
     ),
 }
 EXTENDED_PRODUCTS = []
-for index, (name, slug, category, colour) in enumerate(
+for index, (name, slug, category, colour, aliases) in enumerate(
     [
-        ("Perplexity Pro", "perplexity-pro", "ai", "#20808d"),
-        ("Poe", "poe", "ai", "#5d5cde"),
-        ("Runway", "runway", "ai", "#343434"),
-        ("Cursor Pro", "cursor-pro", "dev", "#343434"),
-        ("GitHub Pro", "github-pro", "dev", "#24292f"),
-        ("Replit Core", "replit-core", "dev", "#f26207"),
-        ("Docker Pro", "docker-pro", "dev", "#2496ed"),
-        ("Apple Music", "apple-music", "media", "#fa243c"),
-        ("Disney+", "disney-plus", "media", "#113ccf"),
-        ("Crunchyroll", "crunchyroll", "media", "#f47521"),
-        ("Steam Gift Card", "steam-gift-card", "gift", "#175788"),
-        ("PlayStation Gift Card", "playstation-gift-card", "gift", "#0070cc"),
-        ("Xbox Gift Card", "xbox-gift-card", "gift", "#107c10"),
-        ("Amazon Gift Card", "amazon-gift-card", "gift", "#ff9900"),
+        ("Perplexity Pro", "perplexity-pro", "ai", "#20808d", "پرپلکسیتی، پرپلکسیتی پرو"),
+        ("Poe", "poe", "ai", "#5d5cde", "چت‌بات پئو"),
+        ("Runway", "runway", "ai", "#343434", "رانوی"),
+        ("Cursor Pro", "cursor-pro", "dev", "#343434", "کرسر، کرسر پرو، برنامه‌نویسی"),
+        ("GitHub Pro", "github-pro", "dev", "#24292f", "گیت هاب پرو، گیتهاب پرو، برنامه‌نویسی"),
+        ("Replit Core", "replit-core", "dev", "#f26207", "رپلیت، رپلیت کور، برنامه‌نویسی"),
+        ("Docker Pro", "docker-pro", "dev", "#2496ed", "داکر، داکر پرو، برنامه‌نویسی"),
+        ("Apple Music", "apple-music", "media", "#fa243c", "اپل موزیک، موسیقی"),
+        ("Disney+", "disney-plus", "media", "#113ccf", "دیزنی پلاس، فیلم"),
+        ("Crunchyroll", "crunchyroll", "media", "#f47521", "کرانچی رول، کرانچیرول، انیمه، فیلم"),
+        ("Steam Gift Card", "steam-gift-card", "gift", "#175788", "استیم، کارت هدیه استیم"),
+        (
+            "PlayStation Gift Card",
+            "playstation-gift-card",
+            "gift",
+            "#0070cc",
+            "پلی استیشن، پلی‌استیشن",
+        ),
+        ("Xbox Gift Card", "xbox-gift-card", "gift", "#107c10", "ایکس باکس، ایکس‌باکس"),
+        ("Amazon Gift Card", "amazon-gift-card", "gift", "#ff9900", "آمازون، کارت هدیه آمازون"),
     ]
 ):
     base = 350000 + index * 75000
@@ -319,6 +325,7 @@ for index, (name, slug, category, colour) in enumerate(
             name=name,
             slug=slug,
             category=category,
+            aliases=aliases,
             brand_colour=colour,
             delivery=T.GIFT_CARD if gift else T.READY_ACCOUNT,
             warranty=W.NONE,

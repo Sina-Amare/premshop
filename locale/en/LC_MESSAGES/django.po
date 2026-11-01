@@ -642,6 +642,9 @@ msgstr "Product description"
 msgid "شرایط و بررسی اطلاعات"
 msgstr "Terms and information review"
 
+msgid "حداقل یک نام فارسی برای جستجو بنویسید."
+msgstr "Enter at least one Persian search name."
+
 msgid "نام‌های جستجو"
 msgstr "Search names"
 
