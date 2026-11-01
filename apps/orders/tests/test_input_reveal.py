@@ -201,6 +201,8 @@ def test_csrf_and_expired_session_return_to_masked_order(input_order, operator, 
     from django.test import Client
 
     client = Client(enforce_csrf_checks=True)
+    operator.set_password("test-only-password-24")
+    operator.save(update_fields=["password"])
     client.force_login(operator)
     url = reveal_url(input_order)
     detail = reverse("admin:orders_order_change", args=[input_order.pk])
@@ -212,9 +214,18 @@ def test_csrf_and_expired_session_return_to_masked_order(input_order, operator, 
     )
     response = client.post(url, {"csrfmiddlewaretoken": token})
     assert response.status_code == 302 and reverse("admin:login") in response.url
-    assert client.get(response.url).status_code == 200
-    client.force_login(operator)
-    response = client.get(url, follow=True)
+    login_url = response.url
+    assert client.get(login_url).status_code == 200
+    response = client.post(
+        login_url,
+        {
+            "username": operator.email,
+            "password": "test-only-password-24",
+            "csrfmiddlewaretoken": client.cookies[settings.CSRF_COOKIE_NAME].value,
+        },
+    )
+    assert response.status_code == 302 and response.url == url
+    response = client.get(response.url, follow=True)
     assert response.status_code == 200
     assert response.redirect_chain == [(detail, 302)]
     assert VALUE not in response.content.decode()
@@ -471,6 +482,7 @@ def test_input_reveal_and_read_only_history_in_browser(
     url = reveal_url(input_order)
     try:
         page.goto(live_server.url + detail)
+        assert page.url.endswith(detail)
         expect(page.locator("#input-access-history")).to_contain_text(
             "هنوز اطلاعاتی نمایش داده نشده."
         )
@@ -519,6 +531,7 @@ def test_input_reveal_and_read_only_history_in_browser(
         item.save(update_fields=["customer_input"])
         page.locator("[data-customer-input-reveal]").click()
         expect(page.locator("body")).to_contain_text("اطلاعاتی برای نمایش وجود ندارد.")
+        assert page.url.endswith(url)
         page.screenshot(path=str(tmp_path / f"blank-{width}-{javascript}.png"), full_page=True)
         page.get_by_role("link", name="بازگشت به سفارش", exact=True).click()
         settings.FIELD_ENCRYPTION_KEY = original_key
@@ -527,6 +540,7 @@ def test_input_reveal_and_read_only_history_in_browser(
         settings.FIELD_ENCRYPTION_KEY = ""
         page.locator("[data-customer-input-reveal]").click()
         expect(page.get_by_role("heading", name="مشکلی در سرور پیش آمد")).to_be_visible()
+        assert page.url.endswith(url)
         assert long_value not in page.content()
         page.screenshot(path=str(tmp_path / f"error-{width}-{javascript}.png"), full_page=True)
         assert models.CredentialAccessLog.objects.count() == 1
