@@ -720,7 +720,9 @@ class Product(ChecksNameTheirField, models.Model):
             problems["delivery_type"] = gettext("نوع تحویل انتخاب نشده است.")
         if not self.short_description.strip():
             problems["short_description"] = gettext("جمع‌بندی یک‌خطی خالی است.")
-        if not re.search("[اآأإءؤئبپتثجچحخدذرزژسشصضطظعغفقکكگلمنوهیيىةۀ]", self.aliases):
+        if not re.search(
+            "[اءؤئبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", normalize_for_search(self.aliases)
+        ):
             problems["aliases"] = gettext("حداقل یک نام فارسی برای جستجو بنویسید.")
         if not self.usage_notes.strip():
             problems["usage_notes"] = gettext(
