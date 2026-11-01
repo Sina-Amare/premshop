@@ -57,7 +57,7 @@ class OrderItemInline(TabularInline):
             return "—"
         return format_html(
             '<button type="submit" formmethod="post" formaction="{}" '
-            'class="button" data-customer-input-reveal>{}</button>',
+            'class="order-input-action" data-customer-input-reveal>{}</button>',
             reverse("admin:orders_order_reveal_customer_input", args=[obj.order_id, obj.pk]),
             _("نمایش اطلاعات"),
         )
@@ -81,6 +81,7 @@ class OrderItemInline(TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
+    change_form_template = "admin/orders/change_form.html"
     change_list_template = "admin/orders/change_list.html"
     list_display = ("number", "customer", "amount", "item_states", "placed")
     search_fields = ("=order_number", "user__email")

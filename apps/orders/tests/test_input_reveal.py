@@ -231,7 +231,7 @@ def test_blank_input_is_neutral_and_not_logged(client, input_order, operator):
     assert not models.CredentialAccessLog.objects.exists()
 
 
-@pytest.mark.parametrize("failure", ["decrypt", "insert", "commit"])
+@pytest.mark.parametrize("failure", ["decrypt", "damaged", "insert", "commit"])
 def test_failures_reach_existing_500_without_value_or_row(
     client, input_order, operator, settings, failure, caplog
 ):
@@ -241,6 +241,13 @@ def test_failures_reach_existing_500_without_value_or_row(
     url = reveal_url(input_order)
     if failure == "decrypt":
         settings.FIELD_ENCRYPTION_KEY = ""
+        response = client.post(url)
+    elif failure == "damaged":
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE orders_orderitem SET customer_input = 'broken' WHERE order_id = %s",
+                [input_order.pk],
+            )
         response = client.post(url)
     else:
         target = (
@@ -273,6 +280,29 @@ def test_reveal_has_privacy_headers_and_is_not_gzipped(client, input_order, oper
 def test_log_accepts_only_valid_ip_addresses(input_order, operator, ip, expected):
     reveal(input_order, operator, ip=ip)
     assert models.CredentialAccessLog.objects.get().ip == expected
+
+
+def test_reveal_does_not_trust_forwarded_ip_without_proxy_configuration(
+    client, input_order, operator, settings
+):
+    settings.TRUST_PROXY_HEADERS = False
+    client.force_login(operator)
+    client.post(
+        reveal_url(input_order),
+        REMOTE_ADDR="203.0.113.7",
+        HTTP_X_FORWARDED_FOR="198.51.100.9",
+    )
+    assert models.CredentialAccessLog.objects.get().ip == "203.0.113.7"
+
+
+def test_access_row_protects_its_item_and_staff_user(input_order, operator):
+    from django.db.models.deletion import ProtectedError
+
+    reveal(input_order, operator)
+    with pytest.raises(ProtectedError):
+        operator.delete()
+    with pytest.raises(ProtectedError):
+        input_order.items.only("pk").get().delete()
 
 
 def test_log_retention_only_deletes_old_access_rows(input_order, operator):
@@ -434,6 +464,7 @@ def test_input_reveal_and_read_only_history_in_browser(
         assert long_value not in page.content()
         page.screenshot(path=str(tmp_path / f"masked-{width}-{javascript}.png"), full_page=True)
         button = page.locator("[data-customer-input-reveal]")
+        assert button.bounding_box()["height"] >= 44
         button.focus()
         with page.expect_response(lambda response: response.request.method == "POST") as sent:
             button.press("Enter")
@@ -443,6 +474,10 @@ def test_input_reveal_and_read_only_history_in_browser(
         expect(page.locator("[data-revealed-input]")).to_have_text(long_value)
         assert page.url.endswith(url)
         expect(page.locator("#input-reveal-title")).to_contain_text("اطلاعات مشتری")
+        assert (
+            page.get_by_role("link", name="بازگشت به سفارش", exact=True).bounding_box()["height"]
+            >= 44
+        )
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"revealed-{width}-{javascript}.png"), full_page=True)
