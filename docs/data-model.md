@@ -4,7 +4,7 @@
 > **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
 > **Built cart/orders — 2026-10-29:** cart 0003 stores untimed selections without holds. Order creation claims available finite stock, applies locked discounts and records fixed deadlines. Activation consent is no longer collected; historical evidence is retained. Whole unpaid cancellation/expiry restores actual claims and retains redemption history. Checkout's cart consumption and the customer pages followed in S4b.
 > **Built content — 2026-10-29:** `cms.Page` holds five legal drafts with protected staff previews and separate publishing authority (ADR-0030). Content approval and operational readiness still gate public release.
-> **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), `DeliveryField` and `CredentialAccessLog` (S7). The full earlier draft of all of it is `git show 027c5d1:docs/data-model.md`.
+> **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), `notifications` (S6), and `DeliveryField` (S7). `CredentialAccessLog` arrives at S6b's customer-input reveal prerequisite; its implementation is specified below. The full earlier draft is `git show 027c5d1:docs/data-model.md`.
 > **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
 
 > **Firmness (owner calibration, 2026-09-01).** This is a contract that hardens incrementally: each model becomes *settled* at the gate of the step that builds it (accounts → S2, catalog incl. the Plan promo fields → S3, orders → S4a, the cart tables in their own `cart` app (`cart/0001`) + DiscountCode/DiscountRedemption + Order's discount columns → S4b, the payment tables + SiteSetting's two payment clocks → S5, notifications → S6, cms → S11). Until then its rows are the best current draft — buildable-from, but revisable at a step gate through a conversation, never silently. Settled from day one regardless of step: status lives on OrderItem with the 7-status list; snapshots at order time; field-level encryption of `DeliveryField.value` and `customer_input` (ADR-0007); REFUNDED gated on an executed Refund row (ADR-0003 + state machine A12 — not ADR-0007, which is encryption and retention); toman storage; append-only `OrderItemEvent`. If building a step shows a drafted table is wrong, the move is stop-and-discuss, not work-around.
@@ -122,7 +122,7 @@ erDiagram
     }
 ```
 
-**Not drawn (beyond S4b):** `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, `CredentialAccessLog`, `Page`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
+**Not drawn:** built `Page` and `CredentialAccessLog`, plus planned `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
 
 ---
 
@@ -307,7 +307,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 
 **OrderItemEvent** (append-only, D9) — `order_item` FK CASCADE · `from_status` varchar(24) null (null = creation) · `to_status` varchar(24) · `actor` varchar(12) choices `operator`·`customer`·`system` · `note` text blank · `created_at` TS. Written **inside** every transition transaction; the occurrence it records seeds Notification.dedupe_key (D17/D18). No update/delete paths in code.
 
-**CredentialAccessLog** (S7, D9) — intent: every reveal of a delivered credential, by the customer, the operator or a magic link, writes one row (ADR-0007); a magic-link reveal has no signed-in user and is attributed to the redeemed token (ADR-0008). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, CredentialAccessLog). It is re-specified when S7 is planned.
+**CredentialAccessLog — 2026-11-01, S6b prerequisite.** One row per nonblank staff reveal of `customer_input`: `order_item` and `user` foreign keys both PROTECT, nullable `ip`, indexed `created_at` and the primary key. The user is authenticated and required. No value, ciphertext, request body, `target` or `via` is stored. All existing rows mean a panel reveal of customer input; later reveal types add attribution columns with defaults that preserve that meaning. A durable service transaction commits before returning the value; read-only order history joins only the user, never decrypting the item's input. A daily task deletes rows older than 365 days (ADR-0007). Customer, delivered-credential and magic-link reveals remain later work in this same table; magic-link attribution is governed by ADR-0008.
 
 ### `payments`
 
@@ -382,7 +382,7 @@ Transition legality (the matrix itself) is service-enforced with `select_for_upd
 | OrderItem.order; OrderItemEvent.order_item; ProductSpec / Plan / ProductSection / ProductQuestion .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
 | DiscountCode.products (M2M) | — | plain join table; unlinking a product narrows the scope of a live code and touches no order, because scope is read at checkout and the outcome is frozen in `discount_amount` |
 
-The foreign keys of the tables beyond S4b (`Payment`, `Refund`, `DeliveryField`, `CredentialAccessLog`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; the rule they follow is the one above, that anything in the money or audit chain is PROTECT.
+`CredentialAccessLog.order_item` and `.user` use PROTECT, including unpaid orders. The foreign keys of later tables (`Payment`, `Refund`, `DeliveryField`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; anything in the money or audit chain is PROTECT.
 
 ---
 

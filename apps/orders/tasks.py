@@ -1,10 +1,20 @@
+from datetime import timedelta
+
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task
 
-from apps.orders.models import Order, OrderItem, UnpaidExpirySweep
+from apps.orders.models import CredentialAccessLog, Order, OrderItem, UnpaidExpirySweep
 from apps.orders.services import expire_unpaid_orders
+
+
+@db_periodic_task(crontab(hour="3", minute="20"))
+def clean_credential_access_logs() -> int:
+    deleted, _ = CredentialAccessLog.objects.filter(
+        created_at__lt=timezone.now() - timedelta(days=365)
+    ).delete()
+    return deleted
 
 
 @db_periodic_task(crontab(minute="*"))
