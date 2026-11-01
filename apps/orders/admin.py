@@ -113,12 +113,11 @@ class OrderAdmin(ModelAdmin):
         ] + super().get_urls()
 
     def reveal_input_view(self, request: HttpRequest, order_id: int, item_id: int) -> HttpResponse:
-        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        # Refused before any lookup, so an unpermitted account cannot tell which orders exist.
         inline = OrderItemInline(Order, self.admin_site)
-        if not (
-            self.has_view_permission(request, order) and inline.has_view_permission(request, order)
-        ):
+        if not (self.has_view_permission(request) and inline.has_view_permission(request)):
             raise PermissionDenied
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
         item = get_object_or_404(
             OrderItem.objects.defer("customer_input"), pk=item_id, order_id=order_id
         )

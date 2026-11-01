@@ -130,8 +130,30 @@ def test_one_models_permission_is_insufficient(client, input_order, permission):
     response = client.post(reveal_url(input_order))
     assert response.status_code == 403
     assert VALUE not in response.content.decode()
+    assert client.get(reveal_url(input_order)).status_code == 403
     with pytest.raises(PermissionDenied):
         reveal(input_order, staff)
+    assert not models.CredentialAccessLog.objects.exists()
+
+
+def test_unpermitted_staff_cannot_tell_which_orders_exist(client, input_order):
+    client.force_login(User.objects.create_user("reader@example.test", is_staff=True))
+    missing = reverse("admin:orders_order_reveal_customer_input", args=[input_order.pk + 1000, 1])
+    assert client.post(missing).status_code == 403
+    assert client.post(reveal_url(input_order)).status_code == 403
+
+
+def test_a_non_staff_account_holding_the_permissions_cannot_reveal(client, input_order):
+    holder = User.objects.create_user("holder@example.test")
+    holder.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="orders", codename__in=["view_order", "view_orderitem"]
+        )
+    )
+    client.force_login(holder)
+    assert client.post(reveal_url(input_order)).status_code == 302
+    with pytest.raises(PermissionDenied):
+        reveal(input_order, holder)
     assert not models.CredentialAccessLog.objects.exists()
 
 
