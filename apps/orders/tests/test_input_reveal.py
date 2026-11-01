@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Plan
+from apps.core.formatting import to_persian_digits
 from apps.orders import models, services
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -369,6 +370,18 @@ def test_access_history_contains_only_this_orders_rows(client, input_order, oper
     ]
 
 
+def test_access_history_shows_distinct_local_times_on_the_same_day(client, input_order, operator):
+    import time_machine
+
+    with time_machine.travel("2026-11-01 09:01:00+00:00", tick=False):
+        reveal(input_order, operator)
+    with time_machine.travel("2026-11-01 10:12:00+00:00", tick=False):
+        reveal(input_order, operator)
+    client.force_login(operator)
+    body = client.get(reverse("admin:orders_order_change", args=[input_order.pk])).content.decode()
+    assert "۱۲:۳۱" in body and "۱۳:۴۲" in body
+
+
 def test_reveal_failure_is_reported_without_decrypted_material(
     client, input_order, operator, settings
 ):
@@ -484,6 +497,10 @@ def test_input_reveal_and_read_only_history_in_browser(
         page.get_by_role("link", name="بازگشت به سفارش", exact=True).click()
         expect(page.locator("#input-access-history")).to_contain_text(operator.email)
         history = page.locator("#input-access-history")
+        revealed_at = models.CredentialAccessLog.objects.get().created_at
+        expect(history.locator("time")).to_contain_text(
+            to_persian_digits(timezone.localtime(revealed_at).strftime("%H:%M"))
+        )
         assert history.locator("li").count() == 1
         assert not history.locator("input, button, textarea, select").count()
         assert long_value not in page.content()
