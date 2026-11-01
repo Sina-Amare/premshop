@@ -71,6 +71,7 @@ def product() -> Product:
         category=category,
         name="Claude Pro",
         slug="claude-pro",
+        aliases="کلاود",
         delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
         status=Product.Status.DRAFT,
     )
@@ -268,6 +269,10 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     page.select_option("select[name=category]", str(category.pk))
     page.select_option("select[name=delivery_type]", Product.DeliveryType.ON_CUSTOMER_ACCOUNT)
     page.fill("input[name=short_description]", "موسیقی بدون آگهی، روی اکانت خودتان.")
+    page.locator("details").filter(has=page.locator("textarea[name=aliases]")).locator(
+        "summary"
+    ).click()
+    page.fill("textarea[name=aliases]", "اسپاتیفای، موسیقی")
     page.fill("textarea[name=usage_notes]", "پشتیبانی‌نشده")
     page.fill(
         "textarea[name=sources]",

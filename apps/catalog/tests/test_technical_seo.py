@@ -27,6 +27,7 @@ def product():
         name="Claude Pro",
         slug="claude-pro",
         short_description="اشتراک Claude Pro روی اکانت خودتان.",
+        aliases="کلاود",
         delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
         usage_notes="موضوعیت ندارد",
         status=Product.Status.UNAVAILABLE,

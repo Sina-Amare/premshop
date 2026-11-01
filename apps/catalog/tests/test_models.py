@@ -218,7 +218,7 @@ def test_draft_product_hidden(product):
 
 
 def test_search_text_is_maintained_on_save(product):
-    assert product.search_text == "claude pro اشتراک کلاود پرو"
+    assert product.search_text == "claude pro اشتراک کلاود پرو هوش مصنوعی"
     product.name = "Claude Max"
     product.save()
     assert product.search_text.startswith("claude max")
@@ -465,6 +465,7 @@ def test_the_fuzzy_threshold_separates_real_spellings_from_noise(chatgpt):
 def ready(product):
     """A draft with every fact publishing asks for, and nothing left to decide."""
     product.status = Product.Status.DRAFT
+    product.aliases = "کلاود"
     product.usage_notes = "- روی ایمیل خودتان فعال می‌شود."
     product.save()
     plan(product)
