@@ -1,5 +1,18 @@
-{% load i18n %}
+{% load i18n fa %}
 <section class="order-history" aria-labelledby="order-history-title">
   <header><h2 id="order-history-title">{% translate "سابقه‌ی سفارش" %}</h2></header>
   {{ order_timeline }}
+</section>
+<section class="order-history" id="input-access-history" aria-labelledby="input-access-title">
+  <header><h2 id="input-access-title">{% translate "سابقه‌ی نمایش اطلاعات مشتری" %}</h2></header>
+  <ol class="order-timeline">
+    {% for row in input_access_log %}
+      <li>
+        <div class="order-timeline__head"><strong>{% translate "آیتم" %} {{ row.order_item_id|fa_digits }}</strong><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|jalali }} · {{ row.created_at|date:"H:i"|fa_digits }}</time></div>
+        <p class="order-timeline__meta"><bdi dir="ltr">{{ row.user.email }}</bdi></p>
+      </li>
+    {% empty %}
+      <li>{% translate "هنوز اطلاعاتی نمایش داده نشده." %}</li>
+    {% endfor %}
+  </ol>
 </section>

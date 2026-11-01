@@ -1244,3 +1244,24 @@ msgstr "This product page is not shown"
 
 msgid "پیش‌نویس روی سایت دیده نمی‌شه. ناموجود، اگه آماده‌ی انتشار باشه، صفحه داره ولی فروخته نمی‌شه."
 msgstr "Drafts are hidden. Unavailable products have a public page only when ready to publish, and cannot be bought."
+
+msgid "آیتم"
+msgstr "Item"
+
+msgid "اطلاعات مشتری"
+msgstr "Customer input"
+
+msgid "اطلاعاتی برای نمایش وجود ندارد."
+msgstr "There is no input to show."
+
+msgid "بازگشت به سفارش"
+msgstr "Back to order"
+
+msgid "سابقه‌ی نمایش اطلاعات مشتری"
+msgstr "Customer input access history"
+
+msgid "نمایش اطلاعات"
+msgstr "Reveal input"
+
+msgid "هنوز اطلاعاتی نمایش داده نشده."
+msgstr "No input has been revealed yet."

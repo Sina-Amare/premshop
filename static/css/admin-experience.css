@@ -54,7 +54,9 @@ html body:has(#login-form) input{background:var(--panel-surface)}
 .brand-preview__canvas{background:white;border:1px solid #dfe3e9;border-radius:8px;overflow:hidden;color:#20252e}
 .brand-preview [data-brand-error]{font-size:12px;color:var(--panel-danger);margin-top:8px}
 .snapshot-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-block:16px 24px;padding:16px;background:var(--panel-soft);border:1px solid var(--panel-line);border-radius:8px;font-size:13px}
-.snapshot-toolbar button,.snapshot-panel button{min-height:40px;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);cursor:pointer}
+.snapshot-toolbar button,.snapshot-panel button,.order-input-action{min-height:40px;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);cursor:pointer}
+.order-input-action{display:inline-flex;align-items:center;min-height:44px}
+.order-history>.order-input-action{margin-block:16px}
 .snapshot-toolbar button:hover,.snapshot-panel button:hover{border-color:var(--panel-accent)}
 .field-placement{font-size:12px;line-height:1.9;color:var(--panel-text);margin-top:7px;max-width:600px}
 .field-placement button{display:inline-block;min-height:32px;cursor:pointer;color:var(--panel-accent);font-size:12px}

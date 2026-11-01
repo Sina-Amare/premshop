@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from ipaddress import ip_address
 from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -25,10 +26,39 @@ from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product
 from apps.catalog.pricing import effective_price
-from apps.orders.models import DiscountCode, DiscountRedemption, Order, OrderItem, OrderItemEvent
+from apps.orders.models import (
+    CredentialAccessLog,
+    DiscountCode,
+    DiscountRedemption,
+    Order,
+    OrderItem,
+    OrderItemEvent,
+)
 
 MAX_AMOUNT = Decimal("999999999999")
 logger = logging.getLogger(__name__)
+
+
+def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
+    with transaction.atomic(durable=True):
+        if not (
+            actor.is_active
+            and actor.is_staff
+            and (actor.has_perm("orders.view_order") or actor.has_perm("orders.change_order"))
+            and (
+                actor.has_perm("orders.view_orderitem") or actor.has_perm("orders.change_orderitem")
+            )
+        ):
+            raise PermissionDenied
+        item = OrderItem.objects.only("customer_input").get(pk=item_id, order_id=order_id)
+        value = item.customer_input
+        if value:
+            try:
+                address = str(ip_address(ip)) if ip else None
+            except ValueError:
+                address = None
+            CredentialAccessLog.objects.create(order_item_id=item_id, user=actor, ip=address)
+    return value
 
 
 @dataclass(frozen=True)

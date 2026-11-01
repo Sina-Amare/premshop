@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Exists, OuterRef, Prefetch, QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin, TabularInline
 
+from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.core.ratelimit import client_ip
 from apps.orders.models import (
+    CredentialAccessLog,
     DiscountCode,
     DiscountRedemption,
     Order,
@@ -24,11 +30,12 @@ from apps.orders.models import (
     OrderItemEvent,
     UnpaidExpirySweep,
 )
+from apps.orders.services import reveal_customer_input
 
 
 class OrderItemInline(TabularInline):
     model = OrderItem
-    fields = ("purchase", "status", "sale_amount", "cost_amount", "cancel_reason")
+    fields = ("purchase", "status", "sale_amount", "cost_amount", "cancel_reason", "input_reveal")
     readonly_fields = fields
     extra = 0
     can_delete = False
@@ -43,6 +50,17 @@ class OrderItemInline(TabularInline):
 
     def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
+
+    @admin.display(description=_("اطلاعات مشتری"))
+    def input_reveal(self, obj: OrderItem) -> str:
+        if not obj.product_snapshot.get("requires_customer_input"):
+            return "—"
+        return format_html(
+            '<button type="submit" formmethod="post" formaction="{}" '
+            'class="order-input-action" data-customer-input-reveal>{}</button>',
+            reverse("admin:orders_order_reveal_customer_input", args=[obj.order_id, obj.pk]),
+            _("نمایش اطلاعات"),
+        )
 
     @admin.display(description=_("محصول و پلن زمان خرید"))
     def purchase(self, obj: OrderItem) -> str:
@@ -63,6 +81,7 @@ class OrderItemInline(TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
+    change_form_template = "admin/orders/change_form.html"
     change_list_template = "admin/orders/change_list.html"
     list_display = ("number", "customer", "amount", "item_states", "placed")
     search_fields = ("=order_number", "user__email")
@@ -83,6 +102,52 @@ class OrderAdmin(ModelAdmin):
         (_("مبلغ‌های سفارش"), {"fields": (("subtotal_amount", "discount", "amount"),)}),
     )
     change_form_after_template = "admin/orders/history.html"
+
+    def get_urls(self) -> Any:
+        return [
+            path(
+                "<int:order_id>/items/<int:item_id>/customer-input/reveal/",
+                self.admin_site.admin_view(self.reveal_input_view),
+                name="orders_order_reveal_customer_input",
+            )
+        ] + super().get_urls()
+
+    def reveal_input_view(self, request: HttpRequest, order_id: int, item_id: int) -> HttpResponse:
+        # Refused before any lookup, so an unpermitted account cannot tell which orders exist.
+        inline = OrderItemInline(Order, self.admin_site)
+        if not (self.has_view_permission(request) and inline.has_view_permission(request)):
+            raise PermissionDenied
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        item = get_object_or_404(
+            OrderItem.objects.defer("customer_input"), pk=item_id, order_id=order_id
+        )
+        if request.method == "GET":
+            return redirect("admin:orders_order_change", order_id)
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["GET", "POST"])
+        value = reveal_customer_input(
+            order_id=order_id,
+            item_id=item_id,
+            actor=cast(User, request.user),
+            ip=client_ip(request),
+        )
+        response = render(
+            request,
+            "admin/orders/input_reveal.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": _("اطلاعات مشتری"),
+                "order": order,
+                "item": item,
+                "input_value": value,
+                "opts": self.opts,
+            },
+        )
+        # Deliberately send identity to bypass Django gzip despite RFC 9110's SHOULD NOT.
+        response["Content-Encoding"] = "identity"
+        response["X-Robots-Tag"] = "noindex, nofollow"
+        response["Referrer-Policy"] = "no-referrer"
+        return response
 
     def changelist_view(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None
@@ -116,6 +181,9 @@ class OrderAdmin(ModelAdmin):
     ) -> Any:
         if obj:
             context["order_timeline"] = self.history(obj)
+            context["input_access_log"] = CredentialAccessLog.objects.filter(
+                order_item__order_id=obj.pk
+            ).select_related("user")
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:

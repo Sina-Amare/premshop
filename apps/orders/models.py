@@ -246,6 +246,19 @@ class OrderItem(models.Model):
         return f"{self.order} · {self.product_snapshot.get('name', '')}"
 
 
+class CredentialAccessLog(models.Model):
+    order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    ip = models.GenericIPAddressField(null=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+    def __str__(self) -> str:
+        return f"{self.order_item_id} / {self.user_id} / {self.created_at.isoformat()}"
+
+
 class OrderItemEvent(models.Model):
     class Actor(models.TextChoices):
         OPERATOR = "operator", _("پشتیبانی")

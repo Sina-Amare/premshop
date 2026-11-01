@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% load i18n fa %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<section class="order-history" aria-labelledby="input-reveal-title">
+  <header><h2 id="input-reveal-title">{% translate "اطلاعات مشتری" %} · {% translate "سفارش" %} {{ order.order_number|fa_digits }} · {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
+  <div class="order-purchase"><bdi>{{ item.product_snapshot.name }}</bdi><bdi>{{ item.product_snapshot.plan_title }}</bdi></div>
+  {% if input_value %}
+    <p>{{ item.product_snapshot.customer_input_label }}</p>
+    <p class="order-customer" data-revealed-input><bdi dir="ltr">{{ input_value }}</bdi></p>
+  {% else %}
+    <p>{% translate "اطلاعاتی برای نمایش وجود ندارد." %}</p>
+  {% endif %}
+  <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
+</section>
+{% endblock %}

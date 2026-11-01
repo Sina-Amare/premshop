@@ -8,6 +8,37 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def test_access_log_reverses_and_reapplies_without_changing_encrypted_input(buyer, plan):
+    from apps.accounts.models import User
+    from apps.catalog.models import Plan
+    from apps.orders.models import CredentialAccessLog, OrderItem
+    from apps.orders.services import OrderLine, place_order, reveal_customer_input
+
+    plan.input_type = Plan.InputType.EMAIL
+    plan.max_quantity = 1
+    plan.save()
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "stored@example.test")])
+    item_id = order.items.only("pk").get().pk
+    operator = User.objects.create_superuser("operator@example.test")
+    reveal_customer_input(order_id=order.pk, item_id=item_id, actor=operator, ip=None)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT customer_input FROM orders_orderitem WHERE id = %s", [item_id])
+        ciphertext = cursor.fetchone()[0]
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([("orders", "0009_natural_panel_wording")])
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT to_regclass('orders_credentialaccesslog')")
+            assert cursor.fetchone() == (None,)
+            cursor.execute("SELECT customer_input FROM orders_orderitem WHERE id = %s", [item_id])
+            assert cursor.fetchone() == (ciphertext,)
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+    assert not CredentialAccessLog.objects.exists()
+    assert OrderItem.objects.get(pk=item_id).customer_input == "stored@example.test"
+
+
 def test_checkout_metadata_backfills_each_legacy_order_without_inventing_consent(buyer):
     previous = ("orders", "0004_align_persian_order_labels")
     ids = []
