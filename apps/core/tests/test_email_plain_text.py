@@ -7,6 +7,8 @@ works once copied out of a text-only client. The HTML half keeps its escaping.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from django.core import mail
 
@@ -28,7 +30,9 @@ def test_the_text_part_prints_the_support_address_as_typed(settings, name):
     assert "o&#x27;brien&amp;co@example.com" in html
 
 
-def test_the_delivery_message_keeps_its_link_name_and_subject_intact():
+@pytest.mark.django_db(transaction=True)
+def test_the_delivery_message_keeps_its_link_name_and_subject_intact(settings):
+    settings.EMAIL_QUOTA_RESET_DATE = datetime.now(UTC).date().replace(day=1).isoformat()
     context = {
         **EMAIL_PREVIEWS["item_delivered"],
         "order_number": "PS-1&2",
