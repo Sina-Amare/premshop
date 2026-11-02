@@ -21,7 +21,9 @@
   </nav>
 
   <div class="acct__main">
-    {% for message in messages %}<div class="form-ok" role="status">{{ message }}</div>{% endfor %}
+    {% for message in messages %}
+      {% if message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
+    {% endfor %}
     <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
     {% block section %}{% endblock %}
   </div>
