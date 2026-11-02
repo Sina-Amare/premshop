@@ -20,6 +20,7 @@ from django.conf import settings
 from django.utils.html import escape, format_html_join
 from django.utils.safestring import SafeString, mark_safe
 from markdown_it import MarkdownIt
+from markdown_it.common.utils import normalizeReference
 from markdown_it.helpers import parseLinkDestination
 from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
@@ -51,7 +52,7 @@ _LATIN_LETTER = re.compile(f"[{_LATIN}]")
 _CROSSABLE = {"strong_open", "strong_close", "link_open", "link_close"}
 # CommonMark reads only ASCII digits as list numbers, and a Persian keyboard types "۱.".
 _PERSIAN_LIST_NUMBER = re.compile(r"^([ \t]*)([۰-۹]{1,9})(?=[.)](?:[ \t]|$))", re.MULTILINE)
-_MARKDOWN_DESTINATION = re.compile(r"\]\(\s*|^ {0,3}\[(?:\\[\s\S]|[^\]\\])+\]:\s*", re.MULTILINE)
+_MARKDOWN_DESTINATION = re.compile(r"\]\(\s*|\[(?P<reference>(?:\\[\s\S]|[^\]\\])+)\]:\s*")
 
 
 def _isolated(children: list[Token]) -> list[Token]:
@@ -209,6 +210,8 @@ def _site_path_or_none(url: str) -> str | None:
 def absolute_markdown_links(source: str) -> str:
     """Email needs absolute destinations, including Markdown-escaped site paths."""
     pieces: list[str] = []
+    env: EnvType = {}
+    _parser.parse(_PERSIAN_LIST_NUMBER.sub(lambda m: m[1] + to_latin_digits(m[2]), source), env)
     offset = 0
     for match in _MARKDOWN_DESTINATION.finditer(source):
         if match.start() < offset:
@@ -216,6 +219,11 @@ def absolute_markdown_links(source: str) -> str:
         escapes = match.start() - len(source[: match.start()].rstrip("\\"))
         if escapes % 2:
             continue
+        if label := match.group("reference"):
+            reference = env.get("references", {}).get(normalizeReference(label))
+            line = source.count("\n", 0, match.start())
+            if not reference or not reference["map"][0] <= line < reference["map"][1]:
+                continue
         destination = parseLinkDestination(source, match.end(), len(source))
         href = _parser.normalizeLink(destination.str) if destination.ok else ""
         if (

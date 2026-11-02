@@ -59,6 +59,27 @@ def test_angle_destinations_preserve_unbalanced_parentheses(settings):
 
 
 @pytest.mark.parametrize(
+    "source",
+    [
+        "[contact][x]\n\n    [x]: /contact/",
+        "\t[x]: /contact/\n\n[contact][x]",
+        "- [contact][x]\n- [x]: /contact/",
+        "1. [contact][x]\n2. [x]: /contact/",
+    ],
+)
+def test_indented_and_list_reference_definitions_are_absolute(settings, source):
+    settings.SITE_URL = "https://shop.example.test"
+    assert 'href="https://shop.example.test/contact/"' in render_markdown(
+        absolute_markdown_links(source)
+    )
+
+
+def test_a_reference_shaped_literal_is_not_rewritten():
+    source = "literal [x]: /contact/"
+    assert absolute_markdown_links(source) == source
+
+
+@pytest.mark.parametrize(
     "destination",
     [
         "//outside.test/",
