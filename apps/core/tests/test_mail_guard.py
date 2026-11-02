@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from smtplib import SMTPDataError, SMTPServerDisconnected
+from smtplib import SMTPDataError, SMTPHeloError, SMTPServerDisconnected
 
 import pytest
 from django.core import mail
@@ -69,6 +69,7 @@ def test_recovery_rollback_keeps_the_accepted_attempt():
     "error,status",
     [
         (SMTPDataError(451, b"temporary rejection"), "rejected"),
+        (SMTPHeloError(451, b"temporary greeting rejection"), "rejected"),
         (SMTPServerDisconnected("lost result"), "uncertain"),
     ],
 )
@@ -258,6 +259,8 @@ def test_another_send_can_finish_while_the_first_transport_waits(monkeypatch, se
 
 @pytest.mark.parametrize("json", [False, True])
 def test_code_request_returns_temporary_unavailability_at_a_known_limit(client, settings, json):
+    from apps.accounts.views import PENDING_EMAIL_KEY
+
     settings.EMAIL_QUOTA_STARTING_USAGE = 1000
     response = client.post(
         reverse("login-code"),
@@ -265,7 +268,7 @@ def test_code_request_returns_temporary_unavailability_at_a_known_limit(client, 
         **({"HTTP_ACCEPT": "application/json"} if json else {}),
     )
     assert response.status_code == 503
-    assert "pending_email" not in client.session
+    assert PENDING_EMAIL_KEY not in client.session
     assert not mail.outbox
 
 
@@ -317,3 +320,37 @@ def test_panel_list_does_not_expose_attempts_to_customers_or_unprivileged_staff(
     user.save(update_fields=["is_staff"])
     assert client.get(url).status_code == 403
     assert client.post(url, {"recipient": "buyer@example.test"}).status_code == 403
+
+
+def test_resend_and_recovery_report_a_known_quota_limit(client, django_user_model, settings):
+    from apps.accounts.views import PENDING_EMAIL_KEY
+
+    settings.EMAIL_QUOTA_STARTING_USAGE = 1000
+    session = client.session
+    session[PENDING_EMAIL_KEY] = "buyer@example.test"
+    session.save()
+    response = client.post(reverse("login-code-resend"), HTTP_ACCEPT="application/json")
+    assert response.status_code == 503
+    assert response.json()["ok"] is False
+    user = django_user_model.objects.create_user("recovery@example.test", "owner-password")
+    client.force_login(user)
+    response = client.post(reverse("account-password-recovery"), {"action": "request"})
+    assert response.status_code == 503
+    assert "کد جدید را به ایمیلتان فرستادیم" not in response.content.decode()
+    assert not mail.outbox
+
+
+def test_an_exhausted_security_notice_cannot_undo_code_signin(client, django_user_model, settings):
+    import re
+
+    from apps.accounts.otp import PERSIAN_TO_ASCII_DIGITS
+
+    user = django_user_model.objects.create_user("signin@example.test", "owner-password")
+    settings.EMAIL_QUOTA_STARTING_USAGE = 999
+    assert client.post(reverse("login-code"), {"email": user.email}).status_code == 302
+    code = re.search(
+        r"\b[0-9]{6}\b", mail.outbox[0].body.translate(PERSIAN_TO_ASCII_DIGITS)
+    ).group()
+    assert client.post(reverse("login-code-verify"), {"code": code}).status_code == 302
+    assert client.session["_auth_user_id"] == str(user.pk)
+    assert len(mail.outbox) == 1

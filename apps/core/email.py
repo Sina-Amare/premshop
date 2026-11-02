@@ -15,13 +15,7 @@ and none in Python:
 
 from __future__ import annotations
 
-from smtplib import (
-    SMTPAuthenticationError,
-    SMTPConnectError,
-    SMTPDataError,
-    SMTPRecipientsRefused,
-    SMTPSenderRefused,
-)
+from smtplib import SMTPNotSupportedError, SMTPRecipientsRefused, SMTPResponseException
 from typing import Any
 
 from django.conf import settings
@@ -97,13 +91,7 @@ def send_templated_email(name: str, *, to: list[str], context: dict[str, Any]) -
         message.connection = backend
         try:
             sent = message.send()
-        except (
-            SMTPAuthenticationError,
-            SMTPConnectError,
-            SMTPDataError,
-            SMTPRecipientsRefused,
-            SMTPSenderRefused,
-        ) as error:
+        except (SMTPResponseException, SMTPRecipientsRefused, SMTPNotSupportedError) as error:
             finish("rejected", error)
             raise
         except Exception as error:
