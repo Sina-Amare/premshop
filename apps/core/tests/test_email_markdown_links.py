@@ -43,6 +43,22 @@ def test_reference_destinations_use_the_same_decoding(settings, destination):
 
 
 @pytest.mark.parametrize(
+    "source", ["[contact][x]\n\n[x]:\n /contact/", "[contact][a\\]b]\n\n[a\\]b]: /contact/"]
+)
+def test_multiline_and_escaped_reference_labels_keep_absolute_destinations(settings, source):
+    settings.SITE_URL = "https://shop.example.test"
+    result = absolute_markdown_links(source)
+    assert 'href="https://shop.example.test/contact/"' in render_markdown(result)
+
+
+def test_angle_destinations_preserve_unbalanced_parentheses(settings):
+    settings.SITE_URL = "https://shop.example.test"
+    assert 'href="https://shop.example.test/contact/("' in render_markdown(
+        absolute_markdown_links("[contact](</contact/(>)")
+    )
+
+
+@pytest.mark.parametrize(
     "destination",
     [
         "//outside.test/",

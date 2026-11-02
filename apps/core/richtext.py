@@ -51,7 +51,7 @@ _LATIN_LETTER = re.compile(f"[{_LATIN}]")
 _CROSSABLE = {"strong_open", "strong_close", "link_open", "link_close"}
 # CommonMark reads only ASCII digits as list numbers, and a Persian keyboard types "۱.".
 _PERSIAN_LIST_NUMBER = re.compile(r"^([ \t]*)([۰-۹]{1,9})(?=[.)](?:[ \t]|$))", re.MULTILINE)
-_MARKDOWN_DESTINATION = re.compile(r"\]\(\s*|^ {0,3}\[[^\]\n]+\]:[ \t]*", re.MULTILINE)
+_MARKDOWN_DESTINATION = re.compile(r"\]\(\s*|^ {0,3}\[(?:\\[\s\S]|[^\]\\])+\]:\s*", re.MULTILINE)
 
 
 def _isolated(children: list[Token]) -> list[Token]:
