@@ -30,6 +30,7 @@ from apps.orders.models import (
     OrderItemEvent,
     UnpaidExpirySweep,
 )
+from apps.orders.selectors import grouped_items
 from apps.orders.services import reveal_customer_input
 
 
@@ -180,6 +181,7 @@ class OrderAdmin(ModelAdmin):
         obj: Order | None = None,
     ) -> Any:
         if obj:
+            context["purchase_groups"] = grouped_items(obj.items.all())
             context["order_timeline"] = self.history(obj)
             context["input_access_log"] = CredentialAccessLog.objects.filter(
                 order_item__order_id=obj.pk
@@ -191,7 +193,14 @@ class OrderAdmin(ModelAdmin):
             super()
             .get_queryset(request)
             .select_related("user")
-            .prefetch_related(Prefetch("items", queryset=OrderItem.objects.defer("customer_input")))
+            .prefetch_related(
+                Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.defer("customer_input").select_related(
+                        "plan__product"
+                    ),
+                )
+            )
         )
 
     def has_add_permission(self, request: HttpRequest) -> bool:

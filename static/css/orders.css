@@ -22,6 +22,12 @@
 .order-line:has(>.checkout-preview__art){display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:0 12px}
 .order-line h3,.order-line h2{margin:0;font:600 17px/1.6 var(--font-head);color:var(--v-ink)}
 .order-line__facts{min-width:0}
+.order-line>.saved-product{grid-column:1/-1;min-inline-size:0;margin-block-start:12px;font-size:14px;line-height:1.9}
+.saved-product h4{margin:16px 0 6px;font-weight:500}
+.order-policies{margin-block:20px}
+.order-policies h2{font:600 17px/1.8 var(--font-head)}
+.saved-policy{margin-block:12px;min-inline-size:0}
+.saved-policy>summary{cursor:pointer;min-block-size:44px;padding-block:10px;font-weight:500}
 .order-line__facts>p,.order-document .order-line p{margin:0;font-size:14px;line-height:1.8;color:var(--v-text)}
 .order-line__end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:end}
 .order-line__amount .price__num{font-size:18px;line-height:1.7}

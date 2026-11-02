@@ -131,6 +131,7 @@ class Order(models.Model):
     consent_version = models.CharField(max_length=20, blank=True, default="", editable=False)
     consent_accepted_at = models.DateTimeField(null=True, editable=False)
     discount_snapshot = models.JSONField(default=dict, blank=True, editable=False)
+    policy_snapshot = models.JSONField(default=dict, blank=True, editable=False)
     subtotal = MoneyField(verbose_name=_("جمع اقلام"))
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.PROTECT, null=True, blank=True)
     discount_amount = MoneyField(verbose_name=_("تخفیف"), default=0)
