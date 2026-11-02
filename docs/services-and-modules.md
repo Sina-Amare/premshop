@@ -192,7 +192,9 @@ The rest of `payments` is intent only here: the gateway (S5), with the payment t
 
 ### notifications
 
-Intent only here (S6, with Telegram in S8). It is the outbox of ADR-0010: `notify()` writes one row per occurrence, recipient and channel under a globally unique `dedupe_key` of the form `{occurrence}:{recipient}:{channel}` (recipient `op` for the operator; the canonical occurrence prefixes are state-machine §3); handlers are registered against `core.events` in `AppConfig.ready()` and run on commit; a worker sends with `select_for_update(skip_locked=True)` on a fixed backoff ladder; channels are exactly `email` and `telegram`, and operator alerts go out on both. The operator's new-order alert fires on `payment.verified`, never on order creation (ADR-0019), and no message carries a credential value or `customer_input` — a delivery notice carries the single-use link instead (ADR-0008). Email sending is already built: the notifications app will call `core.email.send_templated_email` (ADR-0023), not the draft's `send_email(to, subject, body)`. The bot is one webhook view calling services in-process (ADR-0004). Full earlier draft: `git show 027c5d1:docs/services-and-modules.md` (§2 notifications). It is re-specified when S6 is planned.
+Built C1 uses `discover_confirmations()` to find committed orders with a placement email and no confirmation row. It freezes the rendered email in a unique `Notification`, isolating each creation failure. `send_due_confirmations()` sends through `core.email.send_templated_email` with those stored parts; each send/result has its own transaction. A locked `ConfirmationSweep` singleton supplies the shared 15-minute guard cooldown; guard refusals do not spend attempts. SMTP failures, including permanent rejections and uncertain results, take the six-attempt ladder. Occasional SMTP duplicates are accepted. No callback or `core.events` is installed. Historical orders have no placement email and never qualify. The panel list is read-only. ADR-0010's 2026-11-03 amendment and state-machine §3 define the contract and key.
+
+Other customer messages, Telegram, operator alerts and callback handlers remain future work. Their proposed `notify()`/event registration is not implemented. The future operator alert fires on `payment.verified`, never as if an unpaid placement were payment (ADR-0019); no message carries credential values or `customer_input` (ADR-0008).
 
 ---
 
@@ -202,13 +204,14 @@ One Redis-backed Huey consumer runs with one worker, explicit asynchronous mode 
 
 | Task | UTC cadence | Behavior |
 |---|---|---|
+| `notifications.tasks.confirm_new_orders` | every minute | discovers eligible new purchases and sends due confirmations; shared guard cooldown and per-row result commits |
 | `orders.tasks.sweep_unpaid_orders` | every minute | releases up to 100 due unpaid orders; records successful sweep time, processed count and overdue backlog in `UnpaidExpirySweep` |
 | `cart.tasks.clean_guest_carts` | daily 03:00 | existing guest-only 30-day purge; account carts remain |
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Django's expired database-session cleanup |
 
 The order list shows live overdue backlog and warns when the last successful sweep is over three minutes old. A stopped worker delays release; checkout still locks and validates available stock and database deadlines. Restart catches up without extending deadlines or deleting orders. Run/stop instructions are in [development.md](development.md#background-worker).
 
-Gateway inquiry, outbox/heartbeat, input-timeout, renewal and credential-retention tasks remain future consumers at their owning steps. Gateway initiation/verification must coordinate with expiry under the shared lock order before enabling a payment route.
+Gateway inquiry, other outbox messages/heartbeat, input-timeout, renewal and credential-retention tasks remain future consumers at their owning steps. Gateway initiation/verification must coordinate with expiry under the shared lock order before enabling a payment route.
 
 ---
 
