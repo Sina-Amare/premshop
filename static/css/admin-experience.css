@@ -96,6 +96,19 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-history{border:1px solid var(--panel-line);border-radius:8px;background:var(--panel-surface);margin-top:24px;padding:0 24px 8px}
 .order-history>header{padding:18px 0;border-bottom:1px solid var(--panel-line)}
 .order-history h2{font:600 15px/1.8 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink);margin:0}
+.saved-conditions{min-inline-size:0;overflow-wrap:anywhere;line-height:1.9}
+.saved-conditions details{margin-block:12px;min-inline-size:0}
+.saved-conditions summary{cursor:pointer;min-block-size:44px;padding-block:10px;color:var(--panel-ink)}
+.saved-conditions h4{margin:16px 0 6px;font-weight:500}
+.saved-conditions .rich{overflow-x:auto;max-inline-size:100%}
+.saved-purchase{margin-block:16px}
+.saved-purchase h3{font-weight:500}
+.saved-conditions .rich> *+*{margin-block-start:12px}
+.saved-conditions .rich :is(ul,ol){padding-inline-start:1.4em}
+.saved-conditions .rich ul{list-style-type:disc}
+.saved-conditions .rich ol{list-style-type:persian}
+.saved-conditions .rich table{border-collapse:collapse}
+.saved-conditions .rich :is(th,td){padding:6px 12px;border-bottom:1px solid var(--panel-line);text-align:start}
 .order-timeline{list-style:none;margin:0;padding:6px 0}
 .order-timeline li{position:relative;padding:20px 22px 20px 0;border-bottom:1px solid var(--panel-line);overflow-wrap:anywhere}
 [dir=ltr] .order-timeline li{padding:20px 0 20px 22px}

@@ -8,6 +8,43 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def test_policy_snapshot_migration_keeps_older_purchase_facts_without_backfill(buyer, plan):
+    previous = ("orders", "0010_credential_access_log")
+    facts = {"name": "محصول قبلی", "plan_title": "پلن قبلی", "refund_note": "شرایط قبلی"}
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        old = executor.loader.project_state([previous]).apps
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=200000, total_amount=200000
+        )
+        item = old.get_model("orders", "OrderItem").objects.create(
+            order_id=order.pk,
+            plan_id=plan.pk,
+            price_snapshot=200000,
+            cost_snapshot=100000,
+            product_snapshot=facts,
+            customer_input="stored@example.test",
+        )
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_input FROM orders_orderitem WHERE id = %s", [item.pk])
+            ciphertext = cursor.fetchone()[0]
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        from apps.orders.models import Order, OrderItem
+
+        assert Order.objects.get(pk=order.pk).policy_snapshot == {}
+        assert OrderItem.objects.get(pk=item.pk).product_snapshot == facts
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_input FROM orders_orderitem WHERE id = %s", [item.pk])
+            assert cursor.fetchone() == (ciphertext,)
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_access_log_reverses_and_reapplies_without_changing_encrypted_input(buyer, plan):
     from apps.accounts.models import User
     from apps.catalog.models import Plan

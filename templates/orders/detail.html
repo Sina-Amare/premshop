@@ -10,6 +10,7 @@
 {% if overdue %}<p class="order-warning">مهلت پرداخت تمام شده است.</p>{% else %}<p>مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}</p>{% endif %}
 <p class="small">پرداخت آنلاین هنوز فعال نیست.</p>{% endif %}
 {% include "orders/_groups.html" %}
+{% if order.policy_snapshot %}<section class="order-policies" aria-labelledby="order-policies-title"><h2 id="order-policies-title">صفحه‌های ثبت‌شده با سفارش</h2>{% include "orders/_saved_policies.html" with policies=order.policy_snapshot only %}</section>{% endif %}
 <dl class="order-totals"><div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div>{% if order.discount_amount %}<div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div></dl>
 <div class="order-actions"><a class="btn btn--secondary" href="{% url 'order-invoice' order.order_number %}">مشاهده‌ی فاکتور</a><a href="{% url 'order-list' %}">همه‌ی سفارش‌ها</a></div>
 </div>

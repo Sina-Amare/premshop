@@ -230,6 +230,7 @@ Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; car
 | cancelled_at | TS | yes | null | whole-order release time |
 | consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable | blank / null | historical accepted wording/version/time retained; new orders leave all three empty |
 | discount_snapshot | JSON | — | {} | frozen code/arithmetic/scope facts |
+| policy_snapshot | JSON | — | {} | published terms/refunds/contact, keyed by slug, each with title, body and content_hash; ADR-0030 amendment |
 | subtotal | Money | — | | = sum of item price_snapshots, before discount |
 | discount_code | FK DiscountCode, **PROTECT** | yes | null | a code that has been spent can never be deleted (ADR-0020) |
 | discount_amount | Money | — | 0 | computed server-side at checkout from the DB row, never from the browser |
@@ -286,7 +287,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 | price_snapshot | Money | — | | |
 | cost_snapshot | Money | — | | copied from Plan.cost_price at order time (D10) |
 | actual_cost | Money | yes | null | delivery-form editable, prefilled from cost_snapshot; replacements add to it (D10) |
-| product_snapshot | jsonb | — | | name, plan title, warranty, specs at purchase time |
+| product_snapshot | jsonb | — | | name, plan title, warranty, specs, notes, full description and ordered descriptive sections at purchase time; product questions excluded |
 | customer_input | **EncryptedTextField** | blank | "" | non-secret email/username only; passwords are handled manually after payment (ADR-0007 amendment) |
 | delivery_note | text | blank | "" | operator → customer, plaintext non-secret |
 | expires_at | date | yes | null | subscription expiry; precomputed from duration_days, editable |
@@ -323,7 +324,7 @@ Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `notifications`).
 
 ### `cms`
 
-Built in `apps/cms/models.py` (ADR-0030): five fixed legal/information pages, with title, restricted-Markdown body, description, draft/published flag and modification date. Slugs are unique and fixed after creation. Initial rows are unpublished; staff need page-view permission to preview. Publishing needs complete, placeholder-free content and separate admin authority. This model does not preserve order-time purchase conditions; that is a prerequisite for real orders. A product's questions remain `catalog.ProductQuestion` (ADR-0028); CMS imports core only.
+Built in `apps/cms/models.py` (ADR-0030): five fixed legal/information pages, with title, restricted-Markdown body, description, draft/published flag and modification date. Slugs are unique and fixed after creation. Initial rows are unpublished; staff need page-view permission to preview. Publishing needs complete, placeholder-free content and separate admin authority. Orders preserve published terms/refunds/contact in their own JSON snapshots; Page has no revision table. A product's questions remain `catalog.ProductQuestion` (ADR-0028); CMS imports core only.
 
 Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `cms`). It is re-specified when S11 is planned.
 

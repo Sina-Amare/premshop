@@ -24,8 +24,9 @@ from django.utils.crypto import constant_time_compare
 from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
-from apps.catalog.models import Plan, Product
+from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
+from apps.cms.models import Page
 from apps.orders.models import (
     CredentialAccessLog,
     DiscountCode,
@@ -88,6 +89,7 @@ class Purchase:
     code: DiscountCode | None
     discount: Decimal
     discount_snapshot: dict[str, Any]
+    policy_snapshot: dict[str, Any]
 
     @property
     def total(self) -> Decimal:
@@ -108,6 +110,7 @@ class Purchase:
             "subtotal": str(self.subtotal),
             "discount": str(self.discount),
             "discount_terms": self.discount_snapshot,
+            "policies": self.policy_snapshot,
             "total": str(self.total),
         }
 
@@ -157,7 +160,36 @@ def _snapshot(plan: Plan) -> dict[str, Any]:
         "telegram_required": plan.telegram_required,
         "customer_input_label": plan.activation_input_label,
         "specs": [{"title": spec.title, "value": spec.value} for spec in product.specs.all()],
+        "full_description": product.full_description,
+        "sections": [
+            {
+                "kind": section.kind,
+                "title": section.title
+                or (
+                    ""
+                    if section.kind == ProductSection.Kind.FREE
+                    else str(section.get_kind_display())
+                ),
+                "body": section.body,
+            }
+            for section in product.sections.all()
+        ],
     }
+
+
+def _policy_snapshot() -> dict[str, Any]:
+    pages = Page.objects.filter(
+        slug__in=[Page.Slug.TERMS, Page.Slug.REFUNDS, Page.Slug.CONTACT], is_published=True
+    ).values("slug", "title", "body")
+    snapshot = {}
+    for page in pages:
+        facts = {"title": page["title"], "body": page["body"]}
+        content = json.dumps(facts, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        snapshot[page["slug"]] = {
+            **facts,
+            "content_hash": hashlib.sha256(content.encode()).hexdigest(),
+        }
+    return snapshot
 
 
 def _code_name(value: str) -> str:
@@ -252,7 +284,9 @@ def _price(
         subtotal = _money(subtotal + price * line.quantity)
         prepared.append(PricedLine(plan, line.quantity, value.strip(), price, _snapshot(plan)))
     discount, snapshot = _discount(code, user_id, prepared, at)
-    purchase = Purchase(tuple(prepared), subtotal, code, _money(discount), snapshot)
+    purchase = Purchase(
+        tuple(prepared), subtotal, code, _money(discount), snapshot, _policy_snapshot()
+    )
     if purchase.total == 0:
         raise ValidationError("سفارش با مبلغ نهایی صفر ثبت نمی‌شود.")
     return purchase
@@ -266,7 +300,7 @@ def _plans(ids: Sequence[int], *, lock: bool) -> dict[int, Plan]:
         queryset = queryset.select_for_update(of=("self",))
     plans = list(
         queryset.select_related("product", "product__category")
-        .prefetch_related("product__specs")
+        .prefetch_related("product__specs", "product__sections")
         .order_by("pk")
     )
     if any(plan.product_id not in product_ids for plan in plans):
@@ -406,6 +440,7 @@ def place_order(
                 discount_code=code,
                 discount_amount=purchase.discount,
                 discount_snapshot=purchase.discount_snapshot,
+                policy_snapshot=purchase.policy_snapshot,
                 channel=channel,
                 created_at=at,
                 unpaid_expires_at=at + timedelta(hours=24),

@@ -1,0 +1,6 @@
+{% load richtext %}
+{% for slug, page in policies.items %}
+<details class="saved-policy" data-saved-policy="{{ slug }}"><summary><bdi>{{ page.title }}</bdi></summary>
+<div class="rich rich__scroll" tabindex="0">{{ page.body|markdown:"34" }}</div>
+</details>
+{% endfor %}

@@ -33,7 +33,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address *(amended 2026-10-22: `iran_stance` became `usage_notes`, «نکات استفاده»; the stance's sources requirement was dropped; 2026-10-31: eligible unavailable pages, separate for-sale selectors, draft-editable product addresses and loc-only sitemap)* |
 | [0029](0029-unpaid-claims-and-scheduled-release.md) | Fixed unpaid deadlines, whole-order stock/discount release, checkout replay and Huey scheduling; amended 2026-10-30: remove activation-consent collection, preserve history |
-| [0030](0030-legal-page-drafts.md) | Fixed legal-page URLs, private staff previews, separate publishing authority and purchase-record boundary |
+| [0030](0030-legal-page-drafts.md) | Fixed legal-page URLs, private staff previews, separate publishing authority; 2026-11-02 amendment: saved purchase conditions and published policy snapshots |
 
 ## Legacy shorthand map
 

@@ -1,4 +1,12 @@
 {% load i18n fa %}
+<section class="order-history saved-conditions" aria-labelledby="saved-conditions-title">
+  <header><h2 id="saved-conditions-title">{% translate "شرایط زمان خرید" %}</h2></header>
+  {% for group in purchase_groups %}{% for line in group.lines %}<article class="saved-purchase">
+    <h3><bdi>{{ line.facts.name }}</bdi>؛ <bdi>{{ line.facts.plan_title }}</bdi></h3>
+    {% include "orders/_product_conditions.html" with line=line only %}
+  </article>{% endfor %}{% endfor %}
+  {% if original.policy_snapshot %}{% include "orders/_saved_policies.html" with policies=original.policy_snapshot only %}{% endif %}
+</section>
 <section class="order-history" aria-labelledby="order-history-title">
   <header><h2 id="order-history-title">{% translate "سابقه‌ی سفارش" %}</h2></header>
   {{ order_timeline }}
