@@ -24,6 +24,8 @@ class PanelSite(UnfoldAdminSite):
                 totals = email_log.usage()
                 context["mail_quota"] = {
                     **totals,
+                    "daily_remaining": max(0, 200 - totals["daily"]),
+                    "monthly_remaining": max(0, 1000 - totals["monthly"]),
                     "warning": totals["daily"] >= 160 or totals["monthly"] >= 800,
                     "reserve": totals["daily"] >= 180 or totals["monthly"] >= 900,
                     "exhausted": totals["daily"] >= 200 or totals["monthly"] >= 1000,

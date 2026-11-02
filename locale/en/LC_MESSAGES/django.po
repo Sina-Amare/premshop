@@ -104,6 +104,18 @@ msgstr "Error type"
 msgid "وضعیت ارسال ایمیل"
 msgstr "Email sending status"
 
+msgid "از"
+msgstr "of"
+
+msgid "ظرفیت باقی‌مانده:"
+msgstr "Remaining capacity:"
+
+msgid "روزانه"
+msgstr "daily"
+
+msgid "ماهانه"
+msgstr "monthly"
+
 msgid "پذیرفته‌شده توسط سرویس ایمیل"
 msgstr "Accepted by mail service"
 

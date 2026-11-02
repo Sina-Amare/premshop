@@ -8,7 +8,8 @@
 {% if mail_quota.unavailable %}
 <p>{% translate "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های ورود و امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید." %}</p>
 {% else %}
-<p>{% translate "۲۴ ساعت گذشته:" %} {{ mail_quota.daily|fa_digits }} / {% translate "۲۰۰" %} · {% translate "دورهٔ ماهانه:" %} {{ mail_quota.monthly|fa_digits }} / {% translate "۱٬۰۰۰" %}</p>
+<p>{% translate "۲۴ ساعت گذشته:" %} {{ mail_quota.daily|fa_digits }} {% translate "از" %} {% translate "۲۰۰" %} · {% translate "دورهٔ ماهانه:" %} {{ mail_quota.monthly|fa_digits }} {% translate "از" %} {% translate "۱٬۰۰۰" %}</p>
+<p>{% translate "ظرفیت باقی‌مانده:" %} {{ mail_quota.daily_remaining|fa_digits }} {% translate "روزانه" %} · {{ mail_quota.monthly_remaining|fa_digits }} {% translate "ماهانه" %}</p>
 {% if mail_quota.exhausted %}<p>{% translate "سقف ارسال پر شده است. ارسال ایمیل تا آزاد شدن ظرفیت متوقف می‌ماند." %}</p>
 {% elif mail_quota.reserve %}<p>{% translate "ظرفیت باقی‌مانده برای ایمیل‌های ورود و امنیتی نگه داشته شده است." %}</p>
 {% endif %}
