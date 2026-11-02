@@ -330,7 +330,9 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
         assert ring["inside"], (selector, ring)
 
 
-@pytest.mark.parametrize("name", ["otp_code", "item_delivered", "signin_alert"])
+@pytest.mark.parametrize(
+    "name", ["otp_code", "item_delivered", "signin_alert", "purchase_confirmation"]
+)
 def test_no_email_has_a_serious_accessibility_violation(browser, live_server, settings, name):
     """Grey text at 2.4:1 in every email's footer and under the code: the
     emails are scanned as they render, from their own inline styles."""

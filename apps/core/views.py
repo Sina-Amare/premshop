@@ -133,6 +133,39 @@ def styleguide(request: HttpRequest) -> HttpResponse:
 # or "123" hides exactly the problems worth catching — long product names wrapping,
 # Persian digits in a Latin-shaped order number, a price that outgrows its column.
 EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
+    "purchase_confirmation": {
+        "order_number": 14050217,
+        "created_at": datetime(2026, 11, 3, 11, 2, tzinfo=UTC),
+        "order_url": "https://premshop.ir/account/orders/14050217/",
+        "lines": [
+            {
+                "facts": {
+                    "name": "اشتراک نمونه Example Pro",
+                    "plan_title": "یک ماهه",
+                    "duration_days": 30,
+                    "delivery_note": "تحویل تا ۴۸ ساعت پس از تأیید پرداخت",
+                    "usage_notes": "شرایط استفاده‌ی ثبت‌شده با سفارش",
+                    "refund_note": "شرایط بازگشت وجه ثبت‌شده با سفارش",
+                    "full_description": "توضیح کامل محصول زمان خرید",
+                    "specs": [{"title": "مدت", "value": "۳۰ روز"}],
+                    "sections": [{"title": "شرایط محصول", "body": "متن کامل شرایط محصول"}],
+                },
+                "quantity": 2,
+                "price": Decimal("200000"),
+                "amount": Decimal("400000"),
+                "warranty": "طبق شرایط محصول",
+                "delivery": "روی حساب شما",
+            }
+        ],
+        "policies": [
+            {"title": "قوانین خرید", "body": "متن قوانین ثبت‌شده با سفارش"},
+            {"title": "بازگشت وجه", "body": "متن شرایط بازگشت وجه"},
+            {"title": "تماس", "body": "راه‌های تماس ثبت‌شده با سفارش"},
+        ],
+        "subtotal": Decimal("400000"),
+        "discount_amount": Decimal("0"),
+        "total_amount": Decimal("400000"),
+    },
     "password_reset": {"code": "418305", "ttl_minutes": 10},
     "password_changed": {"changed_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC)},
     "otp_code": {

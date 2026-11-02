@@ -1,0 +1,39 @@
+{% extends "email/base.html" %}{% load fa richtext %}
+{% block title %}ثبت سفارش {{ order_number|fa_digits }}{% endblock %}
+{% block preheader %}سفارش شما ثبت شد؛ هنگام ثبت پرداخت نشده بود.{% endblock %}
+{% block content %}
+<div style="overflow-wrap:anywhere;word-break:break-word;">
+<h1 style="margin:0 0 16px;font-size:21px;line-height:1.6;color:#292524;">سفارش {{ order_number|fa_digits }} ثبت شد</h1>
+<p>این سفارش هنگام ثبت پرداخت نشده بود. این ایمیل تأیید پرداخت نیست.</p>
+<p>تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}</p>
+<p><a href="{{ order_url }}" style="color:#2459D3;">مشاهده‌ی وضعیت فعلی سفارش در حساب شما</a></p>
+{% for line in lines %}
+<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
+<h2 style="font-size:19px;color:#292524;">{{ line.facts.name|bdi }}</h2>
+<p>{{ line.facts.plan_title|bdi }}؛ تعداد: {{ line.quantity|fa_digits }}</p>
+<p>قیمت هر عدد: {{ line.price|toman_plain }} تومان؛ جمع: {{ line.amount|toman_plain }} تومان</p>
+{% if line.facts.duration_days %}<p>مدت: {{ line.facts.duration_days|fa_digits }} روز</p>{% endif %}
+<h3 style="font-size:17px;color:#292524;">شرایط زمان خرید</h3>
+{% if line.delivery %}<p>روش تحویل: {{ line.delivery }}</p>{% endif %}
+{% if line.facts.delivery_note %}<div>{{ line.facts.delivery_note|markdown:"45" }}</div>{% elif line.facts.delivery_hours %}<p>تحویل تا {{ line.facts.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت</p>{% endif %}
+{% if line.warranty %}<p>گارانتی: {{ line.warranty }}</p>{% endif %}
+{% if line.facts.telegram_required %}<p>برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.</p>{% endif %}
+{% if line.facts.specs %}<dl>{% for spec in line.facts.specs %}<dt>{{ spec.title|bdi }}</dt><dd>{{ spec.value|bdi }}</dd>{% endfor %}</dl>{% endif %}
+{% if line.facts.usage_notes %}<h4>نکات استفاده</h4><div>{{ line.facts.usage_notes|markdown:"56" }}</div>{% endif %}
+{% if line.facts.refund_note %}<h4>شرایط لغو و بازگشت وجه</h4><div>{{ line.facts.refund_note|markdown:"56" }}</div>{% endif %}
+{% if line.facts.full_description %}<h4>توضیحات محصول</h4><div>{{ line.facts.full_description|markdown:"56" }}</div>{% endif %}
+{% for section in line.facts.sections %}{% if section.title %}<h4>{{ section.title|bdi }}</h4>{% endif %}<div>{{ section.body|markdown:"56" }}</div>{% endfor %}
+</section>
+{% endfor %}
+<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
+<h2 style="font-size:19px;color:#292524;">مبلغ سفارش</h2>
+<p>جمع محصولات: {{ subtotal|toman_plain }} تومان</p>
+{% if discount_amount %}<p>تخفیف: {{ discount_amount|toman_plain }} تومان</p>{% endif %}
+<p><strong>مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان</strong></p>
+</section>
+<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
+<h2 style="font-size:19px;color:#292524;">صفحه‌های ثبت‌شده با سفارش</h2>
+{% for page in policies %}<h3 style="font-size:17px;">{{ page.title|bdi }}</h3><div>{{ page.body|markdown:"45" }}</div>{% endfor %}
+</section>
+</div>
+{% endblock %}

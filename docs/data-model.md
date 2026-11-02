@@ -320,7 +320,7 @@ Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `payments`, inclu
 
 ### `notifications`
 
-The outbox (D17). One row per occurrence, recipient and channel, created by `events.emit()` after the triggering transaction commits, with a globally unique `dedupe_key` of the form `{occurrence}:{recipient}:{channel}`; `user = NULL` means the operator, and the channels are exactly `email` and `telegram` (ADR-0010). Payloads carry no credential values (ADR-0008). The registry of key families lives in state-machine §3. A notification failure can never affect order state.
+Built for purchase confirmation only: `Notification.order` is a protected FK; `dedupe_key` is globally unique (family: state-machine §3). Rows freeze recipient, subject, plain-text and HTML bodies. `status` is pending/sent/failed; `attempts` is 0–6; nullable `next_attempt_at` is indexed with status. Creation, last-attempt and sent timestamps plus sanitized error class and numeric SMTP code support the read-only panel. No input, credential value, raw SMTP reply or procurement cost is stored. `ConfirmationSweep` has a constrained singleton ID of 1 and nullable `quota_wait_until`, shared across ticks and locked before each send. Orders freeze `placement_email` in the placement transaction; old rows stay empty and ineligible. Discovery polls committed orders; no callback/events dispatch exists. Future channels/messages remain planned. ADR-0010’s 2026-11-03 amendment governs retry and quota behavior.
 
 Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `notifications`). It is re-specified when S6 is planned.
 
