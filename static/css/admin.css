@@ -351,6 +351,14 @@ input.vTimeField {
 }
 
 /* --- Tables on a phone ---------------------------------------------------- */
+.app-core.model-mailattempt #result_list .field-status {
+  min-width: 9rem;
+  color: var(--panel-ink);
+}
+.app-core.model-mailattempt #result_list .field-template {
+  min-width: 6rem;
+}
+
 /* At 390px the product table is 561px in a 356px frame and three columns
    show: the name, its status and the first digits of a price. The status
    and price move under the name, where they are always on screen, and their

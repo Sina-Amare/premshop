@@ -15,14 +15,15 @@ and none in Python:
 
 from __future__ import annotations
 
+from smtplib import SMTPNotSupportedError, SMTPRecipientsRefused, SMTPResponseException
 from typing import Any
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template import Context, Engine
 from django.template.loader import render_to_string
 
-from apps.core import support
+from apps.core import email_log, support
 
 
 def _render_plain(template_name: str, context: dict[str, Any]) -> str:
@@ -62,4 +63,44 @@ def send_templated_email(name: str, *, to: list[str], context: dict[str, Any]) -
         reply_to=[settings.SUPPORT_EMAIL],
     )
     message.attach_alternative(html, "text/html")
-    return message.send()
+    if not to:
+        return 0
+    try:
+        attempts = email_log.reserve(name, to)
+    except email_log.MailQuotaExceeded:
+        raise
+    except Exception as error:  # noqa: BLE001 — accounting must not disable security mail
+        email_log.accounting_error(error)
+        if name not in email_log.PROTECTED:
+            raise email_log.MailQuotaExceeded from None
+        attempts = []
+
+    def finish(status: str, error: Exception | None = None) -> None:
+        try:
+            email_log.finish(attempts, status, error)
+        except Exception as failure:  # noqa: BLE001 — an accepted code must remain successful
+            email_log.accounting_error(failure)
+
+    try:
+        backend = get_connection()
+        backend.open()
+    except Exception as error:
+        finish("rejected", error)
+        raise
+    try:
+        message.connection = backend
+        try:
+            sent = message.send()
+        except (SMTPResponseException, SMTPRecipientsRefused, SMTPNotSupportedError) as error:
+            finish("rejected", error)
+            raise
+        except Exception as error:
+            finish("uncertain", error)
+            raise
+        finish("accepted" if sent else "rejected")
+        return sent
+    finally:
+        try:
+            backend.close()
+        except Exception as error:  # noqa: BLE001 — closing cannot change the send result
+            email_log.accounting_error(error)

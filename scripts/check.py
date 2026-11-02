@@ -9,7 +9,7 @@ every push — a local pass is evidence, the workflow run is the verdict.
 
 Each step prints one line, and its full output only when it fails; pytest adds its
 summary line. `--verbose` prints everything as it runs. `--no-audit` skips pip-audit,
-which needs the network and is the slow one. `--docs` is for a change that touches
+which needs the network. `--docs` is for a change that touches
 only `docs/` and Markdown files: it runs the written-voice test alone, and falls back
 to the whole gate when anything else has changed. Installing packages is not mirrored:
 `npm ci` and Playwright's Chromium are set up once (docs/development.md), as `uv sync` is.

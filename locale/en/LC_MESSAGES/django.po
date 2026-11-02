@@ -14,6 +14,123 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en\n"
 
+msgid "آزاد شدن اولین ظرفیت روزانه:"
+msgstr "First daily capacity available:"
+
+msgid "سامانه"
+msgstr "System"
+
+msgid "کد بازیابی رمز عبور"
+msgstr "Password recovery code"
+
+msgid "خبر ورود با کد"
+msgstr "Code sign-in notice"
+
+msgid "خبر تغییر رمز عبور"
+msgstr "Password change notice"
+
+msgid "خبر تحویل سفارش"
+msgstr "Delivery notice"
+
+msgid "اثر انگشت گیرنده"
+msgstr "Recipient fingerprint"
+
+msgid "ارسال ناموفق"
+msgstr "Send failed"
+
+msgid "جست‌وجو"
+msgstr "Search"
+
+msgid "جست‌وجو با نشانی کامل ایمیل"
+msgstr "Search by exact email address"
+
+msgid "در حال ارسال"
+msgstr "Sending"
+
+msgid "دوره‌ی ماهانه:"
+msgstr "Monthly period:"
+
+msgid "زمان ثبت نتیجه"
+msgstr "Outcome recorded at"
+
+msgid "زمان درخواست"
+msgstr "Requested at"
+
+msgid "سابقه ارسال ایمیل"
+msgstr "Email attempt"
+
+msgid "سابقه ارسال ایمیل‌ها"
+msgstr "Email attempts"
+
+msgid "سقف ارسال پر شده است. ارسال ایمیل تا آزاد شدن ظرفیت متوقف می‌ماند."
+msgstr "The sending limit has been reached. Sending is paused until capacity becomes available."
+
+msgid "شروع دوره‌ی بعدی:"
+msgstr "Next period starts:"
+
+msgid "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های ورود و امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید."
+msgstr "Mail accounting is unavailable. Sign-in and security email will still attempt sending; other mail is paused. Check the settings and database connection."
+
+msgid "شماره پاسخ سرویس"
+msgstr "SMTP response code"
+
+msgid "ظرفیت باقی‌مانده برای ایمیل‌های ورود و امنیتی نگه داشته شده است."
+msgstr "Remaining capacity is reserved for sign-in and security email."
+
+msgid "متوقف‌شده به‌خاطر سقف ارسال"
+msgstr "Blocked by sending limit"
+
+msgid "نتیجه"
+msgstr "Outcome"
+
+msgid "نتیجه نامشخص"
+msgstr "Uncertain outcome"
+
+msgid "نشانی ایمیل را ذخیره نمی‌کنیم. پذیرش پیام در سرویس ایمیل، رسیدن به صندوق دریافت را ثابت نمی‌کند."
+msgstr "The address is not stored. Accepted means the mail service accepted the message; it does not prove inbox delivery."
+
+msgid "نشانی ایمیل را کامل وارد کنید."
+msgstr "Enter the complete email address."
+
+msgid "نمایش همه"
+msgstr "Show all"
+
+msgid "نوع ایمیل"
+msgstr "Email type"
+
+msgid "نوع خطا"
+msgstr "Error type"
+
+msgid "وضعیت ارسال ایمیل"
+msgstr "Email sending status"
+
+msgid "از"
+msgstr "of"
+
+msgid "ظرفیت باقی‌مانده:"
+msgstr "Remaining capacity:"
+
+msgid "روزانه"
+msgstr "daily"
+
+msgid "ماهانه"
+msgstr "monthly"
+
+msgid "سرویس ایمیل پذیرفت"
+msgstr "Accepted by mail service"
+
+msgid "کد ورود"
+msgstr "Sign-in code"
+
+msgid "۱٬۰۰۰"
+msgstr "1,000"
+
+msgid "۲۰۰"
+msgstr "200"
+
+msgid "۲۴ ساعت گذشته:"
+msgstr "Last 24 hours:"
+
 msgid "نام"
 msgstr "Name"
 

@@ -15,6 +15,25 @@ from apps.core.sessions import login_session
 
 
 class PanelSite(UnfoldAdminSite):
+    def each_context(self, request: HttpRequest) -> dict[str, Any]:
+        from apps.core import email_log
+
+        context = super().each_context(request)
+        if request.user.is_active and request.user.is_staff:
+            try:
+                totals = email_log.usage()
+                context["mail_quota"] = {
+                    **totals,
+                    "daily_remaining": max(0, 200 - totals["daily"]),
+                    "monthly_remaining": max(0, 1000 - totals["monthly"]),
+                    "warning": totals["daily"] >= 160 or totals["monthly"] >= 800,
+                    "reserve": totals["daily"] >= 180 or totals["monthly"] >= 900,
+                    "exhausted": totals["daily"] >= 200 or totals["monthly"] >= 1000,
+                }
+            except Exception:  # noqa: BLE001 — the panel must explain an accounting outage
+                context["mail_quota"] = {"warning": True, "unavailable": True}
+        return context
+
     def login(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None
     ) -> HttpResponse:

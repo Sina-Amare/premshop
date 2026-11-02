@@ -27,6 +27,7 @@ from apps.accounts.forms import (
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
+from apps.core.email_log import MailQuotaExceeded
 from apps.orders.selectors import current_order, customer_summary
 
 # The address a code was sent to, carried between the two steps of the code flow.
@@ -124,6 +125,9 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         email = form.cleaned_data["email"]
         try:
             issued = services.request_login_code(request, email)
+        except MailQuotaExceeded as exc:
+            form.add_error(None, exc.message)
+            status = 503
         except services.RateLimited as exc:
             form.add_error(None, exc.message)
             status = 429
@@ -148,7 +152,10 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         error = next((error for errors in form.errors.values() for error in errors), PAGE_EXPIRED)
         return JsonResponse({"ok": False, "error": str(error)}, status=status)
     return render(
-        request, "accounts/login_code_request.html", {"form": form, "next": _safe_next(request)}
+        request,
+        "accounts/login_code_request.html",
+        {"form": form, "next": _safe_next(request)},
+        status=503 if status == 503 else 200,
     )
 
 
@@ -231,6 +238,11 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         return redirect("login-code")
     try:
         issued = services.request_login_code(request, email)
+    except MailQuotaExceeded as exc:
+        if _wants_json(request):
+            return JsonResponse({"ok": False, "error": str(exc.message)}, status=503)
+        messages.error(request, exc.message)
+        return redirect("login-code-verify")
     except services.RateLimited as exc:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": exc.message}, status=429)
@@ -335,6 +347,9 @@ def account_password_recovery(request: HttpRequest) -> HttpResponse:
                     messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
                     return redirect("account-password")
                 form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
+        except MailQuotaExceeded as exc:
+            messages.error(request, exc.message)
+            status = 503
         except services.RateLimited as exc:
             if changing:
                 form.add_error(None, exc.message)
