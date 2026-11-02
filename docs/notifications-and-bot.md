@@ -77,15 +77,15 @@ Full earlier draft: `git show 027c5d1:docs/notifications-and-bot.md` (§3). It i
 
 ### 3.1 Flow
 
-Intent only — see §3 above.
+Built C1: committed eligible order → minute discovery → unique frozen row → due sender. Other message flows remain intent.
 
 ### 3.2 Table: `notifications.Notification` (R9)
 
-Intent only — see §3 above. The earlier draft's §3.2 is re-specified when S6 is planned.
+Built C1 fields are specified in data-model §2 notifications. Other message payloads/channels remain planned.
 
 ### 3.3 dedupe_key construction rule
 
-Intent only — see §3 above. The earlier draft's §3.3 (one key family per trigger) is re-specified when S6 is planned.
+The canonical registry is state-machine §3, including the built C1 family. Other key families remain planned.
 
 ### 3.4 Retry / backoff / terminal failure
 
