@@ -16,7 +16,7 @@
 <p>{% translate "آزاد شدن اولین ظرفیت روزانه:" %} {{ mail_quota.daily_reset|jalali }} {{ mail_quota.daily_reset|time:"H:i"|fa_digits }}</p>
 <p>{% translate "شروع دوره‌ی بعدی:" %} {{ mail_quota.monthly_reset|jalali }}</p>
 {% endif %}
-{% if perms.core.view_mailattempt %}<a href="{% url 'admin:core_mailattempt_changelist' %}">{% translate "سابقه ارسال ایمیل‌ها" %}</a>{% endif %}
+{% if perms.core.view_mailattempt %}<a class="text-primary-600 underline" href="{% url 'admin:core_mailattempt_changelist' %}">{% translate "سابقه ارسال ایمیل‌ها" %}</a>{% endif %}
 </section>
 {% endif %}
 {% endblock %}
