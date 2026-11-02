@@ -197,6 +197,6 @@ def test_the_banner_explains_an_accounting_outage_to_staff_only(
     settings.EMAIL_QUOTA_RESET_DATE = ""
     customer = django_user_model.objects.create_user("customer@example.test")
     client.force_login(customer)
-    assert "data-mail-quota" not in client.get(reverse("admin:login")).content.decode()
+    assert "mail_quota" not in client.get(reverse("admin:login")).context
     client.force_login(django_user_model.objects.create_superuser("owner@example.test"))
     assert "data-mail-quota" in client.get(reverse("admin:index")).content.decode()
