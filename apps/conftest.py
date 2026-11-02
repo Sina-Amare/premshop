@@ -24,7 +24,7 @@ def ordinary_catalog(settings: Any) -> None:
 
 
 @pytest.fixture(autouse=True)
-def clean_mail_accounting(settings: Any, request, django_db_blocker) -> Iterator[None]:
+def clean_mail_accounting(settings: Any, request: Any, django_db_blocker: Any) -> Iterator[None]:
     settings.EMAIL_QUOTA_RESET_DATE = ""
     settings.EMAIL_QUOTA_STARTING_USAGE = 0
     yield

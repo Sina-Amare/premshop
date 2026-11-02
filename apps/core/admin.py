@@ -6,21 +6,32 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 
 from apps.core.email_log import fingerprint
+from apps.core.formatting import format_jalali, to_persian_digits
 from apps.core.models import MailAttempt
 
 
 @admin.register(MailAttempt)
 class MailAttemptAdmin(ModelAdmin):
-    list_display = ("created_at", "template", "status", "smtp_code", "error_type")
+    list_display = ("requested_at", "status", "template", "smtp_code", "error_type")
     list_filter = ("status", "template")
     search_fields = ("recipient_hash",)
     readonly_fields = tuple(field.name for field in MailAttempt._meta.fields)
     change_list_template = "admin/core/mailattempt/change_list.html"
     actions = None
+
+    @admin.display(description=_("زمان درخواست"), ordering="created_at")
+    def requested_at(self, obj: MailAttempt) -> str:
+        return format_html(
+            "{}<br><bdi>{}</bdi>",
+            format_jalali(obj.created_at),
+            to_persian_digits(timezone.localtime(obj.created_at).strftime("%H:%M:%S")),
+        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

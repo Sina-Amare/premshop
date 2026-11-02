@@ -6,6 +6,7 @@ from playwright.sync_api import expect
 
 from apps.accounts.models import User
 from apps.core.email_log import fingerprint
+from apps.core.formatting import format_jalali
 from apps.core.models import MailAttempt
 from apps.orders.tests.test_customer_browser import context_for
 
@@ -48,6 +49,10 @@ def test_mail_panel_states_and_private_address_search(
         else:
             expect(page.locator("[data-mail-quota]")).to_be_visible()
             expect(page.get_by_text("کد بازیابی رمز عبور", exact=True).first).to_be_visible()
+            expect(page.locator(".field-requested_at").first).to_contain_text(
+                format_jalali(datetime.now(UTC))
+            )
+            assert page.locator(".field-status").first.evaluate("el => el.clientWidth >= 140")
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.evaluate("document.fonts.ready")
