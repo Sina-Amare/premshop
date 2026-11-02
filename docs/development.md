@@ -24,8 +24,8 @@ python manage.py runserver      # http://127.0.0.1:8000
 `python` may resolve to the system interpreter, so call the venv's Python directly; `uv` itself is on PATH. CI (Linux) uses `uv run <tool>` for the same things.
 
 ```bash
-.venv/Scripts/python.exe scripts/check.py              # the whole gate, exactly as CI runs it
-.venv/Scripts/python.exe scripts/check.py --no-audit   # skip pip-audit (network, slow)
+.venv/Scripts/python.exe scripts/check.py              # the whole gate, exactly as CI runs it (about 18 minutes)
+.venv/Scripts/python.exe scripts/check.py --no-audit   # skip pip-audit (network)
 
 .venv/Scripts/python.exe -m pytest apps/catalog/tests/test_views.py::test_search_rate_limited -q
 .venv/Scripts/python.exe -m pytest -k promo -q         # by keyword
