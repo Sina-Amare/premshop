@@ -1265,3 +1265,6 @@ msgstr "Reveal input"
 
 msgid "هنوز اطلاعاتی نمایش داده نشده."
 msgstr "No input has been revealed yet."
+
+msgid "شرایط زمان خرید"
+msgstr "Conditions at purchase"
