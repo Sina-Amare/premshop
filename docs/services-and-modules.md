@@ -40,6 +40,8 @@ Conventions: all writes are keyword-only. `Actor = Literal["operator", "customer
 
 ### core
 
+**Mail guard — 2026-11-02.** `email.send_templated_email` keeps its return value and backend exceptions, with a `MailQuotaExceeded` refusal before SMTP at a known limit. `email_log` independently commits recipient attempts and counts their windows; no downstream app is imported. `MailAttemptAdmin` is read-only with exact-address fingerprint lookup. Huey cleans the 90-day log. Capacity, failures and baseline settings: ADR-0022's dated amendment. No notification/outbox worker or event dispatcher is added here.
+
 ```python
 def compute_due_at(
     confirmed_at: datetime, delivery_hours: int,

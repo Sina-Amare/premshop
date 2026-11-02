@@ -1,0 +1,14 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+{% block search %}
+<form id="changelist-search" method="post" action="{{ request.path }}" role="search">
+{% csrf_token %}
+<label for="searchbar">{% translate "جست‌وجو با نشانی کامل ایمیل" %}</label>
+<div class="flex gap-2 items-center border border-base-200 rounded-default p-2">
+<input type="email" name="recipient" id="searchbar" dir="ltr" autocomplete="off" class="min-w-0 grow p-2" aria-describedby="mail-search-help">
+<button type="submit" class="p-2">{% translate "جست‌وجو" %}</button>
+</div>
+<p id="mail-search-help">{% translate "نشانی ایمیل ذخیره نمی‌شود. نتیجهٔ پذیرفته‌شده فقط یعنی سرویس ایمیل پیام را پذیرفته؛ رسیدن به صندوق دریافت را ثابت نمی‌کند." %}</p>
+{% if cl.query %}<a href="{{ request.path }}">{% translate "نمایش همه" %}</a>{% endif %}
+</form>
+{% endblock %}

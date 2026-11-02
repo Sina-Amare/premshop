@@ -24,6 +24,26 @@ def ordinary_catalog(settings: Any) -> None:
 
 
 @pytest.fixture(autouse=True)
+def clean_mail_accounting(settings: Any, request, django_db_blocker) -> Iterator[None]:
+    settings.EMAIL_QUOTA_RESET_DATE = ""
+    settings.EMAIL_QUOTA_STARTING_USAGE = 0
+    yield
+    if request.node.get_closest_marker("django_db") or {"db", "transactional_db"}.intersection(
+        request.fixturenames
+    ):
+        from django.db import connection
+
+        # Mail writes commit outside pytest's rollback transaction too.
+        with django_db_blocker.unblock():
+            independent = connection.copy()
+            try:
+                with independent.cursor() as cursor:
+                    cursor.execute("DELETE FROM core_mailattempt")
+            finally:
+                independent.close()
+
+
+@pytest.fixture(autouse=True)
 def clean_cache(settings: Any) -> Iterator[None]:
     """Every test runs against an empty in-memory cache, never a real Redis.
 

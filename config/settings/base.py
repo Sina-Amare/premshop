@@ -242,6 +242,8 @@ EMAIL_USE_TLS = not EMAIL_USE_SSL
 # Django's default is None — no timeout at all. An Iran-to-Europe SMTP connection
 # that blackholes would otherwise pin a web worker forever on the login path.
 EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "10"))
+EMAIL_QUOTA_RESET_DATE = env("EMAIL_QUOTA_RESET_DATE")
+EMAIL_QUOTA_STARTING_USAGE = int(env("EMAIL_QUOTA_STARTING_USAGE", "0"))
 
 # Must be a mailbox at the SMTP2GO-verified sender domain or the relay rejects the
 # message and still spends quota. support@ over noreply@: it has working inbound
@@ -395,6 +397,14 @@ UNFOLD = {
                         "icon": "article",
                         "link": reverse_lazy("admin:cms_page_changelist"),
                         "permission": lambda request: request.user.has_perm("cms.view_page"),
+                    },
+                    {
+                        "title": _("سابقه ارسال ایمیل‌ها"),
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:core_mailattempt_changelist"),
+                        "permission": lambda request: request.user.has_perm(
+                            "core.view_mailattempt"
+                        ),
                     },
                 ],
             },
