@@ -42,7 +42,8 @@ def _cursor() -> Iterator[Any]:
 
 def _month(now: datetime) -> tuple[datetime, datetime, int]:
     anchor = date.fromisoformat(settings.EMAIL_QUOTA_RESET_DATE)
-    if anchor > now.date() or not 0 <= settings.EMAIL_QUOTA_STARTING_USAGE <= 1000:
+    starting_usage = int(settings.EMAIL_QUOTA_STARTING_USAGE)
+    if anchor > now.date() or not 0 <= starting_usage <= 1000:
         raise ValueError("invalid mail allowance baseline")
 
     def boundary(month: int) -> datetime:
@@ -55,7 +56,7 @@ def _month(now: datetime) -> tuple[datetime, datetime, int]:
     if boundary(month) > now:
         month -= 1
     start, end = boundary(month), boundary(month + 1)
-    baseline = settings.EMAIL_QUOTA_STARTING_USAGE if start.date() == anchor else 0
+    baseline = starting_usage if start.date() == anchor else 0
     return start, end, baseline
 
 

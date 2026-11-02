@@ -92,3 +92,8 @@ def test_the_machine_hostname_never_reaches_a_customers_inbox():
 
     assert DNS_NAME.get_fqdn() == "premshop.ir"
     assert EmailMessage(to=["a@b.test"]).message()["Message-ID"].endswith("@premshop.ir>")
+
+
+def test_a_malformed_quota_baseline_does_not_prevent_startup(reload_base):
+    reloaded = reload_base(EMAIL_QUOTA_STARTING_USAGE="unknown")
+    assert reloaded.EMAIL_QUOTA_STARTING_USAGE == "unknown"

@@ -296,6 +296,15 @@ def test_missing_quota_configuration_still_records_security_mail(settings):
     assert MailAttempt.objects.get().status == "accepted"
 
 
+@pytest.mark.parametrize("value", ["", "unknown", "-1", "1001"])
+def test_invalid_starting_usage_never_prevents_a_security_send(settings, value):
+    from apps.core.models import MailAttempt
+
+    settings.EMAIL_QUOTA_STARTING_USAGE = value
+    assert send() == 1
+    assert MailAttempt.objects.get().status == "accepted"
+
+
 def test_panel_list_does_not_expose_attempts_to_customers_or_unprivileged_staff(
     client, django_user_model
 ):
