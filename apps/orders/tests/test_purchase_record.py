@@ -230,3 +230,51 @@ def test_old_snapshots_and_empty_policy_record_render_without_backfill(client, b
         assert response.status_code == 200
         assert "محصول قبلی" in response.content.decode()
         assert "توضیح کامل زمان خرید" not in response.content.decode()
+
+
+def test_saved_text_only_reaches_a_page_through_the_restricted_renderer(
+    client, buyer, offer, policies
+):
+    unsafe = "<script>alert(1)</script>"
+    Product.objects.filter(pk=offer.product_id).update(
+        full_description=f"**توضیح** {unsafe}",
+        usage_notes=f"**نکته** {unsafe}",
+        refund_note=f"**بازگشت** {unsafe}",
+    )
+    ProductSection.objects.filter(product=offer.product).update(
+        title=unsafe, body=f"**بخش** {unsafe}"
+    )
+    Page.objects.filter(slug__in=policies).update(title=unsafe, body=f"**صفحه** {unsafe}")
+    order = place_order(user=buyer, lines=[OrderLine(offer, 1)])
+    for account, url in (
+        (buyer, reverse("order-detail", args=[order.order_number])),
+        (
+            User.objects.create_superuser("operator@example.test"),
+            reverse("admin:orders_order_change", args=[order.pk]),
+        ),
+    ):
+        client.force_login(account)
+        body = client.get(url).content.decode()
+        assert "<script>alert(1)" not in body
+        for word in ("توضیح", "نکته", "بازگشت", "بخش", "صفحه"):
+            assert f"<strong>{word}</strong>" in body
+
+
+def test_a_section_without_a_title_saves_its_kinds_heading(buyer, offer):
+    ProductSection.objects.filter(product=offer.product).delete()
+    ProductSection.objects.create(
+        product=offer.product, kind="after_payment", body="پس از پرداخت", sort_order=1
+    )
+    ProductSection.objects.create(product=offer.product, kind="free", body="متن", sort_order=2)
+    facts = place_order(user=buyer, lines=[OrderLine(offer, 1)]).items.get().product_snapshot
+    assert [section["title"] for section in facts["sections"]] == [
+        str(ProductSection.Kind.AFTER_PAYMENT.label),
+        "",
+    ]
+
+
+def test_the_order_list_leaves_saved_conditions_to_the_order_page(client, buyer, offer, policies):
+    place_order(user=buyer, lines=[OrderLine(offer, 1)])
+    client.force_login(buyer)
+    body = client.get(reverse("order-list")).content.decode()
+    assert "شرایط زمان خرید" not in body and "توضیح کامل زمان خرید" not in body
