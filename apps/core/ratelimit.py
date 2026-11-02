@@ -30,10 +30,12 @@ class Limit:
 
 
 # Owner-approved 2026-09-04. Tight enough to protect the relay quota (SMTP2GO
-# free tier hard-rejects past 200/day), loose enough that a customer who mistypes
+# free tier may queue daily excess and rejects monthly excess), loose enough that a customer who mistypes
 # twice is not locked out of the shop they just paid at.
 OTP_REQUESTS_PER_EMAIL = Limit("otpreq:email", times=3, seconds=15 * 60)
 OTP_REQUESTS_PER_IP = Limit("otpreq:ip", times=10, seconds=60 * 60)
+OTP_REQUESTS_PER_EMAIL_DAILY = Limit("otpreq:email:daily", times=10, seconds=24 * 60 * 60)
+OTP_REQUESTS_PER_IP_DAILY = Limit("otpreq:ip:daily", times=20, seconds=24 * 60 * 60)
 LOGIN_ATTEMPTS_PER_EMAIL = Limit("login:email", times=10, seconds=15 * 60)
 LOGIN_ATTEMPTS_PER_IP = Limit("login:ip", times=30, seconds=60 * 60)
 # Catalog search: a person searching does not exceed this; a scraper does.

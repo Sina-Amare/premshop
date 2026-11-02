@@ -50,6 +50,12 @@ TOO_MANY_CODES = (
     "برای این ایمیل چند بار پشت سر هم کد خواسته شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
 TOO_MANY_CODES_FROM_NETWORK = "از این شبکه زیاد کد خواسته شده است. یک ساعت دیگر دوباره امتحان کنید."
+TOO_MANY_CODES_DAILY = (
+    "درخواست کد برای این ایمیل به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید."
+)
+TOO_MANY_CODES_FROM_NETWORK_DAILY = (
+    "درخواست کد از این شبکه به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید."
+)
 TOO_MANY_ATTEMPTS = (
     "برای این ایمیل چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
@@ -95,10 +101,25 @@ def login_with_password(request: HttpRequest, email: str, password: str) -> User
 
 
 def _code_request_budget(request: HttpRequest, email: str) -> None:
+    ip = ratelimit.client_ip(request)
+    for limit, subject, message in (
+        (ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email, TOO_MANY_CODES_DAILY),
+        (ratelimit.OTP_REQUESTS_PER_IP_DAILY, ip, TOO_MANY_CODES_FROM_NETWORK_DAILY),
+        (ratelimit.OTP_REQUESTS_PER_EMAIL, email, TOO_MANY_CODES),
+        (ratelimit.OTP_REQUESTS_PER_IP, ip, TOO_MANY_CODES_FROM_NETWORK),
+    ):
+        if not ratelimit.remaining(limit, subject):
+            raise RateLimited(message)
     if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL, email):
         raise RateLimited(TOO_MANY_CODES)
     if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ratelimit.client_ip(request)):
         raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
+
+
+def _code_sent(request: HttpRequest, email: str) -> None:
+    # shortcut: preflight can race; short windows bound concurrent daily overshoot.
+    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email)
+    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP_DAILY, ratelimit.client_ip(request))
 
 
 def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
@@ -116,13 +137,14 @@ def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
       here — and for a shop selling other people's subscriptions, the customer
       list is itself sensitive.
 
-    The abuse this opens — making us mail a stranger — is what the two rate limits
-    are for: three per address per fifteen minutes, ten per IP per hour.
+    Short request windows bound bursts; daily budgets count accepted sends only.
     """
     email = otp.normalize_email(email)
     _code_request_budget(request, email)
 
-    return otp.send_login_code(email)
+    issued = otp.send_login_code(email)
+    _code_sent(request, email)
+    return issued
 
 
 def _recovery_user(request: HttpRequest) -> User:
@@ -147,9 +169,11 @@ def request_password_recovery(request: HttpRequest) -> otp.Issued:
     with login_session(request):
         user = _recovery_user(request)
         _code_request_budget(request, user.email)
-        return otp.send_login_code(
+        issued = otp.send_login_code(
             user.email, purpose="password_reset", binding=_recovery_binding(request, user)
         )
+        _code_sent(request, user.email)
+        return issued
 
 
 def complete_password_recovery(request: HttpRequest, *, code: str, password: str) -> User | None:
