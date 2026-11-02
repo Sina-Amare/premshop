@@ -24,12 +24,26 @@ def ordinary_catalog(settings: Any) -> None:
 
 
 @pytest.fixture(autouse=True)
-def clean_mail_accounting(settings: Any, request: Any, django_db_blocker: Any) -> Iterator[None]:
+def clean_mail_accounting(
+    settings: Any, request: Any, django_db_blocker: Any, monkeypatch: Any
+) -> Iterator[None]:
+    from apps.core import email_log
+
     settings.EMAIL_QUOTA_RESET_DATE = ""
     settings.EMAIL_QUOTA_STARTING_USAGE = 0
+    used = False
+    original = email_log.reserve
+
+    def reserve(*args: Any, **kwargs: Any) -> list[int]:
+        nonlocal used
+        used = True
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(email_log, "reserve", reserve)
     yield
-    if request.node.get_closest_marker("django_db") or {"db", "transactional_db"}.intersection(
-        request.fixturenames
+    if used and (
+        request.node.get_closest_marker("django_db")
+        or {"db", "transactional_db"}.intersection(request.fixturenames)
     ):
         from django.db import connection
 
