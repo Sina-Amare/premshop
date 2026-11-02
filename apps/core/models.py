@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 class MailAttempt(models.Model):
     class Status(models.TextChoices):
         IN_FLIGHT = "in_flight", _("در حال ارسال")
-        ACCEPTED = "accepted", _("پذیرفته‌شده توسط سرویس ایمیل")
+        ACCEPTED = "accepted", _("سرویس ایمیل پذیرفت")
         REJECTED = "rejected", _("ارسال ناموفق")
         UNCERTAIN = "uncertain", _("نتیجه نامشخص")
         BLOCKED = "blocked", _("متوقف‌شده به‌خاطر سقف ارسال")

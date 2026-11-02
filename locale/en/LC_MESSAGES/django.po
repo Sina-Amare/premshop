@@ -47,7 +47,7 @@ msgstr "Search by exact email address"
 msgid "در حال ارسال"
 msgstr "Sending"
 
-msgid "دورهٔ ماهانه:"
+msgid "دوره‌ی ماهانه:"
 msgstr "Monthly period:"
 
 msgid "زمان ثبت نتیجه"
@@ -65,7 +65,7 @@ msgstr "Email attempts"
 msgid "سقف ارسال پر شده است. ارسال ایمیل تا آزاد شدن ظرفیت متوقف می‌ماند."
 msgstr "The sending limit has been reached. Sending is paused until capacity becomes available."
 
-msgid "شروع دورهٔ بعدی:"
+msgid "شروع دوره‌ی بعدی:"
 msgstr "Next period starts:"
 
 msgid "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های ورود و امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید."
@@ -86,7 +86,7 @@ msgstr "Outcome"
 msgid "نتیجه نامشخص"
 msgstr "Uncertain outcome"
 
-msgid "نشانی ایمیل ذخیره نمی‌شود. نتیجهٔ پذیرفته‌شده فقط یعنی سرویس ایمیل پیام را پذیرفته؛ رسیدن به صندوق دریافت را ثابت نمی‌کند."
+msgid "نشانی ایمیل را ذخیره نمی‌کنیم. پذیرش پیام در سرویس ایمیل، رسیدن به صندوق دریافت را ثابت نمی‌کند."
 msgstr "The address is not stored. Accepted means the mail service accepted the message; it does not prove inbox delivery."
 
 msgid "نشانی ایمیل را کامل وارد کنید."
@@ -116,8 +116,11 @@ msgstr "daily"
 msgid "ماهانه"
 msgstr "monthly"
 
-msgid "پذیرفته‌شده توسط سرویس ایمیل"
+msgid "سرویس ایمیل پذیرفت"
 msgstr "Accepted by mail service"
+
+msgid "کد ورود"
+msgstr "Sign-in code"
 
 msgid "۱٬۰۰۰"
 msgstr "1,000"

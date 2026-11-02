@@ -8,13 +8,13 @@
 {% if mail_quota.unavailable %}
 <p>{% translate "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های ورود و امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید." %}</p>
 {% else %}
-<p>{% translate "۲۴ ساعت گذشته:" %} {{ mail_quota.daily|fa_digits }} {% translate "از" %} {% translate "۲۰۰" %} · {% translate "دورهٔ ماهانه:" %} {{ mail_quota.monthly|fa_digits }} {% translate "از" %} {% translate "۱٬۰۰۰" %}</p>
+<p>{% translate "۲۴ ساعت گذشته:" %} {{ mail_quota.daily|fa_digits }} {% translate "از" %} {% translate "۲۰۰" %} · {% translate "دوره‌ی ماهانه:" %} {{ mail_quota.monthly|fa_digits }} {% translate "از" %} {% translate "۱٬۰۰۰" %}</p>
 <p>{% translate "ظرفیت باقی‌مانده:" %} {{ mail_quota.daily_remaining|fa_digits }} {% translate "روزانه" %} · {{ mail_quota.monthly_remaining|fa_digits }} {% translate "ماهانه" %}</p>
 {% if mail_quota.exhausted %}<p>{% translate "سقف ارسال پر شده است. ارسال ایمیل تا آزاد شدن ظرفیت متوقف می‌ماند." %}</p>
 {% elif mail_quota.reserve %}<p>{% translate "ظرفیت باقی‌مانده برای ایمیل‌های ورود و امنیتی نگه داشته شده است." %}</p>
 {% endif %}
 <p>{% translate "آزاد شدن اولین ظرفیت روزانه:" %} {{ mail_quota.daily_reset|jalali }} {{ mail_quota.daily_reset|time:"H:i"|fa_digits }}</p>
-<p>{% translate "شروع دورهٔ بعدی:" %} {{ mail_quota.monthly_reset|jalali }}</p>
+<p>{% translate "شروع دوره‌ی بعدی:" %} {{ mail_quota.monthly_reset|jalali }}</p>
 {% endif %}
 {% if perms.core.view_mailattempt %}<a href="{% url 'admin:core_mailattempt_changelist' %}">{% translate "سابقه ارسال ایمیل‌ها" %}</a>{% endif %}
 </section>

@@ -19,7 +19,7 @@ COUNTED = ["in_flight", "accepted", "uncertain"]
 
 
 class MailQuotaExceeded(Exception):
-    message = _("ارسال ایمیل فعلاً به سقف مجاز رسیده است. لطفاً بعداً دوباره امتحان کنید.")
+    message = _("ارسال ایمیل فعلاً به سقف مجاز رسیده است. بعداً دوباره امتحان کنید.")
 
 
 def fingerprint(address: str) -> str:

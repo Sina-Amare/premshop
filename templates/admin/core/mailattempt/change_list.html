@@ -8,7 +8,7 @@
 <input type="email" name="recipient" id="searchbar" dir="ltr" autocomplete="off" class="min-w-0 grow p-2" aria-describedby="mail-search-help">
 <button type="submit" class="p-2">{% translate "جست‌وجو" %}</button>
 </div>
-<p id="mail-search-help">{% translate "نشانی ایمیل ذخیره نمی‌شود. نتیجهٔ پذیرفته‌شده فقط یعنی سرویس ایمیل پیام را پذیرفته؛ رسیدن به صندوق دریافت را ثابت نمی‌کند." %}</p>
+<p id="mail-search-help">{% translate "نشانی ایمیل را ذخیره نمی‌کنیم. پذیرش پیام در سرویس ایمیل، رسیدن به صندوق دریافت را ثابت نمی‌کند." %}</p>
 {% if cl.query %}<a href="{{ request.path }}">{% translate "نمایش همه" %}</a>{% endif %}
 </form>
 {% endblock %}
