@@ -1,5 +1,4 @@
 import logging
-import re
 from datetime import timedelta
 from smtplib import SMTPException, SMTPResponseException
 from typing import Any
@@ -13,18 +12,12 @@ from django.utils import timezone
 from apps.catalog.models import Product
 from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
+from apps.core.richtext import absolute_markdown_links
 from apps.notifications.models import ConfirmationSweep, Notification
 from apps.orders.models import Order
 
 logger = logging.getLogger(__name__)
-_SITE_DESTINATION = re.compile(r"(\]\(\s*<?|^ {0,3}\[[^\]\n]+\]:\s*<?)/(?![/\\])", re.MULTILINE)
 _DELAYS = (60, 300, 900, 3600, 21600)
-
-
-def _absolute_links(source: str) -> str:
-    return _SITE_DESTINATION.sub(
-        lambda match: match[1] + settings.SITE_URL.rstrip("/") + "/", source
-    )
 
 
 def confirmation_context(order: Order) -> dict[str, Any]:
@@ -51,7 +44,7 @@ def confirmation_context(order: Order) -> dict[str, Any]:
         }
         saved.update(
             {
-                key: _absolute_links(facts.get(key, ""))
+                key: absolute_markdown_links(facts.get(key, ""))
                 for key in ("full_description", "usage_notes", "refund_note", "delivery_note")
             }
         )
@@ -59,7 +52,7 @@ def confirmation_context(order: Order) -> dict[str, Any]:
             {"title": spec["title"], "value": spec["value"]} for spec in facts.get("specs", [])
         ]
         saved["sections"] = [
-            {"title": section.get("title", ""), "body": _absolute_links(section["body"])}
+            {"title": section.get("title", ""), "body": absolute_markdown_links(section["body"])}
             for section in facts.get("sections", [])
         ]
         lines.append(
@@ -85,7 +78,7 @@ def confirmation_context(order: Order) -> dict[str, Any]:
             {key: value for key, value in line.items() if key != "snapshot"} for line in lines
         ],
         "policies": [
-            {"title": page["title"], "body": _absolute_links(page["body"])}
+            {"title": page["title"], "body": absolute_markdown_links(page["body"])}
             for page in order.policy_snapshot.values()
         ],
         "subtotal": order.subtotal,

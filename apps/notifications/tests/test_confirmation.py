@@ -33,6 +33,26 @@ def another_order(plan, index):
     return place_order(user=user, lines=[OrderLine(plan, 1)])
 
 
+@pytest.mark.parametrize(
+    "destination", [r"\/contact/", "&#47;contact/", "&sol;contact/", "&#x2f;contact/"]
+)
+def test_encoded_frozen_product_and_policy_links_are_absolute(
+    buyer, plan, policies, settings, destination
+):
+    settings.SITE_URL = "https://shop.example.test"
+    source = f"[contact]({destination})"
+    Product.objects.filter(pk=plan.product_id).update(full_description=source)
+    Page.objects.filter(slug="terms").update(body=source)
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    services.discover_confirmations()
+    row = Notification.objects.get()
+    assert row.text_body.count("https://shop.example.test/contact/") == 2
+    assert row.html_body.count('href="https://shop.example.test/contact/"') == 2
+    order.refresh_from_db()
+    assert order.policy_snapshot["terms"]["body"] == source
+    assert order.items.get().product_snapshot["full_description"] == source
+
+
 def test_discovery_freezes_address_and_full_text_without_sensitive_fields(
     buyer, plan, policies, settings
 ):
@@ -80,7 +100,7 @@ def test_discovery_freezes_address_and_full_text_without_sensitive_fields(
             "changed@example.test",
         ):
             assert value not in part
-    assert "[contact](https://shop.example.test/contact/?a=1&b=2)" in row.text_body
+    assert "[contact](<https://shop.example.test/contact/?a=1&b=2>)" in row.text_body
     assert 'href="https://shop.example.test/contact/?a=1&amp;b=2"' in row.html_body
     assert "<details" not in row.html_body and "<script" not in row.html_body
     assert "۲" in row.text_body and "۴۰۰,۰۰۰" in row.text_body

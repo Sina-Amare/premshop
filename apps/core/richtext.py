@@ -20,6 +20,7 @@ from django.conf import settings
 from django.utils.html import escape, format_html_join
 from django.utils.safestring import SafeString, mark_safe
 from markdown_it import MarkdownIt
+from markdown_it.helpers import parseLinkDestination
 from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
 from markdown_it.utils import EnvType, OptionsDict
@@ -50,6 +51,7 @@ _LATIN_LETTER = re.compile(f"[{_LATIN}]")
 _CROSSABLE = {"strong_open", "strong_close", "link_open", "link_close"}
 # CommonMark reads only ASCII digits as list numbers, and a Persian keyboard types "۱.".
 _PERSIAN_LIST_NUMBER = re.compile(r"^([ \t]*)([۰-۹]{1,9})(?=[.)](?:[ \t]|$))", re.MULTILINE)
+_MARKDOWN_DESTINATION = re.compile(r"\]\(\s*|^ {0,3}\[[^\]\n]+\]:[ \t]*", re.MULTILINE)
 
 
 def _isolated(children: list[Token]) -> list[Token]:
@@ -202,6 +204,32 @@ _parser.add_render_rule("em_close", _as_written)
 
 def _site_path_or_none(url: str) -> str | None:
     return url if _SITE_PATH.match(url.strip(_C0_AND_SPACE).translate(_TAB_AND_NEWLINE)) else None
+
+
+def absolute_markdown_links(source: str) -> str:
+    """Email needs absolute destinations, including Markdown-escaped site paths."""
+    pieces: list[str] = []
+    offset = 0
+    for match in _MARKDOWN_DESTINATION.finditer(source):
+        if match.start() < offset:
+            continue
+        escapes = match.start() - len(source[: match.start()].rstrip("\\"))
+        if escapes % 2:
+            continue
+        destination = parseLinkDestination(source, match.end(), len(source))
+        href = _parser.normalizeLink(destination.str) if destination.ok else ""
+        if (
+            not _parser.validateLink(href)
+            or _site_path_or_none(destination.str) is None
+            or _site_path_or_none(href) is None
+        ):
+            continue
+        pieces.extend(
+            (source[offset : match.end()], "<" + settings.SITE_URL.rstrip("/") + href + ">")
+        )
+        offset = destination.pos
+    pieces.append(source[offset:])
+    return "".join(pieces)
 
 
 def _sanitize(html: str, headings: set[str]) -> str:
