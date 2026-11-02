@@ -1,5 +1,11 @@
 from datetime import UTC, datetime, timedelta
-from smtplib import SMTPDataError, SMTPHeloError, SMTPServerDisconnected
+from smtplib import (
+    SMTPDataError,
+    SMTPHeloError,
+    SMTPNotSupportedError,
+    SMTPRecipientsRefused,
+    SMTPServerDisconnected,
+)
 
 import pytest
 from django.core import mail
@@ -70,6 +76,8 @@ def test_recovery_rollback_keeps_the_accepted_attempt():
     [
         (SMTPDataError(451, b"temporary rejection"), "rejected"),
         (SMTPHeloError(451, b"temporary greeting rejection"), "rejected"),
+        (SMTPRecipientsRefused({"buyer@example.test": (550, b"refused")}), "rejected"),
+        (SMTPNotSupportedError("no SMTPUTF8"), "rejected"),
         (SMTPServerDisconnected("lost result"), "uncertain"),
     ],
 )
