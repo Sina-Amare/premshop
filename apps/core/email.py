@@ -48,14 +48,23 @@ def render_email(name: str, context: dict[str, Any]) -> tuple[str, str, str]:
     return subject, text, html
 
 
-def send_templated_email(name: str, *, to: list[str], context: dict[str, Any]) -> int:
+def send_templated_email(
+    name: str,
+    *,
+    to: list[str],
+    context: dict[str, Any],
+    rendered_parts: tuple[str, str, str] | None = None,
+) -> int:
     """Render and send. Returns the number of messages the backend accepted.
 
     Reply-To is set explicitly: the From address is a monitored mailbox, but making
     the reply target explicit means a customer's reply still arrives if the From
     display name is ever changed to something unmonitored.
     """
-    subject, text, html = render_email(name, context)
+    subject, text, html = (
+        rendered_parts if rendered_parts is not None else render_email(name, context)
+    )
+    subject = " ".join(subject.split())
     message = EmailMultiAlternatives(
         subject=subject,
         body=text,

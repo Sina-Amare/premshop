@@ -121,6 +121,7 @@ INSTALLED_APPS = [
     "apps.cart",
     "apps.orders",
     "apps.payments",
+    "apps.notifications",
     "huey.contrib.djhuey",
     "apps.core",
 ]
@@ -404,6 +405,14 @@ UNFOLD = {
                         "link": reverse_lazy("admin:core_mailattempt_changelist"),
                         "permission": lambda request: request.user.has_perm(
                             "core.view_mailattempt"
+                        ),
+                    },
+                    {
+                        "title": _("تأییدیه‌های خرید"),
+                        "icon": "mark_email_read",
+                        "link": reverse_lazy("admin:notifications_notification_changelist"),
+                        "permission": lambda request: request.user.has_perm(
+                            "notifications.view_notification"
                         ),
                     },
                 ],

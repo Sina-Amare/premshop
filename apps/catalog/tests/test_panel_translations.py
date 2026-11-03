@@ -21,6 +21,9 @@ from django.conf import settings
 ROOT = Path(settings.BASE_DIR)
 PERSIAN = re.compile(r"[\u0600-\u06ff]")
 PANEL_CODE = [
+    "apps/notifications/apps.py",
+    "apps/notifications/models.py",
+    "apps/notifications/admin.py",
     "apps/core/apps.py",
     "apps/core/models.py",
     "apps/core/admin.py",

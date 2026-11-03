@@ -1385,3 +1385,51 @@ msgstr "No input has been revealed yet."
 
 msgid "شرایط زمان خرید"
 msgstr "Conditions at purchase"
+
+msgid "پیام‌ها"
+msgstr "Messages"
+
+msgid "در انتظار"
+msgstr "Waiting"
+
+msgid "ارسال‌شده"
+msgstr "Sent"
+
+msgid "ناموفق"
+msgstr "Failed"
+
+msgid "گیرنده"
+msgstr "Recipient"
+
+msgid "موضوع"
+msgstr "Subject"
+
+msgid "متن ایمیل"
+msgstr "Email text"
+
+msgid "نسخه‌ی HTML"
+msgstr "HTML version"
+
+msgid "تعداد تلاش‌ها"
+msgstr "Attempts"
+
+msgid "تلاش بعدی"
+msgstr "Next attempt"
+
+msgid "آخرین تلاش"
+msgstr "Last attempt"
+
+msgid "زمان ارسال"
+msgstr "Sent at"
+
+msgid "کد SMTP"
+msgstr "SMTP code"
+
+msgid "تأییدیه‌ی خرید"
+msgstr "Purchase confirmation"
+
+msgid "تأییدیه‌های خرید"
+msgstr "Purchase confirmations"
+
+msgid "ایمیل زمان خرید"
+msgstr "Email at purchase"

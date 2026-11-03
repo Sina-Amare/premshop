@@ -441,6 +441,7 @@ def place_order(
                 discount_amount=purchase.discount,
                 discount_snapshot=purchase.discount_snapshot,
                 policy_snapshot=purchase.policy_snapshot,
+                placement_email=account.email,
                 channel=channel,
                 created_at=at,
                 unpaid_expires_at=at + timedelta(hours=24),

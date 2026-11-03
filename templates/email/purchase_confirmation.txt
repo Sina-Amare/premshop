@@ -1,0 +1,37 @@
+{% load fa %}سفارش {{ order_number|fa_digits }} ثبت شد
+
+این سفارش هنگام ثبت پرداخت نشده بود. این ایمیل تأیید پرداخت نیست.
+تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}
+برای دیدن وضعیت فعلی سفارش، وارد حسابتان شوید:
+{{ order_url }}
+
+{% for line in lines %}{{ line.facts.name }}؛ {{ line.facts.plan_title }}
+تعداد: {{ line.quantity|fa_digits }}
+قیمت هر عدد: {{ line.price|toman_plain }} تومان
+جمع: {{ line.amount|toman_plain }} تومان
+{% if line.facts.duration_days %}مدت: {{ line.facts.duration_days|fa_digits }} روز
+{% endif %}{% if line.delivery %}روش تحویل: {{ line.delivery }}
+{% endif %}{% if line.facts.delivery_note %}{{ line.facts.delivery_note }}
+{% elif line.facts.delivery_hours %}تحویل تا {{ line.facts.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت
+{% endif %}{% if line.warranty %}گارانتی: {{ line.warranty }}
+{% endif %}{% if line.facts.telegram_required %}برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.
+{% endif %}{% for spec in line.facts.specs %}{{ spec.title }}: {{ spec.value }}
+{% endfor %}{% if line.facts.usage_notes %}نکات استفاده
+{{ line.facts.usage_notes }}
+{% endif %}{% if line.facts.refund_note %}شرایط لغو و بازگشت وجه
+{{ line.facts.refund_note }}
+{% endif %}{% if line.facts.full_description %}توضیحات محصول
+{{ line.facts.full_description }}
+{% endif %}{% for section in line.facts.sections %}{{ section.title }}
+{{ section.body }}
+{% endfor %}
+{% endfor %}جمع محصولات: {{ subtotal|toman_plain }} تومان
+{% if discount_amount %}تخفیف: {{ discount_amount|toman_plain }} تومان
+{% endif %}مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان
+
+صفحه‌های ثبت‌شده با سفارش
+{% for page in policies %}{{ page.title }}
+{{ page.body }}
+
+{% endfor %}پشتیبانی PremShop
+{{ support.email }}

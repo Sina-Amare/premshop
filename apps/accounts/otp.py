@@ -158,14 +158,18 @@ def normalize_digits(value: str) -> str:
 
 def send_login_code(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
     """Issue a code and mail it. Raises if the relay refuses — never silently."""
+    from smtplib import SMTPException
+
     from apps.core.email import send_templated_email
 
     issued = issue(email, purpose=purpose, binding=binding)
-    send_templated_email(
+    sent = send_templated_email(
         "password_reset" if purpose == "password_reset" else "otp_code",
         to=[email],
         context={"code": issued.code, "ttl_minutes": issued.ttl_minutes},
     )
+    if not sent:
+        raise SMTPException("Code email was not accepted")
     return issued
 
 
