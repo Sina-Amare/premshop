@@ -54,7 +54,8 @@ def production_storages() -> dict:
 def collected(tmp_path_factory):
     root = tmp_path_factory.mktemp("staticfiles")
     with override_settings(STORAGES=production_storages(), STATIC_ROOT=root):
-        call_command("collectstatic", interactive=False, verbosity=0)
+        # The Dockerfile's command: Tailwind's source is never collected.
+        call_command("collectstatic", interactive=False, verbosity=0, ignore_patterns=["input.css"])
         yield root
 
 
@@ -148,4 +149,8 @@ def test_the_parser_sees_an_asset_from_another_host():
         '<style>@font-face{src:url("https://fonts.example/f.woff2")}</style>'
     )
     found = parser.urls + [u for text in parser.styles for u in CSS_URL.findall(text)]
-    assert found == ["https://cdn.example/x.js", "//img.example/a.png", "https://fonts.example/f.woff2"]
+    assert found == [
+        "https://cdn.example/x.js",
+        "//img.example/a.png",
+        "https://fonts.example/f.woff2",
+    ]

@@ -32,11 +32,13 @@ COPY . .
 COPY --from=css /build/static/css/app.css static/css/app.css
 # prod.py refuses to start without its secrets. These placeholders live only in
 # this command's environment, and collectstatic opens no connection with them.
+# input.css is Tailwind's source, which no page loads: its @import names an npm
+# package that manifest storage cannot hash.
 RUN SECRET_KEY=collectstatic ALLOWED_HOSTS=localhost SITE_URL=https://localhost \
     DATABASE_URL=postgres://collectstatic@localhost/collectstatic \
     EMAIL_HOST_USER=collectstatic EMAIL_HOST_PASSWORD=collectstatic \
     FIELD_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
-    python manage.py collectstatic --noinput --verbosity 0
+    python manage.py collectstatic --noinput --verbosity 0 --ignore input.css
 USER premshop
 ARG GIT_COMMIT=""
 ENV GIT_COMMIT=$GIT_COMMIT

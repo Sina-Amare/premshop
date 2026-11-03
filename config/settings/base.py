@@ -113,7 +113,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "apps.core.apps.StaticFiles",
+    "django.contrib.staticfiles",
     # For pg_trgm: the extension operation, the GIN index and the similarity
     # functions the catalog search falls back to.
     "django.contrib.postgres",
