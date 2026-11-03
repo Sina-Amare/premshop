@@ -258,6 +258,12 @@ html body .v-search input:focus{box-shadow:none}
 .sort__link{display:inline-flex;align-items:center;min-height:44px;color:var(--v-text);text-decoration:none;border-block-end:2px solid transparent}
 .sort__link:hover{color:var(--v-ink)}
 .sort__link[aria-current]{color:var(--v-ink);font-weight:600;border-block-end-color:var(--v-accent)}
+.flush{margin:0}
+.auth-shell{max-inline-size:27rem;margin-inline:auto;padding-block-start:var(--spacing-4)}
+.auth-title{font-family:var(--font-head);font-size:24px;font-weight:600;line-height:1.35;margin:0 0 var(--spacing-4)}
+.auth-lead{margin:0 0 var(--spacing-5)}
+.auth-fine{margin:0 0 var(--spacing-6)}
+.auth-aside{text-align:center;margin-block-start:var(--spacing-4)}
 
 .legal-page{max-inline-size:44rem}
 .legal-page__body,.legal-page__support{font-size:17px;line-height:1.85;overflow-wrap:anywhere}
