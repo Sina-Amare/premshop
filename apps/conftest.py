@@ -1,6 +1,7 @@
 """Fixtures for every test in the project."""
 
 import os
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,43 @@ def no_output_in_the_repository() -> Iterator[None]:
     written = sorted(path for path, mtime in written_output().items() if before.get(path) != mtime)
     if written:
         pytest.fail(f"tests wrote into the repository instead of tmp_path: {written[:10]}")
+
+
+def answering(server: Any) -> set[threading.Thread]:
+    """The live server's threads that are still answering a connection."""
+    if not hasattr(server, "answering"):
+        server.answering = set()
+        answer = server.process_request_thread
+
+        def tracked(*args: Any) -> None:
+            server.answering.add(threading.current_thread())
+            try:
+                answer(*args)
+            finally:
+                server.answering.discard(threading.current_thread())
+
+        server.process_request_thread = tracked
+    return server.answering
+
+
+@pytest.fixture(autouse=True)
+def live_server_finishes_before_the_flush(request: Any) -> Iterator[None]:
+    """A request the live server is still answering when a test ends, such as a
+    page's availability poll, would race the flush that empties the database next:
+    TRUNCATE deadlocks against its queries, or it writes into the next test.
+
+    pytest-django's autouse fixtures set up the database first, so this one is torn
+    down before the flush.
+    """
+    if "live_server" not in request.fixturenames:
+        yield
+        return
+    threads = answering(request.getfixturevalue("live_server").thread.httpd)
+    yield
+    for thread in list(threads):
+        thread.join(timeout=30)
+    if threads:
+        pytest.fail(f"the live server is still answering {len(threads)} connection(s)")
 
 
 @pytest.fixture(autouse=True)
