@@ -109,6 +109,19 @@ def test_decrypt_check_passes_an_empty_database_only_when_asked():
     assert "All 0 encrypted values decrypt." in out.getvalue()
 
 
+@pytest.mark.parametrize("flags", [[], ["--allow-empty"]], ids=["refused", "allowed"])
+def test_decrypt_check_prints_the_key_fingerprint_and_never_the_key(settings, flags):
+    """With no value to decrypt, the fingerprint is what shows the key is the escrowed one."""
+    out = StringIO()
+    try:
+        call_command("verify_decrypt", *flags, stdout=out)
+    except CommandError:
+        assert not flags
+    fingerprint = key_id(settings.FIELD_ENCRYPTION_KEY)
+    assert f"Field encryption key fingerprint: {fingerprint}" in out.getvalue()
+    assert settings.FIELD_ENCRYPTION_KEY not in out.getvalue()
+
+
 @pytest.mark.parametrize("lookup", ["exact", "contains", "in"])
 def test_searching_encrypted_values_is_refused(lookup):
     with pytest.raises(FieldError):

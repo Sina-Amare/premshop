@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection
 from psycopg import sql
 
-from apps.core.fields import EncryptedTextField
+from apps.core.fields import EncryptedTextField, field_keys
 
 
 class Command(BaseCommand):
@@ -22,10 +22,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--allow-empty",
             action="store_true",
-            help="Pass when no value is encrypted at all, as before the first order.",
+            help="Pass when no value is encrypted at all, as before any customer input.",
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
+        # Where nothing decrypts, only this, compared with the fingerprint kept
+        # beside the escrowed key, shows the site will write under that key.
+        current, _ = field_keys()
+        self.stdout.write(f"Field encryption key fingerprint: {current}")
         total = failed = 0
         for model in apps.get_models():
             for field in model._meta.fields:
