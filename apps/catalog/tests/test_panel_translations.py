@@ -43,7 +43,13 @@ PANEL_CODE = [
     "apps/orders/admin.py",
     "config/settings/base.py",
 ]
-PANEL_TEMPLATES = ["templates/admin", "templates/unfold"]
+PANEL_TEMPLATES = [
+    "templates/admin",
+    "templates/unfold",
+    # Shared with the customer's order page, which pins itself to Persian; the
+    # panel's order page renders it in whatever language the panel is in.
+    "templates/orders/_product_conditions.html",
+]
 
 
 def compile_messages():
@@ -71,7 +77,8 @@ def persian_msgids() -> set[str]:
             ):
                 found.add(node.args[0].value)
     for folder in PANEL_TEMPLATES:
-        for path in (ROOT / folder).rglob("*.html"):
+        root = ROOT / folder
+        for path in [root] if root.is_file() else root.rglob("*.html"):
             text = path.read_text(encoding="utf-8")
             found.update(re.findall(r'{%\s*(?:translate|trans)\s+"([^"]+)"', text))
             for body in re.findall(
@@ -141,6 +148,10 @@ def test_every_persian_string_in_the_panel_has_its_english():
     wanted = persian_msgids()
 
     assert len(wanted) > 80 and "نامک" in wanted, "positive control: the walk found the labels"
+    assert {
+        "شرایط لغو و بازگشت وجه",
+        "تحویل تا %(hours)s ساعت پس از تأیید پرداخت",
+    } <= wanted, "positive control: the walk reached the shared conditions partial"
     missing = sorted(wanted - english.keys())
     assert not missing, f"add these to locale/en/LC_MESSAGES/django.po: {missing}"
 

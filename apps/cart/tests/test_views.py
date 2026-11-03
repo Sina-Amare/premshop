@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 import pytest
 from django.test import Client
 
 from apps.cart.models import Cart, CartItem
-from apps.catalog.models import Product
+from apps.catalog.models import Plan, Product
 
 pytestmark = pytest.mark.django_db
 
@@ -165,3 +167,47 @@ def test_cart_summary_links_to_checkout(client, plan):
     client.post("/cart/add/", {"plan": plan.pk})
     body = client.get("/cart/").content.decode()
     assert 'href="/checkout/">ادامه و ثبت سفارش</a>' in body
+
+
+def test_cart_query_count_is_the_same_for_three_lines_and_nine(client, buyer, plan, queries_for):
+    """Each line is a plan of its own product, and each product has a second plan
+    and a promotion, so a per-line lookup of siblings or of a price would show."""
+    cart = Cart.objects.create(user=buyer)
+    client.force_login(buyer)
+
+    def add(start, stop):
+        for i in range(start, stop):
+            product = Product.objects.create(
+                category=plan.product.category,
+                name=f"محصول {i}",
+                slug=f"cart-{i}",
+                status=Product.Status.ACTIVE,
+            )
+            Plan.objects.create(
+                product=product,
+                title="۱ ماهه",
+                duration_days=30,
+                cost_price=Decimal("1"),
+                sale_price=Decimal("200000"),
+                promo_price=Decimal("150000"),
+                max_quantity=3,
+            )
+            item = Plan.objects.create(
+                product=product,
+                title="۳ ماهه",
+                duration_days=90,
+                cost_price=Decimal("1"),
+                sale_price=Decimal("500000"),
+                max_quantity=3,
+            )
+            CartItem.objects.create(cart=cart, plan=item, quantity=2)
+
+    add(0, 3)
+    few, response = queries_for("/cart/")
+    assert len(response.context["cart"].lines) == 3
+    add(3, 9)
+
+    many, response = queries_for("/cart/")
+
+    assert len(response.context["cart"].lines) == 9
+    assert many == few

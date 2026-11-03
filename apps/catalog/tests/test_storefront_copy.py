@@ -410,7 +410,7 @@ def script_strings() -> list[tuple[str, str]]:
 
 def test_the_scripts_write_written_persian_too():
     strings = script_strings()
-    assert ("base.html", "تخفیف تمام شد") in strings, "positive control: the walk read a script"
+    assert ("deadlines.js", "تخفیف تمام شد") in strings, "positive control: the walk read a script"
 
     assert not [(where, s, offences(s)) for where, s in strings if offences(s)]
 

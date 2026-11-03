@@ -2,12 +2,14 @@
 
 import os
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from django.core.cache import cache
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from playwright.sync_api import Browser, Error, sync_playwright
 
 REPOSITORY = Path(__file__).resolve().parent.parent
@@ -176,3 +178,24 @@ def browser() -> Iterator[Browser]:
             pytest.skip(f"Chromium is not installed for Playwright: {exc}")
         yield chromium
         chromium.close()
+
+
+@pytest.fixture
+def queries_for(client: Any) -> Callable[..., tuple[int, Any]]:
+    """GET a page and say how many queries it ran, with its response.
+
+    The page is fetched once first so one-off caches are warm: what is counted
+    is the page's own cost. A test compares the count at N rows with the count
+    at 3N, and a page whose cost grows with its rows is the N+1 this exists to
+    catch.
+    """
+
+    def count(url: str, data: dict[str, Any] | None = None) -> tuple[int, Any]:
+        client.get(url, data)
+        with CaptureQueriesContext(connection) as queries:
+            response = client.get(url, data)
+        if response.status_code != 200:
+            pytest.fail(f"{url} answered {response.status_code}, so its queries say nothing")
+        return len(queries), response
+
+    return count

@@ -1433,3 +1433,15 @@ msgstr "Purchase confirmations"
 
 msgid "ایمیل زمان خرید"
 msgstr "Email at purchase"
+
+msgid "روش تحویل"
+msgstr "Delivery method"
+
+msgid "تحویل تا %(hours)s ساعت پس از تأیید پرداخت"
+msgstr "Delivery within %(hours)s hours of payment confirmation"
+
+msgid "برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید."
+msgstr "Activating this product needs coordination on Telegram."
+
+msgid "شرایط لغو و بازگشت وجه"
+msgstr "Cancellation and refund terms"
