@@ -1,0 +1,2 @@
+# Run by bash in Linux and WSL, where a carriage return breaks every line.
+*.sh text eol=lf
