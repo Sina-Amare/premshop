@@ -129,6 +129,12 @@ echo "smoke: forged client headers leave the search limit at $limit a minute per
 reply=$(stack exec -T redis redis-cli ping 2>&1 || true)
 [[ $reply == *NOAUTH* ]] || fail "Redis answered without its password: $reply"
 [[ $(stack ps --status running --services) == *worker* ]] || fail "the worker is not running"
+# A crash-looping worker is "running" between its restarts, and one that cannot
+# reach Redis may stay up and only log the error.
+worker=$(stack ps --all --quiet worker)
+[ "$(docker inspect --format '{{.RestartCount}}' "$worker")" = 0 ] || fail "the worker restarted"
+worker_logs=$(stack logs --no-color worker)
+[[ $worker_logs != *Traceback* ]] || fail "the worker logged a traceback"
 
 # A token over HTTP, over HTTPS to Django, and over HTTPS while Django is down.
 token=/track/smoke-private-token/
