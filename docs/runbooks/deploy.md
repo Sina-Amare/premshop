@@ -30,5 +30,6 @@ Keep every image the state file names: `docker image prune` would remove the one
 - **`stopped: ... migrate --noinput exited with 1`**: nothing switched, and the old image is still serving. The migration's error is printed above. A migration that failed part way leaves the tables it already added, which the old image ignores.
 - **`returning to premshop:<old>` then `back on premshop:<old>`**: the new image failed its health check and the site is back on the old one; the status is 1. The last `/healthz` answer is printed. Read the new image's logs before trying again.
 - **`is not healthy either`**: neither image answers, and visitors see the maintenance page. The cause is usually outside the image: the database, Redis or the environment file. Follow "When the return fails" in [rollback.md](rollback.md).
+- **Interrupted** (a closed terminal, a dropped connection): run the same deploy again. The state file changes only after a health check passes, so it still names the image that ran before, and `rollback` would go one release further back.
 
 Every `docker compose` command by hand needs the same flags the script passes: `docker compose --env-file "$PREMSHOP_ENV_FILE" --file deploy/compose.yaml`, with `PREMSHOP_IMAGE` set to the image recorded as current.
