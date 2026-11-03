@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from django.conf import settings
 from django.test import Client
@@ -240,7 +238,7 @@ def test_password_choice_keeps_checkout_preview_and_rotates_merged_session(
 @pytest.mark.browser
 @pytest.mark.parametrize("width", [390, 1440])
 def test_long_mixed_cart_preview_keeps_controls_and_prices_within_viewport(
-    browser, live_server, plan, width
+    browser, live_server, plan, width, tmp_path
 ):
     plan.product.name = "اشتراک ابزار برنامه‌نویسی GitHub Copilot Enterprise برای تیم‌های بزرگ"
     plan.product.image = "products/checkout-mark.svg"
@@ -281,9 +279,7 @@ def test_long_mixed_cart_preview_keeps_controls_and_prices_within_viewport(
         assert image.bounding_box()["width"] >= 28
         assert art.evaluate("el => getComputedStyle(el).backgroundColor") != "rgba(0, 0, 0, 0)"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-        directory = Path(settings.BASE_DIR) / "screenshots" / "checkout-signin"
-        directory.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(directory / f"long-{width}.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / f"long-{width}.png"), full_page=True)
     finally:
         context.close()
 

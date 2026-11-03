@@ -1,6 +1,5 @@
 from datetime import timedelta
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from django.utils import timezone
@@ -124,7 +123,9 @@ def test_cart_line_carries_the_polled_price_key(client, plan):
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("width", [390, 1440])
-def test_stepping_a_promoted_line_updates_the_saving_row(browser, live_server, client, plan, width):
+def test_stepping_a_promoted_line_updates_the_saving_row(
+    browser, live_server, client, plan, width, tmp_path
+):
     _promote(plan, promo_ends_at=timezone.now() + timedelta(hours=2))
     client.post("/cart/add/", {"plan": plan.pk})
     page = _open_cart(browser, live_server, client, width)
@@ -138,9 +139,7 @@ def test_stepping_a_promoted_line_updates_the_saving_row(browser, live_server, c
         # The rebuilt countdown must tick, or it would freeze at the time of the edit.
         expect(page.locator(".cart-line .deadline[data-clock-ready]")).to_have_count(1)
         assert page.evaluate("document.documentElement.scrollWidth") <= width
-        directory = Path("screenshots/cart-discount")
-        directory.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=directory / f"{width}.png", full_page=True)
+        page.screenshot(path=tmp_path / f"{width}.png", full_page=True)
     finally:
         page.close()
 

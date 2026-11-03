@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from playwright.sync_api import expect
 
@@ -12,15 +10,13 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 @pytest.mark.parametrize("width", [390, 1440])
 def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
-    browser, live_server, plan, width
+    browser, live_server, plan, width, tmp_path
 ):
     plan.stock_quantity = 2
     plan.save()
     # A logo narrows the toast's text column, as every seeded product's does.
     plan.product.image = "products/sample.svg"
     plan.product.save()
-    directory = Path("screenshots/cart-stock")
-    directory.mkdir(parents=True, exist_ok=True)
     context = browser.new_context(viewport={"width": width, "height": 1000})
     other_context = browser.new_context(viewport={"width": width, "height": 1000})
     for each in (context, other_context):
@@ -56,14 +52,14 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         assert page.locator("#cart-toast").count() == 1
         page.evaluate("document.fonts.ready")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-        page.screenshot(path=str(directory / f"toast-{width}.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / f"toast-{width}.png"), full_page=True)
         other.goto(live_server.url + plan.product.get_absolute_url())
         expect(other.locator(".buybox__cta")).to_be_enabled()
         page.locator("#cart-toast a").click()
         expect(page.locator("[data-reservation-clock]")).to_have_count(0)
         expect(page.locator('.cart-stepper [value="1"]')).to_be_visible()
         expect(page.locator('.cart-stepper [value="1"]')).to_be_disabled()
-        page.screenshot(path=str(directory / f"selected-{width}.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / f"selected-{width}.png"), full_page=True)
         page.locator('.cart-stepper [value="-1"]').click()
         expect(page.locator(".cart-quantity input[name=quantity]")).to_have_value("1")
         plan.stock_quantity = 0
@@ -77,7 +73,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         assert CartItem.objects.get().quantity == 1
         expect(page.locator(".cart-line__amount")).to_have_count(0)
         expect(page.locator(".cart-summary__total")).not_to_contain_text("رایگان")
-        page.screenshot(path=str(directory / f"unavailable-{width}.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / f"unavailable-{width}.png"), full_page=True)
         page.locator(".cart-remove").click()
         expect(page.locator(".cart-empty")).to_be_visible()
         plan.stock_quantity = 2
@@ -130,7 +126,7 @@ def test_increased_stock_updates_quantity_and_price_on_an_open_product_page(
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_admin_stock_section_and_live_counts(open_panel, plan, width):
+def test_admin_stock_section_and_live_counts(open_panel, plan, width, tmp_path):
     from apps.cart.services import add_to_cart
     from apps.cart.tests.test_services import request_for
 
@@ -144,6 +140,4 @@ def test_admin_stock_section_and_live_counts(open_panel, plan, width):
     expect(page.get_by_text("۳ تا مانده", exact=True)).to_be_visible()
     expect(page.get_by_text("موجودی و تعداد", exact=True).first).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-    directory = Path("screenshots/cart-stock")
-    directory.mkdir(parents=True, exist_ok=True)
-    page.screenshot(path=str(directory / f"admin-stock-{width}.png"), full_page=True)
+    page.screenshot(path=str(tmp_path / f"admin-stock-{width}.png"), full_page=True)

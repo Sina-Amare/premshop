@@ -2,11 +2,34 @@
 
 import os
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
 from django.core.cache import cache
 from playwright.sync_api import Browser, Error, sync_playwright
+
+REPOSITORY = Path(__file__).resolve().parent.parent
+# A test's output belongs in tmp_path; these are where it used to land in the working tree.
+OUTPUT_FOLDERS = ("screenshots", ".playwright-mcp")
+
+
+def written_output() -> dict[str, int]:
+    return {
+        path.relative_to(REPOSITORY).as_posix(): path.stat().st_mtime_ns
+        for folder in OUTPUT_FOLDERS
+        for path in (REPOSITORY / folder).rglob("*")
+        if path.is_file()
+    }
+
+
+@pytest.fixture(autouse=True, scope="session")
+def no_output_in_the_repository() -> Iterator[None]:
+    before = written_output()
+    yield
+    written = sorted(path for path, mtime in written_output().items() if before.get(path) != mtime)
+    if written:
+        pytest.fail(f"tests wrote into the repository instead of tmp_path: {written[:10]}")
 
 
 @pytest.fixture(autouse=True)

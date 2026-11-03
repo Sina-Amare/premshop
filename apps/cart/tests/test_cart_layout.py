@@ -1,5 +1,4 @@
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from django.urls import reverse
@@ -107,7 +106,7 @@ def test_cart_controls_and_total_fit_the_new_layout(browser, live_server, plan, 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("width", [390, 1440])
 def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
-    browser, live_server, client, plan, width
+    browser, live_server, client, plan, width, tmp_path
 ):
     selected = [plan]
     for number in range(3):
@@ -149,10 +148,8 @@ def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
             assert amount.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
             box = amount.bounding_box()
             assert box["x"] >= 0 and box["x"] + box["width"] <= width + 1
-        output = Path(".playwright-mcp/u9/screenshots")
-        output.mkdir(parents=True, exist_ok=True)
         page.screenshot(
-            path=str(output / f"cart-four-unavailable-long-{width}.png"), full_page=True
+            path=str(tmp_path / f"cart-four-unavailable-long-{width}.png"), full_page=True
         )
     finally:
         page.close()

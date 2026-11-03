@@ -10,11 +10,8 @@ that would ask for one.
 
 from __future__ import annotations
 
-import os
-import tempfile
 from html.parser import HTMLParser
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -34,10 +31,6 @@ pytestmark = pytest.mark.django_db
 T = Product.DeliveryType
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1440, "height": 900}
-SHOTS = (
-    Path(os.environ.get("PREMSHOP_SHOTS", Path(tempfile.gettempdir()) / "premshop-shots"))
-    / "account-row"
-)
 
 ON_ACCOUNT = "اشتراک روی اکانت خودتان فعال می‌شود."
 # (the row's label, the sentence its body opens with)
@@ -289,9 +282,8 @@ def tab_to(page, locator, presses: int = 80) -> None:
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("viewport", [PHONE, DESKTOP], ids=["390", "1440"])
 def test_the_keyboard_opens_the_row_and_the_plans_move_down(
-    browser, live_server, settings, viewport
+    browser, live_server, settings, viewport, tmp_path
 ):
-    SHOTS.mkdir(parents=True, exist_ok=True)
     product = seeded_spotify(settings)
     width = viewport["width"]
     page = browser.new_page(viewport=viewport)
@@ -315,7 +307,7 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
         expect(note).to_be_hidden()
         closed = first_plan.bounding_box()["y"]
         pointing = chevron.evaluate("e => getComputedStyle(e).transform")
-        page.screenshot(path=str(SHOTS / f"closed-{width}.png"))
+        page.screenshot(path=str(tmp_path / f"closed-{width}.png"))
 
         tab_to(page, summary)
         ring = summary.evaluate(UNCLIPPED_RING)
@@ -345,7 +337,7 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
             f"برای فعال‌سازی، {ASKS} را از شما می‌خواهیم."
         )
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-        page.screenshot(path=str(SHOTS / f"open-{width}.png"))
+        page.screenshot(path=str(tmp_path / f"open-{width}.png"))
         if viewport is DESKTOP:
             # Once the box has stuck under the header, the open row leaves the button in view.
             page.evaluate("scrollTo({top: 400, behavior: 'instant'})")
@@ -355,7 +347,7 @@ def test_the_keyboard_opens_the_row_and_the_plans_move_down(
             assert stuck, "the buy box is not stuck"
             expect(cta).to_have_text("افزودن به سبد خرید")
             expect(cta).to_be_in_viewport(ratio=1)
-            page.screenshot(path=str(SHOTS / f"open-stuck-{width}.png"))
+            page.screenshot(path=str(tmp_path / f"open-stuck-{width}.png"))
             page.evaluate("scrollTo({top: 0, behavior: 'instant'})")
 
         page.keyboard.press("Space")

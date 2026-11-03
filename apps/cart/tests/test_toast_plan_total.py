@@ -1,7 +1,6 @@
 """The add-to-cart toast names the whole plan and states the cart's own total."""
 
 import re
-from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -12,7 +11,6 @@ from apps.catalog.models import Category, Plan, Product
 
 pytestmark = pytest.mark.django_db
 
-SHOTS = Path("screenshots/toast-total")
 # media/ is not in the repository, so a browser test serves the logo it names.
 LOGO = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
@@ -123,7 +121,9 @@ def test_the_plan_row_the_cart_line_and_the_toast_state_one_figure(plan):
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("width, height", [(1440, 900), (390, 844), (360, 740)])
-def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, width, height):
+def test_the_toast_shows_the_whole_plan_and_the_total(
+    browser, live_server, width, height, tmp_path
+):
     category = Category.objects.create(name="موسیقی", slug="music")
     # A logo narrows the toast's text column, as the real product's does.
     product = Product.objects.create(
@@ -136,7 +136,6 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
     Plan.objects.create(
         product=product, title="۳ ماهه", cost_price=1, sale_price=490000, promo_price=420000
     )
-    SHOTS.mkdir(parents=True, exist_ok=True)
     page = browser.new_page(viewport={"width": width, "height": height})
     page.route(
         f"**{product.image.url}",
@@ -187,7 +186,7 @@ def test_the_toast_shows_the_whole_plan_and_the_total(browser, live_server, widt
         if width >= 720:
             plan_row = page.locator("#buy-form .plan").first.bounding_box()
             assert box["y"] + box["height"] <= plan_row["y"]
-        page.screenshot(path=str(SHOTS / f"{width}.png"))
+        page.screenshot(path=str(tmp_path / f"{width}.png"))
         # However the line wraps, the figure keeps its unit beside it: narrowed until it breaks
         # at every space it may, with no `text-wrap: pretty`, which Safari before 26 lacks.
         total.evaluate("el => el.style.cssText = 'text-wrap: wrap; inline-size: min-content'")
