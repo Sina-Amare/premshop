@@ -102,6 +102,10 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 SITE_URL = site_url(env("SITE_URL") or "http://127.0.0.1:8000")
 # Baked into the production image at build time; /healthz and error reports name it.
 GIT_COMMIT = env("GIT_COMMIT")
+# The panel's address. Production refuses to start on this default (prod.py).
+ADMIN_PATH = env("ADMIN_PATH") or "admin/"
+# The client's address from X-Real-IP, which only nginx writes; on in prod.py alone.
+TRUST_PROXY_HEADERS = False
 
 INSTALLED_APPS = [
     # unfold must precede django.contrib.admin: it overrides the admin templates,
@@ -113,7 +117,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "apps.core.apps.StaticFiles",
+    "django.contrib.staticfiles",
     # For pg_trgm: the extension operation, the GIN index and the similarity
     # functions the catalog search falls back to.
     "django.contrib.postgres",

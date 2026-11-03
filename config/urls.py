@@ -51,7 +51,7 @@ urlpatterns = [
     path("cart/", include("apps.cart.urls")),
     path("", include("apps.payments.urls")),
     path("", include("apps.orders.urls")),
-    path("admin/", admin.site.urls),
+    path(settings.ADMIN_PATH, admin.site.urls),
 ]
 
 handler500 = "apps.core.errors.server_error"
