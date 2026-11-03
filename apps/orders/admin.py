@@ -37,10 +37,8 @@ from apps.orders.services import reveal_customer_input
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted
 # input is never selected.
-_SAVED_NAMES = {
-    "item_name": KeyTextTransform("name", "order_item__product_snapshot"),
-    "item_plan": KeyTextTransform("plan_title", "order_item__product_snapshot"),
-}
+_ITEM_NAME = KeyTextTransform("name", "order_item__product_snapshot")
+_ITEM_PLAN = KeyTextTransform("plan_title", "order_item__product_snapshot")
 
 
 class OrderItemInline(TabularInline):
@@ -195,7 +193,7 @@ class OrderAdmin(ModelAdmin):
             context["input_access_log"] = (
                 CredentialAccessLog.objects.filter(order_item__order_id=obj.pk)
                 .select_related("user")
-                .annotate(**_SAVED_NAMES)
+                .annotate(item_name=_ITEM_NAME, item_plan=_ITEM_PLAN)
             )
         return super().render_change_form(request, context, add, change, form_url, obj)
 
@@ -263,7 +261,7 @@ class OrderAdmin(ModelAdmin):
     def history(self, obj: Order) -> str:
         events = (
             OrderItemEvent.objects.filter(order_item__order=obj)
-            .annotate(**_SAVED_NAMES)
+            .annotate(item_name=_ITEM_NAME, item_plan=_ITEM_PLAN)
             .order_by("created_at", "pk")
         )
         rows = format_html_join(
