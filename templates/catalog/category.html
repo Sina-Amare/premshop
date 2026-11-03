@@ -19,12 +19,21 @@
   {% if not category.intro %}{% include 'admin/catalog/preview_slot.html' with field='intro' %}{% else %}{% include 'admin/catalog/preview_slot.html' with field='description' %}{% endif %}
   {% if not category.intro and not category.description %}{% include 'admin/catalog/preview_slot.html' with field='description' %}{% endif %}
   {% comment %}
-  The count and nothing else. A filter over three products returns everything
+  The count and a sort. A filter over three products returns everything
   or nothing, and of six small Iranian shops surveyed none offers one — the
-  single exception is a theme default. Sort comes first if a category ever
-  passes about fifteen products; a filter after that.
+  single exception is a theme default. A filter waits until a category passes
+  about fifteen products.
   {% endcomment %}
   {% if products %}<p class="small page-head__intro">{{ products|length|fa_digits }} محصول</p>{% endif %}
+  {% comment %}Plain links, so it works without a script. The default is the bare address;
+  the others add a parameter that the canonical link leaves out. One product has
+  nothing to be ordered against.{% endcomment %}
+  {% if products|length > 1 %}{% with chosen=sort|default:'new' %}{% url 'category' category.slug as here %}
+  <div class="sort" role="group" aria-labelledby="sort-label"><span class="sort__label" id="sort-label">مرتب‌سازی:</span>
+    <a class="sort__link" href="{{ here }}"{% if chosen == 'new' %} aria-current="true"{% endif %}>جدیدترین</a>
+    <a class="sort__link" href="{{ here }}?sort=cheap"{% if chosen == 'cheap' %} aria-current="true"{% endif %}>ارزان‌ترین</a>
+    <a class="sort__link" href="{{ here }}?sort=expensive"{% if chosen == 'expensive' %} aria-current="true"{% endif %}>گران‌ترین</a>
+  </div>{% endwith %}{% endif %}
 </header>
 
 {% if products %}

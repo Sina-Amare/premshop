@@ -253,6 +253,11 @@ html body .v-search input:focus{box-shadow:none}
 .buybox__facts{margin:0 0 18px;padding-block-end:14px;border-bottom:1px solid var(--v-line);font-size:13px;line-height:1.9}
 .buybox__facts .v-icon{width:16px;height:16px}
 .page-head__intro .v-icon--telegram{width:16px;height:16px;display:inline-block;vertical-align:middle;margin-inline-end:4px}
+.sort{display:flex;flex-wrap:wrap;align-items:center;column-gap:18px;margin-block-start:10px;font-size:14px}
+.sort__label{color:var(--v-text)}
+.sort__link{display:inline-flex;align-items:center;min-height:44px;color:var(--v-text);text-decoration:none;border-block-end:2px solid transparent}
+.sort__link:hover{color:var(--v-ink)}
+.sort__link[aria-current]{color:var(--v-ink);font-weight:600;border-block-end-color:var(--v-accent)}
 
 .legal-page{max-inline-size:44rem}
 .legal-page__body,.legal-page__support{font-size:17px;line-height:1.85;overflow-wrap:anywhere}
