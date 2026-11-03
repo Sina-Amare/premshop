@@ -48,7 +48,8 @@ def test_redis_needs_its_password():
     assert "--requirepass" in " ".join(stack["redis"]["command"])
     assert "$REDIS_PASSWORD" in " ".join(stack["redis"]["command"])
     for name in ("web", "worker"):
-        assert urlsplit(stack[name]["environment"]["REDIS_URL"]).password == "${REDIS_PASSWORD}"
+        url = urlsplit(stack[name]["environment"]["REDIS_URL"])
+        assert url.password == "${REDIS_PASSWORD}"  # noqa: S105 — a Compose reference, not a value
 
 
 def test_no_service_gets_a_secret_value_inline():
@@ -105,7 +106,8 @@ def test_private_and_built_paths_stay_out_of_the_image(path):
 
 
 @pytest.mark.parametrize(
-    "path", ["manage.py", "uv.lock", "apps/core/views.py", "static/css/input.css", "templates/base.html"]
+    "path",
+    ["manage.py", "uv.lock", "apps/core/views.py", "static/css/input.css", "templates/base.html"],
 )
 def test_the_application_reaches_the_image(path):
     assert not dockerignored(path)
