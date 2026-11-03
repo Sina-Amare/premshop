@@ -1,6 +1,6 @@
 # Deploy
 
-`scripts/deploy.py deploy` puts one image on the server: it backs up the database, migrates with the new image, switches `web` and `worker` to it while nginx shows the maintenance page, and waits for `/healthz` to report the new commit. When that check fails it switches back to the image that was running and exits with status 1. It never runs a down-migration: migrations only add, so the previous image runs on the new schema, as long as each migration follows the rule below. CI rehearses this on every code change (`deploy/rehearse.sh`).
+`scripts/deploy.py deploy` puts one image on the server: it backs up the database, migrates with the new image, switches `web` and `worker` to it while nginx shows the maintenance page, and waits for `/healthz` to report the new commit, then checks that the worker runs without a restart or a traceback in its log. When that check fails it switches back to the image that was running and exits with status 1. It never runs a down-migration: migrations only add, so the previous image runs on the new schema, as long as each migration follows the rule below. CI rehearses this on every code change (`deploy/rehearse.sh`).
 
 ## Once per server
 
@@ -38,7 +38,7 @@ A failed deploy and a rollback both run the previous image on the schema the new
 - **`the backup came out empty, cut short or not a pg_dump archive`**: nothing changed. Every backup is read whole by `pg_restore` before the deploy goes on. The database container is down or refused `pg_dump`, or the disk is full: `docker compose ps db`, then its logs, and `df -h`.
 - **`nginx refuses the files in deploy/nginx/`**: nothing switched, and the old image still serves under nginx's old configuration; the migrations already ran, and the old image runs on them. nginx's error is printed above. Put the checkout back on the running image's commit at once, since nginx would read the refused files at its next restart, then fix the file on `main` and deploy that commit.
 - **`stopped: ... migrate --noinput exited with 1`**: nothing switched, and the old image is still serving. The migration's error is printed above. A migration that failed part way leaves the tables it already added, which the old image ignores.
-- **`returning to premshop:<old>` then `back on premshop:<old>`**: the new image failed its health check and the site is back on the old one; the status is 1. The last `/healthz` answer is printed. Read the new image's logs before trying again.
+- **`returning to premshop:<old>` then `back on premshop:<old>`**: the new image failed its health check and the site is back on the old one; the status is 1. The last `/healthz` answer, or the worker's state, is printed. Read the new image's logs before trying again.
 - **`is not healthy either`**: neither image answers, and visitors see the maintenance page. The cause is usually outside the image: the database, Redis or the environment file. Follow "When the return fails" in [rollback.md](rollback.md).
 - **Interrupted** (a closed terminal, a dropped connection): run the same deploy again. The state file changes only after a health check passes, so it still names the image that ran before, and `rollback` would go one release further back.
 

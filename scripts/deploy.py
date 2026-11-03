@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import http.client
 import json
 import os
 import subprocess
@@ -145,17 +146,30 @@ class Stack:
         # The official image reloads its configuration on SIGHUP.
         self.compose(image, "kill", "--signal", "HUP", "nginx")
 
+    def worker_running(self, image: str) -> bool:
+        # A crash-looping worker is "running" between its restarts, and one that
+        # cannot reach Redis may stay up and only log the error.
+        output: dict[str, Any] = {"capture_output": True, "text": True}
+        worker = self.compose(image, "ps", "--all", "--quiet", "worker", **output).stdout.split()
+        inspect = ["docker", "inspect", "--format", "{{.State.Status}} {{.RestartCount}}"]
+        state = self.run([*inspect, *worker], check=False, **output).stdout.split()
+        logs = self.compose(image, "logs", "--no-color", "worker", **output).stdout
+        if state == ["running", "0"] and "Traceback" not in logs:
+            return True
+        say(f"the worker on {image} is not running cleanly: {' '.join(state) or 'missing'}")
+        return False
+
     def healthy(self, image: str) -> bool:
         commit = image.rpartition(":")[2]
         deadline = time.monotonic() + self.health_timeout
         while True:
             try:
                 report = self.fetch(self.health_url)
-            except (OSError, ValueError) as error:
+            except (OSError, ValueError, http.client.HTTPException) as error:
                 report = {"status": f"unreachable ({type(error).__name__})"}
             if isinstance(report, dict) and report.get("status") == "ok":
                 if report.get("commit") == commit:
-                    return True
+                    return self.worker_running(image)
             if time.monotonic() >= deadline:
                 say(f"/healthz never reported {commit} healthy; last answer: {report}")
                 return False

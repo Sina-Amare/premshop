@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import datetime
+import http.client
 import importlib.util
 import json
 import subprocess
@@ -48,13 +49,22 @@ class Docker:
         # db and redis as the compose file defines them, and as their containers run.
         self.defined = "db 1111\nredis 2222\n"
         self.stores = self.defined if stores is None else stores
+        # How a broken image's /healthz fails; the images whose worker crash-loops or
+        # whose containers do not start; the commands that exit 1.
+        self.unanswered: Exception = urllib.error.URLError("connection refused")
+        self.crashing: set[str] = set()
+        self.unstartable: set[str] = set()
+        self.failing: set[str] = set()
 
     def run(self, args, *, check=False, env=None, stdin=None, stdout=None, **kwargs):
         args = list(args)
         self.calls.append(args)
         assert "migrate" not in args or args[-2:] == ["migrate", "--noinput"], args
         returncode, output = 0, ""
-        if "pg_dump" in args:
+        crashing = self.running in self.crashing
+        if self.failing & set(args):
+            returncode = 1
+        elif "pg_dump" in args:
             stdout.write(self.dump)
         elif "pg_restore" in args and "/dev/null" in args:
             returncode = 0 if stdin.read() == DUMP else 1
@@ -70,8 +80,17 @@ class Docker:
             output = self.defined
         elif "ps" in args and "db" in args:
             output = self.stores
+        elif "ps" in args and "worker" in args:
+            output = "worker-1\n"
+        elif args[:2] == ["docker", "inspect"]:
+            output = "running 3\n" if crashing else "running 0\n"
+        elif "logs" in args:
+            output = "Traceback (most recent call last):\n" if crashing else "consumer started\n"
         elif "up" in args and "web" in args:
-            self.running = env["PREMSHOP_IMAGE"]
+            if env["PREMSHOP_IMAGE"] in self.unstartable:
+                returncode = 1
+            else:
+                self.running = env["PREMSHOP_IMAGE"]
         if check and returncode:
             raise subprocess.CalledProcessError(returncode, args)
         return subprocess.CompletedProcess(args, returncode, stdout=output)
@@ -79,7 +98,7 @@ class Docker:
     def fetch(self, url):
         self.calls.append(["health", url])
         if self.running is None or self.running in self.broken:
-            raise urllib.error.URLError("connection refused")
+            raise self.unanswered
         return {"status": "ok", "commit": self.running.rpartition(":")[2]}
 
     def steps(self, image=NEW):
@@ -164,6 +183,44 @@ def test_a_failed_health_check_returns_to_the_previous_image_and_fails(paths):
     docker = Docker(running=OLD, broken={NEW})
     assert main(docker, paths, "deploy", NEW) != 0
     assert docker.steps() == ["backup", "image", "migrate", "switch", "health", "switch", "health"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_health_answer_cut_short_returns_to_the_previous_image(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, broken={NEW})
+    docker.unanswered = http.client.IncompleteRead(b'{"status": "o')
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_worker_that_restarts_or_logs_a_traceback_fails_the_deploy(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.crashing = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_failed_migration_stops_the_deploy_before_the_switch(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.failing = {"migrate"}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_switch_that_fails_returns_to_the_previous_image(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.unstartable = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health"]
     assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}
 
