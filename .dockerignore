@@ -1,0 +1,21 @@
+# An allowlist: only what the image is built from enters the build context.
+# Everything else stays on the machine that builds it, including .env, private
+# notes, backups, uploaded media, the virtualenv, node_modules, .git and caches.
+*
+!apps
+!config
+!locale
+!static
+!templates
+!manage.py
+!pyproject.toml
+!uv.lock
+!package.json
+!package-lock.json
+
+# Inside the allowed directories: bytecode, any stray environment file, and the
+# CSS the image builds for itself.
+**/__pycache__
+**/.env
+**/.env.*
+static/css/app.css

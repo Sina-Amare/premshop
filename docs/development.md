@@ -159,3 +159,18 @@ Keep it in a separate terminal during development. Production needs a supervised
 Unpaid expiry runs every minute in batches of 100, with each order released in its own transaction. Guest-cart and expired-session cleanup run daily at 03:00 and 03:10 UTC. The order list reports the last successful sweep and current overdue backlog; a warning after three minutes calls for checking the consumer and Redis. A backlog can take several sweeps to drain. An order needing manual consistency review stays visible; later orders still run. A database outage does not record a successful sweep.
 
 Stop gracefully with Ctrl+C (SIGINT) and allow current work to finish before restarting. A worker outage delays stock/coupon release, while checkout still checks stored stock and deadlines under locks. Restart scans database deadlines; no order is deleted and no deadline is renewed. Verify a successful sweep and a drained backlog after every restart. `/healthz` checks database/cache connectivity only; it does not prove worker freshness. Public launch still requires supervised worker verification and the encryption-key escrow/decrypting restore.
+
+## Production image
+
+Production runs one image per commit, built from `Dockerfile`: the CSS from `package.json`, the locked dependencies without the dev group, static files collected under hashed names, gunicorn as a non-root user, and the commit in `GIT_COMMIT`, which `/healthz` reports. `.dockerignore` is an allowlist, so `.env`, `docs-local/`, `backups/`, `media/` and every cache stay out of the image. `deploy/compose.yaml` runs it as `web` and `worker` (`manage.py run_huey`) beside PostgreSQL 15, Redis behind a password and nginx, the only service with a published port. A one-shot `static` service copies the image's static files into the volume nginx serves.
+
+CI's `image` job builds it and runs `deploy/smoke.sh`, which needs Docker, so `scripts/check.py` does not. To run both locally, open WSL (`wsl -d Ubuntu-24.04`), change to the repository under `/mnt/c/`, and with the commit from `git rev-parse HEAD`:
+
+```bash
+docker build --build-arg GIT_COMMIT=<commit> --tag premshop:<commit> .
+bash deploy/smoke.sh premshop:<commit> <commit>
+```
+
+The script writes throwaway secrets and a self-signed certificate to a temporary directory, starts the stack as the Compose project `premshop-smoke` on ports 8443 and 8080 (`PREMSHOP_HTTPS_PORT`, `PREMSHOP_HTTP_PORT`), and checks it over HTTPS through nginx: `/healthz` reports the commit, the home, a category and a product page carry a hashed stylesheet, Redis refuses a client without its password, the worker has neither restarted nor logged a traceback, no tracking token reaches a log, and with `web` stopped every page is the maintenance page with status 503. It then removes the stack, its volumes and the directory, pass or fail. It never touches the server on port 8000 or its database.
+
+A stack kept running reads one environment file outside the repository, given with `--env-file`: every variable `prod.py` requires, `POSTGRES_PASSWORD` and `REDIS_PASSWORD` (hex, because Compose puts them into URLs unescaped), and `PREMSHOP_IMAGE`, `PREMSHOP_TLS_DIR` (holding `fullchain.pem` and `privkey.pem`) and `PREMSHOP_ENV_FILE`, the file's own path. `deploy/smoke.sh` is the worked example.

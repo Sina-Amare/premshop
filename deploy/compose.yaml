@@ -1,0 +1,105 @@
+# The production stack. Every secret comes from one environment file kept outside
+# the repository, given to Compose with --env-file and naming itself in
+# PREMSHOP_ENV_FILE; deploy/smoke.sh writes a throwaway one. nginx is the only
+# service that publishes a port.
+
+name: premshop
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-application: &application
+  image: ${PREMSHOP_IMAGE:?set PREMSHOP_IMAGE to the image to run, premshop and its commit}
+  env_file: ${PREMSHOP_ENV_FILE:?set PREMSHOP_ENV_FILE to the environment file}
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    DATABASE_URL: postgres://premshop:${POSTGRES_PASSWORD}@db:5432/premshop
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  web:
+    <<: *application
+    volumes:
+      - media:/app/media
+
+  # nginx serves the static files from a shared volume. Copying adds this image's
+  # hashed names beside the previous image's, so a page loaded before a deploy
+  # still finds its stylesheet.
+  static:
+    image: ${PREMSHOP_IMAGE}
+    command: ["cp", "-R", "staticfiles/.", "/srv/static/"]
+    volumes:
+      - static:/srv/static
+    logging: *logging
+
+  worker:
+    <<: *application
+    command: ["python", "manage.py", "run_huey"]
+    # SIGINT lets the consumer finish the task in hand; SIGTERM stops it mid-task.
+    stop_signal: SIGINT
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: premshop
+      POSTGRES_DB: premshop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the environment file}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "--username", "premshop", "--dbname", "premshop"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in the environment file}
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging: *logging
+
+  nginx:
+    image: nginx:1.28-alpine
+    ports:
+      - "${PREMSHOP_HTTP_PORT:-80}:80"
+      - "${PREMSHOP_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/premshop.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/maintenance.html:/srv/maintenance/maintenance.html:ro
+      - ${PREMSHOP_TLS_DIR:?set PREMSHOP_TLS_DIR to the directory holding fullchain.pem and privkey.pem}:/etc/nginx/tls:ro
+      - static:/srv/static:ro
+      - media:/srv/media:ro
+    depends_on:
+      static:
+        condition: service_completed_successfully
+      web:
+        condition: service_started
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  db:
+  redis:
+  static:
+  media:

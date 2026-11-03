@@ -140,7 +140,7 @@ def scrub(data: Any, *, _depth: int = 0) -> Any:
     return data
 
 
-def sentry_options(*, dsn: str, environment: str) -> dict[str, Any]:
+def sentry_options(*, dsn: str, environment: str, release: str = "") -> dict[str, Any]:
     """The one definition of how error reports are sent (prod.py passes it to
     `sentry_sdk.init`). Tests initialise the SDK from this same function, so what
     they prove about an error report is what production would actually send.
@@ -152,6 +152,8 @@ def sentry_options(*, dsn: str, environment: str) -> dict[str, Any]:
     return {
         "dsn": dsn,
         "environment": environment,
+        # The image's commit; None lets the SDK fall back to its own detection.
+        "release": release or None,
         # Never attach user identity or request bodies (ADR-0007).
         "send_default_pii": False,
         "include_local_variables": False,
