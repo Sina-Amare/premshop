@@ -5,6 +5,9 @@ head holds the first paint until it has placed the logos, and the launch step
 allows it by its hash. And a style attribute that only sets `--brand`, a
 product's own colour, which a class cannot hold; the launch step moves those
 into one nonce-carrying style block. A JSON-LD block is data, not a script.
+
+The scan reads script elements and style attributes only. A `<style>` element,
+such as the product page's `<noscript>` rule, is not read.
 """
 
 from __future__ import annotations
