@@ -18,7 +18,7 @@ Keep every image the state file names: `docker image prune` would remove the one
 ## Each deploy
 
 1. Waiting for the server step: take the provider's snapshot of the server.
-2. Find the commit: a green run of `main` in CI. Its image is `premshop:<commit>`; how the image reaches the server is decided in the server step, as an archive or a pull.
+2. Find the commit: a green run of `main` in CI. Its image is `premshop:<commit>` with the full 40-character hash, the value `/healthz` reports; how the image reaches the server is decided in the server step, as an archive or a pull.
 3. Put the checkout on that commit, so the compose file and nginx configuration match the image: `git fetch` then `git checkout <commit>`.
 4. Run `python3 scripts/deploy.py deploy premshop:<commit>`, adding `--load <archive>` when the image came as a file.
 5. Read the lines it prints, each starting `deploy:`. A deploy that worked ends with `premshop:<commit> is running and healthy` and status 0, and names the backup it took.
