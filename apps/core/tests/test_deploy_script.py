@@ -56,6 +56,8 @@ class Docker:
         returncode, output = 0, ""
         if "pg_dump" in args:
             stdout.write(self.dump)
+        elif "pg_restore" in args and "/dev/null" in args:
+            returncode = 0 if stdin.read() == DUMP else 1
         elif "pg_restore" in args:
             self.restored = stdin.read()
         elif "psql" in args:
@@ -84,7 +86,7 @@ class Docker:
         """The calls as named steps, in order, each run of one step counted once."""
         names: list[str] = []
         for args in self.calls:
-            if "pg_dump" in args:
+            if "pg_dump" in args or "/dev/null" in args:
                 name = "backup"
             elif args[1] in ("load", "pull", "image") and image in args:
                 name = "image"
@@ -125,7 +127,7 @@ def main(docker, paths, *args):
         "--health-timeout",
         "0",
     ]
-    if args[0] == "deploy":
+    if args[0] in ("deploy", "backup"):
         options += ["--backup-dir", str(paths["backups"])]
     return deploy.main([*args, *options], run=docker.run, fetch=docker.fetch)
 
@@ -166,7 +168,7 @@ def test_a_failed_health_check_returns_to_the_previous_image_and_fails(paths):
     assert recorded(paths) == {"current": OLD, "previous": None}
 
 
-@pytest.mark.parametrize("dump", [b"", b"pg_dump: error: connection refused\n"])
+@pytest.mark.parametrize("dump", [b"", b"pg_dump: error: connection refused\n", DUMP[:12]])
 def test_a_backup_that_is_not_a_dump_stops_before_anything_changes(paths, dump):
     record(paths, OLD)
     docker = Docker(running=OLD, dump=dump)
@@ -247,6 +249,24 @@ def test_a_backup_never_removes_a_file_already_at_its_name(paths, monkeypatch):
     assert main(docker, paths, "deploy", NEW) != 0
     assert other.read_bytes() == DUMP
     assert docker.running == OLD
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps no Unix file mode")
+def test_a_backup_is_readable_by_its_owner_alone(paths):
+    assert main(Docker(), paths, "deploy", NEW) == 0
+    [backup] = paths["backups"].iterdir()
+    assert backup.stat().st_mode & 0o777 == 0o600
+
+
+def test_backup_alone_writes_a_checked_dump_and_changes_nothing_else(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "backup") == 0
+    assert docker.steps() == ["backup"]
+    assert any("/dev/null" in args for args in docker.calls)
+    [backup] = paths["backups"].iterdir()
+    assert backup.read_bytes() == DUMP
+    assert recorded(paths) == {"current": OLD, "previous": None}
 
 
 def test_deploying_the_running_image_again_is_refused(paths):

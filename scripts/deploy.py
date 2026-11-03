@@ -2,6 +2,7 @@
 """Deploy, roll back and restore the production stack (docs/runbooks/).
 
     python3 scripts/deploy.py deploy premshop:<commit> [--load <image archive>]
+    python3 scripts/deploy.py backup
     python3 scripts/deploy.py rollback
     python3 scripts/deploy.py restore <dump> premshop:<commit> [--load <image archive>]
 
@@ -35,7 +36,7 @@ except ImportError:  # shortcut: no lock on Windows, where only the tests run; t
 
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "deploy" / "compose.yaml"
 # pg_dump --format custom starts every archive with this; an error message, an empty
-# file or a plain SQL dump does not.
+# file or a plain SQL dump does not. A restore checks it before starting anything.
 DUMP_SIGNATURE = b"PGDMP"
 HEALTH_POLL_SECONDS = 2
 STORES = ("db", "redis")
@@ -195,14 +196,24 @@ def backup(stack: Stack, image: str, directory: str) -> Path:
     try:
         with open(descriptor, "wb") as file:
             stack.database(image, "pg_dump", "--format", "custom", stdout=file)
+        # pg_restore reads the whole archive, so one cut short fails here too.
         with path.open("rb") as file:
-            kept = file.read(len(DUMP_SIGNATURE)) == DUMP_SIGNATURE
+            whole = ["exec", "-T", "db", "pg_restore", "--file", "/dev/null"]
+            kept = not stack.compose(image, *whole, stdin=file, check=False).returncode
     finally:
         if not kept:
             path.unlink(missing_ok=True)
     if not kept:
-        raise Failed("the backup came out empty or is not a pg_dump archive; nothing was changed")
+        raise Failed("the backup came out empty, cut short or not a pg_dump archive")
     return path
+
+
+def take_backup(stack: Stack, options: argparse.Namespace) -> int:
+    current = read_state(options.state_file).get("current")
+    if not current:
+        raise Failed("no image is recorded as running, so there is no database to back up")
+    say(f"database backed up to {backup(stack, current, options.backup_dir)}")
+    return 0
 
 
 def deploy(stack: Stack, options: argparse.Namespace) -> int:
@@ -294,6 +305,10 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     command.add_argument("--load", help="an image archive to load first")
     setting(command, "--backup-dir", "PREMSHOP_BACKUP_DIR", "where the database backup goes")
     command.set_defaults(action=deploy)
+
+    command = commands.add_parser("backup", parents=[shared], help="back up the database now")
+    setting(command, "--backup-dir", "PREMSHOP_BACKUP_DIR", "where the database backup goes")
+    command.set_defaults(action=take_backup)
 
     command = commands.add_parser("rollback", parents=[shared], help="run the previous image")
     command.set_defaults(action=rollback)
