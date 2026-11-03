@@ -7,9 +7,10 @@
     python3 scripts/deploy.py restore <dump> premshop:<commit> [--load <image archive>]
 
 It runs on the server with the system Python and its standard library alone, and
-drives deploy/compose.yaml through docker compose. A deploy backs up the database,
-migrates with the new image, switches web and worker to it and checks /healthz;
-when the check fails it switches back to the image that was running. Migrations
+drives deploy/compose.yaml through docker compose. A deploy tests nginx's files,
+backs up the database, migrates with the new image, switches web and worker to it
+and checks /healthz; when the check fails it switches back to the image that was
+running. Migrations
 only go forward and the previous image runs on the new schema, so going back never
 needs a down-migration, and nothing here runs one.
 """
@@ -132,12 +133,16 @@ class Stack:
             )
         self.compose(image, "up", "--detach", "--wait", "--no-recreate", *STORES)
 
-    def switch(self, image: str) -> None:
-        # nginx reads deploy/nginx/ from this checkout: a file it refuses stops
-        # here, before anything switches, rather than at nginx's next restart.
+    def check_nginx(self, image: str) -> None:
+        # nginx reads deploy/nginx/ from this checkout: a file it refuses stops the
+        # command before it changes anything, rather than at nginx's next restart.
+        # Never inside a switch, where a Docker error read as a refusal would keep a
+        # failed image up instead of returning to the one before it.
         test = ["run", "--rm", "--no-deps", "nginx", "nginx", "-t"]
         if self.compose(image, *test, check=False).returncode:
-            raise Failed("nginx refuses the files in deploy/nginx/; nothing was switched")
+            raise Failed("nginx refuses the files in deploy/nginx/; nothing was changed")
+
+    def switch(self, image: str) -> None:
         # Static files are copied beside the ones already there, so a page loaded
         # before the switch still finds its stylesheet. While web is replaced,
         # nginx answers with the maintenance page.
@@ -236,6 +241,7 @@ def deploy(stack: Stack, options: argparse.Namespace) -> int:
         raise Failed(f"{image} is already the running image")
     if current:
         stack.require(current, "a failed health check would have nothing to return to")
+    stack.check_nginx(image)
     stack.start_stores(image)
     say(f"database backed up to {backup(stack, image, options.backup_dir)}")
     stack.fetch_image(image, options.load)
@@ -253,6 +259,7 @@ def rollback(stack: Stack, options: argparse.Namespace) -> int:
     if not previous:
         raise Failed("no previous image is recorded, so there is nothing to roll back to")
     stack.require(previous, "rollback runs it")
+    stack.check_nginx(previous)
     if not stack.switch_or_return(previous, current):
         return 1
     write_state(options.state_file, previous, current)
@@ -265,6 +272,7 @@ def restore(stack: Stack, options: argparse.Namespace) -> int:
     with dump.open("rb") as file:
         if file.read(len(DUMP_SIGNATURE)) != DUMP_SIGNATURE:
             raise Failed(f"{dump} is not a pg_dump archive")
+    stack.check_nginx(image)
     stack.fetch_image(image, options.load)
     stack.start_stores(image)
     count = "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'"

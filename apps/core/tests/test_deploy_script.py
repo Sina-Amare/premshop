@@ -254,26 +254,63 @@ def test_a_compose_file_that_changes_db_or_redis_stops_before_anything_changes(p
     assert recorded(paths) == {"current": OLD, "previous": None}
 
 
-def test_a_switch_tests_the_nginx_files_first_and_reloads_nginx_after(paths):
+def test_a_deploy_tests_the_nginx_files_once_before_its_backup_and_reloads_nginx_after(paths):
     record(paths, OLD)
     docker = Docker(running=OLD)
     assert main(docker, paths, "deploy", NEW) == 0
-    test, switch, reload = (
+    tests = [i for i, args in enumerate(docker.calls) if args[-2:] == ["nginx", "-t"]]
+    dump, switch, reload = (
         next(i for i, args in enumerate(docker.calls) if found(args))
         for found in (
-            lambda args: args[-2:] == ["nginx", "-t"],
+            lambda args: "pg_dump" in args,
             lambda args: "up" in args and "web" in args,
             lambda args: args[-4:] == ["kill", "--signal", "HUP", "nginx"],
         )
     )
-    assert test < switch < reload
+    assert len(tests) == 1
+    assert tests[0] < dump < switch < reload
 
 
-def test_nginx_files_that_fail_their_test_stop_the_deploy_before_anything_switches(paths):
+def test_nginx_files_that_fail_their_test_stop_the_deploy_before_its_backup(paths):
     record(paths, OLD)
     docker = Docker(running=OLD, nginx=False)
     assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == []
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_nginx_files_that_fail_their_test_stop_a_rollback_before_it_switches(paths):
+    record(paths, NEW, OLD)
+    docker = Docker(running=NEW, nginx=False)
+    assert main(docker, paths, "rollback") != 0
     assert "switch" not in docker.steps()
+    assert docker.running == NEW
+    assert recorded(paths) == {"current": NEW, "previous": OLD}
+
+
+def test_nginx_files_that_fail_their_test_stop_a_restore_before_it_restores(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker(nginx=False)
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) != 0
+    assert docker.restored == b""
+    assert docker.running is None
+
+
+class FullDisk(Docker):
+    """A disk that fills once web is switched: every nginx test after that fails."""
+
+    def run(self, args, **kwargs):
+        if "up" in args and "web" in args:
+            self.nginx = False
+        return super().run(args, **kwargs)
+
+
+def test_the_return_to_the_previous_image_runs_no_nginx_test_that_could_stop_it(paths):
+    record(paths, OLD)
+    docker = FullDisk(running=OLD, broken={NEW})
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health", "switch", "health"]
     assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}
 
