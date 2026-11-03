@@ -100,6 +100,8 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 # are built on it, never on the request's Host header, which is whatever the client
 # sent. Required in production (prod.py).
 SITE_URL = site_url(env("SITE_URL") or "http://127.0.0.1:8000")
+# Baked into the production image at build time; /healthz and error reports name it.
+GIT_COMMIT = env("GIT_COMMIT")
 
 INSTALLED_APPS = [
     # unfold must precede django.contrib.admin: it overrides the admin templates,

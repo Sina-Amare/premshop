@@ -79,5 +79,6 @@ if env("SENTRY_DSN"):
         **sentry_options(
             dsn=env("SENTRY_DSN"),
             environment=env("SENTRY_ENVIRONMENT", "production"),
+            release=GIT_COMMIT,  # noqa: F405
         )
     )

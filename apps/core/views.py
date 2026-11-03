@@ -47,7 +47,7 @@ def healthz(request: HttpRequest) -> JsonResponse:
 
     healthy = all(value == "ok" for value in checks.values())
     return JsonResponse(
-        {"status": "ok" if healthy else "degraded", "checks": checks},
+        {"status": "ok" if healthy else "degraded", "checks": checks, "commit": settings.GIT_COMMIT},
         status=200 if healthy else 503,
     )
 
