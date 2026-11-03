@@ -9,6 +9,7 @@ from django import forms
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Exists, OuterRef, Prefetch, QuerySet
+from django.db.models.fields.json import KeyTextTransform
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
@@ -32,6 +33,14 @@ from apps.orders.models import (
 )
 from apps.orders.selectors import grouped_items
 from apps.orders.services import reveal_customer_input
+
+# Which product and plan an item row is about, read from the purchase record in
+# the same query. An annotation, so no OrderItem is built and the encrypted
+# input is never selected.
+_SAVED_NAMES = {
+    "item_name": KeyTextTransform("name", "order_item__product_snapshot"),
+    "item_plan": KeyTextTransform("plan_title", "order_item__product_snapshot"),
+}
 
 
 class OrderItemInline(TabularInline):
@@ -183,9 +192,11 @@ class OrderAdmin(ModelAdmin):
         if obj:
             context["purchase_groups"] = grouped_items(obj.items.all())
             context["order_timeline"] = self.history(obj)
-            context["input_access_log"] = CredentialAccessLog.objects.filter(
-                order_item__order_id=obj.pk
-            ).select_related("user")
+            context["input_access_log"] = (
+                CredentialAccessLog.objects.filter(order_item__order_id=obj.pk)
+                .select_related("user")
+                .annotate(**_SAVED_NAMES)
+            )
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:
@@ -250,16 +261,23 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
-        events = OrderItemEvent.objects.filter(order_item__order=obj).order_by("created_at", "pk")
+        events = (
+            OrderItemEvent.objects.filter(order_item__order=obj)
+            .annotate(**_SAVED_NAMES)
+            .order_by("created_at", "pk")
+        )
         rows = format_html_join(
             "",
             '<li><div class="order-timeline__head"><strong>{}</strong><span>{}</span></div>'
-            '<p class="order-timeline__meta">{} · {} · {}</p>'
+            '<p class="order-timeline__meta">{} · {} · {} · {}</p>'
             '<p class="order-timeline__note">{}</p></li>',
             (
                 (
                     event.get_to_status_display(),
                     format_jalali(event.created_at),
+                    format_html(
+                        "<bdi>{}</bdi>؛ <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
+                    ),
                     _("آیتم %(number)s") % {"number": to_persian_digits(event.order_item_id)},
                     event.get_actor_display(),
                     (

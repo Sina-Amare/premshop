@@ -1,5 +1,6 @@
 """The order page in the panel: its saved-conditions labels follow the panel's
-language, and the customer's copy of the same partial never does."""
+language, the customer's copy of the same partial never does, and the two
+histories name what they are about."""
 
 import pytest
 from django.conf import settings
@@ -9,6 +10,8 @@ from django.utils import translation
 
 from apps.accounts.models import User
 from apps.catalog.models import Plan, Product
+from apps.core.formatting import to_persian_digits
+from apps.orders.models import CredentialAccessLog, OrderItemEvent
 from apps.orders.selectors import grouped_items
 from apps.orders.services import OrderLine, place_order
 
@@ -102,3 +105,30 @@ def test_the_customers_copy_of_the_conditions_is_persian_whatever_language_is_ac
         reverse("order-detail", args=[order.order_number]), headers={"accept-language": "en"}
     )
     assert "تحویل تا ۱۲ ساعت پس از تأیید پرداخت" in page.content.decode()
+
+
+def section(body, start):
+    """The `<section>` that opens at `start` and runs to its closing tag."""
+    return body[body.index(start) :].split("</section>", 1)[0]
+
+
+def test_both_histories_name_the_product_and_plan_and_never_the_input(client, buyer, plan):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type="email", requires_customer_input=True, max_quantity=1
+    )
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "private-target@example.test")])
+    item = order.items.get()
+    operator = User.objects.create_superuser("operator@example.test")
+    CredentialAccessLog.objects.create(order_item=item, user=operator)
+    client.force_login(operator)
+
+    body = panel_page(client, order, "fa")
+
+    timeline = section(body, 'aria-labelledby="order-history-title"')
+    access = section(body, 'id="input-access-history"')
+    named = "<bdi>سرویس نمونه</bdi>؛ <bdi>یک ماهه</bdi>"
+    assert OrderItemEvent.objects.filter(order_item=item).exists()
+    assert named in timeline and named in access
+    number = f"آیتم {to_persian_digits(item.pk)}"
+    assert number in timeline and number in access
+    assert "private-target@example.test" not in body
