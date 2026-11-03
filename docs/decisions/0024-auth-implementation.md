@@ -44,10 +44,10 @@ The forgotten-password outcome claimed above is not implemented. `/account/passw
 
 **Amendment — 2026-11-03: daily accepted-code budgets.** Sign-in, registration and password recovery share ten accepted code emails per normalized address and twenty per IP in fixed 24-hour windows, alongside the existing short request windows. Preflight checks every budget without spending; a daily refusal takes precedence over a shorter refusal. Only after preflight do short-window counters advance. Daily counters advance only after SMTP acceptance; a guard refusal, transport exception or zero acceptance spends no daily unit. SMTP acceptance does not prove inbox delivery. Separate daily messages name a 24-hour wait; short-window messages retain their existing waits. A successful login does not reset daily budgets.
 
-The check and spend are not atomic: concurrent sends can slightly exceed a daily figure, bounded by the short windows. Fixed windows retain their boundary-burst cost. Ten accepted requests to a passwordless customer's address in roughly 45 minutes can lock that customer out of code sign-in for up to 24 hours, repeatable daily. This targeted-lockout risk is accepted with the limit of ten. To clear that address's daily budget, substitute its normalized email:
+The check and spend are not atomic: concurrent sends can slightly exceed a daily figure, bounded by the short windows. Fixed windows retain their boundary-burst cost. Ten accepted requests to a passwordless customer's address in roughly 45 minutes can lock that customer out of code sign-in for up to 24 hours, repeatable daily. This targeted-lockout risk is accepted with the limit of ten. To clear that address's daily budget, run this in the application's environment on the server, substituting its normalized email:
 
-```powershell
-.venv/Scripts/python.exe manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, 'customer@example.com')"
+```sh
+python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, 'customer@example.com')"
 ```
 
 No captcha or separate unknown-address allowance is introduced until the mail log demonstrates abuse. The trusted-proxy correction is a launch prerequisite: without it, all customers behind the proxy share one IP's twenty. SMTP2GO may queue daily excess and rejects monthly excess, as ADR-0022's 2026-11-02 amendment records; the application guard refuses before that behavior is needed.
