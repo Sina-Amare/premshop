@@ -32,6 +32,7 @@ COMPOSE_FILE = Path(__file__).resolve().parent.parent / "deploy" / "compose.yaml
 # file or a plain SQL dump does not.
 DUMP_SIGNATURE = b"PGDMP"
 HEALTH_POLL_SECONDS = 2
+STORES = ("db", "redis")
 
 
 class Failed(Exception):
@@ -94,6 +95,21 @@ class Stack:
         inspect = ["docker", "image", "inspect", image]
         if self.run(inspect, check=False, capture_output=True).returncode:
             self.run(["docker", "pull", image], check=True)
+
+    def start_stores(self, image: str) -> None:
+        """Start db and redis as they run now: a deploy never recreates either."""
+        # Recreating the database on its old data directory under a changed
+        # definition (a new Postgres version) may leave it unable to start.
+        output = {"capture_output": True, "text": True}
+        defined = self.compose(image, "config", "--hash", ",".join(STORES), **output)
+        label = '{{.Service}} {{.Label "com.docker.compose.config-hash"}}'
+        running = self.compose(image, "ps", "--all", "--format", label, *STORES, **output)
+        if not set(running.stdout.splitlines()) <= set(defined.stdout.splitlines()):
+            raise Failed(
+                "the compose file changes the db or redis service, which a deploy never "
+                "recreates; nothing was changed (docs/runbooks/deploy.md)"
+            )
+        self.compose(image, "up", "--detach", "--wait", "--no-recreate", *STORES)
 
     def switch(self, image: str) -> None:
         # Static files are copied beside the ones already there, so a page loaded
@@ -165,7 +181,7 @@ def deploy(stack: Stack, options: argparse.Namespace) -> int:
         raise Failed(f"{image} is already the running image")
     if current:
         stack.require(current, "a failed health check would have nothing to return to")
-    stack.compose(image, "up", "--detach", "--wait", "db", "redis")
+    stack.start_stores(image)
     say(f"database backed up to {backup(stack, image, options.backup_dir)}")
     stack.fetch_image(image, options.load)
     stack.manage(image, "migrate", "--noinput")
@@ -195,7 +211,7 @@ def restore(stack: Stack, options: argparse.Namespace) -> int:
         if file.read(len(DUMP_SIGNATURE)) != DUMP_SIGNATURE:
             raise Failed(f"{dump} is not a pg_dump archive")
     stack.fetch_image(image, options.load)
-    stack.compose(image, "up", "--detach", "--wait", "db", "redis")
+    stack.start_stores(image)
     count = "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'"
     tables = stack.database(
         image,

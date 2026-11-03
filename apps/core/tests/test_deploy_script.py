@@ -36,11 +36,14 @@ deploy = _module()
 
 
 class Docker:
-    def __init__(self, running=None, broken=(), dump=DUMP, tables="0", decrypts=True):
+    def __init__(self, running=None, broken=(), dump=DUMP, tables="0", decrypts=True, stores=None):
         self.calls: list[list[str]] = []
         self.running, self.broken = running, set(broken)
         self.dump, self.tables, self.decrypts = dump, tables, decrypts
         self.restored = b""
+        # db and redis as the compose file defines them, and as their containers run.
+        self.defined = "db 1111\nredis 2222\n"
+        self.stores = self.defined if stores is None else stores
 
     def run(self, args, *, check=False, env=None, stdin=None, stdout=None, **kwargs):
         args = list(args)
@@ -55,6 +58,10 @@ class Docker:
             output = self.tables + "\n"
         elif "verify_decrypt" in args:
             returncode = 0 if self.decrypts else 1
+        elif "--hash" in args:
+            output = self.defined
+        elif "ps" in args and "db" in args:
+            output = self.stores
         elif "up" in args and "web" in args:
             self.running = env["PREMSHOP_IMAGE"]
         if check and returncode:
@@ -161,6 +168,24 @@ def test_a_backup_that_is_not_a_dump_stops_before_anything_changes(paths, dump):
     assert docker.steps() == ["backup"]
     assert docker.running == OLD
     assert not list(paths["backups"].iterdir())
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_deploy_starts_db_and_redis_without_recreating_them(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) == 0
+    [start] = [args for args in docker.calls if "up" in args and "db" in args]
+    assert "--no-recreate" in start
+
+
+def test_a_compose_file_that_changes_db_or_redis_stops_before_anything_changes(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, stores="db 0000\nredis 2222\n")
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == []
+    assert not any("up" in args for args in docker.calls)
+    assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}
 
 

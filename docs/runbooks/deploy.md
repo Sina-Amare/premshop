@@ -26,10 +26,19 @@ Keep every image the state file names: `docker image prune` would remove the one
 
 ## When it stops
 
+- **`changes the db or redis service`**: nothing changed. The compose file defines the database or Redis differently from the containers running, and a deploy never recreates either: see "Changing db or redis" below.
 - **`the backup came out empty`**: nothing changed. The database container is down or refused `pg_dump`: `docker compose ps db`, then its logs.
 - **`stopped: ... migrate --noinput exited with 1`**: nothing switched, and the old image is still serving. The migration's error is printed above. A migration that failed part way leaves the tables it already added, which the old image ignores.
 - **`returning to premshop:<old>` then `back on premshop:<old>`**: the new image failed its health check and the site is back on the old one; the status is 1. The last `/healthz` answer is printed. Read the new image's logs before trying again.
 - **`is not healthy either`**: neither image answers, and visitors see the maintenance page. The cause is usually outside the image: the database, Redis or the environment file. Follow "When the return fails" in [rollback.md](rollback.md).
 - **Interrupted** (a closed terminal, a dropped connection): run the same deploy again. The state file changes only after a health check passes, so it still names the image that ran before, and `rollback` would go one release further back.
+
+## Changing db or redis
+
+A change to the `db` or `redis` service in `deploy/compose.yaml` (a new Postgres version, a new setting) is made by hand, because recreating the database on its old data directory may leave it unable to start:
+
+1. Take the provider's snapshot of the server and a backup ([restore.md](restore.md), step 1).
+2. A new major version of Postgres cannot read the old data directory: restore that backup into a new volume with the new compose file ([restore.md](restore.md)).
+3. Any other change: `docker compose up --detach --wait db redis` recreates both on their volumes. Check that `docker compose ps` shows them healthy and that `/healthz` answers, then run the deploy.
 
 Every `docker compose` command by hand needs the same flags the script passes: `docker compose --env-file "$PREMSHOP_ENV_FILE" --file deploy/compose.yaml`, with `PREMSHOP_IMAGE` set to the image recorded as current.
