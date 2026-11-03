@@ -23,8 +23,16 @@ if not ALLOWED_HOSTS:
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
 # An hour to start with: a certificate mistake then locks visitors out for an hour,
-# not a year.
-SECURE_HSTS_SECONDS = int(env("SECURE_HSTS_SECONDS") or "3600")
+# not a year. Django sends no header at all for 0 and an invalid max-age for a negative
+# number, so both stop the boot, as does a value that is not a whole number.
+try:
+    SECURE_HSTS_SECONDS = int(env("SECURE_HSTS_SECONDS") or "3600")
+    if SECURE_HSTS_SECONDS < 1:
+        raise ValueError
+except ValueError:
+    raise ImproperlyConfigured(
+        "SECURE_HSTS_SECONDS must be a whole number of seconds, at least 1."
+    ) from None
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = False  # The launch step (S12) raises the seconds and turns this on.
 SECURE_CONTENT_TYPE_NOSNIFF = True

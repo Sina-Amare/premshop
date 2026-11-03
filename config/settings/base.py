@@ -102,8 +102,9 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 SITE_URL = site_url(env("SITE_URL") or "http://127.0.0.1:8000")
 # Baked into the production image at build time; /healthz and error reports name it.
 GIT_COMMIT = env("GIT_COMMIT")
-# The panel's address. Production refuses to start on this default (prod.py).
-ADMIN_PATH = env("ADMIN_PATH") or "admin/"
+# The panel's address in development and in the tests, fixed here so a .env copied from
+# production cannot move it. Production reads its own from the environment (prod.py).
+ADMIN_PATH = "admin/"
 # The client's address from X-Real-IP, which only nginx writes; on in prod.py alone.
 TRUST_PROXY_HEADERS = False
 

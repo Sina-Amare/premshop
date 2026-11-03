@@ -1,21 +1,26 @@
-"""The customer pages under production's static storage.
+"""The customer pages, and every file name written out, under production's static storage.
 
 Manifest storage serves every file under a name that carries its content hash,
 which is what lets nginx cache it for a year. The cost is that a `{% static %}`
 naming a file collectstatic never saw raises instead of printing a dead link, so
-a page that renders in development can be a 500 in production.
+a page that renders in development can be a 500 in production. The pages are
+rendered; what no page here reaches is searched for.
 """
 
 from __future__ import annotations
 
+import ast
 import importlib
+import json
 import os
 import re
 import sys
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.test import Client, override_settings
 from django.urls import reverse
@@ -33,6 +38,10 @@ pytestmark = pytest.mark.django_db
 NOT_LOADED = {"canonical", "alternate", "next", "prev", "author", "license"}
 URL_ATTRIBUTES = {"src", "href", "srcset", "poster", "data"}
 CSS_URL = re.compile(r"""(?:url\(\s*['"]?|@import\s+['"])([^'")\s]+)""")
+
+ROOT = Path(settings.BASE_DIR)
+# A file name written out in the tag; `{% static some_name %}` has no quote to match.
+TEMPLATE_STATIC = re.compile(r"""\{%\s*static\s+(['"])(?P<path>[^'"]+)\1""")
 
 
 def production_storages() -> dict:
@@ -124,6 +133,50 @@ def test_every_static_reference_on_a_customer_page_resolves(collected, buyer, pl
             path = urlsplit(url).path
             if path.startswith("/static/"):
                 assert (collected / path.removeprefix("/static/")).is_file(), (name, url)
+
+
+def literal_static_references() -> dict[str, list[str]]:
+    """Each file name written out in a template's {% static %} or in code's static(), and where.
+
+    A name held in a variable is out of reach of a search, so the page renders above
+    stay the check for it.
+    """
+    found: dict[str, list[str]] = {}
+    templates = [*ROOT.glob("templates/**/*"), *ROOT.glob("apps/*/templates/**/*")]
+    for template in filter(Path.is_file, templates):
+        for match in TEMPLATE_STATIC.finditer(template.read_text(encoding="utf-8")):
+            found.setdefault(match["path"], []).append(template.relative_to(ROOT).as_posix())
+    sources = [*ROOT.glob("config/**/*.py"), *ROOT.glob("apps/**/*.py")]
+    for source in (path for path in sources if "tests" not in path.parts):
+        for call in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
+            if (
+                isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id in {"static", "static_url"}
+                and call.args
+                and isinstance(call.args[0], ast.Constant)
+                and isinstance(call.args[0].value, str)
+            ):
+                place = f"{source.relative_to(ROOT).as_posix()}:{call.lineno}"
+                found.setdefault(call.args[0].value, []).append(place)
+    return found
+
+
+def test_every_literal_static_reference_is_in_the_manifest(collected):
+    # The customer pages above are seven of the pages that ask for a file: the order pages,
+    # the invoice, the operator panel (Unfold's styles and scripts come from settings) and
+    # /favicon.ico would answer 500 in production on a file collectstatic never saw.
+    manifest = json.loads((collected / "staticfiles.json").read_text(encoding="utf-8"))["paths"]
+    references = literal_static_references()
+    places = [place for found in references.values() for place in found]
+    assert any(".html" in p for p in places) and any(".py:" in p for p in places), "search broken"
+    missing = {n: found for n, found in references.items() if urlsplit(n).path not in manifest}
+    assert not missing, f"asked for, but not collected: {missing}"
+
+
+def test_the_search_reads_both_quotes_and_leaves_a_variable_alone():
+    tags = """{% static 'a.css' %}{% static "b.js" %}{% static x|default:'c.png' %}"""
+    assert [match["path"] for match in TEMPLATE_STATIC.finditer(tags)] == ["a.css", "b.js"]
 
 
 def test_no_customer_page_loads_anything_from_another_host(collected, buyer, plan):
