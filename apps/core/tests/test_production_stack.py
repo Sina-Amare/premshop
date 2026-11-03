@@ -140,9 +140,11 @@ def nginx_directives() -> list[tuple[tuple[str, ...], str]]:
     return directives
 
 
-def test_gzip_is_on_only_for_static_files():
-    # Compressing a response that mixes a secret with text a visitor controls lets
-    # its size leak the secret (BREACH); static files carry neither.
+def test_nginx_compresses_only_static_files():
+    # Static files carry no secret and no text a visitor wrote, so their size leaks
+    # nothing (BREACH). Pages are compressed by Django (ADR-0026): keeping a response
+    # that carries a delivered credential out of that is the job of the step that
+    # first puts one in a response, not of this file.
     gzip = [(blocks, line) for blocks, line in nginx_directives() if line.startswith("gzip")]
     assert "gzip on" in {line for _, line in gzip}, "the static location lost its compression"
     for blocks, line in gzip:
