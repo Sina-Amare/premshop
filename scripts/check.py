@@ -31,6 +31,7 @@ PY = sys.executable
 NPM = shutil.which("npm") or "npm"
 
 # Keep in step with .github/workflows/ci.yml. If a step is added there, add it here.
+# The image job needs Docker; docs/development.md runs it locally ("Production image").
 STEPS: list[tuple[str, list[str]]] = [
     ("ruff", [PY, "-m", "ruff", "check", "."]),
     ("black", [PY, "-m", "black", "--check", "."]),
