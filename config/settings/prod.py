@@ -40,6 +40,10 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
+# web publishes no port (deploy/compose.yaml), so every request reaches it through
+# nginx, which overwrites X-Real-IP with the address it saw (apps/core/ratelimit.py).
+TRUST_PROXY_HEADERS = True
+
 # base.py already defaults EMAIL_BACKEND to SMTP. What must not be inherited is a
 # blank credential: Django's SMTP backend guards login() with `if self.username and
 # self.password:`, so an empty password connects ANONYMOUSLY and the relay rejects

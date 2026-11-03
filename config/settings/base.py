@@ -102,6 +102,8 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 SITE_URL = site_url(env("SITE_URL") or "http://127.0.0.1:8000")
 # Baked into the production image at build time; /healthz and error reports name it.
 GIT_COMMIT = env("GIT_COMMIT")
+# The client's address from X-Real-IP, which only nginx writes; on in prod.py alone.
+TRUST_PROXY_HEADERS = False
 
 INSTALLED_APPS = [
     # unfold must precede django.contrib.admin: it overrides the admin templates,

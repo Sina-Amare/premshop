@@ -15,6 +15,7 @@ worst-case minute. Acceptable; a sliding window is the upgrade if it ever isn't.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from ipaddress import ip_address
 
 from django.core.cache import cache
 from django.http import HttpRequest
@@ -46,19 +47,21 @@ SEARCH_SUGGEST_PER_IP = Limit("search-suggest:ip", times=120, seconds=60)
 
 
 def client_ip(request: HttpRequest) -> str:
-    """The caller's address, trusting X-Forwarded-For only behind our own proxy.
+    """The caller's address: X-Real-IP behind our own nginx, REMOTE_ADDR otherwise.
 
-    Taking the header unconditionally would let anyone set it and defeat every
-    per-IP limit in this file, so it is read only when the deployment says a
-    proxy is in front. REMOTE_ADDR is the truth otherwise.
+    nginx overwrites X-Real-IP with the address it saw, so behind it that header
+    holds nothing the visitor wrote. X-Forwarded-For is never read: its left-most
+    entry is whatever the visitor sent, and trusting it let anyone reset every
+    per-IP limit in this file with each request. A value that is not one address
+    did not come from nginx, so the connection's own address is used instead.
     """
     from django.conf import settings
 
-    if getattr(settings, "TRUST_PROXY_HEADERS", False):
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-        if forwarded:
-            # Left-most is the original client; the rest were added by hops.
-            return forwarded.split(",")[0].strip()
+    if settings.TRUST_PROXY_HEADERS:
+        try:
+            return str(ip_address(request.META.get("HTTP_X_REAL_IP", "")))
+        except ValueError:
+            pass
     return request.META.get("REMOTE_ADDR", "") or "unknown"
 
 
