@@ -132,3 +132,20 @@ class TestScrubEvent:
         for secret in ("netflix-pw", "mypassword", "sk-live-abc", "TOKEN_X"):
             assert secret not in rendered
         assert "item_id" in rendered
+
+
+def test_production_files_every_report_under_the_running_commit(reload_base, monkeypatch):
+    # GlitchTip groups a regression by release, so a report must name the image it came from.
+    import sentry_sdk
+
+    from apps.core.tests.test_site_url import PRODUCTION, load_prod
+
+    sent: dict = {}
+    monkeypatch.setattr(sentry_sdk, "init", lambda **options: sent.update(options))
+    reload_base(
+        **{**PRODUCTION, "SENTRY_DSN": "https://public@example.test/1"},
+        SITE_URL="https://premshop.ir",
+        GIT_COMMIT="6c9cce6f2a",
+    )
+    load_prod()
+    assert sent["release"] == "6c9cce6f2a"

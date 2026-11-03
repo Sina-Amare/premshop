@@ -26,6 +26,12 @@ class TestHealthz:
         assert response.status_code == 503
         assert json.loads(response.content)["status"] == "degraded"
 
+    @pytest.mark.parametrize("commit", ["6c9cce6f2a", ""])
+    def test_reports_the_running_commit(self, client: Client, settings, commit: str) -> None:
+        # A deploy's health check proves the new image answers, not the old one.
+        settings.GIT_COMMIT = commit
+        assert json.loads(client.get(reverse("healthz")).content)["commit"] == commit
+
     def test_is_never_cached(self, client: Client) -> None:
         # A cached health check reports the past, which is worse than no check.
         response = client.get(reverse("healthz"))
