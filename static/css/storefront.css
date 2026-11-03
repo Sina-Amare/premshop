@@ -261,6 +261,7 @@ html body .v-search input:focus{box-shadow:none}
 .flush{margin:0}
 .auth-shell{max-inline-size:27rem;margin-inline:auto;padding-block-start:var(--spacing-4)}
 .auth-title{font-family:var(--font-head);font-size:24px;font-weight:600;line-height:1.35;margin:0 0 var(--spacing-4)}
+.auth-title--tight{margin-block-end:var(--spacing-3)}
 .auth-lead{margin:0 0 var(--spacing-5)}
 .auth-fine{margin:0 0 var(--spacing-6)}
 .auth-aside{text-align:center;margin-block-start:var(--spacing-4)}

@@ -502,14 +502,12 @@
     .otp__resend .btn { inline-size: 100%; }
   }
   /* The rest of the sign-in pages' layout. Classes rather than style
-     attributes, so a content security policy can refuse inline styles. */
-  .auth-shell { max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4); }
-  .auth-title { font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35;
-                margin: 0 0 var(--spacing-3); }
+     attributes, so a content security policy can refuse inline styles.
+     The shell, title and aside are in storefront.css, shared with the 503 page:
+     that file is unlayered, so a copy here would never apply. */
   .auth-intro { margin-block-end: var(--spacing-6); }
   .auth-sent { margin-block-end: var(--spacing-2); }
   .auth-change { margin-block-end: var(--spacing-5); }
-  .auth-after { text-align: center; margin-block-start: var(--spacing-4); }
   .btn--block { inline-size: 100%; }
   .otp__head { display: flex; align-items: baseline; justify-content: space-between;
                gap: var(--spacing-3); margin-block-end: var(--spacing-2); }
