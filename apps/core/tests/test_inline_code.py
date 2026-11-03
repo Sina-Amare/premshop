@@ -11,23 +11,30 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from datetime import timedelta
 from html.parser import HTMLParser
 from typing import Any
 from unittest import mock
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Category, Plan, Product
+from apps.cms.models import Page
 from apps.orders.services import OrderLine, place_order
 
 pytestmark = pytest.mark.django_db
 
 ORBIT = "[data-hero-scene]"
 BRAND_ONLY = re.compile(r"\s*--brand\s*:\s*[^;]+;?\s*")
+STATUS = {"404": 404, "503": 503}
+# One mark per promotion template: the card's offer line, the product page's badge,
+# the monthly figure and the deadline.
+PROMOTION_MARKS = ("pcard__deal", "plan__promotion", "plan__monthly", "deadline__said")
 
 
 class Inline(HTMLParser):
@@ -112,11 +119,33 @@ def shelf():
                 telegram_required=False,
             )
         )
+    # An open promotion on a longer plan, so the offer, deadline and monthly templates render.
+    Plan.objects.create(
+        product=plans[0].product,
+        title="۳ ماهه",
+        cost_price=1,
+        sale_price=600000,
+        promo_price=450000,
+        promo_ends_at=timezone.now() + timedelta(days=3),
+        duration_days=90,
+        max_quantity=2,
+        input_type=Plan.InputType.NONE,
+        telegram_required=False,
+    )
     return category, plans
 
 
 def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     category, plans = shelf
+    Page.objects.update_or_create(
+        slug="terms",
+        defaults={
+            "title": "قوانین خرید",
+            "body": "## قوانین\n\nمتن نمونه.",
+            "description": "قوانین خرید.",
+            "is_published": True,
+        },
+    )
     yield "home", client.get(reverse("home"))
     yield "category", client.get(reverse("category", args=[category.slug]))
     yield "category sorted", client.get(
@@ -125,6 +154,9 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     yield "product", client.get(reverse("product", args=[plans[0].product.slug]))
     yield "search", client.get(reverse("search"), {"q": "one"})
     yield "search without a match", client.get(reverse("search"), {"q": "zzzz"})
+    yield "faq", client.get(reverse("faq"))
+    yield "legal page", client.get(reverse("cms:terms"))
+    yield "404", client.get("/no-such-page/")
     yield "cart, empty", client.get(reverse("cart"))
     buyer = User.objects.create_user("buyer@example.test")
     cart = Cart.objects.create(user=buyer)
@@ -133,12 +165,14 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     yield "cart", client.get(reverse("cart"))
     yield "checkout", client.get(reverse("checkout"))
     yield "account", client.get(reverse("account"))
+    yield "account password", client.get(reverse("account-password"))
     orderer = User.objects.create_user("orderer@example.test")
     order = place_order(user=orderer, lines=[OrderLine(plans[1], 1)])
     client.force_login(orderer)
     yield "orders", client.get(reverse("order-list"))
     yield "order", client.get(reverse("order-detail", args=[order.order_number]))
     client.logout()
+    yield "tracking", client.get(reverse("order-tracking", args=[order.tracking_token]))
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
         yield "503", client.post(reverse("login-code"), {"email": "someone@example.test"})
 
@@ -146,13 +180,17 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
 def test_no_storefront_page_carries_inline_code(client, shelf):
     found = []
     for label, response in visits(client, shelf):
-        assert response.status_code == (503 if label == "503" else 200), (
-            label,
-            response.status_code,
-        )
+        assert response.status_code == STATUS.get(label, 200), (label, response.status_code)
         found += offences(label, response.content.decode())
 
     assert not found, found
+
+
+def test_the_pages_scanned_render_every_promotion_template(client, shelf):
+    pages = dict(visits(client, shelf))
+    shown = pages["category"].content.decode() + pages["product"].content.decode()
+
+    assert [mark for mark in PROMOTION_MARKS if mark not in shown] == []
 
 
 def test_the_orbit_is_the_only_inline_script_and_it_is_on_the_home_page(client, shelf):
