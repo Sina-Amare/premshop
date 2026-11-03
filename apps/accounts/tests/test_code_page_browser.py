@@ -28,6 +28,22 @@ PASTE_JS = """
   cell.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
 }
 """
+# Each timer that turns a cell green is a task of its own, and an observer runs
+# after each one, so a row that turned at once is one step from 0 to 6. The
+# time of the last step is kept too: load can only make it later.
+WATCH_THE_ROW = """() => {
+  window.greenCells = [0];
+  new MutationObserver(() => {
+    const green = document.querySelectorAll('.otp__cell.is-ok').length;
+    if (green === window.greenCells.at(-1)) return;
+    window.greenCells.push(green);
+    window.lastGreen = performance.now();
+  }).observe(document.querySelector('.otp'), {subtree: true, attributeFilter: ['class']});
+  addEventListener('beforeunload', () => { window.leftAt = window.greenCells.at(-1); });
+}"""
+# From the answer to the code arriving to the last cell turning green.
+ROW_TIME = """() => window.lastGreen - performance.getEntriesByType('resource')
+    .filter((entry) => entry.name.endsWith('/login/code/verify/')).at(-1).responseEnd"""
 
 
 @pytest.fixture
@@ -101,28 +117,52 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_pat
     assert "/login/code/verify/" in page.url
 
     # Paste the real code, in Persian digits, exactly as the email shows it.
+    # The page records its green cells at every change, and its first way out
+    # answers 204, which keeps it in place: what the row did is read from the
+    # page itself, not sampled from here inside a 350ms window.
     persian = code_from(mail.outbox[0]).translate(ASCII_TO_PERSIAN)
-    page.evaluate(PASTE_JS, persian)
+    page.evaluate(WATCH_THE_ROW)
+    left = []
+
+    def stay(route):
+        left.append(route.request.url)
+        if len(left) == 1:
+            route.fulfill(status=204)
+        else:
+            route.continue_()
+
+    page.route("**/account/", stay)
+    with page.expect_response(live_server.url + "/account/") as leaving:
+        page.evaluate(PASTE_JS, persian)
+    assert leaving.value.status == 204
+    assert left == [live_server.url + "/account/"]
 
     # Right: the cells go green one at a time, the way a person reads the code
     # back, and only then does the page leave. Six at once would mean the
     # stagger was lost — which is what the owner asked for on 2026-10-13.
-    page.wait_for_selector(".otp__cell.is-ok")
-    assert page.locator(".otp__cell.is-ok").count() < 6, "all six turned at once"
+    steps, left_at = page.evaluate("[window.greenCells, window.leftAt]")
+    assert steps == [0, 1, 2, 3, 4, 5, 6], f"the cells did not turn one at a time: {steps}"
+    assert left_at == 6, f"the page left with {left_at} green cells"
+    # Five 70ms pauses after the answer, which late timers only lengthen; the
+    # margin is for timer rounding.
+    assert page.evaluate(ROW_TIME) >= 300, "the row turned green without its pauses"
 
     # And the green is actually painted. The class landing is not the same
     # thing: submit() disables the cells before the fetch, and for a while the
     # disabled rule repainted confirmed cells grey at equal specificity — so
     # the stagger ran correctly and invisibly, on the paste path, which is how
-    # a code is almost always entered. Read the colour, not the class.
+    # a code is almost always entered. Read the colour, not the class, once
+    # its fade has ended.
+    page.wait_for_function(
+        "() => document.querySelector('.otp__cell.is-ok').getAnimations().length === 0"
+    )
     red, green, blue = page.evaluate(
         r"""() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
                  .backgroundColor.match(/\d+/g).slice(0, 3).map(Number)"""
     )
     assert green > red and green > blue, f"confirmed cell is not green: rgb({red},{green},{blue})"
     page.screenshot(path=str(tmp_path / "04-ok.png"))
-    page.wait_for_function("() => document.querySelectorAll('.otp__cell.is-ok').length === 6")
-    page.wait_for_url("**/account/")
+    page.goto(left[0])
     assert user.email in page.content()
 
 
