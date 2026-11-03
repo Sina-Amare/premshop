@@ -8,7 +8,7 @@ from typing import Any
 
 from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection
 from psycopg import sql
 
@@ -17,6 +17,13 @@ from apps.core.fields import EncryptedTextField
 
 class Command(BaseCommand):
     help = "Check that every encrypted value decrypts, printing counts and never a value."
+
+    def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument(
+            "--allow-empty",
+            action="store_true",
+            help="Pass when no value is encrypted at all, as before the first order.",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         total = failed = 0
@@ -45,4 +52,9 @@ class Command(BaseCommand):
                 failed += unreadable
         if failed:
             raise CommandError(f"{failed} of {total} encrypted values cannot be decrypted.")
+        if not total and not options["allow_empty"]:
+            raise CommandError(
+                "No encrypted value was found, so nothing proves the key; "
+                "--allow-empty passes a database that has none yet."
+            )
         self.stdout.write(f"All {total} encrypted values decrypt.")

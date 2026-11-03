@@ -20,6 +20,7 @@
 
 - **`the database already holds tables`**: the database is not empty, and nothing was restored. Go back to step 1.
 - **`N decrypted, M failed`** then **`a failed restore`**: the key in the environment file did not write those values. The site stays closed. Find the right key in the escrow, put it in the environment file, remove the database volume again (it holds only the copy this attempt restored) and rerun.
+- **`nothing proves the key`** then **`a failed restore`**: the backup holds no encrypted value, so decrypting proved nothing and the site stays closed. Only a backup taken before the first order holds none: remove the database volume again and rerun with `--allow-empty`. Any later backup without one is the wrong file.
 - **`stopped: ... pg_restore ... exited with 1`**: the archive is damaged or not from this shop's database. The restore runs in one transaction, so the database is still empty; try an older backup.
 
 ## As a drill

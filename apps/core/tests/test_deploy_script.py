@@ -214,6 +214,17 @@ def test_a_restore_that_cannot_decrypt_fails_and_the_site_stays_closed(paths):
     assert not paths["state"].exists()
 
 
+def test_a_restore_accepts_a_backup_with_no_encrypted_value_only_when_asked(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) == 0
+    assert not any("--allow-empty" in args for args in docker.calls)
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW, "--allow-empty") == 0
+    [check] = [args for args in docker.calls if "verify_decrypt" in args]
+    assert check[-2:] == ["verify_decrypt", "--allow-empty"]
+
+
 def test_a_restore_refuses_a_database_that_already_holds_tables(paths):
     paths["dump"].write_bytes(DUMP)
     docker = Docker(tables="42")

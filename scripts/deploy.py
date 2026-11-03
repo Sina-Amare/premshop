@@ -214,9 +214,11 @@ def restore(stack: Stack, options: argparse.Namespace) -> int:
         stack.database(image, "pg_restore", *once, stdin=file)
     stack.manage(image, "migrate", "--noinput")
     # Before the site opens: under the wrong key it would also write new values
-    # that the right key cannot read.
-    if stack.manage(image, "verify_decrypt", check=False).returncode:
-        raise Failed("the restored data does not decrypt with this key: a failed restore")
+    # that the right key cannot read. A backup with no encrypted value proves no
+    # key, so it fails too unless the operator says it holds none.
+    decrypt = ["verify_decrypt", *(["--allow-empty"] if options.allow_empty else [])]
+    if stack.manage(image, *decrypt, check=False).returncode:
+        raise Failed("the restored data does not prove this key decrypts it: a failed restore")
     if not stack.switch_or_return(image, None):
         return 1
     write_state(options.state_file, image, None)
@@ -254,6 +256,9 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     command.add_argument("dump", help="a pg_dump archive")
     command.add_argument("image", help="premshop:<commit>")
     command.add_argument("--load", help="an image archive to load first")
+    command.add_argument(
+        "--allow-empty", action="store_true", help="accept a backup with no encrypted value"
+    )
     command.set_defaults(action=restore)
     return parser.parse_args(argv)
 

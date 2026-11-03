@@ -97,6 +97,18 @@ def test_decrypt_check_fails_under_a_different_key(buyer, plan, settings):
     assert "target@example.test" not in out.getvalue() + str(exc.value)
 
 
+def test_decrypt_check_fails_when_no_value_is_encrypted():
+    """A check that decrypts nothing proves nothing about the key (ADR-0007)."""
+    with pytest.raises(CommandError, match="nothing proves the key"):
+        call_command("verify_decrypt", stdout=StringIO())
+
+
+def test_decrypt_check_passes_an_empty_database_only_when_asked():
+    out = StringIO()
+    call_command("verify_decrypt", "--allow-empty", stdout=out)
+    assert "All 0 encrypted values decrypt." in out.getvalue()
+
+
 @pytest.mark.parametrize("lookup", ["exact", "contains", "in"])
 def test_searching_encrypted_values_is_refused(lookup):
     with pytest.raises(FieldError):
