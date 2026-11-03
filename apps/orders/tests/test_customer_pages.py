@@ -10,7 +10,7 @@ from django.utils import timezone
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from apps.accounts.models import User
-from apps.catalog.models import Plan, Product
+from apps.catalog.models import Category, Plan, Product
 from apps.core.formatting import format_toman, to_persian_digits
 from apps.orders import services
 from apps.orders.models import OrderItem, OrderItemEvent
@@ -353,3 +353,61 @@ def test_https_redirects_also_protect_private_tracking_headers(client, settings)
     response = client.get("/track/redirect-token/")
     assert response.status_code == 301
     privacy_headers(response)
+
+
+def more_plans(count, start):
+    category = Category.objects.get_or_create(slug="counted", defaults={"name": "شمارش"})[0]
+    plans = []
+    for i in range(start, start + count):
+        product = Product.objects.create(
+            category=category, name=f"محصول {i}", slug=f"counted-{i}", status=Product.Status.ACTIVE
+        )
+        plans.append(
+            Plan.objects.create(
+                product=product,
+                title="۱ ماهه",
+                cost_price=Decimal("1"),
+                sale_price=Decimal("200000"),
+                duration_days=30,
+                max_quantity=3,
+                input_type=Plan.InputType.NONE,
+                telegram_required=False,
+            )
+        )
+    return plans
+
+
+def test_order_list_query_count_is_the_same_for_two_orders_and_six(client, buyer, queries_for):
+    def add(start, stop):
+        for i in range(start, stop):
+            lines = [OrderLine(plan, 1) for plan in more_plans(2, i * 2)]
+            services.cancel_unpaid_order(
+                order_id=services.place_order(user=buyer, lines=lines).pk, actor=buyer
+            )
+
+    client.force_login(buyer)
+    add(0, 2)
+    few, response = queries_for(reverse("order-list"))
+    assert len(response.context["summaries"]) == 2
+    add(2, 6)
+
+    many, response = queries_for(reverse("order-list"))
+
+    assert len(response.context["summaries"]) == 6
+    assert many == few
+
+
+def test_order_detail_query_count_is_the_same_for_three_lines_and_nine(client, buyer, queries_for):
+    client.force_login(buyer)
+    first = more_plans(3, 0)
+    order = services.place_order(user=buyer, lines=[OrderLine(plan, 1) for plan in first])
+    url = reverse("order-detail", args=[order.order_number])
+    few, response = queries_for(url)
+    assert response.context["order"].items.count() == 3
+    services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
+    big = services.place_order(user=buyer, lines=[OrderLine(plan, 1) for plan in more_plans(9, 3)])
+
+    many, response = queries_for(reverse("order-detail", args=[big.order_number]))
+
+    assert response.context["order"].items.count() == 9
+    assert many == few

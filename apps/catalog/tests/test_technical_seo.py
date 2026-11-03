@@ -228,3 +228,34 @@ def test_robots_allows_each_named_crawler_and_wildcard_in_separate_groups(client
     assert text.count("User-agent:") == len(groups)
     assert "Disallow:" not in text
     assert f"Sitemap: {SITE}/sitemap.xml" in text
+
+
+def test_sitemap_query_count_is_the_same_for_three_products_and_nine(
+    client, settings, product, queries_for
+):
+    """Half the products are unavailable, so each one runs the publishing check."""
+
+    def add(start, stop):
+        for i in range(start, stop):
+            extra = Product.objects.create(
+                category=product.category,
+                name=f"Extra {i}",
+                slug=f"extra-{i}",
+                short_description="اشتراک نمونه روی اکانت خودتان.",
+                delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+                usage_notes="موضوعیت ندارد",
+                status=Product.Status.UNAVAILABLE if i % 2 else Product.Status.ACTIVE,
+            )
+            Plan.objects.create(product=extra, title="۱ ماهه", cost_price=1, sale_price=900000)
+
+    settings.SITE_URL = SITE
+    add(0, 2)
+    few, response = queries_for("/sitemap.xml")
+    assert response.content.count(b"<loc>") == len(sitemap(client, settings))
+    add(2, 8)
+
+    many, response = queries_for("/sitemap.xml")
+
+    assert response.content.count(b"<loc>") == len(sitemap(client, settings))
+    assert b"/p/extra-6/" in response.content
+    assert many == few

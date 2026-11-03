@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from itertools import zip_longest
 
 from django.db.models import Count, Prefetch, Q
@@ -9,6 +10,7 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.cache import patch_cache_control
 
 from apps.catalog.models import Category, Plan, Product, ProductQuerySet
@@ -21,6 +23,7 @@ SEARCH_RESULT_CAP = 50
 SUGGESTION_CAP = 5
 SUGGESTION_MIN_LENGTH = 2
 HOME_PRODUCT_CAP = 24
+CATEGORY_SORTS = ("new", "cheap", "expensive")
 
 
 def _for_cards(products: ProductQuerySet | None = None) -> ProductQuerySet:
@@ -102,15 +105,38 @@ def home(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _by_price(products: list[Product], sort: str) -> list[Product]:
+    """The grid ordered by the price its card leads with: the lowest effective
+    price among the plans that can be bought, read at one moment for the whole
+    page. A product with nothing to buy has no price and goes last either way.
+    Python's sort is stable, so equal prices keep the order they came in."""
+    now = timezone.now()
+
+    def key(product: Product) -> tuple[int, Decimal]:
+        prices = [effective_price(plan, now) for plan in product.available_plans()]
+        if not prices:
+            return (1, Decimal(0))
+        return (0, min(prices) if sort == "cheap" else -min(prices))
+
+    return sorted(products, key=key)
+
+
 def category(request: HttpRequest, slug: str) -> HttpResponse:
     cat = get_object_or_404(Category, slug=slug)
-    products = list(_for_cards().filter(category=cat))
+    # An unknown value is the default, not an error: the address is typed and
+    # shared by hand, and a stale link must still show the shelf.
+    sort = request.GET.get("sort", "")
+    sort = sort if sort in CATEGORY_SORTS else "new"
+    products = list(_for_cards().filter(category=cat).order_by("-created_at", "-pk"))
+    if sort != "new":
+        products = _by_price(products, sort)
     return render(
         request,
         "catalog/category.html",
         {
             "category": cat,
             "current_category": cat.slug,
+            "sort": sort,
             "products": products,
             "quick_plan_products": products,
             "structured_data": breadcrumb_schema(
