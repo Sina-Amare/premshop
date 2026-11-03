@@ -248,6 +248,20 @@ def test_home_page_query_count_does_not_grow_with_products(client, category):
     assert len(queries) <= HOME_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
 
 
+def test_search_query_count_is_the_same_for_four_results_and_twelve(category, queries_for):
+    for i in range(4):
+        make_product(category, f"claude-{i}", promo_price=Decimal("150000"))
+    few, response = queries_for(reverse("search"), {"q": "claude"})
+    assert len(response.context["results"]) == 4
+    for i in range(4, 12):
+        make_product(category, f"claude-{i}", promo_price=Decimal("150000"))
+
+    many, response = queries_for(reverse("search"), {"q": "claude"})
+
+    assert len(response.context["results"]) == 12
+    assert many == few
+
+
 def test_add_to_cart_control_disabled_for_unavailable_plan(client, product):
     body = client.get(reverse("product", args=[product.slug])).content.decode()
 
