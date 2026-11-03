@@ -82,7 +82,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.dev"
 python_files = ["test_*.py"]
-addopts = "--strict-markers --tb=short"
+# The live server on 127.0.0.1, not localhost: Chromium tries ::1 first, and on
+# Windows each refused connection there costs about 300ms before it falls back.
+addopts = "--strict-markers --tb=short --liveserver=127.0.0.1"
 markers = [
     "browser: drives the real page in Playwright Chromium; skips without one unless REQUIRE_BROWSER is set",
 ]

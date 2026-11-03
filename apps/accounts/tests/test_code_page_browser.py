@@ -10,10 +10,7 @@ owner is asked to look at anything visual.
 
 from __future__ import annotations
 
-import os
 import re
-import tempfile
-from pathlib import Path
 
 import pytest
 from django.core import mail
@@ -23,10 +20,6 @@ from apps.accounts.tests.test_auth import ASCII_TO_PERSIAN, PASSWORD, code_from
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
-SHOTS = Path(
-    os.environ.get("PREMSHOP_SHOTS", Path(tempfile.gettempdir()) / "premshop-shots" / "e2e")
-)
-
 PASTE_JS = """
 (text) => {
   const cell = document.querySelector('.otp__cell');
@@ -35,6 +28,22 @@ PASTE_JS = """
   cell.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
 }
 """
+# Each timer that turns a cell green is a task of its own, and an observer runs
+# after each one, so a row that turned at once is one step from 0 to 6. The
+# time of the last step is kept too: load can only make it later.
+WATCH_THE_ROW = """() => {
+  window.greenCells = [0];
+  new MutationObserver(() => {
+    const green = document.querySelectorAll('.otp__cell.is-ok').length;
+    if (green === window.greenCells.at(-1)) return;
+    window.greenCells.push(green);
+    window.lastGreen = performance.now();
+  }).observe(document.querySelector('.otp'), {subtree: true, attributeFilter: ['class']});
+  addEventListener('beforeunload', () => { window.leftAt = window.greenCells.at(-1); });
+}"""
+# From the answer to the code arriving to the last cell turning green.
+ROW_TIME = """() => window.lastGreen - performance.getEntriesByType('resource')
+    .filter((entry) => entry.name.endsWith('/login/code/verify/')).at(-1).responseEnd"""
 
 
 @pytest.fixture
@@ -79,8 +88,7 @@ def test_resend_stays_disabled_while_its_request_is_pending(page, live_server, u
         held[0].fulfill(json={"ok": False, "error": "کد فرستاده نشد."})
 
 
-def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
-    SHOTS.mkdir(parents=True, exist_ok=True)
+def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_path):
     request_code(page, live_server, user.email)
 
     # Fresh: six cells, the plain field hidden, the clock running, resend cooling down.
@@ -90,18 +98,18 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     assert "مانده" in page.locator("#code-clock").inner_text()
     assert page.locator("#resend").is_disabled()
     assert cells.first.evaluate("el => document.activeElement === el"), "focus starts in cell 1"
-    page.screenshot(path=str(SHOTS / "01-fresh.png"))
+    page.screenshot(path=str(tmp_path / "01-fresh.png"))
 
     # Typing advances cell by cell; the sixth digit submits by itself.
     page.keyboard.type("00000")
     assert cells.nth(4).input_value() == "0"
     assert cells.nth(5).evaluate("el => document.activeElement === el")
-    page.screenshot(path=str(SHOTS / "02-typing.png"))
+    page.screenshot(path=str(tmp_path / "02-typing.png"))
     page.keyboard.type("0")
 
     # Wrong: red, an error line, then cleared and refocused — no page change.
     page.wait_for_selector("#code-error:not([hidden])")
-    page.screenshot(path=str(SHOTS / "03-wrong.png"))
+    page.screenshot(path=str(tmp_path / "03-wrong.png"))
     error = page.locator("#code-error").inner_text()
     assert error
     page.wait_for_function("() => document.querySelector('.otp__cell').value === ''")
@@ -109,33 +117,56 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user):
     assert "/login/code/verify/" in page.url
 
     # Paste the real code, in Persian digits, exactly as the email shows it.
+    # The page records its green cells at every change, and its first way out
+    # answers 204, which keeps it in place: what the row did is read from the
+    # page itself, not sampled from here inside a 350ms window.
     persian = code_from(mail.outbox[0]).translate(ASCII_TO_PERSIAN)
-    page.evaluate(PASTE_JS, persian)
+    page.evaluate(WATCH_THE_ROW)
+    left = []
+
+    def stay(route):
+        left.append(route.request.url)
+        if len(left) == 1:
+            route.fulfill(status=204)
+        else:
+            route.continue_()
+
+    page.route("**/account/", stay)
+    with page.expect_response(live_server.url + "/account/") as leaving:
+        page.evaluate(PASTE_JS, persian)
+    assert leaving.value.status == 204
+    assert left == [live_server.url + "/account/"]
 
     # Right: the cells go green one at a time, the way a person reads the code
     # back, and only then does the page leave. Six at once would mean the
     # stagger was lost — which is what the owner asked for on 2026-10-13.
-    page.wait_for_selector(".otp__cell.is-ok")
-    assert page.locator(".otp__cell.is-ok").count() < 6, "all six turned at once"
+    steps, left_at = page.evaluate("[window.greenCells, window.leftAt]")
+    assert steps == [0, 1, 2, 3, 4, 5, 6], f"the cells did not turn one at a time: {steps}"
+    assert left_at == 6, f"the page left with {left_at} green cells"
+    # Five 70ms pauses after the answer, which late timers only lengthen; the
+    # margin is for timer rounding.
+    assert page.evaluate(ROW_TIME) >= 300, "the row turned green without its pauses"
 
     # And the green is actually painted. The class landing is not the same
     # thing: submit() disables the cells before the fetch, and for a while the
     # disabled rule repainted confirmed cells grey at equal specificity — so
     # the stagger ran correctly and invisibly, on the paste path, which is how
-    # a code is almost always entered. Read the colour, not the class.
+    # a code is almost always entered. Read the colour, not the class, once
+    # its fade has ended.
+    page.wait_for_function(
+        "() => document.querySelector('.otp__cell.is-ok').getAnimations().length === 0"
+    )
     red, green, blue = page.evaluate(
         r"""() => getComputedStyle(document.querySelector('.otp__cell.is-ok'))
                  .backgroundColor.match(/\d+/g).slice(0, 3).map(Number)"""
     )
     assert green > red and green > blue, f"confirmed cell is not green: rgb({red},{green},{blue})"
-    page.screenshot(path=str(SHOTS / "04-ok.png"))
-    page.wait_for_function("() => document.querySelectorAll('.otp__cell.is-ok').length === 6")
-    page.wait_for_url("**/account/")
+    page.screenshot(path=str(tmp_path / "04-ok.png"))
+    page.goto(left[0])
     assert user.email in page.content()
 
 
-def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user):
-    SHOTS.mkdir(parents=True, exist_ok=True)
+def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user, tmp_path):
     page.clock.install()
     request_code(page, live_server, user.email)
     # The fake clock freezes CSS transitions mid-way, so a screenshot taken under
@@ -155,7 +186,7 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     page.wait_for_function("() => !document.querySelector('#resend').disabled")
     assert "مانده" in page.locator("#code-clock").inner_text()
     assert status.text_content() == "", "nine minutes left is nothing to announce"
-    page.screenshot(path=str(SHOTS / "05-resend-ready.png"))
+    page.screenshot(path=str(tmp_path / "05-resend-ready.png"))
 
     page.clock.fast_forward("08:00")
     page.wait_for_function(
@@ -174,7 +205,7 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     assert "badge--time" not in page.get_attribute(
         "#code-clock", "class"
     ), "amber is a running clock"
-    page.screenshot(path=str(SHOTS / "06-expired.png"))
+    page.screenshot(path=str(tmp_path / "06-expired.png"))
 
     # Resend: a new mail, a new clock, cells alive again, and the new code works.
     sent_before = len(mail.outbox)
@@ -184,7 +215,7 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     assert "مانده" in page.locator("#code-clock").inner_text()
     assert "badge--time" in page.get_attribute("#code-clock", "class")
     assert page.locator("#resend").is_disabled(), "the cooldown restarts after a resend"
-    page.screenshot(path=str(SHOTS / "07-after-resend.png"))
+    page.screenshot(path=str(tmp_path / "07-after-resend.png"))
 
     page.evaluate(PASTE_JS, code_from(mail.outbox[-1]))
     page.wait_for_url("**/account/")
@@ -234,10 +265,11 @@ def test_a_page_opened_with_under_a_minute_left_offers_resend_when_the_code_runs
     assert page.evaluate("() => document.activeElement.id") == "resend"
 
 
-def test_without_javascript_the_code_page_still_does_its_whole_job(browser, live_server, user):
+def test_without_javascript_the_code_page_still_does_its_whole_job(
+    browser, live_server, user, tmp_path
+):
     """Resend was a disabled button outside any form, enabled only by script,
     and the page offered no way back from a mistyped address."""
-    SHOTS.mkdir(parents=True, exist_ok=True)
     context = browser.new_context(
         java_script_enabled=False, viewport={"width": 390, "height": 844}, device_scale_factor=1
     )
@@ -249,7 +281,7 @@ def test_without_javascript_the_code_page_still_does_its_whole_job(browser, live
         page.wait_for_url("**/login/code/verify/")
         assert "کد جدید را فرستادیم." in page.locator("main").inner_text()
         assert len(mail.outbox) == 2
-        page.screenshot(path=str(SHOTS / "10-nojs-resent.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / "10-nojs-resent.png"), full_page=True)
 
         page.click("main a:has-text('تغییر ایمیل')")
         page.wait_for_url(re.compile(r"/login/code/\?next="))
@@ -263,18 +295,17 @@ def test_without_javascript_the_code_page_still_does_its_whole_job(browser, live
         context.close()
 
 
-def test_the_page_at_phone_width(browser, live_server, user):
+def test_the_page_at_phone_width(browser, live_server, user, tmp_path):
     """Chrome's CLI refused a window narrower than ~485px; Playwright does not."""
-    SHOTS.mkdir(parents=True, exist_ok=True)
     context = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1)
     page = context.new_page()
     try:
         request_code(page, live_server, user.email)
-        page.screenshot(path=str(SHOTS / "08-phone.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / "08-phone.png"), full_page=True)
         width = page.evaluate("() => document.documentElement.scrollWidth")
         assert width <= 390, f"horizontal overflow at phone width: {width}px"
         page.goto(f"{live_server.url}/login/")
-        page.screenshot(path=str(SHOTS / "09-phone-login.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / "09-phone-login.png"), full_page=True)
     finally:
         context.close()
 

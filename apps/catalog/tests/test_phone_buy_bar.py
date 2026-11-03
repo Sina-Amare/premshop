@@ -2,7 +2,6 @@
 
 import re
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
 from django.utils import timezone
@@ -15,7 +14,6 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1440, "height": 900}
-SHOTS = Path("screenshots/phone-buy-bar")
 
 
 @pytest.fixture
@@ -95,8 +93,9 @@ def cta_out_of_sight(page):
 
 
 @pytest.mark.parametrize("width", [390, 761, 900])
-def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, product, width):
-    SHOTS.mkdir(parents=True, exist_ok=True)
+def test_the_bar_follows_the_checked_plan_and_adds_it(
+    browser, live_server, product, width, tmp_path
+):
     context = browser.new_context(viewport={"width": width, "height": 844}, has_touch=True)
     page = context.new_page()
     errors = []
@@ -126,14 +125,14 @@ def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, prod
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         assert page.url == url
         expect(page.locator("h1")).to_have_text("Spotify Premium")
-        page.screenshot(path=str(SHOTS / "bar-390.png"))
+        page.screenshot(path=str(tmp_path / "bar-390.png"))
 
         # The page's last lines scroll clear of the bar instead of sitting under it.
         scroll_to(page, 10**6)
         expect(region).to_be_visible()
         footer = page.locator(".v-footer").bounding_box()
         assert footer["y"] + footer["height"] <= region.bounding_box()["y"] + 0.5
-        page.screenshot(path=str(SHOTS / "footer-390.png"))
+        page.screenshot(path=str(tmp_path / "footer-390.png"))
 
         scroll_to(page, 0)
         expect(bar).to_be_hidden()
@@ -142,7 +141,7 @@ def test_the_bar_follows_the_checked_plan_and_adds_it(browser, live_server, prod
         leave_the_buy_box(page)
         expect(region.locator("bdi")).to_have_text("سه ماهه")
         expect(region.locator(".price__num")).to_have_text("۵۰۰,۰۰۰")
-        page.screenshot(path=str(SHOTS / "other-plan-390.png"))
+        page.screenshot(path=str(tmp_path / "other-plan-390.png"))
 
         # While the request is out the bar's button is as unavailable as the box's.
         held = []
@@ -185,9 +184,8 @@ def test_a_filled_plan_takes_the_bar_away_and_keeps_focus(browser, live_server, 
 
 @pytest.mark.parametrize("name,opened", [("phone", PHONE), ("narrowed", DESKTOP)])
 def test_a_button_under_the_returned_header_is_out_of_sight(
-    browser, live_server, product, name, opened
+    browser, live_server, product, name, opened, tmp_path
 ):
-    SHOTS.mkdir(parents=True, exist_ok=True)
     page = browser.new_page(viewport=opened)
     bar = page.locator("[data-buy-bar]")
     try:
@@ -203,7 +201,7 @@ def test_a_button_under_the_returned_header_is_out_of_sight(
             wait_until_on_top(page, ".buybox__cta", ".v-header")
             settle(page)
             assert bar.is_visible(), rise
-        page.screenshot(path=str(SHOTS / f"under-header-{name}-390.png"))
+        page.screenshot(path=str(tmp_path / f"under-header-{name}-390.png"))
         # Once most of the button is clear of the header, the box's own button is the one to use.
         raise_cta_to_header_edge(page, -30)
         wait_until_on_top(page, ".buybox__cta", ".buybox__cta")
@@ -273,8 +271,7 @@ def test_the_bar_leaves_from_901_pixels(browser, live_server, product):
         page.close()
 
 
-def test_the_bar_never_shows_on_a_wide_screen(browser, live_server, product):
-    SHOTS.mkdir(parents=True, exist_ok=True)
+def test_the_bar_never_shows_on_a_wide_screen(browser, live_server, product, tmp_path):
     page = browser.new_page(viewport=DESKTOP)
     bar = page.locator("[data-buy-bar]")
     try:
@@ -288,7 +285,7 @@ def test_the_bar_never_shows_on_a_wide_screen(browser, live_server, product):
             left = left or cta_out_of_sight(page)
         # The box did leave the screen, so it is the width that keeps the bar away.
         assert left
-        page.screenshot(path=str(SHOTS / "bottom-1440.png"))
+        page.screenshot(path=str(tmp_path / "bottom-1440.png"))
     finally:
         page.close()
 

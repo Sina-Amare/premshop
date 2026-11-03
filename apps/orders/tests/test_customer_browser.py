@@ -1,5 +1,4 @@
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 from django.conf import settings
@@ -31,18 +30,15 @@ def context_for(browser, live_server, buyer, width, *, javascript=True):
     return context
 
 
-def capture(page, name, width):
+def capture(page, name, width, folder):
     page.evaluate("document.fonts.ready")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-    folder = Path(settings.BASE_DIR) / "screenshots/customer-orders"
-    folder.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(folder / f"{name}-{width}.png"), full_page=True)
-    return folder
 
 
 @pytest.mark.parametrize("width", [390, 1440])
 def test_order_journey_invoice_png_tracking_and_whole_cancellation(
-    browser, live_server, buyer, plan, width
+    browser, live_server, buyer, plan, width, tmp_path
 ):
     order = place_order(user=buyer, lines=[OrderLine(plan, 2)])
     context = context_for(browser, live_server, buyer, width)
@@ -52,20 +48,20 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
     try:
         page.goto(live_server.url + reverse("order-list"))
         expect(page.get_by_role("heading", name="سفارش‌ها", exact=True)).to_be_visible()
-        folder = capture(page, "list", width)
+        capture(page, "list", width, tmp_path)
         page.get_by_role("link", name="مشاهده‌ی سفارش", exact=True).click()
         expect(page).to_have_url(
             live_server.url + reverse("order-detail", args=[order.order_number])
         )
         expect(page.locator("main")).to_contain_text("تعداد: ۲")
-        capture(page, "detail", width)
+        capture(page, "detail", width, tmp_path)
         page.get_by_role("link", name="مشاهده‌ی فاکتور").click()
         expect(page.get_by_role("heading", name="فاکتور سفارش", exact=True)).to_be_visible()
-        capture(page, "invoice", width)
+        capture(page, "invoice", width, tmp_path)
         with page.expect_download() as pending:
             page.get_by_role("button", name="دانلود تصویر فاکتور").click()
         download = pending.value
-        target = folder / f"invoice-export-{width}.png"
+        target = tmp_path / f"invoice-export-{width}.png"
         download.save_as(target)
         with Image.open(BytesIO(target.read_bytes())) as image:
             assert image.format == "PNG" and image.width == 1200 and image.height > 600
@@ -78,12 +74,12 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
         page.locator("summary").filter(has_text="لغو سفارش").click()
         page.get_by_role("button", name="بله، لغو سفارش").click()
         expect(page.locator(".acct__main [role=status]")).to_contain_text("سفارش لغو شد.")
-        capture(page, "cancelled", width)
+        capture(page, "cancelled", width, tmp_path)
         page.get_by_role("link", name="لینک پیگیری سفارش").click()
         expect(page.get_by_role("heading", name="پیگیری سفارش", exact=True)).to_be_visible()
         expect(page.locator("main")).to_contain_text("لغو شده")
         assert buyer.email not in page.content() and order.tracking_token not in page.content()
-        capture(page, "tracking", width)
+        capture(page, "tracking", width, tmp_path)
         assert not errors
     finally:
         context.close()

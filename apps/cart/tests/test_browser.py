@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from playwright.sync_api import expect
 
@@ -9,7 +7,9 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_server, plan, width):
+def test_cart_empty_populated_error_unavailable_and_keyboard(
+    browser, live_server, plan, width, tmp_path
+):
     plan.product.name = "اشتراک سرویس نمونه برای حساب شخصی با عنوان بلند Example Pro Family"
     plan.product.save()
     other_product = Product.objects.create(
@@ -21,8 +21,6 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
     other = Plan.objects.create(
         product=other_product, title="پلن دوم", sale_price=150000, cost_price=100000
     )
-    directory = Path("screenshots/persistent-cart")
-    directory.mkdir(parents=True, exist_ok=True)
     context = browser.new_context(viewport={"width": width, "height": 1000})
     page = context.new_page()
     errors = []
@@ -59,7 +57,7 @@ def test_cart_empty_populated_error_unavailable_and_keyboard(browser, live_serve
             box = amount.bounding_box()
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= width + 1
             assert amount.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
-        page.screenshot(path=str(directory / f"{state}-{width}.png"), full_page=True)
+        page.screenshot(path=str(tmp_path / f"{state}-{width}.png"), full_page=True)
 
     try:
         page.goto(live_server.url + "/cart/")

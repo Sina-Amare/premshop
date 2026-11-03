@@ -1,12 +1,83 @@
 """Fixtures for every test in the project."""
 
 import os
+import threading
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
 from django.core.cache import cache
 from playwright.sync_api import Browser, Error, sync_playwright
+
+REPOSITORY = Path(__file__).resolve().parent.parent
+# A test's output belongs in tmp_path; these are where it used to land in the working tree.
+OUTPUT_FOLDERS = ("screenshots", ".playwright-mcp")
+
+
+def written_output() -> dict[str, int]:
+    return {
+        path.relative_to(REPOSITORY).as_posix(): path.stat().st_mtime_ns
+        for folder in OUTPUT_FOLDERS
+        for path in (REPOSITORY / folder).rglob("*")
+        if path.is_file()
+    }
+
+
+@pytest.fixture(autouse=True, scope="session")
+def no_output_in_the_repository() -> Iterator[None]:
+    before = written_output()
+    yield
+    written = sorted(path for path, mtime in written_output().items() if before.get(path) != mtime)
+    if written:
+        pytest.fail(f"tests wrote into the repository instead of tmp_path: {written[:10]}")
+
+
+class Answering(threading.Condition):
+    requests = 0
+
+
+def answering(server: Any) -> Answering:
+    """Counts the requests the live server is in the middle of.
+
+    Requests, not connections: an idle keep-alive connection, such as the one a
+    page's APIRequestContext leaves open, holds nothing in the database.
+    """
+    if not hasattr(server, "answering"):
+        server.answering = Answering()
+        app = server.get_app()
+
+        def counted(environ: Any, start_response: Any) -> Any:
+            with server.answering:
+                server.answering.requests += 1
+            try:
+                return app(environ, start_response)
+            finally:
+                with server.answering:
+                    server.answering.requests -= 1
+                    server.answering.notify_all()
+
+        server.set_app(counted)
+    return server.answering
+
+
+@pytest.fixture(autouse=True)
+def live_server_finishes_before_the_flush(request: Any) -> Iterator[None]:
+    """A request the live server is still answering when a test ends, such as a
+    page's availability poll, would race the flush that empties the database next:
+    TRUNCATE deadlocks against its queries, or it writes into the next test.
+
+    pytest-django's autouse fixtures set up the database first, so this one is torn
+    down before the flush.
+    """
+    if "live_server" not in request.fixturenames:
+        yield
+        return
+    requests = answering(request.getfixturevalue("live_server").thread.httpd)
+    yield
+    with requests:
+        if not requests.wait_for(lambda: requests.requests == 0, timeout=30):
+            pytest.fail(f"the live server is still answering {requests.requests} request(s)")
 
 
 @pytest.fixture(autouse=True)

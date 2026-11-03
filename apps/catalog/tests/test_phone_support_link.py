@@ -19,7 +19,6 @@ from apps.core import support
 pytestmark = pytest.mark.django_db
 
 PHONE = {"width": 390, "height": 844}
-SHOTS = Path("screenshots/phone-support-link")
 SHELVES = [
     ("هوش مصنوعی", "ai", "ChatGPT Plus"),
     ("ابزار توسعه", "dev", "GitHub Copilot"),
@@ -56,18 +55,17 @@ def header_height(page) -> float:
     return page.locator(".v-header").bounding_box()["height"]
 
 
-def shoot(page, url: str, file: str) -> None:
+def shoot(page, url: str, path: Path) -> None:
     """A screenshot proves only the page it shows, so its address and header are checked first."""
     assert page.url == url
     expect(page.get_by_role("banner")).to_be_visible()
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    page.screenshot(path=str(SHOTS / file))
+    page.screenshot(path=str(path))
 
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("path", PAGES)
-def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop, path):
+def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop, path, tmp_path):
     details = support.details()
     page = browser.new_page(viewport=PHONE)
     url = live_server.url + path
@@ -81,7 +79,7 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         assert box["width"] >= 44 and box["height"] >= 44, box
         # The 44px target fits the row, so the header keeps the height every offset reads.
         assert 170 <= header_height(page) < 171, header_height(page)
-        shoot(page, url, f"{path.strip('/').split('/')[0] or 'home'}-390.png")
+        shoot(page, url, tmp_path / f"{path.strip('/').split('/')[0] or 'home'}-390.png")
 
         # The header steps aside reading down and brings the link back on the way up.
         page.evaluate("document.body.style.minHeight = '4000px'")
@@ -96,7 +94,7 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-def test_on_a_phone_the_faq_moves_into_the_categories_list(browser, live_server, shop):
+def test_on_a_phone_the_faq_moves_into_the_categories_list(browser, live_server, shop, tmp_path):
     page = browser.new_page(viewport=PHONE)
     url = live_server.url + reverse("category", args=["ai"])
     try:
@@ -109,7 +107,7 @@ def test_on_a_phone_the_faq_moves_into_the_categories_list(browser, live_server,
         expect(last).to_be_in_viewport(ratio=1)
         assert last.get_attribute("href") == reverse("faq")
         assert last.bounding_box()["height"] >= 44
-        shoot(page, url, "categories-open-390.png")
+        shoot(page, url, tmp_path / "categories-open-390.png")
     finally:
         page.close()
 
@@ -150,7 +148,7 @@ def test_on_a_small_phone_nothing_in_the_row_wraps_or_overflows(browser, live_se
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("width", [761, 900, 1001, 1150])
 def test_from_761_to_1150_the_row_holds_categories_faq_and_support(
-    browser, live_server, shop, width
+    browser, live_server, shop, width, tmp_path
 ):
     page = browser.new_page(viewport={"width": width, "height": 900})
     url = live_server.url + "/"
@@ -174,7 +172,7 @@ def test_from_761_to_1150_the_row_holds_categories_faq_and_support(
         assert all(a["x"] >= b["x"] + b["width"] for a, b in pairwise(boxes)), boxes
         assert header_height(page) == 129
         if width == 900:
-            shoot(page, url, "home-900.png")
+            shoot(page, url, tmp_path / "home-900.png")
     finally:
         page.close()
 
@@ -182,7 +180,7 @@ def test_from_761_to_1150_the_row_holds_categories_faq_and_support(
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("width", [1151, 1440])
-def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width):
+def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width, tmp_path):
     page = browser.new_page(viewport={"width": width, "height": 900})
     url = live_server.url + "/"
     header = page.locator(".v-header")
@@ -191,7 +189,7 @@ def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width
         expect(page.locator(".v-header__main").get_by_role("link", name=name())).to_be_visible()
         expect(page.locator(".v-navline .v-support")).to_be_hidden()
         if width == 1440:
-            shoot(page, url, "home-1440.png")
+            shoot(page, url, tmp_path / "home-1440.png")
         # What this step added is out of the picture at this width: without it, the same pixels.
         before = header.screenshot()
         page.evaluate(
