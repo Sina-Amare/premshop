@@ -89,12 +89,18 @@ product=$(grep -Eo 'href="/p/[^"]+/"' "$work/page" | head -1 | cut -d'"' -f2)
 page "$product"
 echo "smoke: home, $category and $product answer 200 with a hashed stylesheet"
 
+css=$(grep -Eo '/static/css/app\.[0-9a-f]{12}\.css' "$work/page" | head -1)
+headers=$(curl -sk -D - -o /dev/null -H 'Accept-Encoding: gzip' "$url$css")
+grep -qi '^cache-control: .*immutable' <<<"$headers" || fail "$css is not cached as immutable"
+grep -qi '^content-encoding: gzip' <<<"$headers" || fail "$css is not compressed"
+
 [ "$(fetch /admin/)" = 404 ] || fail "the panel still answers at /admin/"
 [ "$(fetch /smoke-panel/login/)" = 200 ] || fail "the panel does not answer at ADMIN_PATH"
 
 # Headers a visitor writes buy no fresh search budget: nginx overwrites X-Real-IP,
 # and X-Forwarded-For is never read (apps/core/ratelimit.py).
-limit=$(stack exec -T web python -c 'from apps.core.ratelimit import SEARCH_PER_IP; print(SEARCH_PER_IP.times)')
+limit=$(stack exec -T web python -c \
+    'from apps.core.ratelimit import SEARCH_PER_IP; print(SEARCH_PER_IP.times)')
 search() {
     curl -sk -o /dev/null -w '%{http_code}' -H "X-Forwarded-For: 198.51.100.$1" \
         -H "X-Real-IP: 192.0.2.$1" "$url/search/?q=smoke"
@@ -116,11 +122,6 @@ EOF
 )
 [ "$other" = 200 ] || fail "a second address was refused search ($other): the limit counts nginx"
 echo "smoke: forged client headers leave the search limit at $limit a minute per visitor"
-
-css=$(grep -Eo '/static/css/app\.[0-9a-f]{12}\.css' "$work/page" | head -1)
-headers=$(curl -sk -D - -o /dev/null -H 'Accept-Encoding: gzip' "$url$css")
-grep -qi '^cache-control: .*immutable' <<<"$headers" || fail "$css is not cached as immutable"
-grep -qi '^content-encoding: gzip' <<<"$headers" || fail "$css is not compressed"
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$PREMSHOP_HTTP_PORT/")" = 301 ] \
     || fail "plain HTTP is not redirected"
