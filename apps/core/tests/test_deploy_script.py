@@ -9,12 +9,14 @@ all for an image marked broken. CI runs the same script against the real stack
 from __future__ import annotations
 
 import ast
+import datetime
 import importlib.util
 import json
 import subprocess
 import sys
 import urllib.error
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from django.conf import settings
@@ -215,6 +217,36 @@ def test_nginx_files_that_fail_their_test_stop_the_deploy_before_anything_switch
     assert "switch" not in docker.steps()
     assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="flock is Linux's, where the script runs")
+def test_a_command_is_refused_while_another_one_runs(paths):
+    import fcntl
+
+    record(paths, NEW, OLD)
+    with paths["state"].with_suffix(".lock").open("a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        docker = Docker(running=NEW)
+        assert main(docker, paths, "rollback") != 0
+        assert docker.calls == []
+    assert main(docker, paths, "rollback") == 0
+
+
+def test_a_backup_never_removes_a_file_already_at_its_name(paths, monkeypatch):
+    class Midnight(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 11, 4, tzinfo=tz)
+
+    monkeypatch.setattr(deploy, "datetime", SimpleNamespace(datetime=Midnight, UTC=datetime.UTC))
+    record(paths, OLD)
+    paths["backups"].mkdir()
+    other = paths["backups"] / "premshop-20261104T000000Z.dump"
+    other.write_bytes(DUMP)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert other.read_bytes() == DUMP
+    assert docker.running == OLD
 
 
 def test_deploying_the_running_image_again_is_refused(paths):

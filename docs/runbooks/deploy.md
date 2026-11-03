@@ -26,6 +26,7 @@ Keep every image the state file names: `docker image prune` would remove the one
 
 ## When it stops
 
+- **`another command holds`**: nothing changed. A deploy, rollback or restore is already running on this server, and only one runs at a time: wait for it to end.
 - **`changes the db or redis service`**: nothing changed. The compose file defines the database or Redis differently from the containers running, and a deploy never recreates either: see "Changing db or redis" below.
 - **`the backup came out empty`**: nothing changed. The database container is down or refused `pg_dump`: `docker compose ps db`, then its logs.
 - **`nginx refuses the files in deploy/nginx/`**: nothing switched, and the old image still serves under nginx's old configuration; the migrations already ran, and the old image runs on them. nginx's error is printed above. Put the checkout back on the running image's commit at once, since nginx would read the refused files at its next restart, then fix the file on `main` and deploy that commit.

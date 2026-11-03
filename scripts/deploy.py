@@ -16,6 +16,7 @@ needs a down-migration, and nothing here runs one.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime
 import json
 import os
@@ -23,9 +24,14 @@ import subprocess
 import sys
 import time
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:  # shortcut: no lock on Windows, where only the tests run; the server is Linux
+    fcntl = None  # type: ignore[assignment]
 
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "deploy" / "compose.yaml"
 # pg_dump --format custom starts every archive with this; an error message, an empty
@@ -53,6 +59,19 @@ def read_state(path: str) -> dict[str, str | None]:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {"current": None, "previous": None}
+
+
+@contextlib.contextmanager
+def exclusive(path: Path) -> Iterator[None]:
+    """One command at a time: a deploy during a restore would run on half a database."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as lock:
+        try:
+            if fcntl:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Failed(f"another command holds {path}; nothing was changed") from None
+        yield
 
 
 def write_state(path: str, current: str, previous: str | None) -> None:
@@ -167,10 +186,14 @@ def backup(stack: Stack, image: str, directory: str) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
     path = folder / f"premshop-{stamp}.dump"
-    kept = False
     try:
         # The dump holds personal data and ciphertext: readable by its owner alone.
-        with open(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as file:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise Failed(f"{path} already exists; nothing was changed") from None
+    kept = False
+    try:
+        with open(descriptor, "wb") as file:
             stack.database(image, "pg_dump", "--format", "custom", stdout=file)
         with path.open("rb") as file:
             kept = file.read(len(DUMP_SIGNATURE)) == DUMP_SIGNATURE
@@ -293,7 +316,8 @@ def main(
 ) -> int:
     options = parse(argv)
     try:
-        return options.action(Stack(options, run, fetch), options)
+        with exclusive(Path(options.state_file).with_suffix(".lock")):
+            return options.action(Stack(options, run, fetch), options)
     except Failed as error:
         say(f"stopped: {error}")
     except subprocess.CalledProcessError as error:
