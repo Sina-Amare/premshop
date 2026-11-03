@@ -36,8 +36,11 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 # The width the operator works at, and the phone the owner carries.
 DESKTOP, PHONE = 1440, 390
-# A control under another element times out; nothing here needs longer.
+# A control under another element times out; nothing here needs longer. A
+# page load is the server's work and keeps Playwright's 30s, which a loaded
+# machine needs: a product save took over 5s under six busy cores.
 QUICK = 5_000
+LOAD = 30_000
 
 
 @pytest.fixture
@@ -56,6 +59,7 @@ def open_panel(browser: Browser, live_server) -> Iterator[Callable[..., Page]]:
         )
         page = context.new_page()
         page.set_default_timeout(QUICK)
+        page.set_default_navigation_timeout(LOAD)
         page.goto(live_server.url + path)
         return page
 
@@ -112,8 +116,9 @@ def with_sections_and_a_question(product: Product) -> None:
 
 
 def save(page: Page, button: str = "_continue") -> None:
+    # The click itself would wait for the next page with QUICK; expect_navigation waits with LOAD.
     with page.expect_navigation():
-        page.click(f"#submit-row button[name={button}]")
+        page.click(f"#submit-row button[name={button}]", no_wait_after=True)
 
 
 def drag_second_spec_above_the_first(page: Page) -> None:
@@ -167,7 +172,7 @@ def test_the_bulk_action_menu_can_be_clicked_at_desktop_width(open_panel, produc
     page.click("#changelist-actions select[name=action]")
     page.select_option("#changelist-actions select[name=action]", "publish")
     with page.expect_navigation():
-        page.click("#changelist-actions button[type=submit]")
+        page.click("#changelist-actions button[type=submit]", no_wait_after=True)
 
     product.refresh_from_db()
     assert product.status == Product.Status.ACTIVE
@@ -302,7 +307,7 @@ def test_the_operator_can_put_a_product_on_sale(open_panel, width):
     page.click("#changelist-actions select[name=action]")
     page.select_option("#changelist-actions select[name=action]", "publish")
     with page.expect_navigation():
-        page.click("#changelist-actions button[type=submit]")
+        page.click("#changelist-actions button[type=submit]", no_wait_after=True)
 
     created.refresh_from_db()
     assert created.slug == "spotify-premium"
@@ -322,7 +327,7 @@ def test_category_order_survives_a_save(open_panel):
     handles = page.locator("#result_list [x-sort\\:handle]")
     handles.nth(1).drag_to(handles.nth(0))
     with page.expect_navigation():
-        page.click("#submit-row button[name=_save], button[name=_save]")
+        page.click("#submit-row button[name=_save], button[name=_save]", no_wait_after=True)
 
     assert list(Category.objects.values_list("slug", flat=True)) == ["media", "ai"]
 
@@ -725,11 +730,11 @@ def test_sections_are_copied_from_the_list_at_both_widths(open_panel, product, w
     page.check(f"input.action-select[value='{other.pk}']")
     page.select_option("#changelist-actions select[name=action]", "copy_sections")
     with page.expect_navigation():
-        page.click("#changelist-actions button[type=submit]")
+        page.click("#changelist-actions button[type=submit]", no_wait_after=True)
     assert not serious_violations(page)
     page.select_option("select[name=source]", str(product.pk))
     with page.expect_navigation():
-        page.click("form:has(select[name=source]) button[type=submit]")
+        page.click("form:has(select[name=source]) button[type=submit]", no_wait_after=True)
 
     assert list(other.sections.values_list("kind", flat=True)) == ["benefits", "before_buying"]
     assert product.sections.count() == 2, "the original lost its sections"
