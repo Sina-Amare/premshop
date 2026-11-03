@@ -33,20 +33,31 @@ def no_output_in_the_repository() -> Iterator[None]:
         pytest.fail(f"tests wrote into the repository instead of tmp_path: {written[:10]}")
 
 
-def answering(server: Any) -> set[threading.Thread]:
-    """The live server's threads that are still answering a connection."""
+class Answering(threading.Condition):
+    requests = 0
+
+
+def answering(server: Any) -> Answering:
+    """Counts the requests the live server is in the middle of.
+
+    Requests, not connections: an idle keep-alive connection, such as the one a
+    page's APIRequestContext leaves open, holds nothing in the database.
+    """
     if not hasattr(server, "answering"):
-        server.answering = set()
-        answer = server.process_request_thread
+        server.answering = Answering()
+        app = server.get_app()
 
-        def tracked(*args: Any) -> None:
-            server.answering.add(threading.current_thread())
+        def counted(environ: Any, start_response: Any) -> Any:
+            with server.answering:
+                server.answering.requests += 1
             try:
-                answer(*args)
+                return app(environ, start_response)
             finally:
-                server.answering.discard(threading.current_thread())
+                with server.answering:
+                    server.answering.requests -= 1
+                    server.answering.notify_all()
 
-        server.process_request_thread = tracked
+        server.set_app(counted)
     return server.answering
 
 
@@ -62,12 +73,11 @@ def live_server_finishes_before_the_flush(request: Any) -> Iterator[None]:
     if "live_server" not in request.fixturenames:
         yield
         return
-    threads = answering(request.getfixturevalue("live_server").thread.httpd)
+    requests = answering(request.getfixturevalue("live_server").thread.httpd)
     yield
-    for thread in list(threads):
-        thread.join(timeout=30)
-    if threads:
-        pytest.fail(f"the live server is still answering {len(threads)} connection(s)")
+    with requests:
+        if not requests.wait_for(lambda: requests.requests == 0, timeout=30):
+            pytest.fail(f"the live server is still answering {requests.requests} request(s)")
 
 
 @pytest.fixture(autouse=True)
