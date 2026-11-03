@@ -107,6 +107,25 @@ jobs:
           # Here a browser test that cannot launch fails instead of skipping.
           REQUIRE_BROWSER: "1"
 
+  image:
+    name: Production image (built, run behind nginx)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # A developer's build context holds these; the image must still not.
+      - name: Plant the private files .dockerignore keeps out
+        run: |
+          mkdir -p docs-local backups media
+          for path in .env .env.production docs-local/notes.md backups/premshop.dump media/upload.png; do
+            echo "planted, never shipped" > "$path"
+          done
+      - name: Build premshop:${{ github.sha }}
+        run: docker build --build-arg GIT_COMMIT=${{ github.sha }} --tag premshop:${{ github.sha }} .
+      - name: Run the stack with production settings and check it through nginx
+        run: bash deploy/smoke.sh premshop:${{ github.sha }} ${{ github.sha }}
+
   audit:
     name: Dependency and security audit
     runs-on: ubuntu-latest
