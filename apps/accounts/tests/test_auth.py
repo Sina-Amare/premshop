@@ -6,10 +6,11 @@ open — a customer locked out by an over-tight limit is a refund, not a save.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import smtplib
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import pytest
 import sentry_sdk
@@ -769,6 +770,84 @@ def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
         landing = client.post(reverse("login-code-verify"), {"code": code}).headers["Location"]
 
     assert urlparse(urljoin("http://testserver/", landing)).netloc == "testserver", landing
+
+
+# A Persian query and a second parameter: an unencoded `&` would split the
+# destination, and an unencoded Persian word would arrive garbled.
+SEARCH_PAGE = "/search/?" + urlencode({"q": "نتفلیکس", "page": "2"})
+
+
+def header_sign_in_link(client, path: str) -> str:
+    body = client.get(path).content.decode()
+    found = re.search(r'class="v-account" href="([^"]*)"', body)
+    assert found, "no account link in the header"
+    return html.unescape(found.group(1))
+
+
+def hidden_next(body: str) -> str:
+    found = re.search(r'name="next" value="([^"]*)"', body)
+    assert found, "no next field on the sign-in form"
+    return html.unescape(found.group(1))
+
+
+def test_the_header_sign_in_link_carries_the_page_it_was_on(client):
+    link = urlparse(header_sign_in_link(client, SEARCH_PAGE))
+
+    assert link.path == reverse("login-code")
+    assert parse_qs(link.query) == {"next": [SEARCH_PAGE]}
+
+
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_signing_in_from_the_header_link_returns_to_that_page(client, user, method):
+    body = client.get(header_sign_in_link(client, SEARCH_PAGE)).content.decode()
+    if method == "password":
+        # The code page's link to the password form carries the destination on.
+        found = re.search(r'href="(/login/\?next=[^"]*)"', body)
+        assert found, "no link from the code page to the password form"
+        body = client.get(html.unescape(found.group(1))).content.decode()
+        response = client.post(
+            reverse("login"),
+            {"email": user.email, "password": PASSWORD, "next": hidden_next(body)},
+        )
+    else:
+        client.post(reverse("login-code"), {"email": user.email, "next": hidden_next(body)})
+        response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[-1])})
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == SEARCH_PAGE
+
+
+@pytest.mark.parametrize(
+    "hostile", ["//evil.example", "https://evil.example/", "javascript:alert(1)", "/\\evil.example"]
+)
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_a_hostile_next_lands_on_the_account_page(client, user, hostile, method):
+    """The header link only ever carries a path on this site, so the login
+    views' host check stays the one gate for a crafted link. Exactly
+    `/account/`, not merely "this host": a browser reads `/\\` as `//`, and
+    `urljoin` does not."""
+    route = "login-code" if method == "code" else "login"
+    body = client.get(reverse(route) + "?" + urlencode({"next": hostile})).content.decode()
+    assert hidden_next(body) == reverse("account")
+
+    if method == "code":
+        client.post(reverse("login-code"), {"email": user.email, "next": hostile})
+        response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[-1])})
+    else:
+        response = client.post(
+            reverse("login"), {"email": user.email, "password": PASSWORD, "next": hostile}
+        )
+
+    assert response.headers["Location"] == reverse("account")
+
+
+@pytest.mark.parametrize("name", ["login", "login-code", "login-code-verify"])
+def test_the_sign_in_pages_header_link_carries_no_next(client, name):
+    """Signing in from a sign-in page would only return to the form just used."""
+    if name == "login-code-verify":
+        client.post(reverse("login-code"), {"email": "pending@example.test"})
+
+    assert header_sign_in_link(client, reverse(name) + "?next=/cart/") == reverse("login-code")
 
 
 def test_an_empty_search_goes_to_the_shelf_instead_of_a_blank_page(client):
