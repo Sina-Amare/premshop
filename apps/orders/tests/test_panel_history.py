@@ -116,7 +116,8 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     Plan.objects.filter(pk=plan.pk).update(
         input_type="email", requires_customer_input=True, max_quantity=1
     )
-    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "private-target@example.test")])
+    target = "private-target@example.test"
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1, target)])
     item = order.items.get()
     operator = User.objects.create_superuser("operator@example.test")
     CredentialAccessLog.objects.create(order_item=item, user=operator)
@@ -131,7 +132,9 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     assert named in timeline and named in access
     number = f"آیتم {to_persian_digits(item.pk)}"
     assert number in timeline and number in access
-    assert "private-target@example.test" not in body
+    # Stored, so its absence from the page is the page's doing and not a lost input.
+    assert item.customer_input == target
+    assert target not in body
 
 
 def test_the_order_page_query_count_is_the_same_for_two_items_and_six(
