@@ -1,6 +1,6 @@
 # Rollback
 
-`scripts/deploy.py rollback` puts the previous release back: it switches `web` and `worker` to the image the state file records as previous and waits for `/healthz` to report that image's commit. It touches neither the database nor its schema. Migrations only add, so the previous image runs on the schema the newer one left; no rollback ever runs a down-migration.
+`scripts/deploy.py rollback` puts the previous release back: it switches `web` and `worker` to the image the state file records as previous and waits for `/healthz` to report that image's commit. It touches neither the database nor its schema. Migrations only add, so the previous image runs on the schema the newer one left; no rollback ever runs a down-migration. That holds only while every migration follows the rule in [deploy.md](deploy.md), "Migrations the previous image survives": a new column is nullable or has a `db_default`, and nothing is renamed or dropped in the same deploy that stops using it.
 
 A deploy whose health check fails already returns by itself ([deploy.md](deploy.md)). This is for the release that passed its check and then misbehaved: a page that breaks, a wrong price, a flow that stops.
 

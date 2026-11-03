@@ -1,6 +1,6 @@
 # Deploy
 
-`scripts/deploy.py deploy` puts one image on the server: it backs up the database, migrates with the new image, switches `web` and `worker` to it while nginx shows the maintenance page, and waits for `/healthz` to report the new commit. When that check fails it switches back to the image that was running and exits with status 1. It never runs a down-migration: migrations only add, so the previous image runs on the new schema. CI rehearses this on every code change (`deploy/rehearse.sh`).
+`scripts/deploy.py deploy` puts one image on the server: it backs up the database, migrates with the new image, switches `web` and `worker` to it while nginx shows the maintenance page, and waits for `/healthz` to report the new commit. When that check fails it switches back to the image that was running and exits with status 1. It never runs a down-migration: migrations only add, so the previous image runs on the new schema, as long as each migration follows the rule below. CI rehearses this on every code change (`deploy/rehearse.sh`).
 
 ## Once per server
 
@@ -14,6 +14,13 @@ The script runs with the server's own `python3` and needs nothing installed beyo
 | `PREMSHOP_HEALTH_URL` | the address of `/healthz` the script checks, on a host `ALLOWED_HOSTS` accepts |
 
 Keep every image the state file names: `docker image prune` would remove the one a failed deploy returns to.
+
+## Migrations the previous image survives
+
+A failed deploy and a rollback both run the previous image on the schema the new one left, so every migration has to keep that image working. Nothing checks this yet; the review of the change that adds the migration does:
+
+- A new column is nullable, or carries a database default (`db_default`). `AddField` with `default=` fills the existing rows and then drops the database default, so the previous image's inserts, which never name the column, would fail.
+- Nothing is renamed or dropped in the deploy that stops using it. The code stops reading it first; a later deploy, once no image that reads it can return, renames or drops it.
 
 ## Each deploy
 
