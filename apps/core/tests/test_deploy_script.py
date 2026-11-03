@@ -49,10 +49,12 @@ class Docker:
         # db and redis as the compose file defines them, and as their containers run.
         self.defined = "db 1111\nredis 2222\n"
         self.stores = self.defined if stores is None else stores
-        # How a broken image's /healthz fails; the images whose worker crash-loops or
-        # whose containers do not start; the commands that exit 1.
+        # How a broken image's /healthz fails; the images whose worker restarts, whose
+        # worker logs a traceback, or whose containers do not start; the commands
+        # that exit 1.
         self.unanswered: Exception = urllib.error.URLError("connection refused")
-        self.crashing: set[str] = set()
+        self.restarting: set[str] = set()
+        self.tracing: set[str] = set()
         self.unstartable: set[str] = set()
         self.failing: set[str] = set()
 
@@ -60,8 +62,7 @@ class Docker:
         args = list(args)
         self.calls.append(args)
         assert "migrate" not in args or args[-2:] == ["migrate", "--noinput"], args
-        returncode, output = 0, ""
-        crashing = self.running in self.crashing
+        returncode, output, errors = 0, "", ""
         if self.failing & set(args):
             returncode = 1
         elif "pg_dump" in args:
@@ -83,9 +84,12 @@ class Docker:
         elif "ps" in args and "worker" in args:
             output = "worker-1\n"
         elif args[:2] == ["docker", "inspect"]:
-            output = "running 3\n" if crashing else "running 0\n"
+            output = "running 3\n" if self.running in self.restarting else "running 0\n"
         elif "logs" in args:
-            output = "Traceback (most recent call last):\n" if crashing else "consumer started\n"
+            # Compose writes a container's stderr, where the app logs, to its own stderr.
+            output = "consumer started\n"
+            if self.running in self.tracing:
+                errors = "Traceback (most recent call last):\n"
         elif "up" in args and "web" in args:
             if env["PREMSHOP_IMAGE"] in self.unstartable:
                 returncode = 1
@@ -93,7 +97,7 @@ class Docker:
                 self.running = env["PREMSHOP_IMAGE"]
         if check and returncode:
             raise subprocess.CalledProcessError(returncode, args)
-        return subprocess.CompletedProcess(args, returncode, stdout=output)
+        return subprocess.CompletedProcess(args, returncode, stdout=output, stderr=errors)
 
     def fetch(self, url):
         self.calls.append(["health", url])
@@ -196,10 +200,19 @@ def test_a_health_answer_cut_short_returns_to_the_previous_image(paths):
     assert recorded(paths) == {"current": OLD, "previous": None}
 
 
-def test_a_worker_that_restarts_or_logs_a_traceback_fails_the_deploy(paths):
+def test_a_worker_that_restarts_fails_the_deploy(paths):
     record(paths, OLD)
     docker = Docker(running=OLD)
-    docker.crashing = {NEW}
+    docker.restarting = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_worker_that_stays_up_but_logs_a_traceback_fails_the_deploy(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.tracing = {NEW}
     assert main(docker, paths, "deploy", NEW) != 0
     assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}

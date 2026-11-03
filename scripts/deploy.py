@@ -158,8 +158,9 @@ class Stack:
         worker = self.compose(image, "ps", "--all", "--quiet", "worker", **output).stdout.split()
         inspect = ["docker", "inspect", "--format", "{{.State.Status}} {{.RestartCount}}"]
         state = self.run([*inspect, *worker], check=False, **output).stdout.split()
-        logs = self.compose(image, "logs", "--no-color", "worker", **output).stdout
-        if state == ["running", "0"] and "Traceback" not in logs:
+        # Compose writes a container's stderr, where the app logs, to its own stderr.
+        logs = self.compose(image, "logs", "--no-color", "worker", **output)
+        if state == ["running", "0"] and "Traceback" not in logs.stdout + logs.stderr:
             return True
         say(f"the worker on {image} is not running cleanly: {' '.join(state) or 'missing'}")
         return False
