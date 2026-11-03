@@ -4,7 +4,7 @@ Every decision someone might later ask «چرا این‌طوری؟» about. For
 
 | # | Decision |
 |---|---|
-| [0001](0001-stack-and-architecture.md) | Django modular monolith, server-rendered *(amended 2026-10-23: inline scripts; npm Tailwind and axe-core toolchain)* |
+| [0001](0001-stack-and-architecture.md) | Django modular monolith, server-rendered *(amended 2026-10-23: inline scripts; npm Tailwind and axe-core toolchain; 2026-11-04: storefront inline code)* |
 | [0002](0002-module-boundaries-and-service-layer.md) | One-way app imports; thin views; composite money services *(amended 2026-10-23: current rule locations; core's catalog import remains a violation)* |
 | [0003](0003-order-status-on-item-seven-states.md) | Status on OrderItem; exactly seven states; replacement cycles |
 | [0004](0004-no-drf-in-phase-1.md) | No DRF/API until a real out-of-process consumer exists |
