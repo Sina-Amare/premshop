@@ -115,3 +115,9 @@ def test_production_refuses_to_start_without_a_non_default_admin_path(reload_bas
         os.environ["ADMIN_PATH"] = value
     with pytest.raises(ImproperlyConfigured, match="ADMIN_PATH"):
         load_prod()
+
+
+def test_only_production_reads_the_panel_path_from_the_environment(reload_base):
+    """A .env copied from production must not move the panel in development."""
+    assert reload_base(**PRODUCTION, SITE_URL="https://premshop.ir").ADMIN_PATH == "admin/"
+    assert load_prod().ADMIN_PATH == PRODUCTION["ADMIN_PATH"]
