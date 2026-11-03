@@ -36,10 +36,12 @@ deploy = _module()
 
 
 class Docker:
-    def __init__(self, running=None, broken=(), dump=DUMP, tables="0", decrypts=True, stores=None):
+    def __init__(
+        self, running=None, broken=(), dump=DUMP, tables="0", decrypts=True, stores=None, nginx=True
+    ):
         self.calls: list[list[str]] = []
         self.running, self.broken = running, set(broken)
-        self.dump, self.tables, self.decrypts = dump, tables, decrypts
+        self.dump, self.tables, self.decrypts, self.nginx = dump, tables, decrypts, nginx
         self.restored = b""
         # db and redis as the compose file defines them, and as their containers run.
         self.defined = "db 1111\nredis 2222\n"
@@ -58,6 +60,8 @@ class Docker:
             output = self.tables + "\n"
         elif "verify_decrypt" in args:
             returncode = 0 if self.decrypts else 1
+        elif args[-2:] == ["nginx", "-t"]:
+            returncode = 0 if self.nginx else 1
         elif "--hash" in args:
             output = self.defined
         elif "ps" in args and "db" in args:
@@ -185,6 +189,30 @@ def test_a_compose_file_that_changes_db_or_redis_stops_before_anything_changes(p
     assert main(docker, paths, "deploy", NEW) != 0
     assert docker.steps() == []
     assert not any("up" in args for args in docker.calls)
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_switch_tests_the_nginx_files_first_and_reloads_nginx_after(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) == 0
+    test, switch, reload = (
+        next(i for i, args in enumerate(docker.calls) if found(args))
+        for found in (
+            lambda args: args[-2:] == ["nginx", "-t"],
+            lambda args: "up" in args and "web" in args,
+            lambda args: args[-4:] == ["kill", "--signal", "HUP", "nginx"],
+        )
+    )
+    assert test < switch < reload
+
+
+def test_nginx_files_that_fail_their_test_stop_the_deploy_before_anything_switches(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, nginx=False)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert "switch" not in docker.steps()
     assert docker.running == OLD
     assert recorded(paths) == {"current": OLD, "previous": None}
 

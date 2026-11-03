@@ -112,11 +112,18 @@ class Stack:
         self.compose(image, "up", "--detach", "--wait", "--no-recreate", *STORES)
 
     def switch(self, image: str) -> None:
+        # nginx reads deploy/nginx/ from this checkout: a file it refuses stops
+        # here, before anything switches, rather than at nginx's next restart.
+        test = ["run", "--rm", "--no-deps", "nginx", "nginx", "-t"]
+        if self.compose(image, *test, check=False).returncode:
+            raise Failed("nginx refuses the files in deploy/nginx/; nothing was switched")
         # Static files are copied beside the ones already there, so a page loaded
         # before the switch still finds its stylesheet. While web is replaced,
         # nginx answers with the maintenance page.
         self.compose(image, "run", "--rm", "--no-deps", "static")
         self.compose(image, "up", "--detach", "--no-deps", "web", "worker", "nginx")
+        # The official image reloads its configuration on SIGHUP.
+        self.compose(image, "kill", "--signal", "HUP", "nginx")
 
     def healthy(self, image: str) -> bool:
         commit = image.rpartition(":")[2]

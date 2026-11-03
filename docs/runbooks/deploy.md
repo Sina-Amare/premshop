@@ -19,7 +19,7 @@ Keep every image the state file names: `docker image prune` would remove the one
 
 1. Waiting for the server step: take the provider's snapshot of the server.
 2. Find the commit: a green run of `main` in CI. Its image is `premshop:<commit>` with the full 40-character hash, the value `/healthz` reports; how the image reaches the server is decided in the server step, as an archive or a pull.
-3. Put the checkout on that commit, so the compose file and nginx configuration match the image: `git fetch` then `git checkout <commit>`.
+3. Put the checkout on that commit, so the compose file and nginx configuration match the image: `git fetch` then `git checkout <commit>`. nginx reads `deploy/nginx/` from the checkout: the deploy tests those files with `nginx -t` before it switches anything and reloads nginx after the switch, so a changed file takes effect with the deploy that brings it.
 4. Run `python3 scripts/deploy.py deploy premshop:<commit>`, adding `--load <archive>` when the image came as a file.
 5. Read the lines it prints, each starting `deploy:`. A deploy that worked ends with `premshop:<commit> is running and healthy` and status 0, and names the backup it took.
 6. Waiting for the server step: copy that backup offsite.
@@ -28,6 +28,7 @@ Keep every image the state file names: `docker image prune` would remove the one
 
 - **`changes the db or redis service`**: nothing changed. The compose file defines the database or Redis differently from the containers running, and a deploy never recreates either: see "Changing db or redis" below.
 - **`the backup came out empty`**: nothing changed. The database container is down or refused `pg_dump`: `docker compose ps db`, then its logs.
+- **`nginx refuses the files in deploy/nginx/`**: nothing switched, and the old image still serves under nginx's old configuration; the migrations already ran, and the old image runs on them. nginx's error is printed above. Put the checkout back on the running image's commit at once, since nginx would read the refused files at its next restart, then fix the file on `main` and deploy that commit.
 - **`stopped: ... migrate --noinput exited with 1`**: nothing switched, and the old image is still serving. The migration's error is printed above. A migration that failed part way leaves the tables it already added, which the old image ignores.
 - **`returning to premshop:<old>` then `back on premshop:<old>`**: the new image failed its health check and the site is back on the old one; the status is 1. The last `/healthz` answer is printed. Read the new image's logs before trying again.
 - **`is not healthy either`**: neither image answers, and visitors see the maintenance page. The cause is usually outside the image: the database, Redis or the environment file. Follow "When the return fails" in [rollback.md](rollback.md).
