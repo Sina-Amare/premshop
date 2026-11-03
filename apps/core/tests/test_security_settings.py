@@ -87,6 +87,25 @@ def test_the_launch_step_can_raise_hsts_from_the_environment(reload_base):
     assert load_prod().SECURE_HSTS_SECONDS == 31536000
 
 
+@pytest.mark.parametrize("value", [None, ""])
+def test_an_unset_or_empty_hsts_lifetime_means_an_hour(reload_base, value):
+    reload_base(**PRODUCTION, SITE_URL="https://premshop.ir")
+    os.environ.pop("SECURE_HSTS_SECONDS", None)
+    if value is not None:
+        os.environ["SECURE_HSTS_SECONDS"] = value
+    assert load_prod().SECURE_HSTS_SECONDS == 3600
+
+
+@pytest.mark.parametrize("value", ["0", "-5", "1h", "3600.5"])
+def test_production_refuses_an_hsts_lifetime_that_is_not_a_positive_whole_number(
+    reload_base, value
+):
+    """Django sends no header for 0 and an invalid max-age for a negative number."""
+    reload_base(**PRODUCTION, SITE_URL="https://premshop.ir", SECURE_HSTS_SECONDS=value)
+    with pytest.raises(ImproperlyConfigured, match="SECURE_HSTS_SECONDS"):
+        load_prod()
+
+
 @pytest.mark.parametrize("value", [None, "", "admin/", "Admin/", "/panel/", "panel", "a/b/"])
 def test_production_refuses_to_start_without_a_non_default_admin_path(reload_base, value):
     reload_base(**PRODUCTION, SITE_URL="https://premshop.ir")
