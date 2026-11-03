@@ -283,7 +283,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 
 | Field | Type | Null | Default | Note |
 |---|---|---|---|---|
-| order | FK Order, CASCADE | — | | composition; deletion of paid orders is blocked by Payment PROTECT anyway |
+| order | FK Order, **PROTECT** | — | | an order with items cannot be row-deleted; the items are the purchase record |
 | plan | FK Plan, **PROTECT** | — | | plan row must outlive every sale (snapshot has the display data; FK keeps the supply/re-buy link) |
 | status | varchar(24), choices | — | `PENDING_PAYMENT` | `PENDING_PAYMENT`·`QUEUED`·`AWAITING_INPUT`·`DELIVERED`·`REPLACEMENT_REQUESTED`·`CANCELLED`·`REFUNDED` |
 | stock_debited | bool | — | false | true only when checkout actually decremented finite stock |
@@ -309,7 +309,7 @@ Written **inside** the order-creation transaction alongside the `used_count` inc
 
 **DeliveryField** (S7, D10) — intent: the credentials the operator delivers for one item, one row per field, the value encrypted at field level (ADR-0007). A replacement writes a new generation and keeps the old rows rather than overwriting them (ADR-0003: replacement cycles back to DELIVERED with a new credential generation). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, DeliveryField). It is re-specified when S7 is planned.
 
-**OrderItemEvent** (append-only, D9) — `order_item` FK CASCADE · `from_status` varchar(24) null (null = creation) · `to_status` varchar(24) · `actor` varchar(12) choices `operator`·`customer`·`system` · `note` text blank · `created_at` TS. Written **inside** every transition transaction; the occurrence it records seeds Notification.dedupe_key (D17/D18). No update/delete paths in code.
+**OrderItemEvent** (append-only, D9) — `order_item` FK PROTECT · `from_status` varchar(24) null (null = creation) · `to_status` varchar(24) · `actor` varchar(12) choices `operator`·`customer`·`system` · `note` text blank · `created_at` TS. Written **inside** every transition transaction; the occurrence it records seeds Notification.dedupe_key (D17/D18). No update/delete paths in code.
 
 **CredentialAccessLog — 2026-11-01, S6b prerequisite.** One row per nonblank staff reveal of `customer_input`: `order_item` and `user` foreign keys both PROTECT, nullable `ip`, indexed `created_at` and the primary key. The user is authenticated and required. No value, ciphertext, request body, `target` or `via` is stored. All existing rows mean a panel reveal of customer input; later reveal types add attribution columns with defaults that preserve that meaning. A durable service transaction commits before returning the value; read-only order history joins only the user, never decrypting the item's input. A daily task deletes rows older than 365 days (ADR-0007). Customer, delivered-credential and magic-link reveals remain later work in this same table; magic-link attribution is governed by ADR-0008.
 
@@ -380,10 +380,10 @@ Transition legality (the matrix itself) is service-enforced with `select_for_upd
 
 | FK | on_delete | Rationale |
 |---|---|---|
-| Order.user, Order.discount_code, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
+| Order.user, Order.discount_code, OrderItem.order, OrderItemEvent.order_item, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
 | OrderItem.plan, **CartItem.plan** | **PROTECT** | a sold plan row must exist forever; retire with `is_available=false`. Snapshot covers display, the FK keeps the profit/re-buy/renewal link live. A plan sitting in a live cart is protected for the same reason a sold one is: deleting it would silently empty someone's cart |
 | Product.category | **PROTECT** | no orphan products; empty the category first |
-| OrderItem.order; OrderItemEvent.order_item; ProductSpec / Plan / ProductSection / ProductQuestion .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
+| ProductSpec / Plan / ProductSection / ProductQuestion .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
 | DiscountCode.products (M2M) | — | plain join table; unlinking a product narrows the scope of a live code and touches no order, because scope is read at checkout and the outcome is frozen in `discount_amount` |
 
 `CredentialAccessLog.order_item` and `.user` use PROTECT, including unpaid orders. The foreign keys of later tables (`Payment`, `Refund`, `DeliveryField`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; anything in the money or audit chain is PROTECT.

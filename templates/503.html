@@ -5,14 +5,14 @@
 
 {% block content %}
 <div class="wrap page">
-<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
+<div class="auth-shell">
   <div class="card auth-card">
-    <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-4)">ورود فعلاً ممکن نیست</h1>
-    <p class="prose" style="margin: 0 0 var(--spacing-5)">مشکل از طرف ماست. کمی بعد دوباره امتحان کنید.</p>
-    <p class="small" style="margin: 0 0 var(--spacing-6)">این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.</p>
+    <h1 class="auth-title">ورود فعلاً ممکن نیست</h1>
+    <p class="prose auth-lead">مشکل از طرف ماست. کمی بعد دوباره امتحان کنید.</p>
+    <p class="small auth-fine">این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.</p>
     <a class="btn btn--secondary" href="{% url 'login-code' %}">تلاش دوباره</a>
   </div>
-  <p class="micro" style="text-align: center; margin-block-start: var(--spacing-4)">
+  <p class="micro auth-aside">
     اگر ادامه داشت، به <span class="latin">{{ support.email }}</span> ایمیل بزنید.
   </p>
 </div>
