@@ -1,0 +1,48 @@
+"""Decrypt every stored encrypted value and report counts only (ADR-0007).
+
+A restore that cannot decrypt is a failed restore, so `scripts/deploy.py restore`
+runs this before the restored site opens.
+"""
+
+from typing import Any
+
+from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.base import BaseCommand, CommandError
+from django.db import connection
+from psycopg import sql
+
+from apps.core.fields import EncryptedTextField
+
+
+class Command(BaseCommand):
+    help = "Check that every encrypted value decrypts, printing counts and never a value."
+
+    def handle(self, *args: Any, **options: Any) -> None:
+        total = failed = 0
+        for model in apps.get_models():
+            for field in model._meta.fields:
+                if not isinstance(field, EncryptedTextField):
+                    continue
+                query = sql.SQL("SELECT {column} FROM {table} WHERE {column} <> ''").format(
+                    table=sql.Identifier(model._meta.db_table),
+                    column=sql.Identifier(field.attname),
+                )
+                decrypted = unreadable = 0
+                with connection.chunked_cursor() as cursor:
+                    cursor.execute(query.as_string())
+                    while rows := cursor.fetchmany(500):
+                        for (stored,) in rows:
+                            try:
+                                field.from_db_value(stored, None, connection)
+                                decrypted += 1
+                            except ImproperlyConfigured:
+                                unreadable += 1
+                self.stdout.write(
+                    f"{model._meta.label}.{field.name}: {decrypted} decrypted, {unreadable} failed"
+                )
+                total += decrypted + unreadable
+                failed += unreadable
+        if failed:
+            raise CommandError(f"{failed} of {total} encrypted values cannot be decrypted.")
+        self.stdout.write(f"All {total} encrypted values decrypt.")
