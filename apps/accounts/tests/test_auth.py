@@ -24,7 +24,7 @@ from django.test import Client
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
-from apps.accounts import otp, services
+from apps.accounts import otp, services, views
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.email import render_email
@@ -491,6 +491,143 @@ def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
         if not kept
     ]
     assert not broken, f"broken promises: {broken}"
+
+
+# --- A code the relay did not take ------------------------------------------
+
+
+def fail_the_relay(monkeypatch, kind: str, sent: list[str]) -> None:
+    """Make the next code email fail the way a relay can. A refusal or a broken
+    connection quotes the address and the code back, as relays do, so a log or
+    a report that kept the error's text would be caught holding both."""
+    from django.core.mail.backends.locmem import EmailBackend
+
+    def refuse(self, messages):
+        message = messages[0]
+        sent.append(code_from(message))
+        address, code = message.to[0], sent[-1]
+        if kind == "zero":
+            return 0
+        if kind == "refused":
+            reply = f"5.1.1 <{address}> code {code}: Recipient address rejected".encode()
+            raise smtplib.SMTPRecipientsRefused({address: (550, reply)})
+        raise smtplib.SMTPServerDisconnected(f"lost the line after DATA for {address}: {code}")
+
+    def unreachable(self):
+        raise ConnectionRefusedError(10061, "No connection could be made")
+
+    if kind == "unreachable":
+        monkeypatch.setattr(EmailBackend, "open", unreachable)
+    else:
+        monkeypatch.setattr(EmailBackend, "send_messages", refuse)
+
+
+def daily_left(email: str) -> tuple[int, int]:
+    return (
+        ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email),
+        ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_IP_DAILY, "127.0.0.1"),
+    )
+
+
+@pytest.mark.parametrize("kind", ["refused", "disconnected", "unreachable", "zero"])
+@pytest.mark.parametrize("path", ["request", "request-json", "resend", "resend-json", "recovery"])
+def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
+    client, user, monkeypatch, caplog, error_reports, kind, path
+):
+    """A relay failure, or a send it accepted nothing from, ended on the general
+    error page. Now it is answered as a refused send is: the same page, a
+    Persian message, no daily unit spent (ADR-0024), and a log line that names
+    the failure without the address or the code (ADR-0008)."""
+    json_answer = {"HTTP_ACCEPT": "application/json"} if path.endswith("json") else {}
+    if path.startswith("resend"):
+        client.post(reverse("login-code"), {"email": user.email})
+    if path == "recovery":
+        client.force_login(user)
+    before = daily_left(user.email)
+    sent: list[str] = []
+    fail_the_relay(monkeypatch, kind, sent)
+
+    if path.startswith("request"):
+        response = client.post(reverse("login-code"), {"email": user.email}, **json_answer)
+    elif path.startswith("resend"):
+        response = client.post(reverse("login-code-resend"), **json_answer)
+    else:
+        response = client.post(reverse("account-password-recovery"), {"action": "request"})
+
+    if json_answer:
+        assert response.status_code == 503
+        assert response.json() == {"ok": False, "error": services.CodeNotSent.message}
+    elif path == "resend":
+        assert response.headers["Location"] == reverse("login-code-verify")
+        assert (
+            services.CodeNotSent.message
+            in client.get(response.headers["Location"]).content.decode()
+        )
+    else:
+        template = (
+            "accounts/password_recovery.html"
+            if path == "recovery"
+            else "accounts/login_code_request.html"
+        )
+        assert response.status_code == 503
+        assert template in [used.name for used in response.templates]
+        assert services.CodeNotSent.message in response.content.decode()
+    if path.startswith("request"):
+        assert views.PENDING_EMAIL_KEY not in client.session, "the code page is not reachable"
+    assert daily_left(user.email) == before, "a code nobody received spent a daily unit"
+    everything = json.dumps(error_reports) + caplog.text
+    assert len([r for r in error_reports if r.get("logger") == "apps.accounts.services"]) == 1
+    if kind != "unreachable":
+        assert sent and sent[-1] not in everything, "the code reached a log or a report"
+    assert user.email not in everything, "the address reached a log or a report"
+
+
+def test_a_failed_resend_leaves_the_codes_as_a_refused_resend_does(monkeypatch):
+    """Either way the code is issued before the send fails, so it replaces the
+    one already in the inbox. A relay failure must not differ from the quota's
+    refusal in what either code can still do."""
+    from django.core.mail.backends.locmem import EmailBackend
+
+    from apps.core import email_log
+
+    issued: list[otp.Issued] = []
+    real_issue = otp.issue
+
+    def keep(*args, **kwargs):
+        issued.append(real_issue(*args, **kwargs))
+        return issued[-1]
+
+    monkeypatch.setattr(otp, "issue", keep)
+    outcomes = {}
+    for case in ("quota", "relay"):
+        visitor = Client()
+        visitor.post(reverse("login-code"), {"email": f"{case}@example.test"})
+        with monkeypatch.context() as failing:
+            if case == "quota":
+                failing.setattr(email_log, "reserve", raise_quota)
+            else:
+                failing.setattr(EmailBackend, "send_messages", disconnect)
+            visitor.post(reverse("login-code-resend"))
+        earlier, unsent = issued[-2].code, issued[-1].code
+        outcomes[case] = [
+            visitor.post(reverse("login-code-verify"), {"code": code}).status_code
+            for code in (earlier, unsent)
+        ]
+
+    assert outcomes["relay"] == outcomes["quota"], outcomes
+    # Positive control, so the comparison cannot pass with both sides broken:
+    # the inbox code is refused, and the unsent one, which nobody received, works.
+    assert outcomes["quota"] == [200, 302]
+
+
+def raise_quota(*args, **kwargs):
+    from apps.core.email_log import MailQuotaExceeded
+
+    raise MailQuotaExceeded
+
+
+def disconnect(*args, **kwargs):
+    raise smtplib.SMTPServerDisconnected("lost the line")
 
 
 def test_the_alert_takes_the_customer_to_the_password_page(client, user, settings):

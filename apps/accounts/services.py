@@ -44,6 +44,13 @@ class RateLimited(Exception):
         self.message = message
 
 
+class CodeNotSent(Exception):
+    """The relay failed or accepted nothing. Answered on the page, as a refused
+    send is; no daily unit is spent, since only accepted sends count."""
+
+    message = "نتوانستیم کد را به ایمیلتان بفرستیم. چند دقیقه دیگر دوباره امتحان کنید."
+
+
 # One message per budget, each with its wait. A budget per IP never blames the
 # visitor: a mobile carrier puts many customers behind one address.
 TOO_MANY_CODES = (
@@ -116,6 +123,21 @@ def _code_request_budget(request: HttpRequest, email: str) -> None:
         raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
 
 
+def _send_code(email: str, *, purpose: str = "login", binding: str = "") -> otp.Issued:
+    """Mail a code, or raise CodeNotSent. Logged as the sign-in alert is: the
+    error's type and SMTP status, never its text, which can quote the address."""
+    try:
+        return otp.send_login_code(email, purpose=purpose, binding=binding)
+    except OSError as error:  # smtplib's errors are OSError, as are socket's
+        status = getattr(error, "smtp_code", None)
+        logger.error(
+            "code email not sent: %s%s",
+            type(error).__name__,
+            f" (SMTP {status})" if isinstance(status, int) else "",
+        )
+        raise CodeNotSent from None
+
+
 def _code_sent(request: HttpRequest, email: str) -> None:
     # shortcut: preflight can race; short windows bound concurrent daily overshoot.
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email)
@@ -142,7 +164,7 @@ def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
     email = otp.normalize_email(email)
     _code_request_budget(request, email)
 
-    issued = otp.send_login_code(email)
+    issued = _send_code(email)
     _code_sent(request, email)
     return issued
 
@@ -169,7 +191,7 @@ def request_password_recovery(request: HttpRequest) -> otp.Issued:
     with login_session(request):
         user = _recovery_user(request)
         _code_request_budget(request, user.email)
-        issued = otp.send_login_code(
+        issued = _send_code(
             user.email, purpose="password_reset", binding=_recovery_binding(request, user)
         )
         _code_sent(request, user.email)

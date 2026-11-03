@@ -74,19 +74,18 @@ def test_an_unsent_code_spends_short_windows_but_no_daily_unit(
     monkeypatch.setattr("apps.core.email.send_templated_email", refuse)
     if recovery:
         client.force_login(User.objects.create_user(EMAIL))
-    if failure is MailQuotaExceeded and recovery:
+    # A relay failure is answered on the page as the quota's refusal is, rather
+    # than escaping to the general error page.
+    if recovery:
         assert (
             client.post(reverse("account-password-recovery"), {"action": "request"}).status_code
             == 503
         )
     else:
         with pytest.raises(
-            MailQuotaExceeded if failure is MailQuotaExceeded else smtplib.SMTPException
+            MailQuotaExceeded if failure is MailQuotaExceeded else services.CodeNotSent
         ):
-            if recovery:
-                client.post(reverse("account-password-recovery"), {"action": "request"})
-            else:
-                services.request_login_code(rf.post("/"), EMAIL)
+            services.request_login_code(rf.post("/"), EMAIL)
     assert [ratelimit.remaining(*budget) for budget in budgets()] == [10, 20, 2, 9]
 
 

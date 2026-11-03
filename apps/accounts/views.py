@@ -125,7 +125,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         email = form.cleaned_data["email"]
         try:
             issued = services.request_login_code(request, email)
-        except MailQuotaExceeded as exc:
+        except (MailQuotaExceeded, services.CodeNotSent) as exc:
             form.add_error(None, exc.message)
             status = 503
         except services.RateLimited as exc:
@@ -238,7 +238,7 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         return redirect("login-code")
     try:
         issued = services.request_login_code(request, email)
-    except MailQuotaExceeded as exc:
+    except (MailQuotaExceeded, services.CodeNotSent) as exc:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": str(exc.message)}, status=503)
         messages.error(request, exc.message)
@@ -347,7 +347,7 @@ def account_password_recovery(request: HttpRequest) -> HttpResponse:
                     messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
                     return redirect("account-password")
                 form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
-        except MailQuotaExceeded as exc:
+        except (MailQuotaExceeded, services.CodeNotSent) as exc:
             messages.error(request, exc.message)
             status = 503
         except services.RateLimited as exc:
