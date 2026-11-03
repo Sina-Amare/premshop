@@ -381,8 +381,7 @@ class Command(BaseCommand):
         products = PRODUCTS + EXTENDED_PRODUCTS if extended else PRODUCTS
         marks = MARKS | EXTENDED_MARKS if extended else MARKS
         if not settings.DEBUG:
-            self.stderr.write("Refusing to seed a non-DEBUG database.")
-            return
+            raise CommandError("Refusing to seed a non-DEBUG database.")
         if options["reset"]:
             Product.objects.filter(slug__in=[p["slug"] for p in PRODUCTS]).delete()
             Category.objects.filter(slug__in=[c[1] for c in CATEGORIES], products=None).delete()
