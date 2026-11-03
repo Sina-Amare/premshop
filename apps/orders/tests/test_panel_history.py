@@ -132,3 +132,53 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     number = f"آیتم {to_persian_digits(item.pk)}"
     assert number in timeline and number in access
     assert "private-target@example.test" not in body
+
+
+def test_the_order_page_query_count_is_the_same_for_two_items_and_six(
+    client, buyer, plan, queries_for
+):
+    """Both histories name each item from its saved record, so a row must not cost
+    a query of its own."""
+    operator = User.objects.create_superuser("operator@example.test")
+    client.force_login(operator)
+
+    def order_of(count, start, customer):
+        plans = []
+        for i in range(start, start + count):
+            product = Product.objects.create(
+                category=plan.product.category,
+                name=f"محصول {i}",
+                slug=f"history-{i}",
+                status=Product.Status.ACTIVE,
+            )
+            plans.append(
+                Plan.objects.create(
+                    product=product,
+                    title="۱ ماهه",
+                    cost_price=1,
+                    sale_price=200000,
+                    max_quantity=3,
+                    input_type=Plan.InputType.NONE,
+                    telegram_required=False,
+                )
+            )
+        order = place_order(user=customer, lines=[OrderLine(p, 1) for p in plans])
+        for item in order.items.all():
+            CredentialAccessLog.objects.create(order_item=item, user=operator)
+            OrderItemEvent.objects.create(
+                order_item=item,
+                from_status=item.status,
+                to_status=item.status,
+                actor=OrderItemEvent.Actor.SYSTEM,
+            )
+        return order
+
+    other = User.objects.create_user("other@example.test")
+    small, large = order_of(2, 0, buyer), order_of(6, 2, other)
+
+    few, response = queries_for(reverse("admin:orders_order_change", args=[small.pk]))
+    assert len(response.context["input_access_log"]) == 2
+    many, response = queries_for(reverse("admin:orders_order_change", args=[large.pk]))
+
+    assert len(response.context["input_access_log"]) == 6
+    assert many == few
