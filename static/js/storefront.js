@@ -51,6 +51,7 @@
   const header = document.querySelector('.v-header');
   const phone = matchMedia('(max-width: 760px)');
   let lastY = scrollY;
+  let full = 0;
   // An in-page jump lands below the header (scroll-padding), so the header stays for it.
   let jumpUntil = location.hash ? performance.now() + 1500 : 0;
   const jumping = () => { jumpUntil = performance.now() + 1500; };
@@ -58,12 +59,28 @@
   document.addEventListener('click', event => { if (event.target.closest('a[href*="#"]')) jumping(); });
   // Focus inside the header, a keyboard user or a returned focus, brings it back first.
   header?.addEventListener('focusin', () => header.classList.remove('v-header--away'));
+  // Past the header's own height the returning header is one row. It changes only while out
+  // of sight, and the space it gives up is kept as a margin, so nothing on the page moves.
+  const setCompact = () => {
+    const compactNow = header.classList.contains('v-header--compact');
+    if (!compactNow) full = header.offsetHeight;
+    const hidden = header.getBoundingClientRect().bottom <= 0;
+    const want = phone.matches && scrollY > full && (compactNow || hidden);
+    if (want === compactNow) return;
+    // The slide-away is a percentage of the header's height, so a new height must not animate.
+    header.style.transition = 'none';
+    header.classList.toggle('v-header--compact', want);
+    header.style.marginBlockEnd = want ? `${full - header.offsetHeight}px` : '';
+    header.style.transition = '';
+  };
+  header?.addEventListener('transitionend', setCompact);
   if (header) addEventListener('scroll', () => {
     const y = scrollY;
     if (performance.now() < jumpUntil) { lastY = y; return; }
     if (Math.abs(y - lastY) < 8) return;
     const busy = header.contains(document.activeElement) || header.querySelector('details[open]');
     header.classList.toggle('v-header--away', phone.matches && y > lastY && y > header.offsetHeight && !busy);
+    setCompact();
     lastY = y;
   }, {passive: true});
 

@@ -81,12 +81,16 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         assert 170 <= header_height(page) < 171, header_height(page)
         shoot(page, url, tmp_path / f"{path.strip('/').split('/')[0] or 'home'}-390.png")
 
-        # The header steps aside reading down and brings the link back on the way up.
+        # The header steps aside reading down and returns as one short row on the way up;
+        # the link is back with the full header at the top of the page.
         page.evaluate("document.body.style.minHeight = '4000px'")
         page.mouse.wheel(0, 1000)
         expect(page.locator(".v-header")).to_have_class(AWAY)
         expect(link).not_to_be_in_viewport()
         page.mouse.wheel(0, -200)
+        expect(page.locator(".v-header")).not_to_have_class(AWAY)
+        expect(link).not_to_be_in_viewport()
+        page.evaluate("scrollTo({top: 0, behavior: 'instant'})")
         expect(link).to_be_in_viewport(ratio=1)
     finally:
         page.close()
