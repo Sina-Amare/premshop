@@ -46,7 +46,7 @@ class RateLimited(Exception):
 
 
 _CODE_NOT_SENT = (
-    "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
+    "{} فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
 )
 
 
@@ -54,13 +54,18 @@ class CodeNotSent(Exception):
     """The relay failed or accepted nothing. Answered on the page, as a refused
     send is; no daily unit is spent, since only accepted sends count."""
 
-    # The Latin handle must be isolated left-to-right, or its @ is drawn at the
-    # wrong end. A page gets <bdi>; a script sets `text` as text, so it carries
-    # the two Unicode marks <bdi> stands for.
-    message = format_html(
-        _CODE_NOT_SENT, format_html('<bdi class="latin">{}</bdi>', support.details()["telegram"])
-    )
-    text = _CODE_NOT_SENT.format(f"\u2066{support.details()['telegram']}\u2069")
+    def __init__(self, purpose: str = "login") -> None:
+        # The recovery page's code is not a sign-in code.
+        code = "کد بازیابی" if purpose == "password_reset" else "کد ورود"
+        handle = support.details()["telegram"]
+        # The Latin handle must be isolated left-to-right, or its @ is drawn at
+        # the wrong end. A page gets <bdi>; a script sets `text` as text, so it
+        # carries the two Unicode marks <bdi> stands for.
+        self.message = format_html(
+            _CODE_NOT_SENT, code, format_html('<bdi class="latin">{}</bdi>', handle)
+        )
+        self.text = _CODE_NOT_SENT.format(code, f"\u2066{handle}\u2069")
+        super().__init__(self.message)
 
 
 # One message per budget, each with its wait. A budget per IP never blames the
@@ -147,7 +152,7 @@ def _send_code(email: str, *, purpose: str = "login", binding: str = "") -> otp.
             type(error).__name__,
             f" (SMTP {status})" if isinstance(status, int) else "",
         )
-        raise CodeNotSent from None
+        raise CodeNotSent(purpose) from None
 
 
 def _code_sent(request: HttpRequest, email: str) -> None:

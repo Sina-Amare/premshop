@@ -526,6 +526,9 @@ def fail_the_relay(monkeypatch, kind: str, sent: list[str]) -> None:
 CODE_NOT_SENT = (
     "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
 )
+RECOVERY_CODE_NOT_SENT = (
+    "کد بازیابی فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
+)
 
 
 def daily_left(email: str) -> tuple[int, int]:
@@ -561,7 +564,9 @@ def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
         response = client.post(reverse("account-password-recovery"), {"action": "request"})
 
     handle = support.details()["telegram"]
-    on_a_page = f'{CODE_NOT_SENT} <bdi class="latin">{handle}</bdi>'
+    # The recovery page's code is not a sign-in code, and the message says so.
+    words = RECOVERY_CODE_NOT_SENT if path == "recovery" else CODE_NOT_SENT
+    on_a_page = f'{words} <bdi class="latin">{handle}</bdi>'
     if json_answer:
         # A script sets this as text, so the handle is isolated by the marks
         # <bdi> stands for; without them its @ is drawn at the wrong end.
