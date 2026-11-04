@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
@@ -93,3 +94,14 @@ def test_unpermitted_staff_cannot_confirm_or_view_bank_reference(client, order, 
     assert client.post(url(order), {"amount": "200000", "bank_ref": "other"}).status_code == 403
     detail = client.get(reverse("admin:orders_order_change", args=[order.pk]))
     assert detail.status_code == 200 and "private-ref" not in detail.content.decode()
+
+
+def test_payment_form_and_mismatch_follow_panel_language(client, order, operator):
+    client.force_login(operator)
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
+    response = client.get(url(order))
+    assert "Amount received (toman)" in response.content.decode()
+    assert "Bank reference" in response.content.decode()
+    response = client.post(url(order), {"amount": "1", "bank_ref": "ref"})
+    assert response.status_code == 400
+    assert "The received amount must exactly match the order total." in response.content.decode()

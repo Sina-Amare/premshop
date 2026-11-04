@@ -15,6 +15,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
+from django.utils.translation import gettext_lazy as _
 
 from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
@@ -55,12 +56,12 @@ def _payment_order(order_id: int) -> Order:
 
 def _received_amount(amount: Decimal, expected: Decimal) -> None:
     if not isinstance(amount, Decimal) or not amount.is_finite() or amount != expected:
-        raise ValidationError("مبلغ دریافتی باید دقیقاً برابر مبلغ نهایی سفارش باشد.")
+        raise ValidationError(_("مبلغ دریافتی باید دقیقاً برابر مبلغ نهایی سفارش باشد."))
 
 
 def _bank_reference(bank_ref: str) -> str:
     if not isinstance(bank_ref, str) or not bank_ref.strip() or len(bank_ref) > 64:
-        raise ValidationError("شماره‌ی پیگیری بانک را وارد کنید؛ حداکثر ۶۴ نویسه.")
+        raise ValidationError(_("شماره‌ی پیگیری بانک را وارد کنید؛ حداکثر ۶۴ نویسه."))
     return bank_ref.strip()
 
 
@@ -73,12 +74,12 @@ def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_r
     verified = order.payments.select_for_update().filter(status=Payment.Status.VERIFIED).first()
     if verified is not None:
         if verified.method != Payment.Method.MANUAL or verified.bank_ref != bank_ref:
-            raise ValidationError("پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است.")
+            raise ValidationError(_("پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."))
         return confirm_payment(payment_id=verified.pk, actor=account)
     if order.payments.filter(
         status__in=[Payment.Status.CREATED, Payment.Status.INITIATED]
     ).exists():
-        raise ValidationError("ابتدا وضعیت پرداخت قبلی این سفارش را بررسی کنید.")
+        raise ValidationError(_("ابتدا وضعیت پرداخت قبلی این سفارش را بررسی کنید."))
     payment = Payment.objects.create(
         order=order,
         method=Payment.Method.MANUAL,
@@ -98,7 +99,7 @@ def confirm_payment(*, payment_id: int, actor: User) -> Payment:
     if payment.status == Payment.Status.VERIFIED:
         return payment
     if payment.method != Payment.Method.MANUAL or payment.status != Payment.Status.CREATED:
-        raise ValidationError("این پرداخت از مسیر ثبت پرداخت خارج از درگاه تأیید نمی‌شود.")
+        raise ValidationError(_("این پرداخت از مسیر ثبت پرداخت خارج از درگاه تأیید نمی‌شود."))
     _bank_reference(payment.bank_ref)
     if payment.matched_by_id != account.pk:
         raise PermissionDenied

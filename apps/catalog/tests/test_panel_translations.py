@@ -41,6 +41,11 @@ PANEL_CODE = [
     "apps/orders/apps.py",
     "apps/orders/models.py",
     "apps/orders/admin.py",
+    "apps/orders/services.py",
+    "apps/payments/models.py",
+    "apps/payments/admin.py",
+    "apps/payments/forms.py",
+    "apps/payments/services.py",
     "config/settings/base.py",
 ]
 PANEL_TEMPLATES = [

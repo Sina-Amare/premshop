@@ -11,8 +11,9 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("language", ["fa", "en"])
 def test_operator_records_payment_and_customer_sees_queue(
-    browser, live_server, buyer, plan, width, tmp_path
+    browser, live_server, buyer, plan, width, language, tmp_path
 ):
     operator = User.objects.create_superuser("operator@example.test")
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
@@ -28,6 +29,20 @@ def test_operator_records_payment_and_customer_sees_queue(
             }
         ]
     )
+    context.add_cookies(
+        [{"name": settings.LANGUAGE_COOKIE_NAME, "value": language, "url": live_server.url}]
+    )
+    action = (
+        "ثبت پرداخت خارج از درگاه" if language == "fa" else "Record payment outside the gateway"
+    )
+    amount_label = "مبلغ دریافتی (تومان)" if language == "fa" else "Amount received (toman)"
+    reference_label = "شماره‌ی پیگیری بانک" if language == "fa" else "Bank reference"
+    history_label = "پرداخت‌های سفارش" if language == "fa" else "Order payments"
+    mismatch = (
+        "مبلغ دریافتی باید دقیقاً برابر"
+        if language == "fa"
+        else "The received amount must exactly match"
+    )
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -41,23 +56,23 @@ def test_operator_records_payment_and_customer_sees_queue(
     try:
         detail = reverse("admin:orders_order_change", args=[order.pk])
         page.goto(live_server.url + detail)
-        shot("unpaid", detail, "پرداخت‌های سفارش")
-        page.get_by_role("link", name="ثبت پرداخت خارج از درگاه", exact=True).click()
+        shot("unpaid", detail, history_label)
+        page.get_by_role("link", name=action, exact=True).click()
         form_url = reverse("admin:orders_order_record_manual_payment", args=[order.pk])
         expect(page.locator("#id_amount")).to_be_visible()
-        shot("empty", form_url, "مبلغ دریافتی (تومان)")
-        page.get_by_label("مبلغ دریافتی (تومان)", exact=True).fill("199999")
+        shot("empty", form_url, amount_label)
+        page.get_by_label(amount_label, exact=True).fill("199999")
         reference = "1234567890" * 6 + "1234"
-        page.get_by_label("شماره‌ی پیگیری بانک", exact=True).fill(reference)
-        page.get_by_role("button", name="ثبت پرداخت خارج از درگاه", exact=True).click()
-        expect(page.get_by_role("alert")).to_contain_text("مبلغ دریافتی باید دقیقاً برابر")
+        page.get_by_label(reference_label, exact=True).fill(reference)
+        page.get_by_role("button", name=action, exact=True).click()
+        expect(page.get_by_role("alert")).to_contain_text(mismatch)
         expect(page.locator("#id_bank_ref")).to_have_value(reference)
-        shot("mismatch", form_url, "مبلغ دریافتی (تومان)")
+        shot("mismatch", form_url, amount_label)
         page.locator("#id_amount").fill("200000")
-        page.get_by_role("button", name="ثبت پرداخت خارج از درگاه", exact=True).click()
+        page.get_by_role("button", name=action, exact=True).click()
         page.wait_for_url(live_server.url + detail)
         expect(page.locator(".order-bank-reference")).to_have_text(reference)
-        shot("confirmed", detail, "پرداخت‌های سفارش")
+        shot("confirmed", detail, history_label)
         client.force_login(buyer)
         context.add_cookies(
             [
