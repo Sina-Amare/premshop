@@ -11,7 +11,7 @@
     <section class="checkout-box"><h2>یک سفارش منتظر پرداخت دارید</h2><p>تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید. سبد خریدتان سر جایش است.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
-      <section class="checkout-box checkout-login" data-checkout-login data-login-method="{{ login_method }}" data-code-url="{% url 'login-code' %}" data-password-url="{% url 'login' %}">
+      <section class="checkout-box checkout-login" data-checkout-login data-login-method="{{ login_method }}" data-code-url="{% url 'login-code' %}" data-password-url="{% url 'login-password' %}">
         <div class="checkout-login__body">
         <h2>برای ثبت سفارش وارد شوید</h2>
         <nav class="checkout-login__methods" aria-label="روش ورود">
@@ -19,7 +19,7 @@
           <a href="{% url 'checkout' %}?method=password" data-login-method="password"{% if login_method == 'password' %} aria-current="page"{% endif %}>ورود با رمز عبور</a>
         </nav>
         <p role="status" data-login-status hidden></p>
-        <form method="post" action="{% if login_method == 'password' %}{% url 'login' %}{% else %}{% url 'login-code' %}{% endif %}" data-inline-email novalidate>
+        <form method="post" action="{% if login_method == 'password' %}{% url 'login-password' %}{% else %}{% url 'login-code' %}{% endif %}" data-inline-email novalidate>
           {% csrf_token %}<input type="hidden" name="next" value="{% url 'checkout' %}">
           {% include 'accounts/_field.html' with field=email_form.email %}
           <div data-login-password{% if login_method != 'password' %} hidden{% endif %}>{% include 'accounts/_field.html' with field=password_form.password %}</div>

@@ -252,7 +252,7 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
     client.post("/cart/add/", {"plan": plan.pk})
     stale = request_for(session=SessionStore(session_key=client.session.session_key))
     assert stale.session[GUEST_CART_ID] == Cart.objects.get().pk
-    client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
+    client.post("/login/password/", {"email": buyer.email, "password": "CartPassword!2026"})
     with pytest.raises(ValidationError):
         add_to_cart(stale, plan_id=plan.pk)
     assert Cart.objects.count() == 1
@@ -272,7 +272,9 @@ def test_first_add_is_merged_even_if_login_already_cached_the_session(client, pl
         return real_login(request, email, password)
 
     with patch.object(services, "login_with_password", login_after_concurrent_add):
-        response = client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
+        response = client.post(
+            "/login/password/", {"email": buyer.email, "password": "CartPassword!2026"}
+        )
     assert response.status_code == 302
     assert Cart.objects.count() == 1
     assert CartItem.objects.get(cart__user=buyer).quantity == 1

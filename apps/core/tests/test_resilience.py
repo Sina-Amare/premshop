@@ -76,8 +76,8 @@ def test_the_csrf_token_differs_on_every_render(client):
     """
     pattern = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 
-    first = pattern.search(client.get(reverse("login")).content.decode())
-    second = pattern.search(client.get(reverse("login")).content.decode())
+    first = pattern.search(client.get(reverse("login-password")).content.decode())
+    second = pattern.search(client.get(reverse("login-password")).content.decode())
 
     assert first and second, "no CSRF token rendered — the premise changed"
     assert first.group(1) != second.group(1), "CSRF masking is off; see ADR-0026"

@@ -6,10 +6,11 @@ open — a customer locked out by an over-tight limit is a refund, not a save.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import smtplib
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import pytest
 import sentry_sdk
@@ -23,9 +24,9 @@ from django.test import Client
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
-from apps.accounts import otp, services
+from apps.accounts import otp, services, views
 from apps.accounts.models import User
-from apps.core import ratelimit
+from apps.core import ratelimit, support
 from apps.core.email import render_email
 from apps.core.observability import sentry_options
 from apps.core.views import EMAIL_PREVIEWS
@@ -87,20 +88,20 @@ def test_the_functional_index_is_the_guard_that_catches_case_variants():
 
 
 def test_login_email_password(client, user):
-    response = client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    response = client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert response.status_code == 302
     assert client.session["_auth_user_id"] == str(user.pk)
 
 
 def test_login_email_password_is_case_insensitive(client, user):
-    client.post(reverse("login"), {"email": "CUSTOMER@EXAMPLE.TEST", "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": "CUSTOMER@EXAMPLE.TEST", "password": PASSWORD})
 
     assert client.session.get("_auth_user_id") == str(user.pk)
 
 
 def test_a_wrong_password_does_not_say_which_half_was_wrong(client, user):
-    response = client.post(reverse("login"), {"email": user.email, "password": "nope"})
+    response = client.post(reverse("login-password"), {"email": user.email, "password": "nope"})
 
     assert "_auth_user_id" not in client.session
     assert "ایمیل یا رمز عبور اشتباه است" in response.content.decode()
@@ -110,7 +111,7 @@ def test_an_inactive_account_cannot_log_in(client, user):
     user.is_active = False
     user.save(update_fields=["is_active"])
 
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert "_auth_user_id" not in client.session
 
@@ -147,7 +148,7 @@ def test_every_password_attempt_costs_exactly_one_hash(client, user, monkeypatch
 
     monkeypatch.setattr(MD5PasswordHasher, "encode", counting_encode)
 
-    client.post(reverse("login"), {"email": email, "password": password})
+    client.post(reverse("login-password"), {"email": email, "password": password})
 
     assert len(hashes) == 1, f"{case}: {len(hashes)} hashes"
 
@@ -253,7 +254,7 @@ def test_otp_rate_limit_locks_after_n_attempts(client, user):
     ("url", "limit", "message"),
     [
         ("login-code", ratelimit.OTP_REQUESTS_PER_IP, services.TOO_MANY_CODES_FROM_NETWORK),
-        ("login", ratelimit.LOGIN_ATTEMPTS_PER_IP, services.TOO_MANY_FROM_NETWORK),
+        ("login-password", ratelimit.LOGIN_ATTEMPTS_PER_IP, services.TOO_MANY_FROM_NETWORK),
     ],
 )
 def test_a_spent_network_budget_says_so_without_blaming_the_visitor(client, url, limit, message):
@@ -373,8 +374,8 @@ def test_a_wrong_guess_does_not_shorten_the_codes_life(user):
 
 
 def test_a_successful_login_clears_the_attempt_budget(client, user):
-    client.post(reverse("login"), {"email": user.email, "password": "wrong"})
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": "wrong"})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert ratelimit.remaining(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email) == (
         ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times
@@ -492,6 +493,197 @@ def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
     assert not broken, f"broken promises: {broken}"
 
 
+# --- A code the relay did not take ------------------------------------------
+
+
+def fail_the_relay(monkeypatch, kind: str, sent: list[str]) -> None:
+    """Make the next code email fail the way a relay can. A refusal or a broken
+    connection quotes the address and the code back, as relays do, so a log or
+    a report that kept the error's text would be caught holding both."""
+    from django.core.mail.backends.locmem import EmailBackend
+
+    def refuse(self, messages):
+        message = messages[0]
+        sent.append(code_from(message))
+        address, code = message.to[0], sent[-1]
+        if kind == "zero":
+            return 0
+        if kind == "refused":
+            reply = f"5.1.1 <{address}> code {code}: Recipient address rejected".encode()
+            raise smtplib.SMTPRecipientsRefused({address: (550, reply)})
+        raise smtplib.SMTPServerDisconnected(f"lost the line after DATA for {address}: {code}")
+
+    def unreachable(self):
+        raise ConnectionRefusedError(10061, "No connection could be made")
+
+    if kind == "unreachable":
+        monkeypatch.setattr(EmailBackend, "open", unreachable)
+    else:
+        monkeypatch.setattr(EmailBackend, "send_messages", refuse)
+
+
+# Owner ruling 2026-11-04 on the wording; the support handle follows it.
+CODE_NOT_SENT = (
+    "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
+)
+RECOVERY_CODE_NOT_SENT = (
+    "کد بازیابی فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
+)
+
+
+def daily_left(email: str) -> tuple[int, int]:
+    return (
+        ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email),
+        ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_IP_DAILY, "127.0.0.1"),
+    )
+
+
+@pytest.mark.parametrize("kind", ["refused", "disconnected", "unreachable", "zero"])
+@pytest.mark.parametrize("path", ["request", "request-json", "resend", "resend-json", "recovery"])
+def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
+    client, user, monkeypatch, caplog, error_reports, kind, path
+):
+    """A relay failure, or a send it accepted nothing from, ended on the general
+    error page. Now it is answered as a refused send is: the same page, a
+    Persian message, no daily unit spent (ADR-0024), and a log line that names
+    the failure without the address or the code (ADR-0008)."""
+    json_answer = {"HTTP_ACCEPT": "application/json"} if path.endswith("json") else {}
+    if path.startswith("resend"):
+        client.post(reverse("login-code"), {"email": user.email})
+    if path == "recovery":
+        client.force_login(user)
+    before = daily_left(user.email)
+    sent: list[str] = []
+    fail_the_relay(monkeypatch, kind, sent)
+
+    if path.startswith("request"):
+        response = client.post(reverse("login-code"), {"email": user.email}, **json_answer)
+    elif path.startswith("resend"):
+        response = client.post(reverse("login-code-resend"), **json_answer)
+    else:
+        response = client.post(reverse("account-password-recovery"), {"action": "request"})
+
+    handle = support.details()["telegram"]
+    # The recovery page's code is not a sign-in code, and the message says so.
+    words = RECOVERY_CODE_NOT_SENT if path == "recovery" else CODE_NOT_SENT
+    on_a_page = f'{words} <bdi class="latin">{handle}</bdi>'
+    if json_answer:
+        # A script sets this as text, so the handle is isolated by the marks
+        # <bdi> stands for; without them its @ is drawn at the wrong end.
+        assert response.status_code == 503
+        assert response.json() == {"ok": False, "error": f"{CODE_NOT_SENT} \u2066{handle}\u2069"}
+    elif path == "resend":
+        assert response.headers["Location"] == reverse("login-code-verify")
+        assert on_a_page in client.get(response.headers["Location"]).content.decode()
+    else:
+        template = (
+            "accounts/password_recovery.html"
+            if path == "recovery"
+            else "accounts/login_code_request.html"
+        )
+        assert response.status_code == 503
+        assert template in [used.name for used in response.templates]
+        assert on_a_page in response.content.decode()
+    if path.startswith("request"):
+        assert views.PENDING_EMAIL_KEY not in client.session, "the code page is not reachable"
+    assert daily_left(user.email) == before, "a code nobody received spent a daily unit"
+    everything = json.dumps(error_reports) + caplog.text
+    assert len([r for r in error_reports if r.get("logger") == "apps.accounts.services"]) == 1
+    if kind != "unreachable":
+        assert sent and sent[-1] not in everything, "the code reached a log or a report"
+    assert user.email not in everything, "the address reached a log or a report"
+
+
+@pytest.mark.parametrize("plain", [False, True], ids=["script", "form"])
+@pytest.mark.parametrize("kind", ["quota", "refused", "disconnected", "unreachable", "zero"])
+def test_a_failed_resend_keeps_the_code_already_in_the_inbox(
+    client, user, monkeypatch, kind, plain
+):
+    """The code used to be stored before the send, so a resend that failed
+    replaced the code in the inbox with one nobody received, while the page
+    went on counting down for it. Owner ruling 2026-11-04: until a send is
+    accepted, the inbox code works, on its own clock. The quota's
+    refusal and every relay failure end the same way."""
+    from apps.core import email as core_email
+    from apps.core import email_log
+
+    client.post(reverse("login-code"), {"email": user.email})
+    inbox = code_from(mail.outbox[-1])
+    expires_at = client.session[views.PENDING_EXPIRES_KEY]
+    unsent: list[str] = []
+    real_send = core_email.send_templated_email
+
+    def keep(name, **kwargs):
+        unsent.append(kwargs["context"]["code"])
+        return real_send(name, **kwargs)
+
+    monkeypatch.setattr(core_email, "send_templated_email", keep)
+    if kind == "quota":
+        monkeypatch.setattr(email_log, "reserve", raise_quota)
+    else:
+        fail_the_relay(monkeypatch, kind, [])
+
+    json_answer = {} if plain else {"HTTP_ACCEPT": "application/json"}
+    response = client.post(reverse("login-code-resend"), **json_answer)
+
+    assert response.status_code == (302 if plain else 503)
+    assert unsent, "the resend never made a code"
+    assert client.session[views.PENDING_EXPIRES_KEY] == expires_at, "the countdown restarted"
+    outcomes = [
+        client.post(reverse("login-code-verify"), {"code": code}).status_code
+        for code in (unsent[-1], inbox)
+    ]
+    # The unsent code, which nobody received, is refused; the inbox code signs in.
+    assert outcomes == [200, 302], outcomes
+    assert client.session["_auth_user_id"] == str(user.pk)
+
+
+@pytest.mark.parametrize("wrong_after", [0, 1])
+def test_a_failed_send_neither_refills_nor_spends_the_guesses_left(user, monkeypatch, wrong_after):
+    """A failed send that gave the inbox code a fresh count would make each
+    failed send five more guesses at six digits."""
+    inbox = otp.send_login_code(user.email).code
+    wrong = f"{(int(inbox) + 1) % 10**otp.CODE_LENGTH:0{otp.CODE_LENGTH}d}"
+    for _ in range(otp.MAX_ATTEMPTS - 1):
+        assert not otp.verify(user.email, wrong)
+    with monkeypatch.context() as failing:
+        failing.setattr("apps.core.email.send_templated_email", disconnect)
+        with pytest.raises(smtplib.SMTPServerDisconnected):
+            otp.send_login_code(user.email)
+
+    for _ in range(wrong_after):
+        assert not otp.verify(user.email, wrong)
+
+    # One guess was left before the failed send, and is still left: the right
+    # code spends it, and a wrong one spends it and the code with it.
+    assert otp.verify(user.email, inbox) is (wrong_after == 0)
+
+
+@pytest.mark.parametrize("late", [False, True], ids=["before-deadline", "after-deadline"])
+def test_a_failed_send_does_not_move_the_inbox_codes_deadline(user, monkeypatch, late):
+    """Nor may it buy the code time: the deadline is the one it was mailed with."""
+    with time_machine.travel(START, tick=False) as clock:
+        inbox = otp.send_login_code(user.email).code
+        clock.shift(otp.CODE_TTL_SECONDS - 60)
+        with monkeypatch.context() as failing:
+            failing.setattr("apps.core.email.send_templated_email", disconnect)
+            with pytest.raises(smtplib.SMTPServerDisconnected):
+                otp.send_login_code(user.email)
+        clock.shift(61 if late else 59)
+
+        assert otp.verify(user.email, inbox) is not late
+
+
+def raise_quota(*args, **kwargs):
+    from apps.core.email_log import MailQuotaExceeded
+
+    raise MailQuotaExceeded
+
+
+def disconnect(*args, **kwargs):
+    raise smtplib.SMTPServerDisconnected("lost the line")
+
+
 def test_the_alert_takes_the_customer_to_the_password_page(client, user, settings):
     """The button and the text version's link went to /account/, which for an
     account with a password has no password form on it: a worried customer had
@@ -599,7 +791,7 @@ def test_login_rotates_the_session_key(client, user):
     client.session.create()
     before = client.session.session_key
 
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert client.session.session_key != before
 
@@ -622,7 +814,7 @@ def test_the_account_page_requires_a_session(client):
     assert reverse("login") in response["Location"]
 
 
-@pytest.mark.parametrize("name", ["login", "login-code"])
+@pytest.mark.parametrize("name", ["login-password", "login-code"])
 def test_every_public_auth_page_renders(client, name):
     """A smoke test, because a missing {% load %} is a 500 no unit test sees and
     the first customer to reach the page finds instead. This caught exactly that
@@ -636,7 +828,7 @@ def test_every_public_auth_page_renders(client, name):
 
 
 @pytest.mark.parametrize(
-    "name", ["login", "login-code", "login-code-verify", "account", "account-password"]
+    "name", ["login-password", "login-code", "login-code-verify", "account", "account-password"]
 )
 def test_sign_in_and_account_pages_ask_not_to_be_indexed(client, user, name):
     """Nothing on them is worth a search result, and a results page that lands
@@ -693,7 +885,7 @@ def test_password_login_returns_you_to_the_page_you_asked_for(client, user):
     """`@login_required` puts the wanted page in `?next=`. Both login views
     used to discard it and send everyone to /account/."""
     response = client.post(
-        reverse("login") + "?next=/account/password/",
+        reverse("login-password") + "?next=/account/password/",
         {"email": user.email, "password": PASSWORD, "next": "/account/password/"},
     )
 
@@ -741,7 +933,7 @@ def test_the_json_path_reports_the_same_destination(client):
         "https:evil.example",
     ],
 )
-@pytest.mark.parametrize("route", ["login", "login-code"])
+@pytest.mark.parametrize("route", ["login-password", "login-code"])
 def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
     """Without the host check `?next=` turns a login page into an open
     redirect, which is worth more to a phisher on the shop's own domain than
@@ -754,7 +946,7 @@ def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
     lands on a path of *this* site, which is a 404 and not a phishing hop.
     """
     payload = {"next": hostile}
-    if route == "login":
+    if route == "login-password":
         payload |= {"email": user.email, "password": PASSWORD}
     else:
         payload |= {"email": "hostile@example.test"}
@@ -769,6 +961,117 @@ def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
         landing = client.post(reverse("login-code-verify"), {"code": code}).headers["Location"]
 
     assert urlparse(urljoin("http://testserver/", landing)).netloc == "testserver", landing
+
+
+# A Persian query and a second parameter: an unencoded `&` would split the
+# destination, and an unencoded Persian word would arrive garbled.
+SEARCH_PAGE = "/search/?" + urlencode({"q": "نتفلیکس", "page": "2"})
+
+
+def header_sign_in_link(client, path: str) -> str:
+    body = client.get(path).content.decode()
+    found = re.search(r'class="v-account" href="([^"]*)"', body)
+    assert found, "no account link in the header"
+    return html.unescape(found.group(1))
+
+
+def hidden_next(body: str) -> str:
+    found = re.search(r'name="next" value="([^"]*)"', body)
+    assert found, "no next field on the sign-in form"
+    return html.unescape(found.group(1))
+
+
+def test_the_header_sign_in_link_carries_the_page_it_was_on(client):
+    link = urlparse(header_sign_in_link(client, SEARCH_PAGE))
+
+    assert link.path == reverse("login-code")
+    assert parse_qs(link.query) == {"next": [SEARCH_PAGE]}
+
+
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_signing_in_from_the_header_link_returns_to_that_page(client, user, method):
+    body = client.get(header_sign_in_link(client, SEARCH_PAGE)).content.decode()
+    if method == "password":
+        # The code page's link to the password form carries the destination on.
+        found = re.search(r'href="(/login/password/\?next=[^"]*)"', body)
+        assert found, "no link from the code page to the password form"
+        body = client.get(html.unescape(found.group(1))).content.decode()
+        response = client.post(
+            reverse("login-password"),
+            {"email": user.email, "password": PASSWORD, "next": hidden_next(body)},
+        )
+    else:
+        client.post(reverse("login-code"), {"email": user.email, "next": hidden_next(body)})
+        response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[-1])})
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == SEARCH_PAGE
+
+
+@pytest.mark.parametrize(
+    "hostile", ["//evil.example", "https://evil.example/", "javascript:alert(1)", "/\\evil.example"]
+)
+@pytest.mark.parametrize("method", ["code", "password"])
+def test_a_hostile_next_lands_on_the_account_page(client, user, hostile, method):
+    """The header link only ever carries a path on this site, so the login
+    views' host check stays the one gate for a crafted link. Exactly
+    `/account/`, not merely "this host": a browser reads `/\\` as `//`, and
+    `urljoin` does not."""
+    route = "login-code" if method == "code" else "login-password"
+    body = client.get(reverse(route) + "?" + urlencode({"next": hostile})).content.decode()
+    assert hidden_next(body) == reverse("account")
+
+    if method == "code":
+        client.post(reverse("login-code"), {"email": user.email, "next": hostile})
+        response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[-1])})
+    else:
+        response = client.post(
+            reverse("login-password"), {"email": user.email, "password": PASSWORD, "next": hostile}
+        )
+
+    assert response.headers["Location"] == reverse("account")
+
+
+def test_the_sign_in_address_opens_on_the_code_form(client):
+    """A new account has no password, so a visitor who reached /login/ from a
+    bookmark met a form most could not use. Owner ruling 2026-11-04: the code
+    form comes first, and the destination comes with it."""
+    response = client.get(reverse("login") + "?" + urlencode({"next": SEARCH_PAGE}))
+
+    assert response.status_code == 302
+    landing = urlparse(response.headers["Location"])
+    assert landing.path == reverse("login-code")
+    assert parse_qs(landing.query) == {"next": [SEARCH_PAGE]}
+    assert hidden_next(client.get(response.headers["Location"]).content.decode()) == SEARCH_PAGE
+
+
+def test_a_protected_page_sends_a_visitor_to_the_code_form(client):
+    response = client.get(reverse("account"), follow=True)
+
+    assert "accounts/login_code_request.html" in [used.name for used in response.templates]
+    assert hidden_next(response.content.decode()) == reverse("account")
+
+
+@pytest.mark.parametrize(
+    "hostile", ["//evil.example", "https://evil.example/", "javascript:alert(1)", "/\\evil.example"]
+)
+def test_the_sign_in_address_leaves_a_hostile_next_to_the_one_gate(client, hostile):
+    """The redirect copies the query string as it came, to a fixed path on this
+    site; the code form's host check still decides where it may lead."""
+    response = client.get(reverse("login") + "?" + urlencode({"next": hostile}), follow=True)
+
+    hops = [urlparse(url) for url, _ in response.redirect_chain]
+    assert [(hop.netloc, hop.path) for hop in hops] == [("", reverse("login-code"))]
+    assert hidden_next(response.content.decode()) == reverse("account")
+
+
+@pytest.mark.parametrize("name", ["login-password", "login-code", "login-code-verify"])
+def test_the_sign_in_pages_header_link_carries_no_next(client, name):
+    """Signing in from a sign-in page would only return to the form just used."""
+    if name == "login-code-verify":
+        client.post(reverse("login-code"), {"email": "pending@example.test"})
+
+    assert header_sign_in_link(client, reverse(name) + "?next=/cart/") == reverse("login-code")
 
 
 def test_an_empty_search_goes_to_the_shelf_instead_of_a_blank_page(client):

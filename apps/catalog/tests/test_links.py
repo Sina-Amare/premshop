@@ -63,7 +63,7 @@ PAGES = [
     "/search/?q=netflix",
     "/search/?q=zzzz",
     "/no-such-page/",
-    "/login/",
+    "/login/password/",
     "/login/code/",
 ]
 

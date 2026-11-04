@@ -4,7 +4,15 @@ from django.views.generic import RedirectView
 from apps.accounts import views
 
 urlpatterns = [
-    path("login/", views.login_password, name="login"),
+    # A new account has no password, so the sign-in address opens on the code
+    # form. The query string goes along as it came; the code form's _safe_next
+    # decides what `next` may do.
+    path(
+        "login/",
+        RedirectView.as_view(pattern_name="login-code", query_string=True, permanent=False),
+        name="login",
+    ),
+    path("login/password/", views.login_password, name="login-password"),
     path("login/code/", views.login_code_request, name="login-code"),
     path("login/code/verify/", views.login_code_verify, name="login-code-verify"),
     path("login/code/resend/", views.login_code_resend, name="login-code-resend"),

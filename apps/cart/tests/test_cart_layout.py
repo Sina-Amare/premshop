@@ -63,7 +63,9 @@ def test_summary_shows_its_arithmetic_and_confirmed_help(client, plan, discount)
 def test_empty_cart_explains_sign_in_only_to_visitors(client, buyer):
     body = client.get("/cart/").content.decode()
     assert body.index("برای شروع، یک محصول انتخاب کنید.") < body.index("مشاهده‌ی محصولات")
-    assert f'href="{reverse("login")}?next=/cart/"' in body
+    # The paragraph's own link, not the header's, which goes to the same page.
+    signin = body[body.index('class="cart-empty__signin"') :]
+    assert signin.split("</p>")[0].count(f'href="{reverse("login-code")}?next=/cart/"') == 1
     client.force_login(buyer)
     assert "cart-empty__signin" not in client.get("/cart/").content.decode()
 

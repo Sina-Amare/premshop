@@ -52,7 +52,7 @@ VISITOR = {
     "search, a hit": "/search/?q=chatgpt",
     "search, a miss": "/search/?q=netflix",
     "faq": "/faq/",
-    "sign-in": "/login/",
+    "sign-in": "/login/password/",
     "code request": "/login/code/",
     "404": "/no-such-page/",
 }

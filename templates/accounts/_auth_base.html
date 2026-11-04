@@ -10,9 +10,9 @@ long for Persian at 17px.
 
 {% block content %}
 <div class="wrap page">
-<div style="max-inline-size: 27rem; margin-inline: auto; padding-block-start: var(--spacing-4)">
+<div class="auth-shell">
   <div class="card auth-card">
-    <h1 style="font-family: var(--font-head); font-size: 24px; font-weight: 600; line-height: 1.35; margin: 0 0 var(--spacing-3)">{% block auth_title %}{% endblock %}</h1>
+    <h1 class="auth-title auth-title--tight">{% block auth_title %}{% endblock %}</h1>
     {% block auth_intro %}{% endblock %}
 
     {% comment %}Set by a redirect after a plain form post, such as a code resent without JavaScript.{% endcomment %}

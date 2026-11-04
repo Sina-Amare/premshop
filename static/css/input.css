@@ -501,6 +501,17 @@
     .otp__resend { flex-direction: column; align-items: stretch; }
     .otp__resend .btn { inline-size: 100%; }
   }
+  /* The rest of the sign-in pages' layout. Classes rather than style
+     attributes, so a content security policy can refuse inline styles.
+     The shell, title and aside are in storefront.css, shared with the 503 page:
+     that file is unlayered, so a copy here would never apply. */
+  .auth-intro { margin-block-end: var(--spacing-6); }
+  .auth-sent { margin-block-end: var(--spacing-2); }
+  .auth-change { margin-block-end: var(--spacing-5); }
+  .btn--block { inline-size: 100%; }
+  .otp__head { display: flex; align-items: baseline; justify-content: space-between;
+               gap: var(--spacing-3); margin-block-end: var(--spacing-2); }
+  .otp__head .field__label, .otp__resend .small { margin: 0; }
 
   /* A form-level error belongs above the fields, not beside one of them: it is
      usually about the pair (email + password), and blaming one field is a lie. */

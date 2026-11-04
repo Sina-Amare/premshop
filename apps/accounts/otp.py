@@ -72,20 +72,28 @@ def issue(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
     Replacing rather than reusing matters: a customer who clicks "send again"
     expects the newest mail to be the one that works. Two live codes would mean
     the older mail silently fails, which reads as a broken shop.
-
-    secrets, not random: random is seeded predictably and is not for anything
-    that guards an account.
     """
-    email = _subject(email, purpose, binding)
-    code = f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
+    return _store(_subject(email, purpose, binding), _new_code())
+
+
+def _new_code() -> str:
+    # secrets, not random: random is seeded predictably and is not for anything
+    # that guards an account.
+    return f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
+
+
+def _store(subject: str, code: str) -> Issued:
+    """Make `code` the one live code for this subject, from now."""
     expires_at = int(time.time()) + CODE_TTL_SECONDS
     # The deadline travels WITH the code. Django's cache API cannot read an entry's
     # remaining lifetime back, on Redis included, so the attempt counter takes its
     # lifetime from here rather than guessing it.
     issuance = secrets.token_urlsafe(16)
     record = {"digest": _digest(code), "expires_at": expires_at}
-    cache.set(_record_key(email, issuance), record, timeout=CODE_TTL_SECONDS)
-    cache.set(_key(email), issuance, timeout=CODE_TTL_SECONDS)
+    cache.set(_record_key(subject, issuance), record, timeout=CODE_TTL_SECONDS)
+    # Written last, and the only key verify starts from: two stores at once leave
+    # one live code, and the other record expires unread.
+    cache.set(_key(subject), issuance, timeout=CODE_TTL_SECONDS)
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
@@ -157,20 +165,29 @@ def normalize_digits(value: str) -> str:
 
 
 def send_login_code(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
-    """Issue a code and mail it. Raises if the relay refuses — never silently."""
+    """Mail a new code, then make it the live one. Raises if the relay refuses —
+    never silently.
+
+    Stored only once the relay has accepted the mail. Stored before, a send that
+    then failed left the customer a dead code in the inbox and a countdown
+    still running for it. A failed send now changes nothing, so the inbox code
+    keeps its own deadline and its own count of wrong guesses.
+    """
     from smtplib import SMTPException
 
     from apps.core.email import send_templated_email
 
-    issued = issue(email, purpose=purpose, binding=binding)
+    subject = _subject(email, purpose, binding)  # a bad binding fails before any mail
+    code = _new_code()
     sent = send_templated_email(
         "password_reset" if purpose == "password_reset" else "otp_code",
         to=[email],
-        context={"code": issued.code, "ttl_minutes": issued.ttl_minutes},
+        context={"code": code, "ttl_minutes": CODE_TTL_SECONDS // 60},
     )
     if not sent:
         raise SMTPException("Code email was not accepted")
-    return issued
+    # Two accepted at once: the later store wins, not always the newer mail. One code stays live.
+    return _store(subject, code)
 
 
 def normalize_email(email: str) -> str:

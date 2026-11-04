@@ -22,10 +22,11 @@ from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 
 from apps.accounts import otp
 from apps.accounts.models import User
-from apps.core import ratelimit
+from apps.core import ratelimit, support
 from apps.core.email import send_templated_email
 from apps.core.sessions import login_session
 
@@ -42,6 +43,29 @@ class RateLimited(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+_CODE_NOT_SENT = (
+    "{} فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
+)
+
+
+class CodeNotSent(Exception):
+    """The relay failed or accepted nothing. Answered on the page, as a refused
+    send is; no daily unit is spent, since only accepted sends count."""
+
+    def __init__(self, purpose: str = "login") -> None:
+        # The recovery page's code is not a sign-in code.
+        code = "کد بازیابی" if purpose == "password_reset" else "کد ورود"
+        handle = support.details()["telegram"]
+        # The Latin handle must be isolated left-to-right, or its @ is drawn at
+        # the wrong end. A page gets <bdi>; a script sets `text` as text, so it
+        # carries the two Unicode marks <bdi> stands for.
+        self.message = format_html(
+            _CODE_NOT_SENT, code, format_html('<bdi class="latin">{}</bdi>', handle)
+        )
+        self.text = _CODE_NOT_SENT.format(code, f"\u2066{handle}\u2069")
+        super().__init__(self.message)
 
 
 # One message per budget, each with its wait. A budget per IP never blames the
@@ -116,6 +140,21 @@ def _code_request_budget(request: HttpRequest, email: str) -> None:
         raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
 
 
+def _send_code(email: str, *, purpose: str = "login", binding: str = "") -> otp.Issued:
+    """Mail a code, or raise CodeNotSent. Logged as the sign-in alert is: the
+    error's type and SMTP status, never its text, which can quote the address."""
+    try:
+        return otp.send_login_code(email, purpose=purpose, binding=binding)
+    except OSError as error:  # smtplib's errors are OSError, as are socket's
+        status = getattr(error, "smtp_code", None)
+        logger.error(
+            "code email not sent: %s%s",
+            type(error).__name__,
+            f" (SMTP {status})" if isinstance(status, int) else "",
+        )
+        raise CodeNotSent(purpose) from None
+
+
 def _code_sent(request: HttpRequest, email: str) -> None:
     # shortcut: preflight can race; short windows bound concurrent daily overshoot.
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email)
@@ -142,7 +181,7 @@ def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
     email = otp.normalize_email(email)
     _code_request_budget(request, email)
 
-    issued = otp.send_login_code(email)
+    issued = _send_code(email)
     _code_sent(request, email)
     return issued
 
@@ -169,7 +208,7 @@ def request_password_recovery(request: HttpRequest) -> otp.Issued:
     with login_session(request):
         user = _recovery_user(request)
         _code_request_budget(request, user.email)
-        issued = otp.send_login_code(
+        issued = _send_code(
             user.email, purpose="password_reset", binding=_recovery_binding(request, user)
         )
         _code_sent(request, user.email)

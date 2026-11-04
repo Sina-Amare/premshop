@@ -294,8 +294,8 @@ def test_recovery_failure_is_logged_despite_the_real_session_transaction(
         raise SMTPServerDisconnected("uncertain")
 
     monkeypatch.setattr(EmailBackend, "send_messages", fail)
-    with pytest.raises(SMTPServerDisconnected):
-        client.post(reverse("account-password-recovery"), {"action": "request"})
+    response = client.post(reverse("account-password-recovery"), {"action": "request"})
+    assert response.status_code == 503
     assert MailAttempt.objects.get().status == "uncertain"
 
 

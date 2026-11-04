@@ -1,4 +1,4 @@
-"""Login codes checked by requests that arrive at the same instant.
+"""Login codes checked, or sent, by requests that arrive at the same instant.
 
 `otp.verify` reads a code's record and then acts on it. Under real traffic two
 requests can both read before either acts, and that window is rare enough that
@@ -9,6 +9,7 @@ reached the same point.
 
 from __future__ import annotations
 
+import smtplib
 import threading
 from collections.abc import Callable
 
@@ -162,6 +163,62 @@ def test_a_final_wrong_guess_cannot_delete_a_replacement(monkeypatch):
 
     valid = otp.verify(EMAIL, new.code)
     assert valid, "An exhausted old issuance must not delete the new one"
+
+
+def test_two_accepted_sends_at_once_leave_one_working_code(monkeypatch):
+    """Two sends mailed together both store their codes, and one code is live
+    afterwards, not two. Which one is not pinned here."""
+    previous = otp.issue(EMAIL)
+    both_mailed = threading.Barrier(2)
+
+    def accepted(name, **kwargs):
+        both_mailed.wait(timeout=5)
+        return 1
+
+    monkeypatch.setattr("apps.core.email.send_templated_email", accepted)
+    first, second = at_once(lambda: otp.send_login_code(EMAIL), lambda: otp.send_login_code(EMAIL))
+
+    assert not otp.verify(EMAIL, previous.code), "a send that was accepted left the old code"
+    # Tried in turn: had both worked, the second would still work after the first.
+    assert sorted([otp.verify(EMAIL, first.code), otp.verify(EMAIL, second.code)]) == [False, True]
+
+
+def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(monkeypatch):
+    """A failed send that put the earlier code back, rather than never
+    replacing it, would undo a resend that reached the inbox meanwhile."""
+    previous = otp.issue(EMAIL)
+    live = cache.get(otp._key(EMAIL))
+    began, accepted_done = threading.Event(), threading.Event()
+    failing_thread: list[threading.Thread] = []
+
+    def send(name, **kwargs):
+        if threading.current_thread() in failing_thread:
+            began.set()
+            assert accepted_done.wait(timeout=5)
+            raise smtplib.SMTPServerDisconnected("lost the line")
+        return 1
+
+    monkeypatch.setattr("apps.core.email.send_templated_email", send)
+    failures: list[Exception] = []
+
+    def resend_that_fails() -> None:
+        try:
+            otp.send_login_code(EMAIL)
+        except smtplib.SMTPServerDisconnected as error:
+            failures.append(error)
+
+    failing = threading.Thread(target=resend_that_fails)
+    failing_thread.append(failing)
+    failing.start()
+    assert began.wait(timeout=5)
+    while_mailing = cache.get(otp._key(EMAIL))
+    mailed = otp.send_login_code(EMAIL)
+    accepted_done.set()
+    failing.join(timeout=10)
+
+    assert while_mailing == live, "the address moved before the failing send's mail was accepted"
+    assert len(failures) == 1 and not failing.is_alive()
+    assert [otp.verify(EMAIL, code) for code in (previous.code, mailed.code)] == [False, True]
 
 
 def test_a_record_from_before_issuance_keys_fails_closed():

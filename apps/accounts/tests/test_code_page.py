@@ -316,7 +316,7 @@ def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
 
 
 def test_the_header_account_link_goes_to_login_when_signed_out(client):
-    body = client.get(reverse("login")).content.decode()
+    body = client.get(reverse("login-password")).content.decode()
 
     assert f'class="v-account" href="{reverse("login-code")}"' in body
     # Labelled, not a bare pictogram: a first-time visitor has to be able to

@@ -125,7 +125,9 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         email = form.cleaned_data["email"]
         try:
             issued = services.request_login_code(request, email)
-        except MailQuotaExceeded as exc:
+        except (MailQuotaExceeded, services.CodeNotSent) as exc:
+            if _wants_json(request):
+                return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
             form.add_error(None, exc.message)
             status = 503
         except services.RateLimited as exc:
@@ -212,6 +214,11 @@ def _wants_json(request: HttpRequest) -> bool:
     return "application/json" in request.headers.get("Accept", "")
 
 
+def _as_text(exc: MailQuotaExceeded | services.CodeNotSent) -> str:
+    """For a script, which sets the message as text, where markup would show."""
+    return exc.text if isinstance(exc, services.CodeNotSent) else str(exc.message)
+
+
 def _seconds_left(expires_at: int) -> int:
     """Relative, not absolute: the browser counts down on its own clock from
     this number, so a wrong clock on the customer's machine cannot skew it."""
@@ -223,9 +230,11 @@ def _seconds_left(expires_at: int) -> int:
 def login_code_resend(request: HttpRequest) -> HttpResponse:
     """Send a fresh code to the address already waiting in the session.
 
-    Replaces the outstanding code (otp.issue always does). The page's script asks
-    for JSON and restarts its countdown from the new expiry; a plain form post,
-    from a browser with JavaScript off, is sent back to the page with a message.
+    Replaces the outstanding code once the new mail is accepted; a send that
+    fails leaves the code in the inbox, and its expiry, as they were. The page's
+    script asks for JSON and restarts its countdown from the new expiry; a plain
+    form post, from a browser with JavaScript off, is sent back to the page with
+    a message.
     The same rate limit as the first request applies — three per address per
     fifteen minutes — so the button's 60-second cooldown is a courtesy, not the
     defence, and without JavaScript there is no cooldown at all.
@@ -238,9 +247,9 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         return redirect("login-code")
     try:
         issued = services.request_login_code(request, email)
-    except MailQuotaExceeded as exc:
+    except (MailQuotaExceeded, services.CodeNotSent) as exc:
         if _wants_json(request):
-            return JsonResponse({"ok": False, "error": str(exc.message)}, status=503)
+            return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
         messages.error(request, exc.message)
         return redirect("login-code-verify")
     except services.RateLimited as exc:
@@ -347,7 +356,7 @@ def account_password_recovery(request: HttpRequest) -> HttpResponse:
                     messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
                     return redirect("account-password")
                 form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
-        except MailQuotaExceeded as exc:
+        except (MailQuotaExceeded, services.CodeNotSent) as exc:
             messages.error(request, exc.message)
             status = 503
         except services.RateLimited as exc:
