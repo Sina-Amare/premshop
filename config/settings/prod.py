@@ -5,6 +5,8 @@ required secret is missing the process refuses to start rather than running
 with an insecure default.
 """
 
+import re
+
 from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
@@ -20,9 +22,19 @@ if not ALLOWED_HOSTS:
 # HTTPS everywhere; the proxy terminates TLS and forwards the scheme.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
-SECURE_HSTS_SECONDS = 31536000
+# An hour to start with: a certificate mistake then locks visitors out for an hour,
+# not a year. Django sends no header at all for 0 and an invalid max-age for a negative
+# number, so both stop the boot, as does a value that is not a whole number.
+try:
+    SECURE_HSTS_SECONDS = int(env("SECURE_HSTS_SECONDS") or "3600")
+    if SECURE_HSTS_SECONDS < 1:
+        raise ValueError
+except ValueError:
+    raise ImproperlyConfigured(
+        "SECURE_HSTS_SECONDS must be a whole number of seconds, at least 1."
+    ) from None
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_HSTS_PRELOAD = False  # The launch step (S12) raises the seconds and turns this on.
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
@@ -38,7 +50,13 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
+# No script reads the token from the cookie: each form carries it in a hidden field.
+CSRF_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
+# web publishes no port (deploy/compose.yaml), so every request reaches it through
+# nginx, which overwrites X-Real-IP with the address it saw (apps/core/ratelimit.py).
+TRUST_PROXY_HEADERS = True
 
 # base.py already defaults EMAIL_BACKEND to SMTP. What must not be inherited is a
 # blank credential: Django's SMTP backend guards login() with `if self.username and
@@ -74,6 +92,14 @@ except ValueError:
     raise ImproperlyConfigured(
         "FIELD_ENCRYPTION_KEY and its fallbacks must be valid, distinct Fernet keys."
     ) from None
+
+# The panel away from the address every scanner tries first. The sign-in limits
+# are still its guard; this keeps it out of the noise.
+ADMIN_PATH = env("ADMIN_PATH", required=True)
+if ADMIN_PATH.lower() == "admin/" or not re.fullmatch(r"[A-Za-z0-9_-]+/", ADMIN_PATH):
+    raise ImproperlyConfigured(
+        "ADMIN_PATH must be one path segment ending in a slash, other than admin/."
+    )
 
 # Error reporting: sentry-sdk speaking to self-hosted GlitchTip (ADR-0015).
 # No DSN configured means no reporting — never a crash at startup.
