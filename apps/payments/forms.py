@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -10,8 +11,16 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.orders.services import Purchase
 
 
+class GroupedTomanField(forms.DecimalField):
+    def to_python(self, value: Any) -> Any:
+        # The page prints totals grouped (۳۹۹,۹۰۰); the service still demands an exact match.
+        if isinstance(value, str):
+            value = re.sub(r"[,،٬\s]", "", value)
+        return super().to_python(value)
+
+
 class ManualPaymentForm(forms.Form):
-    amount = forms.DecimalField(
+    amount = GroupedTomanField(
         label=_("مبلغ دریافتی (تومان)"),
         max_digits=12,
         decimal_places=0,

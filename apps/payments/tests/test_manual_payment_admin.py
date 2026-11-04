@@ -44,8 +44,17 @@ def test_form_get_does_not_write_and_csrf_is_required(order, operator):
     assert Payment.objects.get().bank_ref == "private-bank-reference"
 
 
+@pytest.mark.parametrize("typed", ["۲۰۰,۰۰۰", "200,000", "۲۰۰٬۰۰۰", "۲۰۰،۰۰۰", " 200 000 "])
+def test_amount_accepts_the_grouping_the_page_shows(client, order, operator, typed):
+    client.force_login(operator)
+    response = client.post(url(order), {"amount": typed, "bank_ref": "ref"})
+    assert response.status_code == 302
+    assert Payment.objects.get().amount == Decimal("200000")
+
+
 @pytest.mark.parametrize(
-    "amount,reference", [("199999", "ref"), ("200000.1", "ref"), ("200000", ""), ("0", "ref")]
+    "amount,reference",
+    [("199999", "ref"), ("200000.1", "ref"), ("200.000", "ref"), ("200000", ""), ("0", "ref")],
 )
 def test_form_errors_preserve_data_and_do_not_confirm(client, order, operator, amount, reference):
     client.force_login(operator)
