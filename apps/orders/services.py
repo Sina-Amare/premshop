@@ -492,6 +492,46 @@ def place_order(
     return order
 
 
+@transaction.atomic
+def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
+    if not (
+        actor.is_active
+        and actor.is_staff
+        and actor.has_perms(["orders.change_order", "orders.change_orderitem"])
+        and payment.order_id == order.pk
+        and payment.status == "verified"
+        and payment.amount == order.total_amount
+        and payment.verified_at is not None
+    ):
+        raise PermissionDenied
+    User.objects.select_for_update(no_key=True).get(pk=order.user_id)
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    items = list(order.items.select_for_update().defer("customer_input").order_by("pk"))
+    if order.cancelled_at or order.unpaid_expires_at <= timezone.now() or not items:
+        raise ValidationError("مهلت پرداخت این سفارش تمام شده یا سفارش لغو شده است.")
+    for item in items:
+        facts = item.product_snapshot
+        if item.status != OrderItem.Status.PENDING_PAYMENT:
+            raise ValidationError("وضعیت این سفارش برای ثبت پرداخت مناسب نیست.")
+        if (
+            facts.get("telegram_required") is not False
+            or facts.get("input_type") not in ("none", "email", "username")
+            or facts.get("requires_customer_input") is not (facts.get("input_type") != "none")
+            or (facts.get("requires_customer_input") and not item.customer_input.strip())
+        ):
+            raise ValidationError("اطلاعات لازم برای فعال‌سازی کامل نیست؛ پرداخت ثبت نشد.")
+    for item in items:
+        item.status, item.paid_at = OrderItem.Status.QUEUED, payment.verified_at
+        item.save(update_fields=["status", "paid_at"])
+        OrderItemEvent.objects.create(
+            order_item=item,
+            from_status=OrderItem.Status.PENDING_PAYMENT,
+            to_status=item.status,
+            actor=OrderItemEvent.Actor.OPERATOR,
+            actor_user=actor,
+        )
+
+
 def _release(
     order: Order,
     items: Sequence[OrderItem],

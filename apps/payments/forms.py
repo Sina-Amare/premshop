@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 
 from django import forms
@@ -6,6 +7,21 @@ from django.core.exceptions import ValidationError
 from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
 from apps.orders.services import Purchase
+
+
+class ManualPaymentForm(forms.Form):
+    amount = forms.DecimalField(
+        label="مبلغ دریافتی (تومان)",
+        max_digits=12,
+        decimal_places=0,
+        min_value=Decimal(1),
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "dir": "ltr"}),
+    )
+    bank_ref = forms.CharField(
+        label="شماره‌ی پیگیری بانک",
+        max_length=64,
+        widget=forms.TextInput(attrs={"dir": "ltr", "autocomplete": "off"}),
+    )
 
 
 class CheckoutForm(forms.Form):

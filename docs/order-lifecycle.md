@@ -14,7 +14,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 
 ## Rules for every status change
 
-- **Only services change a status.** Every change is a function in `apps/orders/services.py`, and later `apps/payments/services.py`. A status written anywhere else is a defect.
+- **Only services change a status.** Every change is a function in `apps/orders/services.py`, and `apps/payments/services.py`. A status written anywhere else is a defect.
 - **Validate under the lock.** The service locks the rows it changes, re-reads their status under the lock and refuses a change the current status does not allow. The status a page or form showed is never trusted.
 - **History in the same transaction.** Each change writes one `OrderItemEvent` per item in the transaction that makes it. The history is append-only, and a database trigger refuses edits and deletions.
 - **No self-transitions.** An annotation that leaves the status as it is, such as a moved deadline, writes a history row whose status before and after are the same.
@@ -24,7 +24,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | Status | Meaning | Built |
 |---|---|---|
 | `PENDING_PAYMENT` | Placed and waiting for payment | Yes |
-| `QUEUED` | Paid and waiting for the operator | No |
+| `QUEUED` | Paid and waiting for the operator | Manual confirmation |
 | `AWAITING_INPUT` | The operator needs information from the customer; the delivery clock is paused | No |
 | `DELIVERED` | The account details have been delivered | No |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | No |
@@ -55,7 +55,7 @@ stateDiagram-v2
 | ID | Change | Trigger | Actor | Built |
 |---|---|---|---|---|
 | A1 | new → `PENDING_PAYMENT` | Checkout places the order | customer | Yes |
-| A2 | `PENDING_PAYMENT` → `QUEUED` | The payment is verified by the gateway, the inquiry job or the operator's manual record | system | No |
+| A2 | `PENDING_PAYMENT` → `QUEUED` | The operator confirms an exact matching payment | operator | Yes, manual only |
 | A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes; the operator's path is a service call, with no panel action yet |
 | A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | No |
 | A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | No |
@@ -129,25 +129,28 @@ The checkout coordinator deletes the cart's lines in the same transaction, so a 
 
 ## Concurrency
 
-- **One lock order for everything:** account, then cart, existing orders, products, plans, discount codes and items, each group in primary-key order. Any new path that touches these rows, payment included, follows the same order, which is what rules out deadlocks between checkout, cancellation and the sweep.
+- **One lock order for everything:** account, then cart, existing orders, payment if present, products, plans, discount codes and items, each group in primary-key order. Any new path that touches these rows, payment included, follows the same order, which is what rules out deadlocks between checkout, cancellation and the sweep.
 - **Validate under the lock.** A stale page or a second tab never decides a transition: the second request finds the new status and changes nothing.
 - **No gateway call inside an order transaction.** Once payment exists, the order is committed before the gateway is called, so a slow gateway cannot hold the order's locks.
 - **Repeated submissions are harmless.** A repeated checkout returns the order it already created, and a second cancellation finds the order already cancelled.
 
 ## Payment
 
-Payment is designed and not yet built ([ADR-0019](decisions/0019-payment-gateway.md)). A `Payment` row is one attempt to pay one order, with five statuses: `created`, `initiated`, `verified`, `failed` and `abandoned`. A retry is a new row, and refunds are `Refund` rows, never payment statuses. Four rules are fixed:
+The built route is an operator's record of money received outside the gateway ([ADR-0019](decisions/0019-payment-gateway.md)). The order editor links to a CSRF-protected form for the received amount in whole toman and a bank reference. Active staff need `payments.add_payment`, `orders.change_order` and `orders.change_orderitem`. The service re-reads the stored operator and permissions; customer forms cannot confirm payment.
 
-1. **Only a server-to-server verification confirms a payment.** The parameters on the browser's return from the gateway identify which payment to check, nothing more.
-2. **The verified amount must equal the order's total**; otherwise the payment fails and the order is not confirmed.
-3. **Confirmation is idempotent through one function** that locks the payment, re-reads its status and returns early when it is already verified. The callback, the inquiry job and the operator's manual record all go through it.
-4. **Only the inquiry job abandons a payment**, and only on the gateway's own answer that it was never completed. A timeout alone abandons nothing, and the unpaid sweep never cancels an order whose payment is still in flight.
+`record_manual_payment(*, order_id, actor, amount, bank_ref)` compares the entered amount with the order's saved total. A mismatch or blank reference writes nothing. It locks the buyer and order, then creates the manual Payment and calls `confirm_payment(*, payment_id, actor)`, which locks and re-reads that row. One transaction verifies the payment, sets each item's `paid_at` and moves every item to `QUEUED`, with an operator history row per item. Stock and discount claims are not taken again.
+
+An identical retry returns the original payment, including after the old unpaid deadline. A changed reference is refused; the amount must still match. The database separately enforces at most one verified payment per order. An event-write failure rolls everything back. Cancellation and expiry take the same buyer/order locks, so either confirmation wins or the cancellation wins, never both.
+
+New confirmations refuse expired/cancelled orders, inconsistent item states, missing required input and Telegram-arranged details. Input requirements come from purchase snapshots, not later catalogue edits. The customer sees «در صف انجام» without the bank reference. `payments.view_payment` is required to inspect that reference in the panel. Payment times are recorded; delivery deadlines and refunds are not implemented.
+
+Gateway request, callback verification and lost-callback inquiry remain unbuilt. A future gateway must verify amounts server-to-server and use the same confirmation path; browser return parameters cannot prove payment. An inquiry failure must not be treated as unpaid money or abandon an attempt on a timer alone.
 
 ## History and notifications
 
 `OrderItemEvent` is both the audit trail and the source of the customer's timeline: the order page shows statuses and times, and the panel adds who acted, never any secret value.
 
-The purchase confirmation is found by polling committed orders, not by an event, under the key `purchase-confirmation:{order_pk}:email` (see [Email](architecture.md#email)). The remaining messages are designed as events emitted after a transition commits, each creating notification rows keyed `{occurrence}:{recipient}:{channel}` ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)):
+The purchase confirmation is found by polling committed orders, not by an event, under the key `purchase-confirmation:{order_pk}:email` (see [Email](architecture.md#email)). Paid transitions currently write audit history without sending messages. The remaining messages are designed as events emitted after a transition commits, each creating notification rows keyed `{occurrence}:{recipient}:{channel}` ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)):
 
 | Event | After | Tells |
 |---|---|---|
@@ -172,6 +175,7 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Discount codes | `apps/orders/tests/test_discounts.py` |
 | Cancellation, expiry and the sweep | `apps/orders/tests/test_lifecycle.py`, `test_tasks.py` |
 | Lock order and races, including two buyers competing for the last unit or a single-use code | `apps/orders/tests/test_lifecycle_concurrency.py`, `apps/payments/tests/test_concurrency.py` |
+| Manual payments, permissions, CSRF, privacy, races, migrations and browser flow | `apps/payments/tests/test_manual_payment*.py` |
 | Checkout, replays and inline sign-in | `apps/payments/tests/test_checkout.py`, `test_views.py`, `test_signin_ux.py` |
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |

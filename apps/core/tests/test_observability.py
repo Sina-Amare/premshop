@@ -28,6 +28,7 @@ class TestScrubKeys:
             "value",
             "card_number",
             "sheba",
+            "bank_ref",
         ],
     )
     def test_sensitive_keys_are_redacted(self, key: str) -> None:

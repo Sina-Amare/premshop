@@ -41,6 +41,7 @@ SENSITIVE_KEY_PARTS: tuple[str, ...] = (
     "apikey",
     "credential",
     "customer_input",
+    "bank_ref",
     "delivery_field",
     "card_number",
     "cvv",
