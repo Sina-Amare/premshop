@@ -25,6 +25,7 @@ from apps.core.tests.test_accessibility_browser import STYLED
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 PHONE = {"width": 390, "height": 844}
+DESKTOP = {"width": 1440, "height": 900}
 
 
 @pytest.fixture
@@ -488,3 +489,129 @@ def test_one_option_is_not_repeated_as_the_selection(browser, live_server, disco
         expect(page.locator(".buybox__selection")).to_be_hidden()
     finally:
         context.close()
+
+
+def test_the_returning_phone_header_is_one_short_row_and_shifts_nothing(
+    browser, live_server, discounted
+):
+    """Back from reading, the header was three rows (a fifth of the screen)."""
+    context = browser.new_context(viewport=PHONE, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        header = page.locator(".v-header")
+        full = header.bounding_box()["height"]
+        assert full > 150, "the full header is the baseline"
+        page.mouse.wheel(0, 1200)
+        page.wait_for_timeout(300)
+        page.evaluate(
+            "window.__mark = document.querySelector('main, #main').getBoundingClientRect().top + scrollY"
+        )
+        page.mouse.wheel(0, -200)
+        page.wait_for_timeout(400)
+        expect(header).not_to_have_class(re.compile(r"\bv-header--away\b"))
+        assert header.bounding_box()["height"] < 80
+        expect(header.locator(".v-navline")).to_be_hidden()
+        expect(header.locator(".v-search input")).to_be_visible()
+        expect(header.locator(".v-brand")).to_be_visible()
+        assert page.evaluate(
+            "document.querySelector('main, #main').getBoundingClientRect().top + scrollY"
+        ) == page.evaluate("window.__mark")
+        page.evaluate("scrollTo({top: 0, behavior: 'instant'})")
+        page.wait_for_timeout(300)
+        assert header.bounding_box()["height"] == pytest.approx(full, abs=1)
+        expect(header.locator(".v-navline")).to_be_visible()
+    finally:
+        context.close()
+
+
+def test_the_phone_header_changes_shape_without_a_layout_shift(browser, live_server, discounted):
+    """Down past the header, up so the short row returns, then back to the top in steps."""
+    context = browser.new_context(viewport=PHONE, device_scale_factor=1)
+    page = context.new_page()
+    page.add_init_script(
+        "window.__shift = 0; new PerformanceObserver(list => { for (const e of list.getEntries())"
+        " window.__shift += e.value; }).observe({type: 'layout-shift', buffered: true});"
+    )
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        page.wait_for_timeout(500)
+        page.evaluate("window.__shift = 0")
+        page.mouse.wheel(0, 1200)
+        page.wait_for_timeout(500)
+        page.mouse.wheel(0, -200)
+        page.wait_for_timeout(500)
+        for _ in range(12):
+            page.mouse.wheel(0, -100)
+            page.wait_for_timeout(150)
+        page.wait_for_timeout(500)
+        assert page.evaluate("scrollY") == 0
+        assert page.evaluate("window.__shift") == 0
+    finally:
+        context.close()
+
+
+def test_widening_the_window_clears_the_phone_headers_state(browser, live_server, discounted):
+    context = browser.new_context(viewport=PHONE, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        page.mouse.wheel(0, 1200)
+        page.wait_for_function(
+            "document.querySelector('.v-header').classList.contains('v-header--compact')"
+        )
+        assert page.evaluate("document.querySelector('.v-header').style.marginBlockEnd") != ""
+        page.set_viewport_size(DESKTOP)
+        page.wait_for_timeout(300)
+        assert page.evaluate("document.querySelector('.v-header').style.marginBlockEnd") == ""
+        assert page.evaluate("document.querySelector('.v-header').className") == "v-header"
+    finally:
+        context.close()
+
+
+def test_the_wide_header_keeps_every_row_after_scrolling_back_up(browser, live_server, discounted):
+    context = browser.new_context(viewport=DESKTOP, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        before = page.locator(".v-header").bounding_box()["height"]
+        page.mouse.wheel(0, 1200)
+        page.wait_for_timeout(200)
+        page.mouse.wheel(0, -300)
+        page.wait_for_timeout(300)
+        assert page.locator(".v-header").bounding_box()["height"] == before
+        expect(page.locator(".v-header .v-navline")).to_be_visible()
+    finally:
+        context.close()
+
+
+def test_a_phone_home_shows_four_cards_of_a_long_category_and_all_of_them_wide(
+    browser, live_server
+):
+    category = Category.objects.create(name="سرگرمی", slug="fun")
+    for number in range(6):
+        product = Product.objects.create(
+            category=category,
+            name=f"Service {number}",
+            slug=f"s{number}",
+            status=Product.Status.ACTIVE,
+        )
+        Plan.objects.create(product=product, title="یک ماهه", cost_price=1, sale_price=200000)
+    counts = {}
+    for label, viewport in (("phone", PHONE), ("desktop", DESKTOP)):
+        context = browser.new_context(viewport=viewport)
+        page = context.new_page()
+        try:
+            page.goto(f"{live_server.url}/")
+            counts[label] = page.evaluate(
+                "[...document.querySelectorAll('.v-category-section .pcard')]"
+                ".filter(card => card.offsetParent).length"
+            )
+            expect(page.locator(".v-category-section .v-view-all").first).to_be_visible()
+        finally:
+            context.close()
+    assert counts == {"phone": 4, "desktop": 6}

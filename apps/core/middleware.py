@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils.cache import patch_cache_control
 from redis.exceptions import RedisError
 
+from apps.core import support
 from apps.core.observability import redact_url
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class OrderPagePrivacy:
                 {
                     "unavailable": response.status_code >= 500,
                     "limited": response.status_code == 429,
+                    "support": support.details(),
                 },
                 status=response.status_code,
             )
