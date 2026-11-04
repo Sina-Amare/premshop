@@ -53,7 +53,7 @@ BANNED = [
     # §Voice bans the em dash in body copy; two help strings had slipped.
     (r"—", "«:» or a full stop"),
     (r"بهترین|سریع‌ترین", "a number, not a superlative"),
-    # The glossary's panel words (docs/design-language.md, Voice 2026-10-20).
+    # The glossary's panel words (docs/design-language.md, Glossary).
     (r"رکورد", "«مورد»"),
     (r"(?<![\w‌])تازه(?:‌(?:ای|ها|های))?(?![\w‌])", "«جدید»"),
     (r"پیدا نشد", "«پیدا نکردیم»"),

@@ -114,8 +114,8 @@ def test_no_page_says_gozarvazheh(client, name):
 
 # --- The register, not just the vocabulary ------------------------------------
 # Rules taken from nine live Iranian shops plus Divar's and Digikala's own strings
-# (docs-local/archive/persian-copy-research-2026-10-13.md). Each banned word is the
-# tell of a translated interface rather than a written one.
+# (docs/design-language.md, Voice). Each banned word is the tell of a translated
+# interface rather than a written one.
 
 # Patterns, not substrings. The ban is on «می‌گردد» as the bureaucratic
 # stand-in for «می‌شود» («پرداخت انجام می‌گردد») — but it is a substring of
