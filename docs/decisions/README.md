@@ -46,29 +46,10 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 
 ## Names used in older records
 
-Older records refer to documents and shorthand that have since been reorganised.
+Older records refer to documents that have since been reorganised or were never part of this repository.
 
 | Older name | Now |
 |---|---|
 | `services-and-modules.md`, `notifications-and-bot.md` | [architecture.md](../architecture.md) |
 | `state-machine.md`, with transition IDs A1–A14 | [order-lifecycle.md](../order-lifecycle.md), which keeps the same IDs |
-
-Design-phase shorthand:
-
-| Shorthand | Meaning and record |
-|---|---|
-| D1, D2 | Item statuses; the payment machine and the refund gate → 0003, 0019 |
-| D3 | Toman → 0005; discount codes → 0020; promotional pricing → 0021 |
-| D4 | No DRF → 0004 |
-| D5, D6 | The cart; the sign-in flow → 0018, 0012 |
-| D7, D8 | Delivery deadlines; operator settings and the two payment clocks → 0009, 0019 |
-| D9, D10 | New tables; additions to `OrderItem` → 0010, 0007, 0003 |
-| D11, D12 | Payment fields and constraints; order channels and the tracking token → 0019 |
-| D13 | Content-free messages and the magic link → 0008 |
-| D14 | Encryption and key escrow → 0007, 0019 |
-| D15, D16 | Flat catalogue and normalised search; reviews → 0014 |
-| D17, D18 | Outbox, dedupe keys and heartbeat; events after commit → 0010 |
-| D19, D20 | No-store cache rules; observability and scrubbing → 0010, 0015 |
-| D21, D22 | The app map; build-order changes → 0002 |
-| G1–G12 | Rulings from the gateway review, folded into 0018–0021 |
-| R1–R22 | Reconciliation rulings, folded into the documents themselves |
+| `open-questions.md` | An internal planning note, kept outside this repository |

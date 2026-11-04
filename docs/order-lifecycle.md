@@ -56,7 +56,7 @@ stateDiagram-v2
 |---|---|---|---|---|
 | A1 | new → `PENDING_PAYMENT` | Checkout places the order | customer | Yes |
 | A2 | `PENDING_PAYMENT` → `QUEUED` | The payment is verified by the gateway, the inquiry job or the operator's manual record | system | No |
-| A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes |
+| A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes; the operator's path is a service call, with no panel action yet |
 | A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | No |
 | A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | No |
 | A6 | `QUEUED` → `CANCELLED` | An approved cancellation or a supply failure; a refund is recorded | operator | No |
@@ -123,7 +123,7 @@ The checkout coordinator deletes the cart's lines in the same transaction, so a 
 
 ## Built: cancellation and expiry
 
-- **`cancel_unpaid_order(*, order_id, actor, note="")`** cancels a whole unpaid order for its owner or an operator; an operator acting for a customer must give a reason. It locks the order and its items, returns the stock that placing it took (only while the plan still counts stock), releases the discount redemption, and writes one history row per item. Repeating it changes nothing, and a paid item is refused.
+- **`cancel_unpaid_order(*, order_id, actor, note="")`** cancels a whole unpaid order for its owner, from the order page, or for an operator, who has no panel button for it yet; an operator acting for a customer must give a reason. It locks the order and its items, returns the stock that placing it took (only while the plan still counts stock), releases the discount redemption, and writes one history row per item. Repeating it changes nothing, and a paid item is refused.
 - **`expire_unpaid_orders(*, limit=100)`** runs every minute on the worker. Each overdue order is released in its own transaction through the same cancellation code. A failure is logged with the order id and exception type only, and the order is retried after those not yet attempted, so one bad order cannot hold up the rest. A database failure stops the sweep without recording it as successful.
 - **The deadline is fixed at placement**, 24 hours later, and nothing extends it. Viewing a page never cancels or expires an order; an overdue order shows its ended deadline until the worker releases it.
 
@@ -131,7 +131,7 @@ The checkout coordinator deletes the cart's lines in the same transaction, so a 
 
 - **One lock order for everything:** account, then cart, existing orders, products, plans, discount codes and items, each group in primary-key order. Any new path that touches these rows, payment included, follows the same order, which is what rules out deadlocks between checkout, cancellation and the sweep.
 - **Validate under the lock.** A stale page or a second tab never decides a transition: the second request finds the new status and changes nothing.
-- **No network call inside a transaction.** Once payment exists, the order is committed before the gateway is called, so a slow gateway cannot hold database locks.
+- **No gateway call inside an order transaction.** Once payment exists, the order is committed before the gateway is called, so a slow gateway cannot hold the order's locks.
 - **Repeated submissions are harmless.** A repeated checkout returns the order it already created, and a second cancellation finds the order already cancelled.
 
 ## Payment
@@ -169,9 +169,9 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Behaviour | Tests |
 |---|---|
 | Placement, quotes, snapshots and the money invariant | `apps/orders/tests/test_orders.py`, `test_purchase_record.py`, `test_purchase_inputs.py` |
-| Discount codes, including concurrent use of a single-use code | `apps/orders/tests/test_discounts.py` |
+| Discount codes | `apps/orders/tests/test_discounts.py` |
 | Cancellation, expiry and the sweep | `apps/orders/tests/test_lifecycle.py`, `test_tasks.py` |
-| Lock order and races | `apps/orders/tests/test_lifecycle_concurrency.py`, `apps/payments/tests/test_concurrency.py` |
+| Lock order and races, including two buyers competing for the last unit or a single-use code | `apps/orders/tests/test_lifecycle_concurrency.py`, `apps/payments/tests/test_concurrency.py` |
 | Checkout, replays and inline sign-in | `apps/payments/tests/test_checkout.py`, `test_views.py`, `test_signin_ux.py` |
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |

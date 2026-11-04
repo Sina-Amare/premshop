@@ -74,16 +74,16 @@ The import rule and the service layer are [ADR-0002](decisions/0002-module-bound
 | Module | Holds |
 |---|---|
 | `models.py` | Tables, constraints and model-level validation. |
-| `services.py` | Every write. Arguments are keyword-only; each operation is one transaction that locks what it changes and writes its history row in the same transaction. |
-| `selectors.py` | Reads that pages render from, with ownership already applied. |
+| `services.py` | Every write. Each operation is one transaction that locks what it changes, and a status change writes its history row in that same transaction. In `orders` and `payments`, arguments are keyword-only. |
+| `selectors.py` | In `orders`: the reads that customer pages render from, with ownership already applied. |
 | `views.py` | Thin views (below). |
 | `forms.py`, `admin.py`, `tasks.py`, `templatetags/` | Input validation, the panel, scheduled jobs and template filters. |
 
 A view does five things and nothing else:
 
-1. Checks access, fetching any object through a selector that already scopes ownership, such as `customer_orders(user)`, never `Order.objects.get(pk=...)`.
+1. Checks access, fetching any object through a query that already scopes ownership, such as `orders.selectors.customer_orders(user)` or `cart.services.get_cart(request)`, never `Order.objects.get(pk=...)`.
 2. Validates input with a Django form. A form checks format only; business rules live in the service, whose `ValidationError` is shown on the same form.
-3. Calls at most one service. A GET calls selectors only.
+3. Calls at most one service that writes. A GET only reads.
 4. Renders a template or redirects.
 5. Sets the response headers the page needs, such as `Cache-Control: private, no-store`.
 
@@ -169,16 +169,16 @@ Ownership is part of every customer query in SQL, staff included. The tracking p
 
 ### Operator panel
 
-The panel is the Django admin with django-unfold, served at `ADMIN_PATH`; `/admin/` is a 404. It is Persian and right to left, with an English switch that applies inside the panel only.
+The panel is the Django admin with django-unfold. In production it is served at `ADMIN_PATH` and `/admin/` is a 404; development and tests serve it at `/admin/`. It is Persian and right to left, with an English switch that applies inside the panel only.
 
 - **Home:** the catalogue at a glance: published products, active offers, sold-out plans, offers ending within 48 hours and drafts (`apps/catalog/dashboard.py`).
 - **Catalogue:** products, plans, specifications, sections and questions. Publishing goes through `Product.publish_problems()`, and a draft's form lists every reason it cannot yet go live. An unsaved preview renders the edited product through the storefront's own code without writing a row.
-- **Discount codes:** created and retired here; a code that has been used can be deactivated but never deleted.
+- **Discount codes:** created and deactivated here. The panel deletes none, because a used code is part of how an order's total was computed.
 - **Orders:** read-only. The one action is revealing an item's customer input, through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when.
 - **Pages:** the legal pages, previewed as drafts and published by a separate permission.
 - **Notifications and mail attempts:** read-only lists of what was sent, what is waiting and what failed.
 
-Database CHECK constraints carry Persian error messages, and each is shown under the field it is about, so the operator sees the database's own rule where it can be corrected.
+The catalogue's database constraints carry Persian error messages, each shown under the field it is about, so the operator sees the database's own rule where it can be corrected. Discount codes and pages give their Persian errors from form and model validation, before the database is reached.
 
 ## Background jobs
 

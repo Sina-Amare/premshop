@@ -53,7 +53,7 @@ Settings come from the environment (`config/settings/{base,dev,prod}.py`), with 
 | `DATABASE_URL` | The PostgreSQL connection |
 | `REDIS_URL` | Redis, for the cache and the worker's queue |
 | `SITE_URL` | The scheme and host every absolute link is built on |
-| `ADMIN_PATH` | The panel's path: one segment ending in a slash, never `admin/` |
+| `ADMIN_PATH` | Production only: the panel's path, one segment ending in a slash, never `admin/`. Development and tests serve the panel at `/admin/` |
 | `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_KEY_FALLBACKS` | The key for encrypted columns, and retired keys that must stay readable |
 | `EMAIL_*`, `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `SUPPORT_EMAIL` | The SMTP relay and the shop's addresses |
 | `EMAIL_QUOTA_RESET_DATE`, `EMAIL_QUOTA_STARTING_USAGE` | Align mail accounting with the provider's billing period |
@@ -83,7 +83,7 @@ To rotate it, move the current key into `FIELD_ENCRYPTION_KEY_FALLBACKS`, set th
 
 ## Sample data
 
-- `python manage.py seed_catalog` adds 12 sample products in four categories. It only adds what is missing; `--reset` deletes the seeded products and their rows first, including any edits made to them, and `--no-images` skips downloading brand marks.
+- `python manage.py seed_catalog` adds 12 sample products in four categories. It only adds what is missing; `--reset` deletes the seeded products and their rows first, including any edits made to them, and `--no-images` skips the brand marks.
 - `--extended` adds 14 more, for 24 public products. It runs only with `DEBUG` and `DEMO_CATALOG` on, against a local database named `premshop_ui_review`, and never with `--reset`. While `DEMO_CATALOG` is on, every page shows a sample-data notice.
 - Orders are placed through the storefront like a customer, or in a shell with `orders.services.place_order` and `OrderLine` values. A local order really sends its confirmation email when the SMTP settings are real, so use your own address.
 - `python manage.py purge_guest_carts` removes guest carts inactive for more than 30 days; the worker runs it daily.
@@ -92,7 +92,7 @@ To rotate it, move the current key into `FIELD_ENCRYPTION_KEY_FALLBACKS`, set th
 
 | Command | Does |
 |---|---|
-| `python scripts/check.py` | The whole gate, as CI runs it (about 18 minutes) |
+| `python scripts/check.py` | The whole gate as CI runs it, except the Docker image job (about 18 minutes) |
 | `python scripts/check.py --no-audit` | The same without `pip-audit`, which needs the network |
 | `python scripts/check.py --docs` | For a change to Markdown and `docs/` only: the written-voice test. Anything else runs the whole gate |
 | `python -m pytest apps/catalog -q` | One app's tests |
@@ -151,9 +151,9 @@ gh run list --commit "$(git rev-parse HEAD)" --json headBranch,status,conclusion
 ## Front-end assets
 
 - **CSS.** Tailwind v4 builds `static/css/app.css`, a git-ignored output, from `static/css/input.css`. It scans `templates/` only and skips the panel's `templates/admin/` and `templates/unfold/`, which Unfold styles; a class used for the first time does nothing until `npm run css` runs. The storefront layer (`storefront.css`), the order pages (`orders.css`) and the panel (`admin.css`, `admin-experience.css`) are plain stylesheets.
-- **Fonts.** Estedad and Vazirmatn are self-hosted and already subset: `scripts/subset_fonts.py` keeps the codepoints the interface renders (the Arabic block, the four Persian letters outside it, ZWNJ, basic Latin and the guillemets) and the `locl`, joining and mark-positioning features, cutting 313 KB to 129 KB. After running it, look at `/styleguide/`: a subset that loses a joining feature raises nothing and renders Persian as disconnected letters. Latin is kept in both faces, so a brand name inside Persian text does not fall back to another font mid-line.
+- **Fonts.** Estedad and Vazirmatn are self-hosted and already subset: `scripts/subset_fonts.py` keeps the codepoints the interface renders (basic Latin, the Arabic block that carries the Persian letters, ZWNJ and the bidi marks, punctuation and the guillemets) and the `locl`, joining and mark-positioning features, cutting 313 KB to 129 KB. After running it, look at `/styleguide/`: a subset that loses a joining feature raises nothing and renders Persian as disconnected letters. Latin is kept in both faces, so a brand name inside Persian text does not fall back to another font mid-line.
 - **Fallback metrics.** `Estedad Fallback` is the local Tahoma at `size-adjust: 76.5%`, fitted so text does not jump when the web font arrives. Re-fit it when the home headline changes or a face is replaced, by rendering the same string in both and comparing their widths. A wrong value costs layout shift, not an error.
-- **Brand marks** are downloaded once by `seed_catalog` into `MEDIA_ROOT`, from a source named per brand (`MARKS`); each download must contain `<svg` and a `viewBox`. The running site never loads a mark from a CDN, because most CDNs are unreachable from Iran.
+- **Brand marks** are SVG files kept in `apps/catalog/marks/`, with their sources in `SOURCES.md`; `seed_catalog` copies them into `MEDIA_ROOT`. Only the `--extended` sample products download theirs, and each download must contain `<svg` and a `viewBox`. The running site never loads a mark from a CDN, because most CDNs are unreachable from Iran.
 - **Share images and icons.** `python manage.py render_share_images` draws `static/img/share.png` (1200×630), a `share/<slug>.png` per public product with `--products`, and the favicons, through Playwright's Chromium. Run it after changing the artwork, the fonts or the copy shown on the images, then inspect and commit the results; it is not part of the build.
 - **Compression.** `GZipMiddleware` compresses responses. In production nginx serves `/static/` compressed, with `Cache-Control: public, max-age=31536000, immutable` for the hashed files. Fonts are already compressed.
 
@@ -199,4 +199,3 @@ A stack kept running reads one environment file outside the repository, given wi
 | Persian prints as garbage in a terminal | The console code page is cp1256. Set `PYTHONIOENCODING=utf-8`; in PowerShell 5.1, pass `-Encoding utf8` to `Get-Content` |
 | Markdown or Persian text arrives damaged through a shell | Git Bash heredocs break on Persian mixed with quotes, and in a PowerShell double-quoted string a backtick is an escape character. Write such content with an editor or a script file |
 | A browser test is skipped | Chromium is not installed: `python -m playwright install chromium` |
-| A check reports nothing found | A wrapper that filters command output can turn a refused query into an empty answer. Read the raw output, beside a query that should find something |

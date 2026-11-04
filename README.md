@@ -61,7 +61,7 @@ Configuration, the test setup and troubleshooting are in [development](docs/deve
 ## Testing
 
 ```bash
-python scripts/check.py           # the whole gate, exactly as CI runs it
+python scripts/check.py           # the whole gate as CI runs it, except the Docker image job
 python -m pytest apps/orders -q   # one application's tests
 ```
 

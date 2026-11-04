@@ -80,7 +80,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `image` | Stored only as a re-encoded copy (`ReencodedImageField`) |
 | `full_description` | Retired: its content moved into sections. Kept for reversibility |
 
-- **Publishing is one rule, `Product.publish_problems()`:** a delivery type, an available plan, the summary and usage notes, no owner placeholder in any printed text, and, for a time-sensitive product, facts checked within seven days. The schema does not enforce it; every way of publishing calls it.
+- **Publishing is one rule, `Product.publish_problems()`:** a delivery type, an available plan, the summary and usage notes, at least one Persian search alias, no owner placeholder in any printed text, and, for a time-sensitive product, facts checked within seven days. The schema does not enforce it; every way of publishing calls it.
 - **`search_text` stays current** through product saves and through category renames in the same transaction. A bulk `QuerySet.update()` bypasses both and must refresh it explicitly.
 - **A product with sales cannot be deleted.** Plans cascade from their product, but the cascade stops at `OrderItem.plan`, which is PROTECT. A sold plan is retired with `is_available = false`.
 
@@ -187,7 +187,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 | User | `email`; `Lower(email)`; `telegram_id` when set |
 | Category, Product, Page | `slug` |
 | Cart | `user` when set; `session_key` when set |
-| CartItem | `(cart, plan)` |
+| CartItem | `(cart, plan)` (`cart_one_line_per_plan`) |
 | Order | `order_number`; `tracking_token`; `checkout_id` |
 | DiscountCode | `code` |
 | DiscountRedemption | `order` |
@@ -203,7 +203,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 | ProductSection | `section_kind_valid`, `section_image_has_alt` |
 | Page | `cms_page_slug_valid`, `cms_published_page_not_empty` |
 | Cart | `cart_exactly_one_owner` |
-| CartItem | `cart_one_line_per_plan`, `cart_quantity_1_to_10` |
+| CartItem | `cart_quantity_1_to_10` |
 | Order | `order_amounts_not_negative`, `order_total_matches_ledger`, `order_channel_valid` |
 | OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason` |
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
@@ -213,7 +213,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 | MailAttempt | `mail_attempt_known_status` |
 | UnpaidExpirySweep, ConfirmationSweep | `unpaid_sweep_singleton`, `confirmation_sweep_singleton` |
 
-Constraints on tables the operator edits carry a Persian message, shown in the panel under the field the rule is about. Which status may follow which is enforced by the services under row locks, not by a constraint: a CHECK sees the new state, not the transition.
+The catalogue's constraints carry a Persian message, shown in the panel under the field the rule is about; discount codes and pages give theirs from form and model validation before the database is reached. Which status may follow which is enforced by the services under row locks, not by a constraint: a CHECK sees the new state, not the transition.
 
 ## 4. Deletion rules
 
