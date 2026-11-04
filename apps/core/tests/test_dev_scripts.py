@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from django.conf import settings
@@ -88,6 +89,9 @@ def test_ci_reports_the_result_only_after_two_completed_polls(
     )
     sleeps = []
     monkeypatch.setattr(ci.sys, "argv", ["ci.py", "abc1234"])
+    monkeypatch.setattr(
+        ci.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="abc1234" + "f" * 33)
+    )
     monkeypatch.setattr(ci, "runs", lambda sha: next(observations))
     monkeypatch.setattr(ci.time, "sleep", sleeps.append)
     monkeypatch.setattr(ci.time, "monotonic", lambda: 0)
@@ -95,3 +99,22 @@ def test_ci_reports_the_result_only_after_two_completed_polls(
     assert ci.main() == exit_code
     assert sleeps == [ci.POLL, ci.POLL]
     assert capsys.readouterr().out == f"CI for abc1234: push {conclusion}\n"
+
+
+@pytest.mark.parametrize("revision", [None, "abc1234", "HEAD"])
+def test_ci_resolves_commit_references_before_asking_for_runs(monkeypatch, revision):
+    full_sha = "abc1234" + "f" * 33
+    commands, requested = [], []
+    monkeypatch.setattr(ci.sys, "argv", ["ci.py", *([revision] if revision else [])])
+    monkeypatch.setattr(
+        ci.subprocess,
+        "run",
+        lambda command, **kwargs: commands.append(command) or SimpleNamespace(stdout=full_sha),
+    )
+    monkeypatch.setattr(ci, "runs", lambda sha: requested.append(sha) or [_run(1)])
+    monkeypatch.setattr(ci.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(ci.time, "monotonic", lambda: 0)
+
+    assert ci.main() == 0
+    assert requested == [full_sha, full_sha]
+    assert commands == [["git", "rev-parse", "--verify", f"{revision or 'HEAD'}^{{commit}}"]]
