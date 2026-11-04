@@ -14,6 +14,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+import time_machine
 from django.utils import timezone
 from playwright.sync_api import expect
 
@@ -249,6 +250,39 @@ def test_at_zero_the_regular_price_returns_and_the_badge_stops_being_amber(
         assert badge.text_content() == "تخفیف تمام شد"
     finally:
         context.close()
+
+
+@pytest.mark.parametrize("viewport", [PHONE, DESKTOP], ids=["390", "1440"])
+@pytest.mark.parametrize("surface", ["product", "quick-plans"])
+def test_a_promotion_in_its_last_fraction_of_a_second_still_expires(
+    browser, live_server, discounted, viewport, surface, tmp_path
+):
+    with time_machine.travel(timezone.now(), tick=False):
+        plan = discounted.plans.get()
+        plan.promo_ends_at = timezone.now() + timedelta(milliseconds=500)
+        plan.save()
+        assert plan.promotion_is_active and plan.promo_seconds_left == 0
+        context = browser.new_context(viewport=viewport)
+        page = context.new_page()
+        try:
+            path = "/p/netflix/" if surface == "product" else "/c/fun/"
+            page.goto(live_server.url + path)
+            if surface == "product":
+                price = page.locator(".plan .price").first
+            else:
+                page.locator("[data-quick-open]").click()
+                price = page.locator(".quick-plans__choice .price").first
+            expect(price.locator(".price__num")).to_have_text("۳۹۰,۰۰۰")
+            expect(price.locator(".price__was, .price__now")).to_have_count(0)
+            expect(price.locator(".price__cur")).to_have_text("تومان")
+            if surface == "product":
+                expect(page.locator("[data-buy-bar] .price__num")).to_have_text("۳۹۰,۰۰۰")
+            page.evaluate("document.fonts.ready")
+            assert page.url == live_server.url + path
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+            page.screenshot(path=str(tmp_path / f"last-second-{surface}-{viewport['width']}.png"))
+        finally:
+            context.close()
 
 
 def test_at_zero_a_card_leads_with_the_plan_that_is_cheapest_then(browser, live_server, discounted):
