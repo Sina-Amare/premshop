@@ -605,7 +605,11 @@ def test_a_queued_phone_header_reshape_waits_until_the_plan_dialog_closes(
             header.classList.add('v-header--away');
             scrollTo({top: 1000, behavior: 'instant'});
         }""")
-        page.wait_for_function("window.headerFrames.length > 0")
+        # The frame queue is paused, so poll independently of animation frames.
+        page.wait_for_function(
+            "window.headerFrames.length > 0 && document.querySelector('.v-header').style.visibility === 'hidden'",
+            polling=10,
+        )
         before = page.evaluate("""() => {
             window.requestAnimationFrame = window.originalFrame;
             document.querySelector('[data-quick-open]').click();
