@@ -174,7 +174,7 @@ The panel is the Django admin with django-unfold. In production it is served at 
 - **Home:** the catalogue at a glance: published products, active offers, sold-out plans, offers ending within 48 hours and drafts (`apps/catalog/dashboard.py`).
 - **Catalogue:** products, plans, specifications, sections and questions. Publishing goes through `Product.publish_problems()`, and a draft's form lists every reason it cannot yet go live. An unsaved preview renders the edited product through the storefront's own code without writing a row.
 - **Discount codes:** created and deactivated here. The panel deletes none, because a used code is part of how an order's total was computed.
-- **Orders:** an order's saved purchase facts are read-only. Revealing an item's customer input goes through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when. `payments.admin` adds the operator-only payment form, for the amount received and the bank reference, and the order's payment history; the form calls `record_manual_payment` and writes no status itself.
+- **Orders:** an order's saved purchase facts are read-only. Revealing an item's customer input goes through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when. `payments.admin` adds the operator-only payment form, for the amount received and the bank reference, and the order's payment history; its view calls `record_manual_payment` and writes no status itself.
 - **Pages:** the legal pages, previewed as drafts and published by a separate permission.
 - **Notifications and mail attempts:** read-only lists of what was sent, what is waiting and what failed.
 
