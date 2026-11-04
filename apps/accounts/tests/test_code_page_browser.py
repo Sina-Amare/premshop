@@ -11,6 +11,7 @@ owner is asked to look at anything visual.
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from django.core import mail
@@ -243,6 +244,51 @@ def test_a_failed_resend_leaves_the_inbox_code_and_its_clock(page, live_server, 
     assert page.locator("#code-clock").inner_text().startswith("۸:")
     page.evaluate(PASTE_JS, code_from(mail.outbox[0]))
     page.wait_for_url("**/account/")
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("submit_after", [350, 850], ids=["before-tick", "after-tick"])
+def test_a_wrong_code_animation_cannot_reopen_expired_cells(
+    page, live_server, user, width, submit_after, tmp_path
+):
+    from playwright.sync_api import expect
+
+    page.set_viewport_size({"width": width, "height": 900})
+    page.clock.install()
+    request_code(page, live_server, user.email)
+    page.clock.pause_at((datetime.now(UTC) + timedelta(minutes=1)).replace(microsecond=500000))
+
+    def one_second_left(route):
+        if route.request.method == "POST":
+            route.fulfill(json={"ok": False, "error": "کد ورود درست نیست. دوباره تلاش کنید."})
+        else:
+            response = route.fetch()
+            body = re.sub(r'data-expires-in="\d+"', 'data-expires-in="1"', response.text())
+            route.fulfill(response=response, body=body)
+
+    page.route("**/login/code/verify/", one_second_left)
+    page.reload()
+    page.clock.run_for(submit_after)
+    page.evaluate(PASTE_JS, "000000")
+    expect(page.locator("#code-error")).to_contain_text("کد ورود درست نیست")
+    page.clock.run_for(400)
+
+    expect(page.locator(".otp__cell:enabled")).to_have_count(0)
+    expect(page.locator("#code-clock")).to_have_text("کد منقضی شد")
+    expect(page.locator("#resend")).to_be_enabled()
+    expect(page.locator("#resend")).to_be_focused()
+    page.evaluate("document.fonts.ready")
+    assert page.url == live_server.url + "/login/code/verify/"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.screenshot(path=str(tmp_path / f"expired-wrong-code-{width}-{submit_after}.png"))
+
+    page.route(
+        "**/login/code/resend/",
+        lambda route: route.fulfill(json={"ok": True, "expires_in": 600, "cooldown": 60}),
+    )
+    page.locator("#resend").click()
+    expect(page.locator(".otp__cell:enabled")).to_have_count(6)
+    expect(page.locator(".otp__cell").first).to_be_focused()
 
 
 def test_a_page_opened_after_its_code_ran_out_offers_a_new_one_at_once(page, live_server, user):
