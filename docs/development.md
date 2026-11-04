@@ -1,170 +1,171 @@
 # Development
 
-How to run PremShop locally, the commands you will use, the traps this particular machine setup has, and how the built code hangs together across files.
+How to set up, run, test and build PremShop. How the code is organised is in [architecture](architecture.md); deploying is in the [runbooks](runbooks/deploy.md).
+
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Configuration](#configuration)
+- [Running locally](#running-locally)
+- [Sample data](#sample-data)
+- [Commands](#commands)
+- [Quality gate and CI](#quality-gate-and-ci)
+- [Tests](#tests)
+- [Front-end assets](#front-end-assets)
+- [Translations](#translations)
+- [Production image](#production-image)
+- [Private notes backup](#private-notes-backup)
+- [Troubleshooting](#troubleshooting)
+
+## Prerequisites
+
+| Tool | Version | Used for |
+|---|---|---|
+| Python | 3.14, pinned in `.python-version` | The only version development and CI support |
+| uv | current | Python dependencies, locked in `uv.lock` |
+| Node.js | 20 or later | The CSS build and the accessibility scanner |
+| PostgreSQL | 15, as in CI and production | The database. Tests run on it too, never on SQLite |
+| Redis | 7 | Sign-in codes, rate limits and the worker's queue |
+| Docker | with WSL on Windows | Redis locally, and building and checking the production image |
 
 ## Setup
 
-Development and CI support Python 3.14 only, pinned in `.python-version`. Package metadata and the formatter, linter and type checker target the same minor version. Use the pinned version, Node 20+ (for the CSS build), a local PostgreSQL, and Redis. Login codes and rate limits live in Redis, so the site cannot sign anyone in without it.
-
 ```bash
-cp .env.example .env            # then fill SECRET_KEY, DATABASE_URL and the EMAIL_ values
-uv sync                         # Python dependencies, from uv.lock
-npm ci                          # CSS toolchain and axe-core, exactly as package-lock.json pins them
-npm run css                     # build static/css/app.css
-python -m playwright install chromium   # the browser tests' Chromium
+cp .env.example .env                    # then fill SECRET_KEY, DATABASE_URL, FIELD_ENCRYPTION_KEY and the EMAIL_ values
+uv sync                                 # Python dependencies from uv.lock
+npm ci                                  # the CSS toolchain and axe-core, as package-lock.json pins them
+npm run css                             # builds static/css/app.css
+python -m playwright install chromium   # Chromium for the browser tests
 python manage.py migrate
-python manage.py seed_catalog   # 12 mock products, development only; adds only what is missing
-python manage.py runserver      # http://127.0.0.1:8000
+python manage.py seed_catalog           # 12 sample products, development only
+python manage.py runserver              # http://127.0.0.1:8000
 ```
 
-`/healthz` reports whether the database and the cache are reachable; both must say `ok`.
+On Windows, `python` may resolve to the system interpreter: call the virtual environment's `.venv/Scripts/python.exe` directly. CI, on Linux, runs the same tools through `uv run`.
+
+## Configuration
+
+Settings come from the environment (`config/settings/{base,dev,prod}.py`), with `.env` filling only what the environment leaves unset. `manage.py` and pytest use `dev`; `wsgi` and `asgi` use `prod`, which refuses to start without its required values. `.env.example` documents every variable, and a test fails when one is missing from it.
+
+| Variable | Purpose |
+|---|---|
+| `SECRET_KEY` | Django's signing key |
+| `DEBUG` | Development only. Turns on the email previews and the style guide for everyone |
+| `DATABASE_URL` | The PostgreSQL connection |
+| `REDIS_URL` | Redis, for the cache and the worker's queue |
+| `SITE_URL` | The scheme and host every absolute link is built on |
+| `ADMIN_PATH` | The panel's path: one segment ending in a slash, never `admin/` |
+| `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_KEY_FALLBACKS` | The key for encrypted columns, and retired keys that must stay readable |
+| `EMAIL_*`, `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `SUPPORT_EMAIL` | The SMTP relay and the shop's addresses |
+| `EMAIL_QUOTA_RESET_DATE`, `EMAIL_QUOTA_STARTING_USAGE` | Align mail accounting with the provider's billing period |
+| `DEMO_CATALOG` | Marks the catalogue as sample data. Always off in production |
+| `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | Error reporting |
+| `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `SECURE_HSTS_SECONDS` | Production hosts and transport security |
+| `LOG_LEVEL`, `GIT_COMMIT` | Logging, and the commit `/healthz` reports |
+
+**The encryption key.** Generate one locally and keep it out of git and separate from `SECRET_KEY`:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+To rotate it, move the current key into `FIELD_ENCRYPTION_KEY_FALLBACKS`, set the new one, and run `python manage.py reencrypt_fields --batch-size 200`, which is safe to repeat. Remove a retired key only when every row has been rotated and no backup still needs it. `python manage.py verify_decrypt` checks that every encrypted value decrypts and prints the key's fingerprint, never the key.
+
+## Running locally
+
+| Process | Command | Notes |
+|---|---|---|
+| Web | `python manage.py runserver` | Needs Redis. Serves `http://127.0.0.1:8000` |
+| Worker | `python manage.py run_huey` | In a second terminal, against the same database. Run one consumer per database; stop it with Ctrl+C and let current work finish |
+| Redis on Windows | `wsl -d Ubuntu-24.04 -u root -e bash -lc 'service docker start && docker start premshop-redis'` | Redis runs in Docker inside WSL and stops when WSL idles |
+
+- `/healthz` reports whether the database and the cache are reachable, and the running commit. It does not check the worker; the panel's order list warns when the last expiry sweep is more than three minutes old.
+- With `DEBUG` on, `/dev/emails/` renders every email, and `/styleguide/` shows the type specimens and the right-to-left regression strings. Without `DEBUG`, the style guide is for staff only and the email previews are a 404.
+
+## Sample data
+
+- `python manage.py seed_catalog` adds 12 sample products in four categories. It only adds what is missing; `--reset` deletes the seeded products and their rows first, including any edits made to them, and `--no-images` skips downloading brand marks.
+- `--extended` adds 14 more, for 24 public products. It runs only with `DEBUG` and `DEMO_CATALOG` on, against a local database named `premshop_ui_review`, and never with `--reset`. While `DEMO_CATALOG` is on, every page shows a sample-data notice.
+- Orders are placed through the storefront like a customer, or in a shell with `orders.services.place_order` and `OrderLine` values. A local order really sends its confirmation email when the SMTP settings are real, so use your own address.
+- `python manage.py purge_guest_carts` removes guest carts inactive for more than 30 days; the worker runs it daily.
 
 ## Commands
 
-`python` may resolve to the system interpreter, so call the venv's Python directly; `uv` itself is on PATH. CI (Linux) uses `uv run <tool>` for the same things.
+| Command | Does |
+|---|---|
+| `python scripts/check.py` | The whole gate, as CI runs it (about 18 minutes) |
+| `python scripts/check.py --no-audit` | The same without `pip-audit`, which needs the network |
+| `python scripts/check.py --docs` | For a change to Markdown and `docs/` only: the written-voice test. Anything else runs the whole gate |
+| `python -m pytest apps/catalog -q` | One app's tests |
+| `python -m pytest -k promo -q` | Tests matching a keyword |
+| `python -m pytest -m "not browser" -q` | Everything except the browser tests |
+| `REQUIRE_BROWSER=1 python -m pytest -q` | As CI: a browser test that cannot start Chromium fails instead of skipping |
+| `python scripts/ci.py` | Waits for every CI run on `HEAD` and prints one line per run |
+| `python scripts/review_branch.py <branch>` | Lists what in a change needs a careful read |
+| `npm run css`, `npm run css:watch` | Build the stylesheet once, or on every change |
+| `python scripts/compile_messages.py` | Compile the panel's translations after editing a `.po` file |
+| `python scripts/subset_fonts.py` | Subset the fonts after replacing one (`uv pip install fonttools brotli` first) |
+| `python manage.py render_share_images` | Redraw the link-preview images and icons |
+| `uv add <package>` | Add a dependency |
+
+## Quality gate and CI
+
+The gate is eight steps, defined in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`; the two are kept in step:
+
+1. `ruff check .`
+2. `black --check .`
+3. `mypy apps config`
+4. `npm run css`
+5. `python manage.py makemigrations --check --dry-run`: a model change without its migration. A new app without a migrations package is caught by `apps/core/tests/test_migrations_present.py`.
+6. `pytest -q` with `REQUIRE_BROWSER=1`
+7. `pip-audit --skip-editable`
+8. `bandit -q -r apps config -x "*/tests/*"`. Bandit does not read ruff's `# noqa`: suppress a finding with `# nosec B###` and give the reason in an ordinary comment.
+
+CI also runs an `image` job, which builds the production image and checks it ([Production image](#production-image)). It needs Docker, so `check.py` skips it. `check.py` prints one line per step and the full output only of a step that fails; `--verbose` prints everything.
+
+Before pushing, run the fast check, `uv run ruff check . && uv run black --check . && uv run mypy apps config`, and the tests of the apps the change touches. CI is the verdict.
+
+**Branches and reviews.**
+
+- `main` is the only long-lived branch. Every change reaches it through a pull request, and branch protection requires the lint, test, audit and image jobs to pass on a branch that is up to date with `main`.
+- A migration, money or sign-in code, or work across several apps gets a second reader before it merges. `scripts/review_branch.py <branch>`, or `HEAD --base <commit>` for commits already on `main`, lists what needs a careful read: an applied migration edited, a migration that moves or removes data, tests removed or skipped or with changed assertions, a change to the gate, a raised query budget, a new dependency, and money or sign-in code.
+- Commit messages say what changed and why.
+
+**Reading CI.** The verdict is the run for the pushed commit, not the newest run. `python scripts/ci.py` waits for every run on `HEAD` and exits non-zero unless all succeeded. By hand:
 
 ```bash
-.venv/Scripts/python.exe scripts/check.py              # the whole gate, exactly as CI runs it (about 18 minutes)
-.venv/Scripts/python.exe scripts/check.py --no-audit   # skip pip-audit (network)
-
-.venv/Scripts/python.exe -m pytest apps/catalog/tests/test_views.py::test_search_rate_limited -q
-.venv/Scripts/python.exe -m pytest -k promo -q         # by keyword
-.venv/Scripts/python.exe -m pytest -m "not browser" -q # skip the Playwright tests
-REQUIRE_BROWSER=1 .venv/Scripts/python.exe -m pytest -q  # as CI: no Chromium is a failure
-
-.venv/Scripts/python.exe manage.py runserver           # needs Redis up — see below
-.venv/Scripts/python.exe manage.py seed_catalog        # 12 mock products; --reset, --no-images
-uv add <package>                                      # uv is on PATH, not in the venv
-npm run css                                            # or css:watch
-.venv/Scripts/python.exe scripts/compile_messages.py   # after editing a locale/*.po
-.venv/Scripts/python.exe scripts/subset_fonts.py       # after replacing a font; first: uv pip install fonttools brotli
-.venv/Scripts/python.exe manage.py render_share_images # after the mark, the fonts or the headline change
+gh run list --commit "$(git rev-parse HEAD)" --json headBranch,status,conclusion
 ```
 
-- **The gate is eight steps**, in `.github/workflows/ci.yml` and mirrored by `scripts/check.py`: `ruff check .`, `black --check .`, `mypy apps config`, `npm run css`, `makemigrations --check --dry-run` (a model change without its migration; a new app without a migrations package is caught by `apps/core/tests/test_migrations_present.py` instead), `pytest -q`, `pip-audit --skip-editable`, `bandit -q -r apps config -x "*/tests/*"`. Keep the two files in step. CI also runs the `image` job, which builds the production image and runs `deploy/smoke.sh` behind nginx; it needs Docker, so `check.py` skips it, and an image failure is reproduced with the steps under "Production image" below. Before the tests CI also installs what `check.py` expects to find already installed: `npm ci` from the lockfile, then Chromium and its system libraries (`playwright install --with-deps chromium`). Both run pytest with `REQUIRE_BROWSER=1`, so a browser test that cannot launch Chromium fails instead of skipping. `bandit` does not read ruff's `# noqa`; its marker is a bare `# nosec B###`, with the reason in an ordinary comment. `check.py` prints one line per step and the full output only of a step that fails (`--verbose` prints everything); `--docs` checks a change that touches only `docs/` and Markdown files with the written-voice test alone, and runs the whole gate when anything else has changed.
-- **`main` is the only long-lived branch**, and nobody force-pushes or deletes it. Every change reaches `main` through a pull request (`gh pr create --fill`): `main` requires the lint, test, audit and image jobs to pass on a branch that is up to date with it. A change that needs a second reader before it lands (a migration, money or sign-in code, work across several apps) waits for that reader; any other is merged once the checks are green; GitHub deletes the branch on merge, and `git fetch --prune` and `git branch -d <name>` clean the local copy. `scripts/review_branch.py <branch>`, or `HEAD --base <commit before the change>` for commits already on `main`, lists what in a change needs a careful read: an applied migration edited, a migration that moves or removes data, tests removed, skipped or with assertions changed, the gate changed, a query budget raised, a dependency added, money or sign-in code touched.
-- **After a push**, the verdict is the run *for that commit*, not the newest run — that one may belong to an older commit or still be running. CI runs on every branch. `python scripts/ci.py` waits for every run on `HEAD` (or the commit it is given), including one GitHub has not listed yet, and prints one line per run; it exits non-zero unless all succeeded. Push once a step is finished rather than after each commit: every push starts a run. By hand, with `gh` (installed 2026-10-12, already logged in as `Sina-Amare`):
-
-  ```bash
-  gh run list --commit "$(git rev-parse HEAD)" --json headBranch,status,conclusion
-  gh run watch "$(gh run list --commit "$(git rev-parse HEAD)" --json databaseId -q '.[0].databaseId')" --exit-status
-  ```
-
-  `run watch` blocks until the run ends and exits non-zero if it failed, so it can gate a script — but **do not pipe it**: `gh run watch … | tail -2` reports the exit code of `tail`, which is 0, and a failed run then reads as a pass (it did here once). Read `conclusion` from the `run list` line above, or use `${PIPESTATUS[0]}`. Without `gh`, the same answer comes from the public API: `https://api.github.com/repos/Sina-Amare/premshop/actions/runs?head_sha=<sha>` — wait for `status` `completed`, then read `conclusion`.
-- **Proving a push started *no* CI** (the `docs-local-backup` branch): `gh run list --branch docs-local-backup` prints nothing. So does a misspelled branch name, so pair it with a positive control — `gh run list --branch main` must print runs — before believing the empty answer.
-
-Legal-page navigation adds exactly one query for published page titles and URLs, whether zero or five pages are published. Total-response query budgets are six on home, five on category pages and nine on product pages with related products. The CMS query-count test checks this cost separately, so a query per footer link cannot hide inside an increased budget. No navigation cache or cross-app content query is needed for five pages.
-
-## Assets: fonts, marks, bytes
-
-- **The fonts in `static/fonts/` are already subset** and the subset files are what is committed. They were 81% of the home page's bytes unsubset. `scripts/subset_fonts.py` cuts each face to the codepoints this UI renders — the Arabic block, the four Persian letters outside it, ZWNJ, basic Latin, the guillemets — keeping `locl` (which selects the Persian shapes of ک ی ۴ ۶ ۷) and the joining and mark-positioning features that make Arabic script cursive. 313 KB → 129 KB.
-
-  Run it only after replacing a font file, and **look at the result**: a subset that drops a joining feature does not raise, it just renders Persian as disconnected letters. `/styleguide/` carries the specimen that shows it — joins, ZWNJ, پ چ ژ گ, Persian digit forms, and a Latin run that must not fall back mid-sentence. Latin is deliberately kept in both faces: without it «Netflix» drops to Tahoma inside a Persian line, which is the exact assembled-from-parts look the design is avoiding.
-- **Both fallback faces carry measured overrides.** `Estedad Fallback` is `local("Tahoma")` at `size-adjust: 76.5%`, fitted to the hero line of 2026-10-14, where Tahoma rendered at Estedad's width to within a pixel. On the headline since 2026-10-19 Tahoma runs 4 to 7px narrower; with the fonts held back 800 ms the home page measured CLS 0.015 at 390px and 0.021 at 1440px on 2026-10-20, so it was left as it is. Re-fit when the hero changes again or either face is replaced: render the same string in both and compare `getBoundingClientRect().width`. Getting this wrong costs layout shift, not an error: it was worth 0.027 CLS before the fallback existed.
-- **Brand marks are downloaded once at seed time** into `MEDIA_ROOT` and served from there; the running site never reaches a CDN, because most are unreachable from Iran. The sources are per brand in `seed_catalog.py` (`MARKS`) — no single icon set has all twelve in colour, and the one previously used answered 404 for three of them, which is why they rendered as letters. Each download is checked for `<svg` and a `viewBox` before it is written, and the viewBox is widened for bare glyphs so a shelf of twelve looks like one family.
-- **Link-preview images and icons are PNGs in `static/img/`**, drawn from the existing brand artwork and subset fonts by `manage.py render_share_images` through Playwright's Chromium. `share.png` is the generic 1200×630 image; `--products` also generates `share/<slug>.png` for public products, using their editable name and introduction. A product without a generated image falls back to the generic card. The command also draws `favicon-32.png`, `apple-touch-icon.png` and `favicon.ico`. Run it after changing artwork, fonts or the displayed copy, inspect the images and commit them. It is not part of the build.
-- **Responses are gzipped** by `GZipMiddleware`: the home page is 27 KB of HTML and 4.9 KB compressed. Static files in development are served by Django's staticfiles handler, which the middleware does not reach — in production the reverse proxy must gzip `/static/` and send `Cache-Control: public, max-age=31536000, immutable` for the hashed files. Fonts are already compressed; do not compress them again.
-- **Measuring it.** Nothing to install:
-
-  ```bash
-  curl -s -H "Accept-Encoding: gzip" -o /dev/null -w "%{size_download}\n" http://127.0.0.1:8000/
-  for f in static/fonts/*.woff2; do stat -c"%s %n" "$f"; done
-  ```
-
-  For loading measurements, drive Chromium through the existing Playwright installation. On 2026-10-27, three fresh contexts per page at 390px and 1440px measured median home CLS 0.000 at both widths, 23 requests and about 286 KB of encoded response bodies, including 25,819 bytes of JavaScript. The product page used 17 requests and 19,543 bytes of JavaScript. Query counts stayed at home 5, category/search 4, product 8 and FAQ/cart 1. These are local development measurements, without production static compression or network throttling; LCP was not remeasured. The orbit script runs immediately after its hero markup so deferred cart code cannot postpone its initial layout.
+`gh run watch --exit-status` can gate a script, but not through a pipe: `gh run watch … | tail -2` reports the exit status of `tail`, so a failed run reads as a pass.
 
 ## Tests
 
-- They run against the real local PostgreSQL (`DATABASE_URL`), never SQLite. `apps/conftest.py` gives every test an in-memory cache and a fast password hasher, so no test depends on a running Redis and none pays PBKDF2's cost.
-- They live under `apps/` because `testpaths = ["apps"]` — including the settings tests, in `apps/core/tests/`.
-- The `browser` tests drive Chromium through Playwright against pytest-django's live server, sharing one `browser` fixture in `apps/conftest.py`. Without Chromium they skip, unless `REQUIRE_BROWSER` is set, as it is in CI and in `scripts/check.py`: there, a skipped browser test is a gate that never ran. They load the built `static/css/app.css`, so a stale build is what they test.
-- `apps/core/tests/test_accessibility_browser.py` runs axe-core on the key pages at 390 and 1280px: the storefront pages as a visitor, the account page signed in, and the panel's product list and form. Any WCAG 2.2 A or AA violation of impact serious or critical fails it. axe-core is a pinned devDependency that only the browser tests load, from `node_modules/`; the site never serves it. `ALLOWED` is empty: the violations the scan found when it arrived are fixed. An exception would be one (rule, page, element) with its reason, so another element breaking the same rule still fails, and an entry that stops occurring fails the test too: fix the page, not the list. `apps/catalog/tests/test_admin_browser.py` runs the same scan over the rest of the panel and its sign-in page. axe measures text and not the edge of a control, so `test_accessibility_browser.py` also holds fields, code cells and the header search to 3:1 (WCAG 1.4.11) and the search's placeholder to 4.5:1; each of those draws a focus ring of 3:1 against its background, and the FAQ's questions, the quantity stepper and the department links keep their rings inside the boxes that clip them. The three emails are scanned as `/dev/emails/` renders them. A page whose stylesheet did not load fails before it is scanned, since unstyled text passes every contrast check.
-- `time-machine` moves the clock in tests that depend on time, such as a login code expiring.
+- **Database.** Tests run on the PostgreSQL in `DATABASE_URL`, because row locks and constraints are part of what they test. `apps/conftest.py` gives every test an in-memory cache and a fast password hasher, so no test needs a running Redis or pays the real hasher's cost.
+- **Layout.** Tests live under `apps/` (`testpaths = ["apps"]`), including the settings tests in `apps/core/tests/`. Fixtures are plain pytest fixtures. `time-machine` moves the clock for expiry windows and deadlines.
+- **Browser tests** (marker `browser`) drive Chromium through Playwright against pytest-django's live server, sharing one `browser` fixture. They load the built `static/css/app.css`, so a stale build is what they test. Without Chromium they skip, unless `REQUIRE_BROWSER` is set, as it is in CI and in `check.py`.
+- **Accessibility.** `apps/core/tests/test_accessibility_browser.py` runs axe-core on the key pages at 390 and 1280 pixels wide: the storefront as a visitor, the account page signed in, and the panel's product list and form. Any serious or critical WCAG 2.2 A or AA violation fails. It also holds fields, code cells and the header search to 3:1 contrast, the search placeholder to 4.5:1, and every focus ring to 3:1. `apps/catalog/tests/test_admin_browser.py` scans the rest of the panel. The list of allowed exceptions is empty; an exception would name one rule, page and element with its reason.
+- **Query budgets.** Six queries on the home page, five on a category page and nine on a product page with related products. The legal-page links in the footer cost one query however many pages are published, tested separately so a query per link cannot hide inside a budget.
+- **Written voice.** `apps/core/tests/test_written_voice.py` scans every tracked text file for emoji, brochure adjectives, tutorial and essay openers, and attribution lines.
+- **Persian copy.** `apps/catalog/tests/test_storefront_copy.py`, `apps/core/tests/test_persian_register.py` and `apps/accounts/tests/test_copy.py` hold the [voice and glossary](design-language.md#voice) rules that a pattern can check.
 
-## Environment traps
+## Front-end assets
 
-- **Redis** runs in Docker inside WSL and stops when WSL idles. Start it with `wsl -d Ubuntu-24.04 -u root -e bash -lc 'service docker start && docker start premshop-redis'` (as root, so no sudo password is asked). A login page showing «ورود فعلاً ممکن نیست» means Redis is down.
-- **`static/css/app.css` is a gitignored build artifact.** CI builds it from source before the tests. Tailwind v4 scans `templates/` only (`source(none)` in `input.css`) and skips the panel's `templates/admin/` and `templates/unfold/`, which Unfold styles. A class used for the first time in a template does nothing until `npm run css` runs.
-- **Never `runserver --noreload` while editing templates** — it serves the old ones, and a screenshot of a stale page looks like a fix that did not work.
-- **A wrapper that filters command output cannot be trusted for a check.** If anything on this machine sits between a command and its answer, prove it does not change exit codes or output before believing a result — a "nothing found" from a tool that refused the query looks exactly like a real empty answer. Local tooling notes are kept outside this repository.
-- **Writing files that mix Persian and quotes:** Git Bash heredocs break on them, and tool layers turn `\n` and `\uXXXX` escapes back into the characters. Use a file-writing tool or a script file; build a backslash with `chr(92)` when an escape must survive. The console is cp1256: set `PYTHONIOENCODING=utf-8` before printing Persian, and in PowerShell 5.1 pass `-Encoding utf8` to `Get-Content`. In PowerShell a backtick inside a double-quoted string is an escape character: `` `e `` becomes an invisible ESC and most other backticks vanish, so Markdown passed through `python -c "…"` arrives damaged without an error. Put such edits in a script file.
-- **Upgrading a package with a compiled part (Pillow, psycopg) while a dev server runs** fails halfway: Windows keeps the loaded `.pyd` open, `uv sync` cannot replace it, and the package is left unimportable. Stop every `runserver` first; if it already happened, `uv sync --frozen --reinstall-package <name>`.
+- **CSS.** Tailwind v4 builds `static/css/app.css`, a git-ignored output, from `static/css/input.css`. It scans `templates/` only and skips the panel's `templates/admin/` and `templates/unfold/`, which Unfold styles; a class used for the first time does nothing until `npm run css` runs. The storefront layer (`storefront.css`), the order pages (`orders.css`) and the panel (`admin.css`, `admin-experience.css`) are plain stylesheets.
+- **Fonts.** Estedad and Vazirmatn are self-hosted and already subset: `scripts/subset_fonts.py` keeps the codepoints the interface renders (the Arabic block, the four Persian letters outside it, ZWNJ, basic Latin and the guillemets) and the `locl`, joining and mark-positioning features, cutting 313 KB to 129 KB. After running it, look at `/styleguide/`: a subset that loses a joining feature raises nothing and renders Persian as disconnected letters. Latin is kept in both faces, so a brand name inside Persian text does not fall back to another font mid-line.
+- **Fallback metrics.** `Estedad Fallback` is the local Tahoma at `size-adjust: 76.5%`, fitted so text does not jump when the web font arrives. Re-fit it when the home headline changes or a face is replaced, by rendering the same string in both and comparing their widths. A wrong value costs layout shift, not an error.
+- **Brand marks** are downloaded once by `seed_catalog` into `MEDIA_ROOT`, from a source named per brand (`MARKS`); each download must contain `<svg` and a `viewBox`. The running site never loads a mark from a CDN, because most CDNs are unreachable from Iran.
+- **Share images and icons.** `python manage.py render_share_images` draws `static/img/share.png` (1200×630), a `share/<slug>.png` per public product with `--products`, and the favicons, through Playwright's Chromium. Run it after changing the artwork, the fonts or the copy shown on the images, then inspect and commit the results; it is not part of the build.
+- **Compression.** `GZipMiddleware` compresses responses. In production nginx serves `/static/` compressed, with `Cache-Control: public, max-age=31536000, immutable` for the hashed files. Fonts are already compressed.
 
-## Backing up docs-local
+## Translations
 
-`docs-local/` (gitignored: costs, margins, supplier notes) is backed up after every commit made in it, by a post-commit hook that `scripts/backup_docs_local.py setup` installed. A backup is a git bundle of its whole history, encrypted with gpg (AES-256) under a passphrase kept in `~/.premshop-backup/passphrase` on the laptop and, off it, in the owner's password manager and on paper. The encrypted file goes to two places: the `docs-local-backup` branch of this repository (one commit, replaced each time; it holds no workflow files, so pushing it runs no CI), and a local folder, which keeps the last five. That folder is **not** hardcoded: the script reads its path from `~/.premshop-backup/mirror`, one line, beside the passphrase and outside this repository — a drive letter is a fact about one machine, and a hardcoded `G:` died with a Windows reinstall and failed every local copy in silence. With no such file it falls back to `~/premshop-backups`. Before copying, the script checks that the file decrypts back to the bundle **and** that a wrong passphrase does not open it. A failure prints `BACKUP FAILED: <where and why>` and `docs-local BACKUP INCOMPLETE` on the commit's output; each backup holds the whole history, so the next one that succeeds catches up.
-
-- **The passphrase file is read BOM-proof and refused if it cannot be the real one** (shorter than 20 characters), and a typed passphrase and a stored one are normalised by the same function. A hand-written file on Windows starts with a byte-order mark, which is not whitespace: before 2026-10-12 it silently became part of the key, and every check inside the script passed because they all used that same wrong value. `apps/core/tests/test_backup_script.py` holds that case.
-- **Restore:** the branch's `README.md` has the commands. `.venv/Scripts/python.exe scripts/backup_docs_local.py verify` runs exactly those commands in an empty folder with an empty home directory, cloning from the public URL, checks the result is the same commit as `docs-local/` here, and decrypts every local copy, checking that the newest holds that same commit. Run it after changing anything about the backup. `verify --ask` is the same drill but prompts for the passphrase instead of reading the stored file, which is the only way the copies kept off the laptop get tested.
-- **Uncommitted edits are not in a backup**; the script says so when there are any.
-- **What each copy survives.** On the owner's ruling (2026-10-18) the local copy is `backups/` **inside the project**, gitignored. That makes it a convenience copy and nothing more: it survives deleting `docs-local/` or a bad git operation inside it, and it dies with the project folder or its disk. The protection that matters therefore rests entirely on GitHub, which survives a dead or stolen laptop and is only as good as the passphrase copies kept off it. Putting the local copy on a genuinely separate physical disk would restore the disk-failure case — `Get-Partition` tells you which letters are really one disk.
-- **`verify` also compares the restore block published on the branch with this script's**, because the published one — the only one a new machine sees — is rewritten only by a backup run. Change the block, and the drill fails until a `run` republishes it.
-- **A force-push retracts nothing on GitHub.** Every superseded backup commit stays fetchable by its sha (checked: the first one, replaced seven times since, still answers 200, while a fabricated sha gives 422). So the whole archive history is exposed by one leaked passphrase, and rotating the passphrase protects only backups made after it. A rotation means: generate a new passphrase, store it on paper and in the password manager, run `run` once, and treat the old snapshots as readable by anyone who ever holds the old value.
-
-## How the built code hangs together
-
-Built so far: `core`, `accounts`, `catalog`, `cms`, `cart`, checkout in `payments`, and the unpaid orders and customer pages in `orders`. Which app owns what and may import what is `services-and-modules.md` §1; why views stay thin is its §4. What follows spans files and is not obvious from any one of them.
-
-- **Settings** are `config/settings/{base,dev,prod}.py`, entirely environment-driven. `.env` is loaded with `setdefault`, so the real environment always wins. `manage.py` and pytest default to `dev`; `wsgi`/`asgi` default to `prod`, which **refuses to boot** without `ALLOWED_HOSTS`, the relay credentials, a From address at `premshop.ir`, an https `SITE_URL`, and valid, distinct field encryption keys.
-- **Every absolute address is built on `SITE_URL`**, the shop's scheme and host (`http://127.0.0.1:8000` when unset in development): the canonical link, `og:url` and `og:image` in `base.html`, through `site_url` from the `shell` context processor, and the link in the sign-in alert email. Never on the request's Host header, which is whatever the client sent. `core.richtext` also reads it, to treat a full address on the shop's own host as an internal link (ADR-0027, amended).
-- **A page's title block holds its own part only.** `base.html` adds « | PremShop» once, with the `shop_title` filter in `apps/core/templatetags/head.py`, and puts a right-to-left mark after a title that ends in a Latin run, so the bar does not join that run. `seo_title` on a product or category is that part too, and the models refuse one that names the shop.
-- **The cache is part of authentication.** Login codes and every rate-limit counter live in Redis through Django's cache API. `CacheUnavailableMiddleware` turns a Redis failure anywhere into a Persian 503 instead of a traceback; there is deliberately no failing open, because that would mean unlimited guesses at a six-digit code. A login code's deadline is stored *with* the code, because Django's cache API cannot read a remaining lifetime back. Each attempt is counted in a key of its own with an atomic increment before the code is compared, and the code is spent by the one `delete` that removes it, so two requests with the right code cannot both sign in; the wrong guess that spends the last attempt deletes the code too, so losing the counter alone cannot revive it. Django's Redis `incr()` is EXISTS then INCR, so a window that expires between the two comes back at 1 with no expiry, and `ratelimit.hit` gives it its window again. The panel's sign-in (`PanelLoginForm`, `apps/accounts/admin.py`) draws on the shop's two sign-in budgets under the same keys, so an address has one budget wherever it is guessed at.
-- **Domain exceptions carry the Persian sentence the customer sees** (for example `RateLimited` in `apps/accounts/services.py`), because the message is part of the behaviour.
-- **Template traps, each of which has shipped once:** `{# … #}` is single-line in Django — a multi-line one is emitted as text, so notes use `{% comment %}` (a test scans every template); a template using the `fa` filters without `{% load fa %}` is a 500 that no view test sees; an `<input>` without `field__input` has no border, because Tailwind's preflight zeroes them.
-- **CSS is component classes** (`.card`, `.fact`, `.pcard`, `.field__input`, …) built from the tokens in `static/css/input.css`, not utility classes in markup. Emails are a separate medium: table layout, inline styles, their own font stack (ADR-0023).
-- **The admin is django-unfold**, which must precede `django.contrib.admin` in `INSTALLED_APPS`. It is the operator's tool until S7 builds the panel. It is installed as `apps.core.admin_site.PanelAdminConfig`, Unfold's own app with `PanelSite` in place of Unfold's site: Unfold's Ctrl+K palette described a found item by its app's code label («Catalog - محصول»), and the subclass names the app as the panel does. Database CHECK constraints carry Persian `violation_error_message`s, and `ChecksNameTheirField` files each one under the field it is about, so the form shows the database's own rule where it can be corrected. The panel's own script is `static/js/admin.js`, loaded on every panel page through `UNFOLD["SCRIPTS"]`. Among other things it hides Material Symbols' ligatures from screen readers, which read «add» or «calendar_today» aloud, and names the controls that were only an icon; `admin.css` does the same for the icons Unfold draws in CSS.
-- **The panel's words come from two catalogues.** Its own strings are written in Persian in the code and wrapped in `gettext_lazy`; `locale/en/` gives their English for the language switch, and `locale/fa/` rewords Django's and Unfold's strings. After editing either `.po`, run `scripts/compile_messages.py`: `apps/catalog/tests/test_panel_translations.py` fails when a `.mo` does not match its `.po` or a Persian string the panel hands to gettext has no English, and the compiler refuses a line it cannot read rather than dropping it. A plural's msgid must match the template's text exactly, indentation included. The switch is the panel's alone: `PersianUnlessChosen` ignores the language cookie outside `/admin/`, so the shop stays Persian for an operator who reads the panel in English.
-- **Where a customer reaches a person is defined once**, in `apps/core/support.py`. Every template rendered with a request gets it as `support` from the `shell` context processor, and every email gets the same from `core.email`; `apps/core/tests/test_support.py` fails on a handle, address or hours range typed into a template.
-- **A promise printed on every page lives in `apps/catalog/promises.py`**, beside the condition it must meet for every product, and `apps/catalog/tests/test_promises.py` checks the condition against the catalogue.
-- **Direct safe-markup calls have three bounded entry points:** `core.richtext.render_markdown` (ADR-0027), constant zero-price markup in `fa.py`, and `head.json_ld`, which uses Django's escaped JSON serializer before changing the script MIME type. `apps/core/tests/test_safe_markup.py` refuses other `mark_safe` calls and template escaping bypasses. Markdown uses `|markdown`; plain fields containing Latin names use the escaped `|bdi` formatter. Only public catalogue pages receive Organization, WebSite or breadcrumb JSON-LD, without prices or ratings. Email subjects and plain-text bodies render unescaped only inside `render_email`.
-- **The product page is assembled from the content model** (ADR-0028). `views.product` hands the template the sections in the operator's order, «پیش از خرید» and «بعد از پرداخت» picked out of them, the questions, and the oldest price confirmation among the available plans; each section is drawn by `templates/catalog/sections/<kind>.html`, and `before_buying.html` is included only when the view's `before_buying_shown` says the section adds something to the warranty (a row with text or an image, a refund note, usage notes); otherwise the page has no such section and no link to it. The publishing rule is `Product.publish_problems()` in `models.py`, asked by `Product.clean()`, by each row's `clean()` (`PageRow`), by `ProductRowsFormSet` for what the rows on the form say together, by the bulk action and, through `ProductAdmin.render_change_form`, by `templates/admin/catalog/product/readiness.html`, which after a refused «فعال» lists every reason the form gave, and on a live product's form lists what would keep it from coming back if it were taken down; «برداشتن از سایت» says the same in its message. A draft is served to staff as a preview from the same view (`services-and-modules.md`, catalog).
-- **An uploaded image is never stored as it arrived.** `ReencodedImageField` (`apps/catalog/models.py`) checks what Pillow reads, size and pixel count included, and decodes it once, so a file cut off in transit is refused with a message rather than failing in `pre_save`; its `pre_save` writes a redrawn copy under a random name in place of the upload, which never reaches `MEDIA_ROOT`. A file already stored is not checked again, so the SVG logos the seed wrote stay valid on every later save.
-- **Error pages are the shop's own.** `apps.core.errors.server_error` renders `500.html` without context processors, because the database may be what failed. The CSRF failure page is `403_csrf.html` (`CSRF_FAILURE_VIEW`), and it leads back to the panel when the form was the panel's. `RejectNul` answers a NUL in the path or query with a 404 before anything queries, since PostgreSQL refuses one in a string, and drops a cookie carrying one before the session lookup reads it. `/styleguide/` is a 404 unless the visitor is staff or `DEBUG` is on.
-- **A page that must not be indexed** fills the `meta_robots` block in `base.html`: search, sign-in, the code pages, the account pages, the error pages and a product's staff preview. The block's default is the canonical link and `og:url`, so a page that fills it with `noindex` names no canonical address.
-
-
-## Local storefront review
-
-The regular Django application serves the storefront and `/admin/`. A separate local database and copied media keep review edits apart from an existing catalog. For an expanded sample, use the local PostgreSQL database `premshop_ui_review`, enable `DEBUG=true` and `DEMO_CATALOG=true`, then run `python manage.py seed_catalog --extended`. It adds 14 products to the original 12, producing 24 public products across four categories. Existing products, plans, images and operator edits are retained. `--no-images` avoids network downloads. Extended mode refuses unknown databases, remote hosts, non-development settings and `--reset`. The sample-data notice remains visible while `DEMO_CATALOG` is enabled; production always disables it.
-
-Catalog editors have a separate unsaved-preview action. Protected POST routes validate the same permitted forms and inlines, then render in-memory objects through the normal storefront context and price functions. Previewing writes no catalog rows, history or media. Snapshots are private and cannot be cached. Only the color swatch updates immediately; full snapshots refresh on request, with stale and validation states kept beside the editor. Saved-page links remain separate.
-
-## Unpaid order records
-
-The order list in the operator panel is read-only. It searches by order number or customer email and shows the buyer account email, frozen purchase names, prices and item states. Order identity and amounts have named sections; the chronological timeline follows the items. Customer activation input is excluded from admin queries, pages and search. No button confirms a payment.
-
-Use `orders.services.place_order` with `OrderLine` objects in development; it re-reads catalog prices and creates one item per unit. Neither checkout nor `place_order` takes activation consent. New orders leave consent wording/version/time blank; historical values remain. Pre-change checkout quotes require a fresh review. `cancel_unpaid_order` takes the real actor account and an order id, with a reason note for an operator acting for a customer. The older item entry delegates to whole-order cancellation. Customer cancellation checks ownership. The `/checkout/` page uses `payments.services.checkout` for atomic cart consumption and redirects to an owner-only order detail. Plan input and Telegram declarations must be reviewed before checkout; migrations do not guess them. Paid-state transitions and gateway payments remain unavailable.
-
-Set FIELD_ENCRYPTION_KEY to a Fernet key generated locally (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Keep it out of git and separate from SECRET_KEY. Retired keys go in the comma-separated FIELD_ENCRYPTION_KEY_FALLBACKS. After changing the active key, run `python manage.py reencrypt_fields --batch-size 200`; repeat safely if interrupted. Remove a retired key only after every dependent row is rotated and backups requiring that key have expired. Production use still requires an offline key copy and a successful decrypting restore.
-
-
-## Cart
-
-Product-page additions stay in place with one compact toast and a cart link; without JavaScript, the POST opens /cart/. Quantity controls and removal use CSRF-protected POST forms. A guest cart survives browser restart for 30 days; password or code login claims or combines it with the account cart. Authenticated session duration is unchanged. The header counts units. Prices are read fresh on each render. Checkout and payment are not connected.
-
-Enter a plan's available count under «موجودی و تعداد» in the product admin; blank means unlimited. Cart additions do not reserve or consume stock, and selections have no purchase deadline. Current availability and prices are rechecked on reads and mutations. Unavailable rows stay visible with restock-support and removal actions; they block readiness to proceed until resolved. Order creation atomically rechecks and claims finite stock; checkout cart consumption is the next integration boundary. A stale stock form preserves checkout changes unless the operator intentionally changes the quantity; conflicting intentional edits require a reload.
-
-Run `python manage.py purge_guest_carts` to remove guest carts inactive for over 30 days. It reports a count and can be repeated; account carts stay. Huey schedules this purge and expired-session cleanup daily.
-
-## Background worker
-
-Start one consumer against the same environment/database as the web process:
-
-```bash
-.venv/Scripts/python.exe manage.py run_huey
-```
-
-Keep it in a separate terminal during development. Production needs a supervised process with restart enabled; do not start a second scheduler for the same database. Huey uses Redis and explicit asynchronous mode even with DEBUG enabled. Queue names separate databases; Redis credentials are never part of the name. A database replacement therefore needs its own consumer configuration.
-
-Unpaid expiry runs every minute in batches of 100, with each order released in its own transaction. Guest-cart and expired-session cleanup run daily at 03:00 and 03:10 UTC. The order list reports the last successful sweep and current overdue backlog; a warning after three minutes calls for checking the consumer and Redis. A backlog can take several sweeps to drain. An order needing manual consistency review stays visible; later orders still run. A database outage does not record a successful sweep.
-
-Stop gracefully with Ctrl+C (SIGINT) and allow current work to finish before restarting. A worker outage delays stock/coupon release, while checkout still checks stored stock and deadlines under locks. Restart scans database deadlines; no order is deleted and no deadline is renewed. Verify a successful sweep and a drained backlog after every restart. `/healthz` checks database/cache connectivity only; it does not prove worker freshness. Public launch still requires supervised worker verification and the encryption-key escrow/decrypting restore.
+The panel's own strings are written in Persian in the code and wrapped in `gettext_lazy`. `locale/en/` gives their English for the panel's language switch, and `locale/fa/` rewords Django's and Unfold's strings. After editing a `.po` file, run `python scripts/compile_messages.py`. `apps/catalog/tests/test_panel_translations.py` fails when a `.mo` file does not match its `.po`, or a Persian string has no English. The compiler refuses a line it cannot read rather than dropping it, and a plural's `msgid` must match the template's text exactly, indentation included.
 
 ## Production image
 
-Production runs one image per commit, built from `Dockerfile`: the CSS from `package.json`, the locked dependencies without the dev group, static files collected under hashed names, gunicorn as a non-root user, and the commit in `GIT_COMMIT`, which `/healthz` reports. `.dockerignore` is an allowlist, so `.env`, `docs-local/`, `backups/`, `media/` and every cache stay out of the image. `deploy/compose.yaml` runs it as `web` and `worker` (`manage.py run_huey`) beside PostgreSQL 15, Redis behind a password and nginx, the only service with a published port. A one-shot `static` service copies the image's static files into the volume nginx serves.
+Production runs one image per commit, built from the `Dockerfile`: the CSS, the locked dependencies without the development group, the static files collected under hashed names, gunicorn as a non-root user, and the commit in `GIT_COMMIT`, which `/healthz` reports. `.dockerignore` is an allowlist, so `.env`, local notes, backups, media and caches stay out of the image. `deploy/compose.yaml` runs it as `web` and `worker` beside PostgreSQL 15, Redis behind a password and nginx, the only service with a published port; a one-shot `static` service copies the image's static files into the volume nginx serves.
 
-CI's `image` job builds it and runs `deploy/smoke.sh`, which needs Docker, so `scripts/check.py` does not. To run both locally, open WSL (`wsl -d Ubuntu-24.04`), change to the repository under `/mnt/c/`, and with the commit from `git rev-parse HEAD`:
+To build and check it locally, open WSL (`wsl -d Ubuntu-24.04`), change to the repository under `/mnt/c/`, and with the commit from `git rev-parse HEAD`:
 
 ```bash
 docker build --build-arg GIT_COMMIT=<commit> --tag premshop:<commit> .
@@ -172,8 +173,30 @@ bash deploy/smoke.sh premshop:<commit> <commit>
 bash deploy/rehearse.sh premshop:<commit> <commit>
 ```
 
-The script writes throwaway secrets and a self-signed certificate to a temporary directory, starts the stack as the Compose project `premshop-smoke` on ports 8443 and 8080 (`PREMSHOP_HTTPS_PORT`, `PREMSHOP_HTTP_PORT`), and checks it over HTTPS through nginx: `/healthz` reports the commit, the home, a category and a product page carry a hashed stylesheet, the panel answers at `ADMIN_PATH` and `/admin/` is a 404, forged `X-Forwarded-For` and `X-Real-IP` headers leave the search limit tripping at its threshold while a second address still searches, Redis refuses a client without its password, the worker has neither restarted nor logged a traceback, no tracking token reaches a log, and with `web` stopped every page is the maintenance page with status 503. It then removes the stack, its volumes and the directory, pass or fail. It never touches the server on port 8000 or its database.
+- **`deploy/smoke.sh`** writes throwaway secrets and a self-signed certificate to a temporary directory and starts the stack as the Compose project `premshop-smoke` on ports 8443 and 8080. Over HTTPS through nginx it checks that `/healthz` reports the commit; that the home, a category and a product page carry a hashed stylesheet; that the panel answers at `ADMIN_PATH` while `/admin/` is a 404; that forged `X-Forwarded-For` and `X-Real-IP` headers cannot get around the search limit; that Redis refuses a client without its password; that the worker has neither restarted nor logged a traceback; that no tracking token reaches a log; and that every page is the 503 maintenance page while `web` is stopped. It removes everything, pass or fail, and never touches the development server or its database.
+- **`deploy/rehearse.sh`** drives `scripts/deploy.py` the way the runbooks do, as the Compose project `premshop-rehearsal` on ports 8543 and 8180: a first deploy; a deploy of a broken image, which must return to the previous one by itself; a deploy refused because its compose file changes `db` and `redis`, with the database untouched and no backup taken; a deploy carrying a changed nginx file, then a rollback; a restore into fresh volumes, which must decrypt the seeded input with the right key and keep the site closed under a wrong one; and a restore of a backup taken before any order, which must fail without `--allow-empty`.
 
-`deploy/rehearse.sh`, which CI runs next, drives `scripts/deploy.py` the way the [runbooks](runbooks/deploy.md) do, on a copy of `deploy/` and the script in its temporary directory, as the Compose project `premshop-rehearsal` (`COMPOSE_PROJECT_NAME`) on ports 8543 and 8180: a first deploy; a deploy of a copy of the image whose web process exits at once, which must end back on the first image by itself; a deploy refused, with the database container untouched and no backup taken, because its compose file changes `db` and `redis`; a deploy carrying a changed nginx file, which must answer with it, and a rollback; a restore of the last backup into fresh volumes, which must decrypt the order item it seeded with the right key, and fail with `web` never started under a different one; and a restore of the first backup, taken before any order, which must fail without `--allow-empty`. It removes its stack, volumes, extra images and directory, pass or fail.
+A stack kept running reads one environment file outside the repository, given with `--env-file`: every variable `prod.py` requires, including `ADMIN_PATH`; `POSTGRES_PASSWORD` and `REDIS_PASSWORD`, in hex, because Compose puts them into URLs unescaped; `PREMSHOP_IMAGE`; `PREMSHOP_TLS_DIR`, holding `fullchain.pem` and `privkey.pem`; and `PREMSHOP_ENV_FILE`, the file's own path. `deploy/smoke.sh` is the worked example. HSTS starts at one hour with preload off.
 
-A stack kept running reads one environment file outside the repository, given with `--env-file`: every variable `prod.py` requires, `ADMIN_PATH` among them (the panel's path, one segment ending in a slash and never `admin/`), `POSTGRES_PASSWORD` and `REDIS_PASSWORD` (hex, because Compose puts them into URLs unescaped), and `PREMSHOP_IMAGE`, `PREMSHOP_TLS_DIR` (holding `fullchain.pem` and `privkey.pem`) and `PREMSHOP_ENV_FILE`, the file's own path. `deploy/smoke.sh` is the worked example. `SECURE_HSTS_SECONDS` may stay unset: HSTS starts at an hour with preload off, and the launch step raises both. Production reads the visitor's address for every per-IP limit from `X-Real-IP`, which nginx overwrites, and never from `X-Forwarded-For`, which the visitor can write.
+## Private notes backup
+
+`docs-local/` is a git-ignored folder of private business notes with its own git history. `scripts/backup_docs_local.py` backs it up after every commit made in it, through a post-commit hook that `python scripts/backup_docs_local.py setup` installs.
+
+- **What a backup is:** a git bundle of the folder's whole history, encrypted with gpg (AES-256) under a passphrase kept in `~/.premshop-backup/passphrase` and, off the laptop, in a password manager and on paper. The script strips a byte-order mark from the passphrase file and refuses one shorter than 20 characters.
+- **Where it goes:** the `docs-local-backup` branch of this repository, one commit replaced each time, holding no workflow files so it starts no CI; and a local folder that keeps the last five, whose path is read from `~/.premshop-backup/mirror` (default `~/premshop-backups`). The local copy protects against a mistake inside the folder; the GitHub copy is the one that survives a lost laptop.
+- **Checks:** before copying, the script confirms that the file decrypts to the bundle and that a wrong passphrase does not open it. A failure prints `BACKUP FAILED` with the reason; the next successful backup catches up, since each holds the whole history. Uncommitted edits are not in a backup.
+- **Restore drill:** `python scripts/backup_docs_local.py verify` restores from the published branch into an empty folder with an empty home directory and decrypts every local copy. `verify --ask` prompts for the passphrase instead of reading the stored file, which is the only way to test the copies kept off the laptop. Run it after changing anything about the backup.
+- **Passphrase exposure:** a force-push retracts nothing on GitHub; every replaced backup commit stays fetchable by its hash. One leaked passphrase therefore exposes the whole archive history, and a new passphrase protects only the backups made after it.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| The sign-in page says «ورود فعلاً ممکن نیست» | Redis is down. Start it (see [Running locally](#running-locally)) |
+| A class added to a template has no effect | `static/css/app.css` is a build output: run `npm run css` |
+| A template change does not show | `runserver --noreload` serves the templates it started with. Restart without it |
+| `uv sync` fails halfway on Windows | A running server holds a compiled module (Pillow, psycopg) open. Stop every `runserver`; if the package is already broken, run `uv sync --frozen --reinstall-package <name>` |
+| Persian prints as garbage in a terminal | The console code page is cp1256. Set `PYTHONIOENCODING=utf-8`; in PowerShell 5.1, pass `-Encoding utf8` to `Get-Content` |
+| Markdown or Persian text arrives damaged through a shell | Git Bash heredocs break on Persian mixed with quotes, and in a PowerShell double-quoted string a backtick is an escape character. Write such content with an editor or a script file |
+| A browser test is skipped | Chromium is not installed: `python -m playwright install chromium` |
+| A check reports nothing found | A wrapper that filters command output can turn a refused query into an empty answer. Read the raw output, beside a query that should find something |
