@@ -48,3 +48,6 @@ The home page takes the newest active products up to `HOME_PRODUCT_CAP = 24`, th
 
 
 **Amendment — 2026-10-28: search queries match the index.** Normalized containment uses LIKE on the normalized column. Fuzzy search first uses the indexed word-similarity operator with connection threshold 0.3, then retains the measured 0.4 score filter and ranking. The existing GIN index supports both paths; PostgreSQL plan regressions exercise that compatibility. Exact matches still suppress the fuzzy fallback.
+
+
+**Amendment — 2026-11-04: the fuzzy threshold is 0.45.** At 0.4 a short word matched a product on its first two letters («پرده», «گیاه» and «پوست» returned unrelated products); every near-miss spelling tried still scored at least 0.5. The 0.4 above describes the earlier filter.
