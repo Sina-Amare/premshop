@@ -211,3 +211,51 @@ def test_cart_query_count_is_the_same_for_three_lines_and_nine(client, buyer, pl
 
     assert len(response.context["cart"].lines) == 9
     assert many == few
+
+
+def _slower_plan(plan, hours):
+    product = Product.objects.create(
+        category=plan.product.category,
+        name=f"کند {hours}",
+        slug=f"slow-{hours}",
+        status=Product.Status.ACTIVE,
+        delivery_hours=hours,
+    )
+    return Plan.objects.create(
+        product=product,
+        title="یک ماهه",
+        duration_days=30,
+        cost_price=Decimal("1"),
+        sale_price=Decimal("200000"),
+        max_quantity=3,
+    )
+
+
+def _summary_help(response):
+    return response.content.decode().split('class="cart-summary__help"', 1)[1].split("</div>", 1)[0]
+
+
+def test_cart_summary_promises_the_longest_time_among_its_own_lines(client, plan):
+    Product.objects.filter(pk=plan.product.pk).update(delivery_hours=12)
+    slower = _slower_plan(plan, 30)
+    client.post("/cart/add/", {"plan": plan.pk})
+    client.post("/cart/add/", {"plan": slower.pk})
+
+    page = client.get("/cart/")
+    help_text = _summary_help(page)
+
+    assert slower.product.delivery_sentence == "تحویل تا ۳۰ ساعت"
+    assert "تحویل تا ۳۰ ساعت" in help_text
+    assert "حداکثر ۴۸" not in help_text
+    assert "تحویل تا ۱۲ ساعت" in page.content.decode()
+
+
+def test_cart_summary_keeps_the_site_wide_sentence_when_a_line_has_no_time(client, plan):
+    slower = _slower_plan(plan, 30)
+    client.post("/cart/add/", {"plan": plan.pk})
+    client.post("/cart/add/", {"plan": slower.pk})
+    Product.objects.filter(pk=slower.product.pk).update(status=Product.Status.DRAFT)
+
+    help_text = _summary_help(client.get("/cart/"))
+
+    assert "حداکثر ۴۸ ساعت پس از تأیید پرداخت" in help_text

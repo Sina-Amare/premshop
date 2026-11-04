@@ -251,6 +251,19 @@ class CartSummary:
         return sum((line.saving for line in self.lines if line.purchasable), Decimal(0))
 
     @property
+    def delivery_promise(self) -> str:
+        """The longest time among the lines, worded as the lines word it.
+
+        Empty when a line has no plan to read one from; the page then keeps the
+        site-wide sentence, which is true of every product."""
+        if not self.lines or any(line.plan is None for line in self.lines):
+            return ""
+        slowest = max(
+            (line.plan.product for line in self.lines if line.plan), key=lambda p: p.delivery_hours
+        )
+        return slowest.delivery_sentence
+
+    @property
     def has_purchasable_items(self) -> bool:
         return any(line.purchasable for line in self.lines)
 

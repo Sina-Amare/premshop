@@ -107,7 +107,7 @@ def test_the_faq_support_line_names_the_address_beside_telegram(client):
 
 
 def test_the_account_page_lists_the_address_with_the_telegram_handle(client, django_user_model):
-    user = django_user_model.objects.create_user(email="buyer@example.com", password="x-Pass-12345")
+    user = django_user_model.objects.create_user("buyer@example.com")
     client.force_login(user)
 
     body = client.get(reverse("account")).content.decode()
