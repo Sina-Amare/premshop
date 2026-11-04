@@ -26,7 +26,7 @@ from sentry_sdk.transport import Transport
 
 from apps.accounts import otp, services, views
 from apps.accounts.models import User
-from apps.core import ratelimit
+from apps.core import ratelimit, support
 from apps.core.email import render_email
 from apps.core.observability import sentry_options
 from apps.core.views import EMAIL_PREVIEWS
@@ -522,6 +522,12 @@ def fail_the_relay(monkeypatch, kind: str, sent: list[str]) -> None:
         monkeypatch.setattr(EmailBackend, "send_messages", refuse)
 
 
+# The owner's wording, chosen on the P.5 review; the handle follows it.
+CODE_NOT_SENT = (
+    "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
+)
+
+
 def daily_left(email: str) -> tuple[int, int]:
     return (
         ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email),
@@ -554,15 +560,16 @@ def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
     else:
         response = client.post(reverse("account-password-recovery"), {"action": "request"})
 
+    handle = support.details()["telegram"]
+    on_a_page = f'{CODE_NOT_SENT} <bdi class="latin">{handle}</bdi>'
     if json_answer:
+        # A script sets this as text, so the handle is isolated by the marks
+        # <bdi> stands for; without them its @ is drawn at the wrong end.
         assert response.status_code == 503
-        assert response.json() == {"ok": False, "error": services.CodeNotSent.message}
+        assert response.json() == {"ok": False, "error": f"{CODE_NOT_SENT} \u2066{handle}\u2069"}
     elif path == "resend":
         assert response.headers["Location"] == reverse("login-code-verify")
-        assert (
-            services.CodeNotSent.message
-            in client.get(response.headers["Location"]).content.decode()
-        )
+        assert on_a_page in client.get(response.headers["Location"]).content.decode()
     else:
         template = (
             "accounts/password_recovery.html"
@@ -571,7 +578,7 @@ def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
         )
         assert response.status_code == 503
         assert template in [used.name for used in response.templates]
-        assert services.CodeNotSent.message in response.content.decode()
+        assert on_a_page in response.content.decode()
     if path.startswith("request"):
         assert views.PENDING_EMAIL_KEY not in client.session, "the code page is not reachable"
     assert daily_left(user.email) == before, "a code nobody received spent a daily unit"

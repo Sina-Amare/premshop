@@ -22,10 +22,11 @@ from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 
 from apps.accounts import otp
 from apps.accounts.models import User
-from apps.core import ratelimit
+from apps.core import ratelimit, support
 from apps.core.email import send_templated_email
 from apps.core.sessions import login_session
 
@@ -44,11 +45,22 @@ class RateLimited(Exception):
         self.message = message
 
 
+_CODE_NOT_SENT = (
+    "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
+)
+
+
 class CodeNotSent(Exception):
     """The relay failed or accepted nothing. Answered on the page, as a refused
     send is; no daily unit is spent, since only accepted sends count."""
 
-    message = "نتوانستیم کد را به ایمیلتان بفرستیم. چند دقیقه دیگر دوباره امتحان کنید."
+    # The Latin handle must be isolated left-to-right, or its @ is drawn at the
+    # wrong end. A page gets <bdi>; a script sets `text` as text, so it carries
+    # the two Unicode marks <bdi> stands for.
+    message = format_html(
+        _CODE_NOT_SENT, format_html('<bdi class="latin">{}</bdi>', support.details()["telegram"])
+    )
+    text = _CODE_NOT_SENT.format(f"\u2066{support.details()['telegram']}\u2069")
 
 
 # One message per budget, each with its wait. A budget per IP never blames the
