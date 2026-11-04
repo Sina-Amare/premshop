@@ -186,6 +186,7 @@ def send_login_code(email: str, *, purpose: str = "login", binding: str = "") ->
     )
     if not sent:
         raise SMTPException("Code email was not accepted")
+    # Two accepted at once: the later store wins, not always the newer mail. One code stays live.
     return _store(subject, code)
 
 
