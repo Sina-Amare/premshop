@@ -222,9 +222,9 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
 
 
 def test_a_failed_resend_leaves_the_inbox_code_and_its_clock(page, live_server, user, monkeypatch):
-    """The owner's ruling on the P.5 review: a resend the relay did not take
-    says so, and the code already in the inbox still signs in, on the clock it
-    was mailed with."""
+    """Owner ruling 2026-11-04: a resend the relay did not take says so, and
+    the code already in the inbox still signs in, on the clock it was mailed
+    with."""
     from django.core.mail.backends.locmem import EmailBackend
 
     from apps.accounts.tests.test_auth import disconnect

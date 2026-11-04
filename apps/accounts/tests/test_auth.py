@@ -522,7 +522,7 @@ def fail_the_relay(monkeypatch, kind: str, sent: list[str]) -> None:
         monkeypatch.setattr(EmailBackend, "send_messages", refuse)
 
 
-# The owner's wording, chosen on the P.5 review; the handle follows it.
+# Owner ruling 2026-11-04 on the wording; the support handle follows it.
 CODE_NOT_SENT = (
     "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید:"
 )
@@ -596,8 +596,8 @@ def test_a_failed_resend_keeps_the_code_already_in_the_inbox(
 ):
     """The code used to be stored before the send, so a resend that failed
     replaced the code in the inbox with one nobody received, while the page
-    went on counting down for it. The owner's ruling on the P.5 review: until a
-    send is accepted, the inbox code works, on its own clock. The quota's
+    went on counting down for it. Owner ruling 2026-11-04: until a send is
+    accepted, the inbox code works, on its own clock. The quota's
     refusal and every relay failure end the same way."""
     from apps.core import email as core_email
     from apps.core import email_log
@@ -1029,8 +1029,8 @@ def test_a_hostile_next_lands_on_the_account_page(client, user, hostile, method)
 
 def test_the_sign_in_address_opens_on_the_code_form(client):
     """A new account has no password, so a visitor who reached /login/ from a
-    bookmark met a form most could not use (B8). The code form comes first,
-    and the destination comes with it."""
+    bookmark met a form most could not use. Owner ruling 2026-11-04: the code
+    form comes first, and the destination comes with it."""
     response = client.get(reverse("login") + "?" + urlencode({"next": SEARCH_PAGE}))
 
     assert response.status_code == 302
