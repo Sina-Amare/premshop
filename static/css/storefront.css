@@ -394,7 +394,12 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .cart-toast__message p{margin:0;min-width:0}.cart-toast__message strong{display:block;font-size:14px;font-weight:600;line-height:1.7;text-wrap:balance}.cart-toast__message [data-toast-detail]{display:block;font-size:13px;line-height:1.8;color:var(--v-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cart-toast>a{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding-inline:8px;white-space:nowrap;color:var(--v-accent);font-size:13px;font-weight:600;border-radius:var(--radius-sm)}.cart-toast>a:hover{background:var(--v-soft)}.cart-toast>a>.v-icon{width:16px;height:16px}
 .cart-toast>button{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:var(--radius-sm);color:var(--v-text);background:transparent;cursor:pointer}.cart-toast>button:hover{background:var(--v-soft)}
-@media(max-width:760px){.v-header{transition:transform 200ms ease}.v-header--away{transform:translateY(-100%)}}@media(max-width:760px) and (prefers-reduced-motion:reduce){.v-header{transition:none}}
+@media(max-width:760px){.v-header{transition:transform 200ms ease}.v-header--away{transform:translateY(-100%)}
+/* Back from reading, only the logo, the search and the cart return: one row instead of three. */
+.v-header--compact .v-navline,.v-header--compact .v-account,.v-header--compact .v-actions .v-support{display:none}
+.v-header--compact .v-header__main{min-height:0;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding-block:8px}
+.v-header--compact .v-brand{grid-column:1}.v-header--compact .v-search{grid-row:1;grid-column:2}.v-header--compact .v-actions{grid-column:3}
+.v-header--compact .v-brand span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}}@media(max-width:760px) and (prefers-reduced-motion:reduce){.v-header{transition:none}}
 @media(min-width:1001px){.v-category-section>.v-section__head{padding-bottom:14px;margin-bottom:20px;border-bottom:1px solid var(--v-line)}.v-category-section+.v-category-section{margin-top:44px;padding-top:0;border-top:0}.v-category-section .v-track .pcard__art,.v-offers-band .v-track .pcard__art{aspect-ratio:2/1}}
 .cart-toast__art{display:none;flex:none;width:40px;height:40px;place-items:center;border:1px solid var(--v-line);border-radius:10px;background:var(--v-soft)}.cart-toast--art .cart-toast__art{display:grid}.cart-toast--art .cart-toast__message>.v-icon{display:none}
 @media(max-width:760px){.v-hero__lead{font-size:15px;line-height:2}}
@@ -640,4 +645,3 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 
 /* The buy box's support line starts where everything else starts. */
 .buybox__help{margin-inline:0;text-align:start}
-.v-track .pcard__shop{font-size:10px;inset-inline-end:11px;inset-block-end:8px}
