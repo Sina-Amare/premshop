@@ -11,6 +11,7 @@ Technical reference for the codebase. Which document answers which question:
 | What messages go out, when, and in what words? | [notifications-and-bot.md](notifications-and-bot.md) — the built emails in full; later messages and the Telegram bot as intent |
 | What does the interface look like — type, colour, layout rules? How does its Persian read, and which word is the right one? | [design-language.md](design-language.md) |
 | How do I run it, test it, and what are this setup's traps? How does the built code hang together across files? | [development.md](development.md) |
+| How do I deploy, roll back or restore the server? | [runbooks/](runbooks/deploy.md), one page each: [deploy](runbooks/deploy.md), [rollback](runbooks/rollback.md), [restore](runbooks/restore.md) |
 
 ## Which document owns which kind of fact
 
@@ -24,6 +25,7 @@ Each fact is stated in **one** of these and referred to from the others — rest
 | The words of each message, its channel, how the outbox delivers it and builds a dedupe key; the Telegram webhook | `notifications-and-bot.md` |
 | Type, colour, spacing, layout, the look of emails; the voice of the Persian copy and its glossary | `design-language.md` |
 | Setup, commands, environment traps, how built code hangs together across files | `development.md` |
+| The operator's steps to deploy, roll back and restore the server | `runbooks/` |
 | Why any of it is so | `decisions/` |
 | For anything already built | the code — these documents keep only what the code cannot say |
 

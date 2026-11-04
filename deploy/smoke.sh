@@ -130,10 +130,11 @@ reply=$(stack exec -T redis redis-cli ping 2>&1 || true)
 [[ $reply == *NOAUTH* ]] || fail "Redis answered without its password: $reply"
 [[ $(stack ps --status running --services) == *worker* ]] || fail "the worker is not running"
 # A crash-looping worker is "running" between its restarts, and one that cannot
-# reach Redis may stay up and only log the error.
+# reach Redis may stay up and only log the error. Compose writes a container's
+# stderr, where Django logs, to its own stderr, so each log check reads both.
 worker=$(stack ps --all --quiet worker)
 [ "$(docker inspect --format '{{.RestartCount}}' "$worker")" = 0 ] || fail "the worker restarted"
-worker_logs=$(stack logs --no-color worker)
+worker_logs=$(stack logs --no-color worker 2>&1)
 [[ $worker_logs != *Traceback* ]] || fail "the worker logged a traceback"
 
 # A token over HTTP, over HTTPS to Django, and over HTTPS while Django is down.
@@ -145,7 +146,7 @@ stack stop web >/dev/null
 heading=$(sed -n 's:.*<h1>\(.*\)</h1>.*:\1:p' "$here/nginx/maintenance.html")
 grep -qF "$heading" "$work/page" || fail "the maintenance page lacks its heading"
 fetch "$token" >/dev/null
-logs=$(stack logs --no-color nginx web)
+logs=$(stack logs --no-color nginx web 2>&1)
 [[ $logs == *"/track/"* && $logs != *smoke-private-token* ]] || fail "a tracking token reached a log"
 
 echo "smoke: all checks passed for $commit"

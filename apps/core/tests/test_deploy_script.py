@@ -1,0 +1,467 @@
+"""`scripts/deploy.py` against a stand-in for Docker that records every call.
+
+The stand-in plays the stack: it remembers which image web runs, writes what
+pg_dump would, and answers /healthz with the running image's commit, or not at
+all for an image marked broken. CI runs the same script against the real stack
+(`deploy/rehearse.sh`).
+"""
+
+from __future__ import annotations
+
+import ast
+import datetime
+import http.client
+import importlib.util
+import json
+import subprocess
+import sys
+import urllib.error
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from django.conf import settings
+
+SCRIPT = Path(settings.BASE_DIR) / "scripts" / "deploy.py"
+OLD, NEW = "premshop:aaaa111", "premshop:bbbb222"
+DUMP = b"PGDMP custom-format dump"
+
+
+def _module():
+    spec = importlib.util.spec_from_file_location("deploy_script", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+deploy = _module()
+
+
+class Docker:
+    def __init__(
+        self, running=None, broken=(), dump=DUMP, tables="0", decrypts=True, stores=None, nginx=True
+    ):
+        self.calls: list[list[str]] = []
+        self.running, self.broken = running, set(broken)
+        self.dump, self.tables, self.decrypts, self.nginx = dump, tables, decrypts, nginx
+        self.restored = b""
+        # db and redis as the compose file defines them, and as their containers run.
+        self.defined = "db 1111\nredis 2222\n"
+        self.stores = self.defined if stores is None else stores
+        # How a broken image's /healthz fails; the images whose worker restarts, whose
+        # worker logs a traceback, or whose containers do not start; the commands
+        # that exit 1.
+        self.unanswered: Exception = urllib.error.URLError("connection refused")
+        self.restarting: set[str] = set()
+        self.tracing: set[str] = set()
+        self.unstartable: set[str] = set()
+        self.failing: set[str] = set()
+
+    def run(self, args, *, check=False, env=None, stdin=None, stdout=None, **kwargs):
+        args = list(args)
+        self.calls.append(args)
+        assert "migrate" not in args or args[-2:] == ["migrate", "--noinput"], args
+        returncode, output, errors = 0, "", ""
+        if self.failing & set(args):
+            returncode = 1
+        elif "pg_dump" in args:
+            stdout.write(self.dump)
+        elif "pg_restore" in args and "/dev/null" in args:
+            returncode = 0 if stdin.read() == DUMP else 1
+        elif "pg_restore" in args:
+            self.restored = stdin.read()
+        elif "psql" in args:
+            output = self.tables + "\n"
+        elif "verify_decrypt" in args:
+            returncode = 0 if self.decrypts else 1
+        elif args[-2:] == ["nginx", "-t"]:
+            returncode = 0 if self.nginx else 1
+        elif "--hash" in args:
+            output = self.defined
+        elif "ps" in args and "db" in args:
+            output = self.stores
+        elif "ps" in args and "worker" in args:
+            output = "worker-1\n"
+        elif args[:2] == ["docker", "inspect"]:
+            output = "running 3\n" if self.running in self.restarting else "running 0\n"
+        elif "logs" in args:
+            # Compose writes a container's stderr, where the app logs, to its own stderr.
+            output = "consumer started\n"
+            if self.running in self.tracing:
+                errors = "Traceback (most recent call last):\n"
+        elif "up" in args and "web" in args:
+            if env["PREMSHOP_IMAGE"] in self.unstartable:
+                returncode = 1
+            else:
+                self.running = env["PREMSHOP_IMAGE"]
+        if check and returncode:
+            raise subprocess.CalledProcessError(returncode, args)
+        return subprocess.CompletedProcess(args, returncode, stdout=output, stderr=errors)
+
+    def fetch(self, url):
+        self.calls.append(["health", url])
+        if self.running is None or self.running in self.broken:
+            raise self.unanswered
+        return {"status": "ok", "commit": self.running.rpartition(":")[2]}
+
+    def steps(self, image=NEW):
+        """The calls as named steps, in order, each run of one step counted once."""
+        names: list[str] = []
+        for args in self.calls:
+            if "pg_dump" in args or "/dev/null" in args:
+                name = "backup"
+            elif args[1] in ("load", "pull", "image") and image in args:
+                name = "image"
+            elif "pg_restore" in args:
+                name = "restore"
+            elif "migrate" in args:
+                name = "migrate"
+            elif "verify_decrypt" in args:
+                name = "decrypt"
+            elif "up" in args and "web" in args:
+                name = "switch"
+            elif args[0] == "health":
+                name = "health"
+            else:
+                continue
+            if not names or names[-1] != name:
+                names.append(name)
+        return names
+
+
+@pytest.fixture
+def paths(tmp_path):
+    return {
+        "state": tmp_path / "state" / "deploy.json",
+        "backups": tmp_path / "backups",
+        "dump": tmp_path / "premshop.dump",
+    }
+
+
+def main(docker, paths, *args):
+    options = [
+        "--env-file",
+        "premshop.env",
+        "--state-file",
+        str(paths["state"]),
+        "--health-url",
+        "https://localhost/healthz",
+        "--health-timeout",
+        "0",
+    ]
+    if args[0] in ("deploy", "backup"):
+        options += ["--backup-dir", str(paths["backups"])]
+    return deploy.main([*args, *options], run=docker.run, fetch=docker.fetch)
+
+
+def record(paths, current, previous=None):
+    paths["state"].parent.mkdir(parents=True, exist_ok=True)
+    paths["state"].write_text(json.dumps({"current": current, "previous": previous}))
+
+
+def recorded(paths):
+    return json.loads(paths["state"].read_text())
+
+
+def test_a_deploy_backs_up_fetches_migrates_switches_then_checks_health(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) == 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health"]
+    assert docker.running == NEW
+    assert recorded(paths) == {"current": NEW, "previous": OLD}
+    [backup] = paths["backups"].iterdir()
+    assert backup.read_bytes() == DUMP
+
+
+def test_a_first_deploy_needs_no_previous_image(paths):
+    docker = Docker()
+    assert main(docker, paths, "deploy", NEW) == 0
+    assert docker.running == NEW
+    assert recorded(paths) == {"current": NEW, "previous": None}
+
+
+def test_a_failed_health_check_returns_to_the_previous_image_and_fails(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, broken={NEW})
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health", "switch", "health"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_health_answer_cut_short_returns_to_the_previous_image(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, broken={NEW})
+    docker.unanswered = http.client.IncompleteRead(b'{"status": "o')
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_worker_that_restarts_fails_the_deploy(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.restarting = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_worker_that_stays_up_but_logs_a_traceback_fails_the_deploy(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.tracing = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_failed_migration_stops_the_deploy_before_the_switch(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.failing = {"migrate"}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_switch_that_fails_returns_to_the_previous_image(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    docker.unstartable = {NEW}
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+@pytest.mark.parametrize("dump", [b"", b"pg_dump: error: connection refused\n", DUMP[:12]])
+def test_a_backup_that_is_not_a_dump_stops_before_anything_changes(paths, dump):
+    record(paths, OLD)
+    docker = Docker(running=OLD, dump=dump)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup"]
+    assert docker.running == OLD
+    assert not list(paths["backups"].iterdir())
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_deploy_starts_db_and_redis_without_recreating_them(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) == 0
+    [start] = [args for args in docker.calls if "up" in args and "db" in args]
+    assert "--no-recreate" in start
+
+
+def test_a_compose_file_that_changes_db_or_redis_stops_before_anything_changes(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, stores="db 0000\nredis 2222\n")
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == []
+    assert not any("up" in args for args in docker.calls)
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_a_deploy_tests_the_nginx_files_once_before_its_backup_and_reloads_nginx_after(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) == 0
+    tests = [i for i, args in enumerate(docker.calls) if args[-2:] == ["nginx", "-t"]]
+    dump, switch, reload = (
+        next(i for i, args in enumerate(docker.calls) if found(args))
+        for found in (
+            lambda args: "pg_dump" in args,
+            lambda args: "up" in args and "web" in args,
+            lambda args: args[-4:] == ["kill", "--signal", "HUP", "nginx"],
+        )
+    )
+    assert len(tests) == 1
+    assert tests[0] < dump < switch < reload
+
+
+def test_nginx_files_that_fail_their_test_stop_the_deploy_before_its_backup(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD, nginx=False)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == []
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_nginx_files_that_fail_their_test_stop_a_rollback_before_it_switches(paths):
+    record(paths, NEW, OLD)
+    docker = Docker(running=NEW, nginx=False)
+    assert main(docker, paths, "rollback") != 0
+    assert "switch" not in docker.steps()
+    assert docker.running == NEW
+    assert recorded(paths) == {"current": NEW, "previous": OLD}
+
+
+def test_nginx_files_that_fail_their_test_stop_a_restore_before_it_restores(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker(nginx=False)
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) != 0
+    assert docker.restored == b""
+    assert docker.running is None
+
+
+class FullDisk(Docker):
+    """A disk that fills once web is switched: every nginx test after that fails."""
+
+    def run(self, args, **kwargs):
+        if "up" in args and "web" in args:
+            self.nginx = False
+        return super().run(args, **kwargs)
+
+
+def test_the_return_to_the_previous_image_runs_no_nginx_test_that_could_stop_it(paths):
+    record(paths, OLD)
+    docker = FullDisk(running=OLD, broken={NEW})
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.steps() == ["backup", "image", "migrate", "switch", "health", "switch", "health"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="flock is Linux's, where the script runs")
+def test_a_command_is_refused_while_another_one_runs(paths):
+    import fcntl
+
+    record(paths, NEW, OLD)
+    with paths["state"].with_suffix(".lock").open("a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        docker = Docker(running=NEW)
+        assert main(docker, paths, "rollback") != 0
+        assert docker.calls == []
+    assert main(docker, paths, "rollback") == 0
+
+
+def test_a_backup_never_removes_a_file_already_at_its_name(paths, monkeypatch):
+    class Midnight(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 11, 4, tzinfo=tz)
+
+    monkeypatch.setattr(deploy, "datetime", SimpleNamespace(datetime=Midnight, UTC=datetime.UTC))
+    record(paths, OLD)
+    paths["backups"].mkdir()
+    other = paths["backups"] / "premshop-20261104T000000Z.dump"
+    other.write_bytes(DUMP)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert other.read_bytes() == DUMP
+    assert docker.running == OLD
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps no Unix file mode")
+def test_a_backup_is_readable_by_its_owner_alone(paths):
+    assert main(Docker(), paths, "deploy", NEW) == 0
+    [backup] = paths["backups"].iterdir()
+    assert backup.stat().st_mode & 0o777 == 0o600
+
+
+def test_backup_alone_writes_a_checked_dump_and_changes_nothing_else(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "backup") == 0
+    assert docker.steps() == ["backup"]
+    assert any("/dev/null" in args for args in docker.calls)
+    [backup] = paths["backups"].iterdir()
+    assert backup.read_bytes() == DUMP
+    assert recorded(paths) == {"current": OLD, "previous": None}
+
+
+def test_deploying_the_running_image_again_is_refused(paths):
+    record(paths, NEW, OLD)
+    docker = Docker(running=NEW)
+    assert main(docker, paths, "deploy", NEW) != 0
+    assert docker.calls == []
+
+
+def test_rollback_switches_to_the_recorded_previous_image(paths):
+    record(paths, NEW, OLD)
+    docker = Docker(running=NEW)
+    assert main(docker, paths, "rollback") == 0
+    assert docker.steps() == ["switch", "health"]
+    assert docker.running == OLD
+    assert recorded(paths) == {"current": OLD, "previous": NEW}
+    assert not any("migrate" in args or "pg_dump" in args for args in docker.calls)
+
+
+def test_a_rollback_that_fails_its_health_check_returns_to_the_image_it_left(paths):
+    record(paths, NEW, OLD)
+    docker = Docker(running=NEW, broken={OLD})
+    assert main(docker, paths, "rollback") != 0
+    assert docker.running == NEW
+    assert recorded(paths) == {"current": NEW, "previous": OLD}
+
+
+def test_rollback_without_a_recorded_previous_image_changes_nothing(paths):
+    record(paths, OLD)
+    docker = Docker(running=OLD)
+    assert main(docker, paths, "rollback") != 0
+    assert docker.calls == []
+
+
+def test_a_restore_checks_decryption_before_the_site_opens(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) == 0
+    assert docker.restored == DUMP
+    assert docker.steps() == ["image", "restore", "migrate", "decrypt", "switch", "health"]
+    assert recorded(paths) == {"current": NEW, "previous": None}
+
+
+def test_a_restore_that_cannot_decrypt_fails_and_the_site_stays_closed(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker(decrypts=False)
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) != 0
+    assert "switch" not in docker.steps()
+    assert docker.running is None
+    assert not paths["state"].exists()
+
+
+def test_a_restore_accepts_a_backup_with_no_encrypted_value_only_when_asked(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) == 0
+    assert not any("--allow-empty" in args for args in docker.calls)
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW, "--allow-empty") == 0
+    [check] = [args for args in docker.calls if "verify_decrypt" in args]
+    assert check[-2:] == ["verify_decrypt", "--allow-empty"]
+
+
+def test_a_restore_refuses_a_database_that_already_holds_tables(paths):
+    paths["dump"].write_bytes(DUMP)
+    docker = Docker(tables="42")
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) != 0
+    assert not any("pg_restore" in args for args in docker.calls)
+
+
+def test_a_restore_refuses_a_file_that_is_not_a_dump(paths):
+    paths["dump"].write_bytes(b"")
+    docker = Docker()
+    assert main(docker, paths, "restore", str(paths["dump"]), NEW) != 0
+    assert docker.calls == []
+
+
+def test_the_script_runs_on_the_servers_python_with_its_standard_library_alone():
+    """Ubuntu 24.04's system Python is 3.12; the project's interpreter is newer."""
+    tree = ast.parse(SCRIPT.read_text(encoding="utf-8"), feature_version=(3, 12))
+    imported = {
+        alias.name.split(".")[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    } | {
+        node.module.split(".")[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    }
+    assert imported <= sys.stdlib_module_names | {"__future__"}

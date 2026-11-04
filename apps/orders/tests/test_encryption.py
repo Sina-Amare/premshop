@@ -3,7 +3,7 @@ from io import StringIO
 import pytest
 from cryptography.fernet import Fernet
 from django.core.exceptions import FieldError, ImproperlyConfigured
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.db import connection
 
 from apps.catalog.models import Plan
@@ -76,6 +76,50 @@ def test_missing_key_and_corrupt_ciphertext_fail_without_disclosing_values(buyer
     with pytest.raises(ImproperlyConfigured) as exc:
         item.refresh_from_db()
     assert "bad-ciphertext" not in str(exc.value)
+
+
+def test_decrypt_check_counts_values_and_never_prints_one(buyer, plan):
+    item = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")]).items.get()
+    out = StringIO()
+    call_command("verify_decrypt", stdout=out)
+    assert "orders.OrderItem.customer_input: 1 decrypted, 0 failed" in out.getvalue()
+    assert "target@example.test" not in out.getvalue()
+    assert raw_input(item).split("$", 1)[1] not in out.getvalue()
+
+
+def test_decrypt_check_fails_under_a_different_key(buyer, plan, settings):
+    place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")])
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    out = StringIO()
+    with pytest.raises(CommandError) as exc:
+        call_command("verify_decrypt", stdout=out)
+    assert "orders.OrderItem.customer_input: 0 decrypted, 1 failed" in out.getvalue()
+    assert "target@example.test" not in out.getvalue() + str(exc.value)
+
+
+def test_decrypt_check_fails_when_no_value_is_encrypted():
+    """A check that decrypts nothing proves nothing about the key (ADR-0007)."""
+    with pytest.raises(CommandError, match="nothing proves the key"):
+        call_command("verify_decrypt", stdout=StringIO())
+
+
+def test_decrypt_check_passes_an_empty_database_only_when_asked():
+    out = StringIO()
+    call_command("verify_decrypt", "--allow-empty", stdout=out)
+    assert "All 0 encrypted values decrypt." in out.getvalue()
+
+
+@pytest.mark.parametrize("flags", [[], ["--allow-empty"]], ids=["refused", "allowed"])
+def test_decrypt_check_prints_the_key_fingerprint_and_never_the_key(settings, flags):
+    """With no value to decrypt, the fingerprint is what shows the key is the escrowed one."""
+    out = StringIO()
+    try:
+        call_command("verify_decrypt", *flags, stdout=out)
+    except CommandError:
+        assert not flags
+    fingerprint = key_id(settings.FIELD_ENCRYPTION_KEY)
+    assert f"Field encryption key fingerprint: {fingerprint}" in out.getvalue()
+    assert settings.FIELD_ENCRYPTION_KEY not in out.getvalue()
 
 
 @pytest.mark.parametrize("lookup", ["exact", "contains", "in"])

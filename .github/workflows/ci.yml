@@ -125,6 +125,9 @@ jobs:
         run: docker build --build-arg GIT_COMMIT=${{ github.sha }} --tag premshop:${{ github.sha }} .
       - name: Run the stack with production settings and check it through nginx
         run: bash deploy/smoke.sh premshop:${{ github.sha }} ${{ github.sha }}
+      # scripts/deploy.py on the runner's system Python, as on the server.
+      - name: Rehearse a deploy, its automatic return, a rollback and a restore
+        run: bash deploy/rehearse.sh premshop:${{ github.sha }} ${{ github.sha }}
 
   audit:
     name: Dependency and security audit
