@@ -155,7 +155,10 @@
     const query = new URLSearchParams(ids.map(id => ['plan', id]));
     try {
       const response = await fetch('/cart/availability/?' + query, {headers: {Accept: 'application/json'}, cache: 'no-store'});
-      if (response.ok && started === generation) await sync(await response.json(), forceCart);
+      if (response.ok) {
+        const data = await response.json();
+        if (started === generation) await sync(data, forceCart);
+      }
     } catch { /* A stale display cannot bypass the server's stock check. */ }
     finally { refreshing = false; }
   };

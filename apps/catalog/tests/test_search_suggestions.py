@@ -322,6 +322,42 @@ def test_the_field_waits_for_two_letters_and_a_pause(browser, live_server, shelf
         context.close()
 
 
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@WIDTHS
+@pytest.mark.parametrize("replacement", ["", "chat"])
+def test_editing_the_query_immediately_retires_old_suggestions(
+    browser, live_server, shelf, viewport, replacement
+):
+    context, page, field = open_home(browser, live_server, viewport)
+    listbox = page.locator("#search-suggest")
+    try:
+        field.fill("spot")
+        expect(listbox).to_be_visible()
+        field.press("ArrowDown")
+        expect(field).to_have_attribute("aria-activedescendant", "search-suggest-0")
+
+        # One browser task keeps this inside the debounce, before a new answer.
+        state = field.evaluate(
+            """(input, value) => {
+                input.value = value;
+                input.dispatchEvent(new Event('input', {bubbles: true}));
+                input.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true}));
+                const list = document.getElementById('search-suggest');
+                return {hidden: list.hidden, count: list.children.length,
+                    active: input.getAttribute('aria-activedescendant'),
+                    expanded: input.getAttribute('aria-expanded')};
+            }""",
+            replacement,
+        )
+        assert state == {"hidden": True, "count": 0, "active": None, "expanded": "false"}
+        if replacement:
+            expect(listbox).to_be_visible()
+            expect(listbox).to_contain_text("ChatGPT Plus")
+    finally:
+        context.close()
+
+
 # Each way of leaving comes inside the pause after «i», before its request.
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
