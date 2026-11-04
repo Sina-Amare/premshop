@@ -116,7 +116,8 @@ def test_admin_text_and_select_focus_are_single_edges_and_errors_stay_visible(op
         assert "rgb(36, 89, 211)" in style["shadow"]
         assert style["border"] == "rgb(36, 89, 211)"
     page.fill("#id_name", "")
-    page.locator("#submit-row button[name=_continue]").click()
+    with page.expect_navigation():
+        page.locator("#submit-row button[name=_continue]").click()
     expect(page.locator(".errornote")).to_be_visible()
     control = page.locator("#id_name")
     control.focus()
@@ -159,7 +160,8 @@ def test_panel_guidance_is_natural_and_publishing_requirements_stay_precise(open
     expect(page.locator(".panel-readiness")).to_contain_text("نکات استفاده رو بنویسید")
     expect(page.locator(".field-usage_notes")).to_contain_text("موضوعیت ندارد")
     page.fill("#id_name", "")
-    page.locator("#submit-row button[name=_continue]").click()
+    with page.expect_navigation():
+        page.locator("#submit-row button[name=_continue]").click()
     expect(page.locator(".errornote")).to_contain_text("ذخیره نشد. خطاهای زیر رو اصلاح کنید.")
     expect(page.locator(".field-name")).to_contain_text("این قسمت رو پر کنید.")
 
@@ -177,7 +179,8 @@ def test_title_error_requires_removing_the_store_name(open_panel, product):
     page = open_panel(change_form(product))
     page.locator(".panel-section-jumps a").filter(has_text="عنوان و توضیح سئو").click()
     page.fill("#id_seo_title", "PremShop Plus")
-    page.locator("#submit-row button[name=_continue]").click()
+    with page.expect_navigation():
+        page.locator("#submit-row button[name=_continue]").click()
     expect(page.locator(".field-seo_title")).to_contain_text("نام فروشگاه رو اینجا ننویسید")
     expect(page.locator(".field-seo_title")).not_to_contain_text("لازم نیست")
 
