@@ -1,4 +1,5 @@
 import re
+from urllib.parse import parse_qs
 
 import pytest
 import time_machine
@@ -263,7 +264,8 @@ def test_simultaneous_recoveries_serialize_on_postgresql(
 
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("javascript,width", [(True, 390), (False, 1440)])
+@pytest.mark.parametrize("javascript", [True, False])
+@pytest.mark.parametrize("width", [390, 1440])
 def test_recovery_browser_with_html_fallback(
     browser, live_server, client, customer, javascript, width
 ):
@@ -290,15 +292,88 @@ def test_recovery_browser_with_html_fallback(
         page.get_by_label("کد بازیابی").fill(code)
         page.locator('[name="new_password1"]').fill("123")
         page.locator('[name="new_password2"]').fill("123")
-        page.get_by_role("button", name="ثبت رمز عبور جدید").click()
+        with page.expect_navigation(wait_until="load"):
+            page.locator('[name="new_password2"]').press("Enter")
         expect(page.locator("#id_new_password1")).to_have_attribute("aria-invalid", "true")
         page.locator('[name="new_password1"]').fill(PASSWORD)
         page.locator('[name="new_password2"]').fill(PASSWORD)
-        page.get_by_role("button", name="ثبت رمز عبور جدید").click()
+        save = page.get_by_role("button", name="ثبت رمز عبور جدید")
+        # Finish the native focus scroll before the pointer's stability check.
+        save.evaluate("button => button.scrollIntoView({behavior: 'instant', block: 'center'})")
+        save.click()
         expect(page).to_have_url(live_server.url + reverse("account-password"))
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         customer.refresh_from_db()
         assert customer.check_password(PASSWORD)
+    finally:
+        page.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("action", ["request", "change"])
+def test_recovery_submission_keeps_its_action_and_shows_its_busy_state(
+    browser, live_server, client, customer, width, action, tmp_path
+):
+    from playwright.sync_api import expect
+
+    code = request_code(client) if action == "change" else ""
+    page = browser.new_page(viewport={"width": width, "height": 900})
+    sent = []
+    url = live_server.url + reverse("account-password-recovery")
+    try:
+        page.context.add_cookies(
+            [
+                {
+                    "name": "sessionid",
+                    "value": client.cookies["sessionid"].value,
+                    "url": live_server.url,
+                }
+            ]
+        )
+        page.goto(url)
+        if action == "change":
+            page.get_by_label("کد بازیابی").fill(code)
+            page.locator('[name="new_password1"]').fill(PASSWORD)
+            page.locator('[name="new_password2"]').fill(PASSWORD)
+        label = "فرستادن کد جدید" if action == "request" else "ثبت رمز عبور جدید"
+        busy = "در حال ارسال…" if action == "request" else "در حال ذخیره…"
+        button = (
+            page.locator("form.acct__form")
+            .nth(0 if action == "request" else 1)
+            .locator("button[type=submit], button[name=action]")
+        )
+        page.evaluate("document.fonts.ready")
+        page.on(
+            "request", lambda request: sent.append(request) if request.method == "POST" else None
+        )
+        with page.expect_request(url) as pending:
+            state = button.evaluate("""button => {
+                button.click();
+                const state = {disabled: button.disabled, text: button.textContent};
+                button.click(); button.click();
+                return state;
+            }""")
+        assert state == {"disabled": True, "text": busy}
+        assert parse_qs(pending.value.post_data)["action"] == [action]
+        assert len(sent) == 1
+        if action == "change":
+            expect(page).to_have_url(live_server.url + reverse("account-password"))
+            customer.refresh_from_db()
+            assert customer.check_password(PASSWORD)
+        else:
+            expect(page.get_by_role("button", name=label, exact=True)).to_be_enabled()
+            assert mail.outbox
+        page.goto(url)
+        form = page.locator("form.acct__form").nth(0 if action == "request" else 1)
+        # A pending navigation prevents capture; keep this second busy state on its page.
+        form.evaluate("form => form.addEventListener('submit', event => event.preventDefault())")
+        form.locator("button[type=submit]").click()
+        page.evaluate("document.fonts.ready")
+        assert page.url == url
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        page.screenshot(path=str(tmp_path / f"recovery-busy-{action}-{width}.png"), timeout=5000)
     finally:
         page.close()
 
