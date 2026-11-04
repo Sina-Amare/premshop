@@ -213,11 +213,11 @@ def test_cart_query_count_is_the_same_for_three_lines_and_nine(client, buyer, pl
     assert many == few
 
 
-def _slower_plan(plan, hours):
+def _slower_plan(plan, hours, tag=""):
     product = Product.objects.create(
         category=plan.product.category,
-        name=f"کند {hours}",
-        slug=f"slow-{hours}",
+        name=f"کند {hours}{tag}",
+        slug=f"slow-{hours}{tag}",
         status=Product.Status.ACTIVE,
         delivery_hours=hours,
     )
@@ -259,3 +259,41 @@ def test_cart_summary_keeps_the_site_wide_sentence_when_a_line_has_no_time(clien
     help_text = _summary_help(client.get("/cart/"))
 
     assert "حداکثر ۴۸ ساعت پس از تأیید پرداخت" in help_text
+
+
+def test_cart_summary_states_hours_from_the_longest_line_and_when_they_start(client, plan):
+    slower = _slower_plan(plan, 30)
+    client.post("/cart/add/", {"plan": plan.pk})
+    client.post("/cart/add/", {"plan": slower.pk})
+
+    assert "تحویل تا ۳۰ ساعت پس از تأیید پرداخت" in _summary_help(client.get("/cart/"))
+
+
+def test_a_delivery_note_never_becomes_the_cart_promise(client, plan):
+    slower = _slower_plan(plan, 30)
+    Product.objects.filter(pk=slower.product.pk).update(
+        delivery_note="به‌علت مشکل پرداخت کندتر از معمول"
+    )
+    client.post("/cart/add/", {"plan": plan.pk})
+    client.post("/cart/add/", {"plan": slower.pk})
+
+    page = client.get("/cart/")
+    help_text = _summary_help(page)
+
+    assert "تحویل تا ۳۰ ساعت پس از تأیید پرداخت" in help_text
+    assert "کندتر از معمول" not in help_text
+    assert "کندتر از معمول" in page.content.decode(), "the line keeps its own note"
+
+
+def test_lines_tied_on_hours_give_the_same_summary_in_either_order(client, plan):
+    first = _slower_plan(plan, 30)
+    second = _slower_plan(plan, 30, tag="-b")
+    Product.objects.filter(pk=first.product.pk).update(delivery_note="یادداشت اول")
+
+    def summary(order):
+        client.cookies.clear()
+        for item in order:
+            client.post("/cart/add/", {"plan": item.pk})
+        return _summary_help(client.get("/cart/")).split("</p>", 1)[0]
+
+    assert summary([first, second]) == summary([second, first])

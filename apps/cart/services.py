@@ -252,16 +252,16 @@ class CartSummary:
 
     @property
     def delivery_promise(self) -> str:
-        """The longest time among the lines, worded as the lines word it.
+        """The longest delivery time among the lines, with when it starts.
 
-        Empty when a line has no plan to read one from; the page then keeps the
-        site-wide sentence, which is true of every product."""
+        Built from the hours alone: a line's `delivery_note` is the operator's own
+        sentence for that product and says nothing about the whole cart. Empty when
+        a line has no plan to read hours from; the page then keeps the site-wide
+        sentence, which is true of every product."""
         if not self.lines or any(line.plan is None for line in self.lines):
             return ""
-        slowest = max(
-            (line.plan.product for line in self.lines if line.plan), key=lambda p: p.delivery_hours
-        )
-        return slowest.delivery_sentence
+        hours = max(line.plan.product.delivery_hours for line in self.lines if line.plan)
+        return f"تحویل تا {to_persian_digits(hours)} ساعت پس از تأیید پرداخت"
 
     @property
     def has_purchasable_items(self) -> bool:
