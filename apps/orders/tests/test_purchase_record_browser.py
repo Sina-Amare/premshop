@@ -14,6 +14,11 @@ from apps.orders.tests.test_purchase_record import policies as policies
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
+def fonts_in_place(page):
+    """Text reflows when the web fonts arrive, so widths are measured after."""
+    page.evaluate("document.fonts.ready.then(() => true)")
+
+
 @pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize("javascript", [True, False])
 def test_saved_customer_and_panel_conditions_are_readable(
@@ -39,8 +44,7 @@ def test_saved_customer_and_panel_conditions_are_readable(
         try:
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
-            # Widths are measured with the web fonts in place: text reflows when they arrive.
-            page.evaluate("document.fonts.ready")
+            fonts_in_place(page)
             expect(page.get_by_text("شرایط زمان خرید", exact=True).first).to_be_visible()
             expect(page.locator(".saved-product")).to_have_count(1)
             if role == "customer":
@@ -79,8 +83,7 @@ def test_older_conditions_render_without_policy_disclosures(
         try:
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
-            # Widths are measured with the web fonts in place: text reflows when they arrive.
-            page.evaluate("document.fonts.ready")
+            fonts_in_place(page)
             expect(page.locator(".saved-product")).to_have_count(1)
             page.locator(".saved-product > summary").click()
             assert page.locator("[data-saved-policy]").count() == 0
