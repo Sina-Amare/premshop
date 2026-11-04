@@ -39,6 +39,8 @@ def test_saved_customer_and_panel_conditions_are_readable(
         try:
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
+            # Widths are measured with the web fonts in place: text reflows when they arrive.
+            page.evaluate("document.fonts.ready")
             expect(page.get_by_text("شرایط زمان خرید", exact=True).first).to_be_visible()
             expect(page.locator(".saved-product")).to_have_count(1)
             if role == "customer":
@@ -55,7 +57,6 @@ def test_saved_customer_and_panel_conditions_are_readable(
             assert page.locator(".saved-policy script, .saved-product script").count() == 0
             assert page.locator("html").get_attribute("dir") == "rtl"
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-            page.evaluate("document.fonts.ready")
             page.screenshot(path=str(tmp_path / f"{role}-{width}-{javascript}.png"), full_page=True)
         finally:
             context.close()
@@ -78,12 +79,13 @@ def test_older_conditions_render_without_policy_disclosures(
         try:
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
+            # Widths are measured with the web fonts in place: text reflows when they arrive.
+            page.evaluate("document.fonts.ready")
             expect(page.locator(".saved-product")).to_have_count(1)
             page.locator(".saved-product > summary").click()
             assert page.locator("[data-saved-policy]").count() == 0
             assert "توضیح کامل زمان خرید" not in page.content()
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-            page.evaluate("document.fonts.ready")
             page.screenshot(path=str(tmp_path / f"{role}-older-{width}.png"), full_page=True)
         finally:
             context.close()
