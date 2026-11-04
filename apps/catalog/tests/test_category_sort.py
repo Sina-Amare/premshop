@@ -197,3 +197,10 @@ def test_every_order_stays_inside_the_category_query_budget(client, category, so
 
     assert len(response.context["products"]) == 12
     assert len(queries) <= CATEGORY_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
+
+
+def test_the_sort_control_is_labelled_as_a_display_order(client, shelf):
+    body = sorted_page(client, shelf).content.decode()
+
+    assert ">نمایش به ترتیب:<" in body
+    assert "مرتب‌سازی" not in body

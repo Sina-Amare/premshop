@@ -82,3 +82,35 @@ def test_every_email_gets_the_same_details():
 
     assert captured["support"] == support.details()
     assert captured["support"]["email"] == settings.SUPPORT_EMAIL
+
+
+def test_the_support_address_is_the_gmail_one():
+    assert support.details()["email"] == "premshop.support@gmail.com"
+
+
+@pytest.mark.parametrize("url", ["/", "/faq/", "/no-such-page/"])
+def test_every_page_with_the_telegram_contact_also_offers_the_address(client, url):
+    address = support.details()["email"]
+
+    body = client.get(url).content.decode()
+
+    assert f'<a href="mailto:{address}"' in body
+    assert f'<bdi dir="ltr">{address}</bdi>' in body
+
+
+def test_the_faq_support_line_names_the_address_beside_telegram(client):
+    body = client.get(reverse("faq")).content.decode()
+    intro = body.split('page-head__intro">', 1)[1].split("</p>", 1)[0]
+
+    assert support.details()["telegram_url"] in intro
+    assert f'href="mailto:{support.details()["email"]}"' in intro
+
+
+def test_the_account_page_lists_the_address_with_the_telegram_handle(client, django_user_model):
+    user = django_user_model.objects.create_user("buyer@example.com")
+    client.force_login(user)
+
+    body = client.get(reverse("account")).content.decode()
+
+    assert f'href="mailto:{support.details()["email"]}"' in body
+    assert f'<bdi dir="ltr">{support.details()["email"]}</bdi>' in body

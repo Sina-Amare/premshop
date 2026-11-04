@@ -182,3 +182,7 @@ def test_the_maintenance_page_stands_alone_in_written_persian():
     for banned in ("letter-spacing", "italic", "<i>", "<em>"):
         assert banned not in page, banned
     assert TELEGRAM_HANDLE in page
+    assert "<h1>به‌زودی برمی‌گردیم</h1>" in page
+    assert "<title>به‌زودی برمی‌گردیم</title>" in page
+    assert "سفارش‌هایی که ثبت کرده‌اید سر جایشان هستند." in page
+    assert "دوباره پرداخت نکنید" in page
