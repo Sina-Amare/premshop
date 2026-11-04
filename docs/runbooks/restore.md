@@ -4,13 +4,13 @@
 
 ## What you need
 
-1. The backup: a `premshop-<time>.dump` from `PREMSHOP_BACKUP_DIR`, or, waiting for the server step, its offsite copy.
+1. The backup: a `premshop-<time>.dump` from `PREMSHOP_BACKUP_DIR`, or its copy kept off the server.
 2. The environment file with the field-encryption key that wrote the data: `FIELD_ENCRYPTION_KEY`, and in `FIELD_ENCRYPTION_KEY_FALLBACKS` any older key the backup still holds values under. On a new machine these come from the offline escrow copy (ADR-0007), with the current key's fingerprint written beside it, as `manage.py verify_decrypt` prints it.
 3. The image to run: the one the state file records as current, or the latest green `main`.
 
 ## Steps
 
-1. Give the restore an empty database. On a new machine there is nothing to do. On the server, first keep a copy of what is there: `python3 scripts/deploy.py backup`, with the settings in [deploy.md](deploy.md), writes a checked `premshop-<time>.dump` readable by its owner alone to `PREMSHOP_BACKUP_DIR` and prints its name (waiting for the server step, take a snapshot as well). Then stop the stack and remove the database volume: `docker compose down` (with the flags in [deploy.md](deploy.md)), then `docker volume rm premshop_db`. Removing the volume deletes the database for good: never skip the copy.
+1. Give the restore an empty database. On a new machine there is nothing to do. On the server, first keep a copy of what is there: `python3 scripts/deploy.py backup`, with the settings in [deploy.md](deploy.md), writes a checked `premshop-<time>.dump` readable by its owner alone to `PREMSHOP_BACKUP_DIR` and prints its name; take the hosting provider's snapshot of the server as well. Then stop the stack and remove the database volume: `docker compose down` (with the flags in [deploy.md](deploy.md)), then `docker volume rm premshop_db`. Removing the volume deletes the database for good: never skip the copy.
 2. Run `python3 scripts/deploy.py restore <dump> premshop:<commit>`, adding `--load <archive>` when the image came as a file.
 3. Read the check: first `Field encryption key fingerprint: <fingerprint>`, eight characters that name the key without revealing it, then one line per encrypted column, such as `orders.OrderItem.customer_input: 12 decrypted, 0 failed`, then `All 12 encrypted values decrypt.`
 4. A restore that worked ends with `restored premshop-<time>.dump; premshop:<commit> is running and healthy` and status 0.
@@ -25,4 +25,4 @@
 
 ## As a drill
 
-The same steps on a machine that is not the production server, monthly from the launch step. The drill passes only when at least one value decrypts, none fails and the sign-in in step 5 works. CI rehearses the restore on every code change (`deploy/rehearse.sh`): one seeded input decrypts with the right key, and a different key fails the restore with the site closed.
+The same steps on a machine that is not the production server, monthly from launch. The drill passes only when at least one value decrypts, none fails and the sign-in in step 5 works. CI rehearses the restore on every code change (`deploy/rehearse.sh`): one seeded input decrypts with the right key, and a different key fails the restore with the site closed.

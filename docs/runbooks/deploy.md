@@ -8,7 +8,7 @@ The script runs with the server's own `python3` and needs nothing installed beyo
 
 | Setting | Holds |
 |---|---|
-| `PREMSHOP_ENV_FILE` | the environment file with every secret, readable by root alone (`docs/development.md` lists what it needs) |
+| `PREMSHOP_ENV_FILE` | the environment file with every secret, readable by root alone ([development](../development.md#production-image) lists what it needs) |
 | `PREMSHOP_STATE_FILE` | the record of the image running now and the one before it; the script writes it, nobody edits it |
 | `PREMSHOP_BACKUP_DIR` | where each deploy's database backup goes, one `premshop-<time>.dump` per deploy, readable by its owner alone; `python3 scripts/deploy.py backup` writes one at any time |
 | `PREMSHOP_HEALTH_URL` | the address of `/healthz` the script checks, on a host `ALLOWED_HOSTS` accepts |
@@ -24,12 +24,12 @@ A failed deploy and a rollback both run the previous image on the schema the new
 
 ## Each deploy
 
-1. Waiting for the server step: take the provider's snapshot of the server.
-2. Find the commit: a green run of `main` in CI. Its image is `premshop:<commit>` with the full 40-character hash, the value `/healthz` reports; how the image reaches the server is decided in the server step, as an archive or a pull.
+1. Take the hosting provider's snapshot of the server.
+2. Find the commit: a green run of `main` in CI. Its image is `premshop:<commit>` with the full 40-character hash, the value `/healthz` reports. The image reaches the server as an archive, loaded with `--load`, or by a pull.
 3. Put the checkout on that commit, so the compose file and nginx configuration match the image: `git fetch` then `git checkout <commit>`. nginx reads `deploy/nginx/` from the checkout: the deploy tests those files with `nginx -t` before it backs up or migrates anything and reloads nginx after the switch, so a changed file takes effect with the deploy that brings it.
 4. Run `python3 scripts/deploy.py deploy premshop:<commit>`, adding `--load <archive>` when the image came as a file.
 5. Read the lines it prints, each starting `deploy:`. A deploy that worked ends with `premshop:<commit> is running and healthy` and status 0, and names the backup it took.
-6. Waiting for the server step: copy that backup offsite.
+6. Copy that backup off the server.
 
 ## When it stops
 

@@ -1,58 +1,74 @@
-# Architecture Decision Records
+# Architecture decision records
 
-Every decision someone might later ask «چرا این‌طوری؟» about. Format: Status · Context · Decision · Alternatives considered · Consequences. New ADRs take the next number; a superseded ADR is marked so, never deleted.
+Every decision someone might later ask «چرا این‌طوری؟» about. Each record has the same shape: status, context, decision, alternatives considered, consequences, and the condition that would justify revisiting it.
 
-| # | Decision |
+A record is never rewritten. A later change is a dated amendment appended to it, and a replaced decision is marked superseded and kept. "Last change" below is the date of the newest amendment.
+
+| ADR | Decision | Status | Last change |
+|---|---|---|---|
+| [0001](0001-stack-and-architecture.md) | Stack: Django modular monolith, server-rendered | Accepted, amended | 2026-11-04 |
+| [0002](0002-module-boundaries-and-service-layer.md) | Module boundaries and the service layer | Accepted, amended | 2026-10-28 |
+| [0003](0003-order-status-on-item-seven-states.md) | Status lives on `OrderItem`, with exactly seven states | Accepted, amended | 2026-10-29 |
+| [0004](0004-no-drf-in-phase-1.md) | No DRF and no HTTP API in phase 1 | Accepted | 2026-09-01 |
+| [0005](0005-money-in-toman.md) | All stored amounts are toman, integer-valued decimals | Accepted, amended | 2026-09-01 |
+| [0006](0006-card-to-card-payment-design.md) | Card-to-card payment design | Superseded by [0019](0019-payment-gateway.md) | 2026-09-01 |
+| [0007](0007-credential-encryption-key-escrow-retention.md) | Credential encryption, key escrow and retention | Accepted, amended | 2026-11-01 |
+| [0008](0008-content-free-messages-and-magic-link.md) | Messages carry no credential values; a single-use magic link is the one convenience | Accepted, amended | 2026-10-29 |
+| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-10-31 |
+| [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-03 |
+| [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
+| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in and the sign-in alert | Accepted, amended | 2026-10-23 |
+| [0013](0013-payment-provider-interface-deferred.md) | No payment-provider interface until a second gateway exists | Accepted | 2026-09-01 |
+| [0014](0014-deliberate-simplifications.md) | Deliberate simplifications, each with its flip condition | Accepted, amended | 2026-11-04 |
+| [0015](0015-error-tracking-glitchtip.md) | Error tracking: sentry-sdk reporting to self-hosted GlitchTip | Accepted | 2026-09-01 |
+| [0016](0016-brand-and-type.md) | Brand and type: Estedad over Vazirmatn; the accent colour; amber means time | Accepted, amended (cobalt accent since 2026-10-25) | 2026-10-28 |
+| [0017](0017-development-environment.md) | Development on Windows, parity enforced by CI, Docker in WSL | Accepted, amended | 2026-10-23 |
+| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cross-device cart and anonymous browsing | Accepted, amended | 2026-10-27 |
+| [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-10-29 |
+| [0020](0020-discount-codes.md) | Discount codes: scoped, server-computed, concurrency-safe, floored at zero | Accepted, amended | 2026-10-29 |
+| [0021](0021-promotional-pricing.md) | Promotional pricing lives on the plan, behind one function | Accepted, amended | 2026-10-24 |
+| [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-02 |
+| [0023](0023-email-templates.md) | Email templates: hand-built tables, system fonts, wordmark set in type | Accepted, amended | 2026-10-31 |
+| [0024](0024-auth-implementation.md) | Authentication: cache-backed codes, one flow for sign-in and registration | Accepted, amended | 2026-11-03 |
+| [0025](0025-catalog-implementation.md) | Catalogue: whole-toman money, one price function, a seeded shop | Accepted, amended | 2026-11-04 |
+| [0026](0026-storefront-composition.md) | Storefront composition; the current look is in the [design language](../design-language.md) | Accepted, amended | 2026-10-23 |
+| [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer | Accepted, amended | 2026-10-20 |
+| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds | Accepted, amended | 2026-10-31 |
+| [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-10-30 |
+| [0030](0030-legal-page-drafts.md) | Legal pages with protected drafts | Accepted, amended | 2026-11-02 |
+
+## Writing a record
+
+1. Take the next number, `0031`, and name the file `NNNN-short-title.md`.
+2. Follow the shape of the existing records: status, context, decision, alternatives considered, consequences, and when to revisit.
+3. Add a row to the table above.
+4. To change an accepted decision, append `**Amendment — YYYY-MM-DD.**` with what changed and why, and update its row here. To replace one, write a new record and mark the old one superseded.
+
+## Names used in older records
+
+Older records refer to documents and shorthand that have since been reorganised.
+
+| Older name | Now |
 |---|---|
-| [0001](0001-stack-and-architecture.md) | Django modular monolith, server-rendered *(amended 2026-10-23: inline scripts; npm Tailwind and axe-core toolchain; 2026-11-03: Huey worker, one image per commit; 2026-11-04: storefront inline code)* |
-| [0002](0002-module-boundaries-and-service-layer.md) | One-way app imports; thin views; composite money services *(amended 2026-10-23: current rule locations; core's catalog import remains a violation)* |
-| [0003](0003-order-status-on-item-seven-states.md) | Status on OrderItem; exactly seven states; replacement cycles |
-| [0004](0004-no-drf-in-phase-1.md) | No DRF/API until a real out-of-process consumer exists |
-| [0005](0005-money-in-toman.md) | Toman everywhere; rial only at the gateway adapter *(amended: discount field now exists — 0020; the instructions-page boundary is gone)* |
-| [0006](0006-card-to-card-payment-design.md) | ~~Card-to-card: DB-enforced uniqueness, pending-only expiry, revive, card snapshots~~ — **superseded by [0019](0019-payment-gateway.md)** |
-| [0007](0007-credential-encryption-key-escrow-retention.md) | Field encryption, key escrow, retention periods; key rotation and manual incoming activation details; 2026-11-01 amendment: the access log's first use, for staff reveals of customer input; 2026-10-31 amendment: retention remains internal, short public privacy; 2026-10-29: cancelled input and interim deletion enforcement |
-| [0008](0008-content-free-messages-and-magic-link.md) | No credential values in software messages; constrained magic link; 2026-10-26 incoming manual activation exception |
-| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Wall-clock due_at + snap-forward; pause arithmetic; 21-day input-timeout ladder *(amended 2026-10-31: later of payment and required details; missing-input refund exception; 2026-10-29: interim manual enforcement; 2026-10-28: delivery cap 48 hours for every product; 2026-10-20, evening: delivery note printed as written)* |
-| [0010](0010-event-log-and-notification-outbox.md) | Append-only event log; outbox with dedupe keys; 2026-11-03 C1 polling, shared quota wait and accepted SMTP duplicates |
-| [0011](0011-buy-now-checkout-no-cart.md) | ~~Buy-now + quantity; no cart~~ — **superseded by [0018](0018-shopping-cart-and-guest-checkout.md)**; its item-status argument still stands *(amended 2026-10-23: the planned persistent cart needs its own tables and migration)* |
-| [0012](0012-auth-email-otp.md) | Email identity; inline checkout OTP; new-sign-in alert guard *(amended 2026-10-23: code sign-in restores access, not forgotten-password replacement; Iranian-host deliverability remains untested)* |
-| [0013](0013-payment-provider-interface-deferred.md) | One payment implementation, no interface; extract only if a real second gateway arrives |
-| [0014](0014-deliberate-simplifications.md) | The simple-over-flexible verdicts, each with its flip condition *(amended 2026-10-14: trigram fallback; 2026-10-23: the GIN index exists but query/index mismatch remains; no category filters)* |
-| [0015](0015-error-tracking-glitchtip.md) | sentry-sdk → self-hosted GlitchTip |
-| [0016](0016-brand-and-type.md) | Estedad + Vazirmatn; teal action colour; amber means time *(amended 2026-10-13: white canvas and neutral ramp; 2026-10-14: ink surfaces and two general radii; 2026-10-23: constellation radii remain an unresolved divergence)* |
-| [0017](0017-development-environment.md) | Windows-native dev; CI enforces Linux parity; WSL Docker rehearses production *(amended 2026-10-23: PostgreSQL rationale corrected; daily Redis container, in-memory test cache)* |
-| [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cart, guest merge and anonymous browsing; 2026-10-27 amendment: untimed selections without stock holds, visible unavailable rows and atomic stock claims deferred to checkout |
-| [0019](0019-payment-gateway.md) | Gateway is the rail; server-side verify only, amount checked, idempotent, inquiry job mandatory |
-| [0020](0020-discount-codes.md) | Scoped discount codes computed server-side; `DiscountRedemption` rows; `used_count` under row lock; total floored at zero |
-| [0021](0021-promotional-pricing.md) | Promo price + window on `Plan`; one `effective_price` rule *(amended 2026-10-23: countdowns; 2026-10-24: separate plan offers and successive server-computed card expiry prices)* |
-| [0022](0022-transactional-email.md) | SMTP2GO relay; port-derived TLS; independent attempt accounting, security reserve and interim panel warning (amended 2026-11-02) |
-| [0023](0023-email-templates.md) | Email templates: tables, wordmark in type; three files per message; amber means time *(amended 2026-09-18: expanded font stack and web-font link; 2026-10-23: fallback tests, built digit normalization and radius comparison; 2026-10-31: web-font link removed)* |
-| [0024](0024-auth-implementation.md) | Auth build: user model is migration 0001; codes in cache; one login+registration flow; fresh-code recovery; 2026-11-03 daily accepted-code budgets and targeted-lockout risk |
-| [0025](0025-catalog-implementation.md) | Catalog build: whole-toman money; Persian CHECK messages; search folding; seeded shop; Unfold admin *(amended 2026-10-13, 2026-10-14, 2026-10-14b and 2026-10-20: region removed, per-plan quantities, no category filters, renewable products, key specs and required browser tests; 2026-10-23: search-index limitation, home cap, mark sources, query budgets and delivery label; 2026-10-24: shared brand-color cards, separate plan offers and selected-plan summary)* |
-| [0026](0026-storefront-composition.md) | Storefront: ink top strip and footer; subset fonts; brand marks sourced per product *(amended 2026-10-14b: light brand-wash hero and linked constellation; 2026-10-23: tile radii diverge from the general rule and await an owner decision)* |
-| [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer: markdown-it-py with raw HTML off, then nh3's allowlist; Latin runs in `<bdi>`; never an `h1` *(amended 2026-10-20: a full address on the shop's own host is an internal link)* |
-| [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds; «پیش از خرید» when it says more than the warranty (amended 2026-10-20); questions in `catalog`; one publishing rule; staff preview of a draft at its own address *(amended 2026-10-22: `iran_stance` became `usage_notes`, «نکات استفاده»; the stance's sources requirement was dropped; 2026-10-31: eligible unavailable pages, separate for-sale selectors, draft-editable product addresses and loc-only sitemap)* |
-| [0029](0029-unpaid-claims-and-scheduled-release.md) | Fixed unpaid deadlines, whole-order stock/discount release, checkout replay and Huey scheduling; amended 2026-10-30: remove activation-consent collection, preserve history |
-| [0030](0030-legal-page-drafts.md) | Fixed legal-page URLs, private staff previews, separate publishing authority; 2026-11-02 amendment: saved purchase conditions and published policy snapshots |
+| `services-and-modules.md`, `notifications-and-bot.md` | [architecture.md](../architecture.md) |
+| `state-machine.md`, with transition IDs A1–A14 | [order-lifecycle.md](../order-lifecycle.md), which keeps the same IDs |
 
-## Legacy shorthand map
+Design-phase shorthand:
 
-The contract documents (data model, state machine, services, notifications) grew during the design phase and occasionally cite decision-sheet shorthand. Resolve it here:
-
-| Shorthand | Meaning → ADR |
+| Shorthand | Meaning and record |
 |---|---|
-| D1, D2 | Item statuses / payment machine + Refund gate → 0003, ~~0006~~ **0019** |
-| D3 | Toman + no discount → 0005; the discount half → **0020**; promotional pricing → **0021** |
+| D1, D2 | Item statuses; the payment machine and the refund gate → 0003, 0019 |
+| D3 | Toman → 0005; discount codes → 0020; promotional pricing → 0021 |
 | D4 | No DRF → 0004 |
-| D5, D6 | Buy-now / auth flow → ~~0011~~ **0018**, 0012 |
-| D7, D8 | SLA + SiteSetting (holiday, hours; card slots deleted; the two clocks are now `gateway_timeout_minutes` and `unpaid_order_ttl_hours`) → 0009, ~~0006~~ **0019** |
-| D9, D10 | New tables / OrderItem additions → 0010, 0007, 0003 |
-| D11, D12 | Payment fields + constraints / channels + tracking token → ~~0006~~ **0019** |
-| D13 | Content-free messages (as amended: magic link) → 0008 |
-| D14 | Encryption + escrow (private receipts deleted with the card-to-card rail) → 0007, 0019 |
-| D15, D16 | Flat catalog, normalized search / review cuts → 0014 |
-| D17, D18 | Outbox + dedupe + heartbeat / events on-commit → 0010 |
-| D19, D20 | Cache no-store rules / observability + scrubbing → 0010, 0015 |
-| D21, D22 | App map / step-order changes → 0002; roadmap kept outside the repo |
-| G1–G12 | Gateway-round rulings (manual-payment action G2, inquiry sweep G4, gateway refund API G5, cart/discount shape G10, G12), all folded into **0018–0021** — cite the ADR inline, not the G number |
-| R1–R22 | Cross-artifact reconciliation rulings, folded into the documents themselves |
+| D5, D6 | The cart; the sign-in flow → 0018, 0012 |
+| D7, D8 | Delivery deadlines; operator settings and the two payment clocks → 0009, 0019 |
+| D9, D10 | New tables; additions to `OrderItem` → 0010, 0007, 0003 |
+| D11, D12 | Payment fields and constraints; order channels and the tracking token → 0019 |
+| D13 | Content-free messages and the magic link → 0008 |
+| D14 | Encryption and key escrow → 0007, 0019 |
+| D15, D16 | Flat catalogue and normalised search; reviews → 0014 |
+| D17, D18 | Outbox, dedupe keys and heartbeat; events after commit → 0010 |
+| D19, D20 | No-store cache rules; observability and scrubbing → 0010, 0015 |
+| D21, D22 | The app map; build-order changes → 0002 |
+| G1–G12 | Rulings from the gateway review, folded into 0018–0021 |
+| R1–R22 | Reconciliation rulings, folded into the documents themselves |
