@@ -69,6 +69,11 @@
     reshaping = true;
     header.style.visibility = 'hidden';
     requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (document.querySelector('dialog[open]')) {
+        header.style.visibility = '';
+        reshaping = false;
+        return;
+      }
       header.style.transition = 'none';
       header.classList.toggle('v-header--compact', want);
       header.style.marginBlockEnd = want ? `${full - header.offsetHeight}px` : '';
@@ -81,7 +86,7 @@
     }));
   };
   function setCompact() {
-    if (reshaping || !phone.matches) return;
+    if (reshaping || !phone.matches || document.querySelector('dialog[open]')) return;
     const compactNow = header.classList.contains('v-header--compact');
     if (compactNow) {
       if (scrollY <= 0) reshape(false);

@@ -587,6 +587,54 @@ def test_the_phone_header_changes_shape_without_a_layout_shift(browser, live_ser
         context.close()
 
 
+def test_a_queued_phone_header_reshape_waits_until_the_plan_dialog_closes(
+    browser, live_server, discounted
+):
+    page = browser.new_page(viewport=PHONE)
+    try:
+        page.goto(f"{live_server.url}/")
+        page.evaluate("document.fonts.ready")
+        # Hold the already-requested frame until the modal is open.
+        page.evaluate("""() => {
+            window.headerFrames = [];
+            window.originalFrame = window.requestAnimationFrame;
+            window.requestAnimationFrame = callback => { window.headerFrames.push(callback); return 0; };
+            const header = document.querySelector('.v-header');
+            header.style.transition = 'none';
+            document.body.style.minHeight = '4000px';
+            header.classList.add('v-header--away');
+            scrollTo({top: 1000, behavior: 'instant'});
+        }""")
+        page.wait_for_function("window.headerFrames.length > 0")
+        before = page.evaluate("""() => {
+            window.requestAnimationFrame = window.originalFrame;
+            document.querySelector('[data-quick-open]').click();
+            const position = scrollY;
+            window.headerFrames.splice(0).forEach(callback => callback(performance.now()));
+            return position;
+        }""")
+        expect(page.locator("#quick-plans")).to_be_visible()
+        page.evaluate(
+            "() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)))"
+        )
+        header = page.locator(".v-header")
+        assert not header.evaluate("element => element.classList.contains('v-header--compact')")
+        expect(header).to_have_css("visibility", "visible")
+        assert page.evaluate("scrollY") == before
+        # A later transition must also wait, rather than queuing another hidden reshape.
+        state = header.evaluate("""element => {
+            element.dispatchEvent(new Event('transitionend'));
+            return element.style.visibility;
+        }""")
+        assert state != "hidden"
+        page.locator("[data-quick-close]").click()
+        page.evaluate("scrollBy({top: 100, behavior: 'instant'})")
+        expect(header).to_have_class(re.compile(r"\bv-header--compact\b"))
+        expect(header).to_have_css("visibility", "visible")
+    finally:
+        page.close()
+
+
 def test_widening_the_window_clears_the_phone_headers_state(browser, live_server, discounted):
     context = browser.new_context(viewport=PHONE, device_scale_factor=1)
     page = context.new_page()
