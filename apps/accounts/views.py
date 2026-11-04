@@ -230,9 +230,11 @@ def _seconds_left(expires_at: int) -> int:
 def login_code_resend(request: HttpRequest) -> HttpResponse:
     """Send a fresh code to the address already waiting in the session.
 
-    Replaces the outstanding code (otp.issue always does). The page's script asks
-    for JSON and restarts its countdown from the new expiry; a plain form post,
-    from a browser with JavaScript off, is sent back to the page with a message.
+    Replaces the outstanding code once the new mail is accepted; a send that
+    fails leaves the code in the inbox, and its expiry, as they were. The page's
+    script asks for JSON and restarts its countdown from the new expiry; a plain
+    form post, from a browser with JavaScript off, is sent back to the page with
+    a message.
     The same rate limit as the first request applies — three per address per
     fifteen minutes — so the button's 60-second cooldown is a courtesy, not the
     defence, and without JavaScript there is no cooldown at all.

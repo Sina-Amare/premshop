@@ -589,42 +589,84 @@ def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
     assert user.email not in everything, "the address reached a log or a report"
 
 
-def test_a_failed_resend_leaves_the_codes_as_a_refused_resend_does(monkeypatch):
-    """Either way the code is issued before the send fails, so it replaces the
-    one already in the inbox. A relay failure must not differ from the quota's
-    refusal in what either code can still do."""
-    from django.core.mail.backends.locmem import EmailBackend
-
+@pytest.mark.parametrize("plain", [False, True], ids=["script", "form"])
+@pytest.mark.parametrize("kind", ["quota", "refused", "disconnected", "unreachable", "zero"])
+def test_a_failed_resend_keeps_the_code_already_in_the_inbox(
+    client, user, monkeypatch, kind, plain
+):
+    """The code used to be stored before the send, so a resend that failed
+    replaced the code in the inbox with one nobody received, while the page
+    went on counting down for it. The owner's ruling on the P.5 review: until a
+    send is accepted, the inbox code works, on its own clock. The quota's
+    refusal and every relay failure end the same way."""
+    from apps.core import email as core_email
     from apps.core import email_log
 
-    issued: list[otp.Issued] = []
-    real_issue = otp.issue
+    client.post(reverse("login-code"), {"email": user.email})
+    inbox = code_from(mail.outbox[-1])
+    expires_at = client.session[views.PENDING_EXPIRES_KEY]
+    unsent: list[str] = []
+    real_send = core_email.send_templated_email
 
-    def keep(*args, **kwargs):
-        issued.append(real_issue(*args, **kwargs))
-        return issued[-1]
+    def keep(name, **kwargs):
+        unsent.append(kwargs["context"]["code"])
+        return real_send(name, **kwargs)
 
-    monkeypatch.setattr(otp, "issue", keep)
-    outcomes = {}
-    for case in ("quota", "relay"):
-        visitor = Client()
-        visitor.post(reverse("login-code"), {"email": f"{case}@example.test"})
+    monkeypatch.setattr(core_email, "send_templated_email", keep)
+    if kind == "quota":
+        monkeypatch.setattr(email_log, "reserve", raise_quota)
+    else:
+        fail_the_relay(monkeypatch, kind, [])
+
+    json_answer = {} if plain else {"HTTP_ACCEPT": "application/json"}
+    response = client.post(reverse("login-code-resend"), **json_answer)
+
+    assert response.status_code == (302 if plain else 503)
+    assert unsent, "the resend never made a code"
+    assert client.session[views.PENDING_EXPIRES_KEY] == expires_at, "the countdown restarted"
+    outcomes = [
+        client.post(reverse("login-code-verify"), {"code": code}).status_code
+        for code in (unsent[-1], inbox)
+    ]
+    # The unsent code, which nobody received, is refused; the inbox code signs in.
+    assert outcomes == [200, 302], outcomes
+    assert client.session["_auth_user_id"] == str(user.pk)
+
+
+@pytest.mark.parametrize("wrong_after", [0, 1])
+def test_a_failed_send_neither_refills_nor_spends_the_guesses_left(user, monkeypatch, wrong_after):
+    """A failed send that gave the inbox code a fresh count would make each
+    failed send five more guesses at six digits."""
+    inbox = otp.send_login_code(user.email).code
+    wrong = f"{(int(inbox) + 1) % 10**otp.CODE_LENGTH:0{otp.CODE_LENGTH}d}"
+    for _ in range(otp.MAX_ATTEMPTS - 1):
+        assert not otp.verify(user.email, wrong)
+    with monkeypatch.context() as failing:
+        failing.setattr("apps.core.email.send_templated_email", disconnect)
+        with pytest.raises(smtplib.SMTPServerDisconnected):
+            otp.send_login_code(user.email)
+
+    for _ in range(wrong_after):
+        assert not otp.verify(user.email, wrong)
+
+    # One guess was left before the failed send, and is still left: the right
+    # code spends it, and a wrong one spends it and the code with it.
+    assert otp.verify(user.email, inbox) is (wrong_after == 0)
+
+
+@pytest.mark.parametrize("late", [False, True], ids=["before-deadline", "after-deadline"])
+def test_a_failed_send_does_not_move_the_inbox_codes_deadline(user, monkeypatch, late):
+    """Nor may it buy the code time: the deadline is the one it was mailed with."""
+    with time_machine.travel(START, tick=False) as clock:
+        inbox = otp.send_login_code(user.email).code
+        clock.shift(otp.CODE_TTL_SECONDS - 60)
         with monkeypatch.context() as failing:
-            if case == "quota":
-                failing.setattr(email_log, "reserve", raise_quota)
-            else:
-                failing.setattr(EmailBackend, "send_messages", disconnect)
-            visitor.post(reverse("login-code-resend"))
-        earlier, unsent = issued[-2].code, issued[-1].code
-        outcomes[case] = [
-            visitor.post(reverse("login-code-verify"), {"code": code}).status_code
-            for code in (earlier, unsent)
-        ]
+            failing.setattr("apps.core.email.send_templated_email", disconnect)
+            with pytest.raises(smtplib.SMTPServerDisconnected):
+                otp.send_login_code(user.email)
+        clock.shift(61 if late else 59)
 
-    assert outcomes["relay"] == outcomes["quota"], outcomes
-    # Positive control, so the comparison cannot pass with both sides broken:
-    # the inbox code is refused, and the unsent one, which nobody received, works.
-    assert outcomes["quota"] == [200, 302]
+        assert otp.verify(user.email, inbox) is not late
 
 
 def raise_quota(*args, **kwargs):

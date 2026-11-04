@@ -221,6 +221,30 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     page.wait_for_url("**/account/")
 
 
+def test_a_failed_resend_leaves_the_inbox_code_and_its_clock(page, live_server, user, monkeypatch):
+    """The owner's ruling on the P.5 review: a resend the relay did not take
+    says so, and the code already in the inbox still signs in, on the clock it
+    was mailed with."""
+    from django.core.mail.backends.locmem import EmailBackend
+
+    from apps.accounts.tests.test_auth import disconnect
+
+    page.clock.install()
+    request_code(page, live_server, user.email)
+    page.clock.fast_forward("01:01")
+    page.wait_for_function("() => !document.querySelector('#resend').disabled")
+    monkeypatch.setattr(EmailBackend, "send_messages", disconnect)
+
+    page.click("#resend")
+
+    page.wait_for_selector("#code-error:not([hidden])")
+    assert "@premshop_support" in page.locator("#code-error").inner_text()
+    # A code sent now would have restarted the clock at ten minutes.
+    assert page.locator("#code-clock").inner_text().startswith("۸:")
+    page.evaluate(PASTE_JS, code_from(mail.outbox[0]))
+    page.wait_for_url("**/account/")
+
+
 def test_a_page_opened_after_its_code_ran_out_offers_a_new_one_at_once(page, live_server, user):
     """Reloaded after expiry, the page started a 60-second cooldown on a code
     that was already dead, and the focus meant for «ارسال دوباره» found it
