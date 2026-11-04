@@ -50,12 +50,16 @@ def shop():
     return product
 
 
-def test_a_card_names_the_shop_and_a_small_tile_does_not(client, shop):
-    home = client.get(reverse("home")).content.decode()
-    assert '<span class="pcard__shop" aria-hidden="true">PremShop</span>' in home
-
-    client.post(reverse("cart-add"), {"plan": shop.plans.get().pk})
-    assert "pcard__shop" not in client.get(reverse("cart")).content.decode()
+def test_no_card_prints_the_shop_name_over_its_art(client, shop):
+    # The same word on every card tells a buyer nothing.
+    for url in (
+        reverse("home"),
+        reverse("category", args=[shop.category.slug]),
+        reverse("search") + "?q=" + shop.name,
+    ):
+        page = client.get(url).content.decode()
+        assert "pcard__art" in page, url
+        assert "pcard__shop" not in page, url
 
 
 # --- The shelf ---------------------------------------------------------------

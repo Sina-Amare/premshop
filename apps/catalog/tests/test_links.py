@@ -79,6 +79,10 @@ def dead_links(client, html: str) -> list[str]:
             # in the query does not change where it goes.
             if urlsplit(href)._replace(query="").geturl() != support.details()["telegram_url"]:
                 dead.append(f"{href}: an external link nobody reviewed")
+        elif href.startswith("mailto:"):
+            # The support address is the one mail link the shop prints.
+            if href != f"mailto:{support.details()['email']}":
+                dead.append(f"{href}: a mail link nobody reviewed")
         elif href.startswith("#"):
             if href[1:] not in parser.ids:
                 dead.append(f"{href}: no element has that id")
@@ -101,6 +105,8 @@ def test_the_checker_catches_each_kind_of_dead_link(client, shop):
         '<a href="#nowhere">x</a><a href="https://example.com/">x</a>'
         f'<a href="{support.details()["telegram_url"]}?text=x">ok</a>'
         '<a href="https://t.me/someone_else?text=x">x</a>'
+        f'<a href="mailto:{support.details()["email"]}">ok</a>'
+        '<a href="mailto:someone@example.com">x</a>'
     )
 
-    assert len(dead_links(client, planted)) == 4
+    assert len(dead_links(client, planted)) == 5

@@ -11,6 +11,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
+from apps.core import support
 from apps.core.formatting import format_toman, to_persian_digits
 from apps.orders import services
 from apps.orders.models import OrderItem, OrderItemEvent
@@ -411,3 +412,28 @@ def test_order_detail_query_count_is_the_same_for_three_lines_and_nine(client, b
 
     assert response.context["order"].items.count() == 9
     assert many == few
+
+
+def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client, buyer, plan):
+    order = purchase(buyer, plan)
+    client.force_login(buyer)
+    details = support.details()
+
+    body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+    assert "شماره‌ی سفارش را در تلگرام به" in body
+    assert f'<a href="{details["telegram_url"]}"' in body
+    assert f'<a href="mailto:{details["email"]}"' in body
+
+
+def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
+    details = support.details()
+
+    response = client.get("/track/not-a-token/")
+    body = response.content.decode()
+
+    assert response.status_code == 404
+    assert "شماره‌ی سفارش را دارید" in body
+    assert details["telegram"] in body and details["email"] in body
+    # A link off this page would carry the bad address as a Referer or a body.
+    assert "t.me" not in body and "mailto:" not in body

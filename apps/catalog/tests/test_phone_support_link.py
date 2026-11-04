@@ -1,4 +1,4 @@
-"""Support one tap away on every phone page.
+"""Support one tap away from the top of the page or the footer, on every phone page.
 
 From 1150px down the header's own support block has no room, so the same link
 ends the categories row; on a phone the FAQ link gives up its place there and
@@ -81,13 +81,27 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         assert 170 <= header_height(page) < 171, header_height(page)
         shoot(page, url, tmp_path / f"{path.strip('/').split('/')[0] or 'home'}-390.png")
 
-        # The header steps aside reading down and brings the link back on the way up.
+        # The header steps aside reading down and returns as one short row on the way up;
+        # the link is back with the full header at the top of the page.
         page.evaluate("document.body.style.minHeight = '4000px'")
         page.mouse.wheel(0, 1000)
         expect(page.locator(".v-header")).to_have_class(AWAY)
         expect(link).not_to_be_in_viewport()
         page.mouse.wheel(0, -200)
+        expect(page.locator(".v-header")).not_to_have_class(AWAY)
+        expect(link).not_to_be_in_viewport()
+        page.evaluate("scrollTo({top: 0, behavior: 'instant'})")
         expect(link).to_be_in_viewport(ratio=1)
+        # The returning short row has no support link, so the footer must carry one.
+        page.evaluate("document.body.style.minHeight = ''")
+        page.evaluate("scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'})")
+        footer_links = page.locator(f".v-footer a[href='{details['telegram_url']}']")
+        assert footer_links.count() > 0
+        shown = footer_links.evaluate_all(
+            "links => links.some(a => { const r = a.getBoundingClientRect();"
+            " return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight; })"
+        )
+        assert shown, "no footer support link is visible at the bottom of the page"
     finally:
         page.close()
 
@@ -203,8 +217,12 @@ def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width
 
 
 def test_the_footer_stops_at_the_handle(client, shop):
-    """No other account writing to customers is not confirmed yet, so the footer claims nothing of it."""
+    """No other account writing to customers is confirmed, so the footer claims nothing beyond the handle and the support address."""
     body = client.get("/").content.decode()
 
     contact = re.search(r'<div class="v-footer__contact">(.*?)</div>', body, re.S).group(1)
-    assert contact.endswith(f"{support.details()['telegram']}</bdi></a>"), contact
+    details = support.details()
+    assert f"{details['telegram']}</bdi></a>" in contact, contact
+    assert contact.endswith(
+        f'<a href="mailto:{details["email"]}"><bdi dir="ltr">{details["email"]}</bdi></a>'
+    ), contact

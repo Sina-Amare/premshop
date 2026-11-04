@@ -263,7 +263,7 @@ SERVER_EMAIL = env("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
 # The address customers are told to write to, and the Reply-To on every message.
 # Separate from DEFAULT_FROM_EMAIL, which carries a display name and may change.
-SUPPORT_EMAIL = env("SUPPORT_EMAIL", "support@premshop.ir")
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", "premshop.support@gmail.com")
 
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
 # EHLO name. Left alone it stamps the machine's own hostname into every customer's
