@@ -36,13 +36,13 @@ def settled(previous: list[dict], current: list[dict]) -> bool:
 
 
 def main() -> int:
-    sha = (
-        sys.argv[1]
-        if len(sys.argv) > 1
-        else subprocess.run(  # noqa: S603
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True  # noqa: S607
-        ).stdout.strip()
-    )
+    revision = sys.argv[1] if len(sys.argv) > 1 else "HEAD"
+    sha = subprocess.run(  # noqa: S603
+        ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
     previous: list[dict] = []
     end = time.monotonic() + DEADLINE
     while time.monotonic() < end:
