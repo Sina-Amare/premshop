@@ -59,25 +59,42 @@
   document.addEventListener('click', event => { if (event.target.closest('a[href*="#"]')) jumping(); });
   // Focus inside the header, a keyboard user or a returned focus, brings it back first.
   header?.addEventListener('focusin', () => header.classList.remove('v-header--away'));
-  // Past the header's own height the returning header is one row. It changes only while out
-  // of sight, and the space it gives up is kept as a margin, so nothing on the page moves.
-  const setCompact = () => {
-    const compactNow = header.classList.contains('v-header--compact');
-    if (!compactNow) full = header.offsetHeight;
-    const hidden = header.getBoundingClientRect().bottom <= 0;
-    const want = phone.matches && scrollY > full && (compactNow || hidden);
-    if (want === compactNow) return;
-    // The slide-away is a percentage of the header's height, so a new height must not animate.
-    header.style.transition = 'none';
-    header.classList.toggle('v-header--compact', want);
-    header.style.marginBlockEnd = want ? `${full - header.offsetHeight}px` : '';
-    header.style.transition = '';
+  // Past the header's own height the returning header is one row. Its shape changes only
+  // while it cannot be seen: scrolled out on the way down, or hidden for two frames at the
+  // very top. The space it gives up is kept as a margin, set in the same frame as the class,
+  // so nothing on the page moves. Chrome scores a header that is merely sliding away as
+  // visible, hence the visibility switch.
+  let reshaping = false;
+  const reshape = want => {
+    reshaping = true;
+    header.style.visibility = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      header.style.transition = 'none';
+      header.classList.toggle('v-header--compact', want);
+      header.style.marginBlockEnd = want ? `${full - header.offsetHeight}px` : '';
+      header.style.transition = '';
+      requestAnimationFrame(() => {
+        header.style.visibility = '';
+        reshaping = false;
+        setCompact();
+      });
+    }));
   };
+  function setCompact() {
+    if (reshaping || !phone.matches) return;
+    const compactNow = header.classList.contains('v-header--compact');
+    if (compactNow) {
+      if (scrollY <= 0) reshape(false);
+      return;
+    }
+    full = header.offsetHeight;
+    if (scrollY > full && header.getBoundingClientRect().bottom <= 0) reshape(true);
+  }
   header?.addEventListener('transitionend', setCompact);
   if (header) addEventListener('scroll', () => {
     const y = scrollY;
-    if (performance.now() < jumpUntil) { lastY = y; return; }
-    if (Math.abs(y - lastY) < 8) return;
+    if (performance.now() < jumpUntil) { lastY = y; setCompact(); return; }
+    if (Math.abs(y - lastY) < 8) { setCompact(); return; }
     const busy = header.contains(document.activeElement) || header.querySelector('details[open]');
     header.classList.toggle('v-header--away', phone.matches && y > lastY && y > header.offsetHeight && !busy);
     setCompact();

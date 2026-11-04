@@ -526,6 +526,33 @@ def test_the_returning_phone_header_is_one_short_row_and_shifts_nothing(
         context.close()
 
 
+def test_the_phone_header_changes_shape_without_a_layout_shift(browser, live_server, discounted):
+    """Down past the header, up so the short row returns, then back to the top in steps."""
+    context = browser.new_context(viewport=PHONE, device_scale_factor=1)
+    page = context.new_page()
+    page.add_init_script(
+        "window.__shift = 0; new PerformanceObserver(list => { for (const e of list.getEntries())"
+        " window.__shift += e.value; }).observe({type: 'layout-shift', buffered: true});"
+    )
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        page.wait_for_timeout(500)
+        page.evaluate("window.__shift = 0")
+        page.mouse.wheel(0, 1200)
+        page.wait_for_timeout(500)
+        page.mouse.wheel(0, -200)
+        page.wait_for_timeout(500)
+        for _ in range(12):
+            page.mouse.wheel(0, -100)
+            page.wait_for_timeout(150)
+        page.wait_for_timeout(500)
+        assert page.evaluate("scrollY") == 0
+        assert page.evaluate("window.__shift") == 0
+    finally:
+        context.close()
+
+
 def test_the_wide_header_keeps_every_row_after_scrolling_back_up(browser, live_server, discounted):
     context = browser.new_context(viewport=DESKTOP, device_scale_factor=1)
     page = context.new_page()
