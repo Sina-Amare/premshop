@@ -553,6 +553,25 @@ def test_the_phone_header_changes_shape_without_a_layout_shift(browser, live_ser
         context.close()
 
 
+def test_widening_the_window_clears_the_phone_headers_state(browser, live_server, discounted):
+    context = browser.new_context(viewport=PHONE, device_scale_factor=1)
+    page = context.new_page()
+    try:
+        page.goto(f"{live_server.url}/p/netflix/")
+        page.evaluate("document.body.style.minHeight = '4000px'")
+        page.mouse.wheel(0, 1200)
+        page.wait_for_function(
+            "document.querySelector('.v-header').classList.contains('v-header--compact')"
+        )
+        assert page.evaluate("document.querySelector('.v-header').style.marginBlockEnd") != ""
+        page.set_viewport_size(DESKTOP)
+        page.wait_for_timeout(300)
+        assert page.evaluate("document.querySelector('.v-header').style.marginBlockEnd") == ""
+        assert page.evaluate("document.querySelector('.v-header').className") == "v-header"
+    finally:
+        context.close()
+
+
 def test_the_wide_header_keeps_every_row_after_scrolling_back_up(browser, live_server, discounted):
     context = browser.new_context(viewport=DESKTOP, device_scale_factor=1)
     page = context.new_page()

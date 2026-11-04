@@ -91,6 +91,12 @@
     if (scrollY > full && header.getBoundingClientRect().bottom <= 0) reshape(true);
   }
   header?.addEventListener('transitionend', setCompact);
+  // Across the phone breakpoint the phone-only state goes with it.
+  phone.addEventListener('change', () => {
+    if (phone.matches) return;
+    header.classList.remove('v-header--away', 'v-header--compact');
+    header.style.marginBlockEnd = '';
+  });
   if (header) addEventListener('scroll', () => {
     const y = scrollY;
     if (performance.now() < jumpUntil) { lastY = y; setCompact(); return; }
