@@ -1,42 +1,22 @@
-# PremShop Documentation
+# Documentation
 
-Technical reference for the codebase. Which document answers which question:
+Technical documentation for PremShop. It describes the system as it is built; the reasons behind it are in the decision records, and the code and its tests are the final word on detail.
 
-| You're asking… | Read |
+| Document | Read it to |
 |---|---|
-| Why is it built this way? | [decisions/](decisions/README.md) — architecture decision records |
-| What tables, fields, and constraints exist? | [data-model.md](data-model.md) |
-| What may an order or payment do next, and what happens when it does? | [state-machine.md](state-machine.md) — the order-item machine in full; the payment machine as intent until S5 |
-| Which app owns what; what are the service signatures? | [services-and-modules.md](services-and-modules.md) |
-| What messages go out, when, and in what words? | [notifications-and-bot.md](notifications-and-bot.md) — the built emails in full; later messages and the Telegram bot as intent |
-| What does the interface look like — type, colour, layout rules? How does its Persian read, and which word is the right one? | [design-language.md](design-language.md) |
-| How do I run it, test it, and what are this setup's traps? How does the built code hang together across files? | [development.md](development.md) |
-| How do I deploy, roll back or restore the server? | [runbooks/](runbooks/deploy.md), one page each: [deploy](runbooks/deploy.md), [rollback](runbooks/rollback.md), [restore](runbooks/restore.md) |
+| [Architecture](architecture.md) | Understand the components, application boundaries, request flows, background jobs, email and security |
+| [Data model](data-model.md) | Look up a table, a constraint, a deletion rule or an index |
+| [Order lifecycle](order-lifecycle.md) | See how an order moves between statuses and how simultaneous requests stay safe |
+| [Development](development.md) | Set up, configure, run, test or build the shop |
+| [Design language](design-language.md) | Design a page or write Persian copy |
+| Runbooks: [deploy](runbooks/deploy.md), [rollback](runbooks/rollback.md), [restore](runbooks/restore.md) | Operate the production server |
+| [Decision records](decisions/README.md) | Find out why something is the way it is |
 
-## Which document owns which kind of fact
+## Conventions
 
-Each fact is stated in **one** of these and referred to from the others — restating it elsewhere is how documents drift apart. A step's preparation brings that step's sections into line with this table; where two documents disagree, the disagreement is settled in the step's briefing, not by picking one silently.
+- **One home per fact.** Each fact is stated in one document; the others link to it.
+- **Built, then planned.** A document describes what exists. Designed but unbuilt work appears only where it shapes what exists, marked as not built and linked to the decision that governs it.
+- **Decisions are not rewritten.** A decision record changes only by a dated amendment, and a replaced decision is marked superseded and kept.
+- **Plain technical English.** Persian appears only where the subject is Persian text. `apps/core/tests/test_written_voice.py` checks every tracked text file.
 
-| Kind of fact | Its one home |
-|---|---|
-| Tables, fields, constraints, indexes, what happens on delete | `data-model.md` |
-| Which status may change to which and who may change it; the events each change announces and their dedupe-key families; concurrency rules; the tests that prove the two machines | `state-machine.md` |
-| Which app owns what and may import what; service function signatures; background tasks and their schedule | `services-and-modules.md` |
-| The words of each message, its channel, how the outbox delivers it and builds a dedupe key; the Telegram webhook | `notifications-and-bot.md` |
-| Type, colour, spacing, layout, the look of emails; the voice of the Persian copy and its glossary | `design-language.md` |
-| Setup, commands, environment traps, how built code hangs together across files | `development.md` |
-| The operator's steps to deploy, roll back and restore the server | `runbooks/` |
-| Why any of it is so | `decisions/` |
-| For anything already built | the code — these documents keep only what the code cannot say |
-
-## Reading these documents
-
-Each of the four design documents opens with an **"At a glance"** box: what it answers, which parts are built, which are still draft, and which sections the next step needs. Nobody is expected to read them end to end.
-
-The data model, state machine, and service contracts are **contracts**: they exist so the same decision isn't made three different ways across sessions. Each hardens at the step that implements it — the note at the top of each file says what is settled and what is still draft. Discovering mid-work that a contract is wrong is a conversation, not a workaround.
-
-**Contract detail exists only for the current step and the next one** (today: S4a orders, S4b cart and checkout). Anything further out is one paragraph of intent that names the ADRs already binding it, plus a pointer to the full earlier draft in git (`git show 027c5d1:docs/<file>`); it is specified again when its step is planned. Detail written far ahead of the code is a guess, and these documents showed what guesses do: dozens of them had quietly contradicted each other.
-
-The **ADRs** carry the reasoning. If you are about to change something and wonder why it is the way it is, look there first; the answer, its alternatives, and the condition that would justify revisiting it are usually recorded.
-
-Product strategy, the build roadmap, and internal working notes are kept outside this repository.
+Product strategy, the build plan and internal working notes are kept outside this repository.

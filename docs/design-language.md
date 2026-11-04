@@ -1,27 +1,174 @@
-# Design Language
+# Design language
 
-The visual system in force (decision: [ADR-0016](decisions/0016-brand-and-type.md)). Grounded in research into Iranian e-commerce convention, Persian typographic metrics, and the CSS-level differences between authored and generated interfaces.
+The visual and verbal system of the storefront, the operator panel and the emails. The decisions behind it are [ADR-0016](decisions/0016-brand-and-type.md) (type and colour), [ADR-0026](decisions/0026-storefront-composition.md) (storefront composition) and [ADR-0023](decisions/0023-email-templates.md) (email). The tokens live in `static/css/input.css`, the base, and `static/css/storefront.css`, the storefront layer that sets the current palette.
 
-## Voice — 2026-10-20: plain written Persian
+- [Principles](#principles)
+- [Colour](#colour)
+- [Typography](#typography)
+- [Space, shape and layout](#space-shape-and-layout)
+- [Motion](#motion)
+- [Numbers, currency and right-to-left text](#numbers-currency-and-right-to-left-text)
+- [Components](#components)
+- [Email](#email)
+- [Voice](#voice)
+- [Checklist](#checklist)
 
-The 2026-10-14c register below, polite-colloquial everywhere except money, errors, labels and commitments, did not hold at its own exceptions: the sentences a buyer could hold the shop to were exactly the ones that had drifted colloquial («پول برمی‌گرده», «شماره کارت شخصی برای واریز نمی‌دیم»). From this date the default is **plain written Persian**. These clauses supersede the matching ones in that section, which is kept as it was written; what they do not mention stands.
+## Principles
 
-- **Written, not formal.** «است، را، می‌شود», never «ـه، رو، می‌شه». The shop is «ما», in the active voice: «برمی‌گردانیم», «تحویل می‌دهیم». The register is still built by deletion: no «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», and no passive with «توسط».
-- **Two exceptions.** The buyer's own voice keeps its colloquial form: the questions in the FAQ («اکانت اشتراکیه یا مال خودمه؟») and, when they exist, Telegram messages. Legal pages use standard formal Persian, still without the bureaucratic markers.
-- **Address** is «شما» with «ـید». Never «تو», «ـین», «واسه» or «می‌باشه».
-- **Spelling does not relax.** A half-space in «می‌», «ها» and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»); a clitic joins with no space («ایمیلتان») except after ه («شماره‌تان»); «تأیید» has one spelling.
-- **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional («جایگزین نداشتیم، پول برمی‌گرده») is never how money is promised.
-- **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each one beside the condition it must meet, and `apps/catalog/tests/test_promises.py` checks every public product against it. Today that is one line: delivery within the 72-hour cap after payment is confirmed (ADR-0009). It runs past the four words a label is allowed below, because the number needs its starting point. The payment method, refunds and warranty terms appear when the owner has decided them, not before.
-- **Operator text is a field of its own.** A template adds nothing before or after it. A field that sits inside a fixed sentence, such as what the customer is asked for, takes a noun phrase, and its hint in the panel shows the sentence it lands in.
-- **A Latin name inside Persian is isolated** everywhere: `<bdi>` in a template, U+2068 and U+2069 in a Python string. No em dash joins a Latin run to Persian; a title uses «|», anything else «،».
-- **Dates are Jalali in Persian digits** for the customer and the operator alike. A security message and the event log carry the Tehran date and time.
-- **«تومان» everywhere.** «تومن» only in a Telegram message.
-- **A question only where it means something.** A gift card has no mid-period question, and a ready account has no password question.
-- **Length is a target, not a cap.** Two sentences and about 25 words is still what a yes/no answer aims at, and `test_every_faq_answer_is_short` still holds every FAQ answer to two sentences and 30 words. Product content has no word cap. A sentence that commits money is never cut to make an answer shorter.
-- **Punctuation.** «،» «؟» «» always; at most one «؛» on a page; no em dash in Persian text or in a page title.
-- **No superlative a number could replace:** «بهترین», «سریع‌ترین».
+- **Visible bookkeeping.** A buyer's biggest fear is paying and receiving nothing. The shop answers it the way a small business that keeps records would: hairlines, aligned figures, exact amounts, stated hours and plainly stated terms. It should not read like a brand campaign or a landing page.
+- **Colour belongs to the goods.** Product brand colours appear in the products' artwork; the interface around them stays neutral, with one accent for what can be pressed.
+- **Amber means time** (deadlines and countdowns) and nothing else.
+- **Nothing moves unless a person acts**, with one exception: the service scene on the home page.
+- **Every choice is argued from this business, never defaulted.** Purple-blue gradients, glassmorphism, glowing dark heroes, large radii on everything, emoji as icons and entrance animations are generated-template habits, and they cost a shop like this its customers' trust.
 
-The half of this a pattern can see is a test: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, every email in both halves and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels, help, the Persian catalogue, template text and accessible labels, scripts, demo copy and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. Those tests ban the glossary's «Not» forms that a pattern can tell apart from good Persian; the rest, such as «حساب» used for a service account, need a reader.
+## Colour
+
+The storefront palette (`storefront.css`):
+
+| Role | Value | Use |
+|---|---|---|
+| Ground | `#FFFFFF` | The page and its cards |
+| Soft fill | `#F5F6F8` | Quiet panels, the search field, hover fills |
+| Line | `#DFE3E9` | Hairlines and borders |
+| Ink | `#20252E` | Text |
+| Secondary | `#566170` | Supporting text |
+| Accent, cobalt | `#2459D3`; hover `#1946B0`, pressed `#153D98`, tint `#EDF2FF` | What can be pressed |
+| Graphite | `#181D26`; text `#C9D0DB`, lines `#38414F` | The footer band |
+
+Semantic colours (`input.css`):
+
+| Role | Value | Use |
+|---|---|---|
+| Time | `#D97706`, text `#92400E` | Deadlines and countdowns only |
+| Success | `#16A34A`, text `#166534` | Delivered, confirmed |
+| Danger | `#DC2626`, text `#991B1B` | Overdue, failed, destructive |
+| Field edge | `#8C8C8C` | The border of a control a person types into: 3.4:1 on white, where WCAG 1.4.11 asks 3:1 |
+
+- **Cobalt marks what can be pressed:** buttons, links, the discount chip and interactive icons. Bold text that cannot be pressed stays ink or grey, so the primary button is the one blue mass in its area.
+- **Neutrals carry the structure.** A border means an edge, a background step means a separate surface, and a shadow means something sits above the page.
+- **Badges** are a tint, a border and dark text, never a saturated fill. Colour is never the only carrier of meaning: every status also has words.
+- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`). The only loud thing in it is time remaining.
+
+## Typography
+
+Estedad sets headings and price figures; Vazirmatn sets everything else. Both are self-hosted and subset ([development](development.md#front-end-assets)).
+
+| Role | Face | Weight | Size | Line height |
+|---|---|---|---|---|
+| Home hero heading | Estedad | 600 | `clamp(32px, 3.6vw, 48px)`; 30px at ≤760px | 1.45; 1.4 at ≤760px |
+| h1 | Estedad | 600 | 30px | 1.3 |
+| h2 | Estedad | 600 | 21px | 1.4 |
+| h3 | Estedad | 600 | 18px | 1.45 |
+| h4 | Estedad | 600 | 17px | 1.5 |
+| Body prose | Vazirmatn | 400 | 17px | 1.85 |
+| Interface, buttons | Vazirmatn | 400–500 | 15px | 1.5–1.6 |
+| Small, meta | Vazirmatn | 400 | 13px | 1.7 |
+| Footnote | Vazirmatn | 400 | 12px | 1.9 |
+| Label | Vazirmatn | 500 | 13px | 1.5 |
+| Price figure | Estedad | 800 | by context | 1.2 |
+| Currency word | Vazirmatn | 400 | 0.72em of the figure | 1 |
+
+**Why these numbers.** Persian carries finer detail than Latin at the same size, in the dot clusters that tell ب پ ت ث apart, so the base is 17px and nothing goes below 12px. Descenders such as ج and ی drop well below the baseline, and at a line height of 1.5 they nearly touch the next line, the clearest sign of a layout translated from Latin; prose therefore runs at 1.85. Headings run tighter because at larger sizes the collision matters less. Weight steps are at least 200, because Persian's even baseline mass hides a 500 to 600 difference. Estedad carries `size-adjust: 82%`, since at the same nominal size it renders larger than Vazirmatn.
+
+**Absolute rules.**
+
+- `letter-spacing: 0` everywhere: Persian is cursive and tracking breaks the joins. The one exception is the sign-in code's digits in email (below).
+- No italic: neither family ships one, and a synthesised slant shears the joins. `font-synthesis: none`.
+- No `text-transform`, which would uppercase the Latin half of «اشتراک Claude Pro», and no `justify`, since no browser implements kashida.
+- Never both faces in one line.
+
+## Space, shape and layout
+
+**Spacing.** Components are separated by nine values: `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`.
+
+| Values | Between |
+|---|---|
+| 4, 8 | Parts of one component, such as an icon and its label |
+| 12, 16 | Closely related items, such as a label and its field |
+| 24, 32 | Components |
+| 48, 64 | Blocks within a page region |
+| 96 | Page regions |
+
+- **The rhythm rule:** the gap between groups is at least twice the gap within them.
+- **Asymmetry is deliberate.** Headings own the space after them. Cards get more padding at the block end, because Persian descenders take optical space there. Inside a component, padding is optical and may fall between the tokens: a button is padded `11px 20px 9px`, because Persian ink sits low in the line box and equal padding looks as if the text floats.
+- **Measure.** A block of text is at most 32rem wide.
+- **Corners.** `--radius-sm` (6px) for a control you act on, `--radius-lg` (14px) for a surface that holds goods, and square for anything that touches the viewport's edge. A few storefront components set their own small radii in `storefront.css`.
+- **Targets.** Every primary action is at least 44px tall.
+- **Direction.** Logical properties only (`margin-inline-start`, never `margin-left`). Directional icons mirror; clocks, locks, phones and cards do not.
+
+## Motion
+
+- **Durations:** `--dur-xs` 90ms for a press, `--dur` 140ms for colour and state, `--dur-lg` 220ms for anything that reveals. The easing is a soft stop with no overshoot; what enters uses `--ease-out`.
+- **The one automatic motion** is the home page's service orbit. It keeps moving and has no pause button; it stops while a logo is pointed at or focused, while it is off screen or the tab is hidden, and never moves under `prefers-reduced-motion`. That is the owner's accepted trade against WCAG 2.2.2.
+- **Everything else answers a person.** Shelves move only when scrolled, offer tags stay still, nothing animates on entry, and a hover moves an element a few pixels at most. No `transition: all`.
+
+## Numbers, currency and right-to-left text
+
+- **Digits.** Persian digits in all output, with the ASCII comma as the thousands separator: the Arabic separator U+066C renders as a faint high comma in both faces and reads as a fault. Inputs keep Latin digits and `direction: ltr`, because in right-to-left fields the caret, Home, End and Backspace run backwards while someone types a number; Persian digits typed in are accepted and normalised.
+- **Figures.** Counts, codes and clocks use tabular figures, so a column of them aligns. Price figures in Estedad are proportional, because tabular widths make the dot-zero read as letter spacing.
+- **Money.** «تومان» everywhere, set lighter than the figure and never at its weight. Zero renders as «رایگان», never «۰ تومان». Rial never appears.
+- **Promotions.** A promotional price shows the original beside it, struck through in secondary grey, never amber and never bold. A discount with an end date carries a clock in amber: under a day it counts down to the second, padded as `۰۰:۰۸:۴۰`; above a day it shows days and hours. A discount without an end date shows no clock, because invented urgency is what this shop avoids. The server renders the text and sends the seconds remaining, never the deadline, so a visitor whose clock is wrong still sees the right number.
+- **Mixed text.** Every Latin value that comes from data, such as a product name, plan title, specification value or email address, is wrapped in `<bdi>`. Without it «اشتراک Netflix.» puts the full stop on the wrong side and «(Spotify)» renders as «)Spotify(». `/styleguide/` keeps the regression strings.
+- **Dates** are Jalali, in Persian digits, for customers and the operator alike. Security messages and history carry Tehran date and time.
+
+## Components
+
+- **The ledger line** (`.fact`). Every fact-and-value pair is a row: label at the start, value at the end, joined by a dotted leader lifted `-0.28em` to clear the ج descender. The leader is the visual grammar of an invoice or a receipt, and says "this is a real operation" in a way a trust badge cannot. One ledger group per page region; summaries show subtotal, discount and total as three lines, never one figure.
+- **Product card.** One linked card. The artwork is the service's mark on a pale panel in the product's brand colour, 2:1 on wide screens and 16:9 on phones, with no shop label. Title, delivery time, offer and starting price are text outside the artwork. The offer names its own plan and the starting price names the cheapest available plan, so the two may differ. An offer badge is neutral; amber appears only for its remaining time. «گزینه‌های خرید» opens a read-only dialog of the plans' prices, rendered by the same server code as the product page, and the card's link still works without JavaScript.
+- **Home page.** The hero introduces the shop as a whole and never headlines one product: a line naming the range, the headline «اشتراک دلاری، پرداخت تومانی.», one sentence on buying without a foreign card and seeing each product's terms before paying, the deepest current discount when there is one (a number from the catalogue, never «ارزان‌تر»), and only site-wide facts, namely the promise in `apps/catalog/promises.py` and the support hours. Each category opens with one header row (mark, name, count and «همه‌ی محصولات») over a hairline. On phones a category shows two columns and at most four products with a link to the rest.
+- **Product page.** On a phone the page reads title, buy box, then details, so the price is never below the questions. Key specifications sit as chips beside the title. The benefits come before the full specification table: one sentence on what the free plan withholds, then one gain per item, the limit last. The selected plan is the accent's one appearance in the buy box. Under the buy button there is only the link to the buying conditions: delivery is already on the page, and payment in toman is stated on the home page. «پیش از خرید» appears only when it says more than the warranty beside the title.
+- **Order rows.** The cart, checkout, order pages and the order preview share one product row: a 48px tile (56px in the cart), the name at 17px, the plan at 14px and the figure at 18px, with hairlines between rows and never a box inside a box. From three products up, on phones, the total and the action sit in a bottom bar that steps aside while a field has focus.
+- **Cart.** No stock hold and no countdown. An unavailable selection stays visible with a neutral status, a restock-support link and a remove action; it blocks checkout, and the subtotal of the remaining rows says so. A quantity control appears only where the plan allows several units, with its limits visibly disabled and explained. Changes happen in place, keeping errors visible and focus where it was.
+- **Footer.** A graphite band. Its sales band appears only where people are still choosing, never on the cart, checkout, account or order pages. A site-wide promise is stated once per screen.
+- **Empty states** take the blame and offer one action: «پیدا نکردیم», never «پیدا نشد». A search that finds nothing lists the catalogue.
+- **Category pages** have no filters; if one is ever needed, sorting comes first.
+- **Focus and selection.** Everything interactive has a `:focus-visible` ring, one continuous edge; links keep visible keyboard focus without a hover underline. `::selection`, `caret-color` and `accent-color` are set.
+- **Icons** come from the shared SVG set and carry text or an accessible name. Emoji never stand in for icons.
+
+## Email
+
+Email is a different medium with its own rules ([ADR-0023](decisions/0023-email-templates.md)):
+
+- **Layout** is tables with inline styles, because Outlook renders with Word's engine.
+- **Fonts.** No web font is loaded. The stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first one installed.
+- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks time only: a code's expiry and a delivery link's expiry. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
+- **The wordmark is set in type**, never as an image, because blocked images would show a broken box on the messages where trust matters most. It is `PremShop`, in Latin, everywhere: the site header and footer, the sender name, subjects and the masthead.
+- **Code cells** show six isolated Latin digits in a left-to-right row; what is typed is what is shown. Persian digits are isolated forms that never join, so the reason for the tracking rule does not reach them, and the sign-in code carries `letter-spacing: 3px`. No other element does.
+
+Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` is on.
+
+## Voice
+
+The register follows the surface:
+
+| Surface | Register |
+|---|---|
+| Promotional text, guidance, empty states, account hints, buyers' own questions | Respectful conversational Persian: «می‌تونید», «رو», «می‌شه» |
+| Buttons, navigation, field labels | Short and neutral |
+| Prices, payment, delivery, warranty, refunds, deadlines, consequential errors, security emails | Precise written Persian, even inside conversational surroundings |
+| SEO text, articles, legal pages | Standard written Persian, without bureaucratic verbs |
+
+Rules for every register:
+
+- **Address** is «شما» with «ـید»: «می‌تونید», never «می‌تونین». Never «تو», «واسه» or «می‌باشه».
+- **No bureaucratic markers:** «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», or a passive with «توسط».
+- **Spelling never relaxes.** A half-space in «می‌» and «ها», and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»). A clitic joins with no space, except after ه («شماره‌تان»). «تأیید» has one spelling.
+- **One possessive form per sentence:** «حسابتون» with «می‌تونید» ✓ · «حساب شما» with «می‌تونید» ✓ · «حسابتان» with «می‌تونید» ✗.
+- **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional is never how money is promised.
+- **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each promise beside its condition, and `apps/catalog/tests/test_promises.py` checks every public product. A warranty, refund or replacement belongs to the product whose verified terms support it.
+- **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbs that name what happens. Explanation belongs in the FAQ and the product's questions.
+- **Say a limit the way a person would:** «از این گزینه تا ۳ تا می‌تونید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
+- **Numbers, not adjectives:** «تا ۱۲ ساعت», never «سریع» or «در کمترین زمان ممکن», and no superlative a number could replace («بهترین», «سریع‌ترین»).
+- **Product and tool names stay in English** wherever a customer reads them. Persian spellings appear only in search aliases and page titles, because shoppers search with them.
+- **«تومان» everywhere**; «تومن» only in a Telegram message.
+- **Operator text is a field of its own:** a template adds nothing before or after it. A field that sits inside a fixed sentence takes a noun phrase, and its hint in the panel shows the sentence it lands in.
+- **Punctuation:** «،», «؟» and «» always; at most one «؛» on a page; no em dash in Persian text or in a page title.
+- **Length is a target, not a cap.** A yes-or-no answer aims at two sentences and about 25 words, and every FAQ answer is held to two sentences and 30 words. Product content has no cap, and a sentence that commits money is never cut to make an answer shorter.
+- **Questions buyers actually have.** An FAQ answers whether the account is shared, whether they must hand over a password, what happens if access is cut mid-period, whether it works from an Iranian IP address, and how they know the money is safe; not what the shop finds easy to say. A question appears only where it means something: a gift card has no mid-period question.
+- **The market's own words:** seats are counted in «کاربره» («۲ کاربره»), never «ظرفیت»; streams are «پخش هم‌زمان: ۲ دستگاه»; account kinds are «نوع اکانت: اختصاصی / اشتراکی».
+- **Marketing leads with what the product does,** such as file analysis in ChatGPT Plus or background playback in YouTube Premium, explaining paid capacity without promising unlimited use. No founder story, lifestyle slogan, slang or invented evidence.
+- **Admit a limitation where there is one.** «Netflix را با آی‌پی ایران نمی‌شه باز کرد» does more for trust than any badge.
+- **Phrases that read as generated:** «همچنین», «علاوه بر این», «لازم به ذکر است», «با خیال راحت», «نگران نباشید», «به راحتی», «تنها با چند کلیک», «تجربه‌ای بی‌نظیر», «ما در پرم‌شاپ»; synonym pairs such as «امن و مطمئن»; and three facts in the same grammatical shape.
 
 ### Glossary
 
@@ -37,7 +184,7 @@ The half of this a pattern can see is a test: `apps/catalog/tests/test_storefron
 | Gift card | «گیفت کارت», two words | «کارت‌های هدیه», «گیفت‌کارت» |
 | The option a buyer picks | on the shop, «مدت اشتراک» or «مبلغ کارت»; in the panel, «پلن» | «پلن» to a customer |
 | How long delivery takes | to the customer, «زمان تحویل»; to the operator, «مهلت تحویل» | «مهلت هر محصول» to a customer |
-| Warranty | «گارانتی», always with its length and starting point | «پشتیبانی: تا پایان دوره» as a spec |
+| Warranty | «گارانتی», always with its length and starting point | «پشتیبانی: تا پایان دوره» as a specification |
 | Refund | «بازگشت وجه», always with its condition | «ضمانت بازگشت وجه», «پول برمی‌گرده» |
 | What is left | «مانده», «باقی‌مانده» | «مونده», «باقی‌مونده» |
 | A discount that has ended | «تخفیف تمام شد» | «تخفیف تموم شد» |
@@ -45,7 +192,7 @@ The half of this a pattern can see is a test: `apps/catalog/tests/test_storefron
 | Phone number | «شماره‌ی موبایل» | «شماره تماس», «شماره موبایل» |
 | Member since | «تاریخ عضویت» | «عضو از» |
 | Sign-in code | «کد ورود» | «کد تأیید» |
-| A product taken off sale | «ناموجود»: its page stays only when it meets the publishing requirements, with buying disabled and sale listings excluding it. An incomplete unavailable product is a 404; the panel explains why. | «ناموجود» meaning hidden |
+| A product taken off sale | «ناموجود»: its page stays only while it meets the publishing rule, with buying disabled and sale listings excluding it | «ناموجود» meaning hidden |
 | Nothing found | «پیدا نکردیم» | «پیدا نشد», «رو نداریم» |
 | Search | «جستجو» | |
 | Support hours | «هر روز، ساعت ۱۰ تا ۲۲» | «هر روز ۱۰ تا ۲۲», «بین ساعت ۱۰ تا ۲۲» |
@@ -55,261 +202,23 @@ The half of this a pattern can see is a test: `apps/catalog/tests/test_storefron
 | Add | «افزودن» | «اضافه کردن», «ایجاد», «ساختن» |
 | Ezafe after a silent ه | «ـه‌ی» («مشاهده‌ی همه») | «مشاهده همه», «افزودن یک مشخصه دیگر» |
 
-## Voice — 2026-10-14c
+The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
 
-Grounded in the FAQ and rules pages of Iranian shops already selling these products, and in Persian style guidance on محاوره‌نویسی. The owner's test: *«نه چیزی ک طرف بخونه مطمعن باشه با ai نوشتم»*.
+## Checklist
 
-**The register is polite-colloquial, and it is built by deleting formality markers, not by adding colloquial ones.** Cut `می‌باشد`, `می‌گردد`, `صورت می‌گیرد`, `جهت`, `لذا`, `نمایید`, `مذکور`, and every passive with `توسط`. What is left already sounds human. Only then contract: `است`→`ـه`, `را`→`رو`, `می‌شود`→`می‌شه`, `می‌دهیم`→`می‌دیم`, `اگر`→`اگه`, `می‌توانید`→`می‌تونید`.
+For any new page or component:
 
-- **Second person is always شما with ـید.** `می‌تونید`, `بزنید`, `حسابتون`. Never `ـین` (`می‌تونین`) — correct Persian, normal on Instagram, and nobody handling a customer's money writes it. Never `تو`.
-- **Never `واسه`** (street register) and never `می‌باشه` (the single most illiterate form in Persian web copy — `می‌باشد` is already bureaucratic and breaking it makes it worse).
-- **Orthography does not relax.** `می‌شه` not `میشه`; `رو` always separate, never `اینو`/`کدو`; clitics attach without ZWNJ (`بهتون`, `حسابتون`) except after a final ه (`شماره‌تون`); `آماده‌ست` not `آمادست`; `سفارش‌ها` not `سفارشا`.
-- **One possessive axis per sentence.** `حسابتون` + `می‌تونید` ✓ · `حساب شما` + `می‌تونید` ✓ · `حسابتان` + `می‌تونید` ✗. The classic collision is `ایمیلت رو وارد کنید` — singular clitic, plural verb.
-- **These stay plain whatever the rest does:** amounts and money sentences, error messages, field labels, buttons, and anything the shop could be held to (delivery windows, warranty, refunds). A failed payment is not the place for `یه مشکلی پیش اومد`.
-- **Numbers, not adjectives.** `تا ۱۲ ساعت`, `۳۰ روز` — never `سریع`, `در کمترین زمان ممکن`, `پشتیبانی ۲۴/۷`. `تومان` in a price field, `تومن` in a sentence.
-- **Label, do not explain** (the 2026-10-14 rule, restated because it is the one most easily lost). Verdict first; mechanism only when it is an instruction; reason never. `بله، چون …` is a machine justifying itself.
-- **Admit a limitation somewhere.** The strongest non-generated signal there is: a model hedges, it never confesses. «Netflix را با آی‌پی ایران نمی‌شه باز کرد» and «سفارش نصف‌شب صبح در نوبت می‌افته» do more for trust than any badge.
-- **Say no to something.** «رمز اکانتتون رو نمی‌خوایم.» «شماره کارت شخصی برای واریز نمی‌دیم.» Refusing card-to-card is the strongest substitute for a نماد اعتماد the shop does not have yet.
-- **Punctuation.** No em dash `—` in body copy: it is English typography and renders as an ambiguous bar beside a Latin run in RTL. At most one `؛` per page and never in a short answer. `،` `؟` `«»` always, never the Latin `,` `?` `"`.
-- **Banned as generated:** `همچنین`, `علاوه بر این`, `لازم به ذکر است`, `با خیال راحت`, `نگران نباشید`, `به راحتی`, `تنها با چند کلیک`, `تجربه‌ای بی‌نظیر`, `ما در پرم‌شاپ`; synonym pairs (`امن و مطمئن`, `سریع و آسان` — both words mean one thing); and the same-modifier triplet (`قیمت مشخص، تحویل مشخص، گارانتی مشخص`). Three facts are fine; three facts in the same grammatical shape are a tell.
-- **Brand names in Latin, common nouns in Persian.** `Netflix` beside the Netflix mark is one spelling of one thing. The transliterations live in `Product.aliases` (so search finds «چت جیپت») and in SEO descriptions (so Google does). `گیفت کارت`, `اکانت`, `اشتراک` stay Persian.
-
-**Length is measured, not felt.** Across 126 real answers on Iranian shop FAQ pages (iranicard, parspack, dicardo, irpremium), 61% are a single sentence, 87% are two or fewer, and the median is 25 words. A yes/no answer is capped here at **two sentences and 25 words**; a third puts this shop in the worst-written 12% of its market. 66% of the real ones open with a bare بله or نه.
-
-**The test for a sentence after the first.** Name the subject of its condition and who has to act. Condition about *us* → delete it; our own behaviour was settled by sentence one. Condition about the customer, and it costs them money → that is a separate question, not a tail. The one sentence never cut is where *we* commit to money. This rule exists because an answer here ended «اگه یک‌جا رمز اکانتتون رو خواستیم، سفارش رو ادامه ندید و همون‌جا بهمون بگید» — circular, and **absent from all 126 answers surveyed**. The anti-phishing report-back loop is not a Persian convention; it was invented in this repository.
-
-**Empty states take the blame and offer one thing.** digikala «پیدا نکردیم», basalam «چیزی پیدا نکردیم», modiseh «پیدا نکردیم» — first person plural, every time; «پیدا نشد» is the passive that puts the miss on the visitor. Then exactly one concrete next action. **Never «املا»** — that is what a teacher marks on a child's dictation, it accuses, and it is advice rather than an answer. Divar's «نگارش کلمه‌ها را بررسی کنید» survives only as a second line under a heading claiming the *exact* match is missing, with an action above it. At this shop's size the right action is the catalogue itself: a search miss prints every product, so someone who typed «چت جپت» sees ChatGPT without touching the keyboard again.
-
-**The market's own words for what an account is.** Seats are counted in **کاربره** («۲ کاربره», «۶ کاربره») in a buy box; «نفر» is for prose. **Never «ظرفیت» for seats** — that is the PlayStation idiom, and on an AI account it means quota. Streams are «پخش هم‌زمان: ۲ دستگاه»; device *types* («Mobile / PC / TV») are the honest dodge when a number would over-promise. «نوع اکانت: اختصاصی / اشتراکی», «ریجن اکانت». A shared account is stated flatly as a definition plus one restriction, with no reassurance attached.
-
-An FAQ answers what buyers worry about, not what the shop finds easy to state. «باید حساب بسازم؟» and «پرداخت چطور انجام می‌شود؟» are not questions anyone has; the real ones are whether the account is shared, whether they must hand over their own password, what happens when it is cut off mid-period, whether it works from an Iranian IP, and how they know the money is safe. Answers run one to three sentences.
-
-## Amendment — 2026-10-14b: the references, applied
-
-The owner reviewed the ink composition and asked the question the first attempt deserved: *«چرا اصلا دیزاین های نمونه ای ک گفتم رو هیچیشونو اعمال نکردی؟ پلت و انیمیشن و بک گراند پیکچر»*. It was a fair hit. All three reference systems are **light**, all three carry colour, and the answer shipped was a dark band — the one thing none of them do. These clauses supersede the matching ones in the amendment below.
-
-- **The home page opens on light, coloured out of the goods.** Four very soft radial washes in real brand hues — Spotify green, Netflix red, Google blue, Claude clay — at a fraction of their saturation. Not an invented gradient and not a glow behind the type: it is the shelf, out of focus. Ink keeps the top strip and the footer, where it still frames the page.
-- **The marks are the picture.** A loose constellation of tiles at three sizes over the field, each a link, each carrying the one shadow. A product with no mark gets a monogram tile rather than being skipped — the hero claims to list every service, so it has to.
-- **Ambient motion is the constellation**, drifting a few pixels on a nine-second cycle, off below 900px and under reduced motion. Nothing else on the site moves unasked.
-- **Departments are tinted surfaces, not bordered boxes.** Four pale tints with a 24px line glyph each, assigned by position so a fifth department restarts the cycle. monday.com's move, and the one place a little colour earns its keep outside the brand marks. *(Implementation note — 2026-10-23: replaced the evening it was built; the home page groups products under department headings with their count and «مشاهده‌ی همه» (`91ab4f3`). No department block is rendered; the old CSS and `_cat_icon.html` remain unused.)*
-- **One pill, for the one opening action.** `.btn--pill` on the hero CTA and nowhere else; everything else keeps the two radii.
-
-  *Implementation note — 2026-10-23: the constellation also uses 22px, 18px and 26px corners, all 16px at ≤520px (`.nebula__item`). These are built exceptions to the two general radii, not amendments to ADR-0016 or ADR-0026; reconciling those decisions remains open.*
-- **A promise strip under the hero, and the same four promises in the footer — never both on one page.** The home page suppresses the footer copy through a block, because saying the same four things twice on one screen reads as a shop with four facts padding them out. *(2026-10-20: three of the four were not true of every product and are gone. The promises now come from `apps/catalog/promises.py`, one today; the rule against stating them twice on one screen stands.)*
-
-  *Known deviation — 2026-10-23: above 760px the top strip still repeats the home page's promise. The footer copy is suppressed, but the top-strip copy is not. Removing it needs a template change; accepting the repetition needs a decision.*
-- **A section is only worth a section if it adds something.** «مراحل خرید» explained in three cards what the promise strip, the product page and the FAQ each already said, and it is gone.
-
-## Amendment — 2026-10-14: somewhere dark to stand
-
-The owner reviewed the editorial turn below and rejected it: *«هیچ استایل و داینامیک بودنی نداریم … سایت خیلی خامه»*. The diagnosis was not that the system was wrong but that four things it forbade were the four things the page needed. Decision and alternatives: [ADR-0026](decisions/0026-storefront-composition.md). These clauses override the matching ones further down, including in the 2026-10-13 amendment.
-
-- **Ink is a surface, not only a text colour.** `--color-deep #131313` carries the promise strip, the home hero and the footer, full-bleed and flat — no gradient, no glow, no blue cast, because twelve brand colours sit on top of it and must read true. Text on ink uses `--color-on-deep` / `--color-on-deep-muted` / `--color-on-deep-line`; the body ramp's `#525252` on `#131313` is about 2:1 and fails WCAG outright.
-- **The primary action on ink is paper.** `.btn--invert`. Brightening teal until it passed contrast on near-black would have produced exactly the acid-accent-on-black that ADR-0016 exists to avoid.
-- **Two radii, and the step between them is information.** `--radius-sm 6px` for a control you act on (button, input, chip, badge, plan, code cell); `--radius-lg 14px` for a surface that holds goods (card, tile, panel, list); `0` for anything touching a viewport edge, because a rounded corner on a full-bleed band is a lie about where the page ends. ~~One radius: 4px~~ is superseded; a single value across every element read as utilitarian rather than restrained.
-- **One shadow token, one consumer.** `--shadow-lift` on `.shelf__panel` and nothing else. ~~Deleting every shadow from the stylesheet would change nothing about the hierarchy~~ is superseded: deleting it now changes exactly one element, which is the stronger claim this system can honestly make. Everywhere else, structure is still a hairline.
-- **The home page opens on a band, not a sentence.** ~~No centred hero~~ stands — the hero is start-aligned like everything else — but the ban on having one does not. The composition is: ink band with one statement and one action, then a white shelf panel laid across its lower edge carrying every service as a full-colour mark, every mark a link. Nothing drifts: a horizontal strip of brand logos has meant "trusted by" for five years, the shape is read before the intent, and a moving target cannot be tapped.
-- **One piece of ambient motion exists, and this is it.** The hero band's drafting grid, 4.5% white at a 34px pitch, drifting one pitch a minute. CSS only, one composited layer, zero bytes; off below 900px and under `prefers-reduced-motion`. Everything else moves only in answer to a person: `--dur-xs 90ms` for a press, `--dur 140ms` for colour and state, `--dur-lg 220ms` for anything that reveals, `--ease-out` for what enters.
-- **Colour is only ever the goods.** Unchanged in intent, newly true in fact: the marks now download in their real brand colours from a source named per brand, normalised at seed time so a shelf of twelve looks like one family. Teal keeps the primary action and the current-state indicator; amber still means time and nothing else.
-- **Every Latin run that comes from data is wrapped in `<bdi>`.** Product names, plan titles, spec values, emails. Without it «اشتراک Netflix.» puts the full stop on the wrong side and «(Spotify)» renders «)Spotify(» — the most common real bidi failure in a shop whose entire inventory is Latin names inside Persian sentences. The regression string lives on `/styleguide/` so the next change can be *seen* to break it.
-- **Label, do not explain.** The owner's correction, and the one most easily lost: a Persian shop writes «ضمانت بازگشت وجه» on a promise row, not «اگر سفارش تحویل نشود، وجه برمی‌گردد». Promises, badges and section heads are **noun phrases of two to four words**; buttons are verbs that name what happens; a step's body carries the fact its title does not, never a restatement of it. Explanation is not banned — it is *located*: the FAQ page and the product page's own questions are where a sentence belongs, and nowhere else is. When a line on a shop surface is longer than about eight words, it is almost always a sentence that wants to be a label. *(2026-10-20: the example is withdrawn with the promise it labelled, since the shop has no refund policy yet. The rule stands.)*
-- **Fonts are subset, and all four faces that paint above the fold are preloaded.** `scripts/subset_fonts.py` cut 313 KB to 129 KB with no change to shaping. Estedad gained a measured metric fallback (`size-adjust: 76.5%`, Tahoma), which took the home page's CLS from 0.027 to 0.000 — the hero heading used to measure 109px in the fallback against 73px in Estedad, wrap to a third line, and drop the page 45px when the real face arrived.
-
-## Amendment — 2026-10-13: the editorial turn
-
-The owner reviewed the built shop and asked for a quieter, more professional surface, supplying an editorial reference (white canvas, hairline rules, 4px corners, headlines set light). The direction taken is hybrid, and these clauses override the matching ones below:
-
-- **The canvas is white** (`--color-ground: #ffffff`) and the neutral ramp is neutral, not warm stone. The page should read as a printed sheet.
-- **A hairline rule, not a box, marks a region.** Section heads carry a 1px rule the width of the column. Boxing a region to announce it is a region is the habit this replaces.
-- **One radius: 4px.** `--radius-md` and the pill radius are gone; chips, cards, tiles, inputs and buttons all take the same slight corner.
-- **Headings are set at 600, never 800**, and the scale came down: h1 30px, h2 21px, h3 18px. Authority comes from space and restraint, not from weight. **The price numeral keeps 800** — it is the one figure the page exists to state.
-- **Colour belongs to the goods.** Product brand marks render in their own brand colours; the interface around them stays achromatic. Teal survives as the single primary action and inline links; amber still means time and nothing else.
-- **Two motion tokens:** `--dur` 140ms for colour and state, `--dur-lg` 220ms for anything that moves or reveals. The easing is `cubic-bezier(0.2, 0, 0, 1)` — a soft stop, no overshoot, no bounce.
-
-Not taken from the reference: its typefaces. Almarai is an Arabic face whose ک and ی are wrong for Persian. The storefront's Estedad and Vazirmatn are self-hosted, so rendering does not depend on Google's font delivery.
-
-## The stance
-
-This shop should read like **a small business that keeps records** — not like a brand, and not like a landing page. The buyer's fear is paying into a void, so the antidote is visible bookkeeping: hairlines, aligned figures, stated hours, exact amounts, and a payable typeset with more care than any headline on the site. White paper ruled with hairlines, one teal accent spent sparingly, amber only when a clock is running.
-
-## Type
-
-| Role | Face | Weight | Size | Line-height |
-|---|---|---|---|---|
-| Hero h1 (home) | Estedad | 600 | 44px (34 at ≤1000px, 28 at ≤520px) | 1.26 |
-| h1 | Estedad | 600 | 30px | 1.3 |
-| h2 | Estedad | 600 | 21px | 1.4 |
-| h3 | Estedad | 600 | 18px | 1.45 |
-| h4 | Estedad | 600 | 17px | 1.5 |
-| Body prose | Vazirmatn | 400 | 17px | **1.85** |
-| UI / buttons | Vazirmatn | 400–500 | 15px | 1.5–1.6 |
-| Small, meta | Vazirmatn | 400 | 13px | 1.7 |
-| Micro, footnote | Vazirmatn | 400 | 12px | 1.9 |
-| Label (the only use of 500) | Vazirmatn | 500 | 13px | 1.5 |
-| Price numeral | Estedad | 800 | 24 / 32 / 40px | 1.2 |
-| Currency word | Vazirmatn | 400 | 0.72em of numeral | 1 |
-
-**Why these numbers.** Persian carries finer detail than Latin at the same size — the dot clusters distinguishing ب/پ/ت/ث — so the base is 17px, not 16, and nothing goes below 12px. Descenders (ج, ی) drop well below the baseline while marks sit high; at 1.5 they nearly touch the next line, which is the loudest "translated from a Latin design" signal there is. Hence 1.85 on prose. Headings run tight because at 26px+ the collision is proportionally smaller and tightness reads as confidence. Weight jumps are ≥200 because Persian's uniform baseline mass makes a 500/600 difference invisible.
-
-**`size-adjust: 82%` on Estedad** normalises it against Vazirmatn: it renders larger at the same nominal size, so without this every heading reads louder than the scale intends.
-
-**Absolute rules.** `letter-spacing: 0` everywhere — Arabic script is cursive and any tracking breaks the joins. No italic (neither family ships one; a synthesised oblique shears the joins), no `text-transform` (it would uppercase the Latin half of «اشتراک Claude Pro»), no `justify` (no browser implements kashida; you get rivers). `font-synthesis: none`. Latin runs inside Persian are isolated so bidi cannot scramble them.
-
-## Spacing
-
-Nine values for the space between components:
-
-`4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`
-
-| Values | Job |
-|---|---|
-| 4, 8 | inside a component — icon↔label, badge padding |
-| 12, 16 | tightly related — label↔input, card inner gaps |
-| 24, 32 | component↔component |
-| 48, 64 | block↔block within a page region |
-| 96 | page region↔region |
-
-Inside a component, padding and small gaps are optical and may fall between the tokens: buttons `11px 20px 9px`, the pill `13px 26px 11px`, badges `3px 10px`, fields, table cells, the ledger row, icon-to-label gaps of 2–6px, and the brand lockup's 11px. Between components, prose paragraphs use 1.6rem and the account menu uses 2px. The page gutter is 18px, 14px on a phone.
-
-**The rhythm rule:** the gap *between* groups is at least twice the gap *within* them. If two gaps are equal but the relationships aren't, one is wrong.
-
-**Asymmetry is deliberate.** Headings own the space that follows them, never split evenly. Cards get more padding at the block-end because Persian descenders eat optical space there. Buttons are `11px 20px 9px` — Persian ink sits low in the line box, so equal padding reads as floating high.
-
-## Colour
-
-| Role | Value | Use |
-|---|---|---|
-| Ground / Surface | `#FFFFFF` | the page, and every card on it |
-| Deep | `#131313` | the bands the page opens and closes on; text on it uses the on-deep ramp |
-| Fill subtle | `#F5F5F4` | hover fills, quiet panels |
-| Line / Line strong | `#E7E5E4` / `#D4D4D4` | hairlines; borders that must be seen |
-| Field | `#8C8C8C` | the edge of a control a person types into (field, code cell, the header search), and nothing else: 3.4:1 on white, where WCAG 1.4.11 asks 3:1 and a hairline gave 1.48:1. Added 2026-10-20; the header search stopped being a grey well for the same reason |
-| Muted / Secondary / Ink | `#737373` / `#525252` / `#171717` | text ramp |
-| **Accent** | teal-700 `#0F766E` | see budget below |
-| Success | `#16A34A` (text `#166534`) | delivered, confirmed |
-| **Time** | amber `#D97706` (text `#92400E`) | deadlines and countdowns, nothing else |
-| Danger | `#DC2626` (text `#991B1B`) | overdue, failed, destructive |
-
-**The accent budget: teal appears at most three times in a viewport**, and only as (1) the single primary action, (2) the current-state indicator, (3) inline links. Never on icons, headings, rules, or "to feel branded" — scarcity is what makes the primary button read as *the* button.
-
-Known deviation (2026-10-23): `.promises__row svg` still uses the accent on the home page. This records the CSS as built, without approving a fourth use; changing it or accepting an exception remains open.
-
-**Neutrals carry all structure.** A border means "this has an edge". A background step means "this is a distinct surface". A shadow means "this sits above the page": the constellation's tiles carry `--shadow-lift` and a stronger shadow on hover (2026-10-14, 14b); elsewhere, structure is a hairline.
-
-**Badges are tint + border + dark text**, never a saturated fill. Colour is never the only carrier of meaning — every status has words too.
-
-## Numbers and RTL
-
-- Persian digits in all output, **ASCII comma** as the thousands separator. Not U+066C: it renders as a faint high comma in both our faces and reads as a rendering fault, while the comma is what Iranian shops use and is bidi-safe in mixed text.
-- `tabular-nums` on every price, count and code — Vazirmatn's ۱ and ۳ differ in width by over 2×, which makes any stacked column ragged without it.
-- Zero renders **رایگان**, never «۰ تومان». رﯾﺎل never appears in the UI.
-- The currency word is never the numeral's weight — that pairing is a reliable amateur tell.
-- **A discount with an end date carries a clock**, in the amber that this document reserves for time (`.deadline`, `badge--time`): on the product card beside the plan name, and on the plan's own row in the buy box. Under a day it counts down to the second, padded to `۰۰:۰۸:۴۰` — `۰۸:۴۰` alone reads as eight hours. Above a day it says days and hours, because `۴۱۲:۰۶:۵۵` is a number, not a deadline. A discount with **no** end date shows no clock: invented urgency is the thing this shop is trying not to look like. The server renders the text and sends the seconds beside it, never the deadline, so a visitor whose own clock is wrong still sees the right number.
-- A promotional price shows the original beside it, struck through in secondary grey (`.price__was`: Secondary #525252, since muted is 4.29:1 on the selected plan's tint; `line-through`, 0.78em, never bold). It stays a neutral — **never amber**, which means time and only time. The promotional figure keeps the price numeral treatment; the two never share a weight.
-- Inputs keep Latin digits and `direction: ltr`: in RTL the caret, Home/End and backspace all run backwards while someone types a card number, which is the bug that ends a payment.
-- Logical properties only (`margin-inline-start`, never `margin-left`). Directional icons mirror; clocks, locks, phones and cards do not.
-
-## The signature: the ledger line
-
-Every fact-value pair is a ledger row — label at the start, value at the end, joined by a dotted leader.
-
-```html
-<div class="fact">
-  <span class="fact__k">شماره سفارش</span>
-  <span class="fact__lead"></span>
-  <span class="fact__v latin">PS-1405-0217</span>
-</div>
-```
-
-The dotted leader is the visual grammar of an invoice, a receipt, a statement — documents that exist because someone keeps records. Against a buyer's fear of paying into a void, that says "this is a real operation" in a way a trust badge cannot, because a badge can be copied and a habit of typesetting cannot. The leader is lifted `-0.28em` so it clears the ج descender.
-
-Used **once per page region** — a second instance reads as sloppiness rather than authorship.
-
-## The catalog
-
-**The product card** is the tile, the words, and the price on its own line at the block-end, so a grid of them reads as one column of aligned figures. The tile is the brand's mark on white with a hairline, or a monogram on the subtle fill when there is no image — the same shape either way, so a grid with and without pictures stays even. The whole card is the link. There is no region badge: a region-bound product carries the fact in a spec row (ADR-0025, amended 2026-10-13).
-
-**The buy box** structures by hairline. The selected plan is the accent's one appearance in it; the promotional original sits struck through in secondary grey beside the new figure, never amber. On a phone the page reads title → buy box → details, so the price is never below the FAQ.
-
-**No filters.** A category page has none (ADR-0025, amended 2026-10-14b); when one is needed, sort comes first. The unused `.chips`/`.chip` CSS remains, but no template renders it. Step numbers, category counts and everything else that merely wants to look branded stay in ink.
-
-## Email
-
-Email is a different medium and gets its own rules ([ADR-0023](decisions/0023-email-templates.md)). It keeps hairlines, the ledger line, no tracking on Persian prose, and **amber for time and only time** — the code expiry and the delivery-link expiry. Its templates retain the warm-stone ramp (#1C1917, #57534E, #78716C, #FAFAF9), prose at 1.95, a 10px card and button radius, and the button padded `13px 26px 11px` (`templates/email/base.html`, `_button.html`; the reasoning is ADR-0023's). These differ from the storefront's neutral ramp and prose metrics.
-
-The template loads no web font. Its inline stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first of these installed on their device. Estedad is absent. Layout is `<table>` because Outlook renders with Word's engine, and the wordmark is set in type because blocked images would show a broken box on the most trust-sensitive message the shop sends.
-
-**The wordmark is `PremShop`, in Latin, everywhere** (owner's ruling at the S2 review): site header, footer, email sender name, subjects, masthead. One name, one spelling; the Latin form is the anchor in an inbox full of Persian subjects. Persian prose refers to the shop the same way.
-
-**The code cells show Latin digits.** Six isolated cells in an LTR row; what is typed is what is shown, and Latin in inputs is this system's rule. Persian digits are accepted on the way in and normalised.
-
-**The one tracking exception.** `letter-spacing: 0` holds everywhere in this system because Arabic is cursive and tracking breaks the joins. Persian *digits* ۰–۹ are isolated forms that never join, so the reason for the rule does not reach them — and a run of six bold digits in a Naskh-derived fallback face is precisely where tightness reads squat. The OTP code carries `letter-spacing: 3px`. Nothing else does, and the exception is scoped to that one element.
-
-Templates live in `templates/email/`; `/dev/emails/` renders them in a browser while `DEBUG` is on.
-
-## Anti-generic checklist
-
-Run this against any new page:
-
-- [ ] Space between components from the nine tokens; optical spacing inside a component and the named exceptions above
-- [ ] Every between-group gap ≥ 2× its within-group gap; heading margins asymmetric
-- [ ] General corners use `--radius-sm` and `--radius-lg`; full-bleed edges are square; the hero pill and constellation have the named exceptions above
-- [ ] No `box-shadow` outside focus rings and the constellation tiles (`--shadow-lift`, stronger on hover); no gradient fill except the hero's four brand washes (the questions' plus sign is a drawing)
-- [ ] Teal ≤3 times per viewport, never on icons or headings; amber only on time; the existing promise-icon deviation above still needs resolution
-- [ ] New component colours use tokens; existing brand-wash colours, button/disabled literals and the stronger hover shadow remain outside them pending cleanup
-- [ ] Body 17px, prose line-height 1.85, every text block capped at 32rem
-- [ ] Estedad only in headings and price numerals; never both faces in one line
-- [ ] `tabular-nums` on all figures; Persian digits out, Latin digits in inputs
-- [ ] No `left`/`right` properties — logical only
-- [ ] `:focus-visible` on everything interactive; no `transition: all`; durations from `--dur-xs`, `--dur` and `--dur-lg`; a hover moves an element a few pixels at most
-- [ ] `prefers-reduced-motion` honoured; `::selection`, `caret-color`, `accent-color` set
-- [ ] One ledger group per region — no more
+- [ ] Space between components from the nine tokens; optical spacing only inside a component
+- [ ] Every gap between groups at least twice the gap within them; headings own the space after them
+- [ ] Corners from `--radius-sm` and `--radius-lg`; edges that touch the viewport square
+- [ ] Cobalt only on what can be pressed; amber only on time; new colours as tokens
+- [ ] Body 17px, prose line height 1.85, text blocks at most 32rem wide
+- [ ] Estedad only in headings and price figures, never both faces in one line
+- [ ] Persian digits out, Latin digits in inputs; tabular figures for counts, codes and clocks
+- [ ] Logical properties only; no `left` or `right`
+- [ ] `:focus-visible` on everything interactive; no `transition: all`; durations from the tokens
+- [ ] `prefers-reduced-motion` honoured; only the home orbit moves without an action
+- [ ] One ledger group per region
 - [ ] Nothing centred, no three feature cards, no rounded-up customer counts, no emoji
-- [ ] Every promise, badge and section head is a noun phrase, not a sentence; explanation lives in the FAQ
-- [ ] Every `{{ product.name }}`, `{{ plan.title }}` and user value wrapped in `<bdi>`
-- [ ] Only the hero's constellation drifts without an action; it stops below 900px and under reduced motion; other motion answers an action
-
-## Implementation notes
-
-**Product cards — 2026-10-24.** Each product has one linked card with a large mark on a pale brand-color panel, a small PremShop label and faint circular line detail. The panel occupies an 8:5 rectangle; the normal 14px card radius remains. The grid uses four columns on desktop, three at intermediate widths and two below 700px. Product title, delivery text, offer and starting price stay as text outside the artwork. The offer names its own plan, while the starting price names the cheapest available plan; they need not be the same. An offer badge is neutral; amber remains reserved for its remaining time. Product-page plans retain their own prices and selected state, with a live selected-plan summary and unchanged quantity and unavailable states. ADRs 0021 and 0025 hold the expiry and pricing rules.
-
-Fonts are self-hosted woff2, subset by `scripts/subset_fonts.py` (129KB for five files, from 313KB) with `font-display: swap` and a metric-matched Tahoma fallback so text does not jump when the real faces load. Tailwind's automatic source scanning is disabled (`source(none)`) and pointed only at `templates/` — left on, it read this very document and generated the utilities the document bans.
-
-
-## Amendment — 2026-10-25: storefront and catalog editor
-
-The storefront uses cobalt #2459d3 over white and graphite surfaces, with product brand colors in the artwork. The operator panel shares the accent with light and dark surfaces. Estedad headings and Vazirmatn body remain self-hosted. Controls have restrained color states, one continuous focus edge and44px primary targets; links keep visible keyboard focus without hover underlines. Product cards retain their approved proportions. The service scene has its own rounded logo plates.
-
-Storefront and catalog guidance use respectful conversational Persian: «رو»، «می‌شه»، «موردنظرتون» with short, direct sentences. Amounts, conditions, errors and deadlines remain precise; emails and legal commitments keep their existing written register. The earlier voice and teal clauses remain historical. Ongoing desktop motion has independent pause controls and still reduced-motion/touch alternatives; readable selection takes priority over animation.
-
-**Automatic shelves and quick plans — 2026-10-25.** The rotating constellation retains its upright service links, measured spacing, numeric groups and arrows. Homepage product shelves advance one card every six seconds on fine-pointer desktops when at least half visible; only the most visible shelf advances. Hover, focus, dialogs and page visibility suspend movement. Shelf interactions restart a fresh six-second interval. The constellation pauses on a logo tile hover or visible keyboard focus and resumes when selection ends; service names, empty scene space and mouse-operated group arrows do not hold it still. Phones keep swipe and arrows. No display menu or player controls are shown; reduced motion disables automatic and decorative effects. A brief offer-tag tilt marks first exposure, while names, prices and targets stay still.
-
-Cards retain their artwork and starting-price distinction, with a sibling «دیدن پلن‌ها» action. A read-only dialog shows public plan prices through the same server renderer as the product page, including expiry. Its normal product link remains available without JavaScript. Confirmation and fact-review dates stay in the operator panel; customer pages keep delivery facts and the delivery answer without a separate jump action. These clauses supersede the earlier per-scene pause presentation and public review-date captions.
-
-## Amendment — 2026-10-27: voice by surface
-
-The address is شما with ـید: «می‌تونید», never «می‌تونین». Promotional text, guidance, empty states, account hints and buyers' questions may use respectful conversational Persian. Buttons, navigation and field labels remain short and neutral. Prices, payment, delivery, warranty, refunds, deadlines, consequential errors and security emails use precise written Persian, even inside conversational surroundings. SEO, articles and legal pages use standard written Persian without bureaucratic verbs.
-
-Half-spaces, ezafe and consistent spelling apply in every register: «می‌شه», «رو», «مشاهده‌ی سبد خرید», «رزروشده». No slang or invented evidence. A warranty, refund or replacement belongs to the product whose verified terms support it; no universal guarantee follows from some products having coverage. Marketing leads with useful product capabilities rather than a founder story.
-
-The cobalt/graphite palette, fonts and pale brand artwork remain. Icons use the existing SVG system with text or accessible names; emoji do not replace icons. The orbit remains the distinctive automatic scene, with a lasting pause/resume control in addition to temporary logo-hover/focus guards. Shelves are manual and offer tags stay still. On phones, category grids show two columns and at most four products with a category link; offers retain a compact rail. These clauses supersede the corresponding automatic-shelf and no-player-control clauses above.
-
-**Cart — 2026-10-27.** A selection has no cart-stage stock hold or countdown. Keep unavailable selections visible with a neutral status, a restock-support link and an explicit remove action. A problem row blocks readiness to proceed; a subtotal of the remaining rows must be labelled accordingly. Each item groups its name, purchase option, account/delivery facts, quantity and server-calculated amount. Quantity changes and removal stay in place with persistent errors and keyboard focus. Show quantity controls only for purchase policies allowing multiple units, with visible disabled boundaries and a reason. Every action target remains at least 44px. Display human durations in words, such as «۲۰ دقیقه»; the real promotional deadline rules above remain separate.
-
-**Concise messages — 2026-10-27.** Prefer a short label and value for limits and states: «حداکثر تعداد قابل خرید: ۱ عدد», «موجودی فعلی: ۲ عدد». Add one clear action when a condition needs correction; avoid repeating the same status in several joined sentences. Keep consequential instructions and error recovery intact.
-
-**Product copy — 2026-10-27.** Name the service and a concrete use: file analysis and image creation for ChatGPT Plus, research with Gemini, coding tools with Claude Pro, Spotify downloads, or YouTube background playback. Explain paid capacity without promising unlimited use. Product introductions and benefit sections stay editable in the catalogue; SKU, account type, storage, delivery and coverage come from its verified fields. The home headline names ChatGPT Plus and text/file/code use; the footer describes the actual product range. Avoid abstract lifestyle slogans, personal founder stories and unverified proof.
-
-**Home headline — 2026-10-27, owner's ruling.** The home hero introduces the shop as a whole and never headlines one product or its features. It carries a short line naming the range, the headline the owner chose on 2026-10-27 from four drafted options («اشتراک دلاری، پرداخت تومانی.»), one sentence on buying without a foreign card and seeing each product's terms before paying, the current deepest discount when there is one (a number from the catalogue, never «ارزان‌تر»), and only site-wide facts: the promise in `apps/catalog/promises.py` and the support hours. The footer's help band is general for the same reason. This supersedes the product-copy clause above that put ChatGPT Plus in the home headline. Cobalt marks what can be pressed (buttons, links, the discount chip and icons); bold text that cannot be pressed stays ink or grey, so the primary button is the one blue mass in the hero (owner, 2026-10-27).
-
-**Orbit — 2026-10-28, owner's ruling.** The orbit keeps moving and has no pause button. It stops while a logo is pointed at or focused, when the scene is off screen or the tab hidden, and never moves under reduced motion. This overrides the lasting pause/resume control above, which answered WCAG 2.2.2; the owner accepted that trade.
-
-**Cards and product pages — 2026-10-28.** Card artwork carries the service's mark only: no PremShop label, 2:1 on wide screens and 16:9 on phones. A home category opens with one header row (mark, name, count, «همه‌ی محصولات») over a hairline, never a side panel. A product page lists its benefits (one sentence on what the free plan withholds, then one gain per item, the limit last) before the full specification table; key specs stay as chips beside the title. The buy box names the payment («پرداخت تومانی، بدون کارت ارزی») beside the delivery time. These supersede the PremShop label in the 2026-10-24 card clause.
-
-**Spoken, not stamped — 2026-10-31, owner's ruling.** Say a limit the way a person would: «از این گزینه تا ۳ تا می‌تونید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». This supersedes «Concise messages — 2026-10-27»: no label and value for limits and states, no «قابل» with an infinitive, no «عدد» as a unit in a sentence. `apps/core/tests/test_persian_register.py` holds the patterns it can see. Only the link to the buying conditions stands under the buy button: delivery is already on the page, and toman payment on the home page and footer, so the shop does not repeat itself there.
-
-**Order rows and price figures — 2026-10-31.** Cart, checkout, orders and the guest preview share one product row: a 48px tile (56px in the cart), name 17px, plan 14px, figure 18px, hairlines between rows and no box inside a box. Estedad price figures are proportional, because tabular widths make the dot-zero read as letter-spacing; clocks and codes stay tabular. This narrows the tabular rule above. From three products up, the total and the action sit in a bottom bar on phones and step aside while a field has focus. The footer's sales band stays on pages where people are still choosing, not on cart, checkout, account or order pages.
-
-**Product names — 2026-10-31, owner's ruling.** Product and tool names stay in English wherever a customer reads them: cards, descriptions, headings and the footer. Persian spellings stay only in search aliases and page titles, because shoppers search with them. `apps/core/tests/test_persian_register.py` holds the rule.
-
-**Checkout terms and email fonts — 2026-10-31.** Checkout links to «قوانین خرید» only when that page is published, using the existing legal navigation. The reference stays in the summary's normal page flow, outside the phone bottom bar, without acceptance text or a checkbox. Emails no longer load Google Fonts; the existing installed-font stack, inline styles and layout remain. ADR-0023 records the change.
+- [ ] Every promise, badge and section head a noun phrase; explanation in the FAQ
+- [ ] Every product name, plan title and user value wrapped in `<bdi>`

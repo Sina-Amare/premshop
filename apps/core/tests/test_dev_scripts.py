@@ -30,7 +30,7 @@ ci = _module("ci")
     [
         (["docs/development.md", "README.md"], True),
         ([], True),
-        (["docs/state-machine.md", "apps/catalog/models.py"], False),
+        (["docs/order-lifecycle.md", "apps/catalog/models.py"], False),
         (["templates/home.html"], False),
         (None, False),
     ],

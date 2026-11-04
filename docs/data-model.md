@@ -1,434 +1,267 @@
-# PremShop — Phase 1 ERD
+# Data model
 
-> **At a glance.** The phase-1 tables and the database rules that protect them.
-> **Built:** `accounts.User` (S2, `apps/accounts/models.py`, ADR-0024) and `catalog` (S3, `apps/catalog/models.py`, ADR-0025), with the product page's content model added on 2026-10-20 (catalog 0019 and 0020, ADR-0028). The initial order, item, event and discount tables are built in `apps/orders/models.py` (2026-10-26; the exact boundary is under §2). For a built table, `models.py` and its migrations are the source of truth; this file keeps only what the code cannot say.
-> **Built cart/orders — 2026-10-29:** cart 0003 stores untimed selections without holds. Order creation claims available finite stock, applies locked discounts and records fixed deadlines. Activation consent is no longer collected; historical evidence is retained. Whole unpaid cancellation/expiry restores actual claims and retains redemption history. Checkout's cart consumption and the customer pages followed in S4b.
-> **Built content — 2026-10-29:** `cms.Page` holds five legal drafts with protected staff previews and separate publishing authority (ADR-0030). Content approval and operational readiness still gate public release.
-> **Built notifications — 2026-11-03:** C1 uses `Notification` and `ConfirmationSweep`, with placement email on new orders. The remaining notification families are planned; §2 records the built fields.
-> **Intent only, re-specified when their step is planned:** `payments` (S6b, completed at S5), `core.SiteSetting` (its columns arrive with the steps that use them: payment clocks S5, support hours S7, holiday switches S10), and `DeliveryField` (S7). `CredentialAccessLog` is built for staff reveals of customer input; its implementation is specified below. The full earlier draft is `git show 027c5d1:docs/data-model.md`.
-> **Read for S4a:** §2 `orders`, §3 Constraints, §4 Indexes.
+The tables that exist today, the rules the database enforces, and the reasons behind the rules that the code cannot state. Each app's `models.py` and migrations are the source of truth for column details; this document is the map.
 
-> **Firmness (owner calibration, 2026-09-01).** This is a contract that hardens incrementally: each model becomes *settled* at the gate of the step that builds it (accounts → S2, catalog incl. the Plan promo fields → S3, orders → S4a, the cart tables in their own `cart` app (`cart/0001`) + DiscountCode/DiscountRedemption + Order's discount columns → S4b, the payment tables + SiteSetting's two payment clocks → S5, notifications → S6, cms → S11). Until then its rows are the best current draft — buildable-from, but revisable at a step gate through a conversation, never silently. Settled from day one regardless of step: status lives on OrderItem with the 7-status list; snapshots at order time; field-level encryption of `DeliveryField.value` and `customer_input` (ADR-0007); REFUNDED gated on an executed Refund row (ADR-0003 + state machine A12 — not ADR-0007, which is encryption and retention); toman storage; append-only `OrderItemEvent`. If building a step shows a drafted table is wrong, the move is stop-and-discuss, not work-around.
+- [Conventions](#conventions)
+- [1. Entity-relationship diagram](#1-entity-relationship-diagram)
+- [2. Tables by app](#2-tables-by-app)
+- [3. Constraints](#3-constraints)
+- [4. Deletion rules](#4-deletion-rules)
+- [5. Indexes](#5-indexes)
+- [6. Deliberately not modelled](#6-deliberately-not-modelled)
+- [7. Planned tables](#7-planned-tables)
 
-All monetary columns are **toman**, `DecimalField(max_digits=12, decimal_places=0)` — `decimal_places=0` enforces integer-valued at the DB level (D3). Rial exists only at the gateway boundary — the two tested conversion points inside the gateway adapter (amount out, verified amount back) — never in storage (ADR-0019). All timestamps are UTC `timestamptz`; Jalali is a render-time concern (core helpers).
+## Conventions
 
-Notation below: `Money` = `Decimal(12,0)`, `TS` = `DateTimeField`. "—" in Null column = `NOT NULL`.
+- **Money** is whole toman in `DecimalField(max_digits=12, decimal_places=0)`, defined once as `MoneyField()` in `apps/catalog/models.py`. Rial will exist only at the payment gateway's boundary ([ADR-0005](decisions/0005-money-in-toman.md)).
+- **Time** is stored in UTC. Jalali dates are a display concern of `core.formatting`.
+- **Encrypted columns** (`EncryptedTextField`) hold Fernet ciphertext ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
+- **Snapshots.** An order freezes what was bought, at what price and under which published terms. Later catalogue edits never change a placed order.
+- **Constraint names** below are the names in the database, so an error can be traced to its rule.
 
----
-
-## 1. Entity-Relationship Diagram
-
-Who points at whom, for the built tables and the S4a/S4b tables. The S4a/S4b entities keep their drafted columns, as they stood before 2026-09-21 (§2 carries the same columns with their rules — de-duplicating the two is part of S4a's briefing); the built tables' columns live in `models.py`.
+## 1. Entity-relationship diagram
 
 ```mermaid
 erDiagram
-    User ||--o{ Order : places
-    Category ||--o{ Product : contains
-    Product ||--o{ ProductSpec : describes
-    Product ||--o{ ProductSection : "its prose"
-    Product ||--o{ ProductQuestion : "asked about"
-    Product ||--o{ Plan : offers
-    User |o--o| Cart : "owns (UNIQUE when set)"
-    Cart ||--o{ CartItem : holds
-    Plan ||--o{ CartItem : "chosen as (PROTECT)"
-    Order ||--o{ OrderItem : contains
-    Plan ||--o{ OrderItem : "sold as (PROTECT)"
-    OrderItem ||--o{ OrderItemEvent : "audit trail"
-    DiscountCode |o--o{ Order : "discounts (PROTECT, nullable)"
-    DiscountCode }o--o{ Product : "scoped to (scope='selected')"
-    DiscountCode ||--o{ DiscountRedemption : "spent as"
-    User ||--o{ DiscountRedemption : redeems
-    Order ||--o| DiscountRedemption : "one per order (UK)"
-
-    Cart {
-        bigint id PK
-        bigint user_id FK "nullable, UNIQUE when set"
-        varchar session_key "nullable, indexed"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-    CartItem {
-        bigint id PK
-        bigint cart_id FK "CASCADE"
-        bigint plan_id FK "PROTECT"
-        smallint quantity "CHECK 1..10"
-        timestamptz added_at
-    }
-    Order {
-        bigint id PK
-        bigint user_id FK
-        int order_number UK "sequential, human-facing"
-        varchar tracking_token UK "random URL-safe (D12)"
-        decimal subtotal "sum of price_snapshots"
-        bigint discount_code_id FK "nullable, PROTECT"
-        decimal discount_amount "default 0"
-        decimal total_amount "subtotal − discount_amount"
-        varchar channel "web|bot|legacy"
-        timestamptz created_at
-    }
-    DiscountCode {
-        bigint id PK
-        varchar code UK "varchar(8), uppercase, CHECK ^[A-Z0-9]{4,8}$"
-        varchar kind "percent|fixed"
-        decimal value
-        varchar scope "all|selected"
-        int max_uses "nullable = unlimited"
-        int used_count
-        int per_user_limit "nullable"
-        decimal min_order_amount "nullable"
-        timestamptz valid_from "nullable"
-        timestamptz valid_until "nullable"
-        bool is_active
-        timestamptz created_at
-    }
-    DiscountRedemption {
-        bigint id PK
-        bigint discount_code_id FK "PROTECT"
-        bigint user_id FK "PROTECT"
-        bigint order_id FK "UK, PROTECT"
-        decimal amount "what this code actually cost"
-        timestamptz created_at
-    }
-    OrderItem {
-        bigint id PK
-        bigint order_id FK
-        bigint plan_id FK "PROTECT"
-        varchar status "7 states (D1)"
-        decimal price_snapshot
-        decimal cost_snapshot
-        decimal actual_cost "nullable"
-        jsonb product_snapshot
-        text customer_input "ENCRYPTED"
-        text delivery_note "operator to customer, plaintext"
-        date expires_at "subscription expiry"
-        timestamptz due_at "SLA deadline"
-        timestamptz sla_paused_at
-        timestamptz paid_at
-        timestamptz delivered_at
-        varchar cancel_reason "nullable enum"
-        timestamptz cancellation_requested_at
-        varchar delivery_link_token_hash UK "nullable; magic link (ADR-0008)"
-        timestamptz delivery_link_expires_at
-        timestamptz delivery_link_used_at
-        timestamptz created_at
-    }
-    OrderItemEvent {
-        bigint id PK
-        bigint order_item_id FK
-        varchar from_status "null on creation"
-        varchar to_status
-        varchar actor "operator|customer|system"
-        text note
-        timestamptz created_at "append-only"
-    }
+  User ||--o{ Order : places
+  User |o--o| Cart : owns
+  Cart ||--o{ CartItem : holds
+  Category ||--o{ Product : contains
+  Product ||--o{ Plan : offers
+  Product ||--o{ ProductSpec : describes
+  Product ||--o{ ProductSection : "page prose"
+  Product ||--o{ ProductQuestion : "page questions"
+  Plan ||--o{ CartItem : "chosen as"
+  Plan ||--o{ OrderItem : "sold as"
+  Order ||--|{ OrderItem : contains
+  OrderItem ||--o{ OrderItemEvent : history
+  OrderItem ||--o{ CredentialAccessLog : "input reveals"
+  DiscountCode |o--o{ Order : discounts
+  DiscountCode }o--o{ Product : "scoped to"
+  DiscountCode ||--o{ DiscountRedemption : "spent as"
+  Order ||--o| DiscountRedemption : "redeems once"
+  Order ||--o{ Notification : "confirmed by"
 ```
 
-**Not drawn:** built `Page` and `CredentialAccessLog`, plus planned `SiteSetting`, `Payment`, `Refund`, `Notification`, `DeliveryField`, and the phase-2 `Review`. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§1). It is re-specified when each table's step (S5, S6, S6b, S7, S10, S11) is planned.
+Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEvent` and `CredentialAccessLog`. Standalone tables: `cms.Page`, `core.MailAttempt`, and two single-row status tables, `orders.UnpaidExpirySweep` and `notifications.ConfirmationSweep`.
 
----
+## 2. Tables by app
 
-## 2. Models by App
+### accounts
 
-**Orders implementation — 2026-10-26.** `apps/orders/models.py` and its migrations now define Order, OrderItem, OrderItemEvent, DiscountCode and DiscountRedemption. The order tables below retain later-operation intent: actual_cost, delivery_note, expires_at, due_at, sla_paused_at, paid_at, delivered_at, cancellation_requested_at and delivery-link columns are not built yet. The implemented item has purchase snapshots, encrypted non-secret customer_input and cancel_reason. History also records actor_user (nullable, PROTECT); its item FK and OrderItem.order are PROTECT, and event UPDATE/DELETE is blocked by a database trigger. No payment, delivery or discount-application service exists yet. These facts supersede the corresponding draft rows and CASCADE descriptions below.
+**User** is a custom model with the email address as the username ([ADR-0024](decisions/0024-auth-implementation.md)).
 
-### `core.SiteSetting` — singleton (D8)
+- **It is frozen as the project's first migration** (`accounts/0001`). Once other tables hold keys to it, replacing the model means rebuilding the schema by hand on live data, so identity fields arrive as additive migrations.
+- **Email is unique case-insensitively, in the database** (`user_email_case_insensitive_unique` on `Lower(email)`), not only in the manager, because the panel, a shell or a data import can reach the table without the manager.
+- An account created by a sign-in code has an unusable password until the customer sets one.
+- `is_staff` is the operator. There are no roles beyond it.
+- `phone` is optional. `telegram_id`, `telegram_username` and `telegram_linked_at` are reserved for the Telegram link, which is not built yet.
+- Sign-in codes live in Redis with an expiry, not in a table.
 
-**Mail accounting — 2026-11-02.** `core.MailAttempt` is one row per recipient submission: template, keyed `recipient_hash`, indexed request time, nullable completion time, status (`in_flight`, `accepted`, `rejected`, `uncertain`, `blocked`), exception class and nullable numeric SMTP status. It has no account/order foreign key, address, message/context or credential value. The read-only panel supports exact-address lookup through the keyed fingerprint. The rows are also the quota counter, and a daily Huey task removes rows older than 90 days. The independent write connection, capacity rules and initial allowance settings are recorded in ADR-0022's 2026-11-02 amendment. This is an attempt log, not an outbox.
+### catalog
 
-One row, `CHECK (id = 1)`, holding the operator's clocks and switches. Its columns arrive with the steps that use them: the two payment clocks at S5, the support-hours schedule behind the SLA deadline at S7 (ADR-0009), the holiday switches at S10. One rule is already fixed by ADR-0019: the two payment clocks are two separately named columns and are never merged. `gateway_timeout_minutes` (default 15) decides when the inquiry task asks the gateway about a payment stuck in `initiated`, and it never cancels anything; the unpaid period (today a fixed 24 hours, stored on each order as `unpaid_expires_at`) decides when the sweep, which runs every minute, cancels an unpaid order with `cancel_reason='expired_unpaid'`, and the sweep skips any order whose payment is still `initiated`.
+**Category** is flat, with no parent. Its `slug` is Latin and required, since category names are Persian. `intro` is restricted Markdown; `intro_html` is retired and kept only so its migration can be reversed.
 
-Today's support hours have one home, `apps/core/support.py` (`OPENS`, `CLOSES`, every day). Whether S7 moves that schedule into `SiteSetting` is unsettled; if it moves, both the displayed hours and the deadline function must read it from there, rather than keeping two definitions.
+**Product** is a catalogue entry and every fact its page prints.
 
-Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `core.SiteSetting`). It is re-specified when S5 is planned.
+| Field | Notes |
+|---|---|
+| `category` | PROTECT: a category with products cannot be deleted |
+| `name`, `slug` | A new or changed slug must be Latin, because a Persian slug becomes `%D8%A7…` wherever an address is pasted. A Latin name fills its own slug. Older Persian slugs stay valid until changed, since links already point at them. A slug is editable only while the product is a draft |
+| `status` | `draft`, `active` or `unavailable` |
+| `short_description`, `usage_notes`, `refund_note`, `warranty` | Commitments the page prints from these fields only. `refund_note` is a per-product exception to the shop's refund rule |
+| `delivery_type`, `delivery_hours`, `delivery_note` | `delivery_hours` is between 1 and 48 |
+| `delivery_template` | A free-text note for the operator; nothing parses or sends it |
+| `aliases` | Spellings customers type, such as «چت جیپت» for ChatGPT. Search input only, never rendered |
+| `search_text` | Derived on save from the name, short description, aliases and category name; trigram-indexed |
+| `brand_colour` | Optional `#rrggbb` for the card artwork |
+| `renewable` | Printed only when true. The default is false, because renewal depends on the provider |
+| `sources`, `facts_checked_on`, `time_sensitive` | Where the facts came from and when they were last checked. `sources` is never printed |
+| `image` | Stored only as a re-encoded copy (`ReencodedImageField`) |
+| `full_description` | Retired: its content moved into sections. Kept for reversibility |
 
-### `accounts.User` — custom, `USERNAME_FIELD = email` — **built at S2** (ADR-0024)
+- **Publishing is one rule, `Product.publish_problems()`:** a delivery type, an available plan, the summary and usage notes, at least one Persian search alias, no owner placeholder in any printed text, and, for a time-sensitive product, facts checked within seven days. The schema does not enforce it; every way of publishing calls it.
+- **`search_text` stays current** through product saves and through category renames in the same transaction. A bulk `QuerySet.update()` bypasses both and must refresh it explicitly.
+- **A product with sales cannot be deleted.** Plans cascade from their product, but the cascade stops at `OrderItem.plan`, which is PROTECT. A sold plan is retired with `is_available = false`.
 
-Source of truth: `apps/accounts/models.py` and migration `accounts/0001`. What the code cannot say:
+**Plan** is one purchasable option of a product.
 
-- **It is frozen as the project's migration 0001.** Django lets `AUTH_USER_MODEL` be swapped only while the database has no tables; once anything holds a foreign key to it, reshaping it means rebuilding the schema by hand on a live system with real orders in it. New identity fields arrive as additive migrations; the model itself is never replaced.
-- **An account created by a login code holds an unusable password** (D6). The account exists and no password opens it until the customer sets one.
-- **Email is unique case-insensitively, and the database enforces it** (`UniqueConstraint(Lower("email"))` beside `unique=True`), not only the manager's lowercasing: the admin, a shell and a data import all reach the table without the manager.
-- **`is_staff` is the operator.** There is no RBAC beyond it (§5).
+| Field | Notes |
+|---|---|
+| `cost_price`, `sale_price` | Not negative |
+| `promo_price`, `promo_starts_at`, `promo_ends_at` | An optional promotion, cheaper than the sale price, whose window starts before it ends. `effective_price` decides which price applies at a given moment ([ADR-0021](decisions/0021-promotional-pricing.md)) |
+| `duration_days` | Null means no fixed period |
+| `stock_quantity` | Null means unlimited; otherwise the units available. A cart does not reserve stock; placing an order claims it |
+| `is_available` | Retires a plan without deleting it |
+| `max_quantity` | 1 to 10. At 1 the product page shows no quantity control |
+| `input_type`, `telegram_required`, `requires_customer_input`, `customer_input_label` | What the customer must supply: `unreviewed`, `none`, `email` or `username`. Checkout refuses an unreviewed or inconsistent declaration, and a plan that needs input sells one unit per line |
+| `price_confirmed_at` | Set whenever a price changes or the operator confirms prices; a product page prints the oldest among its plans |
+| `supplier_url` | The operator's upstream listing. Never copied into an order |
 
-Login codes live in **Redis, not tables**, for 10 minutes (`CODE_TTL_SECONDS` in `apps/accounts/otp.py`, owner ruling 2026-09-04). Telegram link tokens (S8) are planned at 5 minutes. See §5.
+**ProductSpec** holds free rows of facts (`title`, `value`). `is_key` also prints a fact beside the product's title. Region, sharing and device count live here rather than as columns, because a column that is blank on most rows is one the form asks about anyway.
 
-### `catalog` — **built at S3** (ADR-0025)
+**ProductSection** is the page's prose, in one of six kinds: `benefits`, `includes`, `comparison`, `after_payment`, `before_buying` and `free`. The kind chooses the template. The body is restricted Markdown, a product has at most one `before_buying` section, and an image needs its alternative text ([ADR-0028](decisions/0028-product-page-content-model.md)).
 
-**Checkout declarations — 2026-10-29.** `Plan.input_type` is `unreviewed`, `none`, `email` or `username`; `telegram_required` is nullable until reviewed. Existing rows remain unreviewed without inferring anything from their descriptions or old labels. Checkout refuses unreviewed or inconsistent declarations. For reviewed types, `requires_customer_input` is a compatibility flag derived from the type; email/username plans retain the one-unit rule. Database checks reject unknown types and reviewed rows without an explicit Telegram requirement or matching flag. The operator edits both declarations in standalone/inline forms. Secret-seeking labels are refused. Services normalize the declared non-secret value, encrypt it, and freeze the type, effective label and Telegram requirement with each unit. A quote can be reviewed before entering the value; creation requires and validates it.
+**ProductQuestion** holds a product's questions and their Markdown answers.
 
-Source of truth: `apps/catalog/models.py`, `apps/catalog/pricing.py` and the `catalog` migrations; the CHECK constraints are listed in §3. What the code cannot say, or says in one place that every later step must honour:
+### cms
 
-> **Money** everywhere in this document is `DecimalField(max_digits=12, decimal_places=0)`: whole toman, exact arithmetic, the unit visible in the schema. One `MoneyField()` definition in `apps/catalog/models.py` is reused by every money column.
+**Page** is one of five fixed legal and information pages, with a title, a Markdown body, a description and a published flag. A published page cannot be empty. Orders keep their own copy of the published terms, so pages need no revision history ([ADR-0030](decisions/0030-legal-page-drafts.md)).
 
-> **One price rule, one function.** Every price shown or charged goes through `catalog.pricing.effective_price` — catalog cards, product pages, cart lines, the checkout summary, and `OrderItem.price_snapshot` at order time. A promotion is therefore a *pricing* fact, never a discount row: it needs no code, no redemption record and no order column (ADR-0021). Duplicating the comparison anywhere else is the bug this note exists to prevent.
+### cart
 
-- **A product with sales is undeletable, on purpose.** `Plan.product` cascades, but the cascade halts at `OrderItem.plan` PROTECT (§3). A sold plan is retired with `is_available=false`, never row-deleted.
-- **`Product.brand_colour` is an optional `#rrggbb` card color** (catalog 0024). Blank or invalid stored values render neutral; the panel validates edits. Existing colors were populated from a frozen reviewed palette, not image files on the deployment host. Schema reversal drops color values, so export or back them up before reversing it; reverting only the appearance need not remove the column. ADR-0025 records why card offers and starting prices may describe different plans.
-- **There is no `region` column.** Removed 2026-10-13 on the owner's ruling: most of what this shop sells has no region at all, and a field with a default of «جهانی» put a meaningless badge on every card. A product that genuinely is region-bound carries it as a `ProductSpec` row the operator adds, like any other per-product fact, and S4b's checkout confirmation therefore shows it as part of the spec list rather than as a dedicated line. The brief's §4 requirement is met by the spec row.
-- **Slugs are Latin (from 2026-10-20, catalog 0018).** A Persian slug turns into a line of `%D8%A7…` wherever an address is pasted, so a new or changed slug must be Latin (`check_slug_is_latin`, in both models' `clean()`). `Category.slug` is required, because category names are Persian. `Product.slug` may be left empty when the name is Latin, and `clean()` and `save()` fill it from the name (`latin_slug`); `clean()` refuses an empty one for a Persian name, which must have its slug written, and `save()` outside a form raises rather than store an empty slug, which reverses to no page. Both fields keep `allow_unicode` for the rows saved before this, whose Persian slug stays valid until someone changes it: rewriting it would move an address links already point at. The URL patterns keep `<str:slug>` for the same rows.
-- **Product addresses in the panel:** a slug is read-only unless the saved product is a draft. Returning it to draft allows renaming without redirect history, so the old URL can break. No publication-history column is stored (ADR-0028, 2026-10-31 amendment).
-- **`Product.aliases` is search fuel and is never rendered.** It holds the spellings a customer actually types — «چت جیپت» for ChatGPT — because character folding cannot turn one transliteration into another. Publishing readiness requires at least one Persian letter; Latin text, digits and punctuation alone do not qualify. Product saves derive normalized `search_text` from the name, short description, aliases and category name, including partial saves of those fields. Category renames refresh affected products in the same transaction. Direct queryset updates bypass these save hooks and must refresh derived text explicitly. Tests cover Persian category/brand searches, unrelated queries at the 0.45 threshold, and aliases staying off the page.
-- **`Plan.supplier_url` is deliberately not copied into `OrderItem.product_snapshot`.** Durations are separate listings upstream (owner ruling), and S7's delivery page reads it live through the PROTECTed `OrderItem.plan` FK.
-- **`Product.delivery_template`** is currently a free-text operator note, sent nowhere and parsed nowhere. Its panel hint says so (catalog 0015). Whether S7 replaces that meaning with structured delivery-field names is settled before building its delivery form; existing notes cannot be treated as field lists.
-- **`Plan.requires_customer_input` limits a cart line to quantity 1.** The rule and its reasons are under `cart.CartItem`.
-- **`Product.renewable` (added 2026-10-14), default false.** Claimed, never assumed: renewal depends on the upstream provider and on the operator getting the same account back, so a product that has not been thought about says nothing. Rendered only when true — there is no negative state, and none on a gift card, which has no period to renew.
-- **`ProductSpec.is_key` (added 2026-10-14)** marks a fact important enough to print beside the title as well as in the table. Shared-or-private, capacity, device count, region and any one-off condition live here as free rows rather than as columns, for the reason that deleted `Product.region` in 0003: a column blank on most rows is a column the form asks about anyway.
-- **`Plan.max_quantity` (added 2026-10-14) decides whether a quantity control is offered at all.** Default 1, and at 1 the product page renders no stepper — not a disabled one, none. Most of this shop is a subscription activated on one person's account, where "how many" is not a question the buyer has; gift cards are the case that wants it. Two `CHECK`s hold it: `1..10`, and `max_quantity = 1` whenever `requires_customer_input` is true. That second one *is* a CHECK, unlike the cart rule below, because both columns live on the same row — the cart's version still has to exist separately, since a plan's `requires_customer_input` can be flipped on after a line was created.
-- **The product page is facts in fields and prose in sections (added 2026-10-20, catalog 0019, ADR-0028).** A fact the shop commits to, or a buyer decides on, has a field and is printed only from it: `Product.usage_notes` (the operator's notes on using the product, restricted Markdown; «موضوعیت ندارد» is a value, and the page then prints none; it was `iran_stance` until catalog 0023), `Product.refund_note` (only a per-product exception to the shop's refund rule), the existing `warranty`. The prose is `ProductSection` rows, each one of six kinds, whose kind picks its template; «پیش از خرید» is printed when it says more than the warranty already beside the title (a row with text or an image, a refund note, or usage notes), and a product has at most one such row (§3). The questions are `ProductQuestion` rows in `catalog`, not in `cms`. Section bodies and answers are restricted Markdown (ADR-0027); `ProductSection.image` requires `image_alt` (§3), and both image fields store only the redrawn upload.
-- **Publishing is one rule, `Product.publish_problems()`.** It needs a delivery type, an available plan, the one-line summary and `usage_notes`, no owner placeholder (`[تصمیم مالک…]`, `[وابسته به تصمیم…]`, `[از تحویل آزمایشی…]`) in any text the page prints, and, for a `time_sensitive` product, a `facts_checked_on` no more than seven days old. The schema does not enforce it: the form, the bulk action and the readiness list call it, and a product already live is held to the placeholders only.
-- **`Product.sources` and `facts_checked_on` are typed by the operator** until a source re-read exists to fill them (ADR-0028). `sources` is one http(s) address per line and is never printed; `facts_checked_on` may not be in the future.
-- **`Plan.price_confirmed_at` is set on every save that changes `cost_price`, `sale_price` or `promo_price`, and by the bulk action «قیمت‌ها را امروز بررسی کردم».** It is not on the form. A page prints the oldest value among the plans it shows, and none while any of them is null — which every plan saved before 2026-10-20 is until it is confirmed.
-- **`Product.full_description` and `Category.intro_html` are retired but not dropped.** Catalog 0020 moved a full description into a «متن آزاد» section wherever the page printed it, and a category's HTML introduction into the Markdown `Category.intro` (no headings: it sits under the page's `h1`). Both old columns are off every form and page and stay only so 0020 can be reversed.
+**Cart** belongs to exactly one owner: an account (`user`) or a visitor's session (`session_key`), each unique when set. It is deleted with its account.
 
-### `cart` — persistent, cross-device (ADR-0018)
+**CartItem** is a plan and a quantity, nothing else: no price, name or customer input. There is one line per plan, and the quantity is between 1 and 10. `plan` is PROTECT, so a plan in someone's cart cannot be deleted. The one-unit rule for plans that need customer input is enforced by the service, in the cart and again at checkout, because its condition lives on `Plan`, one join away ([ADR-0018](decisions/0018-shopping-cart-and-guest-checkout.md)).
 
-Implemented: `Cart` and `CartItem`. A guest cart has a unique `session_key`; cart mutations set that session's expiry to 30 days. Login restores its previous expiry, so authenticated sessions keep their existing lifetime. A signed-in cart belongs to the account across devices. Empty reads create neither cart nor session.
+### orders
 
-**These tables live in their own `cart` app, not in `orders`.** `cart` imports `core`, `accounts` and `catalog`; it is imported by `payments` (which resolves a cart into order lines at checkout) and by `panel`. It does **not** import `orders`, and `orders` never imports it — that one-way edge is what keeps `orders` ignorant of how a cart is stored, which is what lets `place_order` take a plain `Sequence[OrderLine]`. Migration home: `cart/0001` lands at **S4b** with the cart tables — never in `orders/0001`.
+**Order** is one checkout.
 
-**Cart**
+| Field | Notes |
+|---|---|
+| `user` | PROTECT: an account with orders is never deleted |
+| `order_number` | From a PostgreSQL sequence starting at 1001; shown to the customer |
+| `tracking_token` | A random URL-safe token for the public tracking page |
+| `checkout_id`, `submission_digest` | The submission's identity and a keyed digest of what was submitted; together they make a repeated submit return the same order |
+| `subtotal`, `discount_code`, `discount_amount`, `total_amount` | The ledger (below) |
+| `discount_snapshot` | The code's rule and arithmetic as applied |
+| `policy_snapshot` | The published terms, refunds and contact pages at placement, each with a content hash |
+| `placement_email` | Where the purchase confirmation goes. Empty on orders placed before confirmations existed |
+| `unpaid_expires_at` | 24 hours after placement. Never extended |
+| `expiry_last_attempt_at`, `cancelled_at` | Sweep bookkeeping and the time of a whole-order cancellation |
+| `channel` | `web`, `bot` or `legacy` |
+| `consent_text`, `consent_version`, `consent_accepted_at` | Historical; new orders leave them empty ([ADR-0029](decisions/0029-unpaid-claims-and-scheduled-release.md)) |
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| user | FK User, CASCADE, **unique** | yes | null | one cart per account; the cart dies with the account |
-| session_key | varchar(40), unique | yes | null | Django session key of a signed-out visitor; empty string forbidden |
-| created_at / updated_at | TS / TS | — | auto | `updated_at` drives the guest-cart sweep |
+**The money invariant:** `subtotal` is the sum of the items' `price_snapshot`, `total_amount = subtotal − discount_amount`, and no amount is negative. The database enforces the last two, so a bad write fails instead of under-billing. The discount is a snapshot like a price: editing the code later never moves a placed order's total.
 
-`CHECK ((user_id IS NULL) <> (session_key IS NULL))` — exactly one of the two is set; a cart is either a guest's or an account's, never both and never neither.
+**OrderItem** is one unit. Status lives here, not on the order ([ADR-0003](decisions/0003-order-status-on-item-seven-states.md)).
 
-**CartItem**
+| Field | Notes |
+|---|---|
+| `order`, `plan` | Both PROTECT |
+| `status` | One of seven; see the [order lifecycle](order-lifecycle.md) |
+| `price_snapshot`, `cost_snapshot` | The price charged, from `effective_price`, and the plan's cost at that moment |
+| `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
+| `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
+| `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
+| `cancel_reason` | Required once an item is cancelled or refunded |
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| cart | FK Cart, CASCADE | — | | |
-| plan | FK Plan, **PROTECT** | — | | a plan sitting in someone's cart cannot be row-deleted; retire with `is_available=false` |
-| quantity | smallint | — | 1 | `CHECK BETWEEN 1 AND 10` |
-| added_at | TS | — | auto | preserved when a guest cart is claimed |
+**OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE.
 
-`UNIQUE (cart, plan)` — adding a plan already in the cart raises its quantity, it never makes a second line.
+**DiscountCode** is a code a customer types at checkout ([ADR-0020](decisions/0020-discount-codes.md)).
 
-> **A plan with `requires_customer_input=true` is limited to quantity 1 per line.** Each OrderItem is a separate credential with its own lifecycle, so three units would need three separate inputs, and a form collecting three account passwords under one line is a UI nobody asked for. Enforced in the cart — adding or incrementing to a second unit of such a plan is refused with a clear message, not silently clamped — and **re-validated at checkout**, because a plan's `requires_customer_input` can be flipped on after the line was created. It is a service rule at both points, not a DB `CHECK`: the condition lives on `Plan`, one join away from the row being written. The consequence the services already assume: `customer_inputs` is a mapping of **plan id → a single string**. *Flip condition:* if a customer ever genuinely needs several units of an input-requiring plan, the answer is per-item inputs on the checkout form — never silently reusing one value across items.
+| Field | Notes |
+|---|---|
+| `code` | Stored uppercase, 4 to 8 Latin letters or digits. Input is uppercased before lookup, so case can never fork one code into two |
+| `kind`, `value` | `percent` (points) or `fixed` (toman); always positive |
+| `scope`, `products` | `all`, or `selected` with the products it applies to |
+| `max_uses`, `used_count`, `per_user_limit` | Capacity. `used_count` changes under a row lock inside order placement |
+| `min_order_amount` | Compared with the whole order's subtotal before discount |
+| `valid_from`, `valid_until`, `is_active` | The window and the operator's switch |
 
-**Stored: plan and quantity.** No prices, names or purchase snapshots. Every amount is recomputed through `effective_price()` from the database on every render and again at checkout. Unavailable and invalid-quantity lines remain visible but contribute no payable amount; either blocks readiness to proceed.
+One code applies per order, on top of promotional prices. A percentage rounds half up to whole toman, and either kind is capped at the eligible subtotal, so a total never falls below zero.
 
-**Stock:** Plan.stock_quantity is nullable (unlimited) or a nonnegative available count, added in catalog 0025. Cart selections do not reserve or consume units. Cart 0003 removes the former deadline column; a reverse migration restores it empty, with old timestamps recoverable from the pre-migration backup. A plan lock serializes mutation checks and stock edits. Merges lock plans in id order and cap only to per-line policy limits; shortages remain visible for correction. No cart expiry worker is needed; checkout's atomic stock claim and payment lifecycle remain unbuilt (ADR-0018, 2026-10-27 amendment).
+**DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when the order is cancelled, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
 
-**Merge on login:** the server stores the guest-cart id in session data, which survives Django's session-key rotation. The login signal claims a guest cart if the account has none, preserving item ids and added_at; otherwise it combines matching plans, caps imported quantities at each current Plan.max_quantity (one for input-requiring plans), moves new lines and deletes the guest cart. The account and cart rows are locked in one transaction; a replay is harmless. A reduction gets a customer notice. Guest reads and edits still resolve by the current session key, never by a posted cart id.
+**CredentialAccessLog** is one row per staff reveal of an item's customer input: the item, the staff user, the address and the time, never the value. Rows are deleted after 365 days.
 
-**Lifecycle:** `purge_guest_carts` deletes only guest carts inactive for over 30 days, including their lines. A partial updated_at index supports it. It is a rerunnable management command; Huey schedules this purge and expired-session cleanup daily. Account carts are never swept. Order creation claims stock atomically; downstream checkout cart consumption remains the next integration boundary.
+**UnpaidExpirySweep** is a single row: when the unpaid-order sweep last succeeded, how many orders it processed and the backlog it saw.
 
-### `orders`
+### notifications
 
-**Order** — no status field; order status is computed from its items (brief §4)
+**Notification** is one purchase confirmation, frozen when it is created: recipient, subject, and plain-text and HTML bodies, under a unique `dedupe_key` (`purchase-confirmation:{order_pk}:email`). It records `status` (`pending`, `sent` or `failed`), `attempts` (at most six), `next_attempt_at`, its timestamps, and the error class and numeric SMTP code of the last failure. No customer input, credential or raw SMTP reply is stored.
 
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| user | FK User, **PROTECT** | — | | financial record; anonymize users, never delete |
-| order_number | int, unique | — | sequence | PG sequence starting 1001; human-facing |
-| tracking_token | varchar(32), unique | — | `token_urlsafe(16)` | public tracking URL key (D12); no login, no PII exposed |
-| checkout_id | UUID, unique | — | uuid4 | permanent submission identity |
-| submission_digest | varchar(64) | — | blank for legacy | keyed validated request digest from checkout |
-| unpaid_expires_at | TS, indexed | — | created_at + 24 hours | retries never extend it |
-| expiry_last_attempt_at | TS | yes | null | unsuccessful sweeps rotate behind unattempted rows, then retry |
-| cancelled_at | TS | yes | null | whole-order release time |
-| consent_text / consent_version / consent_accepted_at | text / varchar(20) / TS | time nullable | blank / null | historical accepted wording/version/time retained; new orders leave all three empty |
-| discount_snapshot | JSON | — | {} | frozen code/arithmetic/scope facts |
-| policy_snapshot | JSON | — | {} | published terms/refunds/contact, keyed by slug, each with title, body and content_hash; ADR-0030 amendment |
-| subtotal | Money | — | | = sum of item price_snapshots, before discount |
-| discount_code | FK DiscountCode, **PROTECT** | yes | null | a code that has been spent can never be deleted (ADR-0020) |
-| discount_amount | Money | — | 0 | computed server-side at checkout from the DB row, never from the browser |
-| total_amount | Money | — | | what the customer pays and what the gateway must report back |
-| channel | varchar(8), choices | — | `web` | `web`·`bot`·`legacy` (launch backfill, D12) |
-| created_at | TS | — | auto | |
+**ConfirmationSweep** is a single row holding `quota_wait_until`, the pause every sender shares after a quota refusal.
 
-> **Money invariant (stated, constrained, tested).** `subtotal = Σ item.price_snapshot` · `total_amount = subtotal − discount_amount` · `total_amount >= 0`. Each `price_snapshot` is `effective_price(plan)` at order time, so a promotion is already inside `subtotal`. A discount is capped at the *eligible* subtotal when computed, so the total can never go negative (ADR-0020, amending ADR-0005). The gateway verify compares its reported amount against `total_amount` and rejects a mismatch (ADR-0019).
+### core
 
-**DiscountCode** (ADR-0020) — the mechanism whose absence was the reason ADR-0005 cut `Order.discount`; it exists now
-
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| code | varchar(8), unique | — | | **stored uppercase**, `CHECK (code ~ '^[A-Z0-9]{4,8}$')` — Latin letters and digits only, four to eight characters. Input typed in lowercase is normalised before lookup, so `norooz` finds `NOROOZ`; storing one canonical form beats a case-insensitive column because it also stops two visually identical codes existing |
-| kind | varchar(8), choices | — | | `percent`·`fixed` |
-| value | Money | — | | percent points when `kind='percent'`, toman when `fixed`; always > 0 |
-| scope | varchar(8), choices | — | `all` | `all`·`selected`. `selected` discounts only the lines whose plan belongs to a listed product |
-| products | M2M Product | — | ∅ | the scope list; read only when `scope='selected'`, empty otherwise. Operator picks them in the admin panel |
-| max_uses | int | yes | null | null = unlimited |
-| used_count | int | — | 0 | incremented under `select_for_update()` **inside the order-creation transaction** — a single-use code cannot be spent twice concurrently |
-| per_user_limit | int | yes | null | null = no per-user cap; counted from `DiscountRedemption`, which is why that table exists |
-| min_order_amount | Money | yes | null | **compared against `Order.subtotal` — the whole order's total before discount, never `eligible_subtotal`.** Stated here once; every other document matches this. A code with `scope='selected'` therefore has a threshold about basket size and a discount about scoped lines, which is the intended reading of "spend X to get Y off" |
-| valid_from / valid_until | TS / TS | yes | null | either or both may be open-ended |
-| is_active | bool | — | true | operator kill switch, independent of dates and counts |
-| created_at | TS | — | auto | |
-
-Validation and application are **server-side at checkout only**; the browser sends a code string and nothing else. One code per order — codes never stack with each other.
-
-> **The computation, stated once and tested.** `eligible_subtotal` = the sum of the line totals in scope (`scope='all'` ⇒ every line; `scope='selected'` ⇒ only lines whose plan's product is in `products`) — the *eligible* subtotal, never the order subtotal. A percent discount is `round(eligible_subtotal * value / 100)` to whole toman, `ROUND_HALF_UP`. A fixed discount is `min(value, eligible_subtotal)`. The result is clamped so `total_amount` can never fall below zero. Every input is read from the database; nothing the browser sent is ever an input.
->
-> **Stacking with promotions, decided.** A code applies **on top of** promotional pricing: line totals are built from `effective_price()`, so the code discounts what the customer would actually pay. Excluding promoted items is the named future option — it flips only if margin on a promotion is actually being lost, and it arrives as a `DiscountCode` field then, not as a flag nobody asked for now.
-
-**DiscountRedemption** — one row per code actually spent
-
-| Field | Type | Null | Note |
-|---|---|---|---|
-| discount_code | FK DiscountCode, **PROTECT** | — | |
-| user | FK User, **PROTECT** | — | the count that `per_user_limit` is enforced against |
-| order | FK Order, **PROTECT**, **unique** | — | one redemption per order, DB-enforced — the same guarantee as "one code per order" |
-| amount | Money | — | what this code actually cost, in toman; the audit trail of a campaign's real price |
-| created_at | TS | — | auto |
-| released_at | TS | yes | null until released; retained history stops consuming limits |
-
-Written **inside** the order-creation transaction alongside the `used_count` increment, under the same `select_for_update()` on the DiscountCode row. `per_user_limit` cannot be enforced without it: counting orders was the previous plan and it is wrong the moment an order is cancelled or a code is changed. `amount` duplicates `Order.discount_amount` on purpose — the order column is what the customer paid, this one is what the campaign spent, and reporting reads the second.
-
-**OrderItem** — carries the 7-state machine (D1)
-
-| Field | Type | Null | Default | Note |
-|---|---|---|---|---|
-| order | FK Order, **PROTECT** | — | | an order with items cannot be row-deleted; the items are the purchase record |
-| plan | FK Plan, **PROTECT** | — | | plan row must outlive every sale (snapshot has the display data; FK keeps the supply/re-buy link) |
-| status | varchar(24), choices | — | `PENDING_PAYMENT` | `PENDING_PAYMENT`·`QUEUED`·`AWAITING_INPUT`·`DELIVERED`·`REPLACEMENT_REQUESTED`·`CANCELLED`·`REFUNDED` |
-| stock_debited | bool | — | false | true only when checkout actually decremented finite stock |
-| price_snapshot | Money | — | | |
-| cost_snapshot | Money | — | | copied from Plan.cost_price at order time (D10) |
-| actual_cost | Money | yes | null | delivery-form editable, prefilled from cost_snapshot; replacements add to it (D10) |
-| product_snapshot | jsonb | — | | name, plan title, warranty, specs, notes, full description and ordered descriptive sections at purchase time; product questions excluded |
-| customer_input | **EncryptedTextField** | blank | "" | non-secret email/username only; passwords are handled manually after payment (ADR-0007 amendment) |
-| delivery_note | text | blank | "" | operator → customer, plaintext non-secret |
-| expires_at | date | yes | null | subscription expiry; precomputed from duration_days, editable |
-| due_at | TS | yes | null | set at payment confirm via the pure SLA function (D7) |
-| sla_paused_at | TS | yes | null | set on QUEUED→AWAITING_INPUT; resume: `due_at += now − sla_paused_at` |
-| paid_at | TS | yes | null | denormalized from Payment.verified_at; keeps queue/metrics queries join-free |
-| delivered_at | TS | yes | null | |
-| cancel_reason | varchar(32), choices | yes | null | `expired_unpaid`·`customer_before_payment`·`customer_after_payment`·`supply_failure`·`input_timeout`·`warranty_refund`·`operator` |
-| cancellation_requested_at | TS | yes | null | request is not a status (D1); powers queue badge |
-| delivery_link_token_hash | char(64), unique | yes | null | SHA-256 of the single-use delivery-link token (ADR-0008); the raw token exists only in the sent message. Issued at A5, regenerated at A10a (old link dead), invalidated at A11 |
-| delivery_link_expires_at | TS | yes | null | issue + 72h |
-| delivery_link_used_at | TS | yes | null | stamped under the item lock on first open — single-use |
-| created_at | TS | — | auto | |
-
-**UnpaidExpirySweep** — singleton with `CHECK (id = 1)`: last successful sweep time, processed count and overdue backlog. Updated only after a successful bounded sweep; the operator list also queries live backlog. This is operational freshness, not financial history.
-
-**DeliveryField** (S7, D10) — intent: the credentials the operator delivers for one item, one row per field, the value encrypted at field level (ADR-0007). A replacement writes a new generation and keeps the old rows rather than overwriting them (ADR-0003: replacement cycles back to DELIVERED with a new credential generation). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `orders`, DeliveryField). It is re-specified when S7 is planned.
-
-**OrderItemEvent** (append-only, D9) — `order_item` FK PROTECT · `from_status` varchar(24) null (null = creation) · `to_status` varchar(24) · `actor` varchar(12) choices `operator`·`customer`·`system` · `note` text blank · `created_at` TS. Written **inside** every transition transaction; the occurrence it records seeds Notification.dedupe_key (D17/D18). No update/delete paths in code.
-
-**CredentialAccessLog — 2026-11-01, S6b prerequisite.** One row per nonblank staff reveal of `customer_input`: `order_item` and `user` foreign keys both PROTECT, nullable `ip`, indexed `created_at` and the primary key. The user is authenticated and required. No value, ciphertext, request body, `target` or `via` is stored. All existing rows mean a panel reveal of customer input; later reveal types add attribution columns with defaults that preserve that meaning. A durable service transaction commits before returning the value; read-only order history joins only the user, never decrypting the item's input. A daily task deletes rows older than 365 days (ADR-0007). Customer, delivered-credential and magic-link reveals remain later work in this same table; magic-link attribution is governed by ADR-0008.
-
-### `payments`
-
-The money record, built at S6b with the manual fallback and completed at S5 with the gateway. `Payment` is one attempt to pay one order and runs its own small machine, separate from the item machine; `Refund` is one outbound transfer, never a payment status. Rules already fixed by ADR-0019: the browser's redirect parameters only select which payment to verify, and a server-to-server verify (or the operator-only manual action) is the only thing that confirms one; the verified amount must equal `Order.total_amount`, and rial exists only inside the gateway adapter; confirmation is idempotent through a row lock and a re-read, while `idempotency_key` guards only the upstream initiate call; a failed payment cancels nothing and leaves the order payable. No item reaches `REFUNDED` without an executed Refund row (ADR-0003, state machine A12), and a refund message names no card. Everything in the money chain is PROTECT on delete (§3).
-
-Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `payments`, including the list of columns that deliberately do not exist). It is re-specified when S6b is planned.
-
-### `notifications`
-
-Built for purchase confirmation only: `Notification.order` is a protected FK; `dedupe_key` is globally unique (family: state-machine §3). Rows freeze recipient, subject, plain-text and HTML bodies. `status` is pending/sent/failed; `attempts` is 0–6; nullable `next_attempt_at` is indexed with status. Creation, last-attempt and sent timestamps plus sanitized error class and numeric SMTP code support the read-only panel. No input, credential value, raw SMTP reply or procurement cost is stored. `ConfirmationSweep` has a constrained singleton ID of 1 and nullable `quota_wait_until`, shared across ticks and locked before each send. Orders freeze `placement_email` in the placement transaction; old rows stay empty and ineligible. Discovery polls committed orders; no callback/events dispatch exists. Future channels/messages remain planned. ADR-0010’s 2026-11-03 amendment governs retry and quota behavior.
-
-Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `notifications`). It is re-specified when S6 is planned.
-
-### `cms`
-
-Built in `apps/cms/models.py` (ADR-0030): five fixed legal/information pages, with title, restricted-Markdown body, description, draft/published flag and modification date. Slugs are unique and fixed after creation. Initial rows are unpublished; staff need page-view permission to preview. Publishing needs complete, placeholder-free content and separate admin authority. Orders preserve published terms/refunds/contact in their own JSON snapshots; Page has no revision table. A product's questions remain `catalog.ProductQuestion` (ADR-0028); CMS imports core only.
-
-Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `cms`). It is re-specified when S11 is planned.
-
-### `reviews` — phase 2
-
-Not part of phase 1 (D16): at most one review per order item, arriving in phase 2. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§2 `reviews`).
-
----
+**MailAttempt** is one row per recipient submission: the template name, a keyed hash of the address, when it was requested and completed, the outcome (`in_flight`, `accepted`, `rejected`, `uncertain` or `blocked`), the error class and the SMTP code. It has no foreign key, address or message content. It is both the audit log and the quota counter, and rows are deleted after 90 days ([ADR-0022](decisions/0022-transactional-email.md)).
 
 ## 3. Constraints
 
 ### Unique
 
-| Model | Constraint |
+| Table | Unique |
 |---|---|
-| User | `email`, plus `Lower(email)` as `user_email_case_insensitive_unique`; `telegram_id` (nullable — PG ignores NULLs) |
-| Category / Product | `slug` |
-| Order | `order_number`; `tracking_token` |
-| DiscountCode | `code` — stored uppercase, so case can never fork one code into two |
-| DiscountRedemption | `order_id` — one redemption per order |
-| OrderItem | `delivery_link_token_hash` (nullable — PG ignores NULLs) |
-| Cart | `user_id` (nullable — one cart per account, unlimited guest carts) |
-| CartItem | `(cart_id, plan_id)` — one line per plan |
+| User | `email`; `Lower(email)`; `telegram_id` when set |
+| Category, Product, Page | `slug` |
+| Cart | `user` when set; `session_key` when set |
+| CartItem | `(cart, plan)` (`cart_one_line_per_plan`) |
+| Order | `order_number`; `tracking_token`; `checkout_id` |
+| DiscountCode | `code` |
+| DiscountRedemption | `order` |
+| Notification | `dedupe_key` |
+| ProductSection | one `before_buying` row per product (`section_one_before_buying`, a partial unique constraint) |
 
-The unique constraints of the tables beyond S4b (`Payment`, `Notification`, `SiteSetting`, `Page`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Unique). It is re-specified when each table's step is planned.
+### Check
 
-### Partial unique (exact predicates)
-
-One in the built tables: `ProductSection (product) WHERE kind = 'before_buying'` (`section_one_before_buying`, catalog 0019), so the conditions of a sale are said once per product. The admin's formset also refuses two such rows added in one save: model validation compares each new row with what is stored, so two new ones would both pass it and meet the constraint as an error page. The one drafted beyond that is on `Payment`: at most one *live* payment attempt per order, so a failed or abandoned attempt leaves room for a retry. It only stops two live attempts; it is not what makes confirmation idempotent (ADR-0019). Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Partial unique). It is re-specified when S6b is planned.
-
-### Check constraints
-
-| Model | Constraint |
+| Table | Constraints |
 |---|---|
-| Product (built: catalog 0002, 0013, 0028) | `delivery_hours BETWEEN 1 AND 48` (`product_delivery_hours_1_to_48`; ADR-0009 amended 2026-10-28); `status IN ('draft','active','unavailable')` (`product_status_valid`) |
-| Plan (built: catalog 0001, 0002, 0004) | `cost_price >= 0 AND sale_price >= 0` (`plan_prices_not_negative`); `duration_days IS NULL OR duration_days > 0` (`plan_duration_positive_or_unlimited`); `promo_price IS NULL OR (promo_price > 0 AND promo_price < sale_price)` (`plan_promo_price_below_sale_price`) — a "promotion" that is not cheaper is a data-entry error, not a promotion; `promo_starts_at IS NULL OR promo_ends_at IS NULL OR promo_starts_at < promo_ends_at` (`plan_promo_window_starts_before_it_ends`); `max_quantity BETWEEN 1 AND 10` (`plan_max_quantity_1_to_10`); `requires_customer_input = false OR max_quantity = 1` (`plan_customer_input_is_one_per_order`) |
-| ProductSection (built: catalog 0019) | `kind IN ('benefits','includes','comparison','after_payment','before_buying','free')` (`section_kind_valid`); `image = '' OR image_alt <> ''` (`section_image_has_alt`) — a picture without its alternative text is not stored |
-| Cart | `(user_id IS NULL) <> (session_key IS NULL)` — exactly one owner |
-| CartItem | `quantity BETWEEN 1 AND 10`; **service-enforced, not a CHECK:** `quantity = 1` when the plan has `requires_customer_input=true` (the condition lives on `Plan`, one join away — refused in the cart, re-validated at checkout) |
-| Order | `subtotal >= 0`; `discount_amount >= 0`; `total_amount >= 0`; `total_amount = subtotal - discount_amount` — the money invariant enforced by the DB, not only by the service; `channel IN ('web','bot','legacy')` |
-| DiscountCode | `code ~ '^[A-Z0-9]{4,8}$'`; `kind IN ('percent','fixed')`; `scope IN ('all','selected')`; `value > 0`; `used_count >= 0`; `max_uses IS NULL OR max_uses > 0`; `per_user_limit IS NULL OR per_user_limit > 0`; `min_order_amount IS NULL OR min_order_amount >= 0`; `valid_from IS NULL OR valid_until IS NULL OR valid_from < valid_until` |
-| DiscountRedemption | `amount >= 0` |
-| OrderItem | `status IN (…7 values…)`; `price_snapshot >= 0 AND cost_snapshot >= 0`; `actual_cost IS NULL OR actual_cost >= 0`; `cancel_reason IS NULL OR cancel_reason IN (…7 values…)`; `status NOT IN ('CANCELLED','REFUNDED') OR cancel_reason IS NOT NULL` — a cancellation can never lose its reason |
+| Product | `product_delivery_hours_1_to_48`, `product_status_valid` |
+| Plan | `plan_prices_not_negative`, `plan_promo_price_below_sale_price`, `plan_promo_window_starts_before_it_ends`, `plan_duration_positive_or_unlimited`, `plan_max_quantity_1_to_10`, `plan_stock_not_negative`, `plan_customer_input_is_one_per_order`, `plan_input_type_known`, `plan_reviewed_input_consistent` |
+| ProductSection | `section_kind_valid`, `section_image_has_alt` |
+| Page | `cms_page_slug_valid`, `cms_published_page_not_empty` |
+| Cart | `cart_exactly_one_owner` |
+| CartItem | `cart_quantity_1_to_10` |
+| Order | `order_amounts_not_negative`, `order_total_matches_ledger`, `order_channel_valid` |
+| OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason` |
+| OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
+| DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
+| DiscountRedemption | `discount_redemption_not_negative` |
+| Notification | `notification_status_valid`, `notification_attempts_bounded` |
+| MailAttempt | `mail_attempt_known_status` |
+| UnpaidExpirySweep, ConfirmationSweep | `unpaid_sweep_singleton`, `confirmation_sweep_singleton` |
 
-The check constraints of the tables beyond S4b (`SiteSetting`, `Payment`, `Refund`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 Check constraints). It is re-specified when each table's step is planned.
+The catalogue's constraints carry a Persian message, shown in the panel under the field the rule is about; discount codes and pages give theirs from form and model validation before the database is reached. Which status may follow which is enforced by the services under row locks, not by a constraint: a CHECK sees the new state, not the transition.
 
-Transition legality (the matrix itself) is service-enforced with `select_for_update()` — a check constraint can see the target state but not the edge.
+## 4. Deletion rules
 
-### FK `on_delete` summary
-
-| FK | on_delete | Rationale |
+| Relation | On delete | Why |
 |---|---|---|
-| Order.user, Order.discount_code, OrderItem.order, OrderItemEvent.order_item, DiscountRedemption.discount_code / .user / .order | **PROTECT** | anything in the money/audit chain must fail loudly on delete; users/orders are anonymized, never deleted. A spent DiscountCode is part of how an order's total was computed — retire it with `is_active=false`, never row-delete |
-| OrderItem.plan, **CartItem.plan** | **PROTECT** | a sold plan row must exist forever; retire with `is_available=false`. Snapshot covers display, the FK keeps the profit/re-buy/renewal link live. A plan sitting in a live cart is protected for the same reason a sold one is: deleting it would silently empty someone's cart |
-| Product.category | **PROTECT** | no orphan products; empty the category first |
-| ProductSpec / Plan / ProductSection / ProductQuestion .product; **Cart.user**; **CartItem.cart** | CASCADE | pure children. Every credential-bearing chain is transitively PROTECTed through Payment, so CASCADE here can only ever fire on unpaid/draft data. A cart holds no money history: it dies with its account, and its lines die with it |
-| DiscountCode.products (M2M) | — | plain join table; unlinking a product narrows the scope of a live code and touches no order, because scope is read at checkout and the outcome is frozen in `discount_amount` |
+| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `DiscountRedemption` and `CredentialAccessLog`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
+| `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
+| `Product.category` | PROTECT | No orphan products |
+| `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
 
-`CredentialAccessLog.order_item` and `.user` use PROTECT, including unpaid orders. The foreign keys of later tables (`Payment`, `Refund`, `DeliveryField`, `Notification`) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§3 FK `on_delete` summary). It is re-specified when each table's step is planned; anything in the money or audit chain is PROTECT.
+## 5. Indexes
 
----
+Beyond primary keys, unique constraints and foreign keys, which are indexed already:
 
-## 4. Indexes beyond PKs/uniques
-
-Django auto-indexes every FK; those cover the per-item timeline (`OrderItemEvent.order_item`), reveal log, delivery fields, "my orders" (`Order.user`), and item lists without further work.
-
-| Index | Named query it serves |
+| Index | Serves |
 |---|---|
-| `OrderItem (status, due_at)` | Operator queue tabs: `WHERE status = 'QUEUED' ORDER BY due_at ASC` (default tab, D-brief §8); same index serves the AWAITING_INPUT tab, the stats bar counts, and the overdue-order alarm scan (`status='QUEUED' AND due_at < now()`) |
-| `Cart (session_key)` | Every page load by a signed-out visitor resolves the cart from the session key — the single hottest cart lookup there is. `Cart.user` needs no separate index: its unique constraint is one |
-| Partial `Cart (updated_at) WHERE user_id IS NULL` | Daily guest-cart sweep: `WHERE user_id IS NULL AND updated_at < now() − 30 days`. Account carts are never scanned |
-| `DiscountRedemption (discount_code, user)` | The `per_user_limit` check at checkout: `COUNT(*) WHERE discount_code_id = ? AND user_id = ?`. Composite in that order, because the code is always the more selective leading column |
+| `Product.search_text`, GIN with `gin_trgm_ops` | Trigram search. At the current catalogue size neither search pass uses it, so a change to the search query needs its own query-plan check |
+| `Cart.updated_at` where `user` is null | The daily guest-cart purge |
+| `DiscountRedemption (discount_code, user)` | The per-customer limit check |
+| `Notification (status, next_attempt_at)` | Finding confirmations that are due |
+| `Order.unpaid_expires_at` | The unpaid-order sweep |
+| `CredentialAccessLog.created_at`, `MailAttempt.created_at` | Retention deletes and time windows |
+| `MailAttempt.recipient_hash` | Looking up the attempts for one address |
 
-Indexes whose only queries arrive after S4b (the renewal-reminder scan, S10; the lost-callback inquiry and the unpaid-order sweep, S5; the outbox poll, S6) are not listed. Full earlier draft: `git show 027c5d1:docs/data-model.md` (§4). They are re-specified when those steps are planned.
+Deliberately unindexed: `Plan.promo_ends_at`, because `effective_price` runs on plans already loaded for a page, and the panel's search fields, whose tables hold thousands of rows at most. An index is added on measured slowness.
 
-**`Product.search_text` carries a GIN index with `gin_trgm_ops`** since 2026-10-14 (`catalog 0006`). Its presence does not mean the current search uses it: the exact pass filters on `UPPER(search_text) LIKE UPPER(...)`, and the fallback compares `WORD_SIMILARITY(...) >= 0.45`. EXPLAIN on 2026-10-23 showed sequential scans for both, even with sequential scans discouraged (`enable_seqscan=off`). A query or index change needs its own query-plan check; no index-backed scaling claim is made for either current pass.
-
-**Deliberately unindexed:** `DiscountCode.code` beyond its unique index (a handful of rows), `Plan.promo_ends_at` (`effective_price` is evaluated on plans already fetched for a page, never scanned across the table), and operator panel search fields (`ref_id`, customer name — at <1 order/day every table involved is thousands of rows at most; add on measured slowness, not speculation).
-
----
-
-## 5. Deliberately NOT modeled
+## 6. Deliberately not modelled
 
 | Absent | Why |
 |---|---|
-| ~~Cart table~~ — **reversed 2026-09-01** | The cart is now **two tables**, `Cart` and `CartItem` (§2). The session-only version ADR-0018 originally chose was too weak on the one axis customers actually feel: a session cart cannot follow a signed-in customer to another device, and that is table stakes on the platforms this shop is judged against. What the session version got right is kept — the cart still stores only plan and quantity, and every amount is still recomputed from the database. The costs it avoided are now paid deliberately: one daily sweep of guest carts older than 30 days, and `CartItem.plan` PROTECTed so a deleted plan can never silently empty a cart |
-| Promo/discount stacking flag | A code applies on top of promotional pricing, decided once (§2). Excluding promoted items is the named future option; it flips on evidence that a promotion's margin is actually being lost, and it becomes a `DiscountCode` field then |
-| Card-to-card apparatus (`unique_amount` and its partial unique index, `paid_amount`, receipt upload, destination-card slots, `UnmatchedTransfer`) | ADR-0019 replaced the rail with a gateway; ADR-0006 is superseded, not deleted. Amount-matching, receipt storage and unmatched-transfer reconciliation all existed to answer "did this money arrive?" — a server-to-server verify answers it directly |
-| Supplier / FX rate | one upstream marketplace, manual pricing; `cost_snapshot`/`actual_cost` capture what matters (profit) without modeling why |
-| Inventory app | Limited stock uses Plan.stock_quantity; carts do not reserve it (ADR-0018, 2026-10-27 amendment). Supplier and stock-movement accounting remain unbuilt. |
-| RBAC / roles | one operator = `is_staff`; a second role would be the trigger to add it |
-| Identity tables (EmailIdentity/TelegramIdentity) | brief §19-الف resolved to flat fields on User; splitting is a mechanical migration if a third login method ever appears |
-| Wallet / ledger | brief out-of-scope; if it comes, it arrives double-entry from day one |
-| Ticket system | email + Telegram suffice |
-| OTP codes / Telegram link tokens | short-lived values (login codes 10 minutes, `apps/accounts/otp.py`; Telegram link tokens 5 minutes, S8) — Redis with expiry, not rows needing a cleanup job |
-| Queue soft-lock (`locked_by`/`locked_at`) | brief cut the logic for one operator; adding the two columns later is a trivial additive migration |
+| A status on `Order` | Status lives on each item; an order's state is read from its items ([ADR-0003](decisions/0003-order-status-on-item-seven-states.md)) |
+| Promotions as discount rows | A promotion is a price on the plan, behind one function ([ADR-0021](decisions/0021-promotional-pricing.md)) |
+| Suppliers, exchange rates, stock movements | One upstream market and manual pricing; `cost_snapshot` captures the profit, and stock is one number on the plan |
+| Roles | One operator, `is_staff` |
+| Separate identity tables | Flat fields on `User`; splitting them is a mechanical migration if a third sign-in method appears |
+| Wallet or ledger | Out of scope; it would be double-entry from the start |
+| Ticket system | Email and Telegram are enough |
+| Sign-in codes as rows | Short-lived values belong in Redis with an expiry |
+| Card-to-card transfer records | The gateway replaced that design ([ADR-0019](decisions/0019-payment-gateway.md) supersedes [ADR-0006](decisions/0006-card-to-card-payment-design.md)) |
 
----
+Each simplification and the condition that would reverse it are in [ADR-0014](decisions/0014-deliberate-simplifications.md).
 
-## Concerns
+## 7. Planned tables
 
-Concerns 1–3 (payment fields and the provider, the operator-alert recipient, a Refund row without an item) were about S5/S6 tables; they are in the earlier draft (`git show 027c5d1:docs/data-model.md`, Concerns) and return when those steps are planned. The numbering is kept so older references still resolve.
-
-4. **`Order.total_amount` is now derived, and the DB says so.** The check constraint `total_amount = subtotal - discount_amount` makes a bad write fail rather than silently underbill. It also means the discount can never be recomputed after the fact: `discount_amount` is a snapshot, exactly like `price_snapshot` — editing the DiscountCode row later must not move a placed order's total.
+| Table | Purpose | Decisions |
+|---|---|---|
+| `payments.Payment` | One attempt to pay one order, with its own small status machine | [ADR-0019](decisions/0019-payment-gateway.md) |
+| `payments.Refund` | One outgoing refund; no item becomes `REFUNDED` without an executed one | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0019](decisions/0019-payment-gateway.md) |
+| `orders.DeliveryField` | Delivered account details, encrypted per field, one generation per delivery | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md) |
+| `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
+| Delivery columns on `OrderItem` | Payment time, delivery deadline, delivery time and the single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |

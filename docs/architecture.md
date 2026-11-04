@@ -1,0 +1,259 @@
+# Architecture
+
+PremShop is a Django modular monolith that renders Persian, right-to-left pages on the server. One codebase runs as two processes, a web server and a background worker, against PostgreSQL and Redis. This document describes how the built system is organised and the rules that hold it together.
+
+Related documents: the [data model](data-model.md) for tables and constraints, the [order lifecycle](order-lifecycle.md) for statuses and locking, and the [decision records](decisions/README.md) for why each choice was made.
+
+- [System context](#system-context)
+- [Applications and boundaries](#applications-and-boundaries)
+- [Inside an application](#inside-an-application)
+- [Single entry points](#single-entry-points)
+- [Request flows](#request-flows)
+- [Background jobs](#background-jobs)
+- [Email](#email)
+- [Security](#security)
+- [Cross-cutting conventions](#cross-cutting-conventions)
+- [Not built yet](#not-built-yet)
+
+## System context
+
+```mermaid
+flowchart LR
+  customer([Customer]) -->|HTTPS| nginx
+  operator([Operator]) -->|HTTPS, panel path| nginx
+  nginx --> web["web: Django on gunicorn"]
+  web --> pg[(PostgreSQL)]
+  web --> redis[(Redis)]
+  worker["worker: Huey consumer"] --> pg
+  worker --> redis
+  web -->|SMTP| relay[SMTP2GO]
+  worker -->|SMTP| relay
+  web -.->|error reports| glitchtip[GlitchTip]
+```
+
+| Component | Role |
+|---|---|
+| nginx | Terminates TLS, serves the hashed static files, forwards everything else to `web`, and answers with a maintenance page while `web` is down. It sets `X-Real-IP`, the only client address the application trusts. |
+| web | Django under gunicorn as a non-root user: the storefront, the customer pages and the operator panel. |
+| worker | One Huey consumer (`manage.py run_huey`) for the [scheduled jobs](#background-jobs). |
+| PostgreSQL | The system of record. Row locks and CHECK constraints are part of the design, so development and tests run on PostgreSQL as well. |
+| Redis | Django's cache: sign-in codes, rate-limit counters and Huey's queue. Nobody can sign in while it is down. |
+| SMTP2GO | The relay for every outgoing email ([ADR-0022](decisions/0022-transactional-email.md)). |
+| GlitchTip | Error reports through `sentry-sdk` when `SENTRY_DSN` is set ([ADR-0015](decisions/0015-error-tracking-glitchtip.md)). |
+
+Production runs one Docker image per commit, with `web` and `worker` from the same image beside PostgreSQL 15, Redis 7 and nginx (`deploy/compose.yaml`). Building and checking the image is described in [development](development.md#production-image); deploying it in the [runbooks](runbooks/deploy.md).
+
+## Applications and boundaries
+
+Every application lives under `apps/`. An application may import only from the applications to its left:
+
+```text
+core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifications
+```
+
+| App | Owns |
+|---|---|
+| `core` | Shared infrastructure: the encrypted field, email sending and mail accounting, the rate limiter, Persian formatting filters, the restricted Markdown renderer, support details, middleware, error pages, the health check and the panel's admin site. |
+| `accounts` | The `User` model, sign-in by code or password, password recovery and change, and the account page. |
+| `catalog` | Categories, products, plans, page sections and questions; the price function, search, the publishing rule, the storefront pages, SEO and the catalogue editor in the panel. |
+| `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
+| `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
+| `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, and the staff reveal of customer input. |
+| `payments` | Checkout: the signed quote and the coordinator that turns a cart into an order. The gateway is not built yet. |
+| `notifications` | Purchase confirmation emails through a durable outbox. |
+
+Two rules keep the graph honest:
+
+- **`cart` and `orders` are siblings.** Neither imports the other, so `orders` does not know how a cart is stored: `orders.services.place_order` takes plain `OrderLine` values, and `payments.checkout` is the one place the two meet ([ADR-0018](decisions/0018-shopping-cart-and-guest-checkout.md)).
+- **One exception is allowed.** The account page in `accounts` reads `orders.selectors` to show the customer's current order.
+
+The import rule and the service layer are [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md).
+
+## Inside an application
+
+| Module | Holds |
+|---|---|
+| `models.py` | Tables, constraints and model-level validation. |
+| `services.py` | Every write. Each operation is one transaction that locks what it changes, and a status change writes its history row in that same transaction. In `orders` and `payments`, arguments are keyword-only. |
+| `selectors.py` | In `orders`: the reads that customer pages render from, with ownership already applied. |
+| `views.py` | Thin views (below). |
+| `forms.py`, `admin.py`, `tasks.py`, `templatetags/` | Input validation, the panel, scheduled jobs and template filters. |
+
+A view does five things and nothing else:
+
+1. Checks access, fetching any object through a query that already scopes ownership, such as `orders.selectors.customer_orders(user)` or `cart.services.get_cart(request)`, never `Order.objects.get(pk=...)`.
+2. Validates input with a Django form. A form checks format only; business rules live in the service, whose `ValidationError` is shown on the same form.
+3. Calls at most one service that writes. A GET only reads.
+4. Renders a template or redirects.
+5. Sets the response headers the page needs, such as `Cache-Control: private, no-store`.
+
+The browser never supplies money. Forms carry plan ids, quantities and a discount code; every amount is recomputed on the server. Domain exceptions carry the Persian sentence the customer sees, because the message is part of the behaviour (for example `RateLimited` in `apps/accounts/services.py`).
+
+## Single entry points
+
+Each of these concerns has exactly one path through the code. A second path is a defect, and several are enforced by tests.
+
+| Concern | The one path |
+|---|---|
+| A price shown or charged | `catalog.pricing.effective_price` ([ADR-0021](decisions/0021-promotional-pricing.md)) |
+| Products for sale | `Product.objects.public()`; pages, including unavailable ones that still meet the publishing rule, use `public_pages()` |
+| Whether a product may go live | `Product.publish_problems()` ([ADR-0028](decisions/0028-product-page-content-model.md)) |
+| Search text, on both sides of the comparison | `catalog.search.normalize_for_search` ([ADR-0025](decisions/0025-catalog-implementation.md)) |
+| Sending an email | `core.email.send_templated_email` ([ADR-0023](decisions/0023-email-templates.md)) |
+| Operator text to HTML | `core.richtext.render_markdown` ([ADR-0027](decisions/0027-operator-text-restricted-markdown.md)) |
+| Persian digits, toman and Jalali dates | `core.formatting`, exposed as filters by `{% load fa %}` |
+| A money column | `MoneyField()` in `apps/catalog/models.py`: whole toman, exact decimal |
+| Where a customer reaches a person | `core.support.details()`, given to every template and email as `support` |
+| A promise printed on every page | `apps/catalog/promises.py`, each promise beside the condition every public product must meet |
+
+## Request flows
+
+### Browsing and search
+
+| Path | Page |
+|---|---|
+| `/` | Home: the shop's range, category shelves and current offers |
+| `/c/<slug>/` | A category |
+| `/p/<slug>/` | A product |
+| `/search/`, `/search/suggest/` | Search results and suggestions |
+| `/faq/` | Frequently asked questions |
+| `/<slug>/` | A published legal or information page |
+
+A product page is assembled from the content model ([ADR-0028](decisions/0028-product-page-content-model.md)): facts the shop commits to live in fields, prose lives in ordered sections of six kinds (each drawn by `templates/catalog/sections/<kind>.html`), and questions are their own rows. A draft is a 404, except for staff with `catalog.view_product`, who see it as a preview marked `noindex` and `no-store`.
+
+Search folds the query and each product's stored `search_text` through the same normaliser, which handles Arabic-keyboard letters, half-spaces and Persian digits. An exact pass runs first, then a trigram word-similarity fallback at 0.45. A search that finds nothing lists the catalogue, so a misspelt name still leads to the product.
+
+Every storefront page has a tested query budget: six queries on the home page, five on a category page and nine on a product page with related products. `config/seo.py` serves the sitemap and `robots.txt`.
+
+### Sign-in
+
+`/login/` is one flow for signing in and registering, by a six-digit code sent by email or by password ([ADR-0024](decisions/0024-auth-implementation.md)).
+
+- **Codes** are stored hashed in Redis for ten minutes, with their deadline beside them. Each guess increments an attempt counter before the code is compared, and the code is spent by the one delete that removes it, so two requests carrying the right code cannot both sign in.
+- **Rate limits** apply per email and per IP address on every sign-in endpoint. The panel's sign-in draws on the same budgets, so an address has one budget wherever it is guessed at. Accepted code emails also have a daily budget.
+- **Redis failure** turns into a Persian 503 page. Sign-in never fails open, because that would allow unlimited guesses at a six-digit code.
+- **A code sign-in on an account that has a password** sends a sign-in alert email. A failure to send it is logged and never undoes the sign-in.
+- **Password recovery** sends a fresh code bound to its purpose and session. Changing a password rotates the session and signs out every other one.
+
+Signing in rotates the session and merges the visitor's guest cart into the account's (`cart.signals`, on `user_logged_in`), so every sign-in path gets the merge without asking for it.
+
+### Cart
+
+`/cart/` shows the cart; adding, changing a quantity and removing are CSRF-protected POSTs that work without JavaScript, and with JavaScript update the header count and a toast in place.
+
+- A visitor's cart is filed under their session key for 30 days; a signed-in customer's cart belongs to the account on every device. The merge at sign-in caps each line at the plan's limit and tells the customer when a quantity was reduced.
+- A cart line stores the plan and the quantity only. Prices are recomputed on every render, and nothing is reserved: an unavailable line stays visible, contributes no amount and blocks checkout until it is removed.
+- `/cart/availability/` refreshes the state of up to fifty plans and is never cached.
+
+### Checkout and order placement
+
+`/checkout/` shows a review computed on the server. A visitor who is not signed in does so inline, through the same code endpoints, and the page reloads with the merged cart.
+
+1. **The quote.** The review issues a signed quote, valid for 15 minutes, binding the account, the cart's revision and items, a digest of the purchase terms, the discount code and the customer-input declarations. Amounts displayed in the browser have no authority.
+2. **The submission.** `payments.checkout` locks the account, then the cart, and calls `orders.services.place_order`. In one transaction it re-reads every price through `effective_price`, claims finite stock, applies and records the discount code, freezes what was bought, writes one history row per unit and deletes the cart's lines. Any failure rolls back everything and leaves the cart as it was.
+3. **Replays.** Each submission carries a unique checkout id and a keyed digest of what was submitted. A repeated submit returns the order it already created; another account or a changed submission cannot reuse the id.
+4. **The result.** The order starts as `PENDING_PAYMENT` with a fixed 24-hour deadline, and a customer has at most one live unpaid order. Payment is not built yet, so an unpaid order expires and releases its stock and discount ([order lifecycle](order-lifecycle.md)).
+
+### Customer pages
+
+| Path | Page |
+|---|---|
+| `/account/` | Profile, password and the current order |
+| `/account/orders/` | The customer's orders, 20 per page |
+| `/account/orders/<number>/` | One order: what was bought, its status and history, the saved terms |
+| `/account/orders/<number>/cancel/` | Cancelling an unpaid order (a confirmed POST) |
+| `/account/orders/<number>/invoice/` | A standalone HTML invoice; the PNG export is drawn in the browser |
+| `/track/<token>/` | Public tracking for whoever holds the link |
+
+Ownership is part of every customer query in SQL, staff included. The tracking page has its own per-IP and per-token rate limits, sends `no-store`, `noindex` and `no-referrer`, and shows only the product name, the status and its times. Tracking links are redacted from application logs and error reports; the proxy in front must redact them from its own access log.
+
+### Operator panel
+
+The panel is the Django admin with django-unfold. In production it is served at `ADMIN_PATH` and `/admin/` is a 404; development and tests serve it at `/admin/`. It is Persian and right to left, with an English switch that applies inside the panel only.
+
+- **Home:** the catalogue at a glance: published products, active offers, sold-out plans, offers ending within 48 hours and drafts (`apps/catalog/dashboard.py`).
+- **Catalogue:** products, plans, specifications, sections and questions. Publishing goes through `Product.publish_problems()`, and a draft's form lists every reason it cannot yet go live. An unsaved preview renders the edited product through the storefront's own code without writing a row.
+- **Discount codes:** created and deactivated here. The panel deletes none, because a used code is part of how an order's total was computed.
+- **Orders:** read-only. The one action is revealing an item's customer input, through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when.
+- **Pages:** the legal pages, previewed as drafts and published by a separate permission.
+- **Notifications and mail attempts:** read-only lists of what was sent, what is waiting and what failed.
+
+The catalogue's database constraints carry Persian error messages, each shown under the field it is about, so the operator sees the database's own rule where it can be corrected. Discount codes and pages give their Persian errors from form and model validation, before the database is reached.
+
+## Background jobs
+
+One Huey consumer runs these, scheduled in UTC:
+
+| Task | Schedule | Does |
+|---|---|---|
+| `notifications.tasks.confirm_new_orders` | every minute | Finds new orders and sends due purchase confirmations |
+| `orders.tasks.sweep_unpaid_orders` | every minute | Releases up to 100 overdue unpaid orders, each in its own transaction, and records the sweep's time and backlog |
+| `cart.tasks.clean_guest_carts` | daily 03:00 | Deletes guest carts inactive for more than 30 days |
+| `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
+| `core.tasks.clean_mail_attempts` | daily 03:15 | Deletes mail-attempt rows older than 90 days |
+| `orders.tasks.clean_credential_access_logs` | daily 03:20 | Deletes access-log rows older than 365 days |
+
+- The queue name is derived from the database's host, port and name, never its credentials, so each database has its own consumer. Huey runs asynchronously in development too; tests use in-memory storage and run tasks explicitly.
+- A stopped worker delays releases but never corrupts them: checkout still validates stock and deadlines under locks, and a restarted worker catches up from the stored deadlines. The panel's order list warns when the last successful sweep is more than three minutes old. `/healthz` checks the database and the cache, not the worker.
+
+## Email
+
+Every message is three templates under `templates/email/` (`<name>.subject.txt`, `<name>.txt`, `<name>.html`), sent as one multipart message by `core.email.send_templated_email`, so no Persian sentence lives in Python. The HTML uses tables, inline styles and installed system fonts ([ADR-0023](decisions/0023-email-templates.md)). With `DEBUG` on, `/dev/emails/` renders each message from the sample context in `EMAIL_PREVIEWS` (`apps/core/views.py`), and a test fails when a message has no entry there.
+
+| Message | Sent when |
+|---|---|
+| `otp_code` | A sign-in code is requested |
+| `password_reset` | A recovery code is requested |
+| `signin_alert` | An account with a password signs in by code |
+| `password_changed` | A password is changed |
+| `purchase_confirmation` | An order is placed (unpaid at that point, and the message says so) |
+| `item_delivered` | Template only; nothing sends it until delivery is built |
+
+**Mail accounting.** `core.MailAttempt` records every recipient submission on its own database connection, with a keyed hash of the address and the outcome, never the address or the message. The rows double as the quota counter against the provider's allowance, with a reserve kept for security messages. `EMAIL_QUOTA_RESET_DATE` and `EMAIL_QUOTA_STARTING_USAGE` align the count with the provider ([ADR-0022](decisions/0022-transactional-email.md)).
+
+**Purchase confirmations.** Every minute the worker finds committed orders that carry a placement email and have no confirmation yet, renders the message and freezes it in a `Notification` row under the unique key `purchase-confirmation:{order_pk}:email`. Sending is attempted six times: at once, then after 1, 5 and 15 minutes, 1 hour and 6 hours. A quota refusal pauses every send for 15 minutes without spending an attempt. An occasional duplicate after an uncertain SMTP result is accepted over a confirmation that never arrives ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)).
+
+No message carries a credential value or a customer's input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)).
+
+## Security
+
+| Concern | How it is handled |
+|---|---|
+| Authorization | Checked on the server for every object. Customer queries filter by owner in SQL; staff actions check model permissions; tracking needs an unguessable token. |
+| Rate limiting | Per identity and per IP on every sign-in endpoint, the panel's included; also on search and tracking. Fails closed when Redis is down. |
+| Client address | In production, read from `X-Real-IP`, which nginx overwrites, never from `X-Forwarded-For`, which a visitor can write. |
+| Stored secrets | `OrderItem.customer_input` is encrypted with Fernet. Retired keys stay readable through `FIELD_ENCRYPTION_KEY_FALLBACKS` until `manage.py reencrypt_fields` has rotated every row. The key is escrowed offline, and a restore that cannot decrypt is a failed restore ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)). |
+| Revealing a secret | Through one service, which logs the staff member, the time and the address. The order history never decrypts. |
+| Messages and logs | No credential value in any message, log or error report. Tracking links are redacted from logs and from error-report URLs. |
+| HTML output | Three bounded entry points may mark a string safe: `render_markdown`, the constant zero-price markup in `fa.py`, and `json_ld`. `apps/core/tests/test_safe_markup.py` refuses any other. Operator Markdown is rendered with raw HTML off, then cleaned by an allowlist. |
+| Uploads | `ReencodedImageField` decodes an image with Pillow, checks its size and pixel count, and stores a redrawn copy under a random name. The uploaded bytes are never stored. |
+| Malformed input | `RejectNul` answers a NUL byte in the path or query with a 404 before anything queries the database. |
+| Configuration | `config/settings/prod.py` refuses to start without allowed hosts, SMTP credentials, a From address on the shop's domain, an https `SITE_URL`, and valid, distinct encryption keys. |
+| Dependencies | CI runs `pip-audit` and `bandit` on every push. |
+
+## Cross-cutting conventions
+
+- **Settings** are `config/settings/{base,dev,prod}.py`, driven by the environment. `.env` is loaded with `setdefault`, so the real environment always wins; `manage.py` and pytest default to `dev`, and `wsgi`/`asgi` to `prod`. `.env.example` documents every variable, and a test fails when one is missing.
+- **Absolute addresses** are built on `SITE_URL`, never on the request's `Host` header: the canonical link, `og:url`, `og:image` and the links in emails.
+- **Page titles.** A template's title block holds its own part only; `base.html` appends « | PremShop» once, through the `shop_title` filter.
+- **Templates.** A Django `{# #}` comment is single-line only, so multi-line notes use `{% comment %}` (a test scans every template). A template that uses the Persian filters must `{% load fa %}`. A page that must not be indexed fills the `meta_robots` block.
+- **Styles** are component classes built from tokens, not utilities in markup. Tailwind v4 scans `templates/` only. The tokens and visual rules are in the [design language](design-language.md).
+- **Language.** Customer-facing text is Persian; code, comments and logs are English. A Latin name inside Persian text is isolated: `<bdi>` in a template, U+2068 and U+2069 in a Python string.
+- **Panel translations.** Panel strings are written in Persian and wrapped in `gettext_lazy`. `locale/en/` holds their English for the panel's language switch, and `locale/fa/` rewords Django's and Unfold's own strings. `PersianUnlessChosen` keeps the shop itself Persian.
+- **Error pages** are the shop's own. The 500 page renders without context processors, because the database may be what failed; a CSRF failure from the panel leads back to the panel.
+
+## Not built yet
+
+The following are designed and bound by decisions, but not implemented:
+
+| Capability | Decisions |
+|---|---|
+| Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
+| An operator-only record of a payment received outside the gateway | [ADR-0019](decisions/0019-payment-gateway.md) |
+| Paid statuses, delivery of account details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
+| Delivery deadlines and the reminders for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
+| The Telegram bot, operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
+| The operator's order queue, delivery page and order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
+| An HTTP API | [ADR-0004](decisions/0004-no-drf-in-phase-1.md) |
+
+What is deliberately never built, each with the condition that would change that, is [ADR-0014](decisions/0014-deliberate-simplifications.md).
