@@ -23,6 +23,7 @@ PRODUCTION = {
     "FIELD_ENCRYPTION_KEY": Fernet.generate_key().decode(),
     "FIELD_ENCRYPTION_KEY_FALLBACKS": "",
     "SENTRY_DSN": "",
+    "ADMIN_PATH": "ops-7c2f/",
 }
 
 

@@ -87,6 +87,20 @@ def test_a_second_run_keeps_the_operators_edits_and_every_plan(seed):
     assert Category.objects.count() == len(seed_catalog.CATEGORIES)
 
 
+def test_reset_with_debug_off_raises_and_deletes_nothing(seed, settings):
+    """It printed a refusal and exited 0, so a script that ran it saw a success."""
+    from django.core.management.base import CommandError
+
+    seed()
+    settings.DEBUG = False
+
+    with pytest.raises(CommandError, match="DEBUG"):
+        call_command("seed_catalog", reset=True, no_images=True, stdout=StringIO())
+
+    assert Product.objects.count() == len(seed_catalog.PRODUCTS)
+    assert Category.objects.count() == len(seed_catalog.CATEGORIES)
+
+
 @pytest.mark.parametrize(
     "flag,debug,database",
     [
