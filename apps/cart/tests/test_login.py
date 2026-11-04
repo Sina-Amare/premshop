@@ -21,7 +21,7 @@ def test_real_login_rotates_session_keeps_cart_and_restores_auth_lifetime(
     guest_key, guest_id = client.session.session_key, guest.pk
     if login == "password":
         response = client.post(
-            "/login/",
+            "/login/password/",
             {"email": buyer.email, "password": "CartPassword!2026", "next": "/cart/"},
         )
     else:
@@ -44,7 +44,7 @@ def test_password_login_combines_existing_cart_and_shows_reduction(client, buyer
     CartItem.objects.create(cart=account, plan=plan, quantity=2)
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     response = client.post(
-        "/login/",
+        "/login/password/",
         {"email": buyer.email, "password": "CartPassword!2026", "next": "/cart/"},
         follow=True,
     )
@@ -69,7 +69,7 @@ def test_existing_custom_session_expiry_survives_guest_cart_and_login(client, bu
     session.set_expiry(3600)
     session.save()
     client.post("/cart/add/", {"plan": plan.pk})
-    client.post("/login/", {"email": buyer.email, "password": "CartPassword!2026"})
+    client.post("/login/password/", {"email": buyer.email, "password": "CartPassword!2026"})
     assert client.session.get_expiry_age() == 3600
 
 
@@ -90,7 +90,7 @@ def test_failed_merge_leaves_the_original_guest_session_usable(client, buyer, pl
         buyer.save(update_fields=["is_staff"])
         url, data = "/admin/login/", {"username": buyer.email, "password": "CartPassword!2026"}
     elif login == "password":
-        url, data = "/login/", {"email": buyer.email, "password": "CartPassword!2026"}
+        url, data = "/login/password/", {"email": buyer.email, "password": "CartPassword!2026"}
     else:
         client.post("/login/code/", {"email": buyer.email})
         digits = re.search(r"[۰-۹]{6}", mail.outbox[-1].body).group()

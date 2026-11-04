@@ -88,20 +88,20 @@ def test_the_functional_index_is_the_guard_that_catches_case_variants():
 
 
 def test_login_email_password(client, user):
-    response = client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    response = client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert response.status_code == 302
     assert client.session["_auth_user_id"] == str(user.pk)
 
 
 def test_login_email_password_is_case_insensitive(client, user):
-    client.post(reverse("login"), {"email": "CUSTOMER@EXAMPLE.TEST", "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": "CUSTOMER@EXAMPLE.TEST", "password": PASSWORD})
 
     assert client.session.get("_auth_user_id") == str(user.pk)
 
 
 def test_a_wrong_password_does_not_say_which_half_was_wrong(client, user):
-    response = client.post(reverse("login"), {"email": user.email, "password": "nope"})
+    response = client.post(reverse("login-password"), {"email": user.email, "password": "nope"})
 
     assert "_auth_user_id" not in client.session
     assert "ایمیل یا رمز عبور اشتباه است" in response.content.decode()
@@ -111,7 +111,7 @@ def test_an_inactive_account_cannot_log_in(client, user):
     user.is_active = False
     user.save(update_fields=["is_active"])
 
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert "_auth_user_id" not in client.session
 
@@ -148,7 +148,7 @@ def test_every_password_attempt_costs_exactly_one_hash(client, user, monkeypatch
 
     monkeypatch.setattr(MD5PasswordHasher, "encode", counting_encode)
 
-    client.post(reverse("login"), {"email": email, "password": password})
+    client.post(reverse("login-password"), {"email": email, "password": password})
 
     assert len(hashes) == 1, f"{case}: {len(hashes)} hashes"
 
@@ -254,7 +254,7 @@ def test_otp_rate_limit_locks_after_n_attempts(client, user):
     ("url", "limit", "message"),
     [
         ("login-code", ratelimit.OTP_REQUESTS_PER_IP, services.TOO_MANY_CODES_FROM_NETWORK),
-        ("login", ratelimit.LOGIN_ATTEMPTS_PER_IP, services.TOO_MANY_FROM_NETWORK),
+        ("login-password", ratelimit.LOGIN_ATTEMPTS_PER_IP, services.TOO_MANY_FROM_NETWORK),
     ],
 )
 def test_a_spent_network_budget_says_so_without_blaming_the_visitor(client, url, limit, message):
@@ -374,8 +374,8 @@ def test_a_wrong_guess_does_not_shorten_the_codes_life(user):
 
 
 def test_a_successful_login_clears_the_attempt_budget(client, user):
-    client.post(reverse("login"), {"email": user.email, "password": "wrong"})
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": "wrong"})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert ratelimit.remaining(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email) == (
         ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times
@@ -786,7 +786,7 @@ def test_login_rotates_the_session_key(client, user):
     client.session.create()
     before = client.session.session_key
 
-    client.post(reverse("login"), {"email": user.email, "password": PASSWORD})
+    client.post(reverse("login-password"), {"email": user.email, "password": PASSWORD})
 
     assert client.session.session_key != before
 
@@ -809,7 +809,7 @@ def test_the_account_page_requires_a_session(client):
     assert reverse("login") in response["Location"]
 
 
-@pytest.mark.parametrize("name", ["login", "login-code"])
+@pytest.mark.parametrize("name", ["login-password", "login-code"])
 def test_every_public_auth_page_renders(client, name):
     """A smoke test, because a missing {% load %} is a 500 no unit test sees and
     the first customer to reach the page finds instead. This caught exactly that
@@ -823,7 +823,7 @@ def test_every_public_auth_page_renders(client, name):
 
 
 @pytest.mark.parametrize(
-    "name", ["login", "login-code", "login-code-verify", "account", "account-password"]
+    "name", ["login-password", "login-code", "login-code-verify", "account", "account-password"]
 )
 def test_sign_in_and_account_pages_ask_not_to_be_indexed(client, user, name):
     """Nothing on them is worth a search result, and a results page that lands
@@ -880,7 +880,7 @@ def test_password_login_returns_you_to_the_page_you_asked_for(client, user):
     """`@login_required` puts the wanted page in `?next=`. Both login views
     used to discard it and send everyone to /account/."""
     response = client.post(
-        reverse("login") + "?next=/account/password/",
+        reverse("login-password") + "?next=/account/password/",
         {"email": user.email, "password": PASSWORD, "next": "/account/password/"},
     )
 
@@ -928,7 +928,7 @@ def test_the_json_path_reports_the_same_destination(client):
         "https:evil.example",
     ],
 )
-@pytest.mark.parametrize("route", ["login", "login-code"])
+@pytest.mark.parametrize("route", ["login-password", "login-code"])
 def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
     """Without the host check `?next=` turns a login page into an open
     redirect, which is worth more to a phisher on the shop's own domain than
@@ -941,7 +941,7 @@ def test_next_cannot_send_anyone_off_this_site(client, user, hostile, route):
     lands on a path of *this* site, which is a 404 and not a phishing hop.
     """
     payload = {"next": hostile}
-    if route == "login":
+    if route == "login-password":
         payload |= {"email": user.email, "password": PASSWORD}
     else:
         payload |= {"email": "hostile@example.test"}
@@ -988,11 +988,11 @@ def test_signing_in_from_the_header_link_returns_to_that_page(client, user, meth
     body = client.get(header_sign_in_link(client, SEARCH_PAGE)).content.decode()
     if method == "password":
         # The code page's link to the password form carries the destination on.
-        found = re.search(r'href="(/login/\?next=[^"]*)"', body)
+        found = re.search(r'href="(/login/password/\?next=[^"]*)"', body)
         assert found, "no link from the code page to the password form"
         body = client.get(html.unescape(found.group(1))).content.decode()
         response = client.post(
-            reverse("login"),
+            reverse("login-password"),
             {"email": user.email, "password": PASSWORD, "next": hidden_next(body)},
         )
     else:
@@ -1012,7 +1012,7 @@ def test_a_hostile_next_lands_on_the_account_page(client, user, hostile, method)
     views' host check stays the one gate for a crafted link. Exactly
     `/account/`, not merely "this host": a browser reads `/\\` as `//`, and
     `urljoin` does not."""
-    route = "login-code" if method == "code" else "login"
+    route = "login-code" if method == "code" else "login-password"
     body = client.get(reverse(route) + "?" + urlencode({"next": hostile})).content.decode()
     assert hidden_next(body) == reverse("account")
 
@@ -1021,13 +1021,46 @@ def test_a_hostile_next_lands_on_the_account_page(client, user, hostile, method)
         response = client.post(reverse("login-code-verify"), {"code": code_from(mail.outbox[-1])})
     else:
         response = client.post(
-            reverse("login"), {"email": user.email, "password": PASSWORD, "next": hostile}
+            reverse("login-password"), {"email": user.email, "password": PASSWORD, "next": hostile}
         )
 
     assert response.headers["Location"] == reverse("account")
 
 
-@pytest.mark.parametrize("name", ["login", "login-code", "login-code-verify"])
+def test_the_sign_in_address_opens_on_the_code_form(client):
+    """A new account has no password, so a visitor who reached /login/ from a
+    bookmark met a form most could not use (B8). The code form comes first,
+    and the destination comes with it."""
+    response = client.get(reverse("login") + "?" + urlencode({"next": SEARCH_PAGE}))
+
+    assert response.status_code == 302
+    landing = urlparse(response.headers["Location"])
+    assert landing.path == reverse("login-code")
+    assert parse_qs(landing.query) == {"next": [SEARCH_PAGE]}
+    assert hidden_next(client.get(response.headers["Location"]).content.decode()) == SEARCH_PAGE
+
+
+def test_a_protected_page_sends_a_visitor_to_the_code_form(client):
+    response = client.get(reverse("account"), follow=True)
+
+    assert "accounts/login_code_request.html" in [used.name for used in response.templates]
+    assert hidden_next(response.content.decode()) == reverse("account")
+
+
+@pytest.mark.parametrize(
+    "hostile", ["//evil.example", "https://evil.example/", "javascript:alert(1)", "/\\evil.example"]
+)
+def test_the_sign_in_address_leaves_a_hostile_next_to_the_one_gate(client, hostile):
+    """The redirect copies the query string as it came, to a fixed path on this
+    site; the code form's host check still decides where it may lead."""
+    response = client.get(reverse("login") + "?" + urlencode({"next": hostile}), follow=True)
+
+    hops = [urlparse(url) for url, _ in response.redirect_chain]
+    assert [(hop.netloc, hop.path) for hop in hops] == [("", reverse("login-code"))]
+    assert hidden_next(response.content.decode()) == reverse("account")
+
+
+@pytest.mark.parametrize("name", ["login-password", "login-code", "login-code-verify"])
 def test_the_sign_in_pages_header_link_carries_no_next(client, name):
     """Signing in from a sign-in page would only return to the form just used."""
     if name == "login-code-verify":

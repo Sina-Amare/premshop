@@ -25,7 +25,7 @@ ID = re.compile(r'\sid="([^"]+)"')
 def pages(client) -> dict[str, str]:
     """Each form valid and invalid, as a customer meets it."""
     login, code, account, password = (
-        reverse(name) for name in ("login", "login-code", "account", "account-password")
+        reverse(name) for name in ("login-password", "login-code", "account", "account-password")
     )
     seen = {
         "sign-in": client.get(login),

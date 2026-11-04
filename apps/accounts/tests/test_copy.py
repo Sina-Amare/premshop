@@ -107,7 +107,7 @@ def test_a_mismatch_stays_under_the_repeat(client, user):
     assert form.errors == {"new_password2": ["رمز عبور و تکرار آن یکسان نیستند."]}
 
 
-@pytest.mark.parametrize("name", ["login", "login-code"])
+@pytest.mark.parametrize("name", ["login-password", "login-code"])
 def test_no_page_says_gozarvazheh(client, name):
     assert "گذرواژه" not in client.get(reverse(name)).content.decode()
 
@@ -138,7 +138,7 @@ BANNED = [
     r"&quot;",  # ASCII quotes around Persian; the shop uses «»
 ]
 
-SHOP_PAGES = ["home", "search", "login", "login-code"]
+SHOP_PAGES = ["home", "search", "login-password", "login-code"]
 
 
 @pytest.mark.parametrize("name", SHOP_PAGES)

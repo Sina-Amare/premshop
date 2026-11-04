@@ -39,7 +39,9 @@ def test_empty_guest_review_has_an_explicit_empty_state(client):
 
 def test_already_signed_in_password_response_uses_safe_json_destination(client, buyer):
     client.force_login(buyer)
-    response = client.post(reverse("login"), {"next": "/checkout/"}, HTTP_ACCEPT="application/json")
+    response = client.post(
+        reverse("login-password"), {"next": "/checkout/"}, HTTP_ACCEPT="application/json"
+    )
     assert response.json() == {"ok": True, "next": "/checkout/"}
 
 
@@ -54,7 +56,7 @@ def test_inline_password_response_reuses_login_merge_and_safe_destination(
     client.post(reverse("cart-add"), {"plan": plan.pk})
     before = client.session.session_key
     response = client.post(
-        reverse("login"),
+        reverse("login-password"),
         {"email": buyer.email, "password": PASSWORD, "next": destination},
         HTTP_ACCEPT="application/json",
     )
@@ -82,7 +84,7 @@ def test_inline_password_failures_keep_guest_cart_and_return_plain_errors(
 
         monkeypatch.setattr("apps.accounts.services.login_with_password", limited)
     response = client.post(
-        reverse("login"),
+        reverse("login-password"),
         {
             "email": buyer.email,
             "password": "" if failure == "empty" else "wrong" if failure == "wrong" else PASSWORD,
@@ -295,7 +297,7 @@ def test_inline_signin_disables_the_visible_submit_while_request_is_pending(
     try:
         page.goto(live_server.url + reverse("checkout") + "?method=" + method)
         page.route(
-            "**/login/" if method == "password" else "**/login/code/",
+            "**/login/password/" if method == "password" else "**/login/code/",
             lambda route: held.append(route),
         )
         form = page.locator("[data-inline-email]")

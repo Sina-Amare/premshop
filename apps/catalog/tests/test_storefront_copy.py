@@ -224,7 +224,7 @@ def rendered_pages(client) -> dict[str, str]:
             "search hit": "/search/?q=chatgpt",
             "search miss": "/search/?q=xbox",
             "404": "/no-such-page/",
-            "sign-in": "/login/",
+            "sign-in": "/login/password/",
             "code request": "/login/code/",
             "cart empty": "/cart/",
         }.items()
@@ -242,7 +242,9 @@ def rendered_pages(client) -> dict[str, str]:
     request = RequestFactory().get("/")
     request.user = AnonymousUser()
     pages["403"] = permission_denied(request, PermissionDenied()).content.decode()
-    pages["403 csrf"] = Client(enforce_csrf_checks=True).post(reverse("login"), {}).content.decode()
+    pages["403 csrf"] = (
+        Client(enforce_csrf_checks=True).post(reverse("login-password"), {}).content.decode()
+    )
     pages["500"] = server_error(request).content.decode()
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
         pages["503"] = client.post(

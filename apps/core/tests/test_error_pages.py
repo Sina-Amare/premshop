@@ -46,7 +46,7 @@ def test_a_stale_form_is_a_persian_page_with_a_way_back(db):
     wanted to sign in."""
     client = Client(enforce_csrf_checks=True)
 
-    response = client.post(reverse("login"), {"email": "a@example.test", "password": "x"})
+    response = client.post(reverse("login-password"), {"email": "a@example.test", "password": "x"})
     body = response.content.decode()
 
     assert response.status_code == 403
