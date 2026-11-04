@@ -74,7 +74,7 @@ The tests run against PostgreSQL and include Playwright browser tests and axe-co
 | [Architecture](docs/architecture.md) | Components, application boundaries, request flows, background jobs, email and security |
 | [Data model](docs/data-model.md) | Tables, constraints, deletion rules and indexes |
 | [Order lifecycle](docs/order-lifecycle.md) | Order statuses, transitions, locking and the payment rules |
-| [Development](docs/development.md) | Setup, configuration, commands, tests, assets and the production image |
+| [Development](docs/development.md) | Setup, configuration, commands, tests, assets, the production image and how these documents are kept |
 | [Design language](docs/design-language.md) | Colour, type, layout, components and the Persian voice |
 | [Runbooks](docs/runbooks/deploy.md) | Deploy, rollback and restore |
 | [Decision records](docs/decisions/README.md) | Why the system is built the way it is |
