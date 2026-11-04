@@ -146,7 +146,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `price_snapshot`, `cost_snapshot` | The price charged, from `effective_price`, and the plan's cost at that moment |
 | `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
-| `paid_at` | The verified payment time, set with the QUEUED transition; null for older unpaid records |
+| `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
 
@@ -173,7 +173,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 ### payments
 
-**Payment** records one attempt against an order. `order` and `matched_by` use PROTECT. `method` distinguishes manual from gateway payments; the five status choices are `created`, `initiated`, `verified`, `failed` and `abandoned`, but only manual `created` → `verified` is enabled today.
+**Payment** records one attempt against an order. `order` and `matched_by` use PROTECT. `method` distinguishes manual from gateway payments; the five status choices are `created`, `initiated`, `verified`, `failed` and `abandoned`, but only the manual move from `created` to `verified` is built.
 
 `amount` copies the order's saved total after the operator's received amount matches it exactly. Manual records require `bank_ref` and `matched_by`; `verified_at` exists exactly when status is verified. Bank references appear only to staff with payment-view permission, never in customer pages, invoices, tracking or error reports. `created_at` records creation. No raw bank response or receipt image is stored.
 
@@ -276,4 +276,4 @@ Each simplification and the condition that would reverse it are in [ADR-0014](de
 | `payments.Refund` | One outgoing refund; no item becomes `REFUNDED` without an executed one | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0019](decisions/0019-payment-gateway.md) |
 | `orders.DeliveryField` | Delivered account details, encrypted per field, one generation per delivery | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md) |
 | `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
-| Delivery columns on `OrderItem` | Delivery deadline, delivery time and the single-use delivery link; payment time exists | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
+| Delivery columns on `OrderItem` | The delivery deadline, the delivery time and the single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |

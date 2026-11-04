@@ -14,7 +14,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 
 ## Rules for every status change
 
-- **Only services change a status.** Every change is a function in `apps/orders/services.py`, and `apps/payments/services.py`. A status written anywhere else is a defect.
+- **Only services change a status.** Every change is a function in `apps/orders/services.py` or `apps/payments/services.py`. A status written anywhere else is a defect.
 - **Validate under the lock.** The service locks the rows it changes, re-reads their status under the lock and refuses a change the current status does not allow. The status a page or form showed is never trusted.
 - **History in the same transaction.** Each change writes one `OrderItemEvent` per item in the transaction that makes it. The history is append-only, and a database trigger refuses edits and deletions.
 - **No self-transitions.** An annotation that leaves the status as it is, such as a moved deadline, writes a history row whose status before and after are the same.
@@ -24,7 +24,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | Status | Meaning | Built |
 |---|---|---|
 | `PENDING_PAYMENT` | Placed and waiting for payment | Yes |
-| `QUEUED` | Paid and waiting for the operator | Manual confirmation |
+| `QUEUED` | Paid and waiting for the operator | Yes, by manual confirmation |
 | `AWAITING_INPUT` | The operator needs information from the customer; the delivery clock is paused | No |
 | `DELIVERED` | The account details have been delivered | No |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | No |
@@ -138,13 +138,13 @@ The checkout coordinator deletes the cart's lines in the same transaction, so a 
 
 The built route is an operator's record of money received outside the gateway ([ADR-0019](decisions/0019-payment-gateway.md)). The order editor links to a CSRF-protected form for the received amount in whole toman and a bank reference. Active staff need `payments.add_payment`, `orders.change_order` and `orders.change_orderitem`. The service re-reads the stored operator and permissions; customer forms cannot confirm payment.
 
-`record_manual_payment(*, order_id, actor, amount, bank_ref)` compares the entered amount with the order's saved total. A mismatch or blank reference writes nothing. It locks the buyer and order, then creates the manual Payment and calls `confirm_payment(*, payment_id, actor)`, which locks and re-reads that row. One transaction verifies the payment, sets each item's `paid_at` and moves every item to `QUEUED`, with an operator history row per item. Stock and discount claims are not taken again.
+`record_manual_payment(*, order_id, actor, amount, bank_ref)` locks the buyer and the order, then compares the entered amount with the order's saved total; a mismatch or a blank reference writes nothing. It then creates the manual `Payment` and calls `confirm_payment(*, payment_id, actor)`, which locks and re-reads that row. One transaction verifies the payment, sets each item's `paid_at` and moves every item to `QUEUED`, with an operator history row per item. Stock and discount claims are not taken again.
 
-An identical retry returns the original payment, including after the old unpaid deadline. A changed reference is refused; the amount must still match. The database separately enforces at most one verified payment per order. An event-write failure rolls everything back. Cancellation and expiry take the same buyer/order locks, so either confirmation wins or the cancellation wins, never both.
+An identical retry returns the original payment, including after the old unpaid deadline. A changed reference is refused; the amount must still match. The database separately enforces at most one verified payment per order. An event-write failure rolls everything back. Cancellation and expiry take the same buyer and order locks, so either the confirmation wins or the cancellation does, never both.
 
-New confirmations refuse expired/cancelled orders, inconsistent item states, missing required input and Telegram-arranged details. Input requirements come from purchase snapshots, not later catalogue edits. The customer sees «در صف انجام» without the bank reference. `payments.view_payment` is required to inspect that reference in the panel. Payment times are recorded; delivery deadlines and refunds are not implemented.
+A new confirmation refuses an expired or cancelled order, an item in any other status, missing required input, and an item whose activation details are arranged over Telegram. Input requirements come from the purchase snapshot, not later catalogue edits. An order whose total is zero cannot be confirmed, because a payment amount must be positive. The customer sees «در صف انجام» without the bank reference; the panel shows the reference only to staff with `payments.view_payment`. Delivery deadlines and refunds are not built.
 
-Gateway request, callback verification and lost-callback inquiry remain unbuilt. A future gateway must verify amounts server-to-server and use the same confirmation path; browser return parameters cannot prove payment. An inquiry failure must not be treated as unpaid money or abandon an attempt on a timer alone.
+The gateway request, callback verification and the lost-callback inquiry are not built. A future gateway must verify amounts server-to-server and use the same confirmation path; browser return parameters cannot prove payment. An inquiry failure must not be treated as unpaid money or abandon an attempt on a timer alone.
 
 ## History and notifications
 
