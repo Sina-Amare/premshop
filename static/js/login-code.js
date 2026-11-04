@@ -136,9 +136,10 @@
     cellsBox.classList.add('is-shaking');
     setTimeout(function () {
       cellsBox.classList.remove('is-shaking');
-      cells.forEach(function (c) { c.disabled = false; });
+      tick();
+      cells.forEach(function (c) { c.disabled = expired; });
       clear();
-      cells[0].focus();
+      (expired ? resendButton : cells[0]).focus();
       busy = false;
     }, still ? 0 : 380);
   }
