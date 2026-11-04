@@ -9,6 +9,7 @@ How to set up, run, test and build PremShop. How the code is organised is in [ar
 - [Sample data](#sample-data)
 - [Commands](#commands)
 - [Quality gate and CI](#quality-gate-and-ci)
+- [Documentation](#documentation)
 - [Tests](#tests)
 - [Front-end assets](#front-end-assets)
 - [Translations](#translations)
@@ -137,6 +138,15 @@ gh run list --commit "$(git rev-parse HEAD)" --json headBranch,status,conclusion
 ```
 
 `gh run watch --exit-status` can gate a script, but not through a pipe: `gh run watch … | tail -2` reports the exit status of `tail`, so a failed run reads as a pass.
+
+## Documentation
+
+The README lists every document. They follow four rules:
+
+- **One home per fact.** Each fact is stated in one document; the others link to it.
+- **Describe what is built.** When behaviour changes, the document that owns it is edited in place to state the current rule. Designed but unbuilt work appears only where it shapes what exists, marked as not built and linked to its decision record.
+- **Decisions are not rewritten.** A decision record changes only by a dated amendment at its end, and a replaced decision is marked superseded and kept ([decision records](decisions/README.md#writing-a-record)).
+- **Plain technical English.** Persian appears only where the subject is Persian text. `apps/core/tests/test_written_voice.py` checks every tracked text file.
 
 ## Tests
 
