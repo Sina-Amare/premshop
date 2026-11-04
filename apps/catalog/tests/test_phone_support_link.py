@@ -203,8 +203,12 @@ def test_a_wide_screen_keeps_the_header_it_had(browser, live_server, shop, width
 
 
 def test_the_footer_stops_at_the_handle(client, shop):
-    """No other account writing to customers is not confirmed yet, so the footer claims nothing of it."""
+    """No other account writing to customers is confirmed, so the footer claims nothing beyond the handle and the support address."""
     body = client.get("/").content.decode()
 
     contact = re.search(r'<div class="v-footer__contact">(.*?)</div>', body, re.S).group(1)
-    assert contact.endswith(f"{support.details()['telegram']}</bdi></a>"), contact
+    details = support.details()
+    assert f"{details['telegram']}</bdi></a>" in contact, contact
+    assert contact.endswith(
+        f'<a href="mailto:{details["email"]}"><bdi dir="ltr">{details["email"]}</bdi></a>'
+    ), contact
