@@ -166,8 +166,8 @@ def test_a_final_wrong_guess_cannot_delete_a_replacement(monkeypatch):
 
 
 def test_two_accepted_sends_at_once_leave_one_working_code(monkeypatch):
-    """A code is stored once the relay has taken it, so two sends that are
-    mailed together both store theirs. The address still names only one."""
+    """Two sends mailed together both store their codes, and one code is live
+    afterwards, not two. Which one is not pinned here."""
     previous = otp.issue(EMAIL)
     both_mailed = threading.Barrier(2)
 
@@ -187,6 +187,7 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
     """A failed send that put the earlier code back, rather than never
     replacing it, would undo a resend that reached the inbox meanwhile."""
     previous = otp.issue(EMAIL)
+    live = cache.get(otp._key(EMAIL))
     began, accepted_done = threading.Event(), threading.Event()
     failing_thread: list[threading.Thread] = []
 
@@ -210,10 +211,12 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
     failing_thread.append(failing)
     failing.start()
     assert began.wait(timeout=5)
+    while_mailing = cache.get(otp._key(EMAIL))
     mailed = otp.send_login_code(EMAIL)
     accepted_done.set()
     failing.join(timeout=10)
 
+    assert while_mailing == live, "the address moved before the failing send's mail was accepted"
     assert len(failures) == 1 and not failing.is_alive()
     assert [otp.verify(EMAIL, code) for code in (previous.code, mailed.code)] == [False, True]
 
