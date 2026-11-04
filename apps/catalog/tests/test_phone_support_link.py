@@ -1,4 +1,4 @@
-"""Support one tap away on every phone page.
+"""Support one tap away from the top of the page or the footer, on every phone page.
 
 From 1150px down the header's own support block has no room, so the same link
 ends the categories row; on a phone the FAQ link gives up its place there and
@@ -92,6 +92,16 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         expect(link).not_to_be_in_viewport()
         page.evaluate("scrollTo({top: 0, behavior: 'instant'})")
         expect(link).to_be_in_viewport(ratio=1)
+        # The returning short row has no support link, so the footer must carry one.
+        page.evaluate("document.body.style.minHeight = ''")
+        page.evaluate("scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'})")
+        footer_links = page.locator(f".v-footer a[href='{details['telegram_url']}']")
+        assert footer_links.count() > 0
+        shown = footer_links.evaluate_all(
+            "links => links.some(a => { const r = a.getBoundingClientRect();"
+            " return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight; })"
+        )
+        assert shown, "no footer support link is visible at the bottom of the page"
     finally:
         page.close()
 
