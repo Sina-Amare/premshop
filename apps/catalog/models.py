@@ -45,7 +45,7 @@ from apps.core.formatting import to_persian_digits
 # Measured against every seeded product: real misspellings of a product name
 # score 0.5 and up, and the highest any unrelated word reaches is well under
 # this. Raise it if a search starts answering the wrong question.
-FUZZY_THRESHOLD = 0.4
+FUZZY_THRESHOLD = 0.45
 
 # A Persian or Arabic letter. A name with one has no Latin slug to give.
 _PERSIAN = re.compile(r"[\u0600-\u06ff]")
@@ -371,7 +371,7 @@ class ProductQuerySet(models.QuerySet["Product"]):
         for a query that had a real answer would be noise, and a miss is the
         only moment where a near-match is better than an empty page.
 
-        0.4 is measured, not guessed — see
+        0.45 is measured, not guessed — see
         `test_the_fuzzy_threshold_separates_real_spellings_from_noise`."""
         needle = normalize_for_search(query)
         if not needle:

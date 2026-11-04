@@ -8,5 +8,3 @@
   .pcard__art::after { inset-inline-end: -28%; inset-block-start: -74%; }
   .pcard__art img { inline-size: 30%; max-inline-size: 76px; block-size: auto; aspect-ratio: 1; object-fit: contain; }
   .pcard__mono { font-family: var(--font-head); font-size: 42px; }
-  .pcard__shop { position: absolute; inset-inline-end: 12px; inset-block-end: 8px;
-                 font-size: 10px; color: var(--color-secondary); }

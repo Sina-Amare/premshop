@@ -435,6 +435,29 @@ def test_nonsense_still_finds_nothing(chatgpt, nonsense):
     assert list(Product.objects.public().search(nonsense)) == []
 
 
+@pytest.mark.parametrize("unrelated", ["پرده", "گیاه", "پوست"])
+def test_a_short_unrelated_word_does_not_match_on_its_first_letters(unrelated):
+    """At 0.4 a three-or-four-letter word scored as high as 0.4 against any
+    product with a word starting with the same two letters, so it found
+    products that have nothing to do with it."""
+    category = Category.objects.create(name="ابزار", slug="tools")
+    for slug, name, text in [
+        ("netflix", "Netflix", "اشتراک نتفلیکس برای تماشای فیلم و سریال با پروفایل اختصاصی."),
+        ("google-play", "Google Play Gift Card", "گیفت کارت گوگل پلی برای خرید برنامه و بازی."),
+        ("audible", "Audible", "اشتراک کتاب صوتی و پودکست برای شنیدن در مسیر."),
+    ]:
+        Product.objects.create(
+            category=category,
+            name=name,
+            slug=slug,
+            short_description=text,
+            delivery_type=Product.DeliveryType.ON_CUSTOMER_ACCOUNT,
+            status=Product.Status.ACTIVE,
+        )
+
+    assert list(Product.objects.public().search(unrelated)) == []
+
+
 def test_the_fuzzy_threshold_separates_real_spellings_from_noise(chatgpt):
     """The number in FUZZY_THRESHOLD is measured, and this is the measurement.
     If a future catalogue narrows the gap, this fails before a customer finds
