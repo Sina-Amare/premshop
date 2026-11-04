@@ -56,8 +56,8 @@
   })) input.setAttribute(name, value);
 
   input.addEventListener('input', () => {
-    highlight(-1);
-    clearTimeout(timer);
+    close();
+    list.replaceChildren();
     timer = setTimeout(suggest, 200);
   });
   input.addEventListener('keydown', event => {
