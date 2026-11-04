@@ -48,6 +48,8 @@ def test_a_test_may_end_while_its_request_is_still_running(live_server, settings
 
 
 def test_the_next_test_starts_without_that_requests_row(live_server):
-    assert finished.wait(10)
+    assert finished.wait(
+        10
+    ), "the first test starts the request this one waits for: run the whole file"
     assert outcome == ["written"]
     assert not Category.objects.filter(slug="late").exists()

@@ -49,6 +49,7 @@ def answering(server: Any) -> Answering:
         server.answering = Answering()
         app = server.get_app()
 
+        # shortcut: counts from the WSGI app, so a request whose bytes arrived but whose thread has not got here reads 0, upgrade to counting in the socket server if a flush still races
         def counted(environ: Any, start_response: Any) -> Any:
             with server.answering:
                 server.answering.requests += 1

@@ -14,6 +14,12 @@ from apps.orders.tests.test_purchase_record import policies as policies
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
+def fonts_in_place(page):
+    """Text reflows when the web fonts arrive, so widths are measured after."""
+    # Layout first, so a face only the just-opened text uses has started loading.
+    page.evaluate("document.body.getBoundingClientRect(), document.fonts.ready.then(() => true)")
+
+
 @pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize("javascript", [True, False])
 def test_saved_customer_and_panel_conditions_are_readable(
@@ -54,8 +60,8 @@ def test_saved_customer_and_panel_conditions_are_readable(
             expect(page.locator("[data-saved-policy]")).to_have_count(3)
             assert page.locator(".saved-policy script, .saved-product script").count() == 0
             assert page.locator("html").get_attribute("dir") == "rtl"
+            fonts_in_place(page)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-            page.evaluate("document.fonts.ready")
             page.screenshot(path=str(tmp_path / f"{role}-{width}-{javascript}.png"), full_page=True)
         finally:
             context.close()
@@ -82,8 +88,8 @@ def test_older_conditions_render_without_policy_disclosures(
             page.locator(".saved-product > summary").click()
             assert page.locator("[data-saved-policy]").count() == 0
             assert "توضیح کامل زمان خرید" not in page.content()
+            fonts_in_place(page)
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-            page.evaluate("document.fonts.ready")
             page.screenshot(path=str(tmp_path / f"{role}-older-{width}.png"), full_page=True)
         finally:
             context.close()
