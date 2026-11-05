@@ -185,3 +185,9 @@ html body .order-status{font-size:12px}
 
 .order-queue-empty{display:grid;gap:12px;padding:24px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface)}
 .order-queue-empty a{display:inline-flex;align-items:center;min-block-size:44px;color:var(--panel-accent);justify-self:start}
+
+.order-queue-pagination,.order-queue-pagination nav{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-variant-numeric:tabular-nums}
+.order-queue-pagination{padding-block:12px;color:var(--panel-text)}
+.order-queue-pagination nav :is(a,span){display:inline-flex;align-items:center;justify-content:center;min-inline-size:44px;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px}
+.order-queue-pagination a{color:var(--panel-accent)}
+.order-queue-pagination [aria-current=page]{color:var(--panel-ink);background:var(--panel-soft)}

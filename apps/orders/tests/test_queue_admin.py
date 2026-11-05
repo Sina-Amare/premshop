@@ -148,6 +148,8 @@ def test_pagination_preserves_search_and_tab(client, operator, buyer, plan):
     response = client.get(listing(), {"q": buyer.email, "tab": "queued", "p": 2})
     assert len(response.context["cl"].result_list) == 1
     assert response.context["queue_counts"]["queued"] == 26
+    assert 'aria-label="صفحه‌های سفارش‌ها"' in response.content.decode()
+    assert ">۲</span>" in response.content.decode()
 
 
 def test_deadline_boundaries_and_missing_deadlines(client, operator, buyer, plan):

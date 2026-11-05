@@ -1595,3 +1595,6 @@ msgstr "We found no orders."
 
 msgid "پاک کردن جستجو"
 msgstr "Clear search"
+
+msgid "صفحه‌های سفارش‌ها"
+msgstr "Order pages"

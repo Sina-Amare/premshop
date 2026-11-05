@@ -106,10 +106,16 @@ def test_queue_tabs_keyboard_search_and_delivery_shell(
             make_order(paging_buyer, plan, due_at=now + timedelta(hours=3))
         page.goto(live_server.url + listing + "?tab=queued&q=queue-paging")
         expect(page.locator("#result_list tbody tr")).to_have_count(25)
+        expect(
+            page.get_by_role("navigation", name="صفحه‌های سفارش‌ها").get_by_role(
+                "link", name="۲", exact=True
+            )
+        ).to_be_visible()
         page.locator('a[href*="p=2"]').first.focus()
         page.keyboard.press("Enter")
         expect(page.locator("#result_list tbody tr")).to_have_count(1)
         assert "tab=queued" in page.url and "q=queue-paging" in page.url
+        expect(page.locator('.order-queue-pagination [aria-current="page"]')).to_have_text("۲")
         check("pagination", "در صف انجام")
         assert not errors
     finally:
