@@ -24,7 +24,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0016](0016-brand-and-type.md) | Brand and type: Estedad over Vazirmatn; the accent colour; amber means time | Accepted, amended (cobalt accent since 2026-10-25) | 2026-10-28 |
 | [0017](0017-development-environment.md) | Development on Windows, parity enforced by CI, Docker in WSL | Accepted, amended | 2026-10-23 |
 | [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cross-device cart and anonymous browsing | Accepted, amended | 2026-10-27 |
-| [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-11-04 |
+| [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-11-05 |
 | [0020](0020-discount-codes.md) | Discount codes: scoped, server-computed, concurrency-safe, floored at zero | Accepted, amended | 2026-10-29 |
 | [0021](0021-promotional-pricing.md) | Promotional pricing lives on the plan, behind one function | Accepted, amended | 2026-10-24 |
 | [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-02 |
