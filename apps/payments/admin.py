@@ -52,7 +52,7 @@ class PaymentOrderAdmin(OrderAdmin):
             except ValidationError as error:
                 form.add_error(None, error)
             else:
-                self.message_user(request, _("پرداخت ثبت شد؛ سفارش در صف انجام است."))
+                self.message_user(request, _("پرداخت ثبت شد."))
                 return redirect("admin:orders_order_change", order.pk)
         return render(
             request,

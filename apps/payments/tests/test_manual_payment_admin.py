@@ -63,7 +63,7 @@ def test_form_get_does_not_write_and_csrf_is_required(order, operator):
         ("paid", False),
         ("expired", False),
         ("cancelled", False),
-        ("telegram", False),
+        ("telegram", True),
         ("missing_input", False),
         ("lost_input", False),
         ("unknown", False),

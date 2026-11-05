@@ -7,10 +7,10 @@ from typing import Any, cast
 
 from django import forms
 from django.contrib import admin
-from django.core.exceptions import PermissionDenied
-from django.db.models import Exists, OuterRef, Prefetch, QuerySet
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Exists, Max, OuterRef, Prefetch, QuerySet
 from django.db.models.fields.json import KeyTextTransform
-from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
@@ -32,7 +32,7 @@ from apps.orders.models import (
     UnpaidExpirySweep,
 )
 from apps.orders.selectors import grouped_items
-from apps.orders.services import reveal_customer_input
+from apps.orders.services import receive_input, request_input, resume_input, reveal_customer_input
 
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted
@@ -114,11 +114,61 @@ class OrderAdmin(ModelAdmin):
     def get_urls(self) -> Any:
         return [
             path(
+                "<int:order_id>/items/<int:item_id>/input/<str:action>/",
+                self.admin_site.admin_view(self.input_action_view),
+                name="orders_order_input_action",
+            ),
+            path(
                 "<int:order_id>/items/<int:item_id>/customer-input/reveal/",
                 self.admin_site.admin_view(self.reveal_input_view),
                 name="orders_order_reveal_customer_input",
-            )
+            ),
         ] + super().get_urls()
+
+    def input_action_view(
+        self, request: HttpRequest, order_id: int, item_id: int, action: str
+    ) -> HttpResponse:
+        if not (
+            self.has_view_permission(request)
+            and request.user.has_perms(["orders.change_order", "orders.change_orderitem"])
+        ):
+            raise PermissionDenied
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        service = {"request": request_input, "receive": receive_input, "resume": resume_input}.get(
+            action
+        )
+        if service is None:
+            raise Http404
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        get_object_or_404(OrderItem.objects.only("pk"), pk=item_id, order_id=order_id)
+        try:
+            try:
+                expected = int(request.POST.get("expected_event_id", ""))
+            except ValueError:
+                raise ValidationError(
+                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                ) from None
+            service(
+                order_id=order_id,
+                item_id=item_id,
+                actor=cast(User, request.user),
+                expected_event_id=expected,
+            )
+        except ValidationError as error:
+            return render(
+                request,
+                "admin/orders/input_action_error.html",
+                {
+                    **self.admin_site.each_context(request),
+                    "opts": self.opts,
+                    "order": order,
+                    "title": _("اطلاعات فعال‌سازی"),
+                    "error": " ".join(error.messages),
+                },
+                status=400,
+            )
+        return redirect("admin:orders_order_change", order_id)
 
     def reveal_input_view(self, request: HttpRequest, order_id: int, item_id: int) -> HttpResponse:
         # Refused before any lookup, so an unpermitted account cannot tell which orders exist.
@@ -188,6 +238,31 @@ class OrderAdmin(ModelAdmin):
         obj: Order | None = None,
     ) -> Any:
         if obj:
+            if request.user.has_perms(["orders.change_order", "orders.change_orderitem"]):
+                latest = dict(
+                    OrderItemEvent.objects.filter(order_item__order=obj)
+                    .values("order_item_id")
+                    .annotate(event_id=Max("pk"))
+                    .values_list("order_item_id", "event_id")
+                )
+                controls = []
+                for item in obj.items.all():
+                    if item.status == OrderItem.Status.QUEUED:
+                        action, label = "request", _("ثبت درخواست اطلاعات")
+                    elif item.status == OrderItem.Status.AWAITING_INPUT:
+                        action = "receive" if item.due_at is None else "resume"
+                        label = _("اطلاعات رسید؛ ادامه‌ی انجام")
+                    else:
+                        continue
+                    controls.append(
+                        {
+                            "item": item,
+                            "event_id": latest.get(item.pk),
+                            "action": action,
+                            "label": label,
+                        }
+                    )
+                context["input_controls"] = controls
             context["purchase_groups"] = grouped_items(obj.items.all())
             context["order_timeline"] = self.history(obj)
             context["input_access_log"] = (

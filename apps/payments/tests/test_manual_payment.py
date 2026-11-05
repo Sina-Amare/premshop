@@ -103,7 +103,7 @@ def test_replay_cannot_replace_reference_or_bypass_amount_check(order, operator)
     assert OrderItemEvent.objects.filter(to_status="QUEUED").count() == 2
 
 
-@pytest.mark.parametrize("state", ["expired", "cancelled", "telegram", "missing_input", "unknown"])
+@pytest.mark.parametrize("state", ["expired", "cancelled", "missing_input", "unknown"])
 def test_ineligible_orders_cannot_be_confirmed(order, operator, state):
     if state == "expired":
         Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
@@ -112,9 +112,7 @@ def test_ineligible_orders_cannot_be_confirmed(order, operator, state):
     else:
         item = order.items.first()
         facts = item.product_snapshot.copy()
-        if state == "telegram":
-            facts["telegram_required"] = True
-        elif state == "missing_input":
+        if state == "missing_input":
             facts.update(input_type="email", requires_customer_input=True)
         else:
             facts.pop("telegram_required")

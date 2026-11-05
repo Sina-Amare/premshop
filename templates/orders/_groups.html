@@ -6,4 +6,9 @@
 </div>
 <div class="order-line__end">{% if mixed_status %}<span class="order-status">{{ line.status_label }}</span>{% endif %}{% if not compact %}<div class="order-line__amount">{{ line.amount|price_html }}</div>{% if line.quantity > 1 %}<small>قیمت هر عدد: {{ line.price|price_html }}</small>{% endif %}{% endif %}</div>
 {% if not compact %}{% language 'fa' %}{% include "orders/_product_conditions.html" with line=line only %}{% endlanguage %}{% endif %}
+{% if not compact and line.status == 'AWAITING_INPUT' %}<div class="saved-product" data-input-request>
+<p>اطلاعات لازم برای فعال‌سازی این محصول را در تلگرام به پشتیبانی بفرستید.</p>
+<a href="{{ support.telegram_url }}" rel="noopener noreferrer">گفت‌وگو با پشتیبانی</a>
+<p>رمز یا کد ورود را در سایت وارد نکنید.</p>
+</div>{% endif %}
 </article>{% endfor %}</section>{% endfor %}

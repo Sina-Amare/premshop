@@ -148,7 +148,9 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
 | `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |
 | `due_at` | Purchased delivery deadline; null before payment or while required details have not arrived. Uses the later of payment and receipt, then support-window snap-forward with the 48-hour cap taking precedence |
-| `input_received_at` | When required checkout details were recorded. Historical non-empty checkout details use the recorded item creation time; missing or unknown details remain null |
+| `input_received_at` | First complete receipt of required activation details. Non-Telegram checkout input records placement; Telegram items stay null until receipt. Later resumes preserve this value |
+| `input_requested_at` | Request time for the latest waiting episode; repeats do not restart it. History retains previous episodes |
+| `sla_paused_at` | When a running deadline was paused; null during the first wait and after resume. Requires a non-null deadline |
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
 
@@ -220,7 +222,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | CartItem | `cart_quantity_1_to_10` |
 | Order | `order_amounts_not_negative`, `order_total_matches_ledger`, `order_channel_valid` |
 | Payment | `payment_amount_positive`, `payment_method_valid`, `payment_status_valid`, `payment_manual_has_reference`, `payment_verification_has_time` |
-| OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason` |
+| OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason`, `order_item_pause_requires_deadline` |
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
