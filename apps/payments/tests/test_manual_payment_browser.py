@@ -138,7 +138,7 @@ def test_ineligible_payment_actions_on_long_and_empty_orders(
             response = page.goto(live_server.url + detail)
             assert response.status == 200 and "no-store" in response.headers["cache-control"]
             assert page.url.endswith(detail)
-            expect(page.get_by_text("پرداخت‌های سفارش", exact=True)).to_be_visible()
+            expect(page.get_by_role("heading", name="سابقه‌ی سفارش", exact=True)).to_be_visible()
             expect(
                 page.get_by_role("link", name="ثبت پرداخت خارج از درگاه", exact=True)
             ).to_have_count(0)
