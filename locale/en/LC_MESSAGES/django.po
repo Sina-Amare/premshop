@@ -1445,3 +1445,87 @@ msgstr "Activating this product needs coordination on Telegram."
 
 msgid "شرایط لغو و بازگشت وجه"
 msgstr "Cancellation and refund terms"
+
+msgid "ابتدا واریز را در حساب بانکی بررسی کنید؛ تصویر رسید برای تأیید پرداخت کافی نیست."
+msgstr "Check the deposit in your bank account first; a receipt image does not confirm payment."
+
+msgid "تأییدشده"
+msgstr "Verified"
+
+msgid "تکمیل‌نشده"
+msgstr "Not completed"
+
+msgid "ثبت پرداخت خارج از درگاه"
+msgstr "Record payment outside the gateway"
+
+msgid "ثبت‌شده"
+msgstr "Created"
+
+msgid "ثبت‌کننده"
+msgstr "Recorded by"
+
+msgid "خارج از درگاه"
+msgstr "Outside the gateway"
+
+msgid "در حال پرداخت"
+msgstr "Payment in progress"
+
+msgid "درگاه"
+msgstr "Gateway"
+
+msgid "روش پرداخت"
+msgstr "Payment method"
+
+msgid "زمان تأیید"
+msgstr "Verified at"
+
+msgid "زمان تأیید پرداخت"
+msgstr "Payment confirmed at"
+
+msgid "شماره‌ی پیگیری بانک"
+msgstr "Bank reference"
+
+msgid "مبلغ دریافتی"
+msgstr "Amount received"
+
+msgid "مبلغ دریافتی (تومان)"
+msgstr "Amount received (toman)"
+
+msgid "مبلغ نهایی سفارش"
+msgstr "Order total"
+
+msgid "پرداخت"
+msgstr "Payment"
+
+msgid "پرداخت ثبت شد؛ سفارش در صف انجام است."
+msgstr "Payment recorded; the order is queued."
+
+msgid "پرداخت‌ها"
+msgstr "Payments"
+
+msgid "پرداخت‌های سفارش"
+msgstr "Order payments"
+
+msgid "مبلغ دریافتی باید دقیقاً برابر مبلغ نهایی سفارش باشد."
+msgstr "The received amount must exactly match the order total."
+
+msgid "شماره‌ی پیگیری بانک را وارد کنید؛ حداکثر ۶۴ نویسه."
+msgstr "Enter a bank reference of at most 64 characters."
+
+msgid "پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."
+msgstr "A payment with different details has already been recorded for this order."
+
+msgid "ابتدا وضعیت پرداخت قبلی این سفارش را بررسی کنید."
+msgstr "Check the previous payment for this order first."
+
+msgid "این پرداخت از مسیر ثبت پرداخت خارج از درگاه تأیید نمی‌شود."
+msgstr "This payment cannot be confirmed through the manual payment form."
+
+msgid "مهلت پرداخت این سفارش تمام شده یا سفارش لغو شده است."
+msgstr "The payment deadline has passed or the order has been cancelled."
+
+msgid "وضعیت این سفارش برای ثبت پرداخت مناسب نیست."
+msgstr "The current order status does not allow payment confirmation."
+
+msgid "اطلاعات لازم برای فعال‌سازی کامل نیست؛ پرداخت ثبت نشد."
+msgstr "Required activation details are missing; the payment was not recorded."

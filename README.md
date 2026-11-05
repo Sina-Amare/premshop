@@ -4,7 +4,7 @@
 
 An online shop for digital subscriptions and accounts for Iranian customers (premshop.ir). One operator runs it and delivers every order by hand, so the software's job is to take orders correctly, keep customers' details safe and make every promise on the page true. The scope is small; the stakes, real money and other people's account details, are not.
 
-**Status:** pre-launch. Browsing, sign-in, the cart, checkout of unpaid orders and order tracking are built. Payment through the gateway is next.
+**Status:** pre-launch. Browsing, sign-in, the cart, checkout, operator-recorded payments and order tracking are built. Gateway payments, fulfilment and refunds are not enabled.
 
 ## Features
 
@@ -15,7 +15,7 @@ An online shop for digital subscriptions and accounts for Iranian customers (pre
 - **Atomic checkout:** stock is claimed, the discount recorded and the purchase terms frozen in one transaction, and a repeated submission returns the same order.
 - **Customer order pages**, a public tracking link and a downloadable invoice.
 - **Purchase confirmation emails** through a durable outbox, with retries and accounting against the mail provider's quota.
-- **An operator panel** in Persian: catalogue editing with publishing checks and live previews, read-only orders, and a logged reveal of encrypted customer input.
+- **An operator panel** in Persian: catalogue editing with publishing checks and live previews, read-only order records with an operator-only form for payments received, and a logged reveal of encrypted customer input.
 - **Production tooling:** one Docker image per commit, with scripted deploy, rollback and restore, all rehearsed in CI.
 
 ## Technology

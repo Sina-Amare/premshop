@@ -197,6 +197,7 @@ class OrderItem(models.Model):
     product_snapshot = models.JSONField(_("اطلاعات زمان خرید"))
     customer_input = EncryptedTextField(blank=True, default="")
     stock_debited = models.BooleanField(default=False, editable=False)
+    paid_at = models.DateTimeField(_("زمان تأیید پرداخت"), null=True, blank=True, editable=False)
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
     )

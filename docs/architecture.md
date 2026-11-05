@@ -59,7 +59,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
 | `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, and the staff reveal of customer input. |
-| `payments` | Checkout: the signed quote and the coordinator that turns a cart into an order. The gateway is not built yet. |
+| `payments` | Checkout, Payment records and operator-only manual confirmation through the order editor. The gateway is not built yet. |
 | `notifications` | Purchase confirmation emails through a durable outbox. |
 
 Two rules keep the graph honest:
@@ -87,7 +87,7 @@ A view does five things and nothing else:
 4. Renders a template or redirects.
 5. Sets the response headers the page needs, such as `Cache-Control: private, no-store`.
 
-The browser never supplies money. Forms carry plan ids, quantities and a discount code; every amount is recomputed on the server. Domain exceptions carry the Persian sentence the customer sees, because the message is part of the behaviour (for example `RateLimited` in `apps/accounts/services.py`).
+Customer forms carry plan ids, quantities and a discount code; every charge is computed on the server. The operator enters a received amount as evidence, which the server must match to the saved order total. Domain exceptions carry the Persian sentence the customer sees, because the message is part of the behaviour (for example `RateLimited` in `apps/accounts/services.py`).
 
 ## Single entry points
 
@@ -152,7 +152,7 @@ Signing in rotates the session and merges the visitor's guest cart into the acco
 1. **The quote.** The review issues a signed quote, valid for 15 minutes, binding the account, the cart's revision and items, a digest of the purchase terms, the discount code and the customer-input declarations. Amounts displayed in the browser have no authority.
 2. **The submission.** `payments.checkout` locks the account, then the cart, and calls `orders.services.place_order`. In one transaction it re-reads every price through `effective_price`, claims finite stock, applies and records the discount code, freezes what was bought, writes one history row per unit and deletes the cart's lines. Any failure rolls back everything and leaves the cart as it was.
 3. **Replays.** Each submission carries a unique checkout id and a keyed digest of what was submitted. A repeated submit returns the order it already created; another account or a changed submission cannot reuse the id.
-4. **The result.** The order starts as `PENDING_PAYMENT` with a fixed 24-hour deadline, and a customer has at most one live unpaid order. Payment is not built yet, so an unpaid order expires and releases its stock and discount ([order lifecycle](order-lifecycle.md)).
+4. **The result.** The order starts as `PENDING_PAYMENT` with a fixed 24-hour deadline, and a customer has at most one live unpaid order. An operator can record a matching payment and queue its items. An order left unpaid expires and releases its stock and discount ([order lifecycle](order-lifecycle.md)).
 
 ### Customer pages
 
@@ -174,7 +174,7 @@ The panel is the Django admin with django-unfold. In production it is served at 
 - **Home:** the catalogue at a glance: published products, active offers, sold-out plans, offers ending within 48 hours and drafts (`apps/catalog/dashboard.py`).
 - **Catalogue:** products, plans, specifications, sections and questions. Publishing goes through `Product.publish_problems()`, and a draft's form lists every reason it cannot yet go live. An unsaved preview renders the edited product through the storefront's own code without writing a row.
 - **Discount codes:** created and deactivated here. The panel deletes none, because a used code is part of how an order's total was computed.
-- **Orders:** read-only. The one action is revealing an item's customer input, through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when.
+- **Orders:** an order's saved purchase facts are read-only. Revealing an item's customer input goes through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when. `payments.admin` adds the operator-only payment form, for the amount received and the bank reference, and the order's payment history; its view calls `record_manual_payment` and writes no status itself.
 - **Pages:** the legal pages, previewed as drafts and published by a separate permission.
 - **Notifications and mail attempts:** read-only lists of what was sent, what is waiting and what failed.
 
@@ -249,8 +249,7 @@ The following are designed and bound by decisions, but not implemented:
 | Capability | Decisions |
 |---|---|
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
-| An operator-only record of a payment received outside the gateway | [ADR-0019](decisions/0019-payment-gateway.md) |
-| Paid statuses, delivery of account details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
+| Paid fulfilment beyond `QUEUED`, delivery of account details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
 | Delivery deadlines and the reminders for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
 | The Telegram bot, operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
 | The operator's order queue, delivery page and order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |

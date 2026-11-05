@@ -34,6 +34,8 @@ erDiagram
   Plan ||--o{ CartItem : "chosen as"
   Plan ||--o{ OrderItem : "sold as"
   Order ||--|{ OrderItem : contains
+  Order ||--o{ Payment : receives
+  User |o--o{ Payment : records
   OrderItem ||--o{ OrderItemEvent : history
   OrderItem ||--o{ CredentialAccessLog : "input reveals"
   DiscountCode |o--o{ Order : discounts
@@ -144,6 +146,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `price_snapshot`, `cost_snapshot` | The price charged, from `effective_price`, and the plan's cost at that moment |
 | `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
+| `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
 
@@ -168,6 +171,14 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 **UnpaidExpirySweep** is a single row: when the unpaid-order sweep last succeeded, how many orders it processed and the backlog it saw.
 
+### payments
+
+**Payment** records one attempt against an order. `order` and `matched_by` use PROTECT. `method` distinguishes manual from gateway payments; the five status choices are `created`, `initiated`, `verified`, `failed` and `abandoned`, but only the manual move from `created` to `verified` is built.
+
+`amount` copies the order's saved total after the operator's received amount matches it exactly. Manual records require `bank_ref` and `matched_by`; `verified_at` exists exactly when status is verified. Bank references appear only to staff with payment-view permission, never in customer pages, invoices, tracking or error reports. `created_at` records creation. No raw bank response or receipt image is stored.
+
+The conditional unique constraint `payment_one_verified_per_order` independently allows at most one verified payment per order. Row locks make repeat confirmation harmless; the unique constraint also rejects a second verified row written outside the service. `Refund` is not built.
+
 ### notifications
 
 **Notification** is one purchase confirmation, frozen when it is created: recipient, subject, and plain-text and HTML bodies, under a unique `dedupe_key` (`purchase-confirmation:{order_pk}:email`). It records `status` (`pending`, `sent` or `failed`), `attempts` (at most six), `next_attempt_at`, its timestamps, and the error class and numeric SMTP code of the last failure. No customer input, credential or raw SMTP reply is stored.
@@ -191,6 +202,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 | Order | `order_number`; `tracking_token`; `checkout_id` |
 | DiscountCode | `code` |
 | DiscountRedemption | `order` |
+| Payment | `order` where status is verified (`payment_one_verified_per_order`) |
 | Notification | `dedupe_key` |
 | ProductSection | one `before_buying` row per product (`section_one_before_buying`, a partial unique constraint) |
 
@@ -205,6 +217,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 | Cart | `cart_exactly_one_owner` |
 | CartItem | `cart_quantity_1_to_10` |
 | Order | `order_amounts_not_negative`, `order_total_matches_ledger`, `order_channel_valid` |
+| Payment | `payment_amount_positive`, `payment_method_valid`, `payment_status_valid`, `payment_manual_has_reference`, `payment_verification_has_time` |
 | OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason` |
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
@@ -219,7 +232,7 @@ The catalogue's constraints carry a Persian message, shown in the panel under th
 
 | Relation | On delete | Why |
 |---|---|---|
-| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `DiscountRedemption` and `CredentialAccessLog`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
+| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `DiscountRedemption` and `CredentialAccessLog`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
 | `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
 | `Product.category` | PROTECT | No orphan products |
 | `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
@@ -260,8 +273,7 @@ Each simplification and the condition that would reverse it are in [ADR-0014](de
 
 | Table | Purpose | Decisions |
 |---|---|---|
-| `payments.Payment` | One attempt to pay one order, with its own small status machine | [ADR-0019](decisions/0019-payment-gateway.md) |
 | `payments.Refund` | One outgoing refund; no item becomes `REFUNDED` without an executed one | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0019](decisions/0019-payment-gateway.md) |
 | `orders.DeliveryField` | Delivered account details, encrypted per field, one generation per delivery | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md) |
 | `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
-| Delivery columns on `OrderItem` | Payment time, delivery deadline, delivery time and the single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
+| Delivery columns on `OrderItem` | The delivery deadline, the delivery time and the single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |

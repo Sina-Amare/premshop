@@ -1,4 +1,17 @@
 {% load i18n fa %}
+{% if can_record_payment or payment_history %}
+<section class="order-history" aria-labelledby="order-payment-title">
+  <header><h2 id="order-payment-title">{% translate "پرداخت‌های سفارش" %}</h2></header>
+  {% for payment in payment_history %}
+    <article class="saved-purchase">
+      <p>{{ payment.get_method_display }} · {{ payment.get_status_display }} · {{ payment.amount|toman }}</p>
+      <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
+      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %} · {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
+    </article>
+  {% endfor %}
+  {% if can_record_payment %}<a class="order-input-action" href="{% url 'admin:orders_order_record_manual_payment' original.pk %}">{% translate "ثبت پرداخت خارج از درگاه" %}</a>{% endif %}
+</section>
+{% endif %}
 <section class="order-history saved-conditions" aria-labelledby="saved-conditions-title">
   <header><h2 id="saved-conditions-title">{% translate "شرایط زمان خرید" %}</h2></header>
   {% for group in purchase_groups %}{% for line in group.lines %}<article class="saved-purchase">

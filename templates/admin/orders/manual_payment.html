@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+{% load i18n fa %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<section class="order-history" aria-labelledby="manual-payment-title">
+  <header><h2 id="manual-payment-title">{% translate "ثبت پرداخت خارج از درگاه" %} · {% translate "سفارش" %} {{ order.order_number|fa_digits }}</h2></header>
+  <p>{% translate "مبلغ نهایی سفارش" %}: {{ order.total_amount|toman }}</p>
+  <p>{% translate "ابتدا واریز را در حساب بانکی بررسی کنید؛ تصویر رسید برای تأیید پرداخت کافی نیست." %}</p>
+  <form method="post" class="order-payment-form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
+    {% endfor %}
+    <button type="submit" class="order-input-action">{% translate "ثبت پرداخت خارج از درگاه" %}</button>
+  </form>
+  <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
+</section>
+{% endblock %}
