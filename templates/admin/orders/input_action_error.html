@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}{% load i18n %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<section class="order-history">
+  <p role="alert">{{ error }}</p>
+  <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
+</section>
+{% endblock %}

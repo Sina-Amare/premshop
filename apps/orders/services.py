@@ -475,7 +475,12 @@ def place_order(
                 cost_snapshot=line.plan.cost_price,
                 product_snapshot=line.snapshot,
                 customer_input=inputs[line.plan.pk],
-                input_received_at=at if line.snapshot["requires_customer_input"] else None,
+                input_received_at=(
+                    at
+                    if line.snapshot["requires_customer_input"]
+                    and not line.snapshot["telegram_required"]
+                    else None
+                ),
                 stock_debited=debited,
             )
             OrderItemEvent.objects.create(
@@ -517,10 +522,14 @@ def can_pay_order(
         facts = item.product_snapshot
         if (
             item.status != OrderItem.Status.PENDING_PAYMENT
-            or facts.get("telegram_required") is not False
+            or type(facts.get("telegram_required")) is not bool
             or facts.get("input_type") not in ("none", "email", "username")
             or facts.get("requires_customer_input") is not (facts.get("input_type") != "none")
-            or (facts.get("requires_customer_input") and item.input_received_at is None)
+            or (
+                facts.get("requires_customer_input")
+                and not facts["telegram_required"]
+                and item.input_received_at is None
+            )
             or type(facts.get("delivery_hours")) is not int
             or not 1 <= facts["delivery_hours"] <= 48
         ):
@@ -558,17 +567,142 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
         item.due_at = delivery_deadline(
             paid_at=item.paid_at,
             delivery_hours=item.product_snapshot["delivery_hours"],
-            requires_input=item.product_snapshot["requires_customer_input"],
+            requires_input=item.clock_requires_input,
             input_received_at=item.input_received_at,
         )
         item.save(update_fields=["status", "paid_at", "due_at"])
-        OrderItemEvent.objects.create(
+        event = OrderItemEvent.objects.create(
             order_item=item,
             from_status=OrderItem.Status.PENDING_PAYMENT,
             to_status=item.status,
             actor=OrderItemEvent.Actor.OPERATOR,
             actor_user=actor,
         )
+        if item.product_snapshot["telegram_required"]:
+            request_input(
+                order_id=order.pk, item_id=item.pk, actor=actor, expected_event_id=event.pk
+            )
+
+
+def _input_item(
+    *, order_id: int, item_id: int, actor: User, operator_only: bool
+) -> tuple[OrderItem, User]:
+    account = User.objects.filter(pk=actor.pk, is_active=True).first()
+    if account is None or (
+        (account.is_staff or operator_only)
+        and not (
+            account.is_staff
+            and account.has_perms(["orders.change_order", "orders.change_orderitem"])
+        )
+    ):
+        raise PermissionDenied
+    orders = Order.objects.filter(pk=order_id)
+    if not account.is_staff:
+        orders = orders.filter(user_id=account.pk)
+    owner_id = orders.values_list("user_id", flat=True).first()
+    if owner_id is None:
+        raise PermissionDenied
+    User.objects.select_for_update(no_key=True).get(pk=owner_id)
+    order = orders.select_for_update().get()
+    item = order.items.select_for_update().defer("customer_input").filter(pk=item_id).first()
+    if item is None:
+        raise PermissionDenied
+    return item, account
+
+
+def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: str) -> bool:
+    latest = item.events.order_by("-pk").first()
+    if latest is not None and latest.pk == expected_event_id:
+        return False
+    if latest is not None and (latest.from_status, latest.to_status) == (before, after):
+        previous = item.events.filter(pk__lt=latest.pk).order_by("-pk").first()
+        if previous is not None and previous.pk == expected_event_id:
+            return True
+    raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+
+
+def _input_event(item: OrderItem, account: User, before: str) -> None:
+    OrderItemEvent.objects.create(
+        order_item=item,
+        from_status=before,
+        to_status=item.status,
+        actor=OrderItemEvent.Actor.OPERATOR if account.is_staff else OrderItemEvent.Actor.CUSTOMER,
+        actor_user=account,
+    )
+
+
+@transaction.atomic
+def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id: int) -> OrderItem:
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    if _input_replay(
+        item, expected_event_id, OrderItem.Status.QUEUED, OrderItem.Status.AWAITING_INPUT
+    ):
+        return item
+    if item.status != OrderItem.Status.QUEUED or item.paid_at is None:
+        raise ValidationError(gettext_lazy("این محصول در صف انجام نیست."))
+    item.input_requested_at = timezone.now()
+    item.sla_paused_at = item.input_requested_at if item.due_at is not None else None
+    item.status = OrderItem.Status.AWAITING_INPUT
+    item.save(update_fields=["status", "input_requested_at", "sla_paused_at"])
+    _input_event(item, account, OrderItem.Status.QUEUED)
+    return item
+
+
+@transaction.atomic
+def _receive_input(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, first: bool
+) -> OrderItem:
+    item, account = _input_item(
+        order_id=order_id, item_id=item_id, actor=actor, operator_only=False
+    )
+    if _input_replay(
+        item, expected_event_id, OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED
+    ):
+        return item
+    if (
+        item.status != OrderItem.Status.AWAITING_INPUT
+        or item.paid_at is None
+        or (item.due_at is None) != first
+    ):
+        raise ValidationError(gettext_lazy("این محصول منتظر دریافت اطلاعات نیست."))
+    at = timezone.now()
+    if first:
+        item.input_received_at = at
+        item.due_at = delivery_deadline(
+            paid_at=item.paid_at,
+            delivery_hours=item.product_snapshot["delivery_hours"],
+            requires_input=item.clock_requires_input,
+            input_received_at=item.input_received_at,
+        )
+    else:
+        if item.sla_paused_at is None or item.due_at is None:
+            raise ValidationError(gettext_lazy("مهلت تحویل این محصول متوقف نشده است."))
+        item.due_at += at - item.sla_paused_at
+    item.sla_paused_at = None
+    item.status = OrderItem.Status.QUEUED
+    item.save(update_fields=["status", "due_at", "input_received_at", "sla_paused_at"])
+    _input_event(item, account, OrderItem.Status.AWAITING_INPUT)
+    return item
+
+
+def receive_input(*, order_id: int, item_id: int, actor: User, expected_event_id: int) -> OrderItem:
+    return _receive_input(
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        expected_event_id=expected_event_id,
+        first=True,
+    )
+
+
+def resume_input(*, order_id: int, item_id: int, actor: User, expected_event_id: int) -> OrderItem:
+    return _receive_input(
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        expected_event_id=expected_event_id,
+        first=False,
+    )
 
 
 def _release(

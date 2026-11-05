@@ -1,4 +1,18 @@
 {% load i18n fa %}
+{% if input_controls %}
+<section class="order-history" aria-labelledby="order-input-title">
+  <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
+  <p>{% translate "درخواست را در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را اینجا وارد نکنید." %}</p>
+  {% for control in input_controls %}
+    <article class="saved-purchase">
+      <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>؛ <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
+      <p>{{ control.item.get_status_display }}</p>
+      {% if control.item.status == 'AWAITING_INPUT' and control.item.input_requested_at %}<p>{% translate "زمان درخواست اطلاعات" %}: {{ control.item.input_requested_at|jalali }}، {{ control.item.input_requested_at|date:'H:i'|fa_digits }}</p>{% endif %}
+      <button type="submit" formmethod="post" formaction="{% url 'admin:orders_order_input_action' original.pk control.item.pk control.action %}" name="expected_event_id" value="{{ control.event_id }}" class="order-input-action">{{ control.label }}</button>
+    </article>
+  {% endfor %}
+</section>
+{% endif %}
 {% if can_record_payment or payment_history %}
 <section class="order-history" aria-labelledby="order-payment-title">
   <header><h2 id="order-payment-title">{% translate "پرداخت‌های سفارش" %}</h2></header>

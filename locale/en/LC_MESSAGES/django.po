@@ -1526,3 +1526,36 @@ msgstr "Delivery deadline"
 
 msgid "زمان دریافت اطلاعات مشتری"
 msgstr "Customer details received at"
+
+msgid "اطلاعات رسید؛ ادامه‌ی انجام"
+msgstr "Details received; continue"
+
+msgid "اطلاعات فعال‌سازی"
+msgstr "Activation details"
+
+msgid "این محصول در صف انجام نیست."
+msgstr "This item is not queued."
+
+msgid "این محصول منتظر دریافت اطلاعات نیست."
+msgstr "This item is not waiting for details."
+
+msgid "ثبت درخواست اطلاعات"
+msgstr "Record a request for details"
+
+msgid "درخواست را در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را اینجا وارد نکنید."
+msgstr "Arrange the request with the customer on Telegram. Do not enter passwords or sign-in codes here."
+
+msgid "زمان توقف مهلت تحویل"
+msgstr "Delivery deadline paused at"
+
+msgid "زمان درخواست اطلاعات"
+msgstr "Details requested at"
+
+msgid "مهلت تحویل این محصول متوقف نشده است."
+msgstr "This item's delivery deadline is not paused."
+
+msgid "وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."
+msgstr "This item has changed; reopen the page."
+
+msgid "پرداخت ثبت شد."
+msgstr "Payment recorded."

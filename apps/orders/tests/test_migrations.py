@@ -8,6 +8,39 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def test_waiting_clock_migration_reverses_without_changing_purchase_facts(buyer, plan):
+    previous = ("orders", "0015_recorded_delivery_deadlines")
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        old = executor.loader.project_state([previous]).apps
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=200000, total_amount=200000
+        )
+        Item = old.get_model("orders", "OrderItem")
+        item = Item.objects.create(
+            order=order,
+            plan_id=plan.pk,
+            price_snapshot=200000,
+            cost_snapshot=100000,
+            product_snapshot={"telegram_required": False},
+            customer_input="target@example.test",
+        )
+        original = Item.objects.filter(pk=item.pk).values().get()
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        from apps.orders.models import OrderItem
+
+        current = OrderItem.objects.get(pk=item.pk)
+        assert current.input_requested_at is None and current.sla_paused_at is None
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        assert Item.objects.filter(pk=item.pk).values().get() == original
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_delivery_clock_backfills_only_recorded_purchase_facts_and_reverses(buyer, plan):
     from datetime import datetime
     from zoneinfo import ZoneInfo

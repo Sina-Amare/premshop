@@ -204,6 +204,12 @@ class OrderItem(models.Model):
     input_received_at = models.DateTimeField(
         _("زمان دریافت اطلاعات مشتری"), null=True, blank=True, editable=False
     )
+    input_requested_at = models.DateTimeField(
+        _("زمان درخواست اطلاعات"), null=True, blank=True, editable=False
+    )
+    sla_paused_at = models.DateTimeField(
+        _("زمان توقف مهلت تحویل"), null=True, blank=True, editable=False
+    )
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
     )
@@ -214,6 +220,10 @@ class OrderItem(models.Model):
         verbose_name_plural = _("آیتم‌های سفارش")
         ordering = ["pk"]
         constraints = [
+            models.CheckConstraint(
+                condition=Q(sla_paused_at__isnull=True) | Q(due_at__isnull=False),
+                name="order_item_pause_requires_deadline",
+            ),
             models.CheckConstraint(
                 condition=Q(
                     status__in=[
@@ -255,6 +265,13 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.order} · {self.product_snapshot.get('name', '')}"
+
+    @property
+    def clock_requires_input(self) -> bool:
+        return bool(
+            self.product_snapshot.get("requires_customer_input")
+            or self.product_snapshot.get("telegram_required")
+        )
 
 
 class CredentialAccessLog(models.Model):

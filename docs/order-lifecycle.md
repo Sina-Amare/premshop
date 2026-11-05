@@ -9,6 +9,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 - [Built: cancellation and expiry](#built-cancellation-and-expiry)
 - [Concurrency](#concurrency)
 - [Payment](#payment)
+- [Input requests and pauses](#input-requests-and-pauses)
 - [History and notifications](#history-and-notifications)
 - [Tests](#tests)
 
@@ -25,7 +26,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 |---|---|---|
 | `PENDING_PAYMENT` | Placed and waiting for payment | Yes |
 | `QUEUED` | Paid and waiting for the operator | Yes, by manual confirmation |
-| `AWAITING_INPUT` | The operator needs information from the customer; the delivery clock is paused | No |
+| `AWAITING_INPUT` | Required details are missing; the clock has not started, or a running deadline is paused | Yes |
 | `DELIVERED` | The account details have been delivered | No |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | No |
 | `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT` |
@@ -57,10 +58,10 @@ stateDiagram-v2
 | A1 | new → `PENDING_PAYMENT` | Checkout places the order | customer | Yes |
 | A2 | `PENDING_PAYMENT` → `QUEUED` | The operator confirms an exact matching payment | operator | Yes, manual only |
 | A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes; the operator's path is a service call, with no panel action yet |
-| A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | No |
+| A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | Yes; also part of Telegram payment handoff |
 | A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | No |
 | A6 | `QUEUED` → `CANCELLED` | An approved cancellation or a supply failure; a refund is recorded | operator | No |
-| A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | No |
+| A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | Yes; operator controls, owner-authorized services |
 | A8 | `AWAITING_INPUT` → `CANCELLED` | The operator cancels, or the input reminders run out at 21 days | operator, system | No |
 | A9 | `DELIVERED` → `REPLACEMENT_REQUESTED` | A warranty claim | customer, operator | No |
 | A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | No |
@@ -138,15 +139,23 @@ The checkout coordinator deletes the cart's lines in the same transaction, so a 
 
 The built route is an operator's record of money received outside the gateway ([ADR-0019](decisions/0019-payment-gateway.md)). The order editor links to a CSRF-protected form for the received amount in whole toman and a bank reference. Active staff need `payments.add_payment`, `orders.change_order` and `orders.change_orderitem`. The service re-reads the stored operator and permissions; customer forms cannot confirm payment.
 
-`record_manual_payment(*, order_id, actor, amount, bank_ref)` locks the buyer and the order, then compares the entered amount with the order's saved total; a mismatch or a blank reference writes nothing. It then creates the manual `Payment` and calls `confirm_payment(*, payment_id, actor)`, which locks and re-reads that row. One transaction verifies the payment, sets each item's `paid_at` and moves every item to `QUEUED`, with an operator history row per item. Stock and discount claims are not taken again.
+`record_manual_payment(*, order_id, actor, amount, bank_ref)` locks the buyer and the order, then compares the entered amount with the order's saved total; a mismatch or a blank reference writes nothing. It then creates the manual `Payment` and calls `confirm_payment(*, payment_id, actor)`, which locks and re-reads that row. One transaction verifies the payment, sets each item's `paid_at` and moves every item to `QUEUED`, with an operator history row per item. Telegram-required items then move to `AWAITING_INPUT` with a second history row in that same transaction; ordinary items remain queued with deadlines. Stock and discount claims are not taken again.
 
 An identical retry returns the original payment, including after the old unpaid deadline. A changed reference is refused; the amount must still match. The database separately enforces at most one verified payment per order. An event-write failure rolls everything back. Cancellation and expiry take the same buyer and order locks, so either the confirmation wins or the cancellation does, never both.
 
-A new confirmation and the payment action share `orders.services.can_pay_order`. It refuses an expired or cancelled order, an item no longer in `PENDING_PAYMENT`, missing required input or its receipt time, unknown purchased delivery hours, and details arranged over Telegram. Another created, initiated or verified payment also blocks a new one; an identical repeat of a verified confirmation remains a harmless replay. Input requirements and delivery hours come from the purchase snapshot, not later catalogue edits. The customer sees «در صف انجام» without the bank reference; the panel shows the reference only to staff with `payments.view_payment`.
+A new confirmation and the payment action share `orders.services.can_pay_order`. It refuses an expired or cancelled order, an item no longer in `PENDING_PAYMENT`, missing required checkout input, a missing non-Telegram receipt time, and unknown purchased delivery hours or input declarations. Telegram receipt is not a payment prerequisite. Another created, initiated or verified payment also blocks a new one; an identical repeat of a verified confirmation remains a harmless replay. Those expiry/open-attempt restrictions must be reconciled with money already moved before a gateway is added. Input requirements and delivery hours come from the purchase snapshot, not later catalogue edits. The customer sees each item's state without the bank reference; the panel shows the reference only to staff with `payments.view_payment`.
 
-Payment, each item's `paid_at`, `due_at`, `QUEUED` state and history commit together. `orders.clock.delivery_deadline` starts at the later of payment and required-detail receipt, or payment alone when no details are required. Missing required details mean no deadline; the initial wait is never also added as a pause. Purchased hours are elapsed hours. A deadline outside the daily Tehran support window, **10:00 inclusive to 22:00 exclusive**, moves forward to the next opening, then is capped at start plus 48 hours. The cap wins even outside support hours: payment Thursday at 23:00 with 48 purchased hours is due Saturday at 23:00. Telegram handoff, later pauses and refunds are not built.
+Payment, each item's `paid_at`, deadline, final state and history commit together. `orders.clock.delivery_deadline` starts at the later of payment and required-detail receipt, or payment alone when no details are required. `OrderItem.clock_requires_input` derives that requirement from checkout input **or** Telegram coordination. Missing first details mean no deadline and no pause marker. Purchased hours are elapsed hours. A deadline outside the daily Tehran support window, **10:00 inclusive to 22:00 exclusive**, moves forward to the next opening, then is capped at start plus 48 hours. The cap wins even outside support hours: payment Thursday at 23:00 with 48 purchased hours is due Saturday at 23:00. Refunds are not built.
 
 The gateway request, callback verification and the lost-callback inquiry are not built. A future gateway must verify amounts server-to-server and use the same confirmation path; browser return parameters cannot prove payment. An inquiry failure must not be treated as unpaid money or abandon an attempt on a timer alone.
+
+## Input requests and pauses
+
+`request_input`, `receive_input` and `resume_input` take `order_id`, `item_id`, `actor` and `expected_event_id`. They re-read the active actor and lock buyer, order and item. Requests require staff with both order/item change permissions. Receipt and resume also permit the order's own customer through the services; no customer submission form is exposed yet. Admin POST controls only call these services. GET changes nothing.
+
+Telegram items leave `input_received_at` null at checkout even when an email or username was collected. Handoff records `input_requested_at` and makes the request available on the owner's order page through the existing support destination; it does not send a message. First receipt computes the deadline once. A later request retains the deadline and sets `sla_paused_at`; resume adds exactly the elapsed pause, clears that marker and preserves the original first receipt. It neither snaps the shifted deadline nor reapplies the original cap. The database refuses a pause marker without a deadline.
+
+The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the 48-hour reminder, seven-day flag, 14-day warning and 21-calendar-day input timeout; receipt ends the episode and a distinct later request starts another. These automated steps and paid cancellation/refunds remain unbuilt. Before affected paid orders are accepted, the manual 21-day cancellation/refund process must be demonstrated. Holidays never stop this ladder ([ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)).
 
 ## History and notifications
 
