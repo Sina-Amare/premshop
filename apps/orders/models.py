@@ -198,6 +198,12 @@ class OrderItem(models.Model):
     customer_input = EncryptedTextField(blank=True, default="")
     stock_debited = models.BooleanField(default=False, editable=False)
     paid_at = models.DateTimeField(_("زمان تأیید پرداخت"), null=True, blank=True, editable=False)
+    due_at = models.DateTimeField(
+        _("مهلت تحویل"), null=True, blank=True, editable=False, db_index=True
+    )
+    input_received_at = models.DateTimeField(
+        _("زمان دریافت اطلاعات مشتری"), null=True, blank=True, editable=False
+    )
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
     )

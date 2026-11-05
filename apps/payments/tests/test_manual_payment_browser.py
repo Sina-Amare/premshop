@@ -1,10 +1,14 @@
+from datetime import timedelta
+
 import pytest
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.accounts.models import User
+from apps.orders.models import Order
 from apps.orders.services import OrderLine, place_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -72,6 +76,7 @@ def test_operator_records_payment_and_customer_sees_queue(
         page.get_by_role("button", name=action, exact=True).click()
         page.wait_for_url(live_server.url + detail)
         expect(page.locator(".order-bank-reference")).to_have_text(reference)
+        expect(page.get_by_role("link", name=action, exact=True)).to_have_count(0)
         shot("confirmed", detail, history_label)
         client.force_login(buyer)
         context.add_cookies(
@@ -89,5 +94,56 @@ def test_operator_records_payment_and_customer_sees_queue(
         assert reference not in page.content()
         shot("customer", customer, "در صف انجام")
         assert not errors
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_ineligible_payment_actions_on_long_and_empty_orders(
+    browser, live_server, buyer, plan, width, tmp_path
+):
+    plan.title = "پلن یک ماهه برای فعال‌سازی حساب شخصی با نام طولانی در سرویس Example Pro"
+    plan.save()
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
+    operator = User.objects.create_superuser("operator@example.test")
+    client = Client()
+    client.force_login(operator)
+    context = browser.new_context(viewport={"width": width, "height": 1000})
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                "url": live_server.url,
+            }
+        ]
+    )
+    page = context.new_page()
+    original = order.items.get().product_snapshot
+    try:
+        for state in ("expired", "telegram", "missing_input", "empty"):
+            Order.objects.filter(pk=order.pk).update(
+                unpaid_expires_at=timezone.now() + timedelta(hours=-1 if state == "expired" else 1)
+            )
+            facts = {**original}
+            if state == "telegram":
+                facts["telegram_required"] = True
+            elif state == "missing_input":
+                facts.update(input_type="email", requires_customer_input=True)
+            order.items.update(product_snapshot=facts)
+            current = order
+            if state == "empty":
+                current = Order.objects.create(user=buyer, subtotal=0, total_amount=0)
+            detail = reverse("admin:orders_order_change", args=[current.pk])
+            response = page.goto(live_server.url + detail)
+            assert response.status == 200 and "no-store" in response.headers["cache-control"]
+            assert page.url.endswith(detail)
+            expect(page.get_by_text("پرداخت‌های سفارش", exact=True)).to_be_visible()
+            expect(
+                page.get_by_role("link", name="ثبت پرداخت خارج از درگاه", exact=True)
+            ).to_have_count(0)
+            page.evaluate("document.fonts.ready")
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+            page.screenshot(path=str(tmp_path / f"{state}-{width}.png"), full_page=True)
     finally:
         context.close()

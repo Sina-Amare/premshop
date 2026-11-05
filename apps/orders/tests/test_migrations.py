@@ -8,6 +8,79 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def test_delivery_clock_backfills_only_recorded_purchase_facts_and_reverses(buyer, plan):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    previous = ("orders", "0013_orderitem_paid_at")
+    paid = datetime(2026, 11, 5, 21, tzinfo=ZoneInfo("Asia/Tehran"))
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        old = executor.loader.project_state([previous]).apps
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=200000, total_amount=200000
+        )
+        Item = old.get_model("orders", "OrderItem")
+        facts = {
+            "delivery_hours": 1,
+            "requires_customer_input": False,
+            "input_type": "none",
+            "telegram_required": False,
+        }
+        rows = []
+        for changes in (
+            {},
+            {"paid_at": None},
+            {"product_snapshot": {}},
+            {
+                "product_snapshot": {
+                    **facts,
+                    "requires_customer_input": True,
+                    "input_type": "email",
+                },
+                "customer_input": "target@example.test",
+            },
+            {"product_snapshot": {**facts, "requires_customer_input": True, "input_type": "email"}},
+        ):
+            rows.append(
+                Item.objects.create(
+                    **{
+                        "order_id": order.pk,
+                        "plan_id": plan.pk,
+                        "price_snapshot": 200000,
+                        "cost_snapshot": 100000,
+                        "product_snapshot": facts,
+                        "paid_at": paid,
+                        **changes,
+                    }
+                )
+            )
+        Item.objects.filter(pk=rows[3].pk).update(created_at=paid - timedelta(hours=2))
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id, customer_input FROM orders_orderitem ORDER BY id")
+            ciphertext = cursor.fetchall()
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        from apps.orders.models import OrderItem
+
+        result = [OrderItem.objects.defer("customer_input").get(pk=row.pk) for row in rows]
+        expected = datetime(2026, 11, 6, 10, tzinfo=ZoneInfo("Asia/Tehran"))
+        assert result[0].due_at == expected and result[0].input_received_at is None
+        assert result[1].due_at is None and result[2].due_at is None
+        assert result[3].input_received_at == paid - timedelta(hours=2)
+        assert result[3].due_at == expected
+        assert result[4].input_received_at is None and result[4].due_at is None
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id, customer_input FROM orders_orderitem ORDER BY id")
+            assert cursor.fetchall() == ciphertext
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_policy_snapshot_migration_keeps_older_purchase_facts_without_backfill(buyer, plan):
     previous = ("orders", "0010_credential_access_log")
     facts = {"name": "محصول قبلی", "plan_title": "پلن قبلی", "refund_note": "شرایط قبلی"}

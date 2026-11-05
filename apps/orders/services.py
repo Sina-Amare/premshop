@@ -17,7 +17,8 @@ from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, OuterRef
+from django.db.models import Exists, F, OuterRef, TextField
+from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.translation import gettext_lazy
@@ -28,6 +29,7 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
+from apps.orders.clock import delivery_deadline
 from apps.orders.models import (
     CredentialAccessLog,
     DiscountCode,
@@ -473,6 +475,7 @@ def place_order(
                 cost_snapshot=line.plan.cost_price,
                 product_snapshot=line.snapshot,
                 customer_input=inputs[line.plan.pk],
+                input_received_at=at if line.snapshot["requires_customer_input"] else None,
                 stock_debited=debited,
             )
             OrderItemEvent.objects.create(
@@ -493,6 +496,46 @@ def place_order(
     return order
 
 
+def can_pay_order(
+    order: Order,
+    *,
+    items: Sequence[OrderItem] | None = None,
+    payment_id: int | None = None,
+) -> bool:
+    if order.cancelled_at or order.unpaid_expires_at <= timezone.now() or order.total_amount <= 0:
+        return False
+    payments = order.payments.filter(status__in=["created", "initiated", "verified"])
+    if payment_id is not None:
+        payments = payments.exclude(pk=payment_id)
+    if payments.exists():
+        return False
+    if items is None:
+        items = list(order.items.defer("customer_input"))
+    if not items:
+        return False
+    for item in items:
+        facts = item.product_snapshot
+        if (
+            item.status != OrderItem.Status.PENDING_PAYMENT
+            or facts.get("telegram_required") is not False
+            or facts.get("input_type") not in ("none", "email", "username")
+            or facts.get("requires_customer_input") is not (facts.get("input_type") != "none")
+            or (facts.get("requires_customer_input") and item.input_received_at is None)
+            or type(facts.get("delivery_hours")) is not int
+            or not 1 <= facts["delivery_hours"] <= 48
+        ):
+            return False
+    # Eligibility checks presence without decrypting input on the order page.
+    return not (
+        OrderItem.objects.filter(
+            pk__in=[item.pk for item in items if item.product_snapshot["requires_customer_input"]]
+        )
+        .annotate(input_length=Length(Cast("customer_input", TextField())))
+        .filter(input_length=0)
+        .exists()
+    )
+
+
 @transaction.atomic
 def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
     if not (
@@ -508,24 +551,17 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
     User.objects.select_for_update(no_key=True).get(pk=order.user_id)
     order = Order.objects.select_for_update().get(pk=order.pk)
     items = list(order.items.select_for_update().defer("customer_input").order_by("pk"))
-    if order.cancelled_at or order.unpaid_expires_at <= timezone.now() or not items:
-        raise ValidationError(gettext_lazy("مهلت پرداخت این سفارش تمام شده یا سفارش لغو شده است."))
-    for item in items:
-        facts = item.product_snapshot
-        if item.status != OrderItem.Status.PENDING_PAYMENT:
-            raise ValidationError(gettext_lazy("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
-        if (
-            facts.get("telegram_required") is not False
-            or facts.get("input_type") not in ("none", "email", "username")
-            or facts.get("requires_customer_input") is not (facts.get("input_type") != "none")
-            or (facts.get("requires_customer_input") and not item.customer_input.strip())
-        ):
-            raise ValidationError(
-                gettext_lazy("اطلاعات لازم برای فعال‌سازی کامل نیست؛ پرداخت ثبت نشد.")
-            )
+    if not can_pay_order(order, items=items, payment_id=payment.pk):
+        raise ValidationError(gettext_lazy("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
     for item in items:
         item.status, item.paid_at = OrderItem.Status.QUEUED, payment.verified_at
-        item.save(update_fields=["status", "paid_at"])
+        item.due_at = delivery_deadline(
+            paid_at=item.paid_at,
+            delivery_hours=item.product_snapshot["delivery_hours"],
+            requires_input=item.product_snapshot["requires_customer_input"],
+            input_received_at=item.input_received_at,
+        )
+        item.save(update_fields=["status", "paid_at", "due_at"])
         OrderItemEvent.objects.create(
             order_item=item,
             from_status=OrderItem.Status.PENDING_PAYMENT,

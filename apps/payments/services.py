@@ -27,6 +27,7 @@ from apps.orders.services import (
     OrderLine,
     Purchase,
     UnpaidOrderExists,
+    can_pay_order,
     expire_unpaid_orders,
     mark_order_paid,
     place_order,
@@ -76,10 +77,8 @@ def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_r
         if verified.method != Payment.Method.MANUAL or verified.bank_ref != bank_ref:
             raise ValidationError(_("پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."))
         return confirm_payment(payment_id=verified.pk, actor=account)
-    if order.payments.filter(
-        status__in=[Payment.Status.CREATED, Payment.Status.INITIATED]
-    ).exists():
-        raise ValidationError(_("ابتدا وضعیت پرداخت قبلی این سفارش را بررسی کنید."))
+    if not can_pay_order(order):
+        raise ValidationError(_("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
     payment = Payment.objects.create(
         order=order,
         method=Payment.Method.MANUAL,

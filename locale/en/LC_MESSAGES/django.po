@@ -1529,3 +1529,9 @@ msgstr "The current order status does not allow payment confirmation."
 
 msgid "اطلاعات لازم برای فعال‌سازی کامل نیست؛ پرداخت ثبت نشد."
 msgstr "Required activation details are missing; the payment was not recorded."
+
+msgid "مهلت تحویل"
+msgstr "Delivery deadline"
+
+msgid "زمان دریافت اطلاعات مشتری"
+msgstr "Customer details received at"

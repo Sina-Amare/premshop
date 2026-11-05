@@ -173,6 +173,51 @@ def test_event_failure_rolls_back_payment_items_and_times(order, operator):
     assert DiscountCode.objects.get(code="SAVE").used_count == 1
 
 
+def test_deadlines_use_saved_hours_and_survive_replay(order, operator, monkeypatch):
+    from apps.orders.clock import delivery_deadline
+
+    saved = list(order.items.values_list("product_snapshot__delivery_hours", flat=True))
+    product = order.items.first().plan.product
+    product.delivery_hours = 1 if saved[0] != 1 else 2
+    product.save()
+    payment = record(order, operator)
+    deadlines = list(order.items.values_list("due_at", flat=True))
+    assert deadlines == [
+        delivery_deadline(paid_at=payment.verified_at, delivery_hours=hours) for hours in saved
+    ]
+    monkeypatch.setattr(timezone, "now", lambda: payment.verified_at + timedelta(days=3))
+    assert record(order, operator).pk == payment.pk
+    assert list(order.items.values_list("due_at", flat=True)) == deadlines
+
+
+def test_collected_details_have_a_recorded_receipt_and_start_at_payment(buyer, plan, operator):
+    from apps.orders.clock import delivery_deadline
+
+    plan.input_type, plan.max_quantity = "email", 1
+    plan.save()
+    order = place_order(user=buyer, lines=[OrderLine(plan, 1, "target@example.test")])
+    item = order.items.get()
+    assert item.input_received_at is not None and item.due_at is None
+    payment = record(order, operator)
+    item.refresh_from_db()
+    assert item.input_received_at <= payment.verified_at
+    assert item.due_at == delivery_deadline(
+        paid_at=payment.verified_at,
+        delivery_hours=item.product_snapshot["delivery_hours"],
+        requires_input=True,
+        input_received_at=item.input_received_at,
+    )
+
+
+def test_deadline_failure_rolls_back_all_financial_and_state_writes(order, operator):
+    with patch("apps.orders.services.delivery_deadline", side_effect=RuntimeError("clock failed")):
+        with pytest.raises(RuntimeError, match="clock failed"):
+            record(order, operator)
+    assert not Payment.objects.exists()
+    assert not order.items.exclude(status="PENDING_PAYMENT", paid_at=None, due_at=None).exists()
+    assert OrderItemEvent.objects.count() == 2
+
+
 def test_database_blocks_a_second_verified_payment_and_protects_history(order, operator):
     payment = record(order, operator)
     with transaction.atomic(), pytest.raises(IntegrityError):
