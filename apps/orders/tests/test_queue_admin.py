@@ -86,6 +86,9 @@ def test_waits_freeze_the_clock_without_inventing_a_deadline(client, operator, b
 @pytest.mark.parametrize("tab", ["unpaid", "queued", "waiting", "all"])
 def test_queue_is_private_and_refuses_before_order_queries(client, buyer, plan, tab):
     order = make_order(buyer, plan)
+    # Short order numbers can also occur inside SVG path coordinates.
+    order.order_number = 9876543210123456
+    order.save(update_fields=["order_number"])
     for user in [None, buyer, User.objects.create_user("unpermitted@example.test", is_staff=True)]:
         client.logout()
         if user:
@@ -94,7 +97,9 @@ def test_queue_is_private_and_refuses_before_order_queries(client, buyer, plan, 
             response = client.get(listing(), {"tab": tab})
         assert response.status_code == (403 if user and user.is_staff else 302)
         assert not any('"orders_' in query["sql"] for query in queries)
-        assert str(order.order_number) not in response.content.decode()
+        for marker in (str(order.order_number), to_persian_digits(order.order_number)):
+            assert marker not in response.content.decode()
+        assert "queue_counts" not in (response.context or {})
         if response.status_code == 302:
             assert (
                 "private" in response["Cache-Control"] and "no-store" in response["Cache-Control"]
