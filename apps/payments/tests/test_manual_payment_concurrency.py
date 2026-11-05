@@ -70,6 +70,13 @@ def test_confirmation_serializes_with_second_confirmation_and_release(
     if first == "confirm":
         assert first_result.pk == second_result.pk
         assert Payment.objects.count() == 1 and order.items.get().status == "QUEUED"
+        from apps.orders.clock import delivery_deadline
+
+        item = order.items.get()
+        assert item.due_at == delivery_deadline(
+            paid_at=first_result.verified_at,
+            delivery_hours=item.product_snapshot["delivery_hours"],
+        )
         assert Plan.objects.get(pk=plan.pk).stock_quantity == 0
         assert DiscountCode.objects.get(code="SAVE").used_count == 1
     else:

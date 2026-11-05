@@ -14,7 +14,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0006](0006-card-to-card-payment-design.md) | Card-to-card payment design | Superseded by [0019](0019-payment-gateway.md) | 2026-09-01 |
 | [0007](0007-credential-encryption-key-escrow-retention.md) | Credential encryption, key escrow and retention | Accepted, amended | 2026-11-01 |
 | [0008](0008-content-free-messages-and-magic-link.md) | Messages carry no credential values; a single-use magic link is the one convenience | Accepted, amended | 2026-10-29 |
-| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-10-31 |
+| [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-03 |
 | [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
 | [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in and the sign-in alert | Accepted, amended | 2026-10-23 |
@@ -24,7 +24,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0016](0016-brand-and-type.md) | Brand and type: Estedad over Vazirmatn; the accent colour; amber means time | Accepted, amended (cobalt accent since 2026-10-25) | 2026-10-28 |
 | [0017](0017-development-environment.md) | Development on Windows, parity enforced by CI, Docker in WSL | Accepted, amended | 2026-10-23 |
 | [0018](0018-shopping-cart-and-guest-checkout.md) | Persistent cross-device cart and anonymous browsing | Accepted, amended | 2026-10-27 |
-| [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-11-04 |
+| [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-11-05 |
 | [0020](0020-discount-codes.md) | Discount codes: scoped, server-computed, concurrency-safe, floored at zero | Accepted, amended | 2026-10-29 |
 | [0021](0021-promotional-pricing.md) | Promotional pricing lives on the plan, behind one function | Accepted, amended | 2026-10-24 |
 | [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-02 |

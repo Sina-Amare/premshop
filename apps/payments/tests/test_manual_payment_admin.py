@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -5,9 +6,11 @@ from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.orders.services import OrderLine, place_order
+from apps.orders.models import Order
+from apps.orders.services import OrderLine, cancel_unpaid_order, place_order
 from apps.payments.models import Payment
 from apps.payments.services import record_manual_payment
 
@@ -28,6 +31,15 @@ def url(order):
     return reverse("admin:orders_order_record_manual_payment", args=[order.pk])
 
 
+def test_paid_order_has_no_payment_action(client, order, operator):
+    record_manual_payment(
+        order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref="ref"
+    )
+    client.force_login(operator)
+    response = client.get(reverse("admin:orders_order_change", args=[order.pk]))
+    assert f'href="{url(order)}"' not in response.content.decode()
+
+
 def test_form_get_does_not_write_and_csrf_is_required(order, operator):
     client = Client(enforce_csrf_checks=True)
     client.force_login(operator)
@@ -42,6 +54,85 @@ def test_form_get_does_not_write_and_csrf_is_required(order, operator):
     data["csrfmiddlewaretoken"] = client.cookies["csrftoken"].value
     assert client.post(url(order), data).status_code == 302
     assert Payment.objects.get().bank_ref == "private-bank-reference"
+
+
+@pytest.mark.parametrize(
+    "state,allowed",
+    [
+        ("unpaid", True),
+        ("paid", False),
+        ("expired", False),
+        ("cancelled", False),
+        ("telegram", False),
+        ("missing_input", False),
+        ("lost_input", False),
+        ("unknown", False),
+        ("created_payment", False),
+        ("initiated_payment", False),
+        ("empty", False),
+        ("queued", False),
+        ("invalid_hours", False),
+    ],
+)
+def test_payment_action_and_service_share_eligibility(client, order, operator, state, allowed):
+    from django.core.exceptions import ValidationError
+
+    from apps.orders.services import can_pay_order
+
+    if state == "paid":
+        record_manual_payment(
+            order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref="ref"
+        )
+    elif state == "expired":
+        Order.objects.filter(pk=order.pk).update(
+            unpaid_expires_at=timezone.now() - timedelta(seconds=1)
+        )
+    elif state == "cancelled":
+        cancel_unpaid_order(order_id=order.pk, actor=operator, note="لغو آزمایشی")
+    elif state in {"created_payment", "initiated_payment"}:
+        Payment.objects.create(
+            order=order,
+            method="gateway",
+            amount=order.total_amount,
+            status="created" if state == "created_payment" else "initiated",
+        )
+    elif state == "empty":
+        order = Order.objects.create(user=order.user, subtotal=0, total_amount=0)
+    elif state == "queued":
+        order.items.update(status="QUEUED")
+    elif state != "unpaid":
+        item = order.items.get()
+        facts = item.product_snapshot.copy()
+        if state == "telegram":
+            facts["telegram_required"] = True
+        elif state in {"missing_input", "lost_input"}:
+            facts.update(input_type="email", requires_customer_input=True)
+            if state == "lost_input":
+                item.input_received_at = timezone.now()
+        elif state == "invalid_hours":
+            facts["delivery_hours"] = 0
+        else:
+            facts.pop("telegram_required")
+        item.product_snapshot = facts
+        item.save(update_fields=["product_snapshot", "input_received_at"])
+    order.refresh_from_db()
+    assert can_pay_order(order) is allowed
+    client.force_login(operator)
+    detail = client.get(reverse("admin:orders_order_change", args=[order.pk]))
+    action_url = url(order)
+    assert (f'href="{action_url}"' in detail.content.decode()) is allowed
+    before = list(order.items.values_list("status", "paid_at", "due_at"))
+    if allowed:
+        assert (
+            client.post(action_url, {"amount": order.total_amount, "bank_ref": "new"}).status_code
+            == 302
+        )
+    elif state != "paid":
+        with pytest.raises(ValidationError):
+            record_manual_payment(
+                order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref="new"
+            )
+        assert list(order.items.values_list("status", "paid_at", "due_at")) == before
 
 
 @pytest.mark.parametrize("typed", ["۲۰۰,۰۰۰", "200,000", "۲۰۰٬۰۰۰", "۲۰۰،۰۰۰", " 200 000 "])

@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from apps.accounts.models import User
 from apps.orders.admin import OrderAdmin
 from apps.orders.models import Order
+from apps.orders.services import can_pay_order
 from apps.payments.forms import ManualPaymentForm
 from apps.payments.services import record_manual_payment
 
@@ -76,7 +77,7 @@ class PaymentOrderAdmin(OrderAdmin):
         obj: Order | None = None,
     ) -> Any:
         if obj:
-            context["can_record_payment"] = self.can_record_payment(request)
+            context["can_record_payment"] = self.can_record_payment(request) and can_pay_order(obj)
             if request.user.has_perm("payments.view_payment"):
                 context["payment_history"] = obj.payments.select_related("matched_by")
         return super().render_change_form(request, context, add, change, form_url, obj)

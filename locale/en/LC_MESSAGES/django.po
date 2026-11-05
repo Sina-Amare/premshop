@@ -1515,17 +1515,14 @@ msgstr "Enter a bank reference of at most 64 characters."
 msgid "پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."
 msgstr "A payment with different details has already been recorded for this order."
 
-msgid "ابتدا وضعیت پرداخت قبلی این سفارش را بررسی کنید."
-msgstr "Check the previous payment for this order first."
-
 msgid "این پرداخت از مسیر ثبت پرداخت خارج از درگاه تأیید نمی‌شود."
 msgstr "This payment cannot be confirmed through the manual payment form."
-
-msgid "مهلت پرداخت این سفارش تمام شده یا سفارش لغو شده است."
-msgstr "The payment deadline has passed or the order has been cancelled."
 
 msgid "وضعیت این سفارش برای ثبت پرداخت مناسب نیست."
 msgstr "The current order status does not allow payment confirmation."
 
-msgid "اطلاعات لازم برای فعال‌سازی کامل نیست؛ پرداخت ثبت نشد."
-msgstr "Required activation details are missing; the payment was not recorded."
+msgid "مهلت تحویل"
+msgstr "Delivery deadline"
+
+msgid "زمان دریافت اطلاعات مشتری"
+msgstr "Customer details received at"
