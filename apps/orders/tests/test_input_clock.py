@@ -35,12 +35,12 @@ def pay(order, operator):
     )
 
 
-def purchase(buyer, plan, operator, *, telegram=True, kind="none"):
+def purchase(buyer, plan, operator, *, telegram=True, kind="none", at=MONDAY):
     Product.objects.filter(pk=plan.product_id).update(delivery_hours=6)
     plan.product.refresh_from_db()
     plan.telegram_required, plan.input_type, plan.max_quantity = telegram, kind, 1
     plan.save()
-    with time_machine.travel(MONDAY, tick=False):
+    with time_machine.travel(at, tick=False):
         order = services.place_order(
             user=buyer,
             lines=[services.OrderLine(plan, 1, "target@example.test" if kind == "email" else None)],

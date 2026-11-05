@@ -2,6 +2,7 @@ import pytest
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.orders.tests.test_input_clock import event_id, purchase
@@ -15,7 +16,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 def test_operator_input_cycle_and_customer_handoff(
     browser, live_server, buyer, plan, operator, width, language, tmp_path
 ):
-    order, item = purchase(buyer, plan, operator)
+    order, item = purchase(buyer, plan, operator, at=timezone.now())
     client = Client()
     client.force_login(operator)
     context = browser.new_context(
