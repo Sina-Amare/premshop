@@ -1556,3 +1556,42 @@ msgstr "This item has changed; reopen the page."
 
 msgid "پرداخت ثبت شد."
 msgstr "Payment recorded."
+
+msgid "انجام سفارش"
+msgstr "Order fulfilment"
+
+msgid "محصول و مهلت"
+msgstr "Product and deadline"
+
+msgid "در انتظار از"
+msgstr "Waiting since"
+
+msgid "گذشته از مهلت"
+msgstr "Past deadline"
+
+msgid "متوقف"
+msgstr "Paused"
+
+msgid "مهلت ثبت نشده است"
+msgstr "No recorded deadline"
+
+msgid "همه‌ی سفارش‌ها"
+msgstr "All orders"
+
+msgid "صف سفارش‌ها"
+msgstr "Order queue"
+
+msgid "زمان بررسی"
+msgstr "Checked at"
+
+msgid "تازه‌سازی"
+msgstr "Refresh"
+
+msgid "مانده"
+msgstr "Remaining"
+
+msgid "سفارشی پیدا نکردیم."
+msgstr "We found no orders."
+
+msgid "پاک کردن جستجو"
+msgstr "Clear search"

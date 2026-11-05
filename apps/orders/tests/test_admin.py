@@ -23,9 +23,9 @@ def test_order_admin_is_read_only_searchable_and_never_discloses_input(
     )
     client.force_login(User.objects.create_superuser("operator@example.test"))
     settings.FIELD_ENCRYPTION_KEY = ""
-    listing = reverse("admin:orders_order_changelist")
+    listing = reverse("admin:orders_order_changelist") + "?tab=all"
     for query in (str(order.order_number), buyer.email):
-        response = client.get(listing, {"q": query})
+        response = client.get(listing, {"q": query, "tab": "all"})
         assert response.status_code == 200 and order in response.context["cl"].result_list
         assert "private-target@example.test" not in response.content.decode()
     detail = reverse("admin:orders_order_change", args=[order.pk])
@@ -78,7 +78,9 @@ def test_operator_sees_live_expiry_backlog_and_stale_sweep_warning(client, buyer
     assert "بررسی خودکار به‌روز نیست" in client.get(url).content.decode()
 
 
-def test_admin_order_list_query_count_is_the_same_for_two_orders_and_six(client, plan, queries_for):
+def test_admin_order_list_query_count_is_the_same_for_five_orders_and_fifteen(
+    client, plan, queries_for
+):
     """Every order has three items on three products, so a lookup of an item or
     of its product per row would show."""
 
@@ -107,13 +109,13 @@ def test_admin_order_list_query_count_is_the_same_for_two_orders_and_six(client,
             place_order(user=customer, lines=[OrderLine(p, 1) for p in plans])
 
     client.force_login(User.objects.create_superuser("operator@example.test"))
-    listing = reverse("admin:orders_order_changelist")
-    add(0, 2)
+    listing = reverse("admin:orders_order_changelist") + "?tab=all"
+    add(0, 5)
     few, response = queries_for(listing)
-    assert len(response.context["cl"].result_list) == 2
-    add(2, 6)
+    assert len(response.context["cl"].result_list) == 5
+    add(5, 15)
 
     many, response = queries_for(listing)
 
-    assert len(response.context["cl"].result_list) == 6
+    assert len(response.context["cl"].result_list) == 15
     assert many == few
