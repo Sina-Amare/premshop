@@ -99,7 +99,7 @@ def test_operator_records_payment_and_customer_sees_queue(
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_ineligible_payment_actions_on_long_and_empty_orders(
+def test_payment_actions_follow_eligibility_on_long_and_empty_orders(
     browser, live_server, buyer, plan, width, tmp_path
 ):
     plan.title = "پلن یک ماهه برای فعال‌سازی حساب شخصی با نام طولانی در سرویس Example Pro"
@@ -141,7 +141,7 @@ def test_ineligible_payment_actions_on_long_and_empty_orders(
             expect(page.get_by_role("heading", name="سابقه‌ی سفارش", exact=True)).to_be_visible()
             expect(
                 page.get_by_role("link", name="ثبت پرداخت خارج از درگاه", exact=True)
-            ).to_have_count(0)
+            ).to_have_count(1 if state == "telegram" else 0)
             page.evaluate("document.fonts.ready")
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
             page.screenshot(path=str(tmp_path / f"{state}-{width}.png"), full_page=True)
