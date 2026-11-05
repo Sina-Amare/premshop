@@ -147,6 +147,8 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
 | `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |
+| `due_at` | Purchased delivery deadline; null before payment or while required details have not arrived. Uses the later of payment and receipt, then support-window snap-forward with the 48-hour cap taking precedence |
+| `input_received_at` | When required checkout details were recorded. Historical non-empty checkout details use the recorded item creation time; missing or unknown details remain null |
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
 
