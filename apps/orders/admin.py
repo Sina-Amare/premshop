@@ -121,7 +121,7 @@ class OrderItemInline(TabularInline):
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
     change_form_template = "admin/orders/change_form.html"
-    change_list_template = "admin/orders/change_list.html"
+    change_list_template = "admin/orders/order/change_list.html"
     list_display = ("number", "customer", "amount", "queue_work", "placed")
     list_per_page = 25
     list_max_show_all = 0
@@ -552,6 +552,7 @@ class DiscountAdmin(ModelAdmin):
     list_display = ("code", "discount_value", "is_active", "active_uses", "limit")
     search_fields = ("code",)
     list_filter = ("is_active", "kind", "scope")
+    filter_horizontal = ("products",)
     exclude = ("used_count", "created_at")
     readonly_fields = ("active_uses", "created")
     inlines = (RedemptionInline,)

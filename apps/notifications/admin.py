@@ -1,15 +1,23 @@
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 
-from apps.core.formatting import format_jalali, to_persian_digits
+from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
 from apps.notifications.models import ConfirmationSweep, Notification
 
 
 @admin.register(Notification)
 class NotificationAdmin(ModelAdmin):
+    search_fields = ("=order__order_number", "recipient")
+
+    def get_search_results(
+        self, request: HttpRequest, queryset: QuerySet[Notification], search_term: str
+    ) -> tuple[QuerySet[Notification], bool]:
+        return super().get_search_results(request, queryset, to_latin_digits(search_term))
+
     list_display = (
         "order",
         "status",

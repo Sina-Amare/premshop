@@ -88,7 +88,6 @@
         {% if form.discount_code.value %}<button class="btn btn--ghost" type="submit" name="action" value="remove_discount" formnovalidate>حذف کد تخفیف</button>{% endif %}
         {% if quote %}
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
-          <p class="small">قیمت و موجودی را هنگام ثبت سفارش دوباره بررسی می‌کنیم.</p>
           <div class="cart-cta{% if purchase.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div></div>
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button></div>
           <p class="small">پس از ثبت سفارش ۲۴ ساعت برای پرداخت فرصت دارید. در این مرحله چیزی پرداخت نمی‌کنید.</p>
