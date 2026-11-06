@@ -18,6 +18,12 @@ from apps.catalog.models import MoneyField
 from apps.core.fields import EncryptedTextField
 from apps.core.formatting import to_persian_digits
 
+SUPPORT_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+
+
+def support_token() -> str:
+    return "".join(secrets.choice(SUPPORT_ALPHABET) for _ in range(12))
+
 
 def next_order_number() -> int:
     with connection.cursor() as cursor:
@@ -164,6 +170,20 @@ class Order(models.Model):
 
     def __str__(self) -> str:
         return f"سفارش {to_persian_digits(self.order_number)}"
+
+
+class OrderSupportIdentifier(models.Model):
+    order = models.OneToOneField(
+        Order, on_delete=models.CASCADE, primary_key=True, related_name="support_identifier"
+    )
+    support_token = EncryptedTextField(default=support_token, editable=False)
+
+    def __str__(self) -> str:
+        return f"Support identifier for order {self.order_id}"
+
+    @property
+    def grouped_token(self) -> str:
+        return " ".join(self.support_token[n : n + 4] for n in (0, 4, 8))
 
 
 class OrderItem(models.Model):

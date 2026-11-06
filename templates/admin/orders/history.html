@@ -1,4 +1,11 @@
 {% load i18n fa %}
+<section class="order-history" aria-labelledby="order-support-title">
+  <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
+  <p>{% translate "سفارش را با شماره‌ی سفارش پیدا کنید؛ تصویر فاکتور برای تطبیق کافی نیست." %}</p>
+  <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
+  <input id="support-token" name="support_token" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  </div><button type="submit" formmethod="post" formaction="{% url 'admin:orders_order_support_match' original.pk %}" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>
+</section>
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>

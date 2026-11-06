@@ -251,8 +251,9 @@ def test_empty_order_list_is_useful_without_javascript(client, buyer):
 def test_customer_projections_do_not_read_encrypted_inputs(client, buyer, plan):
     order = purchase(buyer, plan)
     client.force_login(buyer)
-    with patch(
-        "apps.core.fields.EncryptedTextField.from_db_value",
+    with patch.object(
+        OrderItem._meta.get_field("customer_input"),
+        "from_db_value",
         side_effect=AssertionError("Private field read"),
     ):
         for name, args in [
@@ -421,7 +422,9 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
 
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    assert "شماره‌ی سفارش را در تلگرام به" in body
+    assert (
+        "برای پیگیری، شماره‌ی سفارش و همین شناسه را در تلگرام یا ایمیل به پشتیبانی بفرستید." in body
+    )
     assert f'<a href="{details["telegram_url"]}"' in body
     assert f'<a href="mailto:{details["email"]}"' in body
 

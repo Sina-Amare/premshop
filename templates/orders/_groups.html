@@ -8,6 +8,7 @@
 {% if not compact %}{% language 'fa' %}{% include "orders/_product_conditions.html" with line=line only %}{% endlanguage %}{% endif %}
 {% if not compact and line.status == 'AWAITING_INPUT' %}<div class="saved-product" data-input-request>
 <p>اطلاعات لازم برای فعال‌سازی این محصول را در تلگرام به پشتیبانی بفرستید.</p>
+<p>شماره‌ی سفارش و شناسه‌ی پشتیبانی را هم بفرستید.</p>
 <a href="{{ support.telegram_url }}" rel="noopener noreferrer">گفت‌وگو با پشتیبانی</a>
 <p>رمز یا کد ورود را در سایت وارد نکنید.</p>
 </div>{% endif %}

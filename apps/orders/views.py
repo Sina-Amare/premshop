@@ -3,24 +3,26 @@ from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.crypto import salted_hmac
 from django.views.decorators.cache import never_cache
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.orders.models import OrderSupportIdentifier
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
     customer_timeline,
     order_for_tracking,
 )
-from apps.orders.services import cancel_unpaid_order
+from apps.orders.services import cancel_unpaid_order, replace_support_token
 
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
@@ -54,12 +56,54 @@ def _owned_summary(request: HttpRequest, order_number: int) -> dict[str, Any]:
 @login_required
 @require_GET
 def detail(request: HttpRequest, order_number: int) -> HttpResponse:
-    summary = _owned_summary(request, order_number)
-    return render(
+    return _render_detail(request, _owned_summary(request, order_number))
+
+
+def _render_detail(
+    request: HttpRequest, summary: dict[str, Any], *, error: str = "", status: int = 200
+) -> HttpResponse:
+    try:
+        support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
+    except ImproperlyConfigured:
+        support_identifier = None
+    response = render(
         request,
         "orders/detail.html",
-        {**summary, "timeline": customer_timeline(summary["order"]), "section": "orders"},
+        {
+            **summary,
+            "timeline": customer_timeline(summary["order"]),
+            "section": "orders",
+            "error": error,
+            "support_identifier": support_identifier,
+        },
+        status=status,
     )
+    response["Content-Encoding"] = "identity"
+    response["Referrer-Policy"] = "same-origin"
+    return response
+
+
+@sensitive_post_parameters("expected_support_token")
+@never_cache
+@login_required
+@require_POST
+def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
+    summary = _owned_summary(request, order_number)
+    order = summary["order"]
+    if request.POST.get("confirm") != "yes":
+        return _render_detail(request, summary, error="جایگزینی شناسه را تأیید کنید.", status=400)
+    try:
+        replace_support_token(
+            order_id=order.pk,
+            actor=cast(User, request.user),
+            expected_support_token=request.POST.get("expected_support_token", ""),
+        )
+    except ValidationError as invalid:
+        return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
+    except ImproperlyConfigured, OrderSupportIdentifier.DoesNotExist:
+        return _render_detail(request, summary, error="شناسه‌ی پشتیبانی در دسترس نیست.", status=503)
+    messages.success(request, "شناسه‌ی پشتیبانی جایگزین شد.")
+    return redirect("order-detail", order_number=order.order_number)
 
 
 @never_cache
@@ -77,12 +121,7 @@ def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
         else:
             messages.success(request, "سفارش لغو شد.")
             return redirect("order-detail", order_number=order.order_number)
-    return render(
-        request,
-        "orders/detail.html",
-        {**summary, "timeline": customer_timeline(order), "section": "orders", "error": error},
-        status=400,
-    )
+    return _render_detail(request, summary, error=error, status=400)
 
 
 @never_cache
