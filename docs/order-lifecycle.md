@@ -10,6 +10,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 - [Concurrency](#concurrency)
 - [Payment](#payment)
 - [Input requests and pauses](#input-requests-and-pauses)
+- [Operator queue](#operator-queue)
 - [History and notifications](#history-and-notifications)
 - [Tests](#tests)
 
@@ -156,6 +157,14 @@ The gateway request, callback verification and the lost-callback inquiry are not
 Telegram items leave `input_received_at` null at checkout even when an email or username was collected. Handoff records `input_requested_at` and makes the request available on the owner's order page through the existing support destination; it does not send a message. First receipt computes the deadline once. A later request retains the deadline and sets `sla_paused_at`; resume adds exactly the elapsed pause, clears that marker and preserves the original first receipt. It neither snaps the shifted deadline nor reapplies the original cap. The database refuses a pause marker without a deadline.
 
 The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the 48-hour reminder, seven-day flag, 14-day warning and 21-calendar-day input timeout; receipt ends the episode and a distinct later request starts another. These automated steps and paid cancellation/refunds remain unbuilt. Before affected paid orders are accepted, the manual 21-day cancellation/refund process must be demonstrated. Holidays never stop this ladder ([ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)).
+
+## Operator queue
+
+The existing order list opens on queued work, with unpaid and waiting-for-details tabs and an all-orders view. Each row is an order; a mixed order appears in each relevant tab, and tab counts count orders rather than items. Search by order number or customer email applies to the counts too. Pages contain at most 25 orders.
+
+Unpaid orders sort by payment expiry; queued orders sort by their earliest item deadline, overdue first; waiting orders sort by their oldest information request. A first wait shows the request time without a deadline. A paused item shows `due_at - sla_paused_at`, including time already overdue when paused. The displayed times are snapshots, with a check time and a refresh link on the list. Opening a page never writes a deadline.
+
+Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions. Secure delivery remains unbuilt.
 
 ## History and notifications
 

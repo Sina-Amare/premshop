@@ -31,7 +31,7 @@ def test_order_panel_empty_populated_and_long_history(
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     try:
-        listing = reverse("admin:orders_order_changelist")
+        listing = reverse("admin:orders_order_changelist") + "?tab=all"
         page.goto(live_server.url + listing)
         assert page.url.endswith(listing)
         assert "سفارش‌ها" in page.locator("h1").first.inner_text()

@@ -8,19 +8,27 @@ from typing import Any, cast
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Exists, Max, OuterRef, Prefetch, QuerySet
+from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, QuerySet
 from django.db.models.fields.json import KeyTextTransform
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.views import ChangeList
 
 from apps.accounts.models import User
 from apps.catalog.models import Product
-from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.core.formatting import (
+    format_countdown,
+    format_jalali,
+    format_toman,
+    to_latin_digits,
+    to_persian_digits,
+)
 from apps.core.ratelimit import client_ip
 from apps.orders.models import (
     CredentialAccessLog,
@@ -39,6 +47,29 @@ from apps.orders.services import receive_input, request_input, resume_input, rev
 # input is never selected.
 _ITEM_NAME = KeyTextTransform("name", "order_item__product_snapshot")
 _ITEM_PLAN = KeyTextTransform("plan_title", "order_item__product_snapshot")
+
+_QUEUE_STATES = {
+    "unpaid": OrderItem.Status.PENDING_PAYMENT,
+    "queued": OrderItem.Status.QUEUED,
+    "waiting": OrderItem.Status.AWAITING_INPUT,
+}
+
+
+def queue_tab(request: HttpRequest) -> str:
+    value = request.GET.get("tab", "queued")
+    return value if value in {*_QUEUE_STATES, "all"} else "queued"
+
+
+class OrderChangeList(ChangeList):
+    def get_ordering(self, request: HttpRequest, queryset: QuerySet[Order]) -> Any:
+        if "o" not in request.GET and queue_tab(request) != "all":
+            return queryset.query.order_by
+        return super().get_ordering(request, queryset)
+
+    def get_filters_params(self, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        result = super().get_filters_params(params)
+        result.pop("tab", None)
+        return result
 
 
 class OrderItemInline(TabularInline):
@@ -91,7 +122,10 @@ class OrderItemInline(TabularInline):
 class OrderAdmin(ModelAdmin):
     change_form_template = "admin/orders/change_form.html"
     change_list_template = "admin/orders/change_list.html"
-    list_display = ("number", "customer", "amount", "item_states", "placed")
+    list_display = ("number", "customer", "amount", "queue_work", "placed")
+    list_per_page = 25
+    list_max_show_all = 0
+    show_full_result_count = False
     search_fields = ("=order_number", "user__email")
     ordering = ("-created_at", "-pk")
     actions = None
@@ -104,10 +138,12 @@ class OrderAdmin(ModelAdmin):
         "subtotal_amount",
         "discount",
         "amount",
+        "queue_work",
     )
     fieldsets = (
         (_("مشخصات سفارش"), {"fields": (("number", "customer"), ("channel", "placed"))}),
         (_("مبلغ‌های سفارش"), {"fields": (("subtotal_amount", "discount", "amount"),)}),
+        (_("انجام سفارش"), {"fields": ("queue_work",)}),
     )
     change_form_after_template = "admin/orders/history.html"
 
@@ -210,6 +246,35 @@ class OrderAdmin(ModelAdmin):
     def changelist_view(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None
     ) -> Any:
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        at = timezone.now()
+        base = super().get_queryset(request)
+        base, _duplicates = self.get_search_results(request, base, request.GET.get("q", ""))
+        flags = {
+            name: Exists(OrderItem.objects.filter(order_id=OuterRef("pk"), status=state))
+            for name, state in _QUEUE_STATES.items()
+        }
+        counts = base.aggregate(**{name: Count("pk", filter=flag) for name, flag in flags.items()})
+        tabs = []
+        for name, label in (
+            ("unpaid", _("منتظر پرداخت")),
+            ("queued", _("در صف انجام")),
+            ("waiting", _("منتظر اطلاعات مشتری")),
+            ("all", _("همه‌ی سفارش‌ها")),
+        ):
+            params = request.GET.copy()
+            for key in ("p", "o", "all"):
+                params.pop(key, None)
+            params["tab"] = name
+            tabs.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "url": "?" + params.urlencode(),
+                    "count": counts.get(name),
+                }
+            )
         state = UnpaidExpirySweep.objects.filter(pk=1).first()
         pending = OrderItem.objects.filter(
             order_id=OuterRef("pk"), status=OrderItem.Status.PENDING_PAYMENT
@@ -221,12 +286,24 @@ class OrderAdmin(ModelAdmin):
         )
         context = {
             **(extra_context or {}),
+            "queue_counts": counts,
+            "queue_tabs": tabs,
+            "queue_tab": queue_tab(request),
+            "queue_as_of": at,
             "expiry_state": state,
             "expiry_backlog": backlog,
             "expiry_stale": state is None
             or timezone.now() - state.last_success_at > timedelta(minutes=3),
         }
         return super().changelist_view(request, extra_context=context)
+
+    def get_changelist(self, request: HttpRequest, **kwargs: Any) -> type[ChangeList]:
+        return OrderChangeList
+
+    def get_search_results(
+        self, request: HttpRequest, queryset: QuerySet[Order], search_term: str
+    ) -> tuple[QuerySet[Order], bool]:
+        return super().get_search_results(request, queryset, to_latin_digits(search_term))
 
     def render_change_form(
         self,
@@ -273,19 +350,64 @@ class OrderAdmin(ModelAdmin):
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:
-        return (
-            super()
-            .get_queryset(request)
-            .select_related("user")
-            .prefetch_related(
-                Prefetch(
-                    "items",
-                    queryset=OrderItem.objects.defer("customer_input").select_related(
-                        "plan__product"
-                    ),
+        queryset = super().get_queryset(request)
+        items = OrderItem.objects.defer("customer_input").select_related("plan__product")
+        if request.resolver_match and request.resolver_match.url_name == "orders_order_changelist":
+            tab = queue_tab(request)
+            if tab in _QUEUE_STATES:
+                state = _QUEUE_STATES[tab]
+                items = items.filter(status=state)
+                queryset = queryset.filter(
+                    Exists(OrderItem.objects.filter(order_id=OuterRef("pk"), status=state))
                 )
-            )
-        )
+                if tab == "unpaid":
+                    queryset = queryset.order_by("unpaid_expires_at", "pk")
+                else:
+                    field = "due_at" if tab == "queued" else "input_requested_at"
+                    items = items.order_by(F(field).asc(nulls_last=True), "pk")
+                    queryset = queryset.annotate(
+                        queue_first=Min(f"items__{field}", filter=Q(items__status=state))
+                    ).order_by(F("queue_first").asc(nulls_last=True), "pk")
+        return queryset.select_related("user").prefetch_related(Prefetch("items", queryset=items))
+
+    @admin.display(description=_("محصول و مهلت"))
+    def queue_work(self, obj: Order) -> str:
+        at = timezone.now()
+        rows = []
+        for item in obj.items.all():
+            kind, text, since = "neutral", "", None
+            if item.status == OrderItem.Status.AWAITING_INPUT and item.sla_paused_at is None:
+                text, since = str(_("در انتظار از")), item.input_requested_at
+            else:
+                deadline = (
+                    obj.unpaid_expires_at
+                    if item.status == OrderItem.Status.PENDING_PAYMENT
+                    else item.due_at
+                )
+                if item.status not in {
+                    OrderItem.Status.PENDING_PAYMENT,
+                    OrderItem.Status.QUEUED,
+                    OrderItem.Status.AWAITING_INPUT,
+                }:
+                    deadline = None
+                if deadline is not None:
+                    paused = (
+                        item.sla_paused_at is not None
+                        and item.status == OrderItem.Status.AWAITING_INPUT
+                    )
+                    reference = at
+                    if paused and item.sla_paused_at is not None:
+                        reference = item.sla_paused_at
+                    seconds = (deadline - reference).total_seconds()
+                    kind = "paused" if paused else ("overdue" if seconds <= 0 else "remaining")
+                    label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
+                    text = f"{format_countdown(abs(int(seconds)))} · {label}"
+                    if paused:
+                        text = str(_("متوقف")) + " · " + text
+                elif item.status == OrderItem.Status.QUEUED:
+                    text = str(_("مهلت ثبت نشده است"))
+            rows.append({"item": item, "kind": kind, "text": text, "since": since})
+        return render_to_string("admin/orders/queue_items.html", {"queue_items": rows})
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
