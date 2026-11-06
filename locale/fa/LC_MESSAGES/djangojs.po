@@ -1,0 +1,50 @@
+# Persian for the panel's JavaScript strings.
+#
+# Django's fa djangojs catalog predates the wording of its two-box product
+# picker (filter_horizontal), so its instructions and buttons rendered in
+# English inside the Persian panel. Entries here take precedence over
+# Django's own.
+#
+# Compile with scripts/compile_messages.py (no gettext needed); a test fails
+# if the .mo on disk does not match this file
+# (apps/catalog/tests/test_panel_translations.py).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: fa\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Filter"
+msgstr "جستجو"
+
+msgid "Type into this box to filter down the list of available %s."
+msgstr "برای پیدا کردن در فهرست %s موجود، اینجا بنویسید."
+
+msgid "Type into this box to filter down the list of selected %s."
+msgstr "برای پیدا کردن در فهرست %s انتخاب‌شده، اینجا بنویسید."
+
+msgid "(click to clear)"
+msgstr "(برای پاک کردن کلیک کنید)"
+
+msgid "Choose %s by selecting them and then select the \"Choose\" arrow button."
+msgstr "%s را انتخاب کنید و پیکان «افزودن» را بزنید."
+
+msgid "Remove %s by selecting them and then select the \"Remove\" arrow button."
+msgstr "%s را انتخاب کنید و پیکان «حذف» را بزنید."
+
+msgid "Choose selected %s"
+msgstr "افزودن %s انتخاب‌شده"
+
+msgid "Remove selected %s"
+msgstr "حذف %s انتخاب‌شده"
+
+msgid "Choose all %s"
+msgstr "افزودن همه‌ی %s"
+
+msgid "Remove all %s"
+msgstr "حذف همه‌ی %s"
+
+msgid "%s selected option not visible"
+msgid_plural "%s selected options not visible"
+msgstr[0] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"
+msgstr[1] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"

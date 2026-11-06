@@ -552,6 +552,7 @@ class DiscountAdmin(ModelAdmin):
     list_display = ("code", "discount_value", "is_active", "active_uses", "limit")
     search_fields = ("code",)
     list_filter = ("is_active", "kind", "scope")
+    filter_horizontal = ("products",)
     exclude = ("used_count", "created_at")
     readonly_fields = ("active_uses", "created")
     inlines = (RedemptionInline,)

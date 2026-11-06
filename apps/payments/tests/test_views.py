@@ -183,6 +183,11 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     assert cart.items.exists() and not Order.objects.exists()
 
 
+def test_signed_in_checkout_carries_no_recheck_filler(client, buyer, cart):
+    client.force_login(buyer)
+    assert "قیمت و موجودی" not in client.get(reverse("checkout")).content.decode()
+
+
 def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buyer, plan, cart):
     Plan.objects.filter(pk=plan.pk).update(
         input_type="email", requires_customer_input=True, max_quantity=1

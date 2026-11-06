@@ -191,3 +191,4 @@ html body .order-status{font-size:12px}
 .order-queue-pagination nav :is(a,span){display:inline-flex;align-items:center;justify-content:center;min-inline-size:44px;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px}
 .order-queue-pagination a{color:var(--panel-accent)}
 .order-queue-pagination [aria-current=page]{color:var(--panel-ink);background:var(--panel-soft)}
+html body .selector .list-footer-display{display:none}html body .selector .selector-chosen--with-filtered .list-footer-display{display:block}
