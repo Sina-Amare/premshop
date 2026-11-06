@@ -47,6 +47,8 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         page.get_by_role("button", name="کپی شناسه", exact=True).focus()
         page.keyboard.press("Enter")
         expect(page.locator("[data-copy-status]")).to_have_text("کپی شد")
+        expect(page.locator("[data-copy-status]")).to_have_attribute("aria-live", "polite")
+        expect(page.locator("[data-copy-status]")).to_have_attribute("aria-atomic", "true")
         assert page.evaluate("window.copiedSupport") == order.support_identifier.grouped_token
         page.evaluate(
             "() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; }"

@@ -22,7 +22,7 @@
 <section class="card order-card" aria-labelledby="support-identifier-title">
 <h2 id="support-identifier-title">شناسه‌ی پشتیبانی سفارش</h2>
 {% if support_identifier %}<div class="order-actions"><bdi dir="ltr" id="support-identifier" class="order-support-identifier">{{ support_identifier.grouped_token }}</bdi><button type="button" class="btn btn--secondary" data-copy-support hidden>کپی شناسه</button></div>
-<p role="status" data-copy-status></p>
+<p aria-live="polite" aria-atomic="true" data-copy-status></p>
 <p>برای پیگیری، شماره‌ی سفارش و همین شناسه را در تلگرام یا ایمیل به پشتیبانی بفرستید.</p>
 <p><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a> · <a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
 <details class="order-support-replace"><summary>جایگزینی شناسه</summary>
