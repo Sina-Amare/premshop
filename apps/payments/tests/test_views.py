@@ -183,6 +183,11 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     assert cart.items.exists() and not Order.objects.exists()
 
 
+def test_signed_in_checkout_carries_no_recheck_filler(client, buyer, cart):
+    client.force_login(buyer)
+    assert "قیمت و موجودی" not in client.get(reverse("checkout")).content.decode()
+
+
 @pytest.mark.parametrize("kind,word", [("email", "ایمیل"), ("username", "نام کاربری")])
 def test_activation_input_warns_it_cannot_change_after_the_order(
     client, buyer, plan, cart, kind, word

@@ -135,7 +135,9 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"discount-errors-{width}.png"), full_page=True)
         page.locator("#id_value").fill("100")
-        page.select_option("#id_products", [str(plan.product_id)])
+        # Found by typing in the picker's search, then chosen by double-click.
+        page.locator("#id_products_input").press_sequentially(plan.product.name[:4])
+        page.locator("#id_products_from option", has_text=plan.product.name).dblclick()
         page.locator('[name="_save"]').click()
         page.wait_for_url("**/admin/orders/discountcode/")
         code = DiscountCode.objects.get(code="SAVE")

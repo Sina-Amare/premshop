@@ -305,10 +305,8 @@ def test_long_checkout_without_consent_and_empty_cart_remain_readable(
         assert tile["width"] >= 48 and tile["height"] >= 48
         assert card["x"] < tile["x"] and tile["x"] + tile["width"] < card["x"] + card["width"]
         assert card["y"] < tile["y"] and tile["y"] + tile["height"] < card["y"] + card["height"]
-        note = page.get_by_text("قیمت و موجودی را هنگام ثبت سفارش").bounding_box()
         button = page.get_by_role("button", name="ثبت سفارش", exact=True).bounding_box()
         deadline = page.get_by_text("پس از ثبت سفارش ۲۴ ساعت").bounding_box()
-        assert button["y"] - (note["y"] + note["height"]) >= 12
         assert deadline["y"] - (button["y"] + button["height"]) >= 12
         screenshot(page, "long-review", width, tmp_path)
         cart.items.all().delete()
