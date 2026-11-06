@@ -51,6 +51,19 @@ def code_from(message) -> str:
     return found.group(0).translate(PERSIAN_TO_ASCII)
 
 
+def leaked(code: str, text: str) -> bool:
+    """A code leaks only as a number of its own: inside a longer run of digits, a package
+    version or a timestamp's fraction in an error report, the same six digits are chance."""
+    return re.search(rf"(?<![\d.]){code}(?!\d)", text) is not None
+
+
+def test_a_code_counts_as_leaked_only_as_a_number_of_its_own():
+    assert leaked("202608", "login code 202608 sent")
+    assert leaked("123456", '{"message": "code=123456"}')
+    assert not leaked("202608", '"types-requests": "6.0.12.20260815"')
+    assert not leaked("883181", "2026-11-06T20:47:53.883181Z")
+
+
 # --- The model -------------------------------------------------------------
 
 
@@ -486,7 +499,7 @@ def test_a_failed_signin_alert_reaches_error_tracking_without_the_address(
                 "the customer's address appears in no log and no report",
                 user.email not in everything,
             ),
-            ("the login code appears in no log and no report", code not in everything),
+            ("the login code appears in no log and no report", not leaked(code, everything)),
         ]
         if not kept
     ]
@@ -590,7 +603,7 @@ def test_a_code_the_relay_did_not_take_keeps_the_visitor_on_the_page(
     everything = json.dumps(error_reports) + caplog.text
     assert len([r for r in error_reports if r.get("logger") == "apps.accounts.services"]) == 1
     if kind != "unreachable":
-        assert sent and sent[-1] not in everything, "the code reached a log or a report"
+        assert sent and not leaked(sent[-1], everything), "the code reached a log or a report"
     assert user.email not in everything, "the address reached a log or a report"
 
 
