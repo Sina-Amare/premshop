@@ -27,7 +27,7 @@ from apps.core.tests.test_accessibility_browser import STYLED
 pytestmark = pytest.mark.django_db
 
 QUESTION = "سرویسی که می‌خواهید در فهرست نیست؟"
-ASK = "در تلگرام بپرسید"
+ASK = "درخواستش را در تلگرام بفرستید"
 # The feature's own list, beside the house list that `offences` applies.
 BANNED = ["بهترین", "سریع‌ترین", "ارزان‌تر", "ضمانت", "تضمین", "بازگشت وجه", "درگاه"]
 NOT_IN_COPY = re.compile(r"[—–!\U0001F000-\U0001FAFF☀-➿]")
