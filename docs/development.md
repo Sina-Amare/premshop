@@ -63,7 +63,7 @@ Settings come from the environment (`config/settings/{base,dev,prod}.py`), with 
 | `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `SECURE_HSTS_SECONDS` | Production hosts and transport security |
 | `LOG_LEVEL`, `GIT_COMMIT` | Logging, and the commit `/healthz` reports |
 
-**The encryption key.** Generate one locally and keep it out of git and separate from `SECRET_KEY`:
+**The encryption key.** Every new order stores an encrypted support identifier, so configure this key before placing orders, even when no activation input is required. Generate one locally and keep it out of git and separate from `SECRET_KEY`:
 
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
