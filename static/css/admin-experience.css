@@ -97,6 +97,7 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-history>header{padding:18px 0;border-bottom:1px solid var(--panel-line)}
 .order-payment-form{display:grid;gap:20px;max-inline-size:32rem;margin-block:20px}
 .order-payment-form label{display:block;margin-block-end:8px}
+.order-payment-form>.order-input-action{justify-self:start}
 .order-payment-form input:not([type=hidden]){inline-size:100%;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);padding:8px 12px;line-height:1.8}
 .order-payment-form .errorlist{color:var(--panel-danger);margin-block:8px;line-height:1.9}
 .order-bank-reference{overflow-wrap:anywhere}
