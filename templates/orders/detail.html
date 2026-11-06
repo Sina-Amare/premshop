@@ -25,7 +25,7 @@
 <p role="status" data-copy-status></p>
 <p>برای پیگیری، شماره‌ی سفارش و همین شناسه را در تلگرام یا ایمیل به پشتیبانی بفرستید.</p>
 <p><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a> · <a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
-<details><summary>جایگزینی شناسه</summary>
+<details class="order-support-replace"><summary>جایگزینی شناسه</summary>
 <p>با ساخت شناسه‌ی جدید، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% else %}<p role="status">شناسه‌ی پشتیبانی در دسترس نیست.</p>{% endif %}</section>
