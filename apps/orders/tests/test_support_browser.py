@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from playwright.sync_api import expect
 
-from apps.orders.models import Order, OrderItem, OrderSupportIdentifier
+from apps.orders.models import CredentialAccessLog, Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_customer_browser import capture, context_for
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -164,5 +164,43 @@ def test_operator_matches_in_existing_panel_without_javascript(
             )
             capture(page, "support-panel-" + state, width, tmp_path)
             page.get_by_role("link", name=back, exact=True).click()
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390])
+def test_enter_in_the_identifier_field_compares_instead_of_revealing_input(
+    browser, live_server, buyer, plan, width
+):
+    from apps.accounts.models import User
+
+    order = Order.objects.create(user=buyer, subtotal=200000, total_amount=200000)
+    identifier = OrderSupportIdentifier.objects.create(order=order)
+    OrderItem.objects.create(
+        order=order,
+        plan=plan,
+        price_snapshot=200000,
+        cost_snapshot=100000,
+        product_snapshot={
+            "name": "محصول",
+            "plan_title": "یک ماهه",
+            "requires_customer_input": True,
+        },
+        customer_input="private@example.test",
+        status="QUEUED",
+    )
+    operator = User.objects.create_superuser("operator@example.test")
+    context = context_for(browser, live_server, operator, width, javascript=False)
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("admin:orders_order_change", args=[order.pk]))
+        field = page.get_by_label("شناسه‌ی پشتیبانی سفارش", exact=True)
+        field.fill(identifier.grouped_token)
+        field.press("Enter")
+        expect(page.locator(".order-history [role=status]")).to_have_text(
+            "شناسه با این سفارش مطابقت دارد."
+        )
+        assert page.url.endswith(reverse("admin:orders_order_support_match", args=[order.pk]))
+        assert not CredentialAccessLog.objects.exists()
     finally:
         context.close()
