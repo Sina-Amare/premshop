@@ -1602,8 +1602,8 @@ msgstr "Order pages"
 msgid "تطبیق شناسه‌ی پشتیبانی"
 msgstr "Match support identifier"
 
-msgid "سفارش را با شماره‌ی سفارش پیدا کنید؛ تصویر فاکتور برای تطبیق کافی نیست."
-msgstr "Find the order by its number; an invoice image is not enough to match a request."
+msgid "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند."
+msgstr "Enter the identifier the customer sent. An invoice image does not prove who owns the order."
 
 msgid "شناسه‌ی پشتیبانی سفارش"
 msgstr "Order support identifier"

@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from playwright.sync_api import expect
 
+from apps.core.formatting import to_persian_digits
 from apps.orders.models import CredentialAccessLog, Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_customer_browser import capture, context_for
 
@@ -34,7 +35,11 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
     try:
         page.goto(live_server.url + detail)
         expect(
-            page.get_by_role("heading", name="شناسه‌ی پشتیبانی سفارش", exact=True)
+            page.get_by_role(
+                "heading",
+                name=f"شناسه‌ی پشتیبانی سفارش {to_persian_digits(order.order_number)}",
+                exact=True,
+            )
         ).to_be_visible()
         expect(page.locator("[data-input-request]")).to_contain_text(
             "شماره‌ی سفارش و شناسه‌ی پشتیبانی را هم بفرستید."
