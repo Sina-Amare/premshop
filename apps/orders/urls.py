@@ -6,6 +6,11 @@ urlpatterns = [
     path("account/orders/", views.order_list, name="order-list"),
     path("account/orders/<int:order_number>/", views.detail, name="order-detail"),
     path("account/orders/<int:order_number>/cancel/", views.cancel, name="order-cancel"),
+    path(
+        "account/orders/<int:order_number>/support/replace/",
+        views.replace_support,
+        name="order-support-replace",
+    ),
     path("account/orders/<int:order_number>/invoice/", views.invoice, name="order-invoice"),
     path("track/<str:token>/", views.tracking, name="order-tracking"),
 ]

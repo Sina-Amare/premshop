@@ -1598,3 +1598,27 @@ msgstr "Clear search"
 
 msgid "صفحه‌های سفارش‌ها"
 msgstr "Order pages"
+
+msgid "تطبیق شناسه‌ی پشتیبانی"
+msgstr "Match support identifier"
+
+msgid "سفارش را با شماره‌ی سفارش پیدا کنید؛ تصویر فاکتور برای تطبیق کافی نیست."
+msgstr "Find the order by its number; an invoice image is not enough to match a request."
+
+msgid "شناسه‌ی پشتیبانی سفارش"
+msgstr "Order support identifier"
+
+msgid "بررسی شناسه"
+msgstr "Check identifier"
+
+msgid "شناسه با این سفارش مطابقت دارد."
+msgstr "The identifier matches this order."
+
+msgid "شناسه با این سفارش مطابقت ندارد."
+msgstr "The identifier does not match this order."
+
+msgid "این بررسی فقط برای تطبیق درخواست پشتیبانی است."
+msgstr "This check only matches a support request to its order."
+
+msgid "بررسی شناسه در دسترس نیست؛ دوباره تلاش کنید."
+msgstr "Identifier comparison is unavailable; try again."

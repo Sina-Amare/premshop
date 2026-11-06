@@ -166,6 +166,14 @@ Unpaid orders sort by payment expiry; queued orders sort by their earliest item 
 
 Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions. Secure delivery remains unbuilt.
 
+## Support ownership matching
+
+The customer sends the order number and the private support identifier from their signed-in order detail. The identifier has twelve random uppercase letters and digits, excluding `0`, `O`, `1`, `I` and `L`, displayed in groups of four with a copy button. It stays valid until the owner explicitly replaces it. Replacement requires an owner-authorized POST and rejects confirmation of an identifier that has already changed.
+
+The operator finds the authoritative order by its number in the existing panel, then submits the supplied identifier to a private comparison form. The server checks order-view permission before lookup and again for that object. Comparison accepts grouped or ungrouped text, hyphens and either letter case, and returns only match or mismatch. An invoice image does not prove ownership or payment. A match grants no permission to reveal input, record payment or change an item's state, and creates no reusable verification session.
+
+The identifier is encrypted at rest in a separate one-to-one record and excluded from invoices, exported images, public tracking, lists, emails and error reports. It is never placed in a URL. Existing order queries, audit history and saved conditions do not need its encryption key. When that key cannot be read, the owner page marks the identifier unavailable and hides copy/replacement controls; operator comparison returns unavailable rather than mismatch. The owner page bypasses response compression and caching; its same-origin referrer policy permits protected form submissions while withholding its URL from external destinations. Existing encrypted-field rotation and restore checks include it.
+
 ## History and notifications
 
 `OrderItemEvent` is both the audit trail and the source of the customer's timeline: the order page shows statuses and times, and the panel adds who acted, never any secret value.

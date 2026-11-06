@@ -40,6 +40,8 @@
 details.order-card>summary{padding-block:2px;font-size:14px;font-weight:500;cursor:pointer}
 details.order-card>p{margin-block:12px 16px}
 .order-cancel{color:var(--color-danger-text);border-color:var(--color-danger)}
+.order-support-identifier{font-family:monospace;font-size:18px;white-space:nowrap;user-select:all}
+.order-support-replace>summary{min-block-size:44px;padding-block:8px;cursor:pointer}
 .order-totals{margin-block:0 16px;padding-block-start:8px;border-block-start:1px solid var(--color-line)}
 .order-totals>div{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px;padding-block:4px;font-size:14px;color:var(--v-text)}
 .order-totals dd{margin:0}

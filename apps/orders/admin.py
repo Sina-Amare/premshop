@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from django import forms
 from django.contrib import admin
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, QuerySet
 from django.db.models.fields.json import KeyTextTransform
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
@@ -15,8 +15,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.debug import sensitive_post_parameters
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.views import ChangeList
 
@@ -37,10 +39,17 @@ from apps.orders.models import (
     Order,
     OrderItem,
     OrderItemEvent,
+    OrderSupportIdentifier,
     UnpaidExpirySweep,
 )
 from apps.orders.selectors import grouped_items
-from apps.orders.services import receive_input, request_input, resume_input, reveal_customer_input
+from apps.orders.services import (
+    match_support_token,
+    receive_input,
+    request_input,
+    resume_input,
+    reveal_customer_input,
+)
 
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted
@@ -150,6 +159,11 @@ class OrderAdmin(ModelAdmin):
     def get_urls(self) -> Any:
         return [
             path(
+                "<int:order_id>/support/match/",
+                self.admin_site.admin_view(self.support_match_view),
+                name="orders_order_support_match",
+            ),
+            path(
                 "<int:order_id>/items/<int:item_id>/input/<str:action>/",
                 self.admin_site.admin_view(self.input_action_view),
                 name="orders_order_input_action",
@@ -160,6 +174,39 @@ class OrderAdmin(ModelAdmin):
                 name="orders_order_reveal_customer_input",
             ),
         ] + super().get_urls()
+
+    @method_decorator(sensitive_post_parameters("support_token"))
+    def support_match_view(self, request: HttpRequest, order_id: int) -> HttpResponse:
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        if not self.has_view_permission(request, order):
+            raise PermissionDenied
+        try:
+            matched = match_support_token(
+                order_id=order.pk,
+                actor=cast(User, request.user),
+                support_token=request.POST.get("support_token", ""),
+            )
+        except ImproperlyConfigured, OrderSupportIdentifier.DoesNotExist:
+            matched = None
+        response = render(
+            request,
+            "admin/orders/support_match.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.opts,
+                "order": order,
+                "title": _("تطبیق شناسه‌ی پشتیبانی"),
+                "matched": matched,
+            },
+            status=503 if matched is None else 200,
+        )
+        response["Referrer-Policy"] = "no-referrer"
+        response["X-Robots-Tag"] = "noindex, nofollow"
+        return response
 
     def input_action_view(
         self, request: HttpRequest, order_id: int, item_id: int, action: str

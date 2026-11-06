@@ -20,6 +20,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from cryptography.fernet import Fernet
 from django.urls import reverse
 from django.utils import timezone
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -97,7 +98,9 @@ def test_the_scan_finds_what_it_forbids_and_lets_the_allowed_through():
 
 
 @pytest.fixture
-def shelf():
+def shelf(settings):
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    settings.FIELD_ENCRYPTION_KEY_FALLBACKS = []
     category = Category.objects.create(name="هوش مصنوعی", slug="ai")
     plans = []
     for slug in ("one", "two"):

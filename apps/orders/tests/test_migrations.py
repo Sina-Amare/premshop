@@ -204,6 +204,8 @@ def test_checkout_metadata_backfills_each_legacy_order_without_inventing_consent
         assert all(row.consent_accepted_at is None and row.consent_text == "" for row in rows)
     finally:
         if ids:
+            executor = MigrationExecutor(connection)
+            executor.migrate([previous])
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM orders_order WHERE id = ANY(%s)", [ids])
         executor = MigrationExecutor(connection)

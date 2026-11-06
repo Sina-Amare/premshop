@@ -29,18 +29,58 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
+from apps.core.formatting import to_latin_digits
 from apps.orders.clock import delivery_deadline
 from apps.orders.models import (
+    SUPPORT_ALPHABET,
     CredentialAccessLog,
     DiscountCode,
     DiscountRedemption,
     Order,
     OrderItem,
     OrderItemEvent,
+    OrderSupportIdentifier,
+)
+from apps.orders.models import (
+    support_token as new_support_token,
 )
 
 MAX_AMOUNT = Decimal("999999999999")
 logger = logging.getLogger(__name__)
+
+
+def match_support_token(*, order_id: int, actor: User, support_token: str) -> bool:
+    if not (
+        actor.is_active
+        and actor.is_staff
+        and (actor.has_perm("orders.view_order") or actor.has_perm("orders.change_order"))
+    ):
+        raise PermissionDenied
+    identifier = OrderSupportIdentifier.objects.get(order_id=order_id)
+    if len(support_token) > 64:
+        return False
+    support_token = re.sub(r"[\s-]", "", to_latin_digits(support_token)).upper()
+    return bool(
+        re.fullmatch(f"[{SUPPORT_ALPHABET}]{{12}}", support_token)
+    ) and constant_time_compare(identifier.support_token, support_token)
+
+
+@transaction.atomic
+def replace_support_token(
+    *, order_id: int, actor: User, expected_support_token: str
+) -> OrderSupportIdentifier:
+    if not actor.is_active or not actor.is_authenticated:
+        raise PermissionDenied
+    order = Order.objects.select_for_update().filter(pk=order_id, user_id=actor.pk).first()
+    if order is None:
+        raise PermissionDenied
+    identifier = OrderSupportIdentifier.objects.get(order_id=order.pk)
+    if not constant_time_compare(identifier.support_token, expected_support_token):
+        raise ValidationError("شناسه تغییر کرده است؛ صفحه را دوباره باز کنید.")
+    while constant_time_compare(identifier.support_token, expected_support_token):
+        identifier.support_token = new_support_token()
+    identifier.save(update_fields=["support_token"])
+    return identifier
 
 
 def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
@@ -462,6 +502,7 @@ def place_order(
         ):
             return replay
         raise
+    OrderSupportIdentifier.objects.create(order=order)
     for line in purchase.lines:
         debited = line.plan.stock_quantity is not None
         if line.plan.stock_quantity is not None:

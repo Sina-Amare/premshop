@@ -118,7 +118,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 
 ### orders
 
-**Order** is one checkout.
+**Order** is one checkout. **OrderSupportIdentifier** has one row per order, created in the purchase transaction or backfilled for older orders. Its `support_token` is an encrypted random 12-character identifier, shown in groups of four only on the signed-in owner's order detail; only the owner can replace it. The separate table keeps existing order reads independent of the encryption key. If the key is unavailable, the owner page still shows purchase conditions and marks the identifier unavailable.
 
 | Field | Notes |
 |---|---|
@@ -204,6 +204,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | Cart | `user` when set; `session_key` when set |
 | CartItem | `(cart, plan)` (`cart_one_line_per_plan`) |
 | Order | `order_number`; `tracking_token`; `checkout_id` |
+| OrderSupportIdentifier | `order` (one-to-one primary key) |
 | DiscountCode | `code` |
 | DiscountRedemption | `order` |
 | Payment | `order` where status is verified (`payment_one_verified_per_order`) |
