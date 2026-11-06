@@ -70,7 +70,7 @@ class CheckoutForm(forms.Form):
                     label=line.plan.activation_input_label,
                     help_text=(
                         f"امکان تغییر {kind} پس از ثبت سفارش وجود ندارد. "
-                        f"لطفاً پیش از ثبت نهایی از درستی {kind} وارد شده اطمینان حاصل کنید."
+                        f"پیش از ثبت نهایی از درستی {kind} وارد شده اطمینان حاصل کنید."
                     ),
                     max_length=254 if line.plan.input_type == "email" else 151,
                     widget=forms.TextInput(
