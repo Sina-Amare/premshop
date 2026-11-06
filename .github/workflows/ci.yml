@@ -97,8 +97,10 @@ jobs:
       # unstyled pages, and contrast and layout would be checked against nothing.
       - name: CSS from source
         run: npm run css
+      # The runner image already has Chrome's system libraries. --with-deps added
+      # CJK and Thai fonts no page uses, and a slow mirror made that ten minutes.
       - name: Chromium for Playwright
-        run: uv run playwright install --with-deps chromium
+        run: uv run playwright install chromium
       - name: No model change without its migration
         run: uv run python manage.py makemigrations --check --dry-run
       - name: pytest
