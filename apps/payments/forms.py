@@ -65,8 +65,13 @@ class CheckoutForm(forms.Form):
                     continue
                 name = f"customer_input_{line.plan.pk}"
                 self.input_types[name] = line.plan.input_type
+                kind = "ایمیل" if line.plan.input_type == "email" else "نام کاربری"
                 self.fields[name] = forms.CharField(
                     label=line.plan.activation_input_label,
+                    help_text=(
+                        f"امکان تغییر {kind} پس از ثبت سفارش وجود ندارد. "
+                        f"پیش از ثبت نهایی از درستی {kind} وارد شده اطمینان حاصل کنید."
+                    ),
                     max_length=254 if line.plan.input_type == "email" else 151,
                     widget=forms.TextInput(
                         attrs={
@@ -74,7 +79,8 @@ class CheckoutForm(forms.Form):
                             "dir": "ltr",
                             "autocomplete": "off",
                             "type": "email" if line.plan.input_type == "email" else "text",
-                            "aria-describedby": f"{name}_product",
+                            # Set here, so Django will not add the hint's id by itself.
+                            "aria-describedby": f"{name}_product id_{name}_helptext",
                         }
                     ),
                 )

@@ -527,6 +527,7 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 /* Activation fields: two columns on desktop, the product named at label size. */
 .checkout-box:has(>.checkout-input){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
 .checkout-box:has(>.checkout-input)>:is(h2,p){grid-column:1/-1}
+.checkout-input .field__hint{padding:10px 14px;background:var(--v-soft);border:1px solid var(--v-line);border-inline-start:3px solid var(--v-accent);border-radius:var(--radius-sm);color:var(--v-ink);font-size:13px}
 .checkout-input{margin-block-start:16px;min-width:0}
 .checkout-input__head{gap:8px;margin-block-end:8px}
 .checkout-input__head p{font-size:14px;line-height:1.7;overflow-wrap:anywhere}

@@ -183,6 +183,22 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     assert cart.items.exists() and not Order.objects.exists()
 
 
+@pytest.mark.parametrize("kind,word", [("email", "ایمیل"), ("username", "نام کاربری")])
+def test_activation_input_warns_it_cannot_change_after_the_order(
+    client, buyer, plan, cart, kind, word
+):
+    Plan.objects.filter(pk=plan.pk).update(
+        input_type=kind, requires_customer_input=True, max_quantity=1
+    )
+    client.force_login(buyer)
+    body = client.get(reverse("checkout")).content.decode()
+    hint = f"id_customer_input_{plan.pk}_helptext"
+    assert (
+        f'<p class="field__hint" id="{hint}">امکان تغییر {word} پس از ثبت سفارش وجود ندارد' in body
+    )
+    assert f'aria-describedby="customer_input_{plan.pk}_product {hint}"' in body
+
+
 def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buyer, plan, cart):
     Plan.objects.filter(pk=plan.pk).update(
         input_type="email", requires_customer_input=True, max_quantity=1
