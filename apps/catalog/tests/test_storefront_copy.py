@@ -136,7 +136,6 @@ class _Commitments(HTMLParser):
         "cart-summary__blocked",
         "cart-notice",
         "cart-add-error",
-        "v-hero__lead",
     }
     VOID = {
         "area",

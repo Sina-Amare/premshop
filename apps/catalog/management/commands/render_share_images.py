@@ -30,7 +30,7 @@ OUT = STATIC / "img"
 
 # The home page's headline and lead, as the page prints them today.
 HEADLINE = "اشتراک دلاری،\nپرداخت تومانی."
-LEAD = "هوش مصنوعی، برنامه‌نویسی، موسیقی، فیلم و گیفت کارت؛ بدون کارت ارزی."
+LEAD = "هوش مصنوعی، برنامه‌نویسی، موسیقی، فیلم، گیفت کارت و هر سرویس خارجی که نیاز دارید."
 
 
 def _font(name: str) -> str:
