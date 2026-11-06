@@ -268,6 +268,31 @@ def test_typing_suggests_and_the_keyboard_opens_the_product(browser, live_server
 @pytest.mark.browser
 @pytest.mark.django_db(transaction=True)
 @WIDTHS
+def test_typing_in_the_header_search_leaves_the_page_where_it_is(
+    browser, live_server, shelf, viewport
+):
+    context, page, field = open_home(browser, live_server, viewport)
+    try:
+        page.evaluate("document.body.style.paddingBottom = '3000px'")
+        page.mouse.wheel(0, 1600)
+        page.wait_for_timeout(600)
+        # On a phone the header steps aside on the way down and returns on the way up.
+        page.mouse.wheel(0, -200)
+        page.wait_for_timeout(600)
+        before = page.evaluate("scrollY")
+        assert before > 1000
+        field.click()
+        field.press_sequentially("spot", delay=100)
+        expect(page.locator("#search-suggest")).to_be_visible()
+        page.wait_for_timeout(600)
+        assert page.evaluate("scrollY") == before
+    finally:
+        context.close()
+
+
+@pytest.mark.browser
+@pytest.mark.django_db(transaction=True)
+@WIDTHS
 def test_escape_and_a_click_outside_close_the_list(browser, live_server, shelf, viewport):
     context, page, field = open_home(browser, live_server, viewport)
     listbox = page.locator("#search-suggest")

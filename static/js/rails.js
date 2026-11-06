@@ -4,7 +4,6 @@
   if (header) new ResizeObserver(() => {
     const height = Math.ceil(header.getBoundingClientRect().height);
     document.documentElement.style.setProperty('--hdr-h', `${height}px`);
-    document.documentElement.style.scrollPaddingTop = `${height + 18}px`;
   }).observe(header);
 
   document.querySelectorAll('.v-mobile-cats').forEach(menu => {

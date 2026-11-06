@@ -153,10 +153,7 @@
 
 @layer base {
   html {
-    /* The header pins at the top, so an in-page jump has to stop short of it
-       or it lands behind the bar. The hero's own «مشاهده‌ی محصولات» link is
-       the one that would do it. */
-    scroll-padding-block-start: calc(var(--hdr-h) + var(--spacing-3));
+    /* The offset below the sticky header is a scroll-margin on the content, in storefront.css. */
     font-size: 16px;
     font-synthesis: none;      /* never let the browser fake a weight or slant */
     text-rendering: optimizeLegibility;
