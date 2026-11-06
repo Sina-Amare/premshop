@@ -27,9 +27,11 @@
   const update = () => {
     const eligible = orbital && desktop.matches;
     const moving = eligible && document.documentElement.dataset.motion === 'on';
-    const running = moving && visible && !hovered && !document.hidden && !scene.querySelector('.nebula__item:focus-visible, [data-orbit-controls] :focus-visible');
+    // A pointer or focus on a logo stops only the orbit; the scene behind it pauses only off screen.
+    const playing = moving && visible && !document.hidden;
+    const running = playing && !hovered && !scene.querySelector('.nebula__item:focus-visible, [data-orbit-controls] :focus-visible');
     scene.classList.toggle('is-animated', moving);
-    scene.classList.toggle('is-paused', !running);
+    scene.classList.toggle('is-paused', !playing);
     if (running && !frame) frame = requestAnimationFrame(tick);
     if (!running && frame) {cancelAnimationFrame(frame); frame = 0; last = 0;}
   };
