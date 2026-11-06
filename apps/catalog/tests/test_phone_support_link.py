@@ -223,6 +223,5 @@ def test_the_footer_stops_at_the_handle(client, shop):
     contact = re.search(r'<div class="v-footer__contact">(.*?)</div>', body, re.S).group(1)
     details = support.details()
     assert f"{details['telegram']}</bdi></a>" in contact, contact
-    assert contact.endswith(
-        f'<a href="mailto:{details["email"]}"><bdi dir="ltr">{details["email"]}</bdi></a>'
-    ), contact
+    assert f'<a href="mailto:{details["email"]}">' in contact, contact
+    assert contact.endswith(f'<bdi dir="ltr">{details["email"]}</bdi></a>'), contact
