@@ -119,6 +119,13 @@ def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
         frozen = item.evaluate("e=>e.style.transform")
         page.wait_for_timeout(350)
         assert item.evaluate("e=>e.style.transform") == frozen
+        # Only the orbit stops for the pointer; the scene behind it keeps moving.
+        animated, running = page.evaluate(
+            "(() => { const all = [...document.querySelectorAll('.v-service-effects *')]"
+            ".filter(e => getComputedStyle(e).animationName !== 'none');"
+            " return [all.length, all.every(e => getComputedStyle(e).animationPlayState === 'running')]; })()"
+        )
+        assert animated and running
         item.focus()
         page.mouse.move(0, 0)
         frozen = item.evaluate("e=>e.style.transform")
