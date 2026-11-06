@@ -69,8 +69,8 @@ class CheckoutForm(forms.Form):
                 self.fields[name] = forms.CharField(
                     label=line.plan.activation_input_label,
                     help_text=(
-                        f"بعد از ثبت سفارش، این {kind} قابل تغییر نیست و اشتراک روی همین {kind} "
-                        "فعال می‌شود. پیش از ثبت، درستی‌اش را دوباره بررسی کنید."
+                        f"امکان تغییر {kind} پس از ثبت سفارش وجود ندارد. "
+                        f"لطفاً پیش از ثبت نهایی از درستی {kind} وارد شده اطمینان حاصل کنید."
                     ),
                     max_length=254 if line.plan.input_type == "email" else 151,
                     widget=forms.TextInput(

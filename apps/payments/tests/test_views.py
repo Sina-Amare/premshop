@@ -194,7 +194,7 @@ def test_activation_input_warns_it_cannot_change_after_the_order(
     body = client.get(reverse("checkout")).content.decode()
     hint = f"id_customer_input_{plan.pk}_helptext"
     assert (
-        f'<p class="field__hint" id="{hint}">بعد از ثبت سفارش، این {word} قابل تغییر نیست' in body
+        f'<p class="field__hint" id="{hint}">امکان تغییر {word} پس از ثبت سفارش وجود ندارد' in body
     )
     assert f'aria-describedby="customer_input_{plan.pk}_product {hint}"' in body
 
