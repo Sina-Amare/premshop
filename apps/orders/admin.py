@@ -121,7 +121,7 @@ class OrderItemInline(TabularInline):
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
     change_form_template = "admin/orders/change_form.html"
-    change_list_template = "admin/orders/change_list.html"
+    change_list_template = "admin/orders/order/change_list.html"
     list_display = ("number", "customer", "amount", "queue_work", "placed")
     list_per_page = 25
     list_max_show_all = 0
