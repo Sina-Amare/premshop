@@ -37,7 +37,10 @@ erDiagram
   Order ||--o{ Payment : receives
   User |o--o{ Payment : records
   OrderItem ||--o{ OrderItemEvent : history
-  OrderItem ||--o{ CredentialAccessLog : "input reveals"
+  OrderItem ||--o{ CredentialAccessLog : reveals
+  OrderItem ||--o{ Delivery : "delivered as"
+  OrderItemEvent ||--o| Delivery : records
+  Delivery ||--|{ DeliveryField : lines
   DiscountCode |o--o{ Order : discounts
   DiscountCode }o--o{ Product : "scoped to"
   DiscountCode ||--o{ DiscountRedemption : "spent as"
@@ -73,7 +76,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `status` | `draft`, `active` or `unavailable` |
 | `short_description`, `usage_notes`, `refund_note`, `warranty` | Commitments the page prints from these fields only. `refund_note` is a per-product exception to the shop's refund rule |
 | `delivery_type`, `delivery_hours`, `delivery_note` | `delivery_hours` is between 1 and 48 |
-| `delivery_template` | A free-text note for the operator; nothing parses or sends it |
+| `delivery_template` | A free-text note for the operator, shown word for word beside the delivery form; nothing parses it or sends it to the customer |
 | `aliases` | Spellings customers type, such as «چت جیپت» for ChatGPT. Search input only, never rendered |
 | `search_text` | Derived on save from the name, short description, aliases and category name; trigram-indexed |
 | `brand_colour` | Optional `#rrggbb` for the card artwork |
@@ -153,8 +156,13 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `sla_paused_at` | When a running deadline was paused; null during the first wait and after resume. Requires a non-null deadline |
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
+| `delivered_at` | When the account details were first delivered; required while `DELIVERED` or `REPLACEMENT_REQUESTED` (`order_item_delivery_recorded`) |
+| `expires_at` | The subscription's last day, entered at delivery; null for a plan with no end |
+| `actual_cost` | What supplying the item really cost, entered at delivery and prefilled from `cost_snapshot`; never negative |
 
 **OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE.
+
+**Delivery** is one set of account details for an item, tied one to one to the history row that delivered it, with an optional encrypted note to the customer. **DeliveryField** is one line of a set: a title, an encrypted value and a position, unique within the set. A replacement adds a set and never edits an earlier one; the latest set is current. Only `orders.services.reveal_delivery` reads the values, after writing its access row ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
 **DiscountCode** is a code a customer types at checkout ([ADR-0020](decisions/0020-discount-codes.md)).
 
@@ -171,7 +179,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 **DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when the order is cancelled, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
 
-**CredentialAccessLog** is one row per staff reveal of an item's customer input: the item, the staff user, the address and the time, never the value. Rows are deleted after 365 days.
+**CredentialAccessLog** is one row per staff reveal of an item's customer input or delivered details: the item, the staff user, the address, the time and the `target` (`customer_input` or `delivery`), never the value. Rows from before delivery existed were labelled `customer_input`. Rows are deleted after 365 days.
 
 **UnpaidExpirySweep** is a single row: when the unpaid-order sweep last succeeded, how many orders it processed and the backlog it saw.
 
@@ -237,10 +245,10 @@ The catalogue's constraints carry a Persian message, shown in the panel under th
 
 | Relation | On delete | Why |
 |---|---|---|
-| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `DiscountRedemption` and `CredentialAccessLog`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
+| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
 | `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
 | `Product.category` | PROTECT | No orphan products |
-| `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
+| `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart`; `DeliveryField.delivery` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
 
 ## 5. Indexes
 
@@ -279,6 +287,5 @@ Each simplification and the condition that would reverse it are in [ADR-0014](de
 | Table | Purpose | Decisions |
 |---|---|---|
 | `payments.Refund` | One outgoing refund; no item becomes `REFUNDED` without an executed one | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0019](decisions/0019-payment-gateway.md) |
-| `orders.DeliveryField` | Delivered account details, encrypted per field, one generation per delivery | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md) |
 | `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
-| Delivery columns on `OrderItem` | The delivery deadline, the delivery time and the single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
+| The delivery link on `OrderItem` | The single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |

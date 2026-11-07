@@ -11,6 +11,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 - [Payment](#payment)
 - [Input requests and pauses](#input-requests-and-pauses)
 - [Operator queue](#operator-queue)
+- [Delivery](#delivery)
 - [History and notifications](#history-and-notifications)
 - [Tests](#tests)
 
@@ -28,7 +29,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | `PENDING_PAYMENT` | Placed and waiting for payment | Yes |
 | `QUEUED` | Paid and waiting for the operator | Yes, by manual confirmation |
 | `AWAITING_INPUT` | Required details are missing; the clock has not started, or a running deadline is paused | Yes |
-| `DELIVERED` | The account details have been delivered | No |
+| `DELIVERED` | The account details have been delivered | Yes, by the operator |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | No |
 | `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT` |
 | `REFUNDED` | Money returned. Final | No |
@@ -60,7 +61,7 @@ stateDiagram-v2
 | A2 | `PENDING_PAYMENT` → `QUEUED` | The operator confirms an exact matching payment | operator | Yes, manual only |
 | A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes; the operator's path is a service call, with no panel action yet |
 | A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | Yes; also part of Telegram payment handoff |
-| A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | No |
+| A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | Yes |
 | A6 | `QUEUED` → `CANCELLED` | An approved cancellation or a supply failure; a refund is recorded | operator | No |
 | A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | Yes; operator controls, owner-authorized services |
 | A8 | `AWAITING_INPUT` → `CANCELLED` | The operator cancels, or the input reminders run out at 21 days | operator, system | No |
@@ -164,7 +165,19 @@ The existing order list opens on queued work, with unpaid and waiting-for-detail
 
 Unpaid orders sort by payment expiry; queued orders sort by their earliest item deadline, overdue first; waiting orders sort by their oldest information request. A first wait shows the request time without a deadline. A paused item shows `due_at - sla_paused_at`, including time already overdue when paused. The displayed times are snapshots, with a check time and a refresh link on the list. Opening a page never writes a deadline.
 
-Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions. Secure delivery remains unbuilt.
+Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions, and links each queued item to its delivery page.
+
+## Delivery
+
+A queued item's row on the order page links to its delivery page; staff need change permission on both Order and OrderItem. The page has three columns: the customer (email, the logged input reveal and the request-input control), the payment (paid time, prices and, with `payments.view_payment`, the bank reference) and the supply (purchase cost, the plan's supplier link and the product's `delivery_template`, word for word).
+
+The operator writes up to six lines, each a title and a value, an optional note to the customer, the subscription's last day in the Persian calendar (prefilled from the plan's duration, empty for no end) and the actual cost (prefilled from the purchase cost). The preview shows the set exactly as it will be stored: the preview and the service read the form through the same `delivery_content`. Between preview and confirm the typed values travel only as hidden fields of the posted form, never in the session, a cache or a message.
+
+`deliver_item(*, order_id, item_id, actor, expected_event_id, lines, note, expires_at, actual_cost)` re-reads the active staff account and locks buyer, order and item. It refuses a stale page, an item that is not `QUEUED`, a paused clock, an empty or half-written line, a past end date and a cost that is not whole toman. Then, in one transaction, it moves the item to `DELIVERED` (A5), sets `delivered_at`, `expires_at` and `actual_cost`, and writes the history row, the `Delivery` and its encrypted lines. A second confirmation from another tab finds the newer history row and is refused.
+
+Only `reveal_delivery` decrypts a stored set. It requires view or change permission on both Order and OrderItem and, inside a durable transaction, commits a `CredentialAccessLog` row with target `delivery` before returning the latest set. No list, inline, history or other panel page loads a value. The delivery page and every reveal page bypass compression and caching (`Content-Encoding: identity`, no-store). The delivery page uses a same-origin referrer policy, because under `no-referrer` the browser sends `Origin: null` and the CSRF check refuses the post, and both of its posts hide their fields from error reports.
+
+The customer's masked view, the single-use delivery link and the delivery message are not built ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)), nor are replacements and paid cancellation. Real deliveries wait for the offline key escrow and a restore that decrypts ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
 ## Support ownership matching
 
@@ -207,3 +220,4 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Checkout, replays and inline sign-in | `apps/payments/tests/test_checkout.py`, `test_views.py`, `test_signin_ux.py` |
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |
+| Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
