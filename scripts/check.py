@@ -38,7 +38,7 @@ STEPS: list[tuple[str, list[str]]] = [
     ("mypy", [PY, "-m", "mypy", "apps", "config"]),
     ("css", [NPM, "run", "css"]),
     ("migrations", [PY, "manage.py", "makemigrations", "--check", "--dry-run"]),
-    ("pytest", [PY, "-m", "pytest", "-q"]),
+    ("pytest", [PY, "-m", "pytest", "-q", "-n", "auto"]),
     ("pip-audit", [PY, "-m", "pip_audit", "--skip-editable"]),
     ("bandit", [PY, "-m", "bandit", "-q", "-r", "apps", "config", "-x", "*/tests/*"]),
 ]

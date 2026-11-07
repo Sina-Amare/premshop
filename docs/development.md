@@ -93,13 +93,13 @@ To rotate it, move the current key into `FIELD_ENCRYPTION_KEY_FALLBACKS`, set th
 
 | Command | Does |
 |---|---|
-| `python scripts/check.py` | The whole gate as CI runs it, except the Docker image job (about 18 minutes) |
+| `python scripts/check.py` | The whole gate as CI runs it, except the Docker image job (about 7 minutes) |
 | `python scripts/check.py --no-audit` | The same without `pip-audit`, which needs the network |
 | `python scripts/check.py --docs` | For a change to Markdown and `docs/` only: the written-voice test. Anything else runs the whole gate |
-| `python -m pytest apps/catalog -q` | One app's tests |
-| `python -m pytest -k promo -q` | Tests matching a keyword |
-| `python -m pytest -m "not browser" -q` | Everything except the browser tests |
-| `REQUIRE_BROWSER=1 python -m pytest -q` | As CI: a browser test that cannot start Chromium fails instead of skipping |
+| `python -m pytest apps/catalog -q -n auto` | One app's tests, one worker per core ([Parallel runs](#tests)) |
+| `python -m pytest -k promo -q` | Tests matching a keyword; a handful runs faster without `-n` |
+| `python -m pytest -m "not browser" -q -n auto` | Everything except the browser tests |
+| `REQUIRE_BROWSER=1 python -m pytest -q -n auto` | As CI: a browser test that cannot start Chromium fails instead of skipping |
 | `python scripts/ci.py` | Waits for every CI run on `HEAD` and prints one line per run |
 | `python scripts/review_branch.py <branch>` | Lists what in a change needs a careful read |
 | `npm run css`, `npm run css:watch` | Build the stylesheet once, or on every change |
@@ -117,17 +117,19 @@ The gate is eight steps, defined in `.github/workflows/ci.yml` and mirrored by `
 3. `mypy apps config`
 4. `npm run css`
 5. `python manage.py makemigrations --check --dry-run`: a model change without its migration. A new app without a migrations package is caught by `apps/core/tests/test_migrations_present.py`.
-6. `pytest -q` with `REQUIRE_BROWSER=1`
+6. `pytest -q -n auto` with `REQUIRE_BROWSER=1`
 7. `pip-audit --skip-editable`
 8. `bandit -q -r apps config -x "*/tests/*"`. Bandit does not read ruff's `# noqa`: suppress a finding with `# nosec B###` and give the reason in an ordinary comment.
 
 CI also runs an `image` job, which builds the production image and checks it ([Production image](#production-image)). It needs Docker, so `check.py` skips it. `check.py` prints one line per step and the full output only of a step that fails; `--verbose` prints everything.
 
-Before pushing, run the fast check, `uv run ruff check . && uv run black --check . && uv run mypy apps config`, and the tests of the apps the change touches. CI is the verdict.
+A second workflow, `.github/workflows/codeql.yml`, runs CodeQL over the Python, the JavaScript and the workflow files on every pull request and on every push to `main`. It has no path filter, because it is a required check and one that never started would hold a pull request open. Branch protection requires two checks from it: the job, `Data-flow security analysis`, which passes whenever the scan completes, and GitHub's `CodeQL` result, which fails when the pull request adds a high or critical alert. Its findings are in the repository's Security tab; a false positive is dismissed there with its reason.
+
+Before pushing, run the fast check, `uv run ruff check . && uv run black --check . && uv run mypy apps config`, and the tests of the apps the change touches with `-n auto`. CI is the verdict.
 
 **Branches and reviews.**
 
-- `main` is the only long-lived branch. Every change reaches it through a pull request, and branch protection requires the lint, test, audit and image jobs to pass on a branch that is up to date with `main`.
+- `main` is the only long-lived branch. Every change reaches it through a pull request, and branch protection requires the lint, test, audit, image and CodeQL checks to pass on a branch that is up to date with `main`.
 - A migration, money or sign-in code, or work across several apps gets a second reader before it merges. `scripts/review_branch.py <branch>`, or `HEAD --base <commit>` for commits already on `main`, lists what needs a careful read: an applied migration edited, a migration that moves or removes data, tests removed or skipped or with changed assertions, a change to the gate, a raised query budget, a new dependency, money or sign-in code, and a production change (code and templates, not tests, migrations, translations or documents) over 600 lines in money, sign-in or credential code or 1,500 elsewhere, past which one review misses too much and two readers split it by area.
 - Commit messages say what changed and why.
 
@@ -153,6 +155,7 @@ The README lists every document. They follow four rules:
 - **Database.** Tests run on the PostgreSQL in `DATABASE_URL`, because row locks and constraints are part of what they test. `apps/conftest.py` gives every test an in-memory cache and a fast password hasher, so no test needs a running Redis or pays the real hasher's cost.
 - **Layout.** Tests live under `apps/` (`testpaths = ["apps"]`), including the settings tests in `apps/core/tests/`. Fixtures are plain pytest fixtures. `time-machine` moves the clock for expiry windows and deadlines.
 - **Browser tests** (marker `browser`) drive Chromium through Playwright against pytest-django's live server, sharing one `browser` fixture. They load the built `static/css/app.css`, so a stale build is what they test. Without Chromium they skip, unless `REQUIRE_BROWSER` is set, as it is in CI and in `check.py`.
+- **Parallel runs.** `-n auto` (pytest-xdist) starts one worker per core. pytest-django gives each worker its own test database (`test_premshop_gw0`, `_gw1`…) and its own live server on a free port, and each worker launches its own Chromium per module, so workers never share rows, ports or pages. What they can share is anything outside the process: a test writes to `tmp_path`, never to a fixed path, and never relies on another test having run first. A browser test waits for a state, not a duration: under load a fixed wait reads a smooth scroll or a transition mid-flight. CI runs the whole suite this way; a single test or a `-k` selection is quicker without `-n`, which spends a few seconds starting the workers.
 - **Accessibility.** `apps/core/tests/test_accessibility_browser.py` runs axe-core on the key pages at 390 and 1280 pixels wide: the storefront as a visitor, the account page signed in, and the panel's product list and form. Any serious or critical WCAG 2.2 A or AA violation fails. It also holds fields, code cells and the header search to 3:1 contrast, the search placeholder to 4.5:1, and every focus ring to 3:1. `apps/catalog/tests/test_admin_browser.py` scans the rest of the panel. The list of allowed exceptions is empty; an exception would name one rule, page and element with its reason.
 - **Query budgets.** Six queries on the home page, five on a category page and nine on a product page with related products. The legal-page links in the footer cost one query however many pages are published, tested separately so a query per link cannot hide inside a budget.
 - **Written voice.** `apps/core/tests/test_written_voice.py` scans every tracked text file for emoji, brochure adjectives, tutorial and essay openers, and attribution lines.

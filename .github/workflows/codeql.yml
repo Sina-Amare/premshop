@@ -1,0 +1,31 @@
+name: CodeQL
+
+on:
+  # No path filter: this is a required check, and one that never starts holds a
+  # docs-only pull request open forever.
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    # bandit matches risky lines; CodeQL follows a value from the request to where it is used.
+    name: Data-flow security analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          # actions: the workflow files themselves, where an untrusted event field can reach a shell.
+          languages: python, javascript-typescript, actions
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
