@@ -201,7 +201,7 @@ The identifier is encrypted at rest in a separate one-to-one record and excluded
 
 ## History and notifications
 
-`OrderItemEvent` is both the audit trail and the source of the customer's timeline: the order page shows statuses and times, and the panel adds who acted, never any secret value.
+`OrderItemEvent` is both the audit trail and the source of the customer's timeline: the order page and the tracking page show statuses and times, leaving out rows whose status did not change (a moved deadline, a retention deletion), and the panel shows every row and who acted, never any secret value.
 
 The purchase confirmation is found by polling committed orders, not by an event, under the key `purchase-confirmation:{order_pk}:email` (see [Email](architecture.md#email)). Paid transitions currently write audit history without sending messages. The remaining messages are designed as events emitted after a transition commits, each creating notification rows keyed `{occurrence}:{recipient}:{channel}` ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)):
 

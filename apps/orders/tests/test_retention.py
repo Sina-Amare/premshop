@@ -1,16 +1,18 @@
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
+import time_machine
 from django.db import connection
+from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.orders import models, services, tasks
+from apps.orders import models, selectors, services, tasks
 from apps.orders.clock import TEHRAN
 from apps.orders.tests.test_delivery import deliver, queued
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_replacement import claim, replace
+from apps.orders.tests.test_replacement import claim, delay, replace
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -169,6 +171,24 @@ def test_an_unpaid_or_queued_items_input_is_kept(buyer, plan, operator):
     assert services.delete_expired_details(today=timezone.localdate() + timedelta(days=400)) == 0
     for item in (order.items.get(), queued_item):
         assert raw(item)[2] != ""
+
+
+def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, operator):
+    start = timezone.now()
+    order, item = queued(buyer, plan, operator)
+    with time_machine.travel(start + timedelta(minutes=5), tick=False):
+        delay(item, operator)
+    with time_machine.travel(start + timedelta(minutes=10), tick=False):
+        deliver(item, operator)
+    models.OrderItem.objects.filter(pk=item.pk).update(delivered_at=start - timedelta(days=60))
+    with time_machine.travel(start + timedelta(minutes=15), tick=False):
+        assert services.delete_expired_details() == 1
+    assert item.events.filter(from_status=F("to_status")).count() == 2
+    timeline = [row["status"] for row in selectors.customer_timeline(order)]
+    tracked = selectors.order_for_tracking(order.tracking_token)
+    assert tracked is not None
+    for shown in (timeline, [row["status"] for row in tracked[0]["timeline"]]):
+        assert len(shown) == len(set(shown)) == 3
 
 
 def test_the_reveal_page_says_the_details_were_deleted(client, buyer, plan, operator):
