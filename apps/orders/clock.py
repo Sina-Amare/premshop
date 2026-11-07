@@ -29,12 +29,18 @@ def delivery_deadline(
     if requires_input and input_received_at is not None:
         start = max(start, input_received_at)
     start = start.astimezone(TEHRAN)
-    due = start + timedelta(hours=delivery_hours)
+    due = in_support_window(start + timedelta(hours=delivery_hours))
+    # The cap wins even when it falls outside the support window.
+    return min(due, start + timedelta(hours=48))
+
+
+def in_support_window(due: datetime) -> datetime:
+    """The same moment if support is open then, otherwise the next opening."""
+    due = due.astimezone(TEHRAN)
     if due.hour < support.OPENS:
         due = due.replace(hour=support.OPENS, minute=0, second=0, microsecond=0)
     elif due.hour >= support.CLOSES:  # 22:00 is outside [10:00, 22:00).
         due = (due + timedelta(days=1)).replace(
             hour=support.OPENS, minute=0, second=0, microsecond=0
         )
-    # The cap wins even when it falls outside the support window.
-    return min(due, start + timedelta(hours=48))
+    return due
