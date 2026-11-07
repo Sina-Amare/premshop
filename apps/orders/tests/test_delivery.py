@@ -428,6 +428,18 @@ def test_preview_carries_values_only_inside_the_form(client, buyer, plan, operat
     assert edit.headers["Content-Encoding"] == "identity"
 
 
+
+def test_preview_refuses_an_item_that_left_the_queue(client, buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    client.force_login(operator)
+    data = form_data(item, "preview")
+    act(services.request_input, item, operator)
+    response = client.post(delivery_url(item), data)
+    body = response.content.decode()
+    assert response.status_code == 400 and 'role="alert"' in body
+    assert "data-delivery-card" not in body and VALUE not in body
+    assert response.headers["Content-Encoding"] == "identity"
+
 def test_preview_equals_the_delivered_content(client, buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
     client.force_login(operator)
