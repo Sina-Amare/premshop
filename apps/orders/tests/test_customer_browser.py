@@ -4,6 +4,7 @@ import pytest
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 from PIL import Image
 from playwright.sync_api import expect
 
@@ -146,7 +147,9 @@ def test_export_draws_each_mixed_order_line_status(browser, live_server, buyer, 
 
     order = place_order(user=buyer, lines=[OrderLine(plan, 2)])
     first, second = order.items.order_by("pk")
-    OrderItem.objects.filter(pk=first.pk).update(status=OrderItem.Status.DELIVERED)
+    OrderItem.objects.filter(pk=first.pk).update(
+        status=OrderItem.Status.DELIVERED, delivered_at=timezone.now()
+    )
     OrderItem.objects.filter(pk=second.pk).update(
         status=OrderItem.Status.CANCELLED,
         cancel_reason=OrderItem.CancelReason.CUSTOMER_BEFORE_PAYMENT,

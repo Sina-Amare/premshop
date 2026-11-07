@@ -58,7 +58,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | `catalog` | Categories, products, plans, page sections and questions; the price function, search, the publishing rule, the storefront pages, SEO and the catalogue editor in the panel. |
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
-| `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, and the staff reveal of customer input. |
+| `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, the staff reveal of customer input, and the operator's delivery of account details. |
 | `payments` | Checkout, Payment records and operator-only manual confirmation through the order editor. The gateway is not built yet. |
 | `notifications` | Purchase confirmation emails through a durable outbox. |
 
@@ -249,10 +249,10 @@ The following are designed and bound by decisions, but not implemented:
 | Capability | Decisions |
 |---|---|
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
-| Paid fulfilment beyond `QUEUED`, delivery of account details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
-| Delivery deadlines and the reminders for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
+| Replacements, paid cancellation and refunds after payment, the customer's view of delivered details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
+| The reminders and timeout for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
 | The Telegram bot, operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
-| The operator's order queue, delivery page and order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
+| The order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
 | An HTTP API | [ADR-0004](decisions/0004-no-drf-in-phase-1.md) |
 
 What is deliberately never built, each with the condition that would change that, is [ADR-0014](decisions/0014-deliberate-simplifications.md).

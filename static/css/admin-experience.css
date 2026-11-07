@@ -101,6 +101,22 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-payment-form input:not([type=hidden]){inline-size:100%;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);padding:8px 12px;line-height:1.8}
 .order-payment-form .errorlist{color:var(--panel-danger);margin-block:8px;line-height:1.9}
 .order-bank-reference{overflow-wrap:anywhere}
+.delivery-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-block:20px;line-height:1.9}
+.delivery-columns h3,.delivery-card h3{font-weight:600;color:var(--panel-ink);margin:0 0 8px}
+.delivery-columns p{margin-block:6px;overflow-wrap:anywhere}.delivery-columns form{margin-block:8px}.delivery-columns a{text-decoration:underline}
+.delivery-note :is(ul,ol){padding-inline-start:1.4em}.delivery-note ul{list-style-type:disc}.delivery-note ol{list-style-type:persian}
+.delivery-template{white-space:pre-wrap;color:var(--panel-ink)}
+.delivery-form{max-inline-size:48rem}
+.delivery-lines{display:grid;gap:12px;border:0;margin:0;padding:0;min-inline-size:0}
+.delivery-lines legend{font-weight:600;color:var(--panel-ink);margin-block-end:8px}
+.delivery-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px}
+.delivery-help{font-size:12px;color:var(--panel-text);margin-block:6px 0}
+.order-payment-form textarea{inline-size:100%;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);padding:8px 12px;line-height:1.8}
+.delivery-card{border:1px solid var(--panel-line);border-radius:6px;padding:16px;margin-block:20px;line-height:1.9;overflow-wrap:anywhere}
+.delivery-card dl{display:grid;gap:8px;margin:0}.delivery-card dt{color:var(--panel-text);font-size:12px}.delivery-card dd{margin:0;color:var(--panel-ink)}
+.delivery-actions{display:flex;flex-wrap:wrap;gap:12px;margin-block:16px}
+.delivery-error{color:var(--panel-danger);margin-block:16px;line-height:1.9}
+@media(max-width:1023px){.delivery-columns,.delivery-line{grid-template-columns:minmax(0,1fr)}}
 .order-history h2{font:600 15px/1.8 Estedad,Vazirmatn,sans-serif;color:var(--panel-ink);margin:0}
 .saved-conditions{min-inline-size:0;overflow-wrap:anywhere;line-height:1.9}
 .saved-conditions details{margin-block:12px;min-inline-size:0}

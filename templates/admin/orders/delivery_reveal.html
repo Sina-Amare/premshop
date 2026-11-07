@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% load i18n fa %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<section class="order-history" aria-labelledby="delivery-reveal-title">
+  <header><h2 id="delivery-reveal-title">{% translate "اطلاعات تحویل" %} · {% translate "سفارش" %} {{ order.order_number|fa_digits }} · {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
+  <div class="order-purchase"><bdi>{{ item.product_snapshot.name }}</bdi><bdi>{{ item.product_snapshot.plan_title }}</bdi></div>
+  {% if content %}
+    {% include "admin/orders/_delivery_card.html" with content=content only %}
+  {% else %}
+    <p>{% translate "اطلاعاتی برای نمایش وجود ندارد." %}</p>
+  {% endif %}
+  <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
+</section>
+{% endblock %}

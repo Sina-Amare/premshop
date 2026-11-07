@@ -524,7 +524,7 @@ class Product(ChecksNameTheirField, models.Model):
         _("قالب تحویل"),
         blank=True,
         default="",
-        help_text=_("یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."),
+        help_text=_("کنار فرم تحویل به شما نشان داده می‌شود و برای مشتری فرستاده نمی‌شود."),
     )
     # Restricted Markdown with no heading level free: it is printed inside
     # «پیش از خرید», under that section's own h2. Required to publish, so no

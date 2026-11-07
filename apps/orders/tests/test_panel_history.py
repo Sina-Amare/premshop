@@ -120,7 +120,7 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     order = place_order(user=buyer, lines=[OrderLine(plan, 1, target)])
     item = order.items.get()
     operator = User.objects.create_superuser("operator@example.test")
-    CredentialAccessLog.objects.create(order_item=item, user=operator)
+    CredentialAccessLog.objects.create(order_item=item, user=operator, target="customer_input")
     client.force_login(operator)
 
     body = panel_page(client, order, "fa")
@@ -167,7 +167,9 @@ def test_the_order_page_query_count_is_the_same_for_two_items_and_six(
             )
         order = place_order(user=customer, lines=[OrderLine(p, 1) for p in plans])
         for item in order.items.all():
-            CredentialAccessLog.objects.create(order_item=item, user=operator)
+            CredentialAccessLog.objects.create(
+                order_item=item, user=operator, target="customer_input"
+            )
             OrderItemEvent.objects.create(
                 order_item=item,
                 from_status=item.status,
