@@ -291,6 +291,18 @@ def test_another_operators_late_confirmation_is_still_refused(buyer, plan, opera
     assert models.Delivery.objects.count() == 1
 
 
+def test_a_page_from_before_an_input_round_trip_gets_the_stale_refusal(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    old_page = event_id(item)
+    act(services.request_input, item, operator)
+    act(services.resume_input, item, operator)
+    deliver(item, operator)
+    with pytest.raises(ValidationError) as refused:
+        deliver(item, operator, expected_event_id=old_page)
+    assert "صفحه را دوباره باز کنید" in " ".join(refused.value.messages)
+    assert models.Delivery.objects.count() == 1
+
+
 def test_reveal_commits_its_log_row_before_returning(buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
     expires = timezone.localdate() + timedelta(days=30)
