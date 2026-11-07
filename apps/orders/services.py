@@ -202,15 +202,21 @@ def reveal_delivery(
     with transaction.atomic(durable=True):
         _may_reveal(actor)
         item = OrderItem.objects.only("pk", "expires_at").get(pk=item_id, order_id=order_id)
-        delivery = Delivery.objects.filter(order_item_id=item.pk).order_by("-pk").first()
-        if delivery is None:
+        current = (
+            Delivery.objects.filter(order_item_id=item.pk)
+            .order_by("-pk")
+            .values_list("pk", flat=True)
+            .first()
+        )
+        if current is None:
             return None
+        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
+        delivery = Delivery.objects.get(pk=current)
         content = DeliveryContent(
             tuple(DeliveryLine(row.title, row.value) for row in delivery.fields.all()),
             delivery.note,
             item.expires_at,
         )
-        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
     return content
 
 

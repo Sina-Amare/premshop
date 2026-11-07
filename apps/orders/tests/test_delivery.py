@@ -7,10 +7,11 @@ from threading import Event
 from unittest.mock import patch
 
 import pytest
+from cryptography.fernet import Fernet
 from django.contrib.auth.models import Permission
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.signals import got_request_exception
 from django.db import DatabaseError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
@@ -271,6 +272,34 @@ def test_reveal_commits_its_log_row_before_returning(buyer, plan, operator):
     with transaction.atomic(), pytest.raises(RuntimeError, match="durable"):
         services.reveal_delivery(order_id=item.order_id, item_id=item.pk, actor=operator, ip=None)
     assert models.CredentialAccessLog.objects.count() == 1
+
+
+def test_reveal_writes_its_access_row_before_any_value_is_decrypted(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    original, logged_first = EncryptedTextField.from_db_value, []
+
+    def watched(self, value, expression, connection):
+        if value:
+            logged_first.append(
+                models.CredentialAccessLog.objects.filter(target="delivery").exists()
+            )
+        return original(self, value, expression, connection)
+
+    with patch.object(EncryptedTextField, "from_db_value", watched):
+        content = services.reveal_delivery(
+            order_id=item.order_id, item_id=item.pk, actor=operator, ip=None
+        )
+    assert content.lines == (LINE,) and logged_first == [True, True]
+
+
+def test_a_reveal_that_cannot_decrypt_leaves_no_access_row(buyer, plan, operator, settings):
+    _, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    with pytest.raises(ImproperlyConfigured):
+        services.reveal_delivery(order_id=item.order_id, item_id=item.pk, actor=operator, ip=None)
+    assert not models.CredentialAccessLog.objects.exists()
 
 
 @pytest.mark.parametrize("kind", ["customer", "unpermitted_staff", "other_order", "undelivered"])
