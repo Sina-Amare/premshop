@@ -28,4 +28,8 @@ jobs:
         with:
           # actions: the workflow files themselves, where an untrusted event field can reach a shell.
           languages: python, javascript-typescript, actions
+          # The code bandit scans: a test's regex or fixture secret protects nothing.
+          config: |
+            paths-ignore:
+              - "**/tests/**"
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
