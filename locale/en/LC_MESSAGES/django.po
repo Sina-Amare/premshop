@@ -1700,3 +1700,6 @@ msgstr "Subscription ends"
 
 msgid "یادداشت برای مشتری"
 msgstr "Note for the customer"
+
+msgid "این محصول قبلاً تحویل شده و این ارسال ذخیره نشد. اطلاعات ثبت‌شده را با دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+msgstr "This item was already delivered, and this submission was not saved. See the stored details with the 'Reveal delivery' button on the order page."

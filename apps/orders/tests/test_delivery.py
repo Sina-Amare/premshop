@@ -36,6 +36,10 @@ VALUE = "delivered-secret-7Q2W"
 NOTE = "note-secret-K9 پیش از ورود رمز را عوض نکنید."
 BANK_REF = "BANKREF-4471"
 LINE = services.DeliveryLine("رمز عبور", VALUE)
+ALREADY_DELIVERED = (
+    "این محصول قبلاً تحویل شده و این ارسال ذخیره نشد. اطلاعات ثبت‌شده را با دکمه‌ی"
+    " «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+)
 
 
 def queued(buyer, plan, operator, *, telegram=False):
@@ -245,20 +249,18 @@ def test_two_confirmations_at_once_make_one_delivery(buyer, plan, operator, monk
             wait_for_lock(waiter, holder)
         finally:
             release.set()
-        first = leader.result(timeout=10)
-        # The same operator's second confirmation gets the first delivery back.
-        assert contender.result(timeout=10).pk == first.pk
+        assert leader.result(timeout=10).order_item_id == item.pk
+        assert contender.result(timeout=10) is None  # in_connection returns None on refusal
     assert models.Delivery.objects.count() == 1 and models.DeliveryField.objects.count() == 1
     assert item.events.count() == before + 1
 
 
-def test_a_double_click_by_the_same_operator_is_one_successful_delivery(
-    client, buyer, plan, operator
-):
+def test_a_corrected_set_from_a_second_tab_is_refused_and_not_stored(client, buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
     client.force_login(operator)
-    data = form_data(item, "confirm")
-    first = client.post(delivery_url(item), data)
+    first_tab = form_data(item, "confirm")
+    second_tab = form_data(item, "confirm", value_1="corrected-secret-B8")
+    assert client.post(delivery_url(item), first_tab).status_code == 302
     original = EncryptedTextField.from_db_value
 
     def guarded(self, value, expression, connection):
@@ -266,12 +268,17 @@ def test_a_double_click_by_the_same_operator_is_one_successful_delivery(
         return original(self, value, expression, connection)
 
     with patch.object(EncryptedTextField, "from_db_value", guarded):
-        second = client.post(delivery_url(item), data)
-    change = reverse("admin:orders_order_change", args=[item.order_id])
-    assert (first.status_code, second.status_code) == (302, 302)
-    assert first.url == second.url == change
+        response = client.post(delivery_url(item), second_tab)
+    body = response.content.decode()
+    assert response.status_code == 400 and 'role="alert"' in body
+    assert ALREADY_DELIVERED in body
+    assert "corrected-secret-B8" not in body and VALUE not in body
     assert models.Delivery.objects.count() == 1
     assert item.events.filter(to_status="DELIVERED").count() == 1
+    content = services.reveal_delivery(
+        order_id=item.order_id, item_id=item.pk, actor=operator, ip=None
+    )
+    assert [line.value for line in content.lines] == ["account@example.test", VALUE]
 
 
 def test_another_operators_late_confirmation_is_still_refused(buyer, plan, operator):

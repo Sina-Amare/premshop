@@ -177,8 +177,8 @@ def deliver_item(
     latest = item.events.order_by("-pk").first()
     if latest is None or latest.pk != expected_event_id:
         previous = item.events.filter(pk__lt=latest.pk if latest else 0).order_by("-pk").first()
-        # This operator's own confirmation repeated, as by a double click: report the
-        # delivery it made. Another operator's late confirmation stays refused.
+        # This operator confirmed from the same page twice (a double click or a second
+        # tab): the first set stands, and this one is not stored, so it is never success.
         if (
             latest is not None
             and previous is not None
@@ -186,7 +186,12 @@ def deliver_item(
             and (latest.from_status, latest.to_status, latest.actor_user_id)
             == (OrderItem.Status.QUEUED, OrderItem.Status.DELIVERED, account.pk)
         ):
-            return Delivery.objects.defer("note").get(event=latest)
+            raise ValidationError(
+                gettext_lazy(
+                    "این محصول قبلاً تحویل شده و این ارسال ذخیره نشد. اطلاعات ثبت‌شده را با"
+                    " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+                )
+            )
         raise ValidationError(
             gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
         )
