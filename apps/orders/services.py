@@ -398,7 +398,7 @@ def _details_due(item: OrderItem, today: date) -> bool:
 def delete_expired_details(today: date | None = None) -> int:
     """Deletes every delivered set and customer input past its ADR-0007 deadline.
 
-    Only what still holds details is selected, so a rerun, or a night caught up late,
+    Only what still holds details is selected, so a rerun, or a day caught up late,
     deletes nothing twice.
     """
     today = today or timezone.localdate()
