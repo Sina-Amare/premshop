@@ -191,6 +191,20 @@ def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, ope
         assert len(shown) == len(set(shown)) == 3
 
 
+@pytest.mark.parametrize("change", ["claim", "later_expiry"])
+def test_an_operator_change_after_selection_stops_the_deletion(buyer, plan, operator, change):
+    # The job chose this item while it was due; the operator acted before the job locked it.
+    item = delivered_item(buyer, plan, operator, days_ago=40)
+    claim(item, operator)
+    if change == "later_expiry":
+        replace(item, operator, expires_at=timezone.localdate() + timedelta(days=60))
+    item.refresh_from_db()
+    before = item.events.count()
+    assert services._forget(item.pk, timezone.localdate()) == 0
+    sets, _, customer_input = raw(item)
+    assert sets >= 1 and customer_input != "" and item.events.count() == before
+
+
 def test_deletion_never_decrypts_so_an_unreadable_set_is_still_deleted(buyer, plan, operator):
     unreadable = delivered_item(buyer, plan, operator, days_ago=40)
     second = delivered_item(buyer, plan, operator, days_ago=40)
