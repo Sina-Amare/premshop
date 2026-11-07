@@ -188,6 +188,12 @@ CASES = {
         "credits someone else",
         message="views\n\nCo-authored-by: Helper <helper@example.com>\n",
     ),
+    # Size counts what a reviewer must read: production code, never tests or migrations.
+    "big-ordinary": Case(add("apps/shop/big.py", "X = 1\n" * 1501), 1, "split the review"),
+    "big-tests-only": Case(add("apps/shop/tests/test_big.py", "X = 1\n" * 2000), 0),
+    "big-high-stakes": Case(
+        add("apps/accounts/big.py", "X = 1\n" * 601), 2, "for money, sign-in or credentials"
+    ),
     "generated-by-any-tool": Case(
         edit("apps/shop/views.py", "1", "5"),
         2,

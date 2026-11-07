@@ -128,7 +128,7 @@ Before pushing, run the fast check, `uv run ruff check . && uv run black --check
 **Branches and reviews.**
 
 - `main` is the only long-lived branch. Every change reaches it through a pull request, and branch protection requires the lint, test, audit and image jobs to pass on a branch that is up to date with `main`.
-- A migration, money or sign-in code, or work across several apps gets a second reader before it merges. `scripts/review_branch.py <branch>`, or `HEAD --base <commit>` for commits already on `main`, lists what needs a careful read: an applied migration edited, a migration that moves or removes data, tests removed or skipped or with changed assertions, a change to the gate, a raised query budget, a new dependency, and money or sign-in code.
+- A migration, money or sign-in code, or work across several apps gets a second reader before it merges. `scripts/review_branch.py <branch>`, or `HEAD --base <commit>` for commits already on `main`, lists what needs a careful read: an applied migration edited, a migration that moves or removes data, tests removed or skipped or with changed assertions, a change to the gate, a raised query budget, a new dependency, money or sign-in code, and a production change (code and templates, not tests, migrations, translations or documents) over 600 lines in money, sign-in or credential code or 1,500 elsewhere, past which one review misses too much and two readers split it by area.
 - Commit messages say what changed and why.
 
 **Reading CI.** The verdict is the run for the pushed commit, not the newest run. `python scripts/ci.py` waits for every run on `HEAD` and exits non-zero unless all succeeded. By hand:
