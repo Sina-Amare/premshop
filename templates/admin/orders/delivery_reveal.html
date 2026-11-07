@@ -8,7 +8,8 @@
   {% if content %}
     {% include "admin/orders/_delivery_card.html" with content=content only %}
   {% else %}
-    <p>{% translate "اطلاعاتی برای نمایش وجود ندارد." %}</p>
+    {# A delivered item holds no set only after the retention job deleted it. #}
+    <p>{% if item.delivered_at %}{% translate "اطلاعات تحویل این محصول طبق مهلت نگهداری حذف شده است؛ زمان حذف در سابقه‌ی سفارش آمده است." %}{% else %}{% translate "اطلاعاتی برای نمایش وجود ندارد." %}{% endif %}</p>
   {% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>

@@ -45,14 +45,19 @@ def test_tabs_counts_urgency_search_and_mixed_orders(client, operator, buyer, pl
     unpaid = make_order(buyer, plan, "PENDING_PAYMENT")
     response = client.get(listing())
     assert list(response.context["cl"].result_list) == [overdue, waiting, later]
-    assert response.context["queue_counts"] == {"unpaid": 1, "queued": 3, "waiting": 1}
+    assert response.context["queue_counts"] == {"unpaid": 1, "queued": 3, "waiting": 1, "claims": 0}
     for tab, expected in [("unpaid", [unpaid]), ("waiting", [waiting])]:
         response = client.get(listing(), {"tab": tab})
         assert list(response.context["cl"].result_list) == expected
     for term in [str(overdue.order_number), to_persian_digits(overdue.order_number)]:
         response = client.get(listing(), {"q": term})
         assert list(response.context["cl"].result_list) == [overdue]
-        assert response.context["queue_counts"] == {"unpaid": 0, "queued": 1, "waiting": 0}
+        assert response.context["queue_counts"] == {
+            "unpaid": 0,
+            "queued": 1,
+            "waiting": 0,
+            "claims": 0,
+        }
     response = client.get(listing(), {"q": buyer.email.upper()})
     assert len(response.context["cl"].result_list) == 3
     assert client.get(listing(), {"q": "missing@example.test"}).context["cl"].result_count == 0
@@ -83,7 +88,7 @@ def test_waits_freeze_the_clock_without_inventing_a_deadline(client, operator, b
     assert paused.items.get().due_at == now - timedelta(days=1) + timedelta(hours=2)
 
 
-@pytest.mark.parametrize("tab", ["unpaid", "queued", "waiting", "all"])
+@pytest.mark.parametrize("tab", ["unpaid", "queued", "waiting", "claims", "all"])
 def test_queue_is_private_and_refuses_before_order_queries(client, buyer, plan, tab):
     order = make_order(buyer, plan)
     # Short order numbers can also occur inside SVG path coordinates.

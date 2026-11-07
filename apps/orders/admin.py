@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any, cast
 
@@ -48,10 +49,14 @@ from apps.orders.selectors import grouped_items
 from apps.orders.services import (
     DELIVERY_LINES,
     DeliveryLine,
+    delay_supply,
     deliver_item,
     delivery_content,
     match_support_token,
+    open_claim,
     receive_input,
+    reject_claim,
+    replace_delivery,
     request_input,
     resume_input,
     reveal_customer_input,
@@ -68,7 +73,10 @@ _QUEUE_STATES = {
     "unpaid": OrderItem.Status.PENDING_PAYMENT,
     "queued": OrderItem.Status.QUEUED,
     "waiting": OrderItem.Status.AWAITING_INPUT,
+    "claims": OrderItem.Status.REPLACEMENT_REQUESTED,
 }
+# What each tab's oldest work is measured by.
+_QUEUE_ORDER = {"queued": "due_at", "waiting": "input_requested_at", "claims": "delivered_at"}
 
 
 def queue_tab(request: HttpRequest) -> str:
@@ -151,11 +159,23 @@ class OrderItemInline(TabularInline):
             )
         if obj.delivered_at is None:
             return "—"
-        return format_html(
+        reveal = format_html(
             '<button type="submit" formmethod="post" formaction="{}" '
             'class="order-input-action" data-delivery-reveal>{}</button>',
             reverse("admin:orders_order_reveal_delivery", args=[obj.order_id, obj.pk]),
             _("نمایش اطلاعات تحویل"),
+        )
+        if obj.status == OrderItem.Status.DELIVERED:
+            claim = _("درخواست تعویض")
+        elif obj.status == OrderItem.Status.REPLACEMENT_REQUESTED:
+            claim = _("تعویض یا رد درخواست")
+        else:
+            return reveal
+        return format_html(
+            '{} <a class="order-input-action" href="{}">{}</a>',
+            reveal,
+            reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
+            claim,
         )
 
 
@@ -182,8 +202,14 @@ class DeliveryForm(forms.Form):
         widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric"}),
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, warranty: str | None = None, replacement: bool = False, **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
+        self.warranty = warranty
+        if replacement:
+            # A replacement adds to what supply already cost; the service sums them.
+            self.fields["actual_cost"].label = _("هزینه‌ی تأمین اضافه (تومان)")
         for n in range(DELIVERY_LINES):
             number = to_persian_digits(n + 1)
             self.fields[f"title_{n}"] = forms.CharField(
@@ -229,6 +255,7 @@ class DeliveryForm(forms.Form):
                     ],
                     data["note"],
                     data["expires_on"],
+                    self.warranty,
                 )
             except ValidationError as error:
                 self.add_error(None, error)
@@ -302,6 +329,11 @@ class OrderAdmin(ModelAdmin):
                 "<int:order_id>/items/<int:item_id>/deliver/",
                 self.admin_site.admin_view(self.deliver_view),
                 name="orders_order_deliver",
+            ),
+            path(
+                "<int:order_id>/items/<int:item_id>/action/<str:action>/",
+                self.admin_site.admin_view(self.item_action_view),
+                name="orders_order_item_action",
             ),
         ] + super().get_urls()
 
@@ -383,6 +415,67 @@ class OrderAdmin(ModelAdmin):
             )
         return redirect("admin:orders_order_change", order_id)
 
+    # A claim note may quote an account detail; keep it out of error reports.
+    @method_decorator(sensitive_post_parameters("note"))
+    def item_action_view(
+        self, request: HttpRequest, order_id: int, item_id: int, action: str
+    ) -> HttpResponse:
+        """Opens or rejects a warranty claim, or records a supply delay, each with a note."""
+        if not (
+            self.has_view_permission(request)
+            and request.user.has_perms(["orders.change_order", "orders.change_orderitem"])
+        ):
+            raise PermissionDenied
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        actions: dict[str, tuple[Callable[..., OrderItem], Any]] = {
+            "claim": (open_claim, _("درخواست تعویض")),
+            "reject": (reject_claim, _("رد درخواست تعویض")),
+            "delay": (delay_supply, _("تأخیر تأمین")),
+        }
+        if action not in actions:
+            raise Http404
+        service, title = actions[action]
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        get_object_or_404(OrderItem.objects.only("pk"), pk=item_id, order_id=order_id)
+        changes: dict[str, Any] = {}
+        try:
+            try:
+                expected = int(request.POST.get("expected_event_id", ""))
+            except ValueError:
+                raise ValidationError(
+                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                ) from None
+            if action == "delay":
+                try:
+                    changes["hours"] = int(to_latin_digits(request.POST.get("hours", "")).strip())
+                except ValueError:
+                    raise ValidationError(_("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید.")) from None
+            service(
+                order_id=order_id,
+                item_id=item_id,
+                actor=cast(User, request.user),
+                expected_event_id=expected,
+                note=request.POST.get("note", ""),
+                **changes,
+            )
+        except ValidationError as error:
+            return render(
+                request,
+                "admin/orders/input_action_error.html",
+                {
+                    **self.admin_site.each_context(request),
+                    "opts": self.opts,
+                    "order": order,
+                    "title": title,
+                    "error": " ".join(error.messages),
+                },
+                status=400,
+            )
+        if action == "reject":
+            return redirect("admin:orders_order_change", order_id)
+        return redirect("admin:orders_order_deliver", order_id, item_id)
+
     def reveal_view(
         self, request: HttpRequest, order_id: int, item_id: int, target: str
     ) -> HttpResponse:
@@ -443,18 +536,31 @@ class OrderAdmin(ModelAdmin):
             order_id=order_id,
         )
         event_id = item.events.order_by("-pk").values_list("pk", flat=True).first()
-        days = item.product_snapshot.get("duration_days")
-        expires = timezone.localdate() + timedelta(days=days) if days else None
+        # deliver (A5), claim (A9) and replace (A10a) are separate services; the page
+        # only chooses which one this item's status allows.
+        mode = {
+            OrderItem.Status.QUEUED: None if item.sla_paused_at else "deliver",
+            OrderItem.Status.DELIVERED: "claim",
+            OrderItem.Status.REPLACEMENT_REQUESTED: "replace",
+        }.get(cast(OrderItem.Status, item.status))
+        if mode == "replace":
+            expires, cost = item.expires_at, 0
+        else:
+            days = item.product_snapshot.get("duration_days")
+            expires = timezone.localdate() + timedelta(days=days) if days else None
+            cost = int(item.cost_snapshot)
         form = DeliveryForm(
             request.POST if request.method == "POST" else None,
             initial={
                 "expected_event_id": event_id,
                 "expires_on": format_jalali(expires, with_month_name=False),
-                "actual_cost": to_persian_digits(int(item.cost_snapshot)),
+                "actual_cost": to_persian_digits(cost),
             },
+            warranty=item.product_snapshot.get("warranty"),
+            replacement=mode == "replace",
         )
         step, preview, error = request.POST.get("step", ""), None, ""
-        can_deliver = item.status == OrderItem.Status.QUEUED and not item.sla_paused_at
+        can_deliver = mode in ("deliver", "replace")
         if request.method == "POST" and form.is_valid():
             content = form.cleaned_data["content"]
             if step == "preview" and not can_deliver:
@@ -462,21 +568,32 @@ class OrderAdmin(ModelAdmin):
             elif step == "preview":
                 preview = content
             elif step == "confirm":
+                shared = {
+                    "order_id": order_id,
+                    "item_id": item_id,
+                    "actor": cast(User, request.user),
+                    "expected_event_id": form.cleaned_data["expected_event_id"],
+                    "lines": content.lines,
+                    "note": content.note,
+                    "expires_at": content.expires_at,
+                }
                 try:
-                    deliver_item(
-                        order_id=order_id,
-                        item_id=item_id,
-                        actor=cast(User, request.user),
-                        expected_event_id=form.cleaned_data["expected_event_id"],
-                        lines=content.lines,
-                        note=content.note,
-                        expires_at=content.expires_at,
-                        actual_cost=form.cleaned_data["actual_cost"],
-                    )
+                    if mode == "replace":
+                        replace_delivery(**shared, extra_cost=form.cleaned_data["actual_cost"])
+                    else:
+                        deliver_item(**shared, actual_cost=form.cleaned_data["actual_cost"])
                 except ValidationError as failure:
                     error = " ".join(failure.messages)
                 else:
                     return redirect("admin:orders_order_change", order_id)
+        claim_note = (
+            item.events.filter(to_status=OrderItem.Status.REPLACEMENT_REQUESTED)
+            .order_by("-pk")
+            .values_list("note", flat=True)
+            .first()
+            if mode == "replace"
+            else None
+        )
         bank_ref = None
         if request.user.has_perm("payments.view_payment"):
             bank_ref = (
@@ -488,7 +605,10 @@ class OrderAdmin(ModelAdmin):
             {
                 **self.admin_site.each_context(request),
                 "opts": self.opts,
-                "title": _("تحویل محصول"),
+                "title": {
+                    "claim": _("درخواست تعویض"),
+                    "replace": _("تعویض محصول"),
+                }.get(mode or "", _("تحویل محصول")),
                 "order": order,
                 "item": item,
                 "form": form,
@@ -497,6 +617,8 @@ class OrderAdmin(ModelAdmin):
                 "event_id": event_id,
                 "bank_ref": bank_ref,
                 "can_deliver": can_deliver,
+                "mode": mode,
+                "claim_note": claim_note,
             },
             status=400 if error or form.errors else 200,
         )
@@ -520,6 +642,7 @@ class OrderAdmin(ModelAdmin):
             ("unpaid", _("منتظر پرداخت")),
             ("queued", _("در صف انجام")),
             ("waiting", _("منتظر اطلاعات مشتری")),
+            ("claims", _("درخواست تعویض")),
             ("all", _("همه‌ی سفارش‌ها")),
         ):
             params = request.GET.copy()
@@ -622,7 +745,7 @@ class OrderAdmin(ModelAdmin):
                 if tab == "unpaid":
                     queryset = queryset.order_by("unpaid_expires_at", "pk")
                 else:
-                    field = "due_at" if tab == "queued" else "input_requested_at"
+                    field = _QUEUE_ORDER[tab]
                     items = items.order_by(F(field).asc(nulls_last=True), "pk")
                     queryset = queryset.annotate(
                         queue_first=Min(f"items__{field}", filter=Q(items__status=state))

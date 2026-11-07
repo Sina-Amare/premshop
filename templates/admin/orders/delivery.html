@@ -3,14 +3,14 @@
 {% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
 {% block content %}
 <section class="order-history" aria-labelledby="delivery-title">
-  <header><h2 id="delivery-title">{% translate "تحویل محصول" %} · {% translate "سفارش" %} {{ order.order_number|fa_digits }} · {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
+  <header><h2 id="delivery-title">{{ title }} · {% translate "سفارش" %} {{ order.order_number|fa_digits }} · {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
   <div class="order-purchase"><bdi>{{ item.product_snapshot.name }}</bdi><span><bdi>{{ item.product_snapshot.plan_title }}</bdi></span></div>
   <div class="delivery-columns">
     <section aria-labelledby="delivery-customer-title">
       <h3 id="delivery-customer-title">{% translate "مشتری" %}</h3>
       <p><bdi dir="ltr" class="order-customer">{{ order.user.email }}</bdi></p>
       {% if item.product_snapshot.requires_customer_input %}<form method="post" action="{% url 'admin:orders_order_reveal_customer_input' order.pk item.pk %}">{% csrf_token %}<button type="submit" class="order-input-action" data-customer-input-reveal>{% translate "نمایش اطلاعات" %}</button></form>{% endif %}
-      {% if can_deliver %}<form method="post" action="{% url 'admin:orders_order_input_action' order.pk item.pk 'request' %}">{% csrf_token %}<button type="submit" name="expected_event_id" value="{{ event_id }}" class="order-input-action">{% translate "ثبت درخواست اطلاعات" %}</button></form>{% endif %}
+      {% if mode == "deliver" %}<form method="post" action="{% url 'admin:orders_order_input_action' order.pk item.pk 'request' %}">{% csrf_token %}<button type="submit" name="expected_event_id" value="{{ event_id }}" class="order-input-action">{% translate "ثبت درخواست اطلاعات" %}</button></form>{% endif %}
     </section>
     <section aria-labelledby="delivery-payment-title">
       <h3 id="delivery-payment-title">{% translate "پرداخت" %}</h3>
@@ -24,16 +24,34 @@
       <p>{% translate "قیمت تأمین زمان خرید" %}: {{ item.cost_snapshot|toman }}</p>
       {% if item.plan.supplier_url %}<p><a href="{{ item.plan.supplier_url }}" rel="noopener noreferrer" target="_blank">{% translate "صفحه‌ی تأمین‌کننده" %}</a></p>{% endif %}
       {% if item.plan.product.delivery_template %}<p class="delivery-template">{{ item.plan.product.delivery_template }}</p>{% endif %}
+      {% if mode == "deliver" and item.due_at %}
+        <p>{% translate "مهلت تحویل" %}: {{ item.due_at|jalali }}، {{ item.due_at|date:"H:i"|fa_digits }}</p>
+        <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'delay' %}" class="order-payment-form" autocomplete="off">
+          {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
+          <div><label for="delay-hours">{% translate "چند ساعت دیرتر (۱ تا ۷۲)" %}</label><input id="delay-hours" name="hours" type="text" inputmode="numeric" dir="ltr" maxlength="3" required></div>
+          <div><label for="delay-note">{% translate "دلیل تأخیر" %}</label><textarea id="delay-note" name="note" rows="2" maxlength="2000" required></textarea></div>
+          <button type="submit" class="order-input-action">{% translate "ثبت تأخیر تأمین" %}</button>
+        </form>
+      {% endif %}
     </section>
   </div>
+  {% if mode == "claim" %}
+    <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'claim' %}" class="order-payment-form delivery-form" autocomplete="off">
+      {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
+      <div><label for="claim-note">{% translate "دلیل درخواست تعویض" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "رمز یا اطلاعات ورود را اینجا ننویسید؛ این یادداشت در سابقه‌ی سفارش می‌ماند." %}</p></div>
+      <button type="submit" class="order-input-action">{% translate "ثبت درخواست تعویض" %}</button>
+    </form>
+  {% elif mode == "replace" %}
+    <p class="delivery-claim">{% translate "دلیل درخواست تعویض" %}: {{ claim_note }}</p>
+  {% endif %}
   {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "خطاهای فرم را درست کنید." %}</p>{% endif %}</div>{% endif %}
   {% if preview %}
     {% include "admin/orders/_delivery_card.html" with content=preview only %}
-    <p>{% translate "قیمت تأمین واقعی" %}: {{ form.cleaned_data.actual_cost|toman }}</p>
+    <p>{% if mode == "replace" %}{% translate "هزینه‌ی تأمین اضافه" %}{% else %}{% translate "قیمت تأمین واقعی" %}{% endif %}: {{ form.cleaned_data.actual_cost|toman }}</p>
     <form method="post" class="delivery-actions" autocomplete="off">
       {% csrf_token %}
       {% for field in form %}{{ field.as_hidden }}{% endfor %}
-      <button type="submit" name="step" value="confirm" class="order-input-action">{% translate "ثبت تحویل" %}</button>
+      <button type="submit" name="step" value="confirm" class="order-input-action">{% if mode == "replace" %}{% translate "ثبت تعویض" %}{% else %}{% translate "ثبت تحویل" %}{% endif %}</button>
       <button type="submit" name="step" value="edit" class="order-input-action">{% translate "ویرایش" %}</button>
     </form>
   {% elif can_deliver %}
@@ -55,7 +73,15 @@
       {% endif %}{% endfor %}
       <button type="submit" name="step" value="preview" class="order-input-action">{% translate "پیش‌نمایش" %}</button>
     </form>
-  {% else %}
+    {% if mode == "replace" %}
+      <h3 id="reject-title" class="delivery-reject">{% translate "رد درخواست، بدون اطلاعات جدید" %}</h3>
+      <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'reject' %}" class="order-payment-form delivery-form" autocomplete="off" aria-labelledby="reject-title">
+        {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
+        <div><label for="reject-note">{% translate "دلیل رد درخواست" %}</label><textarea id="reject-note" name="note" rows="3" maxlength="2000" required></textarea></div>
+        <button type="submit" class="order-input-action">{% translate "رد درخواست تعویض" %}</button>
+      </form>
+    {% endif %}
+  {% elif mode != "claim" %}
     <p>{% translate "این محصول در صف انجام نیست" %}: {{ item.get_status_display }}</p>
   {% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>

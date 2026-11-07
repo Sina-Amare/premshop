@@ -102,7 +102,7 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-payment-form .errorlist{color:var(--panel-danger);margin-block:8px;line-height:1.9}
 .order-bank-reference{overflow-wrap:anywhere}
 .delivery-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-block:20px;line-height:1.9}
-.delivery-columns h3,.delivery-card h3{font-weight:600;color:var(--panel-ink);margin:0 0 8px}
+.delivery-columns h3,.delivery-card h3,.delivery-reject{font-weight:600;color:var(--panel-ink);margin:0 0 8px}
 .delivery-columns p{margin-block:6px;overflow-wrap:anywhere}.delivery-columns form{margin-block:8px}.delivery-columns a{text-decoration:underline}
 .delivery-note :is(ul,ol){padding-inline-start:1.4em}.delivery-note ul{list-style-type:disc}.delivery-note ol{list-style-type:persian}
 .delivery-template{white-space:pre-wrap;color:var(--panel-ink)}
