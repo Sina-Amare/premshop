@@ -415,10 +415,9 @@ def delete_expired_details(today: date | None = None) -> int:
     )
     deleted = 0
     for item in candidates:
-        if not _details_due(item, today):
-            continue
         try:
-            deleted += _forget(item.pk, today)
+            if _details_due(item, today):
+                deleted += _forget(item.pk, today)
         except Exception as error:  # one item must not keep every later item's details
             logger.error("Retention deletion failed for item %s: %s", item.pk, type(error).__name__)
     return deleted

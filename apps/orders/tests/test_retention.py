@@ -217,17 +217,18 @@ def test_deletion_never_decrypts_so_an_unreadable_set_is_still_deleted(buyer, pl
     assert raw(unreadable) == raw(second) == (0, 0, "")
 
 
-def test_one_failing_item_does_not_stop_the_night(buyer, plan, operator, monkeypatch, caplog):
+@pytest.mark.parametrize("step", ["_details_due", "_forget"])
+def test_one_failing_item_does_not_stop_the_night(buyer, plan, operator, monkeypatch, caplog, step):
     failing = delivered_item(buyer, plan, operator, days_ago=40)
     second = delivered_item(buyer, plan, operator, days_ago=40)
-    original = services._forget
+    original = getattr(services, step)
 
-    def forget(item_id, today):
-        if item_id == failing.pk:
+    def broken(item, today):
+        if getattr(item, "pk", item) == failing.pk:
             raise RuntimeError(INPUT)
-        return original(item_id, today)
+        return original(item, today)
 
-    monkeypatch.setattr(services, "_forget", forget)
+    monkeypatch.setattr(services, step, broken)
     assert services.delete_expired_details() == 1
     assert raw(second) == (0, 0, "") and raw(failing)[0] == 1
     assert f"item {failing.pk}: RuntimeError" in caplog.text and INPUT not in caplog.text
