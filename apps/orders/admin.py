@@ -454,9 +454,12 @@ class OrderAdmin(ModelAdmin):
             },
         )
         step, preview, error = request.POST.get("step", ""), None, ""
+        can_deliver = item.status == OrderItem.Status.QUEUED and not item.sla_paused_at
         if request.method == "POST" and form.is_valid():
             content = form.cleaned_data["content"]
-            if step == "preview":
+            if step == "preview" and not can_deliver:
+                error = str(_("این محصول آماده‌ی تحویل نیست."))
+            elif step == "preview":
                 preview = content
             elif step == "confirm":
                 try:
@@ -493,7 +496,7 @@ class OrderAdmin(ModelAdmin):
                 "error": error,
                 "event_id": event_id,
                 "bank_ref": bank_ref,
-                "can_deliver": item.status == OrderItem.Status.QUEUED and not item.sla_paused_at,
+                "can_deliver": can_deliver,
             },
             status=400 if error or form.errors else 200,
         )

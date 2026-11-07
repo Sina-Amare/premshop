@@ -7,10 +7,11 @@ from threading import Event
 from unittest.mock import patch
 
 import pytest
+from cryptography.fernet import Fernet
 from django.contrib.auth.models import Permission
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.signals import got_request_exception
 from django.db import DatabaseError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
@@ -35,6 +36,10 @@ VALUE = "delivered-secret-7Q2W"
 NOTE = "note-secret-K9 پیش از ورود رمز را عوض نکنید."
 BANK_REF = "BANKREF-4471"
 LINE = services.DeliveryLine("رمز عبور", VALUE)
+ALREADY_DELIVERED = (
+    "این محصول قبلاً تحویل شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با دکمه‌ی"
+    " «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+)
 
 
 def queued(buyer, plan, operator, *, telegram=False):
@@ -250,6 +255,54 @@ def test_two_confirmations_at_once_make_one_delivery(buyer, plan, operator, monk
     assert item.events.count() == before + 1
 
 
+def test_a_corrected_set_from_a_second_tab_is_refused_and_not_stored(client, buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    client.force_login(operator)
+    first_tab = form_data(item, "confirm")
+    second_tab = form_data(item, "confirm", value_1="corrected-secret-B8")
+    assert client.post(delivery_url(item), first_tab).status_code == 302
+    original = EncryptedTextField.from_db_value
+
+    def guarded(self, value, expression, connection):
+        assert value in (None, ""), "the repeated confirmation decrypted a stored value"
+        return original(self, value, expression, connection)
+
+    with patch.object(EncryptedTextField, "from_db_value", guarded):
+        response = client.post(delivery_url(item), second_tab)
+    body = response.content.decode()
+    assert response.status_code == 400 and 'role="alert"' in body
+    assert ALREADY_DELIVERED in body
+    assert "corrected-secret-B8" not in body and VALUE not in body
+    assert models.Delivery.objects.count() == 1
+    assert item.events.filter(to_status="DELIVERED").count() == 1
+    content = services.reveal_delivery(
+        order_id=item.order_id, item_id=item.pk, actor=operator, ip=None
+    )
+    assert [line.value for line in content.lines] == ["account@example.test", VALUE]
+
+
+def test_another_operators_late_confirmation_is_still_refused(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    expected = event_id(item)
+    deliver(item, operator, expected_event_id=expected)
+    second = User.objects.create_superuser("second-operator@example.test")
+    with pytest.raises(ValidationError):
+        deliver(item, second, expected_event_id=expected)
+    assert models.Delivery.objects.count() == 1
+
+
+def test_a_page_from_before_an_input_round_trip_gets_the_stale_refusal(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    old_page = event_id(item)
+    act(services.request_input, item, operator)
+    act(services.resume_input, item, operator)
+    deliver(item, operator)
+    with pytest.raises(ValidationError) as refused:
+        deliver(item, operator, expected_event_id=old_page)
+    assert "صفحه را دوباره باز کنید" in " ".join(refused.value.messages)
+    assert models.Delivery.objects.count() == 1
+
+
 def test_reveal_commits_its_log_row_before_returning(buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
     expires = timezone.localdate() + timedelta(days=30)
@@ -271,6 +324,34 @@ def test_reveal_commits_its_log_row_before_returning(buyer, plan, operator):
     with transaction.atomic(), pytest.raises(RuntimeError, match="durable"):
         services.reveal_delivery(order_id=item.order_id, item_id=item.pk, actor=operator, ip=None)
     assert models.CredentialAccessLog.objects.count() == 1
+
+
+def test_reveal_writes_its_access_row_before_any_value_is_decrypted(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    original, logged_first = EncryptedTextField.from_db_value, []
+
+    def watched(self, value, expression, connection):
+        if value:
+            logged_first.append(
+                models.CredentialAccessLog.objects.filter(target="delivery").exists()
+            )
+        return original(self, value, expression, connection)
+
+    with patch.object(EncryptedTextField, "from_db_value", watched):
+        content = services.reveal_delivery(
+            order_id=item.order_id, item_id=item.pk, actor=operator, ip=None
+        )
+    assert content.lines == (LINE,) and logged_first == [True, True]
+
+
+def test_a_reveal_that_cannot_decrypt_leaves_no_access_row(buyer, plan, operator, settings):
+    _, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    with pytest.raises(ImproperlyConfigured):
+        services.reveal_delivery(order_id=item.order_id, item_id=item.pk, actor=operator, ip=None)
+    assert not models.CredentialAccessLog.objects.exists()
 
 
 @pytest.mark.parametrize("kind", ["customer", "unpermitted_staff", "other_order", "undelivered"])
@@ -397,6 +478,22 @@ def test_preview_carries_values_only_inside_the_form(client, buyer, plan, operat
     edit = client.post(delivery_url(item), form_data(item, "edit"))
     assert re.search(rf'name="value_1" value="{VALUE}"', edit.content.decode())
     assert edit.headers["Content-Encoding"] == "identity"
+
+
+@pytest.mark.parametrize("state", ["awaiting_input", "paused_clock"])
+def test_preview_refuses_an_item_that_cannot_be_delivered(client, buyer, plan, operator, state):
+    _, item = queued(buyer, plan, operator)
+    client.force_login(operator)
+    data = form_data(item, "preview")
+    if state == "awaiting_input":
+        act(services.request_input, item, operator)
+    else:
+        models.OrderItem.objects.filter(pk=item.pk).update(sla_paused_at=timezone.now())
+    response = client.post(delivery_url(item), data)
+    body = response.content.decode()
+    assert response.status_code == 400 and 'role="alert"' in body
+    assert "data-delivery-card" not in body and VALUE not in body
+    assert response.headers["Content-Encoding"] == "identity"
 
 
 def test_preview_equals_the_delivered_content(client, buyer, plan, operator):

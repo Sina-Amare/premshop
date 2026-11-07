@@ -174,7 +174,24 @@ def deliver_item(
         and 0 <= actual_cost <= MAX_AMOUNT
     ):
         raise ValidationError(gettext_lazy("قیمت تأمین واقعی معتبر نیست."))
-    if item.events.order_by("-pk").values_list("pk", flat=True).first() != expected_event_id:
+    latest = item.events.order_by("-pk").first()
+    if latest is None or latest.pk != expected_event_id:
+        previous = item.events.filter(pk__lt=latest.pk if latest else 0).order_by("-pk").first()
+        # This operator confirmed from the same page twice (a double click or a second
+        # tab): the first set stands, and this one is not stored, so it is never success.
+        if (
+            latest is not None
+            and previous is not None
+            and previous.pk == expected_event_id
+            and (latest.from_status, latest.to_status, latest.actor_user_id)
+            == (OrderItem.Status.QUEUED, OrderItem.Status.DELIVERED, account.pk)
+        ):
+            raise ValidationError(
+                gettext_lazy(
+                    "این محصول قبلاً تحویل شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با"
+                    " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+                )
+            )
         raise ValidationError(
             gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
         )
@@ -202,15 +219,21 @@ def reveal_delivery(
     with transaction.atomic(durable=True):
         _may_reveal(actor)
         item = OrderItem.objects.only("pk", "expires_at").get(pk=item_id, order_id=order_id)
-        delivery = Delivery.objects.filter(order_item_id=item.pk).order_by("-pk").first()
-        if delivery is None:
+        current = (
+            Delivery.objects.filter(order_item_id=item.pk)
+            .order_by("-pk")
+            .values_list("pk", flat=True)
+            .first()
+        )
+        if current is None:
             return None
+        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
+        delivery = Delivery.objects.get(pk=current)
         content = DeliveryContent(
             tuple(DeliveryLine(row.title, row.value) for row in delivery.fields.all()),
             delivery.note,
             item.expires_at,
         )
-        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
     return content
 
 
