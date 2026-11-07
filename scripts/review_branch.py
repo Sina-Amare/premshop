@@ -10,7 +10,8 @@ The rules cover the ways a change can pass every check while making the checks w
 or the data less safe: an applied migration edited or a new one that removes, moves or
 reshapes data, tests removed, skipped or with assertions changed, the gate changed, a
 query budget raised, a decision record rewritten, a secret, a text file turned binary,
-money or sign-in code touched, and a commit crediting an assistant.
+money or sign-in code touched, a commit crediting an assistant, and a change too big for
+one careful review.
 """
 
 from __future__ import annotations
@@ -72,7 +73,11 @@ MOVES_DATA = {"RunPython", "RunSQL"}
 TEXT_SUFFIXES = (".py", ".html", ".txt", ".md", ".css", ".js", ".json", ".po", ".toml", ".svg")
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 STRING = re.compile(r"""(['"]).*?(?<!\\)\1""")
-TOO_BIG = 600
+# What one review reads well, in changed production lines: code and templates, never tests,
+# migrations, translations or documents. Past it the review is split by area, not the step.
+REVIEW_LIMIT = 1500
+REVIEW_LIMIT_HIGH_STAKES = 600
+NOT_PRODUCTION = re.compile(r"^(docs|locale)/|\.(md|po|mo)$")
 
 
 @dataclass
@@ -379,9 +384,24 @@ def review(head: str, base: str = "main", repo: Path = REPO) -> Report:
         report.look.append(
             f"Templates or styles changed ({len(visual)} files): ask for screenshots at 390 and 1440, each with its address."
         )
-    size = sum(len(d.added) + len(d.removed) for d in diffs)
-    if size > TOO_BIG:
-        report.look.append(f"The change is {size} lines: more than one step usually is.")
+    production = [
+        d
+        for d in diffs
+        if not (
+            TEST_FILE.search(d.path) or MIGRATION.match(d.path) or NOT_PRODUCTION.search(d.path)
+        )
+    ]
+    size = sum(len(d.added) + len(d.removed) for d in production)
+    high_stakes = any(
+        SENSITIVE.match(d.old or d.path) or SENSITIVE.match(d.path) for d in production
+    )
+    limit = REVIEW_LIMIT_HIGH_STAKES if high_stakes else REVIEW_LIMIT
+    if size > limit:
+        scope = " for money, sign-in or credentials" if high_stakes else ""
+        report.look.append(
+            f"The production change is {size} lines, over the {limit} one review reads well{scope}:"
+            " split the review by area between two readers."
+        )
     report.stop = list(dict.fromkeys(report.stop))
     report.look = list(dict.fromkeys(report.look))
     return report
