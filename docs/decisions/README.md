@@ -12,7 +12,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0004](0004-no-drf-in-phase-1.md) | No DRF and no HTTP API in phase 1 | Accepted | 2026-09-01 |
 | [0005](0005-money-in-toman.md) | All stored amounts are toman, integer-valued decimals | Accepted, amended | 2026-09-01 |
 | [0006](0006-card-to-card-payment-design.md) | Card-to-card payment design | Superseded by [0019](0019-payment-gateway.md) | 2026-09-01 |
-| [0007](0007-credential-encryption-key-escrow-retention.md) | Credential encryption, key escrow and retention | Accepted, amended | 2026-11-01 |
+| [0007](0007-credential-encryption-key-escrow-retention.md) | Credential encryption, key escrow and retention | Accepted, amended | 2026-11-07 |
 | [0008](0008-content-free-messages-and-magic-link.md) | Messages carry no credential values; a single-use magic link is the one convenience | Accepted, amended | 2026-10-29 |
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-03 |
