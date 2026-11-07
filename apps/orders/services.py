@@ -413,7 +413,15 @@ def delete_expired_details(today: date | None = None) -> int:
         )
         .defer("customer_input")
     )
-    return sum(_forget(item.pk, today) for item in candidates if _details_due(item, today))
+    deleted = 0
+    for item in candidates:
+        if not _details_due(item, today):
+            continue
+        try:
+            deleted += _forget(item.pk, today)
+        except Exception as error:  # one item must not keep every later item's details
+            logger.error("Retention deletion failed for item %s: %s", item.pk, type(error).__name__)
+    return deleted
 
 
 @transaction.atomic
@@ -422,8 +430,10 @@ def _forget(item_id: int, today: date) -> int:
     if not _details_due(item, today):
         return 0
     removed = []
-    sets = Delivery.objects.filter(order_item=item)
+    # Deleted without loading a row, so no value is decrypted and an unreadable one still goes.
+    sets = Delivery.objects.filter(order_item=item).only("pk")
     if sets.exists():
+        DeliveryField.objects.filter(delivery__order_item=item).delete()
         sets.delete()
         removed.append("اطلاعات تحویل")
     held = OrderItem.objects.filter(pk=item.pk)

@@ -191,6 +191,34 @@ def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, ope
         assert len(shown) == len(set(shown)) == 3
 
 
+def test_deletion_never_decrypts_so_an_unreadable_set_is_still_deleted(buyer, plan, operator):
+    unreadable = delivered_item(buyer, plan, operator, days_ago=40)
+    second = delivered_item(buyer, plan, operator, days_ago=40)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE orders_delivery SET note = %s WHERE order_item_id = %s",
+            ["0badc0de$not-a-token", unreadable.pk],
+        )
+    assert services.delete_expired_details() == 2
+    assert raw(unreadable) == raw(second) == (0, 0, "")
+
+
+def test_one_failing_item_does_not_stop_the_night(buyer, plan, operator, monkeypatch, caplog):
+    failing = delivered_item(buyer, plan, operator, days_ago=40)
+    second = delivered_item(buyer, plan, operator, days_ago=40)
+    original = services._forget
+
+    def forget(item_id, today):
+        if item_id == failing.pk:
+            raise RuntimeError(INPUT)
+        return original(item_id, today)
+
+    monkeypatch.setattr(services, "_forget", forget)
+    assert services.delete_expired_details() == 1
+    assert raw(second) == (0, 0, "") and raw(failing)[0] == 1
+    assert f"item {failing.pk}: RuntimeError" in caplog.text and INPUT not in caplog.text
+
+
 def test_the_reveal_page_says_the_details_were_deleted(client, buyer, plan, operator):
     item = delivered_item(buyer, plan, operator, days_ago=31)
     services.delete_expired_details()
