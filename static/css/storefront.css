@@ -96,9 +96,6 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
   .v-category-links small{font-size:10px}
 }
 
-/* The document already reserves the sticky header height. */
-.v-catalog{scroll-margin-top:0}
-
 /* All links remain available when scripts or motion are unavailable. */
 .v-service-cloud{--service-plate:80px;--service-logo:42px;min-width:0;width:100%;max-width:640px;justify-self:center}
 .v-service-cloud .nebula{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:16px 10px;position:relative;padding:12px 0;isolation:isolate}

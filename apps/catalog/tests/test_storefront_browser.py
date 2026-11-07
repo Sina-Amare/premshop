@@ -383,14 +383,15 @@ def header_bottom(page) -> float:
 
 @pytest.mark.parametrize("width", [390, 1280])
 def test_an_in_page_jump_lands_below_the_header(browser, live_server, discounted, width):
-    context = browser.new_context(viewport={"width": width, "height": 800})
+    # The jump lands where it would with motion, but at once: a fixed wait read a smooth
+    # scroll mid-flight, and passed while the section settled under the header.
+    context = browser.new_context(viewport={"width": width, "height": 800}, reduced_motion="reduce")
     page = context.new_page()
     try:
         page.goto(f"{live_server.url}/")
         assert page.evaluate(STYLED)
         page.click('a[href="#products"]')
         page.wait_for_function("location.hash === '#products'")
-        page.wait_for_timeout(300)
         # Unstyled, the header scrolls away and anything clears it.
         assert header_bottom(page) > 0, "positive control: the header is pinned"
         top = page.evaluate("document.getElementById('products').getBoundingClientRect().top")
