@@ -174,7 +174,19 @@ def deliver_item(
         and 0 <= actual_cost <= MAX_AMOUNT
     ):
         raise ValidationError(gettext_lazy("قیمت تأمین واقعی معتبر نیست."))
-    if item.events.order_by("-pk").values_list("pk", flat=True).first() != expected_event_id:
+    latest = item.events.order_by("-pk").first()
+    if latest is None or latest.pk != expected_event_id:
+        previous = item.events.filter(pk__lt=latest.pk if latest else 0).order_by("-pk").first()
+        # This operator's own confirmation repeated, as by a double click: report the
+        # delivery it made. Another operator's late confirmation stays refused.
+        if (
+            latest is not None
+            and previous is not None
+            and previous.pk == expected_event_id
+            and (latest.from_status, latest.to_status, latest.actor_user_id)
+            == (OrderItem.Status.QUEUED, OrderItem.Status.DELIVERED, account.pk)
+        ):
+            return Delivery.objects.defer("note").get(event=latest)
         raise ValidationError(
             gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
         )

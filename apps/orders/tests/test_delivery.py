@@ -245,10 +245,43 @@ def test_two_confirmations_at_once_make_one_delivery(buyer, plan, operator, monk
             wait_for_lock(waiter, holder)
         finally:
             release.set()
-        assert leader.result(timeout=10).order_item_id == item.pk
-        assert contender.result(timeout=10) is None  # in_connection returns None on refusal
+        first = leader.result(timeout=10)
+        # The same operator's second confirmation gets the first delivery back.
+        assert contender.result(timeout=10).pk == first.pk
     assert models.Delivery.objects.count() == 1 and models.DeliveryField.objects.count() == 1
     assert item.events.count() == before + 1
+
+
+def test_a_double_click_by_the_same_operator_is_one_successful_delivery(
+    client, buyer, plan, operator
+):
+    _, item = queued(buyer, plan, operator)
+    client.force_login(operator)
+    data = form_data(item, "confirm")
+    first = client.post(delivery_url(item), data)
+    original = EncryptedTextField.from_db_value
+
+    def guarded(self, value, expression, connection):
+        assert value in (None, ""), "the repeated confirmation decrypted a stored value"
+        return original(self, value, expression, connection)
+
+    with patch.object(EncryptedTextField, "from_db_value", guarded):
+        second = client.post(delivery_url(item), data)
+    change = reverse("admin:orders_order_change", args=[item.order_id])
+    assert (first.status_code, second.status_code) == (302, 302)
+    assert first.url == second.url == change
+    assert models.Delivery.objects.count() == 1
+    assert item.events.filter(to_status="DELIVERED").count() == 1
+
+
+def test_another_operators_late_confirmation_is_still_refused(buyer, plan, operator):
+    _, item = queued(buyer, plan, operator)
+    expected = event_id(item)
+    deliver(item, operator, expected_event_id=expected)
+    second = User.objects.create_superuser("second-operator@example.test")
+    with pytest.raises(ValidationError):
+        deliver(item, second, expected_event_id=expected)
+    assert models.Delivery.objects.count() == 1
 
 
 def test_reveal_commits_its_log_row_before_returning(buyer, plan, operator):
@@ -428,7 +461,6 @@ def test_preview_carries_values_only_inside_the_form(client, buyer, plan, operat
     assert edit.headers["Content-Encoding"] == "identity"
 
 
-
 def test_preview_refuses_an_item_that_left_the_queue(client, buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
     client.force_login(operator)
@@ -439,6 +471,7 @@ def test_preview_refuses_an_item_that_left_the_queue(client, buyer, plan, operat
     assert response.status_code == 400 and 'role="alert"' in body
     assert "data-delivery-card" not in body and VALUE not in body
     assert response.headers["Content-Encoding"] == "identity"
+
 
 def test_preview_equals_the_delivered_content(client, buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
