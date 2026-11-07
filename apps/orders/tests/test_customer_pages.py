@@ -337,7 +337,9 @@ def test_public_tracking_does_not_distinguish_one_from_repeated_identical_units(
 def test_invoice_identifies_each_line_in_a_mixed_terminal_order(client, buyer, plan):
     order = purchase(buyer, plan, 2)
     first, second = order.items.order_by("pk")
-    OrderItem.objects.filter(pk=first.pk).update(status=OrderItem.Status.DELIVERED)
+    OrderItem.objects.filter(pk=first.pk).update(
+        status=OrderItem.Status.DELIVERED, delivered_at=timezone.now()
+    )
     OrderItem.objects.filter(pk=second.pk).update(
         status=OrderItem.Status.CANCELLED,
         cancel_reason=OrderItem.CancelReason.CUSTOMER_BEFORE_PAYMENT,

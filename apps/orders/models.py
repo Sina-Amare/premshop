@@ -233,6 +233,11 @@ class OrderItem(models.Model):
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
     )
+    delivered_at = models.DateTimeField(_("زمان تحویل"), null=True, blank=True, editable=False)
+    expires_at = models.DateField(_("پایان اشتراک"), null=True, blank=True, editable=False)
+    actual_cost = MoneyField(
+        verbose_name=_("قیمت تأمین واقعی"), null=True, blank=True, editable=False
+    )
     created_at = models.DateTimeField(_("زمان ثبت"), auto_now_add=True)
 
     class Meta:
@@ -240,6 +245,15 @@ class OrderItem(models.Model):
         verbose_name_plural = _("آیتم‌های سفارش")
         ordering = ["pk"]
         constraints = [
+            models.CheckConstraint(
+                condition=Q(actual_cost__isnull=True) | Q(actual_cost__gte=0),
+                name="order_item_actual_cost_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status__in=["DELIVERED", "REPLACEMENT_REQUESTED"])
+                | Q(delivered_at__isnull=False),
+                name="order_item_delivery_recorded",
+            ),
             models.CheckConstraint(
                 condition=Q(sla_paused_at__isnull=True) | Q(due_at__isnull=False),
                 name="order_item_pause_requires_deadline",
@@ -295,13 +309,24 @@ class OrderItem(models.Model):
 
 
 class CredentialAccessLog(models.Model):
+    class Target(models.TextChoices):
+        CUSTOMER_INPUT = "customer_input", _("اطلاعات مشتری")
+        DELIVERY = "delivery", _("اطلاعات تحویل")
+
     order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     ip = models.GenericIPAddressField(null=True)
+    target = models.CharField(max_length=16, choices=Target.choices)
     created_at = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
 
     class Meta:
         ordering = ["created_at", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(target__in=["customer_input", "delivery"]),
+                name="credential_access_target_valid",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.order_item_id} / {self.user_id} / {self.created_at.isoformat()}"
@@ -342,6 +367,42 @@ class OrderItemEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{to_persian_digits(self.order_item_id)} · {self.get_to_status_display()}"
+
+
+class Delivery(models.Model):
+    """One set of account details, tied to the history row that delivered it.
+
+    A replacement adds a set and never edits an earlier one; the latest is current.
+    """
+
+    order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT, related_name="deliveries")
+    event = models.OneToOneField(OrderItemEvent, on_delete=models.PROTECT, related_name="delivery")
+    note = EncryptedTextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pk"]
+
+    def __str__(self) -> str:
+        return f"Delivery {self.pk} for item {self.order_item_id}"
+
+
+class DeliveryField(models.Model):
+    delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE, related_name="fields")
+    position = models.PositiveSmallIntegerField()
+    title = models.CharField(max_length=100)
+    value = EncryptedTextField()
+
+    class Meta:
+        ordering = ["delivery", "position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["delivery", "position"], name="delivery_field_position_unique"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Field {self.position} of delivery {self.delivery_id}"
 
 
 class DiscountRedemption(models.Model):

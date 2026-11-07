@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import re
+from datetime import date, timedelta
 from typing import Any, cast
 
+import jdatetime
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
@@ -44,11 +46,16 @@ from apps.orders.models import (
 )
 from apps.orders.selectors import grouped_items
 from apps.orders.services import (
+    DELIVERY_LINES,
+    DeliveryLine,
+    deliver_item,
+    delivery_content,
     match_support_token,
     receive_input,
     request_input,
     resume_input,
     reveal_customer_input,
+    reveal_delivery,
 )
 
 # Which product and plan an item row is about, read from the purchase record in
@@ -83,7 +90,15 @@ class OrderChangeList(ChangeList):
 
 class OrderItemInline(TabularInline):
     model = OrderItem
-    fields = ("purchase", "status", "sale_amount", "cost_amount", "cancel_reason", "input_reveal")
+    fields = (
+        "purchase",
+        "status",
+        "sale_amount",
+        "cost_amount",
+        "cancel_reason",
+        "input_reveal",
+        "delivery",
+    )
     readonly_fields = fields
     extra = 0
     can_delete = False
@@ -125,6 +140,109 @@ class OrderItemInline(TabularInline):
     @admin.display(description=_("قیمت تأمین زمان خرید"))
     def cost_amount(self, obj: OrderItem) -> str:
         return format_toman(obj.cost_snapshot)
+
+    @admin.display(description=_("تحویل"))
+    def delivery(self, obj: OrderItem) -> str:
+        if obj.status == OrderItem.Status.QUEUED:
+            return format_html(
+                '<a class="order-input-action" href="{}">{}</a>',
+                reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
+                _("تحویل"),
+            )
+        if obj.delivered_at is None:
+            return "—"
+        return format_html(
+            '<button type="submit" formmethod="post" formaction="{}" '
+            'class="order-input-action" data-delivery-reveal>{}</button>',
+            reverse("admin:orders_order_reveal_delivery", args=[obj.order_id, obj.pk]),
+            _("نمایش اطلاعات تحویل"),
+        )
+
+
+class DeliveryForm(forms.Form):
+    expected_event_id = forms.IntegerField(widget=forms.HiddenInput)
+    note = forms.CharField(
+        label=_("یادداشت برای مشتری"),
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 4}),
+    )
+    expires_on = forms.CharField(
+        label=_("پایان اشتراک"),
+        required=False,
+        max_length=10,
+        help_text=_("به تاریخ شمسی مثل ۱۴۰۵/۰۹/۱۵، و خالی برای اشتراک بی‌پایان."),
+        widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric", "autocomplete": "off"}),
+    )
+    actual_cost = forms.DecimalField(
+        label=_("قیمت تأمین واقعی (تومان)"),
+        max_digits=12,
+        decimal_places=0,
+        min_value=0,
+        widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric"}),
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        for n in range(DELIVERY_LINES):
+            number = to_persian_digits(n + 1)
+            self.fields[f"title_{n}"] = forms.CharField(
+                label=_("عنوان %(n)s") % {"n": number}, required=False, max_length=100
+            )
+            self.fields[f"value_{n}"] = forms.CharField(
+                label=_("مقدار %(n)s") % {"n": number},
+                required=False,
+                max_length=2000,
+                widget=forms.TextInput(
+                    attrs={
+                        "dir": "ltr",
+                        "autocomplete": "off",
+                        "autocapitalize": "off",
+                        "spellcheck": "false",
+                    }
+                ),
+            )
+
+    def lines(self) -> list[tuple[forms.BoundField, forms.BoundField]]:
+        return [(self[f"title_{n}"], self[f"value_{n}"]) for n in range(DELIVERY_LINES)]
+
+    def clean_expires_on(self) -> date | None:
+        text = to_latin_digits(self.cleaned_data["expires_on"]).strip()
+        if not text:
+            return None
+        found = re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", text)
+        try:
+            if found is None:
+                raise ValueError
+            return cast(date, jdatetime.date(*map(int, found.groups())).togregorian())
+        except ValueError:
+            raise ValidationError(_("تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید.")) from None
+
+    def clean(self) -> dict[str, Any]:
+        data = self.cleaned_data
+        if not self.errors:
+            try:
+                data["content"] = delivery_content(
+                    [
+                        DeliveryLine(data[f"title_{n}"], data[f"value_{n}"])
+                        for n in range(DELIVERY_LINES)
+                    ],
+                    data["note"],
+                    data["expires_on"],
+                )
+            except ValidationError as error:
+                self.add_error(None, error)
+        return data
+
+
+def _private(response: HttpResponse, referrer: str = "no-referrer") -> HttpResponse:
+    # Deliberately send identity to bypass Django gzip despite RFC 9110's SHOULD NOT.
+    response["Content-Encoding"] = "identity"
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    # A page that posts needs same-origin: under no-referrer the browser sends Origin: null,
+    # which Django's CSRF check refuses.
+    response["Referrer-Policy"] = referrer
+    return response
 
 
 @admin.register(Order)
@@ -170,8 +288,20 @@ class OrderAdmin(ModelAdmin):
             ),
             path(
                 "<int:order_id>/items/<int:item_id>/customer-input/reveal/",
-                self.admin_site.admin_view(self.reveal_input_view),
+                self.admin_site.admin_view(self.reveal_view),
+                {"target": "customer_input"},
                 name="orders_order_reveal_customer_input",
+            ),
+            path(
+                "<int:order_id>/items/<int:item_id>/delivery/reveal/",
+                self.admin_site.admin_view(self.reveal_view),
+                {"target": "delivery"},
+                name="orders_order_reveal_delivery",
+            ),
+            path(
+                "<int:order_id>/items/<int:item_id>/deliver/",
+                self.admin_site.admin_view(self.deliver_view),
+                name="orders_order_deliver",
             ),
         ] + super().get_urls()
 
@@ -253,7 +383,9 @@ class OrderAdmin(ModelAdmin):
             )
         return redirect("admin:orders_order_change", order_id)
 
-    def reveal_input_view(self, request: HttpRequest, order_id: int, item_id: int) -> HttpResponse:
+    def reveal_view(
+        self, request: HttpRequest, order_id: int, item_id: int, target: str
+    ) -> HttpResponse:
         # Refused before any lookup, so an unpermitted account cannot tell which orders exist.
         inline = OrderItemInline(Order, self.admin_site)
         if not (self.has_view_permission(request) and inline.has_view_permission(request)):
@@ -266,29 +398,106 @@ class OrderAdmin(ModelAdmin):
             return redirect("admin:orders_order_change", order_id)
         if request.method != "POST":
             return HttpResponseNotAllowed(["GET", "POST"])
-        value = reveal_customer_input(
-            order_id=order_id,
-            item_id=item_id,
-            actor=cast(User, request.user),
-            ip=client_ip(request),
+        actor, ip = cast(User, request.user), client_ip(request)
+        if target == "delivery":
+            template, title = "admin/orders/delivery_reveal.html", _("اطلاعات تحویل")
+            context: dict[str, Any] = {
+                "content": reveal_delivery(order_id=order_id, item_id=item_id, actor=actor, ip=ip)
+            }
+        else:
+            template, title = "admin/orders/input_reveal.html", _("اطلاعات مشتری")
+            context = {
+                "input_value": reveal_customer_input(
+                    order_id=order_id, item_id=item_id, actor=actor, ip=ip
+                )
+            }
+        return _private(
+            render(
+                request,
+                template,
+                {
+                    **self.admin_site.each_context(request),
+                    **context,
+                    "title": title,
+                    "order": order,
+                    "item": item,
+                    "opts": self.opts,
+                },
+            )
         )
-        response = render(
-            request,
-            "admin/orders/input_reveal.html",
-            {
-                **self.admin_site.each_context(request),
-                "title": _("اطلاعات مشتری"),
-                "order": order,
-                "item": item,
-                "input_value": value,
-                "opts": self.opts,
+
+    @method_decorator(sensitive_post_parameters())
+    def deliver_view(self, request: HttpRequest, order_id: int, item_id: int) -> HttpResponse:
+        """Form, preview, confirm: typed values travel only inside the posted form."""
+        if not (
+            self.has_view_permission(request)
+            and request.user.has_perms(["orders.change_order", "orders.change_orderitem"])
+        ):
+            raise PermissionDenied
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+        order = get_object_or_404(self.get_queryset(request), pk=order_id)
+        item = get_object_or_404(
+            OrderItem.objects.defer("customer_input").select_related("plan__product"),
+            pk=item_id,
+            order_id=order_id,
+        )
+        event_id = item.events.order_by("-pk").values_list("pk", flat=True).first()
+        days = item.product_snapshot.get("duration_days")
+        expires = timezone.localdate() + timedelta(days=days) if days else None
+        form = DeliveryForm(
+            request.POST if request.method == "POST" else None,
+            initial={
+                "expected_event_id": event_id,
+                "expires_on": format_jalali(expires, with_month_name=False),
+                "actual_cost": to_persian_digits(int(item.cost_snapshot)),
             },
         )
-        # Deliberately send identity to bypass Django gzip despite RFC 9110's SHOULD NOT.
-        response["Content-Encoding"] = "identity"
-        response["X-Robots-Tag"] = "noindex, nofollow"
-        response["Referrer-Policy"] = "no-referrer"
-        return response
+        step, preview, error = request.POST.get("step", ""), None, ""
+        if request.method == "POST" and form.is_valid():
+            content = form.cleaned_data["content"]
+            if step == "preview":
+                preview = content
+            elif step == "confirm":
+                try:
+                    deliver_item(
+                        order_id=order_id,
+                        item_id=item_id,
+                        actor=cast(User, request.user),
+                        expected_event_id=form.cleaned_data["expected_event_id"],
+                        lines=content.lines,
+                        note=content.note,
+                        expires_at=content.expires_at,
+                        actual_cost=form.cleaned_data["actual_cost"],
+                    )
+                except ValidationError as failure:
+                    error = " ".join(failure.messages)
+                else:
+                    return redirect("admin:orders_order_change", order_id)
+        bank_ref = None
+        if request.user.has_perm("payments.view_payment"):
+            bank_ref = (
+                order.payments.filter(status="verified").values_list("bank_ref", flat=True).first()
+            )
+        response = render(
+            request,
+            "admin/orders/delivery.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.opts,
+                "title": _("تحویل محصول"),
+                "order": order,
+                "item": item,
+                "form": form,
+                "preview": preview,
+                "error": error,
+                "event_id": event_id,
+                "bank_ref": bank_ref,
+                "can_deliver": item.status == OrderItem.Status.QUEUED and not item.sla_paused_at,
+            },
+            status=400 if error or form.errors else 200,
+        )
+        return _private(response, referrer="same-origin")
 
     def changelist_view(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None

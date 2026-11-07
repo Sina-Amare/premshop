@@ -297,8 +297,8 @@ msgstr "If filled in, the customer sees this text exactly as written, in place o
 msgid "روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."
 msgstr "The product page says it can be renewed."
 
-msgid "یادداشت خودتان. فعلاً جایی فرستاده نمی‌شود."
-msgstr "Your own note. Not sent anywhere yet."
+msgid "کنار فرم تحویل به شما نشان داده می‌شود و برای مشتری فرستاده نمی‌شود."
+msgstr "Shown beside the delivery form; never sent to the customer."
 
 msgid "پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."
 msgstr "Draft and unavailable products are not shown on the site."
@@ -1374,14 +1374,14 @@ msgstr "There is no input to show."
 msgid "بازگشت به سفارش"
 msgstr "Back to order"
 
-msgid "سابقه‌ی نمایش اطلاعات مشتری"
-msgstr "Customer input access history"
+msgid "سابقه‌ی نمایش اطلاعات"
+msgstr "Reveal history"
 
 msgid "نمایش اطلاعات"
 msgstr "Reveal input"
 
 msgid "هنوز اطلاعاتی نمایش داده نشده."
-msgstr "No input has been revealed yet."
+msgstr "Nothing has been revealed yet."
 
 msgid "شرایط زمان خرید"
 msgstr "Conditions at purchase"
@@ -1622,3 +1622,81 @@ msgstr "This check only matches a support request to its order."
 
 msgid "بررسی شناسه در دسترس نیست؛ دوباره تلاش کنید."
 msgstr "Identifier comparison is unavailable; try again."
+
+msgid "اطلاعات تحویل"
+msgstr "Delivery details"
+
+msgid "اطلاعات تحویل بیش از اندازه طولانی است."
+msgstr "The delivery details are too long."
+
+msgid "این محصول آماده‌ی تحویل نیست."
+msgstr "This item is not ready for delivery."
+
+msgid "این محصول در صف انجام نیست"
+msgstr "This item is not in the queue"
+
+msgid "به تاریخ شمسی مثل ۱۴۰۵/۰۹/۱۵، و خالی برای اشتراک بی‌پایان."
+msgstr "A Persian calendar date such as 1405/09/15; empty for a subscription with no end."
+
+msgid "تأمین"
+msgstr "Supply"
+
+msgid "تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید."
+msgstr "Write the date like 1405/09/15."
+
+msgid "تاریخ پایان اشتراک گذشته است."
+msgstr "The subscription end date has passed."
+
+msgid "تحویل محصول"
+msgstr "Deliver item"
+
+msgid "ثبت تحویل"
+msgstr "Record delivery"
+
+msgid "جمع نهایی سفارش"
+msgstr "Order total"
+
+msgid "خطاهای فرم را درست کنید."
+msgstr "Correct the errors in the form."
+
+msgid "دست‌کم یک سطر اطلاعات تحویل بنویسید."
+msgstr "Write at least one line of delivery details."
+
+msgid "زمان تحویل"
+msgstr "Delivered at"
+
+msgid "سطرهای خالی نادیده گرفته می‌شوند."
+msgstr "Empty lines are ignored."
+
+msgid "صفحه‌ی تأمین‌کننده"
+msgstr "Supplier page"
+
+msgid "عنوان %(n)s"
+msgstr "Title %(n)s"
+
+msgid "قیمت تأمین واقعی"
+msgstr "Actual cost"
+
+msgid "قیمت تأمین واقعی (تومان)"
+msgstr "Actual cost (toman)"
+
+msgid "قیمت تأمین واقعی معتبر نیست."
+msgstr "The actual cost is not valid."
+
+msgid "مقدار %(n)s"
+msgstr "Value %(n)s"
+
+msgid "نمایش اطلاعات تحویل"
+msgstr "Reveal delivery"
+
+msgid "هر سطر تحویل هم عنوان می‌خواهد هم مقدار."
+msgstr "Each delivery line needs both a title and a value."
+
+msgid "ویرایش"
+msgstr "Edit"
+
+msgid "پایان اشتراک"
+msgstr "Subscription ends"
+
+msgid "یادداشت برای مشتری"
+msgstr "Note for the customer"

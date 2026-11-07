@@ -1,0 +1,7 @@
+{% load i18n fa richtext %}
+<section class="delivery-card" data-delivery-card aria-labelledby="delivery-card-title">
+  <h3 id="delivery-card-title">{% translate "اطلاعات تحویل" %}</h3>
+  <dl>{% for line in content.lines %}<div><dt><bdi>{{ line.title }}</bdi></dt><dd><bdi dir="ltr">{{ line.value }}</bdi></dd></div>{% endfor %}</dl>
+  {% if content.expires_at %}<p>{% translate "پایان اشتراک" %}: {{ content.expires_at|jalali }}</p>{% endif %}
+  {% if content.note %}<div class="delivery-note">{{ content.note|markdown:"4" }}</div>{% endif %}
+</section>

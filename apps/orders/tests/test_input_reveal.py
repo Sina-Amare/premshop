@@ -91,6 +91,7 @@ def test_service_commits_before_returning_and_never_copies_the_value(input_order
         "order_item",
         "user",
         "ip",
+        "target",
         "created_at",
     }
 

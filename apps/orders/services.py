@@ -10,7 +10,7 @@ import uuid
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from ipaddress import ip_address
 from typing import Any, cast
@@ -34,6 +34,8 @@ from apps.orders.clock import delivery_deadline
 from apps.orders.models import (
     SUPPORT_ALPHABET,
     CredentialAccessLog,
+    Delivery,
+    DeliveryField,
     DiscountCode,
     DiscountRedemption,
     Order,
@@ -83,26 +85,133 @@ def replace_support_token(
     return identifier
 
 
+def _may_reveal(actor: User) -> None:
+    if not (
+        actor.is_active
+        and actor.is_staff
+        and (actor.has_perm("orders.view_order") or actor.has_perm("orders.change_order"))
+        and (actor.has_perm("orders.view_orderitem") or actor.has_perm("orders.change_orderitem"))
+    ):
+        raise PermissionDenied
+
+
+def _log_reveal(item_id: int, actor: User, ip: str | None, target: str) -> None:
+    try:
+        address = str(ip_address(ip)) if ip else None
+    except ValueError:
+        address = None
+    CredentialAccessLog.objects.create(order_item_id=item_id, user=actor, ip=address, target=target)
+
+
 def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
     with transaction.atomic(durable=True):
-        if not (
-            actor.is_active
-            and actor.is_staff
-            and (actor.has_perm("orders.view_order") or actor.has_perm("orders.change_order"))
-            and (
-                actor.has_perm("orders.view_orderitem") or actor.has_perm("orders.change_orderitem")
-            )
-        ):
-            raise PermissionDenied
+        _may_reveal(actor)
         item = OrderItem.objects.only("customer_input").get(pk=item_id, order_id=order_id)
         value = item.customer_input
         if value:
-            try:
-                address = str(ip_address(ip)) if ip else None
-            except ValueError:
-                address = None
-            CredentialAccessLog.objects.create(order_item_id=item_id, user=actor, ip=address)
+            _log_reveal(item_id, actor, ip, CredentialAccessLog.Target.CUSTOMER_INPUT)
     return value
+
+
+DELIVERY_LINES = 6
+
+
+@dataclass(frozen=True)
+class DeliveryLine:
+    title: str
+    value: str = field(repr=False)
+
+
+@dataclass(frozen=True)
+class DeliveryContent:
+    lines: tuple[DeliveryLine, ...]
+    note: str = field(repr=False)
+    expires_at: date | None = None
+
+
+def delivery_content(
+    lines: Sequence[DeliveryLine], note: str, expires_at: date | None
+) -> DeliveryContent:
+    """The one reading of a delivery, shared by its preview and the stored set."""
+    kept = tuple(
+        DeliveryLine(line.title.strip(), line.value.strip())
+        for line in lines
+        if line.title.strip() or line.value.strip()
+    )
+    if not kept:
+        raise ValidationError(gettext_lazy("دست‌کم یک سطر اطلاعات تحویل بنویسید."))
+    if any(not line.title or not line.value for line in kept):
+        raise ValidationError(gettext_lazy("هر سطر تحویل هم عنوان می‌خواهد هم مقدار."))
+    if (
+        len(kept) > DELIVERY_LINES
+        or len(note) > 2000
+        or any(len(line.title) > 100 or len(line.value) > 2000 for line in kept)
+    ):
+        raise ValidationError(gettext_lazy("اطلاعات تحویل بیش از اندازه طولانی است."))
+    if expires_at is not None and expires_at < timezone.localdate():
+        raise ValidationError(gettext_lazy("تاریخ پایان اشتراک گذشته است."))
+    return DeliveryContent(kept, note.strip(), expires_at)
+
+
+@transaction.atomic
+def deliver_item(
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    expected_event_id: int,
+    lines: Sequence[DeliveryLine],
+    note: str,
+    expires_at: date | None,
+    actual_cost: Decimal,
+) -> Delivery:
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    content = delivery_content(lines, note, expires_at)
+    if not (
+        isinstance(actual_cost, Decimal)
+        and actual_cost.is_finite()
+        and actual_cost == actual_cost.to_integral_value()
+        and 0 <= actual_cost <= MAX_AMOUNT
+    ):
+        raise ValidationError(gettext_lazy("قیمت تأمین واقعی معتبر نیست."))
+    if item.events.order_by("-pk").values_list("pk", flat=True).first() != expected_event_id:
+        raise ValidationError(
+            gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+        )
+    if item.status != OrderItem.Status.QUEUED or item.paid_at is None or item.sla_paused_at:
+        raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
+    item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
+    item.expires_at, item.actual_cost = content.expires_at, actual_cost
+    item.save(update_fields=["status", "delivered_at", "expires_at", "actual_cost"])
+    delivery = Delivery.objects.create(
+        order_item=item,
+        event=_input_event(item, account, OrderItem.Status.QUEUED),
+        note=content.note,
+    )
+    DeliveryField.objects.bulk_create(
+        DeliveryField(delivery=delivery, position=n, title=line.title, value=line.value)
+        for n, line in enumerate(content.lines)
+    )
+    return delivery
+
+
+def reveal_delivery(
+    *, order_id: int, item_id: int, actor: User, ip: str | None
+) -> DeliveryContent | None:
+    """The current set, decrypted only after its access row is written; None before delivery."""
+    with transaction.atomic(durable=True):
+        _may_reveal(actor)
+        item = OrderItem.objects.only("pk", "expires_at").get(pk=item_id, order_id=order_id)
+        delivery = Delivery.objects.filter(order_item_id=item.pk).order_by("-pk").first()
+        if delivery is None:
+            return None
+        content = DeliveryContent(
+            tuple(DeliveryLine(row.title, row.value) for row in delivery.fields.all()),
+            delivery.note,
+            item.expires_at,
+        )
+        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
+    return content
 
 
 @dataclass(frozen=True)
@@ -662,8 +771,8 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
     raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
 
 
-def _input_event(item: OrderItem, account: User, before: str) -> None:
-    OrderItemEvent.objects.create(
+def _input_event(item: OrderItem, account: User, before: str) -> OrderItemEvent:
+    return OrderItemEvent.objects.create(
         order_item=item,
         from_status=before,
         to_status=item.status,
