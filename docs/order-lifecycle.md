@@ -30,7 +30,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | `QUEUED` | Paid and waiting for the operator | Yes, by manual confirmation |
 | `AWAITING_INPUT` | Required details are missing; the clock has not started, or a running deadline is paused | Yes |
 | `DELIVERED` | The account details have been delivered | Yes, by the operator |
-| `REPLACEMENT_REQUESTED` | A warranty claim after delivery | No |
+| `REPLACEMENT_REQUESTED` | A warranty claim after delivery | Yes, opened by the operator |
 | `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT` |
 | `REFUNDED` | Money returned. Final | No |
 
@@ -65,9 +65,9 @@ stateDiagram-v2
 | A6 | `QUEUED` → `CANCELLED` | An approved cancellation or a supply failure; a refund is recorded | operator | No |
 | A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | Yes; operator controls, owner-authorized services |
 | A8 | `AWAITING_INPUT` → `CANCELLED` | The operator cancels, or the input reminders run out at 21 days | operator, system | No |
-| A9 | `DELIVERED` → `REPLACEMENT_REQUESTED` | A warranty claim | customer, operator | No |
-| A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | No |
-| A10b | `REPLACEMENT_REQUESTED` → `DELIVERED` | The claim is rejected, with a note | operator | No |
+| A9 | `DELIVERED` → `REPLACEMENT_REQUESTED` | A warranty claim | customer, operator | Yes, the operator's |
+| A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | Yes |
+| A10b | `REPLACEMENT_REQUESTED` → `DELIVERED` | The claim is rejected, with a note | operator | Yes |
 | A11 | `REPLACEMENT_REQUESTED` → `CANCELLED` | No replacement is possible; a warranty refund | operator | No |
 | A12 | `CANCELLED` → `REFUNDED` | The refund is executed | operator | No |
 | A13 | `CANCELLED` → `QUEUED` | Revival: a payment verified late, or a mistaken cancellation | operator | No |
@@ -163,9 +163,9 @@ The expected history event identifies the waiting episode. Immediate repeats ret
 
 The existing order list opens on queued work, with unpaid and waiting-for-details tabs and an all-orders view. Each row is an order; a mixed order appears in each relevant tab, and tab counts count orders rather than items. Search by order number or customer email applies to the counts too. Pages contain at most 25 orders.
 
-Unpaid orders sort by payment expiry; queued orders sort by their earliest item deadline, overdue first; waiting orders sort by their oldest information request. A first wait shows the request time without a deadline. A paused item shows `due_at - sla_paused_at`, including time already overdue when paused. The displayed times are snapshots, with a check time and a refresh link on the list. Opening a page never writes a deadline.
+Unpaid orders sort by payment expiry; queued orders sort by their earliest item deadline, overdue first; waiting orders sort by their oldest information request; open warranty claims, in their own tab, sort by their oldest first delivery. A first wait shows the request time without a deadline. A paused item shows `due_at - sla_paused_at`, including time already overdue when paused. The displayed times are snapshots, with a check time and a refresh link on the list. Opening a page never writes a deadline.
 
-Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions, and links each queued item to its delivery page.
+Only permitted active staff can read the list, its search results or counts. Django's admin wrapper marks successful responses and login redirects private and no-store. Lists never select or render customer input. The order detail shares the time display and retains the existing payment, input-action and logged reveal paths and their permissions, and links each queued, delivered or claimed item to its delivery page.
 
 ## Delivery
 
@@ -177,7 +177,19 @@ The operator writes up to six lines, each a title and a value, an optional note 
 
 Only `reveal_delivery` decrypts a stored set. It requires view or change permission on both Order and OrderItem and, inside a durable transaction, writes a `CredentialAccessLog` row with target `delivery` before it loads and returns the latest set. No list, inline, history or other panel page loads a value. The delivery page and every reveal page bypass compression and caching (`Content-Encoding: identity`, no-store). The delivery page uses a same-origin referrer policy, because under `no-referrer` the browser sends `Origin: null` and the CSRF check refuses the post, and both of its posts hide their fields from error reports.
 
-The customer's masked view, the single-use delivery link and the delivery message are not built ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)), nor are replacements and paid cancellation. Real deliveries wait for the offline key escrow and a restore that decrypts ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
+A queued item's delivery page also records a supply delay: `delay_supply` adds 1 to 72 hours, with a required note, to an unpaused queued item's deadline and moves the result into the 10:00–22:00 support window like every deadline. The status does not change; the history row's status before and after are both `QUEUED`, and its note carries the new deadline.
+
+### Warranty claims
+
+A delivered item's row links to the same page, which then opens a claim: `open_claim` (A9) needs a note, which stays in the history, so the page asks for no password in it. The page of an open claim shows that note and offers two exits. `replace_delivery` (A10a) takes the delivery form with an extra supply cost in place of the actual cost; it writes a new set, keeps every earlier one, adds the extra cost to `actual_cost`, sets `expires_at` and leaves `delivered_at` at the first delivery. `reject_claim` (A10b) needs a note and stores no set. Only `deliver_item` serves a `QUEUED` item and only `replace_delivery` serves a claim, so `DELIVERED` → `DELIVERED` has no entry point. Each service refuses a stale page and names a repeated submission from the same page, as delivery does; `replace_delivery` and `reject_claim` tell each other apart by whether the latest history row has a set. A customer's own claim, the claim and replacement messages and the warranty refund (A11) are not built.
+
+A product whose warranty runs to the end of the period cannot be delivered or replaced without the subscription's last day, because its retention deadline depends on it.
+
+### Retention
+
+Every night at 03:25 `delete_expired_details` deletes what ADR-0007 keeps no longer. An item's delivered sets, their notes and its customer input are deleted together at `retention_deadline`: the later of `expires_at` and the warranty's end (the delivery day for no warranty, seven days after delivery for a seven-day warranty, `expires_at` for a full-period one), plus 30 days, counted in Tehran calendar days. A cancelled item that was never delivered loses its customer input 30 days after its cancellation. The job selects only items that still hold details, whatever their status, so a missed night is caught up the next and a rerun deletes nothing; an open claim waits until it closes. Each deletion writes a system history row with the same status before and after. Afterwards the reveal says the details were deleted under the retention rule.
+
+The customer's masked view, the single-use delivery link and the delivery message are not built ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)), nor is paid cancellation. Real deliveries wait for the offline key escrow and a restore that decrypts ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
 ## Support ownership matching
 
