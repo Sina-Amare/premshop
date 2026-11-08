@@ -84,6 +84,18 @@
   {% elif mode != "claim" %}
     <p>{% translate "این محصول در صف انجام نیست" %}: {{ item.get_status_display }}</p>
   {% endif %}
+  {% if cancel_options %}
+    <h3 id="cancel-title" class="delivery-reject">{% translate "لغو و بازپرداخت" %}</h3>
+    <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'cancel' %}" class="order-payment-form delivery-form" autocomplete="off" aria-labelledby="cancel-title">
+      {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
+      <div><label for="cancel-reason">{% translate "دلیل لغو" %}</label><select id="cancel-reason" name="reason">{% for reason, label, amount in cancel_options %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
+      <p>{% translate "مبلغ بازپرداخت" %}: {{ cancel_options.0.2|toman }}</p>
+      <div><label for="cancel-note">{% translate "توضیح لغو" %}</label><textarea id="cancel-note" name="note" rows="2" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این توضیح در سابقه‌ی سفارش می‌ماند." %}</p></div>
+      <button type="submit" class="order-input-action">{% translate "لغو و ثبت بازپرداخت" %}</button>
+    </form>
+  {% elif cancel_refusal %}
+    <p class="delivery-claim">{{ cancel_refusal }}</p>
+  {% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>
 {% endblock %}

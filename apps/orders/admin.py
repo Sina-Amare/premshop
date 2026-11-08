@@ -48,13 +48,16 @@ from apps.orders.models import (
 from apps.orders.selectors import grouped_items
 from apps.orders.services import (
     DELIVERY_LINES,
+    PAID_CANCELLATIONS,
     DeliveryLine,
+    cancel_paid_item,
     delay_supply,
     deliver_item,
     delivery_content,
     match_support_token,
     open_claim,
     receive_input,
+    refund_amount,
     reject_claim,
     replace_delivery,
     request_input,
@@ -104,6 +107,7 @@ class OrderItemInline(TabularInline):
         "sale_amount",
         "cost_amount",
         "cancel_reason",
+        "refund_state",
         "input_reveal",
         "delivery",
     )
@@ -114,7 +118,14 @@ class OrderItemInline(TabularInline):
     show_title = False
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[OrderItem]:
-        return super().get_queryset(request).defer("customer_input")
+        return super().get_queryset(request).defer("customer_input").select_related("refund")
+
+    @admin.display(description=_("بازپرداخت"))
+    def refund_state(self, obj: OrderItem) -> str:
+        refund = getattr(obj, "refund", None)
+        if refund is None:
+            return "—"
+        return f"{format_toman(refund.amount)} · {refund.get_status_display()}"
 
     def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
@@ -156,6 +167,12 @@ class OrderItemInline(TabularInline):
                 '<a class="order-input-action" href="{}">{}</a>',
                 reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
                 _("تحویل"),
+            )
+        if obj.status == OrderItem.Status.AWAITING_INPUT:
+            return format_html(
+                '<a class="order-input-action" href="{}">{}</a>',
+                reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
+                _("لغو و بازپرداخت"),
             )
         if obj.delivered_at is None:
             return "—"
@@ -420,7 +437,8 @@ class OrderAdmin(ModelAdmin):
     def item_action_view(
         self, request: HttpRequest, order_id: int, item_id: int, action: str
     ) -> HttpResponse:
-        """Opens or rejects a warranty claim, or records a supply delay, each with a note."""
+        """Opens or rejects a warranty claim, records a supply delay, or cancels a paid item
+        with its refund, each with a note."""
         if not (
             self.has_view_permission(request)
             and request.user.has_perms(["orders.change_order", "orders.change_orderitem"])
@@ -432,9 +450,12 @@ class OrderAdmin(ModelAdmin):
             "claim": (open_claim, _("درخواست تعویض")),
             "reject": (reject_claim, _("رد درخواست تعویض")),
             "delay": (delay_supply, _("تأخیر تأمین")),
+            "cancel": (cancel_paid_item, _("لغو و بازپرداخت")),
         }
         if action not in actions:
             raise Http404
+        if action == "cancel" and not request.user.has_perm("payments.add_refund"):
+            raise PermissionDenied
         service, title = actions[action]
         order = get_object_or_404(self.get_queryset(request), pk=order_id)
         get_object_or_404(OrderItem.objects.only("pk"), pk=item_id, order_id=order_id)
@@ -451,6 +472,8 @@ class OrderAdmin(ModelAdmin):
                     changes["hours"] = int(to_latin_digits(request.POST.get("hours", "")).strip())
                 except ValueError:
                     raise ValidationError(_("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید.")) from None
+            if action == "cancel":
+                changes["reason"] = request.POST.get("reason", "")
             service(
                 order_id=order_id,
                 item_id=item_id,
@@ -472,7 +495,7 @@ class OrderAdmin(ModelAdmin):
                 },
                 status=400,
             )
-        if action == "reject":
+        if action in ("reject", "cancel"):
             return redirect("admin:orders_order_change", order_id)
         return redirect("admin:orders_order_deliver", order_id, item_id)
 
@@ -594,6 +617,20 @@ class OrderAdmin(ModelAdmin):
             if mode == "replace"
             else None
         )
+        # The reasons this item's status allows today, each with what it would owe; the
+        # service reads the same refund_amount, so the page cannot promise another figure.
+        cancel_options: list[tuple[str, Any, Any]] = []
+        cancel_refusal = ""
+        if request.user.has_perm("payments.add_refund"):
+            for reason, statuses in PAID_CANCELLATIONS.items():
+                if item.status not in statuses:
+                    continue
+                try:
+                    amount = refund_amount(item, reason)
+                except ValidationError as refusal:
+                    cancel_refusal = cancel_refusal or " ".join(refusal.messages)
+                else:
+                    cancel_options.append((reason, OrderItem.CancelReason(reason).label, amount))
         bank_ref = None
         if request.user.has_perm("payments.view_payment"):
             bank_ref = (
@@ -619,6 +656,8 @@ class OrderAdmin(ModelAdmin):
                 "can_deliver": can_deliver,
                 "mode": mode,
                 "claim_note": claim_note,
+                "cancel_options": cancel_options,
+                "cancel_refusal": cancel_refusal,
             },
             status=400 if error or form.errors else 200,
         )
