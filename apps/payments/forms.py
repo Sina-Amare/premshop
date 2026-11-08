@@ -1,14 +1,20 @@
 import re
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
+import jdatetime
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
+from apps.core.formatting import format_jalali, format_toman, to_latin_digits, to_persian_digits
+from apps.orders.clock import TEHRAN
 from apps.orders.services import Purchase
+from apps.payments.models import Refund
 
 
 class GroupedTomanField(forms.DecimalField):
@@ -32,6 +38,81 @@ class ManualPaymentForm(forms.Form):
         max_length=64,
         widget=forms.TextInput(attrs={"dir": "ltr", "autocomplete": "off"}),
     )
+
+
+class JalaliDateField(forms.Field):
+    def to_python(self, value: Any) -> date | None:
+        if value in self.empty_values:
+            return None
+        text = to_latin_digits(str(value).strip())
+        found = re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", text)
+        try:
+            if found is None:
+                raise ValueError
+            return jdatetime.date(*map(int, found.groups())).togregorian()
+        except ValueError, OverflowError:
+            raise ValidationError(_("تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید.")) from None
+
+
+class ReconciliationForm(forms.Form):
+    day = JalaliDateField(label=_("روز (شمسی)"), widget=forms.TextInput(attrs={"dir": "ltr"}))
+
+
+class RefundTransferForm(ManualPaymentForm):
+    refund_ids = forms.TypedMultipleChoiceField(
+        label=_("بازپرداخت‌های این واریز"), coerce=int, widget=forms.CheckboxSelectMultiple
+    )
+    destination_kind = forms.ChoiceField(label=_("نوع مقصد"), choices=Refund.Destination.choices)
+    destination_last4 = forms.RegexField(
+        label=_("چهار رقم آخر مقصد"),
+        regex=r"^\d{4}$",
+        max_length=4,
+        widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric", "autocomplete": "off"}),
+    )
+    bank_date = JalaliDateField(
+        label=_("تاریخ واریز (شمسی)"), widget=forms.TextInput(attrs={"dir": "ltr"})
+    )
+    bank_time = forms.TimeField(
+        label=_("ساعت واریز (تهران، با ثانیه)"),
+        input_formats=["%H:%M:%S"],
+        widget=forms.TextInput(attrs={"dir": "ltr"}),
+    )
+    field_order = [
+        "refund_ids",
+        "amount",
+        "destination_kind",
+        "destination_last4",
+        "bank_ref",
+        "bank_date",
+        "bank_time",
+    ]
+
+    def __init__(self, *args: Any, refunds: list[Refund], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["amount"].label = _("مبلغ واریزشده (تومان)")
+        cast(forms.TypedMultipleChoiceField, self.fields["refund_ids"]).choices = [
+            (
+                row.pk,
+                _("آیتم %(item)s · %(amount)s · %(status)s")
+                % {
+                    "item": f"\u2068{row.order_item.product_snapshot.get('name', '')}\u2069؛ \u2068{row.order_item.product_snapshot.get('plan_title', '')}\u2069 ({to_persian_digits(row.order_item_id)})",
+                    "amount": format_toman(row.amount),
+                    "status": row.get_status_display(),
+                },
+            )
+            for row in refunds
+            if self.is_bound or row.status == Refund.Status.OWED
+        ]
+        now = timezone.localtime(timezone.now(), TEHRAN)
+        self.initial.update(
+            bank_date=format_jalali(now, with_month_name=False), bank_time=now.strftime("%H:%M:%S")
+        )
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        if not self.errors:
+            data["executed_at"] = datetime.combine(data["bank_date"], data["bank_time"], TEHRAN)
+        return data
 
 
 class CheckoutForm(forms.Form):

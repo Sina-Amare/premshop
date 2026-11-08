@@ -33,6 +33,19 @@
   {% if can_record_payment %}<a class="order-input-action" href="{% url 'admin:orders_order_record_manual_payment' original.pk %}">{% translate "ثبت پرداخت خارج از درگاه" %}</a>{% endif %}
 </section>
 {% endif %}
+{% if refund_history or can_execute_refunds %}
+<section class="order-history" aria-labelledby="refund-history-title">
+  <header><h2 id="refund-history-title">{% translate "بازپرداخت‌های سفارش" %}</h2></header>
+  {% for refund in refund_history %}<article class="saved-purchase">
+    <p>{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }} · {{ refund.amount|toman }} · {{ refund.get_status_display }}</p>
+    {% if refund.executed_at %}
+    <p>{{ refund.executed_at|jalali }} · {{ refund.executed_at|date:'H:i:s'|fa_digits }} · <bdi>{{ refund.executed_by.email }}</bdi></p>
+    <p>{{ refund.get_destination_kind_display }} · <bdi dir="ltr">{{ refund.destination_last4 }}</bdi> · <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
+    {% endif %}
+  </article>{% endfor %}
+  {% if can_execute_refunds %}<a class="order-input-action" href="{% url 'admin:orders_order_execute_refunds' original.pk %}">{% translate "ثبت واریز بازپرداخت" %}</a>{% endif %}
+</section>
+{% endif %}
 <section class="order-history saved-conditions" aria-labelledby="saved-conditions-title">
   <header><h2 id="saved-conditions-title">{% translate "شرایط زمان خرید" %}</h2></header>
   {% for group in purchase_groups %}{% for line in group.lines %}<article class="saved-purchase">

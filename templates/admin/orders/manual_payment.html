@@ -3,17 +3,24 @@
 {% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
 {% block content %}
 <section class="order-history" aria-labelledby="manual-payment-title">
-  <header><h2 id="manual-payment-title">{% translate "ثبت پرداخت خارج از درگاه" %} · {% translate "سفارش" %} {{ order.order_number|fa_digits }}</h2></header>
+  <header><h2 id="manual-payment-title">{{ title }} · {% translate "سفارش" %} {{ order.order_number|fa_digits }}</h2></header>
+  {% if refund_transfer %}
+  <p>{% translate "فقط واریزی را ثبت کنید که در بانک انجام شده است. این فرم پولی جابه‌جا نمی‌کند؛ پس از ثبت نمی‌توانید مشخصات واریز را تغییر دهید." %}</p>
+  {% else %}
   <p>{% translate "مبلغ نهایی سفارش" %}: {{ order.total_amount|toman }}</p>
   <p>{% translate "ابتدا واریز را در حساب بانکی بررسی کنید؛ تصویر رسید برای تأیید پرداخت کافی نیست." %}</p>
+  {% endif %}
+  {% if not refund_transfer or has_refunds or form.is_bound %}
   <form method="post" class="order-payment-form" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}
-      <div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
+      {% if field.name == 'refund_ids' %}<fieldset><legend>{{ field.label }}</legend>{{ field }}{{ field.errors }}</fieldset>
+      {% else %}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}
     {% endfor %}
-    <button type="submit" class="order-input-action">{% translate "ثبت پرداخت خارج از درگاه" %}</button>
+    <button type="submit" class="order-input-action">{{ title }}</button>
   </form>
+  {% else %}<p>{% translate "بازپرداختی در انتظار واریز نیست." %}</p>{% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>
 {% endblock %}

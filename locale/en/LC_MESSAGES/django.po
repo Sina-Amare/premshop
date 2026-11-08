@@ -1853,3 +1853,108 @@ msgstr "Destination's last four digits"
 
 msgid "کارت"
 msgstr "Card"
+
+msgid "آیتم %(item)s · %(amount)s · %(status)s"
+msgstr "Item %(item)s · %(amount)s · %(status)s"
+
+msgid "این سفارش پرداخت تأییدشده ندارد."
+msgstr "This order has no verified payment."
+
+msgid "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است؛ آن را با بانک تطبیق دهید."
+msgstr "This bank reference also appears on another order; check it against the bank."
+
+msgid "این محصول بازپرداخت واریزشده ندارد."
+msgstr "This item has no executed refund."
+
+msgid "بازپرداخت انتخاب‌شده متعلق به این سفارش نیست."
+msgstr "The selected refund does not belong to this order."
+
+msgid "بازپرداختی در انتظار واریز نیست."
+msgstr "No refunds are awaiting transfer."
+
+msgid "بازپرداختی در این روز ثبت یا واریز نشده است."
+msgstr "No refunds became owed or were sent on this day."
+
+msgid "بازپرداخت‌های این واریز"
+msgstr "Refunds covered by this transfer"
+
+msgid "بازپرداخت‌های این واریز را انتخاب کنید."
+msgstr "Select the refunds covered by this transfer."
+
+msgid "بدهی جدید بازپرداخت"
+msgstr "Refunds newly owed"
+
+msgid "بازپرداخت‌های سفارش"
+msgstr "Order refunds"
+
+msgid "بازپرداخت‌های واریزشده"
+msgstr "Refunds sent"
+
+msgid "بدهی جدید در این روز"
+msgstr "Newly owed on this day"
+
+msgid "تاریخ واریز (شمسی)"
+msgstr "Transfer date (Jalali)"
+
+msgid "تطبیق روزانه"
+msgstr "Daily reconciliation"
+
+msgid "ثبت واریز بازپرداخت"
+msgstr "Record refund transfer"
+
+msgid "روز (شمسی)"
+msgstr "Day (Jalali)"
+
+msgid "روز از نیمه‌شب تهران تا نیمه‌شب بعدی است. بدهی جدید با پول واریزشده جمع نمی‌شود."
+msgstr "The day runs from Tehran midnight to the next midnight. Newly owed refunds are separate from money sent."
+
+msgid "زمان ثبت بدهی"
+msgstr "Time the refund became owed"
+
+msgid "زمان واریز باید معتبر و حداکثر همین لحظه باشد."
+msgstr "The transfer time must be valid and no later than now."
+
+msgid "زمان واریز نمی‌تواند پیش از ثبت بدهی بازپرداخت باشد."
+msgstr "The transfer cannot predate the refund becoming owed."
+
+msgid "ساعت واریز (تهران، با ثانیه)"
+msgstr "Transfer time (Tehran, with seconds)"
+
+msgid "شماره‌ی پیگیری مشترک با سفارش دیگر؛ با بانک تطبیق دهید."
+msgstr "Bank reference shared with another order; check it against the bank."
+
+msgid "فقط واریزی را ثبت کنید که در بانک انجام شده است. این فرم پولی جابه‌جا نمی‌کند؛ پس از ثبت نمی‌توانید مشخصات واریز را تغییر دهید."
+msgstr "Record only a transfer already completed at the bank. This form moves no money, and saved transfer details cannot be edited."
+
+msgid "مبلغ واریز باید دقیقاً برابر مجموع بازپرداخت‌های انتخاب‌شده باشد."
+msgstr "The transfer amount must exactly match the selected refunds total."
+
+msgid "مبلغ واریزشده (تومان)"
+msgstr "Amount sent (toman)"
+
+msgid "نمایش روز"
+msgstr "Show day"
+
+msgid "نوع مقصد و چهار رقم آخر آن را درست وارد کنید."
+msgstr "Enter a valid destination kind and its last four digits."
+
+msgid "هر ردیف سهم یک آیتم است؛ یک واریز می‌تواند چند آیتم را پوشش دهد."
+msgstr "Each row is one item share; a transfer can cover several items."
+
+msgid "واریز بازپرداخت ثبت شد."
+msgstr "Refund transfer recorded."
+
+msgid "واریز در این روز"
+msgstr "Sent on this day"
+
+msgid "واریز یکی از این بازپرداخت‌ها قبلاً ثبت شده است؛ هیچ واریز جدیدی ثبت نشد."
+msgstr "One of these refunds already has a recorded transfer; no new transfer was recorded."
+
+msgid "وضعیت یکی از محصولات برای ثبت بازپرداخت مناسب نیست."
+msgstr "One of the items is not eligible for recording a refund transfer."
+
+msgid "پرداختی در این روز تأیید نشده است."
+msgstr "No payments were verified on this day."
+
+msgid "پرداخت‌های تأییدشده"
+msgstr "Payments verified"

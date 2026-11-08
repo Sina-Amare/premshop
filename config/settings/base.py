@@ -380,6 +380,14 @@ UNFOLD = {
                         "link": reverse_lazy("admin:orders_order_changelist"),
                     },
                     {
+                        "title": _("تطبیق روزانه"),
+                        "icon": "account_balance",
+                        "link": reverse_lazy("admin:orders_order_reconciliation"),
+                        "permission": lambda request: request.user.has_perms(
+                            ["orders.view_order", "payments.view_payment", "payments.view_refund"]
+                        ),
+                    },
+                    {
                         "title": _("کدهای تخفیف"),
                         "icon": "local_offer",
                         "link": reverse_lazy("admin:orders_discountcode_changelist"),

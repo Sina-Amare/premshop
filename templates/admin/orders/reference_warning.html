@@ -1,0 +1,3 @@
+{% load i18n fa %}
+{% if duplicates %}<p class="order-reference-warning">{% translate "شماره‌ی پیگیری مشترک با سفارش دیگر؛ با بانک تطبیق دهید." %}
+{% for pk, number in duplicates.items %}<a href="{% url 'admin:orders_order_change' pk %}">{{ number|fa_digits }}</a>{% if not forloop.last %}، {% endif %}{% endfor %}</p>{% endif %}
