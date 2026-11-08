@@ -74,6 +74,7 @@ def test_reference_matches_cross_record_types_and_days_but_exclude_the_same_orde
         refunds = list(Refund.objects.order_by("pk"))
         execute(second, refunds, operator, bank_ref="TR-123")
     assert reference_matches("TR-۱٢۳", second.pk) == {first.pk: first.order_number}
+    assert reference_matches("TR-123", first.pk) == {second.pk: second.order_number}
     report = reconciliation(date(2026, 11, 8))
     assert all(row["duplicates"] == {first.pk: first.order_number} for row in report["refunds"])
     assert reference_matches("not-there", second.pk) == {}

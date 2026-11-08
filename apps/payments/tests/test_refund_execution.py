@@ -52,7 +52,12 @@ def snapshot(order):
 
 
 @pytest.mark.parametrize("count", [1, 3])
-def test_execution_uses_the_selected_frozen_amounts_and_records_history(owed, operator, count):
+def test_execution_uses_the_selected_frozen_amounts_and_records_history(
+    owed, operator, plan, count
+):
+    from apps.catalog.models import Plan
+
+    Plan.objects.filter(pk=plan.pk).update(sale_price=1)
     order, refunds = owed
     selected = refunds[:count]
     sent_at = timezone.now()
@@ -154,6 +159,20 @@ def test_bank_time_is_aware_not_future_and_not_before_any_selected_debt(owed, op
     assert len(execute(order, refunds, operator, executed_at=when)) == 3
 
 
+def test_bank_time_cannot_fall_between_the_selected_refunds_becoming_owed(buyer, plan, operator):
+    first = timezone.now()
+    with time_machine.travel(first, tick=False):
+        order, items = paid_order(buyer, operator, [OrderLine(plan, 2)])
+        cancel(items[0], operator)
+    with time_machine.travel(first + timedelta(minutes=2), tick=False):
+        cancel(items[1], operator)
+        refunds = list(Refund.objects.order_by("pk"))
+        before = snapshot(order)
+        with pytest.raises(ValidationError):
+            execute(order, refunds, operator, executed_at=first + timedelta(minutes=1))
+        assert snapshot(order) == before
+
+
 @pytest.mark.parametrize("ids", [[], [0], [-1], [True], ["1"], "1", None])
 def test_invalid_selections_change_nothing(owed, operator, ids):
     order, refunds = owed
@@ -207,6 +226,15 @@ def test_an_event_failure_rolls_back_every_selected_refund(owed, operator, monke
     assert snapshot(order) == before
 
 
+def test_an_ineligible_item_prevents_execution_of_the_whole_selection(owed, operator):
+    order, refunds = owed
+    order.items.filter(pk=refunds[-1].order_item_id).update(status="QUEUED")
+    before = snapshot(order)
+    with pytest.raises(ValidationError):
+        execute(order, refunds, operator)
+    assert snapshot(order) == before
+
+
 @pytest.mark.parametrize(
     "missing", ["change_refund", "change_order", "change_orderitem", "active", "staff"]
 )
@@ -241,3 +269,43 @@ def test_a_fully_discounted_item_has_no_transfer_to_record(buyer, plan, operator
     assert not Refund.objects.filter(order_item=item).exists()
     with pytest.raises(ValidationError):
         execute(order, [], operator, amount=Decimal(0))
+
+
+@pytest.mark.parametrize("kind", ["payment", "refund"])
+def test_shared_money_services_redact_transaction_wrapper_arguments(
+    owed, operator, monkeypatch, settings, kind
+):
+    from uuid import uuid4
+
+    from django.test import RequestFactory
+    from django.views.debug import ExceptionReporter
+
+    settings.DEBUG = False
+    order, refunds = owed
+    reference = "private-service-" + uuid4().hex
+    monkeypatch.setattr(services, "_bank_reference", lambda bank_ref: 1 / 0)
+    with pytest.raises(ZeroDivisionError) as failure:
+        if kind == "payment":
+            services.record_manual_payment(
+                order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref=reference
+            )
+        else:
+            services.execute_refunds(
+                order_id=order.pk,
+                refund_ids=[row.pk for row in refunds],
+                actor=operator,
+                amount=order.total_amount,
+                destination_kind="card",
+                destination_last4="6037",
+                bank_ref=reference,
+                executed_at=timezone.now(),
+            )
+    # Exclude the test caller, as a real request's traceback excludes its client.
+    reporter = ExceptionReporter(
+        RequestFactory().get("/"),
+        ZeroDivisionError,
+        failure.value,
+        failure.value.__traceback__.tb_next,
+    )
+    assert reference not in reporter.get_traceback_text()
+    assert reference not in reporter.get_traceback_html()

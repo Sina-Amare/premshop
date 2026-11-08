@@ -69,8 +69,8 @@ def _bank_reference(bank_ref: str) -> str:
     return bank_ref.strip()
 
 
-@transaction.atomic
 @sensitive_variables()
+@transaction.atomic
 def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_ref: str) -> Payment:
     account = _payment_operator(actor)
     order = _payment_order(order_id)
@@ -112,8 +112,8 @@ def confirm_payment(*, payment_id: int, actor: User) -> Payment:
     return payment
 
 
-@transaction.atomic
 @sensitive_variables()
+@transaction.atomic
 def execute_refunds(
     *,
     order_id: int,
@@ -172,7 +172,7 @@ def execute_refunds(
         raise ValidationError(_("بازپرداخت انتخاب‌شده متعلق به این سفارش نیست."))
     if any(refund.status != Refund.Status.OWED for refund in refunds):
         raise ValidationError(
-            _("واریز یکی از این بازپرداخت‌ها قبلاً ثبت شده است؛ هیچ واریز تازه‌ای ثبت نشد.")
+            _("واریز یکی از این بازپرداخت‌ها قبلاً ثبت شده است؛ هیچ واریز جدیدی ثبت نشد.")
         )
     if any(items[refund.order_item_id].status != OrderItem.Status.CANCELLED for refund in refunds):
         raise ValidationError(_("وضعیت یکی از محصولات برای ثبت بازپرداخت مناسب نیست."))
