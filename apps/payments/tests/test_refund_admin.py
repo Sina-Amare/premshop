@@ -249,15 +249,16 @@ def test_out_of_day_reference_matches_respect_object_permissions(
     monkeypatch.setattr(
         model_admin,
         "has_view_permission",
-        lambda request, obj=None: original(request, obj)
-        and (obj is None or obj.pk != foreign.pk),
+        lambda request, obj=None: original(request, obj) and (obj is None or obj.pk != foreign.pk),
     )
     client.force_login(operator)
     if surface == "report":
         response = client.get(report_url())
         assert response.status_code == 200
         assert all(not row["duplicates"] for row in response.context["refunds"])
-        assert reverse("admin:orders_order_change", args=[foreign.pk]) not in response.content.decode()
+        assert (
+            reverse("admin:orders_order_change", args=[foreign.pk]) not in response.content.decode()
+        )
     else:
         response = client.post(url(order), post_data(refunds[1:]), follow=True)
         assert response.status_code == 200
