@@ -79,11 +79,25 @@ def test_items_a_code_did_not_cover_carry_no_share(buyer, plan):
     assert shares == sorted([(plan.pk, 30000), (plan.pk, 30000), (other.pk, 0)])
 
 
+def test_a_free_item_takes_no_leftover_toman_at_checkout(buyer, plan):
+    other = separate_plan(plan)
+    Plan.objects.filter(pk=plan.pk).update(sale_price=0)
+    Plan.objects.filter(pk=other.pk).update(sale_price=30000, stock_quantity=None, max_quantity=3)
+    DiscountCode.objects.create(code="SAVE", kind="fixed", value=10001)
+    order = services.place_order(
+        user=buyer, lines=[OrderLine(plan, 1), OrderLine(other, 2)], discount_code="SAVE"
+    )
+    items = list(order.items.order_by("pk"))
+    assert items[0].plan_id == plan.pk  # the free item has the lowest ID
+    assert [item.discount_share for item in items] == [0, 5001, 5000]
+
+
 def test_shares_always_add_up_to_the_discount_and_never_exceed_a_price():
     rng = random.Random(7)  # noqa: S311 - repeatable test data, not a secret
     for _ in range(500):
         ids = rng.sample(range(1, 10000), rng.randint(1, 8))
-        prices = {pk: Decimal(rng.randint(0, 900000)) for pk in ids}
+        # A free plan is allowed, so one price in three is zero.
+        prices = {pk: Decimal(rng.choice([0, rng.randint(1, 900000)])) for pk in ids}
         discount = Decimal(rng.randint(0, int(sum(prices.values()))))
         shares = services.discount_shares(prices, discount)
         assert set(shares) == set(prices)
@@ -439,6 +453,7 @@ def test_the_share_migration_fills_existing_orders_and_reverses(buyer, plan):
             {"scope": "selected", "products": [plan.product_id]},
         )
         none = placed([(plan.pk, 100000)], 0, {})
+        free = placed([(plan.pk, 0), (plan.pk, 30000), (plan.pk, 30000)], 10001, {"scope": "all"})
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
         from apps.orders.models import OrderItem
@@ -449,9 +464,10 @@ def test_the_share_migration_fills_existing_orders_and_reverses(buyer, plan):
         assert shares(everything) == [3334, 3333, 3333]
         assert shares(selected) == [30000, 0]
         assert shares(none) == [0]
+        assert shares(free) == [0, 5001, 5000]
         executor = MigrationExecutor(connection)
         executor.migrate([previous])
-        assert Item.objects.filter(pk__in=everything + selected + none).count() == 6
+        assert Item.objects.filter(pk__in=everything + selected + none + free).count() == 9
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())

@@ -148,7 +148,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `order`, `plan` | Both PROTECT |
 | `status` | One of seven; see the [order lifecycle](order-lifecycle.md) |
 | `price_snapshot`, `cost_snapshot` | The price charged, from `effective_price`, and the plan's cost at that moment |
-| `discount_share` | The item's part of the order's discount, frozen at placement: in proportion to price over the items the code covered, rounded down, each leftover toman to the lowest item IDs. The shares add up to `discount_amount`; never more than `price_snapshot` (`order_item_discount_share_within_price`). The item's paid amount is `price_snapshot − discount_share` |
+| `discount_share` | The item's part of the order's discount, frozen at placement: in proportion to price over the items the code covered, rounded down, each leftover toman to the lowest IDs among the items that cost something. The shares add up to `discount_amount`; never more than `price_snapshot` (`order_item_discount_share_within_price`). The item's paid amount is `price_snapshot − discount_share` |
 | `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
 | `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |

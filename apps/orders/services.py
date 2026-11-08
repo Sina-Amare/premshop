@@ -821,14 +821,16 @@ def _discount(
 def discount_shares(prices: dict[int, Decimal], discount: Decimal) -> dict[int, Decimal]:
     """An order's discount over the items its code covered, keyed by item ID.
 
-    In proportion to price, rounded down, and each toman left over goes to the lowest item
-    IDs, so the shares add up to the discount exactly and the same order always splits alike.
+    In proportion to price, rounded down, and each toman left over goes to the lowest IDs
+    among the items that cost something, so the shares add up to the discount exactly, no
+    share passes its price and the same order always splits alike.
     """
     total = sum(prices.values(), Decimal(0))
     if discount <= 0 or total <= 0:
         return dict.fromkeys(prices, Decimal(0))
     shares = {pk: price * discount // total for pk, price in prices.items()}
-    for pk in sorted(prices)[: int(discount - sum(shares.values()))]:
+    payable = sorted(pk for pk, price in prices.items() if price > 0)
+    for pk in payable[: int(discount - sum(shares.values()))]:
         shares[pk] += 1
     return shares
 

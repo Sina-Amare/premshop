@@ -23,7 +23,9 @@ def fill_shares(apps, schema_editor):
             covered = items
         total = sum(item.price_snapshot for item in covered)
         shares = {item.pk: item.price_snapshot * order.discount_amount // total for item in covered}
-        for pk in sorted(shares)[: int(order.discount_amount - sum(shares.values()))]:
+        # A free item cannot take a leftover toman: its share would pass its price.
+        payable = sorted(item.pk for item in covered if item.price_snapshot > 0)
+        for pk in payable[: int(order.discount_amount - sum(shares.values()))]:
             shares[pk] += 1
         for pk, share in shares.items():
             OrderItem.objects.filter(pk=pk).update(discount_share=share)
