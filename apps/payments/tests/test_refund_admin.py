@@ -229,3 +229,36 @@ def test_the_report_and_reference_links_respect_the_admin_queryset(
     assert len(response.context["payments"]) == 1
     assert all(not row["duplicates"] for row in response.context["refunds"])
     assert reverse("admin:orders_order_change", args=[foreign.pk]) not in response.content.decode()
+
+
+@pytest.mark.parametrize("surface", ["report", "warning"])
+def test_out_of_day_reference_matches_respect_object_permissions(
+    client, owed, buyer, plan, operator, monkeypatch, surface
+):
+    from datetime import timedelta
+
+    order, refunds = owed
+    foreign, _ = paid_order(buyer, operator, [OrderLine(plan, 1)])
+    reference = "bank-private-735192"
+    Payment.objects.filter(order=foreign).update(
+        bank_ref=reference, verified_at=timezone.now() - timedelta(days=1)
+    )
+    execute(order, refunds[:1], operator, bank_ref=reference)
+    model_admin = admin.site._registry[Order]
+    original = model_admin.has_view_permission
+    monkeypatch.setattr(
+        model_admin,
+        "has_view_permission",
+        lambda request, obj=None: original(request, obj)
+        and (obj is None or obj.pk != foreign.pk),
+    )
+    client.force_login(operator)
+    if surface == "report":
+        response = client.get(report_url())
+        assert response.status_code == 200
+        assert all(not row["duplicates"] for row in response.context["refunds"])
+        assert reverse("admin:orders_order_change", args=[foreign.pk]) not in response.content.decode()
+    else:
+        response = client.post(url(order), post_data(refunds[1:]), follow=True)
+        assert response.status_code == 200
+        assert not any(message.level_tag == "warning" for message in response.context["messages"])

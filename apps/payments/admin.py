@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path
@@ -50,10 +51,16 @@ class PaymentOrderAdmin(OrderAdmin):
             ["payments.add_payment", "orders.change_order", "orders.change_orderitem"]
         )
 
+    def viewable_orders(self, request: HttpRequest) -> QuerySet[Order]:
+        orders = self.get_queryset(request)
+        return orders.filter(
+            pk__in=[order.pk for order in orders if self.has_view_permission(request, order)]
+        )
+
     def warn_reference(self, request: HttpRequest, reference: str, order_id: int) -> None:
         if request.user.has_perms(
             ["payments.view_payment", "payments.view_refund"]
-        ) and reference_matches(reference, order_id, orders=self.get_queryset(request)):
+        ) and reference_matches(reference, order_id, orders=self.viewable_orders(request)):
             self.message_user(
                 request,
                 _("این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است؛ آن را با بانک تطبیق دهید."),
@@ -177,16 +184,10 @@ class PaymentOrderAdmin(OrderAdmin):
             else {"day": format_jalali(timezone.localdate(), with_month_name=False)}
         )
         report = (
-            reconciliation(form.cleaned_data["day"], orders=self.get_queryset(request))
+            reconciliation(form.cleaned_data["day"], orders=self.viewable_orders(request))
             if form.is_valid()
             else {}
         )
-        for row in report.get("payments", []):
-            if not self.has_view_permission(request, row["payment"].order):
-                raise PermissionDenied
-        for row in report.get("refunds", []):
-            if not self.has_view_permission(request, row["refund"].order_item.order):
-                raise PermissionDenied
         return render(
             request,
             "admin/orders/reconciliation.html",
