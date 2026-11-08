@@ -8,7 +8,7 @@ import logging
 import re
 import uuid
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -17,7 +17,7 @@ from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, OuterRef, Q, TextField
+from django.db.models import Exists, F, OuterRef, Q, Sum, TextField
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
@@ -46,6 +46,7 @@ from apps.orders.models import (
 from apps.orders.models import (
     support_token as new_support_token,
 )
+from apps.payments.models import Payment, Refund
 
 MAX_AMOUNT = Decimal("999999999999")
 logger = logging.getLogger(__name__)
@@ -306,6 +307,132 @@ def delay_supply(
     due = timezone.localtime(item.due_at)
     when = f"{format_jalali(due)}، {to_persian_digits(due.strftime('%H:%M'))}"
     _input_event(item, account, OrderItem.Status.QUEUED, f"{note} · مهلت جدید: {when}")
+    return item
+
+
+# The shop refunds only what it cannot supply; nothing voluntary is cancelled after payment.
+PAID_CANCELLATIONS: dict[str, tuple[str, ...]] = {
+    OrderItem.CancelReason.SUPPLY_FAILURE: (
+        OrderItem.Status.QUEUED,
+        OrderItem.Status.AWAITING_INPUT,
+    ),
+    OrderItem.CancelReason.INPUT_TIMEOUT: (OrderItem.Status.AWAITING_INPUT,),
+    OrderItem.CancelReason.WARRANTY_REFUND: (OrderItem.Status.REPLACEMENT_REQUESTED,),
+}
+INPUT_TIMEOUT_DAYS = 21
+
+
+def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> Decimal:
+    """What cancelling this paid item for this reason owes; the page and the service share it.
+
+    Undelivered, the item's paid amount. A warranty refund only for a claim opened inside the
+    warranty, paying for the days from the claim to the subscription's last day.
+    """
+    if item.paid_at is None or item.status not in PAID_CANCELLATIONS.get(reason, ()):
+        raise ValidationError(gettext_lazy("این محصول با این دلیل لغو نمی‌شود."))
+    today = today or timezone.localdate()
+    if reason == OrderItem.CancelReason.INPUT_TIMEOUT and (
+        item.input_requested_at is None
+        or today < timezone.localdate(item.input_requested_at) + timedelta(days=INPUT_TIMEOUT_DAYS)
+    ):
+        raise ValidationError(gettext_lazy("هنوز ۲۱ روز از درخواست اطلاعات نگذشته است."))
+    if reason != OrderItem.CancelReason.WARRANTY_REFUND:
+        return item.paid_amount
+    delivered = timezone.localdate(cast(datetime, item.delivered_at))
+    claimed = timezone.localdate(
+        item.events.filter(to_status=OrderItem.Status.REPLACEMENT_REQUESTED).latest("pk").created_at
+    )
+    warranty_end = {
+        Product.Warranty.DAYS_7: delivered + timedelta(days=7),
+        Product.Warranty.FULL_PERIOD: item.expires_at,
+    }.get(item.product_snapshot.get("warranty"))
+    if (
+        warranty_end is None
+        or claimed > warranty_end
+        or (item.expires_at is not None and claimed > item.expires_at)
+    ):
+        raise ValidationError(
+            gettext_lazy("درخواست تعویض خارج از مدت گارانتی ثبت شده است؛ آن را رد کنید.")
+        )
+    if item.expires_at is None:
+        return item.paid_amount
+    days = (item.expires_at - delivered).days + 1
+    unused = days - (claimed - delivered).days
+    # Whole toman, half up, like a percentage discount.
+    return (item.paid_amount * unused * 2 + days) // (days * 2)
+
+
+@transaction.atomic
+def cancel_paid_item(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, reason: str, note: str
+) -> OrderItem:
+    """A6, A8 and A11: the cancellation, the refund it owes and the code's return, together."""
+    note = _event_note(note)
+    plans: dict[int, Plan] = {}
+
+    def lock_money(order: Order) -> None:
+        # Payment, plan and code sit between order and item in the shared lock order.
+        Payment.objects.select_for_update().filter(
+            order=order, status=Payment.Status.VERIFIED
+        ).first()
+        plan_ids = list(order.items.filter(pk=item_id).values_list("plan_id", flat=True))
+        plans.update(_plans(plan_ids, lock=True))
+        if order.discount_code_id is not None:
+            DiscountCode.objects.select_for_update().filter(pk=order.discount_code_id).first()
+
+    item, account = _input_item(
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        operator_only=True,
+        perms=["payments.add_refund"],
+        then=lock_money,
+    )
+    latest = item.events.latest("pk")
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        # A repeat finds its own cancellation as the latest row, from whatever status it left.
+        (latest.from_status or "", OrderItem.Status.CANCELLED),
+        gettext_lazy("این لغو قبلاً ثبت شده و این فرم دوباره ثبت نشد."),
+    )
+    amount = refund_amount(item, reason)
+    paid = (
+        Payment.objects.filter(order_id=order_id, status=Payment.Status.VERIFIED)
+        .values_list("amount", flat=True)
+        .first()
+    )
+    owed = Refund.objects.filter(order_item__order_id=order_id).aggregate(total=Sum("amount"))
+    if paid is None or (owed["total"] or 0) + amount > paid:
+        raise ValidationError(gettext_lazy("بازپرداخت این سفارش از مبلغ پرداخت‌شده بیشتر می‌شود."))
+    before = item.status
+    item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
+    item.save(update_fields=["status", "cancel_reason"])
+    _input_event(item, account, before, note)
+    if amount:
+        Refund.objects.create(order_item=item, amount=amount, created_by=account)
+    plan = plans[item.plan_id]
+    if (
+        reason == OrderItem.CancelReason.INPUT_TIMEOUT
+        and item.stock_debited
+        and plan.stock_quantity is not None
+    ):
+        if plan.stock_quantity >= 2147483647:
+            raise ValidationError(gettext_lazy("موجودی این پلن را بررسی کنید."))
+        Plan.objects.filter(pk=plan.pk).update(stock_quantity=plan.stock_quantity + 1)
+    order = Order.objects.get(pk=order_id)
+    if order.discount_code_id is not None:
+        items = list(order.items.defer("customer_input"))
+        covered = [each for each in items if each.discount_share > 0] or items
+        if all(
+            each.delivered_at is None
+            and each.status in (OrderItem.Status.CANCELLED, OrderItem.Status.REFUNDED)
+            for each in covered
+        ):
+            _release_redemption(
+                order, DiscountCode.objects.get(pk=order.discount_code_id), timezone.now()
+            )
     return item
 
 
@@ -691,6 +818,21 @@ def _discount(
     }
 
 
+def discount_shares(prices: dict[int, Decimal], discount: Decimal) -> dict[int, Decimal]:
+    """An order's discount over the items its code covered, keyed by item ID.
+
+    In proportion to price, rounded down, and each toman left over goes to the lowest item
+    IDs, so the shares add up to the discount exactly and the same order always splits alike.
+    """
+    total = sum(prices.values(), Decimal(0))
+    if discount <= 0 or total <= 0:
+        return dict.fromkeys(prices, Decimal(0))
+    shares = {pk: price * discount // total for pk, price in prices.items()}
+    for pk in sorted(prices)[: int(discount - sum(shares.values()))]:
+        shares[pk] += 1
+    return shares
+
+
 def _price(
     *,
     user_id: int,
@@ -899,6 +1041,7 @@ def place_order(
             return replay
         raise
     OrderSupportIdentifier.objects.create(order=order)
+    created: list[OrderItem] = []
     for line in purchase.lines:
         debited = line.plan.stock_quantity is not None
         if line.plan.stock_quantity is not None:
@@ -927,7 +1070,17 @@ def place_order(
                 actor=OrderItemEvent.Actor.CUSTOMER,
                 actor_user=account,
             )
+            created.append(item)
     if code is not None:
+        terms = purchase.discount_snapshot
+        covered = {
+            item.pk: item.price_snapshot
+            for item in created
+            if terms["scope"] == DiscountCode.Scope.ALL or item.plan.product_id in terms["products"]
+        }
+        for pk, share in discount_shares(covered, purchase.discount).items():
+            if share:
+                OrderItem.objects.filter(pk=pk).update(discount_share=share)
         DiscountRedemption.objects.create(
             discount_code=code, user=account, order=order, amount=purchase.discount
         )
@@ -1022,14 +1175,21 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
 
 
 def _input_item(
-    *, order_id: int, item_id: int, actor: User, operator_only: bool
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    operator_only: bool,
+    perms: Sequence[str] = (),
+    then: Callable[[Order], None] | None = None,
 ) -> tuple[OrderItem, User]:
+    """Locks buyer, order and item; `then` locks what sits between order and item."""
     account = User.objects.filter(pk=actor.pk, is_active=True).first()
     if account is None or (
         (account.is_staff or operator_only)
         and not (
             account.is_staff
-            and account.has_perms(["orders.change_order", "orders.change_orderitem"])
+            and account.has_perms(["orders.change_order", "orders.change_orderitem", *perms])
         )
     ):
         raise PermissionDenied
@@ -1041,6 +1201,8 @@ def _input_item(
         raise PermissionDenied
     User.objects.select_for_update(no_key=True).get(pk=owner_id)
     order = orders.select_for_update().get()
+    if then is not None:
+        then(order)
     item = order.items.select_for_update().defer("customer_input").filter(pk=item_id).first()
     if item is None:
         raise PermissionDenied
@@ -1174,16 +1336,7 @@ def _release(
                 )
             plan.stock_quantity = quantity
             Plan.objects.filter(pk=plan_id).update(stock_quantity=quantity)
-    redemption = DiscountRedemption.objects.filter(order=order, released_at__isnull=True).first()
-    if redemption is not None:
-        if code is None or code.used_count < 1:
-            raise ValidationError(
-                "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا کد تخفیف را بررسی کند."
-            )
-        redemption.released_at = at
-        redemption.save(update_fields=["released_at"])
-        code.used_count -= 1
-        code.save(update_fields=["used_count"])
+    _release_redemption(order, code, at)
     for item in pending:
         item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
         item.save(update_fields=["status", "cancel_reason"])
@@ -1206,6 +1359,21 @@ def _release(
     order.cancelled_at = at
     order.save(update_fields=["cancelled_at"])
     return True
+
+
+def _release_redemption(order: Order, code: DiscountCode | None, at: datetime) -> None:
+    """Gives an order's code use back once; a use already released stays as it is."""
+    redemption = DiscountRedemption.objects.filter(order=order, released_at__isnull=True).first()
+    if redemption is None:
+        return
+    if code is None or code.used_count < 1:
+        raise ValidationError(
+            "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا کد تخفیف را بررسی کند."
+        )
+    redemption.released_at = at
+    redemption.save(update_fields=["released_at"])
+    code.used_count -= 1
+    code.save(update_fields=["used_count"])
 
 
 @transaction.atomic
