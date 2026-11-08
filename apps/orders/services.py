@@ -17,7 +17,7 @@ from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, OuterRef, TextField
+from django.db.models import Exists, F, OuterRef, Q, TextField
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
@@ -29,8 +29,8 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
-from apps.core.formatting import to_latin_digits
-from apps.orders.clock import delivery_deadline
+from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
+from apps.orders.clock import delivery_deadline, in_support_window
 from apps.orders.models import (
     SUPPORT_ALPHABET,
     CredentialAccessLog,
@@ -130,9 +130,14 @@ class DeliveryContent:
 
 
 def delivery_content(
-    lines: Sequence[DeliveryLine], note: str, expires_at: date | None
+    lines: Sequence[DeliveryLine], note: str, expires_at: date | None, warranty: str | None = None
 ) -> DeliveryContent:
     """The one reading of a delivery, shared by its preview and the stored set."""
+    # Its warranty ends at expires_at; without one, its retention deadline could not be set.
+    if warranty == Product.Warranty.FULL_PERIOD and expires_at is None:
+        raise ValidationError(
+            gettext_lazy("گارانتی این محصول تا پایان دوره است؛ تاریخ پایان اشتراک را بنویسید.")
+        )
     kept = tuple(
         DeliveryLine(line.title.strip(), line.value.strip())
         for line in lines
@@ -166,44 +171,303 @@ def deliver_item(
     actual_cost: Decimal,
 ) -> Delivery:
     item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
-    content = delivery_content(lines, note, expires_at)
-    if not (
-        isinstance(actual_cost, Decimal)
-        and actual_cost.is_finite()
-        and actual_cost == actual_cost.to_integral_value()
-        and 0 <= actual_cost <= MAX_AMOUNT
-    ):
-        raise ValidationError(gettext_lazy("قیمت تأمین واقعی معتبر نیست."))
-    latest = item.events.order_by("-pk").first()
-    if latest is None or latest.pk != expected_event_id:
-        previous = item.events.filter(pk__lt=latest.pk if latest else 0).order_by("-pk").first()
-        # This operator confirmed from the same page twice (a double click or a second
-        # tab): the first set stands, and this one is not stored, so it is never success.
-        if (
-            latest is not None
-            and previous is not None
-            and previous.pk == expected_event_id
-            and (latest.from_status, latest.to_status, latest.actor_user_id)
-            == (OrderItem.Status.QUEUED, OrderItem.Status.DELIVERED, account.pk)
-        ):
-            raise ValidationError(
-                gettext_lazy(
-                    "این محصول قبلاً تحویل شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با"
-                    " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
-                )
-            )
-        raise ValidationError(
-            gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
-        )
+    content = delivery_content(lines, note, expires_at, item.product_snapshot.get("warranty"))
+    _whole_toman(actual_cost, gettext_lazy("قیمت تأمین واقعی معتبر نیست."))
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        (OrderItem.Status.QUEUED, OrderItem.Status.DELIVERED),
+        gettext_lazy(
+            "این محصول قبلاً تحویل شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با"
+            " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+        ),
+    )
     if item.status != OrderItem.Status.QUEUED or item.paid_at is None or item.sla_paused_at:
         raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
     item.save(update_fields=["status", "delivered_at", "expires_at", "actual_cost"])
-    delivery = Delivery.objects.create(
+    return _write_set(item, account, OrderItem.Status.QUEUED, content)
+
+
+@transaction.atomic
+def replace_delivery(
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    expected_event_id: int,
+    lines: Sequence[DeliveryLine],
+    note: str,
+    expires_at: date | None,
+    extra_cost: Decimal,
+) -> Delivery:
+    """A10a: a new current set; every earlier set stays, and delivered_at keeps the first."""
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    content = delivery_content(lines, note, expires_at, item.product_snapshot.get("warranty"))
+    invalid_cost = gettext_lazy("هزینه‌ی تأمین اضافه معتبر نیست.")
+    _whole_toman(extra_cost, invalid_cost)
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        (OrderItem.Status.REPLACEMENT_REQUESTED, OrderItem.Status.DELIVERED),
+        gettext_lazy(
+            "این تعویض قبلاً ثبت شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با"
+            " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+        ),
+        with_set=True,
+    )
+    if item.status != OrderItem.Status.REPLACEMENT_REQUESTED:
+        raise ValidationError(NO_OPEN_CLAIM)
+    total = (item.actual_cost or Decimal(0)) + extra_cost
+    if total > MAX_AMOUNT:
+        raise ValidationError(invalid_cost)
+    item.status, item.expires_at, item.actual_cost = (
+        OrderItem.Status.DELIVERED,
+        content.expires_at,
+        total,
+    )
+    item.save(update_fields=["status", "expires_at", "actual_cost"])
+    return _write_set(item, account, OrderItem.Status.REPLACEMENT_REQUESTED, content)
+
+
+@transaction.atomic
+def open_claim(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, note: str
+) -> OrderItem:
+    """A9, opened by the operator; a customer's own claim is S9's."""
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    note = _event_note(note)
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        (OrderItem.Status.DELIVERED, OrderItem.Status.REPLACEMENT_REQUESTED),
+        gettext_lazy("درخواست تعویض قبلاً ثبت شده و یادداشت این فرم ذخیره نشد."),
+    )
+    if item.status != OrderItem.Status.DELIVERED:
+        raise ValidationError(gettext_lazy("درخواست تعویض فقط برای محصول تحویل‌شده ثبت می‌شود."))
+    item.status = OrderItem.Status.REPLACEMENT_REQUESTED
+    item.save(update_fields=["status"])
+    _input_event(item, account, OrderItem.Status.DELIVERED, note)
+    return item
+
+
+@transaction.atomic
+def reject_claim(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, note: str
+) -> OrderItem:
+    """A10b: the current set stays current and nothing new is stored."""
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    note = _event_note(note)
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        (OrderItem.Status.REPLACEMENT_REQUESTED, OrderItem.Status.DELIVERED),
+        gettext_lazy("رد درخواست تعویض قبلاً ثبت شده و یادداشت این فرم ذخیره نشد."),
+        with_set=False,
+    )
+    if item.status != OrderItem.Status.REPLACEMENT_REQUESTED:
+        raise ValidationError(NO_OPEN_CLAIM)
+    item.status = OrderItem.Status.DELIVERED
+    item.save(update_fields=["status"])
+    _input_event(item, account, OrderItem.Status.REPLACEMENT_REQUESTED, note)
+    return item
+
+
+@transaction.atomic
+def delay_supply(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, hours: int, note: str
+) -> OrderItem:
+    """Moves a queued item's deadline later; the history row keeps its status."""
+    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    note = _event_note(note)
+    if type(hours) is not int or not 1 <= hours <= MAX_DELAY_HOURS:
+        raise ValidationError(gettext_lazy("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید."))
+    _expect_page(
+        item,
+        expected_event_id,
+        account,
+        (OrderItem.Status.QUEUED, OrderItem.Status.QUEUED),
+        gettext_lazy("این تأخیر قبلاً ثبت شده و این فرم دوباره ثبت نشد."),
+    )
+    if (
+        item.status != OrderItem.Status.QUEUED
+        or item.paid_at is None
+        or item.due_at is None
+        or item.sla_paused_at
+    ):
+        raise ValidationError(gettext_lazy("مهلت این محصول را نمی‌شود عقب انداخت."))
+    item.due_at = in_support_window(item.due_at + timedelta(hours=hours))
+    item.save(update_fields=["due_at"])
+    due = timezone.localtime(item.due_at)
+    when = f"{format_jalali(due)}، {to_persian_digits(due.strftime('%H:%M'))}"
+    _input_event(item, account, OrderItem.Status.QUEUED, f"{note} · مهلت جدید: {when}")
+    return item
+
+
+NO_OPEN_CLAIM = gettext_lazy("برای این محصول درخواست تعویض بازی نیست.")
+MAX_DELAY_HOURS = 72
+
+
+def _whole_toman(amount: Decimal, message: Any) -> None:
+    if not (
+        isinstance(amount, Decimal)
+        and amount.is_finite()
+        and amount == amount.to_integral_value()
+        and 0 <= amount <= MAX_AMOUNT
+    ):
+        raise ValidationError(message)
+
+
+def _event_note(note: str) -> str:
+    note = note.strip()
+    if not note:
+        raise ValidationError(gettext_lazy("یادداشت را بنویسید."))
+    if len(note) > 2000:
+        raise ValidationError(gettext_lazy("یادداشت بیش از اندازه طولانی است."))
+    return note
+
+
+def _expect_page(
+    item: OrderItem,
+    expected_event_id: int,
+    account: User,
+    done: tuple[str, str],
+    repeated: Any,
+    *,
+    with_set: bool | None = None,
+) -> None:
+    """Refuse a page opened before the item's latest change."""
+    latest = item.events.order_by("-pk").first()
+    if latest is not None and latest.pk == expected_event_id:
+        return
+    # This operator submitted the same page twice (a double click or a second tab): the
+    # first submission stands, and this one is not stored, so it is never reported as success.
+    if (
+        latest is not None
+        and (latest.from_status, latest.to_status, latest.actor_user_id) == (*done, account.pk)
+        and (with_set is None or hasattr(latest, "delivery") == with_set)
+    ):
+        previous = item.events.filter(pk__lt=latest.pk).order_by("-pk").first()
+        if previous is not None and previous.pk == expected_event_id:
+            raise ValidationError(repeated)
+    raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+
+
+RETENTION_DAYS = 30
+
+
+def retention_deadline(
+    *,
+    delivered_at: datetime,
+    expires_at: date | None,
+    warranty: str | None,
+    latest_set_at: datetime | None = None,
+) -> date:
+    """ADR-0007: the later of the subscription's end and the warranty's end, then 30 days.
+
+    A set delivered later, such as a replacement after the warranty, is kept 30 days too.
+    """
+    delivered = timezone.localdate(delivered_at)
+    warranty_end = delivered + timedelta(days=7 if warranty == Product.Warranty.DAYS_7 else 0)
+    # A full-period warranty ends at expires_at, which its delivery cannot leave empty.
+    end = max(expires_at or delivered, warranty_end)
+    if latest_set_at is not None:
+        end = max(end, timezone.localdate(latest_set_at))
+    return end + timedelta(days=RETENTION_DAYS)
+
+
+def _details_due(item: OrderItem, today: date) -> bool:
+    if item.status == OrderItem.Status.REPLACEMENT_REQUESTED:
+        return False  # the operator judges an open claim against the current set
+    if item.delivered_at is not None:
+        due = retention_deadline(
+            delivered_at=item.delivered_at,
+            expires_at=item.expires_at,
+            warranty=item.product_snapshot.get("warranty"),
+            latest_set_at=Delivery.objects.filter(order_item_id=item.pk)
+            .order_by("-pk")
+            .values_list("created_at", flat=True)
+            .first(),
+        )
+        return due <= today
+    if item.status not in (OrderItem.Status.CANCELLED, OrderItem.Status.REFUNDED):
+        return False
+    cancelled_at = (
+        item.events.filter(to_status=OrderItem.Status.CANCELLED)
+        .order_by("-pk")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    return (
+        cancelled_at is not None
+        and timezone.localdate(cancelled_at) + timedelta(days=RETENTION_DAYS) <= today
+    )
+
+
+def delete_expired_details(today: date | None = None) -> int:
+    """Deletes every delivered set and customer input past its ADR-0007 deadline.
+
+    Only what still holds details is selected, so a rerun, or a day caught up late,
+    deletes nothing twice.
+    """
+    today = today or timezone.localdate()
+    candidates = (
+        OrderItem.objects.annotate(input_length=Length(Cast("customer_input", TextField())))
+        .filter(
+            Q(Exists(Delivery.objects.filter(order_item_id=OuterRef("pk")))) | Q(input_length__gt=0)
+        )
+        .filter(
+            Q(delivered_at__isnull=False)
+            | Q(status__in=[OrderItem.Status.CANCELLED, OrderItem.Status.REFUNDED])
+        )
+        .defer("customer_input")
+    )
+    deleted = 0
+    for item in candidates:
+        try:
+            if _details_due(item, today):
+                deleted += _forget(item.pk, today)
+        except Exception as error:  # one item must not keep every later item's details
+            logger.error("Retention deletion failed for item %s: %s", item.pk, type(error).__name__)
+    return deleted
+
+
+@transaction.atomic
+def _forget(item_id: int, today: date) -> int:
+    item = OrderItem.objects.select_for_update().defer("customer_input").get(pk=item_id)
+    if not _details_due(item, today):
+        return 0
+    removed = []
+    # Deleted without loading a row, so no value is decrypted and an unreadable one still goes.
+    sets = Delivery.objects.filter(order_item=item).only("pk")
+    if sets.exists():
+        DeliveryField.objects.filter(delivery__order_item=item).delete()
+        sets.delete()
+        removed.append("اطلاعات تحویل")
+    held = OrderItem.objects.filter(pk=item.pk)
+    if held.annotate(n=Length(Cast("customer_input", TextField()))).filter(n__gt=0).exists():
+        held.update(customer_input="")
+        removed.append("اطلاعات مشتری")
+    if not removed:
+        return 0
+    OrderItemEvent.objects.create(
         order_item=item,
-        event=_input_event(item, account, OrderItem.Status.QUEUED),
-        note=content.note,
+        from_status=item.status,
+        to_status=item.status,
+        actor=OrderItemEvent.Actor.SYSTEM,
+        note=" و ".join(removed) + " طبق مهلت نگهداری حذف شد.",
+    )
+    return 1
+
+
+def _write_set(item: OrderItem, account: User, before: str, content: DeliveryContent) -> Delivery:
+    delivery = Delivery.objects.create(
+        order_item=item, event=_input_event(item, account, before), note=content.note
     )
     DeliveryField.objects.bulk_create(
         DeliveryField(delivery=delivery, position=n, title=line.title, value=line.value)
@@ -794,13 +1058,14 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
     raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
 
 
-def _input_event(item: OrderItem, account: User, before: str) -> OrderItemEvent:
+def _input_event(item: OrderItem, account: User, before: str, note: str = "") -> OrderItemEvent:
     return OrderItemEvent.objects.create(
         order_item=item,
         from_status=before,
         to_status=item.status,
         actor=OrderItemEvent.Actor.OPERATOR if account.is_staff else OrderItemEvent.Actor.CUSTOMER,
         actor_user=account,
+        note=note,
     )
 
 

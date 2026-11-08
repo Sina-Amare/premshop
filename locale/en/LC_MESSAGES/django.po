@@ -1703,3 +1703,87 @@ msgstr "Note for the customer"
 
 msgid "این محصول قبلاً تحویل شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
 msgstr "This item was already delivered, and the details in this form were not saved. See the stored details with the 'Reveal delivery' button on the order page."
+
+msgid "اطلاعات تحویل این محصول طبق مهلت نگهداری حذف شده است؛ زمان حذف در سابقه‌ی سفارش آمده است."
+msgstr "This item's delivery details were deleted under the retention rule; the order history shows when."
+
+msgid "این تأخیر قبلاً ثبت شده و این فرم دوباره ثبت نشد."
+msgstr "This delay was already recorded, and this form was not recorded again."
+
+msgid "این تعویض قبلاً ثبت شده و اطلاعات این فرم ذخیره نشد. اطلاعات ثبت‌شده را با دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
+msgstr "This replacement was already recorded, and the details in this form were not saved. See the stored details with the 'Reveal delivery' button on the order page."
+
+msgid "برای این محصول درخواست تعویض بازی نیست."
+msgstr "This item has no open replacement claim."
+
+msgid "تأخیر تأمین"
+msgstr "Supply delay"
+
+msgid "تعویض محصول"
+msgstr "Replace item"
+
+msgid "تعویض یا رد درخواست"
+msgstr "Replace or reject the claim"
+
+msgid "ثبت تأخیر تأمین"
+msgstr "Record supply delay"
+
+msgid "ثبت تعویض"
+msgstr "Confirm replacement"
+
+msgid "ثبت درخواست تعویض"
+msgstr "Open replacement claim"
+
+msgid "درخواست تعویض فقط برای محصول تحویل‌شده ثبت می‌شود."
+msgstr "A replacement claim can only be opened for a delivered item."
+
+msgid "درخواست تعویض قبلاً ثبت شده و یادداشت این فرم ذخیره نشد."
+msgstr "The replacement claim was already opened, and this form's note was not saved."
+
+msgid "دلیل تأخیر"
+msgstr "Reason for the delay"
+
+msgid "دلیل درخواست تعویض"
+msgstr "Reason for the claim"
+
+msgid "دلیل رد درخواست"
+msgstr "Reason for rejecting"
+
+msgid "رد درخواست تعویض"
+msgstr "Reject the claim"
+
+msgid "رد درخواست تعویض قبلاً ثبت شده و یادداشت این فرم ذخیره نشد."
+msgstr "The claim was already rejected, and this form's note was not saved."
+
+msgid "رد درخواست، بدون اطلاعات جدید"
+msgstr "Reject, without new details"
+
+msgid "رمز یا اطلاعات ورود را اینجا ننویسید؛ این یادداشت در سابقه‌ی سفارش می‌ماند."
+msgstr "Do not write a password or sign-in details here; this note stays in the order history."
+
+msgid "ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید."
+msgstr "Enter the delay as a whole number of hours from 1 to 72."
+
+msgid "مهلت این محصول را نمی‌شود عقب انداخت."
+msgstr "This item's deadline cannot be moved."
+
+msgid "هزینه‌ی تأمین اضافه"
+msgstr "Extra supply cost"
+
+msgid "هزینه‌ی تأمین اضافه (تومان)"
+msgstr "Extra supply cost (toman)"
+
+msgid "هزینه‌ی تأمین اضافه معتبر نیست."
+msgstr "The extra supply cost is not valid."
+
+msgid "چند ساعت دیرتر (۱ تا ۷۲)"
+msgstr "Hours later (1 to 72)"
+
+msgid "گارانتی این محصول تا پایان دوره است؛ تاریخ پایان اشتراک را بنویسید."
+msgstr "This item's warranty runs to the end of the period; enter the subscription's last day."
+
+msgid "یادداشت بیش از اندازه طولانی است."
+msgstr "The note is too long."
+
+msgid "یادداشت را بنویسید."
+msgstr "Write a note."

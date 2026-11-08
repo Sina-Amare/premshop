@@ -157,12 +157,12 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `stock_debited` | True when placing the order decremented finite stock, so a cancellation returns exactly what was taken |
 | `cancel_reason` | Required once an item is cancelled or refunded |
 | `delivered_at` | When the account details were first delivered; required while `DELIVERED` or `REPLACEMENT_REQUESTED` (`order_item_delivery_recorded`) |
-| `expires_at` | The subscription's last day, entered at delivery; null for a plan with no end |
-| `actual_cost` | What supplying the item really cost, entered at delivery and prefilled from `cost_snapshot`; never negative |
+| `expires_at` | The subscription's last day, entered at delivery and at each replacement; null for a plan with no end, and required when the warranty runs to the end of the period |
+| `actual_cost` | What supplying the item really cost, entered at delivery and prefilled from `cost_snapshot`, then raised by each replacement's extra cost; never negative |
 
-**OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE.
+**OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE. A row whose status before and after are the same records an annotation: a moved deadline or a retention deletion.
 
-**Delivery** is one set of account details for an item, tied one to one to the history row that delivered it, with an optional encrypted note to the customer. **DeliveryField** is one line of a set: a title, an encrypted value and a position, unique within the set. A replacement adds a set and never edits an earlier one; the latest set is current. Only `orders.services.reveal_delivery` reads the values, after writing its access row ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
+**Delivery** is one set of account details for an item, tied one to one to the history row that delivered it, with an optional encrypted note to the customer. **DeliveryField** is one line of a set: a title, an encrypted value and a position, unique within the set. A replacement adds a set and never edits an earlier one; the latest set is current. Every set and its note are deleted at the item's retention deadline ([Retention](order-lifecycle.md#retention)). Only `orders.services.reveal_delivery` reads the values, after writing its access row ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
 **DiscountCode** is a code a customer types at checkout ([ADR-0020](decisions/0020-discount-codes.md)).
 

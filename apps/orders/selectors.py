@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Exists, OuterRef, Prefetch, QuerySet
+from django.db.models import Exists, F, OuterRef, Prefetch, QuerySet
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -127,6 +127,7 @@ def customer_timeline(order: Order) -> list[dict[str, Any]]:
     seen = set()
     for name, status, at in (
         OrderItemEvent.objects.filter(order_item__order=order)
+        .exclude(from_status=F("to_status"))  # a moved deadline or a deletion is not news
         .order_by("created_at", "pk")
         .values_list("order_item__product_snapshot__name", "to_status", "created_at")
     ):
@@ -159,6 +160,7 @@ def order_for_tracking(token: str) -> list[dict[str, Any]] | None:
     seen = set()
     for item_id, status, at in (
         OrderItemEvent.objects.filter(order_item__order_id=order_id)
+        .exclude(from_status=F("to_status"))
         .order_by("created_at", "pk")
         .values_list("order_item_id", "to_status", "created_at")
     ):

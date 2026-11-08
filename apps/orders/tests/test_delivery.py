@@ -537,7 +537,7 @@ def test_no_panel_page_shows_or_decrypts_a_delivered_value(client, buyer, plan, 
             assert response.status_code == 200, page
             assert VALUE not in body and "note-secret" not in body and "account@" not in body
     detail = client.get(pages[0]).content.decode()
-    assert reveal_url(item) in detail and delivery_url(item) not in detail
+    assert reveal_url(item) in detail and f'href="{delivery_url(item)}">تحویل</a>' not in detail
 
 
 def test_order_page_offers_delivery_for_a_queued_item(client, buyer, plan, operator):

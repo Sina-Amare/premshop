@@ -192,6 +192,7 @@ One Huey consumer runs these, scheduled in UTC:
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
 | `core.tasks.clean_mail_attempts` | daily 03:15 | Deletes mail-attempt rows older than 90 days |
 | `orders.tasks.clean_credential_access_logs` | daily 03:20 | Deletes access-log rows older than 365 days |
+| `orders.tasks.clean_delivered_details` | daily 03:25 | Deletes delivered details and customer input past their retention deadline ([Retention](order-lifecycle.md#retention)), each item in its own transaction |
 
 - The queue name is derived from the database's host, port and name, never its credentials, so each database has its own consumer. Huey runs asynchronously in development too; tests use in-memory storage and run tasks explicitly.
 - A stopped worker delays releases but never corrupts them: checkout still validates stock and deadlines under locks, and a restarted worker catches up from the stored deadlines. The panel's order list warns when the last successful sweep is more than three minutes old. `/healthz` checks the database and the cache, not the worker.
