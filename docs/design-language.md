@@ -11,6 +11,7 @@ The visual and verbal system of the storefront, the operator panel and the email
 - [Components](#components)
 - [Email](#email)
 - [Voice](#voice)
+- [Decided by the owner](#decided-by-the-owner)
 - [Checklist](#checklist)
 
 ## Principles
@@ -107,14 +108,14 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 - **Digits.** Persian digits in all output, with the ASCII comma as the thousands separator: the Arabic separator U+066C renders as a faint high comma in both faces and reads as a fault. Inputs keep Latin digits and `direction: ltr`, because in right-to-left fields the caret, Home, End and Backspace run backwards while someone types a number; Persian digits typed in are accepted and normalised.
 - **Figures.** Counts, codes and clocks use tabular figures, so a column of them aligns. Price figures in Estedad are proportional, because tabular widths make the dot-zero read as letter spacing.
 - **Money.** «تومان» everywhere, set lighter than the figure and never at its weight. Zero renders as «رایگان», never «۰ تومان». Rial never appears.
-- **Promotions.** A promotional price shows the original beside it, struck through in secondary grey, never amber and never bold. A discount with an end date carries a clock in amber: under a day it counts down to the second, padded as `۰۰:۰۸:۴۰`; above a day it shows days and hours. A discount without an end date shows no clock, because invented urgency is what this shop avoids. The server renders the text and sends the seconds remaining, never the deadline, so a visitor whose clock is wrong still sees the right number.
+- **Promotions.** A promotional price shows the original beside it, struck through in secondary grey, never amber and never bold. A discount with an end date carries a clock in amber that counts hours, minutes and seconds, padded as `۰۰:۰۸:۴۰`, and keeps counting hours past a day (`۱۴۸:۴۴:۰۶`), because a clock that visibly ticks reads as a live offer. A discount without an end date shows no clock, because invented urgency is what this shop avoids. The server renders the text and sends the seconds remaining, never the deadline, so a visitor whose clock is wrong still sees the right number.
 - **Mixed text.** Every Latin value that comes from data, such as a product name, plan title, specification value or email address, is wrapped in `<bdi>`. Without it «اشتراک Netflix.» puts the full stop on the wrong side and «(Spotify)» renders as «)Spotify(». `/styleguide/` keeps the regression strings.
 - **Dates** are Jalali, in Persian digits, for customers and the operator alike. Security messages and history carry Tehran date and time.
 
 ## Components
 
 - **The ledger line** (`.fact`). Every fact-and-value pair is a row: label at the start, value at the end, joined by a dotted leader lifted `-0.28em` to clear the ج descender. The leader is the visual grammar of an invoice or a receipt, and says "this is a real operation" in a way a trust badge cannot. One ledger group per page region; summaries show subtotal, discount and total as three lines, never one figure.
-- **Product card.** One linked card. The artwork is the service's mark on a pale panel in the product's brand colour, 2:1 on wide screens and 16:9 on phones, with no shop label. Title, delivery time, offer and starting price are text outside the artwork. The offer names its own plan and the starting price names the cheapest available plan, so the two may differ. An offer badge is neutral; amber appears only for its remaining time. «گزینه‌های خرید» opens a read-only dialog of the plans' prices, rendered by the same server code as the product page, and the card's link still works without JavaScript.
+- **Product card.** One linked card. The artwork is the service's mark on a pale panel in the product's brand colour, 2:1 on wide screens and 16:9 on phones, with the shop's name, «PremShop», small in its corner; the small tiles in the cart, the checkout and the search suggestions carry none. Title, delivery time, offer and starting price are text outside the artwork. The offer names its own plan and the starting price names the cheapest available plan, so the two may differ. An offer badge is neutral; amber appears only for its remaining time. «گزینه‌های خرید» opens a read-only dialog of the plans' prices, rendered by the same server code as the product page, and the card's link still works without JavaScript.
 - **Home page.** The hero introduces the shop as a whole and never headlines one product: a line naming the range, the headline «اشتراک دلاری، پرداخت تومانی.», one sentence on buying without a foreign card and seeing each product's terms before paying, the deepest current discount when there is one (a number from the catalogue, never «ارزان‌تر»), and only site-wide facts, namely the promise in `apps/catalog/promises.py` and the support hours. Each category opens with one header row (mark, name, count and «همه‌ی محصولات») over a hairline. On phones a category shows two columns and at most four products with a link to the rest.
 - **Product page.** On a phone the page reads title, buy box, then details, so the price is never below the questions. Key specifications sit as chips beside the title. The benefits come before the full specification table: one sentence on what the free plan withholds, then one gain per item, the limit last. The selected plan is the accent's one appearance in the buy box. Under the buy button there is only the link to the buying conditions: delivery is already on the page, and payment in toman is stated on the home page. «پیش از خرید» appears only when it says more than the warranty beside the title.
 - **Order rows.** The cart, checkout, order pages and the order preview share one product row: a 48px tile (56px in the cart), the name at 17px, the plan at 14px and the figure at 18px, with hairlines between rows and never a box inside a box. From three products up, on phones, the total and the action sit in a bottom bar that steps aside while a field has focus.
@@ -204,10 +205,19 @@ Rules for every register:
 
 The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
 
+## Decided by the owner
+
+Each of these looks like a detail anyone could tidy away, and each is the owner's decision. A change to one waits for the owner's agreement, and a proposal that would undo one says so.
+
+- **The shop's name on every product card** (2026-10-31), as described under Components.
+- **A discount clock that counts hours, minutes and seconds** even with days to go (2026-11-08), as described under Numbers.
+- **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
+
 ## Checklist
 
 For any new page or component:
 
+- [ ] Nothing under «Decided by the owner» changed without the owner's agreement
 - [ ] Space between components from the nine tokens; optical spacing only inside a component
 - [ ] Every gap between groups at least twice the gap within them; headings own the space after them
 - [ ] Corners from `--radius-sm` and `--radius-lg`; edges that touch the viewport square
