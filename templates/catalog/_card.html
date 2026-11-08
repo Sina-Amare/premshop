@@ -1,7 +1,7 @@
 {% load fa prices head %}
 <article class="pcard" style="--brand: {{ product.card_colour }}">
 <a class="pcard__link" href="{% url 'product' product.slug %}">
-  {% include 'catalog/_card_art.html' %}
+  {% include 'catalog/_card_art.html' with wordmark=True %}
   <div class="pcard__body">
     {% if not in_category %}<span class="pcard__cat">{{ product.category.name }}</span>{% endif %}
     <h3 class="pcard__name"><bdi>{{ product.name }}</bdi></h3>

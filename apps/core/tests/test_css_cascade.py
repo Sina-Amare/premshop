@@ -54,6 +54,7 @@ pcard__name
 pcard__offer
 pcard__pre
 pcard__promotion
+pcard__shop
 pcard__terms
 pdp__title
 plan--off
