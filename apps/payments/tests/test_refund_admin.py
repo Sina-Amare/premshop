@@ -7,6 +7,7 @@ from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import override
 from django.views.debug import ExceptionReporter
 
 from apps.accounts.models import User
@@ -201,6 +202,7 @@ def test_a_forced_exception_hides_post_and_traceback_values_from_django_reports(
     assert reference not in reporter.get_traceback_html()
 
 
+@override("fa")
 def test_new_forms_follow_the_panel_language(client, owed, operator):
     order, _ = owed
     client.force_login(operator)
