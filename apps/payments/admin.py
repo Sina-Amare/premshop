@@ -217,7 +217,7 @@ class PaymentOrderAdmin(OrderAdmin):
             )
             if request.user.has_perm("payments.view_refund"):
                 context["refund_history"] = Refund.objects.filter(
-                    order_item__order=obj
+                    order_item__order=obj, status=Refund.Status.EXECUTED
                 ).select_related("executed_by")
             context["can_record_payment"] = self.can_record_payment(request) and can_pay_order(obj)
             if request.user.has_perm("payments.view_payment"):
