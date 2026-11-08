@@ -362,13 +362,23 @@ RETENTION_DAYS = 30
 
 
 def retention_deadline(
-    *, delivered_at: datetime, expires_at: date | None, warranty: str | None
+    *,
+    delivered_at: datetime,
+    expires_at: date | None,
+    warranty: str | None,
+    latest_set_at: datetime | None = None,
 ) -> date:
-    """ADR-0007: the later of the subscription's end and the warranty's end, then 30 days."""
+    """ADR-0007: the later of the subscription's end and the warranty's end, then 30 days.
+
+    A set delivered later, such as a replacement after the warranty, is kept 30 days too.
+    """
     delivered = timezone.localdate(delivered_at)
     warranty_end = delivered + timedelta(days=7 if warranty == Product.Warranty.DAYS_7 else 0)
     # A full-period warranty ends at expires_at, which its delivery cannot leave empty.
-    return max(expires_at or delivered, warranty_end) + timedelta(days=RETENTION_DAYS)
+    end = max(expires_at or delivered, warranty_end)
+    if latest_set_at is not None:
+        end = max(end, timezone.localdate(latest_set_at))
+    return end + timedelta(days=RETENTION_DAYS)
 
 
 def _details_due(item: OrderItem, today: date) -> bool:
@@ -379,6 +389,10 @@ def _details_due(item: OrderItem, today: date) -> bool:
             delivered_at=item.delivered_at,
             expires_at=item.expires_at,
             warranty=item.product_snapshot.get("warranty"),
+            latest_set_at=Delivery.objects.filter(order_item_id=item.pk)
+            .order_by("-pk")
+            .values_list("created_at", flat=True)
+            .first(),
         )
         return due <= today
     if item.status not in (OrderItem.Status.CANCELLED, OrderItem.Status.REFUNDED):

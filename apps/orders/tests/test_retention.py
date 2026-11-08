@@ -44,6 +44,17 @@ def test_details_are_kept_until_the_later_of_expiry_and_warranty_then_thirty_day
     )
 
 
+def test_a_late_replacement_is_kept_thirty_days_after_it_was_delivered():
+    latest = datetime(2027, 3, 1, 1, 0, tzinfo=TEHRAN).astimezone(UTC)
+    assert services.retention_deadline(
+        delivered_at=DELIVERED_AT, expires_at=None, warranty="none", latest_set_at=latest
+    ) == date(2027, 3, 31)
+    early = datetime(2026, 12, 1, 1, 0, tzinfo=TEHRAN).astimezone(UTC)
+    assert services.retention_deadline(
+        delivered_at=DELIVERED_AT, expires_at=date(2027, 1, 1), warranty="none", latest_set_at=early
+    ) == date(2027, 1, 31)
+
+
 def delivered_item(buyer, plan, operator, *, days_ago, expires_at=None):
     """An item whose retention deadline is days_ago - 30 days before today (no warranty)."""
     plan.product.warranty = "none"
@@ -51,11 +62,15 @@ def delivered_item(buyer, plan, operator, *, days_ago, expires_at=None):
     _, item = queued(buyer, plan, operator)
     models.OrderItem.objects.filter(pk=item.pk).update(customer_input=INPUT)
     deliver(item, operator)
-    models.OrderItem.objects.filter(pk=item.pk).update(
-        delivered_at=timezone.now() - timedelta(days=days_ago), expires_at=expires_at
-    )
-    item.refresh_from_db()
+    backdate(item, timezone.now() - timedelta(days=days_ago), expires_at=expires_at)
     return item
+
+
+def backdate(item, at, **changes):
+    """Moves the item's delivery, and every set it holds, back to at."""
+    models.OrderItem.objects.filter(pk=item.pk).update(delivered_at=at, **changes)
+    models.Delivery.objects.filter(order_item=item).update(created_at=at)
+    item.refresh_from_db()
 
 
 def raw(item):
@@ -77,7 +92,7 @@ def test_a_due_item_loses_every_set_its_note_and_its_input(buyer, plan, operator
     item = delivered_item(buyer, plan, operator, days_ago=31)
     claim(item, operator)
     replace(item, operator)
-    item.refresh_from_db()
+    backdate(item, item.delivered_at)
     assert raw(item)[0] == 2
     before = item.events.count()
     assert services.delete_expired_details() == 1
@@ -96,6 +111,17 @@ def test_a_due_item_loses_every_set_its_note_and_its_input(buyer, plan, operator
         services.reveal_delivery(order_id=item.order_id, item_id=item.pk, actor=operator, ip=None)
         is None
     )
+
+
+def test_a_replacement_after_the_deadline_reaches_the_customer_first(buyer, plan, operator):
+    item = delivered_item(buyer, plan, operator, days_ago=40)
+    claim(item, operator)
+    replace(item, operator)
+    today = timezone.localdate()
+    assert services.delete_expired_details(today=today + timedelta(days=29)) == 0
+    assert raw(item)[0] == 2
+    assert services.delete_expired_details(today=today + timedelta(days=30)) == 1
+    assert raw(item) == (0, 0, "")
 
 
 def test_a_second_run_changes_nothing(buyer, plan, operator):
@@ -180,7 +206,7 @@ def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, ope
         delay(item, operator)
     with time_machine.travel(start + timedelta(minutes=10), tick=False):
         deliver(item, operator)
-    models.OrderItem.objects.filter(pk=item.pk).update(delivered_at=start - timedelta(days=60))
+    backdate(item, start - timedelta(days=60))
     with time_machine.travel(start + timedelta(minutes=15), tick=False):
         assert services.delete_expired_details() == 1
     assert item.events.filter(from_status=F("to_status")).count() == 2
