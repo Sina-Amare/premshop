@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from django.conf import settings
@@ -213,6 +214,9 @@ class OrderItem(models.Model):
         _("وضعیت"), max_length=24, choices=Status.choices, default=Status.PENDING_PAYMENT
     )
     price_snapshot = MoneyField(verbose_name=_("قیمت فروش زمان خرید"))
+    # Frozen at placement: a plan can later move to another product, so which items a
+    # code covered cannot be worked out again.
+    discount_share = MoneyField(verbose_name=_("سهم تخفیف"), default=0, editable=False)
     cost_snapshot = MoneyField(verbose_name=_("قیمت تأمین زمان خرید"))
     product_snapshot = models.JSONField(_("اطلاعات زمان خرید"))
     customer_input = EncryptedTextField(blank=True, default="")
@@ -277,6 +281,10 @@ class OrderItem(models.Model):
                 name="order_item_prices_not_negative",
             ),
             models.CheckConstraint(
+                condition=Q(discount_share__gte=0) & Q(discount_share__lte=F("price_snapshot")),
+                name="order_item_discount_share_within_price",
+            ),
+            models.CheckConstraint(
                 condition=Q(cancel_reason__isnull=True)
                 | Q(
                     cancel_reason__in=[
@@ -299,6 +307,10 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.order} · {self.product_snapshot.get('name', '')}"
+
+    @property
+    def paid_amount(self) -> Decimal:
+        return self.price_snapshot - self.discount_share
 
     @property
     def clock_requires_input(self) -> bool:

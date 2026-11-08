@@ -39,6 +39,7 @@ erDiagram
   OrderItem ||--o{ OrderItemEvent : history
   OrderItem ||--o{ CredentialAccessLog : reveals
   OrderItem ||--o{ Delivery : "delivered as"
+  OrderItem ||--o| Refund : "refunded by"
   OrderItemEvent ||--o| Delivery : records
   Delivery ||--|{ DeliveryField : lines
   DiscountCode |o--o{ Order : discounts
@@ -147,6 +148,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `order`, `plan` | Both PROTECT |
 | `status` | One of seven; see the [order lifecycle](order-lifecycle.md) |
 | `price_snapshot`, `cost_snapshot` | The price charged, from `effective_price`, and the plan's cost at that moment |
+| `discount_share` | The item's part of the order's discount, frozen at placement: in proportion to price over the items the code covered, rounded down, each leftover toman to the lowest IDs among the items that cost something. The shares add up to `discount_amount`; never more than `price_snapshot` (`order_item_discount_share_within_price`). The item's paid amount is `price_snapshot − discount_share` |
 | `product_snapshot` | Name, plan, warranty, specifications, notes, descriptive sections and the input declaration at purchase time |
 | `customer_input` | Encrypted. A non-secret email address or username only; passwords are never collected |
 | `paid_at` | When the payment was verified, set with the move to `QUEUED`; null until then |
@@ -177,7 +179,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 
 One code applies per order, on top of promotional prices. A percentage rounds half up to whole toman, and either kind is capped at the eligible subtotal, so a total never falls below zero.
 
-**DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when the order is cancelled, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
+**DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when an unpaid order is cancelled, or once every paid item the code covered has been cancelled without ever being delivered, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
 
 **CredentialAccessLog** is one row per staff reveal of an item's customer input or delivered details: the item, the staff user, the address, the time and the `target` (`customer_input` or `delivery`), never the value. Rows from before delivery existed were labelled `customer_input`. Rows are deleted after 365 days.
 
@@ -189,7 +191,9 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 `amount` copies the order's saved total after the operator's received amount matches it exactly. Manual records require `bank_ref` and `matched_by`; `verified_at` exists exactly when status is verified. Bank references appear only to staff with payment-view permission, never in customer pages, invoices, tracking or error reports. `created_at` records creation. No raw bank response or receipt image is stored.
 
-The conditional unique constraint `payment_one_verified_per_order` independently allows at most one verified payment per order. Row locks make repeat confirmation harmless; the unique constraint also rejects a second verified row written outside the service. `Refund` is not built.
+The conditional unique constraint `payment_one_verified_per_order` independently allows at most one verified payment per order. Row locks make repeat confirmation harmless; the unique constraint also rejects a second verified row written outside the service.
+
+**Refund** is the money owed back for one cancelled paid item (`order_item` is one to one, PROTECT), created with the cancellation: the `amount` the service computed, `status` `owed`, `created_by` and `created_at`. Recording the transfer sets `status` `executed` with `destination_kind` (`card` or `sheba`), `destination_last4`, `bank_ref`, `executed_by` and `executed_at`; the full card or Sheba number is never stored. `refund_execution_complete` requires every execution fact on an executed row and none on an owed one. Database triggers refuse deleting a refund, changing an executed one, changing an owed one except by executing it, a refund over its item's paid amount or without a verified payment, refunds that together exceed the order's verified payment, and an item set to `REFUNDED` without an executed refund. Recording the transfer is not built yet; until it is, refunds stay owed.
 
 ### notifications
 
@@ -216,6 +220,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | DiscountCode | `code` |
 | DiscountRedemption | `order` |
 | Payment | `order` where status is verified (`payment_one_verified_per_order`) |
+| Refund | `order_item` (one to one) |
 | Notification | `dedupe_key` |
 | ProductSection | one `before_buying` row per product (`section_one_before_buying`, a partial unique constraint) |
 
@@ -231,7 +236,8 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | CartItem | `cart_quantity_1_to_10` |
 | Order | `order_amounts_not_negative`, `order_total_matches_ledger`, `order_channel_valid` |
 | Payment | `payment_amount_positive`, `payment_method_valid`, `payment_status_valid`, `payment_manual_has_reference`, `payment_verification_has_time` |
-| OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason`, `order_item_pause_requires_deadline` |
+| Refund | `refund_amount_positive`, `refund_execution_complete` |
+| OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_discount_share_within_price`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason`, `order_item_pause_requires_deadline` |
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
@@ -239,13 +245,13 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | MailAttempt | `mail_attempt_known_status` |
 | UnpaidExpirySweep, ConfirmationSweep | `unpaid_sweep_singleton`, `confirmation_sweep_singleton` |
 
-The catalogue's constraints carry a Persian message, shown in the panel under the field the rule is about; discount codes and pages give theirs from form and model validation before the database is reached. Which status may follow which is enforced by the services under row locks, not by a constraint: a CHECK sees the new state, not the transition.
+The catalogue's constraints carry a Persian message, shown in the panel under the field the rule is about; discount codes and pages give theirs from form and model validation before the database is reached. Which status may follow which is enforced by the services under row locks, not by a constraint: a CHECK sees the new state, not the transition. The one status the database guards itself is `REFUNDED`, which a trigger refuses without an executed refund.
 
 ## 4. Deletion rules
 
 | Relation | On delete | Why |
 |---|---|---|
-| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
+| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `Refund`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
 | `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
 | `Product.category` | PROTECT | No orphan products |
 | `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart`; `DeliveryField.delivery` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
@@ -286,6 +292,5 @@ Each simplification and the condition that would reverse it are in [ADR-0014](de
 
 | Table | Purpose | Decisions |
 |---|---|---|
-| `payments.Refund` | One outgoing refund; no item becomes `REFUNDED` without an executed one | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0019](decisions/0019-payment-gateway.md) |
 | `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
 | The delivery link on `OrderItem` | The single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |

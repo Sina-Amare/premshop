@@ -1787,3 +1787,69 @@ msgstr "The note is too long."
 
 msgid "یادداشت را بنویسید."
 msgstr "Write a note."
+
+msgid "این توضیح در سابقه‌ی سفارش می‌ماند."
+msgstr "This note stays in the order history."
+
+msgid "این لغو قبلاً ثبت شده و این فرم دوباره ثبت نشد."
+msgstr "This cancellation was already recorded, and this form was not recorded again."
+
+msgid "این محصول با این دلیل لغو نمی‌شود."
+msgstr "This item cannot be cancelled for this reason."
+
+msgid "بازپرداخت"
+msgstr "Refund"
+
+msgid "بازپرداخت این سفارش از مبلغ پرداخت‌شده بیشتر می‌شود."
+msgstr "This would refund more than the order's payment."
+
+msgid "بازپرداخت‌ها"
+msgstr "Refunds"
+
+msgid "توضیح لغو"
+msgstr "Cancellation note"
+
+msgid "در انتظار واریز"
+msgstr "Awaiting transfer"
+
+msgid "درخواست تعویض خارج از مدت گارانتی ثبت شده است؛ آن را رد کنید."
+msgstr "The claim was opened outside the warranty; reject it instead."
+
+msgid "زمان واریز"
+msgstr "Transferred at"
+
+msgid "سهم تخفیف"
+msgstr "Discount share"
+
+msgid "شبا"
+msgstr "Sheba"
+
+msgid "لغو و بازپرداخت"
+msgstr "Cancel and refund"
+
+msgid "لغو و ثبت بازپرداخت"
+msgstr "Cancel and record the refund"
+
+msgid "مبلغ بازپرداخت"
+msgstr "Refund amount"
+
+msgid "موجودی این پلن را بررسی کنید."
+msgstr "Check this plan's stock."
+
+msgid "نوع مقصد"
+msgstr "Destination type"
+
+msgid "هنوز ۲۱ روز از درخواست اطلاعات نگذشته است."
+msgstr "21 days have not yet passed since the details were requested."
+
+msgid "واریز شد"
+msgstr "Transferred"
+
+msgid "واریزکننده"
+msgstr "Transferred by"
+
+msgid "چهار رقم آخر مقصد"
+msgstr "Destination's last four digits"
+
+msgid "کارت"
+msgstr "Card"
