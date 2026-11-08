@@ -103,7 +103,7 @@ def test_shares_always_add_up_to_the_discount_and_never_exceed_a_price():
     rng = random.Random(7)  # noqa: S311 - repeatable test data, not a secret
     for _ in range(500):
         ids = rng.sample(range(1, 10000), rng.randint(1, 8))
-        # A free plan is allowed, so one price in three is zero.
+        # A free plan is allowed, so half the prices are zero.
         prices = {pk: Decimal(rng.choice([0, rng.randint(1, 900000)])) for pk in ids}
         discount = Decimal(rng.randint(0, int(sum(prices.values()))))
         shares = services.discount_shares(prices, discount)
@@ -403,6 +403,8 @@ def test_a_checkout_waits_for_a_cancellation_that_frees_a_single_use_code(
     code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=10000, max_uses=1)
     _, (item,) = paid_order(buyer, operator, [OrderLine(plan, 1)], "SAVE")
     second = User.objects.create_user("second@example.test")
+    # Another product under the same code, so the code row is the only one both sides lock.
+    other = separate_plan(plan)
     entered, release = pause_first_amount(monkeypatch)
     pids: Queue = Queue()
     with ThreadPoolExecutor(2) as pool:
@@ -413,7 +415,7 @@ def test_a_checkout_waits_for_a_cancellation_that_frees_a_single_use_code(
             in_connection,
             pids,
             lambda: services.place_order(
-                user=second, lines=[OrderLine(plan, 1)], discount_code="SAVE"
+                user=second, lines=[OrderLine(other, 1)], discount_code="SAVE"
             ),
         )
         wait_for_lock(pids.get(timeout=5), holder)
