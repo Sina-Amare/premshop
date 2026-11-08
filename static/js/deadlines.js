@@ -17,13 +17,9 @@
   var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
   var pad = function (n) { return n < 10 ? '0' + n : String(n); };
 
+  // The same shape the server renders (core.formatting.format_clock): hours
+  // keep counting past a day.
   function text(left) {
-    if (left >= 86400) {
-      var days = Math.floor(left / 86400), hours = Math.floor((left % 86400) / 3600);
-      return hours
-        ? toFa(days) + ' روز و ' + toFa(hours) + ' ساعت'
-        : toFa(days) + ' روز';
-    }
     return toFa(pad(Math.floor(left / 3600))) + ':' + toFa(pad(Math.floor((left % 3600) / 60))) + ':' + toFa(pad(left % 60));
   }
 

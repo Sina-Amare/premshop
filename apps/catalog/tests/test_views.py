@@ -621,14 +621,14 @@ def test_a_deadline_that_has_passed_is_neither_a_price_nor_a_clock(client, categ
     assert "۲۰۰,۰۰۰" in body, "the sale price is what is charged"
 
 
-def test_the_clock_counts_days_once_a_clock_would_be_absurd(client, category):
+def test_a_long_discount_still_ticks_in_hours_minutes_and_seconds(client, category):
     obj = make_product(category, "long", promo_price=Decimal("90000"))
     obj.plans.update(promo_ends_at=timezone.now() + timedelta(days=17, hours=4, minutes=30))
 
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
-    assert "۱۷ روز و ۴ ساعت مانده" in body
-    assert "۴۱۲:" not in body, "a clock reading 412 hours is a number, not a deadline"
+    badges = re.findall(r'class="badge badge--time deadline"[^>]*>([^<]*)<', body)
+    assert badges and all(re.fullmatch(r"۴۱۲:[۰-۹]{2}:[۰-۹]{2} مانده", b) for b in badges)
 
 
 # --- Search ---------------------------------------------------------------------

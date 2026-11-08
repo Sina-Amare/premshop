@@ -59,16 +59,27 @@ def format_toman(amount: Decimal | int, *, with_unit: bool = True) -> str:
     return f"{rendered} تومان" if with_unit else rendered
 
 
+def format_clock(seconds: int) -> str:
+    """Hours, minutes and seconds left, the hours uncapped: «۱۴۸:۴۴:۰۶».
+
+    A storefront discount counts down this way even with days to go, by the
+    owner's choice (docs/design-language.md). The hour field is padded even
+    at zero. «۰۸:۴۰» alone could be read as eight hours and forty minutes,
+    and «۰:۰۸:۴۰» reads as a stray digit; «۰۰:۰۸:۴۰» is unambiguous and is
+    the shape Iranian shops use.
+    """
+    hours, rest = divmod(max(0, int(seconds)), 3600)
+    minutes, secs = divmod(rest, 60)
+    return to_persian_digits(f"{hours:02d}:{minutes:02d}:{secs:02d}")
+
+
 def format_countdown(seconds: int) -> str:
     """How much time is left, at the granularity the reader can act on.
 
-    Under a day: a clock, down to the second. Above it: days and hours — a
-    clock reading ۴۱۲:۰۶:۵۵ is a number, not a deadline. The hour is dropped
-    from «۳ روز» when it is zero, because «۳ روز و ۰ ساعت» reads as a bug.
-
-    The hour field is padded even at zero. «۰۸:۴۰» alone could be read as
-    eight hours and forty minutes, and «۰:۰۸:۴۰» reads as a stray digit;
-    «۰۰:۰۸:۴۰» is unambiguous and is the shape Iranian shops use.
+    Under a day: a clock, down to the second. Above it: days and hours — in
+    the operator panel a clock reading ۴۱۲:۰۶:۵۵ is a number, not a deadline.
+    The hour is dropped from «۳ روز» when it is zero, because «۳ روز و ۰ ساعت»
+    reads as a bug.
     """
     seconds = max(0, int(seconds))
     if seconds >= 86400:
@@ -76,9 +87,7 @@ def format_countdown(seconds: int) -> str:
         if not hours:
             return f"{to_persian_digits(days)} روز"
         return f"{to_persian_digits(days)} روز و {to_persian_digits(hours)} ساعت"
-    hours, rest = divmod(seconds, 3600)
-    minutes, secs = divmod(rest, 60)
-    return to_persian_digits(f"{hours:02d}:{minutes:02d}:{secs:02d}")
+    return format_clock(seconds)
 
 
 def to_jalali(value: datetime | date) -> jdatetime.date:

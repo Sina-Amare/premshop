@@ -77,7 +77,9 @@ def test_a_promoted_row_carries_the_buy_boxs_neutral_badge_and_its_clock(client,
         r'<span class="badge badge--neutral" data-offer-badge[^>]*>(.*?)</span>', quarter
     )
     assert badge and badge[1] == "۱۴٪ تخفیف"
-    assert re.search(r'class="badge badge--time deadline"[^>]*>۴ روز و ۵ ساعت مانده<', quarter)
+    assert re.search(
+        r'class="badge badge--time deadline"[^>]*>۱۰۱:[۰-۹]{2}:[۰-۹]{2} مانده<', quarter
+    )
     css = (settings.BASE_DIR / "static" / "css" / "storefront.css").read_text(encoding="utf-8")
     assert "#9a3412" not in css.lower() and ".quick-plans__offer" not in css
 
@@ -187,7 +189,8 @@ def test_the_sheet_shows_a_grey_badge_an_amber_clock_and_each_month_inside_its_r
         clock = quarter.locator(".deadline")
         expect(line).to_have_text(QUARTER, use_inner_text=True)
         expect(badge).to_have_text("۱۴٪ تخفیف")
-        expect(clock).to_have_text("۴ روز و ۵ ساعت مانده")
+        # Ticking in the browser, so only the hours are fixed.
+        expect(clock).to_have_text(re.compile(r"^۱۰۱:[۰-۹]{2}:[۰-۹]{2} مانده$"))
 
         def colour(locator):
             return locator.evaluate("e => getComputedStyle(e).color")
