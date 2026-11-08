@@ -33,7 +33,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | `DELIVERED` | The account details have been delivered | Yes, by the operator |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | Yes, opened by the operator |
 | `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT`, and after payment by the operator ([paid cancellation](#paid-cancellation-and-refunds)) |
-| `REFUNDED` | Money returned. Final | No |
+| `REFUNDED` | Money returned. Final | By recording a completed manual transfer |
 
 ## Transitions
 
@@ -70,7 +70,7 @@ stateDiagram-v2
 | A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | Yes |
 | A10b | `REPLACEMENT_REQUESTED` → `DELIVERED` | The claim is rejected, with a note | operator | Yes |
 | A11 | `REPLACEMENT_REQUESTED` → `CANCELLED` | No replacement is possible for a claim inside the warranty; a warranty refund | operator | Yes |
-| A12 | `CANCELLED` → `REFUNDED` | The refund is executed | operator | No |
+| A12 | `CANCELLED` → `REFUNDED` | The refund is executed | operator | Yes, for a completed manual bank transfer |
 | A13 | `CANCELLED` → `QUEUED` | Revival: a payment verified late, or a mistaken cancellation | operator | No |
 | A14 | new → `DELIVERED` | Importing a subscription sold before launch (`legacy` channel only) | system | No |
 
@@ -208,7 +208,13 @@ The item's delivery page offers the reasons its status allows that day, each wit
 
 **The discount use** is held from placement, so two buyers cannot spend a single-use code at once. It comes back to the customer when every item the code covered (a share above zero) has ended without ever being delivered, and stays spent once any of them was delivered: a warranty refund never returns it, and an item the code did not cover never moves it.
 
-The order page lists each item's refund, with its amount and whether it is owed or transferred. Recording the transfer, which alone moves an item to `REFUNDED`, is not built, and the customer's refund message waits for the notification outbox. The database guards in the [data model](data-model.md#payments) refuse what the service would never write.
+The order page lists each item's refund and offers a form to record a completed manual bank transfer. It moves no money itself. The operator selects an explicit set of owed refunds on that order and enters the exact total sent, card or Sheba destination kind and last four digits, bank reference and Tehran bank date/time. The date is Jalali; the clock includes seconds and defaults to now. A future time, or one before any selected refund became owed at second precision, is refused. No full destination number is collected.
+
+`payments.services.execute_refunds(*, order_id, refund_ids, actor, amount, destination_kind, destination_last4, bank_ref, executed_at)` requires an active staff account with refund-change, order-change and item-change permissions. It locks the buyer, order, verified payment, selected items and refunds, then rereads their state. The amount must be a positive whole-toman Decimal matching the selected frozen amounts exactly. Each refund becomes executed and `orders.services.mark_item_refunded` writes A12 with its history event in the same transaction. Bank time stays on the refund; the event records actual entry time. Empty, foreign, malformed, repeated or overlapping selections change nothing. Executed records cannot be corrected through this form, and a repeated submission explains that nothing new was recorded. The database guards in the [data model](data-model.md#payments) provide independent backstops.
+
+The panel's daily reconciliation uses Tehran midnight inclusive through the next midnight exclusive. It separately totals payments confirmed, refunds newly owed and refunds sent, with one row per item refund. A refund owed yesterday and sent today belongs to each relevant day's activity; when both happen on one day the row appears once with both labels. Backdated bank entries update that bank day's report. Several item refunds in one transfer contribute their individual amounts, not a repeated transfer total.
+
+References on other orders are compared across verified payments and executed refunds on every date, normalizing Persian/Arabic digits and removing whitespace without changing stored spelling, case or punctuation. Matches appear on the report and as warnings after a payment or refund save; they never refuse a valid write and are not retry identifiers. Bank facts are staff-only, absent from customer pages, invoices, tracking, history notes and error reports. The customer refund message still waits for the notification outbox; gateway refunds are separate.
 
 ## Support ownership matching
 
@@ -254,3 +260,5 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
 | Paid cancellation: reasons by status, warranty and 21-day boundaries, amounts, discount shares and their release, stock, repeats, permissions and the panel form | `apps/orders/tests/test_paid_cancellation.py`, `test_paid_cancellation_admin.py`, `test_paid_cancellation_browser.py` |
 | The refund ledger's database guards | `apps/payments/tests/test_refund_guards.py` |
+| Manual refund execution: selection, exact amount, facts, times, rollback, repeats and races | `apps/payments/tests/test_refund_execution.py`, `test_refund_concurrency.py` |
+| Daily money activity, reference warnings, permissions, redaction and keyboard forms | `apps/payments/tests/test_reconciliation.py`, `test_refund_admin.py`, `test_refund_browser.py` |
