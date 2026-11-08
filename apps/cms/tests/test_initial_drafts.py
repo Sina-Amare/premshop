@@ -40,7 +40,7 @@ def test_revising_the_refund_draft_reverses_and_preserves_edits():
 
 
 def review_migration():
-    return import_module("apps.cms.migrations.0007_about_page_latin_names")
+    return import_module("apps.cms.migrations.0008_refund_amounts")
 
 
 def run_migration(function):
@@ -123,6 +123,16 @@ def test_review_migration_does_not_recreate_a_deleted_page():
     Page.objects.filter(slug="about").delete()
     run_migration(migration.revise)
     assert not Page.objects.filter(slug="about").exists()
+
+
+def test_the_refund_draft_pays_for_unused_days_only_after_delivery():
+    refunds = review_migration().DRAFTS["refunds"]["body"]
+    assert "در همه‌ی این موارد" not in refunds
+    assert (
+        "اگر محصول را تحویل نگرفته باشید، تمام مبلغی را که برای همان محصول پرداخت کرده‌اید"
+        " برمی‌گردانیم. اگر محصول تحویل شده باشد و در مدت گارانتی نتوانیم آن را تعویض کنیم،"
+        " مبلغ روزهای استفاده‌نشده را برمی‌گردانیم."
+    ) in refunds
 
 
 def test_each_fact_lives_on_one_page():
