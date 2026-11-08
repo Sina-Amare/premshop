@@ -12,6 +12,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 - [Input requests and pauses](#input-requests-and-pauses)
 - [Operator queue](#operator-queue)
 - [Delivery](#delivery)
+- [Paid cancellation and refunds](#paid-cancellation-and-refunds)
 - [History and notifications](#history-and-notifications)
 - [Tests](#tests)
 
@@ -31,7 +32,7 @@ How an order item moves from placement to delivery, which parts are built, and t
 | `AWAITING_INPUT` | Required details are missing; the clock has not started, or a running deadline is paused | Yes |
 | `DELIVERED` | The account details have been delivered | Yes, by the operator |
 | `REPLACEMENT_REQUESTED` | A warranty claim after delivery | Yes, opened by the operator |
-| `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT` |
+| `CANCELLED` | Ended without delivery. Final, unless money is owed back or the operator revives a paid item | From `PENDING_PAYMENT`, and after payment by the operator ([paid cancellation](#paid-cancellation-and-refunds)) |
 | `REFUNDED` | Money returned. Final | No |
 
 ## Transitions
@@ -62,13 +63,13 @@ stateDiagram-v2
 | A3 | `PENDING_PAYMENT` → `CANCELLED` | The unpaid deadline passes, or the customer or the operator cancels | system, customer, operator | Yes; the operator's path is a service call, with no panel action yet |
 | A4 | `QUEUED` → `AWAITING_INPUT` | The operator asks the customer for information | operator | Yes; also part of Telegram payment handoff |
 | A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | Yes |
-| A6 | `QUEUED` → `CANCELLED` | An approved cancellation or a supply failure; a refund is recorded | operator | No |
+| A6 | `QUEUED` → `CANCELLED` | A supply failure; the refund it owes is recorded | operator | Yes |
 | A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | Yes; operator controls, owner-authorized services |
-| A8 | `AWAITING_INPUT` → `CANCELLED` | The operator cancels, or the input reminders run out at 21 days | operator, system | No |
+| A8 | `AWAITING_INPUT` → `CANCELLED` | A supply failure, or details still missing 21 Tehran calendar days after the request | operator | Yes, by hand; the reminders that would lead there are not built |
 | A9 | `DELIVERED` → `REPLACEMENT_REQUESTED` | A warranty claim | customer, operator | Yes, the operator's |
 | A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | Yes |
 | A10b | `REPLACEMENT_REQUESTED` → `DELIVERED` | The claim is rejected, with a note | operator | Yes |
-| A11 | `REPLACEMENT_REQUESTED` → `CANCELLED` | No replacement is possible; a warranty refund | operator | No |
+| A11 | `REPLACEMENT_REQUESTED` → `CANCELLED` | No replacement is possible for a claim inside the warranty; a warranty refund | operator | Yes |
 | A12 | `CANCELLED` → `REFUNDED` | The refund is executed | operator | No |
 | A13 | `CANCELLED` → `QUEUED` | Revival: a payment verified late, or a mistaken cancellation | operator | No |
 | A14 | new → `DELIVERED` | Importing a subscription sold before launch (`legacy` channel only) | system | No |
@@ -147,7 +148,7 @@ An identical retry returns the original payment, including after the old unpaid 
 
 A new confirmation and the payment action share `orders.services.can_pay_order`. It refuses an expired or cancelled order, an item no longer in `PENDING_PAYMENT`, missing required checkout input, a missing non-Telegram receipt time, and unknown purchased delivery hours or input declarations. Telegram receipt is not a payment prerequisite. Another created, initiated or verified payment also blocks a new one; an identical repeat of a verified confirmation remains a harmless replay. Those expiry/open-attempt restrictions must be reconciled with money already moved before a gateway is added. Input requirements and delivery hours come from the purchase snapshot, not later catalogue edits. The customer sees each item's state without the bank reference; the panel shows the reference only to staff with `payments.view_payment`.
 
-Payment, each item's `paid_at`, deadline, final state and history commit together. `orders.clock.delivery_deadline` starts at the later of payment and required-detail receipt, or payment alone when no details are required. `OrderItem.clock_requires_input` derives that requirement from checkout input **or** Telegram coordination. Missing first details mean no deadline and no pause marker. Purchased hours are elapsed hours. A deadline outside the daily Tehran support window, **10:00 inclusive to 22:00 exclusive**, moves forward to the next opening, then is capped at start plus 48 hours. The cap wins even outside support hours: payment Thursday at 23:00 with 48 purchased hours is due Saturday at 23:00. Refunds are not built.
+Payment, each item's `paid_at`, deadline, final state and history commit together. `orders.clock.delivery_deadline` starts at the later of payment and required-detail receipt, or payment alone when no details are required. `OrderItem.clock_requires_input` derives that requirement from checkout input **or** Telegram coordination. Missing first details mean no deadline and no pause marker. Purchased hours are elapsed hours. A deadline outside the daily Tehran support window, **10:00 inclusive to 22:00 exclusive**, moves forward to the next opening, then is capped at start plus 48 hours. The cap wins even outside support hours: payment Thursday at 23:00 with 48 purchased hours is due Saturday at 23:00.
 
 The gateway request, callback verification and the lost-callback inquiry are not built. A future gateway must verify amounts server-to-server and use the same confirmation path; browser return parameters cannot prove payment. An inquiry failure must not be treated as unpaid money or abandon an attempt on a timer alone.
 
@@ -157,7 +158,7 @@ The gateway request, callback verification and the lost-callback inquiry are not
 
 Telegram items leave `input_received_at` null at checkout even when an email or username was collected. Handoff records `input_requested_at` and makes the request available on the owner's order page through the existing support destination; it does not send a message. First receipt computes the deadline once. A later request retains the deadline and sets `sla_paused_at`; resume adds exactly the elapsed pause, clears that marker and preserves the original first receipt. It neither snaps the shifted deadline nor reapplies the original cap. The database refuses a pause marker without a deadline.
 
-The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the 48-hour reminder, seven-day flag, 14-day warning and 21-calendar-day input timeout; receipt ends the episode and a distinct later request starts another. These automated steps and paid cancellation/refunds remain unbuilt. Before affected paid orders are accepted, the manual 21-day cancellation/refund process must be demonstrated. Holidays never stop this ladder ([ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)).
+The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the 48-hour reminder, seven-day flag, 14-day warning and 21-calendar-day input timeout; receipt ends the episode and a distinct later request starts another. These automated steps remain unbuilt; the cancellation at 21 days is the operator's ([paid cancellation](#paid-cancellation-and-refunds)), and it must be demonstrated before affected paid orders are accepted. Holidays never stop this ladder ([ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)).
 
 ## Operator queue
 
@@ -181,7 +182,7 @@ A queued item's delivery page also records a supply delay: `delay_supply` adds 1
 
 ### Warranty claims
 
-A delivered item's row links to the same page, which then opens a claim: `open_claim` (A9) needs a note, which stays in the history, so the page asks for no password in it. The page of an open claim shows that note and offers two exits. `replace_delivery` (A10a) takes the delivery form with an extra supply cost in place of the actual cost; it writes a new set, keeps every earlier one, adds the extra cost to `actual_cost`, sets `expires_at` and leaves `delivered_at` at the first delivery. `reject_claim` (A10b) needs a note and stores no set. Only `deliver_item` serves a `QUEUED` item and only `replace_delivery` serves a claim, so `DELIVERED` → `DELIVERED` has no entry point. Each service refuses a stale page and names a repeated submission from the same page, as delivery does; `replace_delivery` and `reject_claim` tell each other apart by whether the latest history row has a set. A customer's own claim, the claim and replacement messages and the warranty refund (A11) are not built.
+A delivered item's row links to the same page, which then opens a claim: `open_claim` (A9) needs a note, which stays in the history, so the page asks for no password in it. The page of an open claim shows that note and offers two exits. `replace_delivery` (A10a) takes the delivery form with an extra supply cost in place of the actual cost; it writes a new set, keeps every earlier one, adds the extra cost to `actual_cost`, sets `expires_at` and leaves `delivered_at` at the first delivery. `reject_claim` (A10b) needs a note and stores no set. Only `deliver_item` serves a `QUEUED` item and only `replace_delivery` serves a claim, so `DELIVERED` → `DELIVERED` has no entry point. Each service refuses a stale page and names a repeated submission from the same page, as delivery does; `replace_delivery` and `reject_claim` tell each other apart by whether the latest history row has a set. A customer's own claim and the claim and replacement messages are not built; a claim that cannot be replaced ends in a [paid cancellation](#paid-cancellation-and-refunds).
 
 A product whose warranty runs to the end of the period cannot be delivered or replaced without the subscription's last day, because its retention deadline depends on it.
 
@@ -189,7 +190,25 @@ A product whose warranty runs to the end of the period cannot be delivered or re
 
 Every day at 03:25 UTC (06:55 in Tehran) `delete_expired_details` deletes what ADR-0007 keeps no longer. An item's delivered sets, their notes and its customer input are deleted together at `retention_deadline`: the later of `expires_at` and the warranty's end (the delivery day for no warranty, seven days after delivery for a seven-day warranty, `expires_at` for a full-period one), plus 30 days, counted in Tehran calendar days; a set delivered later, such as a replacement after the warranty, is kept at least 30 days after its own delivery. A cancelled item that was never delivered loses its customer input 30 days after its cancellation. The job selects only items that still hold details, whatever their status, so a missed day is caught up the next and a rerun deletes nothing; an open claim waits until it closes. Each deletion writes a system history row with the same status before and after. Afterwards the reveal says the details were deleted under the retention rule.
 
-The customer's masked view, the single-use delivery link and the delivery message are not built ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)), nor is paid cancellation. Real deliveries wait for the offline key escrow and a restore that decrypts ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
+The customer's masked view, the single-use delivery link and the delivery message are not built ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). Real deliveries wait for the offline key escrow and a restore that decrypts ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
+
+## Paid cancellation and refunds
+
+The shop refunds only what it cannot supply, so a paid item is cancelled for one of three reasons, each from its own statuses; nothing voluntary is accepted after payment.
+
+| Reason | From | Owes |
+|---|---|---|
+| `supply_failure` | `QUEUED` (A6) or `AWAITING_INPUT` (A8) | The item's paid amount |
+| `input_timeout` | `AWAITING_INPUT` (A8), from the 21st Tehran calendar day after `input_requested_at` | The item's paid amount; the unit returns to stock |
+| `warranty_refund` | `REPLACEMENT_REQUESTED` (A11), for a claim opened inside the warranty | The unused days |
+
+An item's paid amount is `price_snapshot − discount_share`. A claim is inside the warranty when it was opened within seven days of delivery for a seven-day warranty, or on or before `expires_at` for one that runs to the end of the period. An item with no warranty, or whose subscription ended before the claim, is not refunded; the operator rejects the claim instead. The unused days run from the claim's opening through `expires_at`, out of the days from delivery through `expires_at`, in Tehran calendar days, and the days a claim stays open are not charged: delivered on 22 November with 21 December as the last day, a claim opened on 2 December used 10 of 30 days, so an item that cost 96,667 toman gets back 96,667 × 20 ÷ 30, rounded half up to 64,445. Without an `expires_at`, the whole paid amount. An item whose paid amount is zero, because a fixed code covered all of it, is cancelled with nothing owed.
+
+The item's delivery page offers the reasons its status allows that day, each with the amount it would owe, read through the same `refund_amount` the service uses; a waiting item's row on the order page links to it. Staff need `payments.add_refund` besides the order and item change permissions. `cancel_paid_item(*, order_id, item_id, actor, expected_event_id, reason, note)` locks the buyer, the order, the verified payment, the item's product and plan, the discount code and the item, in the shared lock order, then in one transaction cancels the item with its reason and a history row carrying the note, creates the owed `Refund`, returns the unit for `input_timeout` and releases the discount use when it applies. A stale page is refused, and the same operator's repeat is named and changes nothing.
+
+**The discount use** is held from placement, so two buyers cannot spend a single-use code at once. It comes back to the customer when every item the code covered (a share above zero) has ended without ever being delivered, and stays spent once any of them was delivered: a warranty refund never returns it, and an item the code did not cover never moves it.
+
+The order page lists each item's refund, with its amount and whether it is owed or transferred. Recording the transfer, which alone moves an item to `REFUNDED`, is not built, and the customer's refund message waits for the notification outbox. The database guards in the [data model](data-model.md#payments) refuse what the service would never write.
 
 ## Support ownership matching
 
@@ -233,3 +252,5 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |
 | Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
+| Paid cancellation: reasons by status, warranty and 21-day boundaries, amounts, discount shares and their release, stock, repeats, permissions and the panel form | `apps/orders/tests/test_paid_cancellation.py`, `test_paid_cancellation_admin.py`, `test_paid_cancellation_browser.py` |
+| The refund ledger's database guards | `apps/payments/tests/test_refund_guards.py` |
