@@ -1,6 +1,9 @@
 import random
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from queue import Queue
+from threading import Event
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +22,11 @@ from apps.orders.services import OrderLine
 from apps.orders.tests.test_delivery import BANK_REF, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_lifecycle_concurrency import separate_plan
+from apps.orders.tests.test_lifecycle_concurrency import (
+    in_connection,
+    separate_plan,
+    wait_for_lock,
+)
 from apps.orders.tests.test_replacement import claim, delivered
 from apps.payments.models import Refund
 from apps.payments.services import record_manual_payment
@@ -369,6 +376,70 @@ def test_an_item_a_fixed_code_paid_for_in_full_cancels_with_nothing_owed(buyer, 
     cancel(free, operator)
     free.refresh_from_db()
     assert free.status == "CANCELLED" and not Refund.objects.exists()
+    assert code_use(code, order) == (0, True)
+
+
+# Concurrent work on the same rows waits its turn
+
+
+def pause_first_amount(monkeypatch):
+    """Holds the first cancellation after it has taken every lock, until released."""
+    entered, release = Event(), Event()
+    original = services.refund_amount
+
+    def paused(*args, **kwargs):
+        if not entered.is_set():
+            entered.set()
+            assert release.wait(10)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(services, "refund_amount", paused)
+    return entered, release
+
+
+def test_a_checkout_waits_for_a_cancellation_that_frees_a_single_use_code(
+    buyer, plan, operator, monkeypatch
+):
+    code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=10000, max_uses=1)
+    _, (item,) = paid_order(buyer, operator, [OrderLine(plan, 1)], "SAVE")
+    second = User.objects.create_user("second@example.test")
+    entered, release = pause_first_amount(monkeypatch)
+    pids: Queue = Queue()
+    with ThreadPoolExecutor(2) as pool:
+        cancelling = pool.submit(in_connection, pids, lambda: cancel(item, operator))
+        assert entered.wait(10)
+        holder = pids.get(timeout=5)
+        checkout = pool.submit(
+            in_connection,
+            pids,
+            lambda: services.place_order(
+                user=second, lines=[OrderLine(plan, 1)], discount_code="SAVE"
+            ),
+        )
+        wait_for_lock(pids.get(timeout=5), holder)
+        release.set()
+        cancelling.result(timeout=15)
+        placed = checkout.result(timeout=15)
+    assert placed is not None and placed.discount_amount == 10000
+    code.refresh_from_db()
+    assert code.used_count == 1
+
+
+def test_two_cancellations_on_one_order_take_turns_and_release_the_code_once(
+    buyer, plan, operator, monkeypatch
+):
+    code, order, (first, second) = coded(buyer, plan, operator, quantity=2)
+    entered, release = pause_first_amount(monkeypatch)
+    pids: Queue = Queue()
+    with ThreadPoolExecutor(2) as pool:
+        one = pool.submit(in_connection, pids, lambda: cancel(first, operator))
+        assert entered.wait(10)
+        holder = pids.get(timeout=5)
+        two = pool.submit(in_connection, pids, lambda: cancel(second, operator))
+        wait_for_lock(pids.get(timeout=5), holder)
+        release.set()
+        assert one.result(timeout=15) is not None and two.result(timeout=15) is not None
+    assert Refund.objects.count() == 2
     assert code_use(code, order) == (0, True)
 
 
