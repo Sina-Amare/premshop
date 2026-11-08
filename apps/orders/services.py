@@ -436,6 +436,19 @@ def cancel_paid_item(
     return item
 
 
+def mark_item_refunded(*, item: OrderItem, refund: Refund, actor: User) -> None:
+    """A12; execute_refunds holds the order, item and refund locks."""
+    if (
+        item.status != OrderItem.Status.CANCELLED
+        or refund.order_item_id != item.pk
+        or refund.status != Refund.Status.EXECUTED
+    ):
+        raise ValidationError(gettext_lazy("این محصول بازپرداخت واریزشده ندارد."))
+    item.status = OrderItem.Status.REFUNDED
+    item.save(update_fields=["status"])
+    _input_event(item, actor, OrderItem.Status.CANCELLED)
+
+
 NO_OPEN_CLAIM = gettext_lazy("برای این محصول درخواست تعویض بازی نیست.")
 MAX_DELAY_HOURS = 72
 
