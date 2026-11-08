@@ -94,3 +94,18 @@ def test_a_countdown_reads_at_the_granularity_someone_can_act_on(seconds, expect
     """86400 is the switch: a second past a day stops being a clock. Negative
     seconds floor at zero rather than printing a clock running backwards."""
     assert formatting.format_countdown(seconds) == expected
+
+
+@pytest.mark.parametrize(
+    "seconds, expected",
+    [
+        (0, "۰۰:۰۰:۰۰"),
+        (59, "۰۰:۰۰:۵۹"),
+        (86400, "۲۴:۰۰:۰۰"),
+        (535446, "۱۴۸:۴۴:۰۶"),
+        (1485000, "۴۱۲:۳۰:۰۰"),
+        (-5, "۰۰:۰۰:۰۰"),
+    ],
+)
+def test_a_discount_clock_keeps_counting_hours_past_a_day(seconds, expected):
+    assert formatting.format_clock(seconds) == expected

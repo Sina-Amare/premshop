@@ -67,6 +67,6 @@ def jalali_numeric(value: datetime | date | None) -> str:
     return formatting.format_jalali(value, with_month_name=False)
 
 
-@register.filter(name="countdown")
-def countdown(seconds: int | None) -> str:
-    return "" if seconds is None else formatting.format_countdown(seconds)
+@register.filter(name="clock")
+def clock(seconds: int | None) -> str:
+    return "" if seconds is None else formatting.format_clock(seconds)

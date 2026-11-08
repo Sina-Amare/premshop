@@ -7,9 +7,9 @@ right with JavaScript off and ticks with it on. It never sends the deadline
 itself: a countdown measured against an absolute server time is wrong by
 however much the visitor's own clock is wrong.
 
-Under a day it counts seconds, because that is the hour someone decides in.
-Above a day it says days and hours, because a clock reading 412:06:55 is a
-number, not a deadline.
+It counts hours, minutes and seconds even with days to go (148:44:06), by the
+owner's choice in design-language.md: a clock that visibly ticks reads as a
+live offer.
 
 At zero static/js/deadlines.js says so and the badge turns neutral, while
 `_price.html` swaps in the price that follows.
@@ -19,4 +19,4 @@ label and a card's link, so it changed their names every second; what is
 read instead is the day the discount ends, once, and «تخفیف تمام شد» at zero.
 
 Params: plan.
-{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}" aria-hidden="true">{{ left|countdown }} مانده</span><span class="sr-only deadline__said">تخفیف تا {{ plan.promo_ends_at|jalali }}</span>{% endif %}{% endwith %}
+{% endcomment %}{% with left=plan.promo_seconds_left %}{% if left %}<span class="badge badge--time deadline" data-left="{{ left }}" aria-hidden="true">{{ left|clock }} مانده</span><span class="sr-only deadline__said">تخفیف تا {{ plan.promo_ends_at|jalali }}</span>{% endif %}{% endwith %}
