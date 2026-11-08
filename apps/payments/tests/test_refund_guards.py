@@ -78,10 +78,12 @@ def test_an_owed_refund_holds_no_execution_facts(buyer, plan, operator):
     refused(lambda: Refund.objects.create(order_item=item, amount=0, created_by=operator))
 
 
-def test_an_item_has_one_refund(owed, operator):
-    refused(
-        lambda: Refund.objects.create(order_item=owed.order_item, amount=1, created_by=operator)
-    )
+def test_an_item_has_one_refund(buyer, plan, operator):
+    # Two items, so a second refund of 1 stays under the payment and only the key refuses it.
+    _, (item, _) = paid_order(buyer, operator, [OrderLine(plan, 2)])
+    Refund.objects.create(order_item=item, amount=1000, created_by=operator)
+    with pytest.raises(IntegrityError, match="duplicate key"), transaction.atomic():
+        Refund.objects.create(order_item=item, amount=1, created_by=operator)
 
 
 def test_a_refund_never_exceeds_its_items_paid_amount(buyer, plan, operator):
