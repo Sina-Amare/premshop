@@ -1,0 +1,7 @@
+{% extends "email/base.html" %}
+{% block title %}درخواست تعویض رد شد{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">درخواست تعویض رد شد</h1>
+<p>درخواست تعویض این محصول رد شد. برای پیگیری نتیجه، صفحه‌ی سفارش را ببینید.</p>
+{% include "email/_order_notice.html" %}
+{% endblock %}

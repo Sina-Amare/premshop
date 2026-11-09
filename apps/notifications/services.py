@@ -1,6 +1,6 @@
 import logging
-from datetime import timedelta
-from smtplib import SMTPException, SMTPResponseException
+from datetime import datetime, timedelta
+from smtplib import SMTPException, SMTPRecipientsRefused, SMTPResponseException
 from typing import Any
 
 from django.conf import settings
@@ -14,10 +14,62 @@ from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
 from apps.core.richtext import absolute_markdown_links
 from apps.notifications.models import ConfirmationSweep, Notification
-from apps.orders.models import Order
+from apps.orders.models import Order, OrderItem
+from apps.payments.models import Refund
 
 logger = logging.getLogger(__name__)
 _DELAYS = (60, 300, 900, 3600, 21600)
+
+
+def enqueue_event(
+    template_name: str,
+    occurrence_id: int,
+    order_id: int,
+    *,
+    item_id: int | None = None,
+    due_at: datetime | None = None,
+) -> Notification:
+    if (
+        template_name not in Notification.Template.values
+        or template_name == "purchase_confirmation"
+    ):
+        raise ValueError("Unknown order notification")
+    order = Order.objects.values(
+        "user_id", "user__email", "placement_email", "order_number", "total_amount"
+    ).get(pk=order_id)
+    context: dict[str, Any] = {
+        "order_number": order["order_number"],
+        "order_url": settings.SITE_URL.rstrip("/")
+        + reverse("order-detail", args=[order["order_number"]]),
+        "amount": order["total_amount"],
+        "due_at": due_at,
+    }
+    if item_id is not None:
+        facts = OrderItem.objects.values_list("product_snapshot", flat=True).get(
+            pk=item_id, order_id=order_id
+        )
+        context.update(product_name=facts["name"], plan_title=facts["plan_title"])
+        if template_name in ("item_cancelled", "item_refunded"):
+            context["amount"] = (
+                Refund.objects.filter(order_item_id=item_id)
+                .values_list("amount", flat=True)
+                .first()
+                or 0
+            )
+    recipient = order["placement_email"] or order["user__email"]
+    subject, text, html = render_email(template_name, context)
+    row, _ = Notification.objects.get_or_create(
+        dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:email",
+        defaults={
+            "order_id": order_id,
+            "template_name": template_name,
+            "recipient": recipient,
+            "subject": subject,
+            "text_body": text,
+            "html_body": html,
+        },
+    )
+    return row
 
 
 def confirmation_context(order: Order) -> dict[str, Any]:
@@ -92,7 +144,9 @@ def render_confirmation(order: Order) -> tuple[str, str, str]:
 
 
 def discover_confirmations() -> int:
-    existing = Notification.objects.filter(order_id=OuterRef("pk"))
+    existing = Notification.objects.filter(
+        order_id=OuterRef("pk"), template_name="purchase_confirmation"
+    )
     ids = (
         Order.objects.exclude(placement_email="")
         .filter(~Exists(existing))
@@ -133,7 +187,7 @@ def discover_confirmations() -> int:
     return created
 
 
-def send_due_confirmations() -> int:
+def send_due_notifications() -> int:
     ConfirmationSweep.objects.get_or_create(pk=1)
     sent = 0
     while True:
@@ -153,13 +207,13 @@ def send_due_confirmations() -> int:
                 return sent
             try:
                 accepted = send_templated_email(
-                    "purchase_confirmation",
+                    row.template_name,
                     to=[row.recipient],
                     context={},
                     rendered_parts=(row.subject, row.text_body, row.html_body),
                 )
                 if not accepted:
-                    raise SMTPException("Confirmation email was not accepted")
+                    raise SMTPException("Order email was not accepted")
             except MailQuotaExceeded:
                 wait = timezone.now() + timedelta(minutes=15)
                 sweep.quota_wait_until = wait
@@ -168,19 +222,27 @@ def send_due_confirmations() -> int:
                     status="pending", next_attempt_at__lte=timezone.now()
                 ).update(next_attempt_at=wait)
                 return sent
-            except (
-                Exception
-            ) as error:  # noqa: BLE001 — uncertain and permanent failures share the ladder
+            except Exception as error:  # noqa: BLE001 - keep only the class and numeric SMTP status
                 row.last_error_class = type(error).__name__
                 row.smtp_code = (
                     error.smtp_code if isinstance(error, SMTPResponseException) else None
                 )
                 row.attempts += 1
                 row.last_attempt_at = timezone.now()
-                row.status = "failed" if row.attempts == 6 else "pending"
+                permanent = (
+                    isinstance(error, SMTPResponseException) and 500 <= error.smtp_code < 600
+                ) or (
+                    isinstance(error, SMTPRecipientsRefused)
+                    and bool(error.recipients)
+                    and all(500 <= response[0] < 600 for response in error.recipients.values())
+                )
+                failed = row.attempts == 6 or (
+                    row.template_name != "purchase_confirmation" and permanent
+                )
+                row.status = "failed" if failed else "pending"
                 row.next_attempt_at = (
                     row.last_attempt_at + timedelta(seconds=_DELAYS[row.attempts - 1])
-                    if row.attempts < 6
+                    if not failed
                     else None
                 )
             else:

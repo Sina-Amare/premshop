@@ -1,0 +1,8 @@
+{% load fa %}PremShop
+{{ product_name }}، {{ plan_title }}، تحویل شد.
+شماره‌ی سفارش: {{ order_number|fa_digits }}
+برای پیگیری سفارش وارد حساب خود شوید:
+{{ order_url }}
+اطلاعات ورود را در ایمیل ارسال نمی‌کنیم.
+
+پشتیبانی: {{ support.email }}

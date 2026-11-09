@@ -423,7 +423,7 @@ UNFOLD = {
                         ),
                     },
                     {
-                        "title": _("تأییدیه‌های خرید"),
+                        "title": _("پیام‌های سفارش"),
                         "icon": "mark_email_read",
                         "link": reverse_lazy("admin:notifications_notification_changelist"),
                         "permission": lambda request: request.user.has_perm(

@@ -1,0 +1,1 @@
+{% load fa %}سفارش {{ order_number|fa_digits }} منتظر اطلاعات شماست

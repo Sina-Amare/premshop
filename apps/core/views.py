@@ -170,6 +170,29 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "discount_amount": Decimal("0"),
         "total_amount": Decimal("400000"),
     },
+    "payment_confirmed": {
+        "order_number": 14050217,
+        "order_url": "https://premshop.ir/account/orders/14050217/",
+        "amount": Decimal("1450000"),
+    },
+    **{
+        name: {
+            "order_number": 14050217,
+            "order_url": "https://premshop.ir/account/orders/14050217/",
+            "product_name": "اشتراک نمونه Example Pro",
+            "plan_title": "یک ماهه",
+            "amount": Decimal("1450000"),
+            "due_at": datetime(2026, 11, 11, 11, 2, tzinfo=UTC),
+        }
+        for name in (
+            "input_requested",
+            "delivery_completed",
+            "replacement_rejected",
+            "supply_delayed",
+            "item_cancelled",
+            "item_refunded",
+        )
+    },
     "password_reset": {"code": "418305", "ttl_minutes": 10},
     "password_changed": {"changed_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC)},
     "otp_code": {

@@ -197,7 +197,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 
 ### notifications
 
-**Notification** is one purchase confirmation, frozen when it is created: recipient, subject, and plain-text and HTML bodies, under a unique `dedupe_key` (`purchase-confirmation:{order_pk}:email`). It records `status` (`pending`, `sent` or `failed`), `attempts` (at most six), `next_attempt_at`, its timestamps, and the error class and numeric SMTP code of the last failure. No customer input, credential or raw SMTP reply is stored.
+**Notification** is one frozen order email: its `template_name`, recipient, subject, and plain-text and HTML bodies. Purchase confirmations retain `dedupe_key` `purchase-confirmation:{order_pk}:email`; event updates use `{template_name}:{occurrence_id}:user:{user_id}:email`, with a payment ID for order-level confirmation and an item-history ID for other occurrences. It records `status` (`pending`, `sent` or `failed`), `attempts` (at most six), `next_attempt_at`, its timestamps, and the error class and numeric SMTP code of the last failure. No customer input, credential, operator note or raw SMTP reply is stored. Old rows default to purchase confirmation; no historical updates are enqueued.
 
 **ConfirmationSweep** is a single row holding `quota_wait_until`, the pause every sender shares after a quota refusal.
 
@@ -241,7 +241,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
-| Notification | `notification_status_valid`, `notification_attempts_bounded` |
+| Notification | `notification_template_valid`, `notification_status_valid`, `notification_attempts_bounded` |
 | MailAttempt | `mail_attempt_known_status` |
 | UnpaidExpirySweep, ConfirmationSweep | `unpaid_sweep_singleton`, `confirmation_sweep_singleton` |
 

@@ -1,0 +1,7 @@
+{% extends "email/base.html" %}{% load fa %}
+{% block title %}بازپرداخت واریز شد{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">بازپرداخت واریز شد</h1>
+<p>بازپرداخت این محصول به مبلغ {{ amount|toman_plain }} تومان واریز شد.</p>
+{% include "email/_order_notice.html" %}
+{% endblock %}

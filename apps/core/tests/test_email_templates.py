@@ -30,6 +30,12 @@ def test_every_email_template_has_a_preview_entry():
     assert messages == set(EMAIL_PREVIEWS), f"missing previews: {messages - set(EMAIL_PREVIEWS)}"
 
 
+def test_payment_preview_describes_the_order_without_a_single_item():
+    _, text, html = render_email("payment_confirmed", EMAIL_PREVIEWS["payment_confirmed"])
+    for part in (text, html):
+        assert "محصول:" not in part
+
+
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_every_template_renders_all_three_parts(name):
     """A typo in any template is a broken send; CI catches it here instead."""

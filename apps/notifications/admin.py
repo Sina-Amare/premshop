@@ -20,6 +20,7 @@ class NotificationAdmin(ModelAdmin):
 
     list_display = (
         "order",
+        "template_name",
         "status",
         "recipient",
         "attempts",
@@ -27,7 +28,7 @@ class NotificationAdmin(ModelAdmin):
         "last_error_class",
         "smtp_code",
     )
-    list_filter = ("status",)
+    list_filter = ("status", "template_name")
     readonly_fields = tuple(field.name for field in Notification._meta.fields)
     actions = None
     list_select_related = ("order",)

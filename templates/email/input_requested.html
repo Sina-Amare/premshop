@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block title %}منتظر اطلاعات شما هستیم{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">منتظر اطلاعات شما هستیم</h1>
+<p>برای ادامه‌ی انجام این محصول به اطلاعات شما نیاز داریم. راهنمای ارسال اطلاعات در صفحه‌ی سفارش است.</p>
+<p>اطلاعات فعال‌سازی را در پاسخ به این ایمیل نفرستید.</p>
+{% include "email/_order_notice.html" %}
+{% endblock %}

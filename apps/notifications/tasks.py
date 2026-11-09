@@ -1,10 +1,10 @@
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task
 
-from apps.notifications.services import discover_confirmations, send_due_confirmations
+from apps.notifications.services import discover_confirmations, send_due_notifications
 
 
 @db_periodic_task(crontab(minute="*"))
-def confirm_new_orders() -> int:
+def send_order_notifications() -> int:
     discover_confirmations()
-    return send_due_confirmations()
+    return send_due_notifications()

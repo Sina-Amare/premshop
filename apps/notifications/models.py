@@ -5,6 +5,16 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Notification(models.Model):
+    class Template(models.TextChoices):
+        PURCHASE = "purchase_confirmation", _("تأییدیه‌ی خرید")
+        PAYMENT = "payment_confirmed", _("تأیید پرداخت")
+        INPUT = "input_requested", _("درخواست اطلاعات")
+        DELIVERY = "delivery_completed", _("تحویل محصول")
+        REJECTION = "replacement_rejected", _("رد درخواست تعویض")
+        DELAY = "supply_delayed", _("تغییر مهلت تحویل")
+        CANCELLATION = "item_cancelled", _("لغو محصول")
+        REFUND = "item_refunded", _("واریز بازپرداخت")
+
     class Status(models.TextChoices):
         PENDING = "pending", _("در انتظار")
         SENT = "sent", _("ارسال‌شده")
@@ -12,6 +22,13 @@ class Notification(models.Model):
 
     order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, verbose_name=_("سفارش"))
     dedupe_key = models.CharField(max_length=100, unique=True, editable=False)
+    template_name = models.CharField(
+        _("نوع پیام"),
+        max_length=32,
+        choices=Template.choices,
+        default=Template.PURCHASE,
+        editable=False,
+    )
     recipient = models.EmailField(_("گیرنده"), editable=False)
     subject = models.TextField(_("موضوع"), editable=False)
     text_body = models.TextField(_("متن ایمیل"), editable=False)
@@ -32,11 +49,26 @@ class Notification(models.Model):
     )
 
     class Meta:
-        verbose_name = _("تأییدیه‌ی خرید")
-        verbose_name_plural = _("تأییدیه‌های خرید")
+        verbose_name = _("پیام سفارش")
+        verbose_name_plural = _("پیام‌های سفارش")
         ordering = ["created_at", "pk"]
         indexes = [models.Index(fields=["status", "next_attempt_at"])]
         constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    template_name__in=[
+                        "purchase_confirmation",
+                        "payment_confirmed",
+                        "input_requested",
+                        "delivery_completed",
+                        "replacement_rejected",
+                        "supply_delayed",
+                        "item_cancelled",
+                        "item_refunded",
+                    ]
+                ),
+                name="notification_template_valid",
+            ),
             models.CheckConstraint(
                 condition=Q(status__in=["pending", "sent", "failed"]),
                 name="notification_status_valid",

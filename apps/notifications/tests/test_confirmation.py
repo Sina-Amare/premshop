@@ -108,7 +108,7 @@ def test_discovery_freezes_address_and_full_text_without_sensitive_fields(
     assert order.policy_snapshot == before
     assert order.items.first().product_snapshot["full_description"].endswith("(/contact/?a=1&b=2)")
     assert services.discover_confirmations() == 0
-    services.send_due_confirmations()
+    services.send_due_notifications()
     assert mail.outbox[0].to == ["buyer@example.test"]
     assert mail.outbox[0].body == row.text_body
     assert mail.outbox[0].alternatives[0].content == row.html_body
@@ -151,7 +151,7 @@ def test_one_unrenderable_order_does_not_block_discovery_or_sends(plan, monkeypa
     monkeypatch.setattr(services, "render_confirmation", render)
     with caplog.at_level(logging.ERROR, logger="apps.notifications.services"):
         assert services.discover_confirmations() == 1
-    assert services.send_due_confirmations() == 1
+    assert services.send_due_notifications() == 1
     assert Notification.objects.get().order_id == second.pk
     records = [r for r in caplog.records if r.name == "apps.notifications.services"]
     assert len(records) == 1
@@ -176,7 +176,7 @@ def test_all_smtp_failures_take_the_six_attempt_ladder(plan, monkeypatch, failur
     monkeypatch.setattr(EmailBackend, "send_messages", fail)
     with time_machine.travel(timezone.now(), tick=False) as clock:
         for index, delay in enumerate([60, 300, 900, 3600, 21600, None], 1):
-            assert services.send_due_confirmations() == 0
+            assert services.send_due_notifications() == 0
             row = Notification.objects.get()
             assert row.attempts == index
             assert "SECRET-REPLY" not in json.dumps(
@@ -186,7 +186,7 @@ def test_all_smtp_failures_take_the_six_attempt_ladder(plan, monkeypatch, failur
                 assert row.status == "pending"
                 assert row.next_attempt_at == timezone.now() + timedelta(seconds=delay)
                 clock.shift(delay - 1)
-                services.send_due_confirmations()
+                services.send_due_notifications()
                 assert Notification.objects.get().attempts == index
                 clock.shift(1)
             else:
@@ -209,7 +209,7 @@ def test_quota_stops_tick_and_shared_cooldown_covers_arrivals_and_retries(
         later = Notification.objects.last()
         later.next_attempt_at = timezone.now() + timedelta(minutes=1)
         later.save(update_fields=["next_attempt_at"])
-        assert services.send_due_confirmations() == 0
+        assert services.send_due_notifications() == 0
         assert MailAttempt.objects.filter(status="blocked").count() == 1
         assert not Notification.objects.exclude(attempts=0).exists()
         wait = timezone.now() + timedelta(minutes=15)
@@ -219,12 +219,12 @@ def test_quota_stops_tick_and_shared_cooldown_covers_arrivals_and_retries(
         services.discover_confirmations()
         for _ in range(14):
             clock.shift(60)
-            assert services.send_due_confirmations() == 0
+            assert services.send_due_notifications() == 0
         assert MailAttempt.objects.count() == 1
         settings.EMAIL_QUOTA_RESET_DATE = "2026-11-01"
         settings.EMAIL_QUOTA_STARTING_USAGE = 0
         clock.shift(60)
-        assert services.send_due_confirmations() == 4
+        assert services.send_due_notifications() == 4
         assert len(mail.outbox) == 4
         assert not Notification.objects.exclude(status="sent", attempts=1).exists()
 
@@ -246,7 +246,7 @@ def test_crash_rolls_back_only_current_row_and_retry_keeps_rendered_parts(plan, 
 
     monkeypatch.setattr(services, "send_templated_email", crash)
     with pytest.raises(SystemExit):
-        services.send_due_confirmations()
+        services.send_due_notifications()
     assert Notification.objects.filter(status="sent", attempts=1).count() == 1
     assert Notification.objects.filter(status="pending", attempts=0).count() == 1
     monkeypatch.setattr(services, "send_templated_email", original)
@@ -254,8 +254,8 @@ def test_crash_rolls_back_only_current_row_and_retry_keeps_rendered_parts(plan, 
         "apps.core.email.render_email",
         lambda *a, **kw: (_ for _ in ()).throw(AssertionError("must not render again")),
     )
-    assert services.send_due_confirmations() == 1
-    assert services.send_due_confirmations() == 0
+    assert services.send_due_notifications() == 1
+    assert services.send_due_notifications() == 0
     assert len(mail.outbox) == 3
     assert mail.outbox[1].body == mail.outbox[2].body
 
@@ -277,10 +277,10 @@ def test_overlapping_senders_share_quota_cooldown(plan, monkeypatch):
 
     monkeypatch.setattr(services, "send_templated_email", blocked)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(in_connection, pids, services.send_due_confirmations)
+        first = pool.submit(in_connection, pids, services.send_due_notifications)
         holder = pids.get(timeout=10)
         assert entered.wait(10)
-        second = pool.submit(in_connection, pids, services.send_due_confirmations)
+        second = pool.submit(in_connection, pids, services.send_due_notifications)
         waiter = pids.get(timeout=10)
         try:
             wait_for_lock(waiter, holder)
@@ -327,10 +327,10 @@ def test_successful_overlapping_senders_send_one_order_once(plan, monkeypatch):
 
     monkeypatch.setattr(services, "send_templated_email", hold)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(in_connection, pids, services.send_due_confirmations)
+        first = pool.submit(in_connection, pids, services.send_due_notifications)
         holder = pids.get(timeout=10)
         assert entered.wait(10)
-        second = pool.submit(in_connection, pids, services.send_due_confirmations)
+        second = pool.submit(in_connection, pids, services.send_due_notifications)
         waiter = pids.get(timeout=10)
         try:
             wait_for_lock(waiter, holder)
@@ -351,11 +351,11 @@ def test_uncertain_failure_then_success_reuses_content_and_clears_error(plan, mo
 
     monkeypatch.setattr(EmailBackend, "send_messages", fail)
     with time_machine.travel(timezone.now(), tick=False) as clock:
-        services.send_due_confirmations()
+        services.send_due_notifications()
         assert MailAttempt.objects.get().status == "uncertain"
         clock.shift(60)
         monkeypatch.setattr(EmailBackend, "send_messages", original)
-        assert services.send_due_confirmations() == 1
+        assert services.send_due_notifications() == 1
     row = Notification.objects.get()
     assert row.attempts == 2 and row.status == "sent" and row.last_error_class == ""
     assert mail.outbox[0].body == saved.text_body
@@ -364,14 +364,14 @@ def test_uncertain_failure_then_success_reuses_content_and_clears_error(plan, mo
 def test_task_is_periodic_and_missed_ticks_catch_up(plan):
     from huey.contrib.djhuey import HUEY
 
-    from apps.notifications.tasks import confirm_new_orders
+    from apps.notifications.tasks import send_order_notifications
 
     another_order(plan, 1)
-    confirm_new_orders()
+    send_order_notifications()
     assert not Notification.objects.exists() and not mail.outbox
     HUEY.execute(HUEY.dequeue())
     assert Notification.objects.get().status == "sent"
-    confirm_new_orders()
+    send_order_notifications()
     HUEY.execute(HUEY.dequeue())
     assert len(mail.outbox) == 1
 

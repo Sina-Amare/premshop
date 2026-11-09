@@ -130,6 +130,11 @@ def test_delivery_is_ciphertext_at_rest_with_one_history_row(buyer, plan, operat
     assert [(title, position) for title, _, position in rows] == [(LINE.title, 0)]
     for raw, plain in ((rows[0][1], VALUE), (note, NOTE)):
         assert re.fullmatch(r"[a-f0-9]{8}\$\S+", raw) and plain not in raw
+    from apps.notifications.models import Notification
+
+    notice = Notification.objects.get(template_name="delivery_completed")
+    for part in (notice.subject, notice.text_body, notice.html_body):
+        assert VALUE not in part and NOTE not in part
 
 
 def test_a_failed_write_leaves_the_item_queued_with_nothing_stored(buyer, plan, operator):

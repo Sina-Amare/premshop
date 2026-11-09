@@ -1,0 +1,1 @@
+{% load fa %}محصولی از سفارش {{ order_number|fa_digits }} لغو شد
