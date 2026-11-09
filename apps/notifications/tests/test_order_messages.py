@@ -3,11 +3,18 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from decimal import Decimal
 from functools import partial
-from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPServerDisconnected
+from smtplib import (
+    SMTPAuthenticationError,
+    SMTPDataError,
+    SMTPRecipientsRefused,
+    SMTPSenderRefused,
+    SMTPServerDisconnected,
+)
 from unittest.mock import patch
 
 import pytest
 from django.core import mail
+from django.core.mail.backends.locmem import EmailBackend
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -209,8 +216,10 @@ def test_event_address_is_frozen_with_an_old_order_fallback(buyer, plan, operato
 @pytest.mark.parametrize(
     "error,permanent",
     [
-        (SMTPDataError(550, b"SECRET-SMTP"), True),
         (SMTPRecipientsRefused({"PRIVATE": (550, b"SECRET-SMTP")}), True),
+        # A DATA or sender 5xx can be account-wide, such as an unverified sender domain.
+        (SMTPDataError(550, b"SECRET-SMTP"), False),
+        (SMTPSenderRefused(550, b"SECRET-SMTP", "PRIVATE"), False),
         (SMTPDataError(450, b"SECRET-SMTP"), False),
         (SMTPRecipientsRefused({"PRIVATE": (450, b"SECRET-SMTP")}), False),
         (SMTPServerDisconnected("SECRET-SMTP"), False),
@@ -228,6 +237,19 @@ def test_lifecycle_retry_classification_keeps_only_safe_error_facts(
     assert (row.next_attempt_at is None) == permanent
     assert row.last_error_class == type(error).__name__
     assert "SECRET-SMTP" not in caplog.text + row.last_error_class
+
+
+def test_a_rejected_smtp_login_takes_the_retry_ladder(buyer, plan, operator, monkeypatch):
+    queued(buyer, plan, operator)
+
+    def refuse(self):
+        raise SMTPAuthenticationError(535, b"SECRET-SMTP")
+
+    monkeypatch.setattr(EmailBackend, "open", refuse)
+    assert services.send_due_notifications() == 0
+    row = rows("payment_confirmed").get()
+    assert (row.status, row.attempts, row.smtp_code) == ("pending", 1, 535)
+    assert row.next_attempt_at is not None
 
 
 def test_concurrent_enqueue_uses_one_occurrence(buyer, plan, operator):
