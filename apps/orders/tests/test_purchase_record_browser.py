@@ -52,6 +52,8 @@ def test_saved_customer_and_panel_conditions_are_readable(
                     "el => el.clientWidth >= el.parentElement.clientWidth * 0.9"
                 )
             page.locator(".saved-product > summary").click()
+            if role == "customer":
+                page.locator("#order-policies > summary").click()
             for summary in page.locator(".saved-policy > summary").all():
                 summary.click()
             expect(page.locator(".saved-product")).to_contain_text("گارانتی ثبت‌شده")
