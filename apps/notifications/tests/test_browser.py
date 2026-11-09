@@ -67,24 +67,11 @@ def test_confirmation_long_content_and_panel_states(
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_order_email_previews_and_notification_filters(
-    browser, live_server, client, buyer, plan, settings, monkeypatch, width, tmp_path
-):
+def test_order_email_previews(browser, live_server, settings, monkeypatch, width, tmp_path):
     from playwright.sync_api import expect
 
     settings.DEBUG = True
-    operator = User.objects.create_superuser("operator@example.test", "fixture-passphrase-792!")
-    client.force_login(operator)
     context = browser.new_context(viewport={"width": width, "height": 1000})
-    context.add_cookies(
-        [
-            {
-                "name": "sessionid",
-                "value": client.cookies["sessionid"].value,
-                "url": live_server.url,
-            }
-        ]
-    )
     page = context.new_page()
     headings = {
         "payment_confirmed": "پرداخت تأیید شد",
@@ -125,8 +112,29 @@ def test_order_email_previews_and_notification_filters(
         page.goto(f"{live_server.url}/dev/emails/item_cancelled/")
         expect(page.get_by_text("مبلغی برای بازپرداخت این محصول ثبت نشده است.")).to_be_visible()
         page.screenshot(path=str(tmp_path / f"cancelled-zero-{width}.png"), full_page=True)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_notification_panel_types_and_states(
+    browser, live_server, client, buyer, plan, width, tmp_path
+):
+    from playwright.sync_api import expect
+
+    operator = User.objects.create_superuser("operator@example.test", "fixture-passphrase-792!")
+    client.force_login(operator)
+    context = browser.new_context(viewport={"width": width, "height": 1000})
+    context.add_cookies(
+        [{"name": "sessionid", "value": client.cookies["sessionid"].value, "url": live_server.url}]
+    )
+    page = context.new_page()
+    try:
         panel = live_server.url + "/admin/notifications/notification/"
         page.goto(panel)
+        expect(
+            page.locator('#nav-sidebar-inner a[href="/admin/notifications/notification/"]')
+        ).to_contain_text("پیام‌های سفارش")
         expect(page.get_by_role("heading", name="چیزی پیدا نکردیم")).to_be_visible()
         page.screenshot(path=str(tmp_path / f"messages-empty-{width}.png"), full_page=True)
         from apps.orders.tests.test_delivery import queued
