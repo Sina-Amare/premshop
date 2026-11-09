@@ -24,8 +24,6 @@
 .order-line__facts{min-width:0}
 .order-line>.saved-product{grid-column:1/-1;min-inline-size:0;margin-block-start:12px;font-size:14px;line-height:1.9}
 .saved-product h4{margin:16px 0 6px;font-weight:500}
-.order-policies{margin-block:20px}
-.order-policies h2{font:600 17px/1.8 var(--font-head)}
 .saved-policy{margin-block:12px;min-inline-size:0}
 .saved-policy>summary{cursor:pointer;min-block-size:44px;padding-block:10px;font-weight:500}
 .order-line__facts>p,.order-document .order-line p{margin:0;font-size:14px;line-height:1.8;color:var(--v-text)}
@@ -61,6 +59,23 @@ details.order-card>p{margin-block:12px 16px}
 .order-timeline li:last-child{padding-block-end:0;border-block-end:0}
 .order-timeline p{margin:0;font-size:14px}
 .order-timeline time{display:block;font-size:12px;line-height:1.8;color:var(--v-text)}
+.order-created{margin-block:-8px 20px;font-size:13px;line-height:1.9;color:var(--v-text)}
+.order-next{border-inline-start:3px solid var(--v-accent);background:#fafbfe}
+.order-next>.order-status{display:block;margin-block:0 8px;padding:0;border:0;border-radius:0;background:none;color:var(--v-ink);font:600 18px/1.8 var(--font-head);white-space:normal}
+.order-next [data-input-request] p{margin:0;font-size:14px;line-height:1.9}
+.order-next [data-input-request] .small{margin-block-start:8px;color:var(--v-text);font-size:13px}
+.order-next [data-input-request] .btn{margin-block-start:16px}
+.order-next>a:not(.btn){margin-block-start:8px}
+.order-support-label{margin-block:16px 6px;color:var(--v-text);font-size:13px}
+#order-help .order-support-contacts{margin-block-start:12px}
+#order-help .order-support-replace{margin-block-start:12px;padding-block-start:4px;border-block-start:1px solid var(--v-line)}
+.order-records{padding-inline:2px;font-size:14px;line-height:1.9;overflow-wrap:anywhere}
+.order-record{padding-block:4px;border-block-end:1px solid var(--v-line);min-inline-size:0}
+.order-record>summary{min-block-size:44px;padding-block:10px;cursor:pointer}
+.order-record>p{margin-block:4px 12px;font-size:14px}
+.order-record>form,.order-record>.order-timeline,.order-record>.saved-policy:last-child{margin-block-end:12px}
+.order-records a{display:inline-flex;align-items:center;min-block-size:44px;color:var(--v-accent)}
+#order-cancel>summary{color:var(--color-danger-text)}
 .order-document .order-line p{font-size:13px;line-height:1.9}
 .invoice-line{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px}
 .order-document p.invoice-line__amount{text-align:end;font-size:12px}

@@ -100,12 +100,19 @@ def test_operator_input_cycle_and_customer_handoff(
         )
         customer = reverse("order-detail", args=[order.order_number])
         page.goto(live_server.url + customer)
-        prompt = "اطلاعات لازم برای فعال‌سازی این محصول را در تلگرام به پشتیبانی بفرستید."
+        prompt = "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید."
         shot("customer", customer, prompt)
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert "expected_event_id" not in page.content()
         assert "Details received" not in page.content()
-        expect(page.get_by_role("link", name="گفت‌وگو با پشتیبانی", exact=True)).to_have_attribute(
+        expect(
+            page.locator("#order-next").get_by_role("link", name="ارتباط با پشتیبانی", exact=True)
+        ).to_have_attribute("href", "#order-help")
+        page.locator("#order-next").get_by_role(
+            "link", name="ارتباط با پشتیبانی", exact=True
+        ).click()
+        expect(page.locator("#support-identifier")).to_be_in_viewport()
+        expect(page.locator("#order-help a").first).to_have_attribute(
             "href", "https://t.me/premshop_support"
         )
     finally:

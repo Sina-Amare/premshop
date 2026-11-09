@@ -424,9 +424,7 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
 
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    assert (
-        "برای پیگیری، شماره‌ی سفارش و همین شناسه را در تلگرام یا ایمیل به پشتیبانی بفرستید." in body
-    )
+    assert "برای پیگیری، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید." in body
     assert f'<a href="{details["telegram_url"]}"' in body
     assert f'<a href="mailto:{details["email"]}"' in body
 

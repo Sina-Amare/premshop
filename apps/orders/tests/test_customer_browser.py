@@ -76,6 +76,7 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
         page.get_by_role("button", name="بله، لغو سفارش").click()
         expect(page.locator(".acct__main [role=status]")).to_contain_text("سفارش لغو شد.")
         capture(page, "cancelled", width, tmp_path)
+        page.locator("#order-tracking > summary").click()
         page.get_by_role("link", name="لینک پیگیری سفارش").click()
         expect(page.get_by_role("heading", name="پیگیری سفارش", exact=True)).to_be_visible()
         expect(page.locator("main")).to_contain_text("لغو شده")

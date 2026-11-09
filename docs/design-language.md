@@ -140,6 +140,8 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 ## Voice
 
+Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
+
 The register follows the surface:
 
 | Surface | Register |
