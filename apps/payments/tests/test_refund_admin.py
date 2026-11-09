@@ -225,6 +225,25 @@ def test_a_forced_exception_hides_post_and_traceback_values_from_django_reports(
     assert reference not in reporter.get_traceback_html()
 
 
+def test_a_report_exception_hides_saved_bank_references(
+    client, owed, operator, monkeypatch, settings
+):
+    from apps.payments import selectors
+
+    settings.DEBUG = False
+    order, _ = owed
+    reference = "private-report-" + uuid4().hex
+    Payment.objects.filter(order=order).update(bank_ref=reference)
+    monkeypatch.setattr(selectors, "reference_key", lambda bank_ref: 1 / 0)
+    client.force_login(operator)
+    client.raise_request_exception = False
+    response = client.get(report_url())
+    assert response.status_code == 500
+    reporter = ExceptionReporter(response.wsgi_request, *response.exc_info)
+    assert reference not in reporter.get_traceback_text()
+    assert reference not in reporter.get_traceback_html()
+
+
 @override("fa")
 def test_new_forms_follow_the_panel_language(client, owed, operator):
     order, _ = owed

@@ -171,6 +171,7 @@ class PaymentOrderAdmin(OrderAdmin):
             status=400 if form.is_bound else 200,
         )
 
+    @method_decorator(sensitive_variables())
     def reconciliation_view(self, request: HttpRequest) -> HttpResponse:
         if not self.has_view_permission(request) or not request.user.has_perms(
             ["payments.view_payment", "payments.view_refund"]
