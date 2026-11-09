@@ -229,9 +229,9 @@ def send_due_notifications() -> int:
                 )
                 row.attempts += 1
                 row.last_attempt_at = timezone.now()
+                # Only a refused recipient is about this message; login, sender, DATA
+                # and connection 5xx describe the shop's account and may clear later.
                 permanent = (
-                    isinstance(error, SMTPResponseException) and 500 <= error.smtp_code < 600
-                ) or (
                     isinstance(error, SMTPRecipientsRefused)
                     and bool(error.recipients)
                     and all(500 <= response[0] < 600 for response in error.recipients.values())
