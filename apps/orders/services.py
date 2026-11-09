@@ -29,6 +29,7 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
+from apps.core import events
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
 from apps.orders.clock import delivery_deadline, in_support_window
 from apps.orders.models import (
@@ -275,7 +276,13 @@ def reject_claim(
         raise ValidationError(NO_OPEN_CLAIM)
     item.status = OrderItem.Status.DELIVERED
     item.save(update_fields=["status"])
-    _input_event(item, account, OrderItem.Status.REPLACEMENT_REQUESTED, note)
+    _input_event(
+        item,
+        account,
+        OrderItem.Status.REPLACEMENT_REQUESTED,
+        note,
+        notification="replacement_rejected",
+    )
     return item
 
 
@@ -306,7 +313,13 @@ def delay_supply(
     item.save(update_fields=["due_at"])
     due = timezone.localtime(item.due_at)
     when = f"{format_jalali(due)}، {to_persian_digits(due.strftime('%H:%M'))}"
-    _input_event(item, account, OrderItem.Status.QUEUED, f"{note} · مهلت جدید: {when}")
+    _input_event(
+        item,
+        account,
+        OrderItem.Status.QUEUED,
+        f"{note} · مهلت جدید: {when}",
+        notification="supply_delayed",
+    )
     return item
 
 
@@ -409,7 +422,7 @@ def cancel_paid_item(
     before = item.status
     item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
     item.save(update_fields=["status", "cancel_reason"])
-    _input_event(item, account, before, note)
+    _input_event(item, account, before, note, notification="item_cancelled")
     if amount:
         Refund.objects.create(order_item=item, amount=amount, created_by=account)
     plan = plans[item.plan_id]
@@ -446,7 +459,7 @@ def mark_item_refunded(*, item: OrderItem, refund: Refund, actor: User) -> None:
         raise ValidationError(gettext_lazy("این محصول بازپرداخت واریزشده ندارد."))
     item.status = OrderItem.Status.REFUNDED
     item.save(update_fields=["status"])
-    _input_event(item, actor, OrderItem.Status.CANCELLED)
+    _input_event(item, actor, OrderItem.Status.CANCELLED, notification="item_refunded")
 
 
 NO_OPEN_CLAIM = gettext_lazy("برای این محصول درخواست تعویض بازی نیست.")
@@ -607,7 +620,9 @@ def _forget(item_id: int, today: date) -> int:
 
 def _write_set(item: OrderItem, account: User, before: str, content: DeliveryContent) -> Delivery:
     delivery = Delivery.objects.create(
-        order_item=item, event=_input_event(item, account, before), note=content.note
+        order_item=item,
+        event=_input_event(item, account, before, notification="delivery_completed"),
+        note=content.note,
     )
     DeliveryField.objects.bulk_create(
         DeliveryField(delivery=delivery, position=n, title=line.title, value=line.value)
@@ -1167,6 +1182,7 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
     items = list(order.items.select_for_update().defer("customer_input").order_by("pk"))
     if not can_pay_order(order, items=items, payment_id=payment.pk):
         raise ValidationError(gettext_lazy("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
+    events.emit("payment_confirmed", payment.pk, order.pk)
     for item in items:
         item.status, item.paid_at = OrderItem.Status.QUEUED, payment.verified_at
         item.due_at = delivery_deadline(
@@ -1235,8 +1251,10 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
     raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
 
 
-def _input_event(item: OrderItem, account: User, before: str, note: str = "") -> OrderItemEvent:
-    return OrderItemEvent.objects.create(
+def _input_event(
+    item: OrderItem, account: User, before: str, note: str = "", *, notification: str = ""
+) -> OrderItemEvent:
+    event = OrderItemEvent.objects.create(
         order_item=item,
         from_status=before,
         to_status=item.status,
@@ -1244,6 +1262,9 @@ def _input_event(item: OrderItem, account: User, before: str, note: str = "") ->
         actor_user=account,
         note=note,
     )
+    if notification:
+        events.emit(notification, event.pk, item.order_id, item_id=item.pk, due_at=item.due_at)
+    return event
 
 
 @transaction.atomic
@@ -1259,7 +1280,7 @@ def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id
     item.sla_paused_at = item.input_requested_at if item.due_at is not None else None
     item.status = OrderItem.Status.AWAITING_INPUT
     item.save(update_fields=["status", "input_requested_at", "sla_paused_at"])
-    _input_event(item, account, OrderItem.Status.QUEUED)
+    _input_event(item, account, OrderItem.Status.QUEUED, notification="input_requested")
     return item
 
 
@@ -1355,7 +1376,7 @@ def _release(
     for item in pending:
         item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
         item.save(update_fields=["status", "cancel_reason"])
-        OrderItemEvent.objects.create(
+        event = OrderItemEvent.objects.create(
             order_item=item,
             from_status=OrderItem.Status.PENDING_PAYMENT,
             to_status=item.status,
@@ -1371,6 +1392,7 @@ def _release(
             actor_user=actor,
             note=note if reason == OrderItem.CancelReason.OPERATOR else "",
         )
+        events.emit("item_cancelled", event.pk, order.pk, item_id=item.pk)
     order.cancelled_at = at
     order.save(update_fields=["cancelled_at"])
     return True

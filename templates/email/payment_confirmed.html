@@ -1,0 +1,7 @@
+{% extends "email/base.html" %}{% load fa %}
+{% block title %}پرداخت تأیید شد{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">پرداخت تأیید شد</h1>
+<p>پرداخت سفارش شما به مبلغ {{ amount|toman_plain }} تومان تأیید شد. وضعیت هر محصول و اقدام بعدی را در صفحه‌ی سفارش ببینید.</p>
+{% include "email/_order_notice.html" %}
+{% endblock %}

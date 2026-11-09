@@ -1,0 +1,6 @@
+{% load fa %}
+<div style="overflow-wrap:anywhere;word-break:break-word;">
+<p>شماره‌ی سفارش: {{ order_number|fa_digits }}</p>
+{% if product_name %}<p>محصول: {{ product_name|bdi }}؛ {{ plan_title|bdi }}</p>{% endif %}
+{% include "email/_button.html" with url=order_url label="مشاهده‌ی سفارش" %}
+</div>

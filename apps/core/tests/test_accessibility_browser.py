@@ -331,7 +331,20 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
 
 
 @pytest.mark.parametrize(
-    "name", ["otp_code", "item_delivered", "signin_alert", "purchase_confirmation"]
+    "name",
+    [
+        "otp_code",
+        "item_delivered",
+        "signin_alert",
+        "purchase_confirmation",
+        "payment_confirmed",
+        "input_requested",
+        "delivery_completed",
+        "replacement_rejected",
+        "supply_delayed",
+        "item_cancelled",
+        "item_refunded",
+    ],
 )
 def test_no_email_has_a_serious_accessibility_violation(browser, live_server, settings, name):
     """Grey text at 2.4:1 in every email's footer and under the code: the

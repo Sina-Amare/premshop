@@ -1961,3 +1961,33 @@ msgstr "Payments verified"
 
 msgid "تومان"
 msgstr "toman"
+
+msgid "نوع پیام"
+msgstr "Message type"
+
+msgid "پیام سفارش"
+msgstr "Order message"
+
+msgid "پیام‌های سفارش"
+msgstr "Order messages"
+
+msgid "تأیید پرداخت"
+msgstr "Payment confirmed"
+
+msgid "درخواست اطلاعات"
+msgstr "Information requested"
+
+msgid "تحویل محصول"
+msgstr "Product delivered"
+
+msgid "رد درخواست تعویض"
+msgstr "Replacement rejected"
+
+msgid "تغییر مهلت تحویل"
+msgstr "Delivery deadline changed"
+
+msgid "لغو محصول"
+msgstr "Item cancelled"
+
+msgid "واریز بازپرداخت"
+msgstr "Refund sent"

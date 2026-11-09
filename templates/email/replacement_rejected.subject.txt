@@ -1,0 +1,1 @@
+{% load fa %}درخواست تعویض سفارش {{ order_number|fa_digits }} رد شد

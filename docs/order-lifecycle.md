@@ -228,7 +228,7 @@ The identifier is encrypted at rest in a separate one-to-one record and excluded
 
 `OrderItemEvent` is both the audit trail and the source of the customer's timeline: the order page and the tracking page show statuses and times, leaving out rows whose status did not change (a moved deadline, a retention deletion), and the panel shows every row and who acted, never any secret value.
 
-The purchase confirmation is found by polling committed orders, not by an event, under the key `purchase-confirmation:{order_pk}:email` (see [Email](architecture.md#email)). Paid transitions currently write audit history without sending messages. The remaining messages are designed as events emitted after a transition commits, each creating notification rows keyed `{occurrence}:{recipient}:{channel}` ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)):
+The purchase confirmation is found by polling committed orders, not by an event, under the key `purchase-confirmation:{order_pk}:email` (see [Email](architecture.md#email)). Explicit after-commit callbacks create the customer email updates below. Payment confirmation uses the payment's ID once for the whole order; item messages use their history occurrence. Outbox keys distinguish template, occurrence, customer and channel ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)). Operator request alerts remain planned with the customer request forms.
 
 | Event | After | Tells |
 |---|---|---|
@@ -236,14 +236,17 @@ The purchase confirmation is found by polling committed orders, not by an event,
 | `payment.failed` | a failed attempt | The customer, with a retry link |
 | `item.awaiting_input` | A4 | The customer |
 | `item.input_received` | A7 | The operator |
-| `item.delivered`, `item.replaced` | A5, A10a | The customer, with the single-use delivery link |
+| `payment_confirmed` | Verified payment | The customer, once per payment |
+| `input_requested` | A4 | The customer, with the order's input instructions |
+| `delivery_completed` | A5, A10a | The customer, with the signed-in order link |
+| `supply_delayed` | Supply-delay extension | The customer, with the frozen new deadline |
 | `item.replacement_requested` | A9 | The operator |
-| `item.replacement_rejected` | A10b | The customer |
-| `item.cancelled` | A3, A6, A8, A11 | The customer |
-| `item.refunded` | A12 | The customer |
+| `replacement_rejected` | A10b | The customer; operator notes are excluded |
+| `item_cancelled` | A3, A6, A8, A11 | The customer; a refund is owed, not claimed sent |
+| `item_refunded` | A12 | The customer after a transfer is recorded |
 | `item.cancellation_requested` | a cancellation request | The operator |
 
-No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)).
+No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). Single-use delivery links, Telegram messages, timed input handling and gateway-failure notices remain planned separately.
 
 ## Tests
 

@@ -1,0 +1,7 @@
+{% load fa %}PremShop
+درخواست تعویض {{ product_name }}، {{ plan_title }}، رد شد.
+شماره‌ی سفارش: {{ order_number|fa_digits }}
+برای پیگیری نتیجه، صفحه‌ی سفارش را ببینید:
+{{ order_url }}
+
+پشتیبانی: {{ support.email }}

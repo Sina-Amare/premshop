@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block title %}محصول تحویل شد{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">محصول تحویل شد</h1>
+<p>این محصول تحویل شد. برای پیگیری سفارش وارد حساب خود شوید.</p>
+<p>اطلاعات ورود را در ایمیل ارسال نمی‌کنیم.</p>
+{% include "email/_order_notice.html" %}
+{% endblock %}
