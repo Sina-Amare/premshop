@@ -115,6 +115,22 @@ def test_financial_views_refuse_staff_without_the_required_permissions(client, o
     assert client.get(report_url()).status_code == 403
 
 
+def test_reconciliation_item_links_open_for_view_only_staff(client, owed):
+    import re
+
+    order, _ = owed
+    staff = User.objects.create_user("ledger-viewer@example.test", is_staff=True)
+    staff.user_permissions.add(
+        *Permission.objects.filter(codename__in=["view_order", "view_payment", "view_refund"])
+    )
+    client.force_login(staff)
+    response = client.get(report_url())
+    assert response.status_code == 200
+    links = re.findall(r'<a href="([^"]+)">آیتم ', response.content.decode())
+    assert len(links) == order.items.count()
+    assert all(client.get(link).status_code == 200 for link in links)
+
+
 def test_daily_page_is_read_only_validates_jalali_dates_and_is_linked_from_navigation(
     client, owed, operator
 ):

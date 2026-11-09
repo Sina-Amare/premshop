@@ -29,7 +29,7 @@
   <header><h2 id="reconciliation-refunds">{% translate "بازپرداخت‌ها" %}</h2></header>
   <p>{% translate "هر ردیف سهم یک آیتم است؛ یک واریز می‌تواند چند آیتم را پوشش دهد." %}</p>
   {% for row in refunds %}{% with refund=row.refund %}<article class="saved-purchase">
-    <h3><a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "سفارش" %} {{ refund.order_item.order.order_number|fa_digits }}</a> · <a href="{% url 'admin:orders_order_deliver' refund.order_item.order_id refund.order_item_id %}">{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }}</a> · {{ refund.amount|toman }}</h3>
+    <h3><a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "سفارش" %} {{ refund.order_item.order.order_number|fa_digits }}</a> · <a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }}</a> · {{ refund.amount|toman }}</h3>
     {% if row.owed_today %}<p>{% translate "بدهی جدید در این روز" %}</p>{% endif %}
     {% if row.sent_today %}<p>{% translate "واریز در این روز" %}</p>{% endif %}
     <p>{% translate "زمان ثبت بدهی" %}: {{ refund.created_at|jalali }} · {{ refund.created_at|date:'H:i:s'|fa_digits }} · <bdi>{{ refund.created_by.email }}</bdi></p>
