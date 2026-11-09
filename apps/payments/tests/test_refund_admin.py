@@ -131,6 +131,13 @@ def test_reconciliation_item_links_open_for_view_only_staff(client, owed):
     assert all(client.get(link).status_code == 200 for link in links)
 
 
+def test_empty_reconciliation_totals_are_zero_money(client, operator):
+    client.force_login(operator)
+    response = client.get(report_url(), {"day": "1400/01/01"})
+    assert response.status_code == 200
+    assert response.content.decode().count("۰ تومان") == 3
+
+
 def test_daily_page_is_read_only_validates_jalali_dates_and_is_linked_from_navigation(
     client, owed, operator
 ):

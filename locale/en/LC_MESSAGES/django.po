@@ -1958,3 +1958,6 @@ msgstr "No payments were verified on this day."
 
 msgid "پرداخت‌های تأییدشده"
 msgstr "Payments verified"
+
+msgid "تومان"
+msgstr "toman"

@@ -11,9 +11,9 @@
   {% if not form.errors %}
   <p>{% translate "روز از نیمه‌شب تهران تا نیمه‌شب بعدی است. بدهی جدید با پول واریزشده جمع نمی‌شود." %}</p>
   <dl>
-    <dt>{% translate "پرداخت‌های تأییدشده" %}</dt><dd>{{ payment_total|toman }}</dd>
-    <dt>{% translate "بدهی جدید بازپرداخت" %}</dt><dd>{{ owed_total|toman }}</dd>
-    <dt>{% translate "بازپرداخت‌های واریزشده" %}</dt><dd>{{ sent_total|toman }}</dd>
+    <dt>{% translate "پرداخت‌های تأییدشده" %}</dt><dd>{{ payment_total|toman_plain }} {% translate "تومان" %}</dd>
+    <dt>{% translate "بدهی جدید بازپرداخت" %}</dt><dd>{{ owed_total|toman_plain }} {% translate "تومان" %}</dd>
+    <dt>{% translate "بازپرداخت‌های واریزشده" %}</dt><dd>{{ sent_total|toman_plain }} {% translate "تومان" %}</dd>
   </dl>
 </section>
 <section class="order-history" aria-labelledby="reconciliation-payments">
