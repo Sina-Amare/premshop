@@ -170,6 +170,11 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "discount_amount": Decimal("0"),
         "total_amount": Decimal("400000"),
     },
+    "payment_confirmed": {
+        "order_number": 14050217,
+        "order_url": "https://premshop.ir/account/orders/14050217/",
+        "amount": Decimal("1450000"),
+    },
     **{
         name: {
             "order_number": 14050217,
@@ -180,7 +185,6 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
             "due_at": datetime(2026, 11, 11, 11, 2, tzinfo=UTC),
         }
         for name in (
-            "payment_confirmed",
             "input_requested",
             "delivery_completed",
             "replacement_rejected",

@@ -100,7 +100,8 @@ def test_order_email_previews_and_notification_filters(
             for state in ("normal", "long"):
                 data = dict(EMAIL_PREVIEWS[name])
                 if state == "long":
-                    data["product_name"] = "نام بلند محصول Example Pro " * 15
+                    if "product_name" in data:
+                        data["product_name"] = "نام بلند محصول Example Pro " * 15
                     data["amount"] = 999999999999
                 monkeypatch.setitem(EMAIL_PREVIEWS, name, data)
                 url = f"{live_server.url}/dev/emails/{name}/"
