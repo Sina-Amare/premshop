@@ -214,7 +214,7 @@ The order page lists each item's refund and offers a form to record a completed 
 
 The panel's daily reconciliation uses Tehran midnight inclusive through the next midnight exclusive. It separately totals payments confirmed, refunds newly owed and refunds sent, with one row per item refund. A refund owed yesterday and sent today belongs to each relevant day's activity; when both happen on one day the row appears once with both labels. Backdated bank entries update that bank day's report. Several item refunds in one transfer contribute their individual amounts, not a repeated transfer total.
 
-References on other orders are compared across verified payments and executed refunds on every date, normalizing Persian/Arabic digits and removing whitespace without changing stored spelling, case or punctuation. Matches appear on the report and as warnings after a payment or refund save; they never refuse a valid write and are not retry identifiers. Bank facts are staff-only, absent from customer pages, invoices, tracking, history notes and error reports. The customer refund message still waits for the notification outbox; gateway refunds are separate.
+References on other orders are compared across verified payments and executed refunds on every date, normalizing Persian/Arabic digits and removing whitespace without changing stored spelling, case or punctuation. Matches appear on the report and as warnings after a payment or refund save; they never refuse a valid write and are not retry identifiers. Bank facts are staff-only, absent from customer pages, invoices, tracking, history notes and error reports. Recording a transfer queues the content-free customer refund email after commit; gateway refunds are separate.
 
 ## Support ownership matching
 
@@ -232,19 +232,18 @@ The purchase confirmation is found by polling committed orders, not by an event,
 
 | Event | After | Tells |
 |---|---|---|
-| `payment.verified` | A2 | The customer; the operator's new-order alert |
-| `payment.failed` | a failed attempt | The customer, with a retry link |
-| `item.awaiting_input` | A4 | The customer |
-| `item.input_received` | A7 | The operator |
+| `payment.verified` (planned) | A2, operator alerts | The operator's new-order alert |
+| `payment.failed` (planned) | A failed gateway attempt | The customer, with a retry link |
+| `item.input_received` (planned) | A7 | The operator |
 | `payment_confirmed` | Verified payment | The customer, once per payment |
 | `input_requested` | A4 | The customer, with the order's input instructions |
 | `delivery_completed` | A5, A10a | The customer, with the signed-in order link |
 | `supply_delayed` | Supply-delay extension | The customer, with the frozen new deadline |
-| `item.replacement_requested` | A9 | The operator |
+| `item.replacement_requested` (planned) | S9 customer request | The operator |
 | `replacement_rejected` | A10b | The customer; operator notes are excluded |
 | `item_cancelled` | A3, A6, A8, A11 | The customer; a refund is owed, not claimed sent |
 | `item_refunded` | A12 | The customer after a transfer is recorded |
-| `item.cancellation_requested` | a cancellation request | The operator |
+| `item.cancellation_requested` (planned; policy unresolved) | A future approved request flow | The operator |
 
 No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). Single-use delivery links, Telegram messages, timed input handling and gateway-failure notices remain planned separately.
 
