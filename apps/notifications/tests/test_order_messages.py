@@ -12,6 +12,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.formatting import format_jalali, to_persian_digits
 from apps.notifications import services
 from apps.notifications.models import Notification
@@ -74,7 +75,7 @@ def test_one_callback_failure_preserves_payment_and_other_callbacks(
             raise ValueError("SECRET-CALLBACK-CONTENT")
         return original(template, *args, **kwargs)
 
-    monkeypatch.setattr(services, "enqueue_event", enqueue)
+    monkeypatch.setattr(events, "_consumer", enqueue)
     with caplog.at_level(logging.ERROR):
         record_manual_payment(
             order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref="PRIVATE-BANK"
@@ -306,3 +307,17 @@ def test_every_message_projects_only_safe_facts(buyer, plan, operator):
         )
         parts = row.subject + row.text_body + row.html_body
         assert "SECRET-INPUT" not in parts and "SECRET-PRODUCT-NOTE" not in parts
+
+
+def test_missing_consumer_is_logged_without_breaking_the_action(
+    buyer, plan, operator, monkeypatch, caplog
+):
+    order = orders.place_order(user=buyer, lines=[orders.OrderLine(plan, 1)])
+    monkeypatch.setattr(events, "_consumer", None)
+    with caplog.at_level(logging.ERROR, logger="apps.core.events"):
+        record_manual_payment(
+            order_id=order.pk, actor=operator, amount=order.total_amount, bank_ref="PRIVATE-BANK"
+        )
+    assert order.items.get().status == "QUEUED"
+    assert "RuntimeError" in caplog.text
+    assert not Notification.objects.exists()
