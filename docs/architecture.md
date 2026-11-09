@@ -59,7 +59,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
 | `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, the staff reveal of customer input, and the operator's delivery of account details. |
-| `payments` | Checkout, Payment records and operator-only manual confirmation through the order editor. The gateway is not built yet. |
+| `payments` | Checkout, payment/refund records, operator-only manual confirmation and recording completed refund transfers through the order editor, and daily reconciliation. The gateway is not built yet. |
 | `notifications` | Purchase confirmation emails through a durable outbox. |
 
 Two rules keep the graph honest:
@@ -174,7 +174,7 @@ The panel is the Django admin with django-unfold. In production it is served at 
 - **Home:** the catalogue at a glance: published products, active offers, sold-out plans, offers ending within 48 hours and drafts (`apps/catalog/dashboard.py`).
 - **Catalogue:** products, plans, specifications, sections and questions. Publishing goes through `Product.publish_problems()`, and a draft's form lists every reason it cannot yet go live. An unsaved preview renders the edited product through the storefront's own code without writing a row.
 - **Discount codes:** created and deactivated here. The panel deletes none, because a used code is part of how an order's total was computed.
-- **Orders:** an order's saved purchase facts are read-only. Revealing an item's customer input goes through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when. `payments.admin` adds the operator-only payment form, for the amount received and the bank reference, and the order's payment history; its view calls `record_manual_payment` and writes no status itself.
+- **Orders:** an order's saved purchase facts are read-only. Revealing an item's customer input goes through `orders.services.reveal_customer_input`, which checks permissions and logs who looked and when. `payments.admin` adds operator-only payment and completed-refund-transfer forms and their histories. They call `record_manual_payment` and `execute_refunds`; views write no status themselves. A read-only daily reconciliation page separates money received, refunds newly owed and refunds sent, with non-blocking warnings for shared bank references.
 - **Pages:** the legal pages, previewed as drafts and published by a separate permission.
 - **Notifications and mail attempts:** read-only lists of what was sent, what is waiting and what failed.
 
@@ -250,7 +250,7 @@ The following are designed and bound by decisions, but not implemented:
 | Capability | Decisions |
 |---|---|
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
-| Replacements, paid cancellation and refunds after payment, the customer's view of delivered details and the single-use delivery link | [ADR-0003](decisions/0003-order-status-on-item-seven-states.md), [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
+| The customer's view of delivered details and the single-use delivery link | [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
 | The reminders and timeout for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
 | The Telegram bot, operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
 | The order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |

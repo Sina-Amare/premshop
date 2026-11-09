@@ -4,8 +4,9 @@ import hashlib
 import json
 import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -16,12 +17,13 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.debug import sensitive_variables
 
 from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
 from apps.cart.models import Cart, CartItem
 from apps.catalog.inputs import normalize_customer_input
-from apps.orders.models import Order
+from apps.orders.models import Order, OrderItem
 from apps.orders.selectors import current_unpaid_order
 from apps.orders.services import (
     OrderLine,
@@ -29,21 +31,22 @@ from apps.orders.services import (
     UnpaidOrderExists,
     can_pay_order,
     expire_unpaid_orders,
+    mark_item_refunded,
     mark_order_paid,
     place_order,
     quote_order,
     replay_checkout,
 )
-from apps.payments.models import Payment
+from apps.payments.models import Payment, Refund
 
 QUOTE_SALT = "payments.quote"
 QUOTE_AGE = 15 * 60
 
 
-def _payment_operator(actor: User) -> User:
+def _payment_operator(actor: User, permission: str = "payments.add_payment") -> User:
     account = User.objects.filter(pk=actor.pk, is_active=True, is_staff=True).first()
     if account is None or not account.has_perms(
-        ["payments.add_payment", "orders.change_order", "orders.change_orderitem"]
+        [permission, "orders.change_order", "orders.change_orderitem"]
     ):
         raise PermissionDenied
     return account
@@ -66,6 +69,7 @@ def _bank_reference(bank_ref: str) -> str:
     return bank_ref.strip()
 
 
+@sensitive_variables()
 @transaction.atomic
 def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_ref: str) -> Payment:
     account = _payment_operator(actor)
@@ -106,6 +110,101 @@ def confirm_payment(*, payment_id: int, actor: User) -> Payment:
     payment.save(update_fields=["status", "verified_at"])
     mark_order_paid(order=order, payment=payment, actor=account)
     return payment
+
+
+@sensitive_variables()
+@transaction.atomic
+def execute_refunds(
+    *,
+    order_id: int,
+    refund_ids: Sequence[int],
+    actor: User,
+    amount: Decimal,
+    destination_kind: str,
+    destination_last4: str,
+    bank_ref: str,
+    executed_at: datetime,
+) -> list[Refund]:
+    account = _payment_operator(actor, "payments.change_refund")
+    if (
+        not isinstance(refund_ids, (list, tuple))
+        or not refund_ids
+        or any(type(pk) is not int or pk <= 0 for pk in refund_ids)
+        or len(set(refund_ids)) != len(refund_ids)
+    ):
+        raise ValidationError(_("بازپرداخت‌های این واریز را انتخاب کنید."))
+    bank_ref = _bank_reference(bank_ref)
+    if isinstance(destination_last4, str):
+        destination_last4 = destination_last4.translate(
+            str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+        )
+    if (
+        destination_kind not in Refund.Destination.values
+        or not isinstance(destination_last4, str)
+        or not re.fullmatch(r"[0-9]{4}", destination_last4)
+    ):
+        raise ValidationError(_("نوع مقصد و چهار رقم آخر آن را درست وارد کنید."))
+    if (
+        not isinstance(executed_at, datetime)
+        or timezone.is_naive(executed_at)
+        or executed_at > timezone.now()
+    ):
+        raise ValidationError(_("زمان واریز باید معتبر و حداکثر همین لحظه باشد."))
+    order = _payment_order(order_id)
+    if not order.payments.select_for_update().filter(status=Payment.Status.VERIFIED).exists():
+        raise ValidationError(_("این سفارش پرداخت تأییدشده ندارد."))
+    item_ids = Refund.objects.filter(pk__in=refund_ids, order_item__order=order).values(
+        "order_item_id"
+    )
+    items = {
+        item.pk: item
+        for item in OrderItem.objects.select_for_update()
+        .filter(order=order, pk__in=item_ids)
+        .defer("customer_input")
+        .order_by("pk")
+    }
+    refunds = list(
+        Refund.objects.select_for_update()
+        .filter(pk__in=refund_ids, order_item_id__in=items)
+        .order_by("pk")
+    )
+    if len(refunds) != len(refund_ids):
+        raise ValidationError(_("بازپرداخت انتخاب‌شده متعلق به این سفارش نیست."))
+    if any(refund.status != Refund.Status.OWED for refund in refunds):
+        raise ValidationError(
+            _("واریز یکی از این بازپرداخت‌ها قبلاً ثبت شده است؛ هیچ واریز جدیدی ثبت نشد.")
+        )
+    if any(items[refund.order_item_id].status != OrderItem.Status.CANCELLED for refund in refunds):
+        raise ValidationError(_("وضعیت یکی از محصولات برای ثبت بازپرداخت مناسب نیست."))
+    if (
+        not isinstance(amount, Decimal)
+        or not amount.is_finite()
+        or amount <= 0
+        or amount != amount.to_integral_value()
+        or amount != sum(refund.amount for refund in refunds)
+    ):
+        raise ValidationError(
+            _("مبلغ واریز باید دقیقاً برابر مجموع بازپرداخت‌های انتخاب‌شده باشد.")
+        )
+    # The bank-time field displays seconds, not the database's fractional seconds.
+    if executed_at < max(refund.created_at for refund in refunds).replace(microsecond=0):
+        raise ValidationError(_("زمان واریز نمی‌تواند پیش از ثبت بدهی بازپرداخت باشد."))
+    for refund in refunds:
+        refund.status = Refund.Status.EXECUTED
+        refund.destination_kind, refund.destination_last4 = destination_kind, destination_last4
+        refund.bank_ref, refund.executed_by, refund.executed_at = bank_ref, account, executed_at
+        refund.save(
+            update_fields=[
+                "status",
+                "destination_kind",
+                "destination_last4",
+                "bank_ref",
+                "executed_by",
+                "executed_at",
+            ]
+        )
+        mark_item_refunded(item=items[refund.order_item_id], refund=refund, actor=account)
+    return refunds
 
 
 @dataclass(frozen=True)

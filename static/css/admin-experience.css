@@ -98,9 +98,12 @@ html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-lin
 .order-payment-form{display:grid;gap:20px;max-inline-size:32rem;margin-block:20px}
 .order-payment-form label{display:block;margin-block-end:8px}
 .order-payment-form>.order-input-action{justify-self:start}
-.order-payment-form input:not([type=hidden]){inline-size:100%;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);padding:8px 12px;line-height:1.8}
+.order-payment-form input:not([type=hidden]),.order-payment-form select{inline-size:100%;min-block-size:44px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface);color:var(--panel-ink);padding:8px 12px;line-height:1.8}
 .order-payment-form .errorlist{color:var(--panel-danger);margin-block:8px;line-height:1.9}
 .order-bank-reference{overflow-wrap:anywhere}
+.order-reference-warning{border-inline-start:2px solid var(--panel-line);padding-inline-start:12px}
+.order-payment-form input[type=checkbox]{inline-size:20px;min-block-size:20px;block-size:20px;padding:0;margin-inline-end:8px;flex-shrink:0}
+.order-payment-form fieldset label{display:flex;align-items:center;min-block-size:44px;line-height:1.9;overflow-wrap:anywhere}
 .delivery-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-block:20px;line-height:1.9}
 .delivery-columns h3,.delivery-card h3,.delivery-reject{font-weight:600;color:var(--panel-ink);margin:0 0 8px}
 .delivery-columns p{margin-block:6px;overflow-wrap:anywhere}.delivery-columns form{margin-block:8px}.delivery-columns a{text-decoration:underline}
