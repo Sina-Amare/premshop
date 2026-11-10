@@ -20,6 +20,10 @@ class Notification(models.Model):
         SENT = "sent", _("ارسال‌شده")
         FAILED = "failed", _("ناموفق")
 
+    class Channel(models.TextChoices):
+        EMAIL = "email", _("ایمیل")
+        TELEGRAM = "telegram", _("تلگرام")
+
     order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, verbose_name=_("سفارش"))
     dedupe_key = models.CharField(max_length=100, unique=True, editable=False)
     template_name = models.CharField(
@@ -29,7 +33,17 @@ class Notification(models.Model):
         default=Template.PURCHASE,
         editable=False,
     )
+    channel = models.CharField(
+        _("مسیر ارسال"),
+        max_length=8,
+        choices=Channel.choices,
+        default=Channel.EMAIL,
+        editable=False,
+    )
     recipient = models.EmailField(_("گیرنده"), editable=False)
+    # The chat linked when the row was queued; the sender drops the row, never redirects
+    # it, if the customer's link has changed since.
+    chat_id = models.BigIntegerField(_("گفت‌وگوی تلگرام"), null=True, blank=True, editable=False)
     subject = models.TextField(_("موضوع"), editable=False)
     text_body = models.TextField(_("متن ایمیل"), editable=False)
     html_body = models.TextField(_("نسخه‌ی HTML"), editable=False)
@@ -75,6 +89,11 @@ class Notification(models.Model):
             ),
             models.CheckConstraint(
                 condition=Q(attempts__lte=6), name="notification_attempts_bounded"
+            ),
+            models.CheckConstraint(
+                condition=Q(channel="email", chat_id__isnull=True)
+                | Q(channel="telegram", chat_id__isnull=False),
+                name="notification_channel_recipient",
             ),
         ]
 

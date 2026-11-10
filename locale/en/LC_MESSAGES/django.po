@@ -1991,3 +1991,12 @@ msgstr "Item cancelled"
 
 msgid "واریز بازپرداخت"
 msgstr "Refund sent"
+
+msgid "تلگرام"
+msgstr "Telegram"
+
+msgid "مسیر ارسال"
+msgstr "Channel"
+
+msgid "گفت‌وگوی تلگرام"
+msgstr "Telegram chat"
