@@ -28,7 +28,7 @@ class TelegramError(Exception):
 def _retry_after(error: HTTPError) -> int | None:
     try:
         return int(json.loads(error.read())["parameters"]["retry_after"])
-    except OSError, ValueError, KeyError, TypeError:
+    except Exception:  # noqa: BLE001 - a body that breaks off (IncompleteRead) included
         return None
 
 

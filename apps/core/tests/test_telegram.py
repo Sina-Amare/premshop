@@ -81,6 +81,20 @@ def test_every_failure_becomes_a_clean_error_without_the_token(
     assert SECRET not in str(caught.value) and SECRET not in repr(caught.value)
 
 
+def test_a_refusal_whose_body_breaks_off_is_still_a_clean_error(monkeypatch):
+    class Truncated(io.BytesIO):
+        def read(self, *args):
+            raise IncompleteRead(b"{")
+
+    def urlopen(request, timeout):
+        raise HTTPError(URL, 429, "refused", {}, Truncated())  # type: ignore[arg-type]
+
+    monkeypatch.setattr(telegram, "urlopen", urlopen)
+    with pytest.raises(telegram.TelegramError) as caught:
+        telegram.send_message(42, "x")
+    assert (caught.value.status, caught.value.retry_after) == (429, None)
+
+
 @pytest.mark.parametrize("body", [b"<html>proxy error</html>", b'["not", "an", "object"]'])
 def test_an_unreadable_reply_is_a_failure(monkeypatch, body):
     class Garbage(Reply):
