@@ -44,6 +44,10 @@ SEARCH_PER_IP = Limit("search:ip", times=30, seconds=60)
 # The header's list asks at every pause in typing, a request a letter at a
 # phone's pace, so it spends a budget of its own and leaves the one above alone.
 SEARCH_SUGGEST_PER_IP = Limit("search-suggest:ip", times=120, seconds=60)
+# Every Telegram link change emails the account, and that mail draws on the reserve kept
+# for sign-in codes: without a bound, one scripted account could spend it for everyone.
+TELEGRAM_CHANGES_PER_ACCOUNT = Limit("telegram:account", times=5, seconds=24 * 60 * 60)
+TELEGRAM_CONFIRMS_PER_TELEGRAM = Limit("telegram:confirm", times=5, seconds=24 * 60 * 60)
 
 
 def client_ip(request: HttpRequest) -> str:

@@ -28,6 +28,7 @@ from apps.accounts.forms import (
     StyledSetPasswordForm,
 )
 from apps.accounts.models import User
+from apps.core import ratelimit
 from apps.core.email_log import MailQuotaExceeded
 from apps.orders.selectors import current_order, customer_summary
 
@@ -337,7 +338,11 @@ def _telegram_section(request: HttpRequest, user: User) -> dict[str, object] | N
 def account_telegram(request: HttpRequest) -> HttpResponse:
     user = cast(User, request.user)
     action = request.POST.get("action")
-    if action == "link" and settings.TELEGRAM_BOT_TOKEN:
+    if action in ("link", "unlink") and not ratelimit.hit(
+        ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)
+    ):
+        messages.error(request, "سقف تغییر اتصال تلگرام برای امروز پر شده است.")
+    elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
     elif action == "unlink":
         telegram.unlink(user)

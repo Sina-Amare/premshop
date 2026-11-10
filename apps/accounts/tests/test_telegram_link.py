@@ -13,6 +13,7 @@ from huey.exceptions import TaskLockedException
 from apps.accounts import tasks as account_tasks
 from apps.accounts import telegram as links
 from apps.accounts.models import User
+from apps.core import ratelimit
 from apps.core import telegram as telegram_api
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -104,6 +105,38 @@ def test_the_alert_never_names_a_telegram_by_its_display_name(bot, user):
     message = mail.outbox[0]
     for part in (message.body, message.alternatives[0][0]):
         assert "رسمی" not in part and "555" in part
+
+
+def test_relinking_the_same_telegram_sends_no_second_email(bot, user):
+    links.confirm_link(links.start_link(user), {"id": 555, "username": "buyer_tg"})
+    links.confirm_link(links.start_link(user), {"id": 555, "username": "buyer_tg"})
+    assert len(mail.outbox) == 1
+
+
+def test_changes_from_the_account_page_have_a_daily_limit(bot, client, user):
+    # Each change emails the account, and that mail draws on the sign-in codes' reserve.
+    client.force_login(user)
+    url = reverse("account-telegram")
+    for _ in range(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT.times):
+        client.post(url, {"action": "link"})
+    issued = client.session["accounts.telegram_link"]
+    refused = client.post(url, {"action": "link"}, follow=True)
+    assert client.session["accounts.telegram_link"] == issued
+    assert "برای امروز" in refused.content.decode()
+    linked(user)
+    client.post(url, {"action": "unlink"})
+    assert User.objects.get(pk=user.pk).telegram_id == 555
+    assert mail.outbox == []
+
+
+def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):
+    for _ in range(ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM.times):
+        links.handle_update(press(f"link:{links.start_link(user)}"))
+    token = links.start_link(user)
+    bot.clear()
+    links.handle_update(press(f"link:{token}"))
+    assert "برای امروز" in dict(bot)["editMessageText"]["text"]
+    assert links.link_owner(token) == user
 
 
 def test_a_second_press_after_linking_says_it_is_already_linked(bot, user):

@@ -23,7 +23,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.core import support, telegram
+from apps.core import ratelimit, support, telegram
 from apps.core.email import send_templated_email
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> د�
 CONFIRM_BUTTON = "تأیید اتصال"
 LINKED = "تلگرام شما به حساب پرم‌شاپ وصل شد.\nقطع اتصال: {account}"
 ALREADY = "این تلگرام به حساب پرم‌شاپ شما وصل است."
+LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
 EXPIRED = "این پیوند دیگر معتبر نیست.\nدریافت پیوند جدید: {account}"
 POINTER = (
     "ربات اطلاع‌رسانی سفارش‌های پرم‌شاپ؛ پیام‌ها اینجا خوانده نمی‌شوند.\n"
@@ -96,21 +97,26 @@ def confirm_link(token: str, sender: dict[str, Any]) -> User | None:
     # Never the display name: it is free text, and a scammer can name theirs as the shop.
     handle = f"@{username}" if username else str(telegram_id)
     with transaction.atomic():
+        changed = True
         for holder in (
             User.objects.select_for_update(no_key=True)
             .filter(Q(pk=user.pk) | Q(telegram_id=telegram_id))
             .order_by("pk")
         ):
-            if holder.pk != user.pk:
-                # One Telegram, one account: it moves, and its old account is told.
-                User.objects.filter(pk=holder.pk).update(
-                    telegram_id=None, telegram_username="", telegram_linked_at=None
-                )
-                transaction.on_commit(partial(_notify, holder, "moved", handle))
+            if holder.pk == user.pk:
+                changed = holder.telegram_id != telegram_id
+                continue
+            # One Telegram, one account: it moves, and its old account is told.
+            User.objects.filter(pk=holder.pk).update(
+                telegram_id=None, telegram_username="", telegram_linked_at=None
+            )
+            transaction.on_commit(partial(_notify, holder, "moved", handle))
         User.objects.filter(pk=user.pk).update(
             telegram_id=telegram_id, telegram_username=username, telegram_linked_at=timezone.now()
         )
-        transaction.on_commit(partial(_notify, user, "linked", handle))
+        # A relink that changes nothing sends nothing: each email draws on the mail budget.
+        if changed:
+            transaction.on_commit(partial(_notify, user, "linked", handle))
     return user
 
 
@@ -189,7 +195,11 @@ def _pressed(callback: dict[str, Any]) -> None:
         return
     sender = callback["from"]
     token = str(callback.get("data") or "").removeprefix("link:")
-    if confirm_link(token, sender) is not None:
+    if link_owner(token) is not None and not ratelimit.hit(
+        ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM, str(sender["id"])
+    ):
+        text = LIMITED
+    elif confirm_link(token, sender) is not None:
         text = LINKED.format(account=_account_url())
     elif User.objects.filter(telegram_id=sender["id"]).exists():
         text = ALREADY
