@@ -96,7 +96,10 @@ def enqueue_event(
     # because the tasks module imports this one.
     from apps.notifications.tasks import send_order_notifications
 
-    send_order_notifications()
+    try:
+        send_order_notifications()
+    except Exception as error:  # noqa: BLE001 - both rows are saved; the minute run sends them
+        logger.warning("send now not queued for order %s: %s", order_id, type(error).__name__)
     return row
 
 
