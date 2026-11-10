@@ -33,13 +33,14 @@ def _retry_after(error: HTTPError) -> int | None:
 
 
 def call(method: str, payload: dict[str, Any], *, timeout: float = 5) -> Any:
-    request = Request(  # noqa: S310 - a fixed https address
+    # A fixed https address, so the scheme check these markers silence cannot matter.
+    request = Request(  # noqa: S310  # nosec B310
         API.format(token=settings.TELEGRAM_BOT_TOKEN, method=method),
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - as above
+        with urlopen(request, timeout=timeout) as response:  # noqa: S310  # nosec B310
             return json.load(response)["result"]
     except HTTPError as error:
         raise TelegramError(error.code, _retry_after(error)) from None
