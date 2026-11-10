@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from apps.accounts.models import User
@@ -9,6 +10,7 @@ from apps.core.formatting import to_persian_digits
 from apps.orders import services as orders
 from apps.orders import telegram_panel
 from apps.orders.models import OrderItem
+from apps.orders.selectors import customer_summary
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.payments.services import record_manual_payment
 
@@ -70,6 +72,27 @@ def test_an_order_screen_shows_its_facts_and_its_page(buyer, plan, settings):
         [{"text": "کپی شماره‌ی سفارش", "copy_text": {"text": str(order.order_number)}}],
         [{"text": "بازگشت به سفارش‌ها", "callback_data": "p:orders"}],
     ]
+
+
+NOTHING_TO_DO = "لازم نیست کاری انجام دهید."
+
+
+@pytest.mark.parametrize(
+    ("state", "sentence"),
+    [
+        ("AWAITING_INPUT", "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید."),
+        ("REPLACEMENT_REQUESTED", NOTHING_TO_DO),
+        ("QUEUED", NOTHING_TO_DO),
+        ("DELIVERED", NOTHING_TO_DO),
+        ("CANCELLED", "برای پیگیری پرداخت یا بازپرداخت، با پشتیبانی تماس بگیرید."),
+        ("REFUNDED", NOTHING_TO_DO),
+        ("", "برای پیگیری سفارش با پشتیبانی تماس بگیرید."),
+    ],
+)
+def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, state, sentence):
+    summary = {**customer_summary(placed(buyer, plan)), "next_step": state}
+    text = render_to_string("telegram/panel_order.html", {**summary, "order_url": "/"})
+    assert sentence in text
 
 
 @pytest.mark.parametrize("screen", ["o:{other}", "o:x", "o:", "o:-1", "o:" + "9" * 30, "o:²", "nonsense"])
