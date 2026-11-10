@@ -17,6 +17,8 @@ import threading
 import time
 from http.client import HTTPSConnection
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.request import getproxies, proxy_bypass
 
 from django.conf import settings
 
@@ -46,6 +48,18 @@ def _drop() -> None:
         connection.close()
 
 
+def _open(timeout: float) -> HTTPSConnection:
+    # The system's proxy, as the urllib client honoured it: a VPN in proxy mode, or a
+    # relay set up as one.
+    proxy = getproxies().get("https")
+    if proxy and not proxy_bypass(HOST):
+        address = urlsplit(proxy if "://" in proxy else f"http://{proxy}")
+        connection = HTTPSConnection(address.hostname or "", address.port or 80, timeout=timeout)
+        connection.set_tunnel(HOST, 443)
+        return connection
+    return HTTPSConnection(HOST, timeout=timeout)
+
+
 def _connection(timeout: float) -> HTTPSConnection:
     connection = getattr(_local, "connection", None)
     if connection is not None:
@@ -57,7 +71,7 @@ def _connection(timeout: float) -> HTTPSConnection:
             _drop()
             connection = None
     if connection is None:
-        connection = _local.connection = HTTPSConnection(HOST, timeout=timeout)
+        connection = _local.connection = _open(timeout)
     connection.timeout = timeout
     if connection.sock is not None:
         connection.sock.settimeout(timeout)

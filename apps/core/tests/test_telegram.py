@@ -36,10 +36,13 @@ def api(monkeypatch):
             return self.body if isinstance(self.body, bytes) else json.dumps(self.body).encode()
 
     class Connection:
-        def __init__(self, host, timeout):
-            assert host == "api.telegram.org"
+        def __init__(self, host, port=None, timeout=None):
+            self.address, self.tunnel = (host, port), None
             self.timeout, self.sock, self.closed = timeout, None, False
             fake.connections.append(self)
+
+        def set_tunnel(self, host, port=None):
+            self.tunnel = (host, port)
 
         def request(self, method, path, body, headers):
             outcome = fake.outcomes.pop(0) if fake.outcomes else (200, SENT)
@@ -55,6 +58,7 @@ def api(monkeypatch):
             self.closed = True
 
     monkeypatch.setattr(telegram, "HTTPSConnection", Connection)
+    monkeypatch.setattr(telegram, "getproxies", lambda: {})
     monkeypatch.setattr(telegram, "_local", threading.local())
     monkeypatch.setattr(telegram, "time", SimpleNamespace(monotonic=lambda: fake.now))
     return fake
@@ -64,6 +68,10 @@ def test_a_message_goes_out_as_escaped_html_without_a_preview(api):
     assert telegram.send_message(42, "سفارش ۱۰۲۴") == {"message_id": 7}
     method, path, data, timeout = api.requests[0]
     assert (method, path, timeout) == ("POST", f"/bot{TOKEN}/sendMessage", 5)
+    assert (api.connections[0].address, api.connections[0].tunnel) == (
+        ("api.telegram.org", None),
+        None,
+    )
     assert data == {
         "chat_id": 42,
         "text": "سفارش ۱۰۲۴",
@@ -152,6 +160,18 @@ def test_a_connection_the_server_closed_is_replaced(api):
     finally:
         ours.close()
     assert len(api.connections) == 2 and api.connections[0].closed
+
+
+def test_a_system_proxy_carries_the_connection_as_urllib_did(api, monkeypatch):
+    # A VPN in proxy mode, or a relay set up as one: without it Telegram is out of reach.
+    monkeypatch.setattr(telegram, "getproxies", lambda: {"https": "http://127.0.0.1:10809"})
+    monkeypatch.setattr(telegram, "proxy_bypass", lambda host: False)
+    telegram.send_message(42, "x")
+    connection = api.connections[0]
+    assert (connection.address, connection.tunnel) == (
+        ("127.0.0.1", 10809),
+        ("api.telegram.org", 443),
+    )
 
 
 def test_the_bot_token_is_scrubbed_from_logs_and_error_reports():
