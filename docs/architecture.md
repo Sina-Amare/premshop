@@ -188,7 +188,7 @@ One Huey consumer runs these, scheduled in UTC:
 | Task | Schedule | Does |
 |---|---|---|
 | `notifications.tasks.send_order_notifications` | every minute, and at once when an update is queued | Finds new purchase confirmations and sends due order emails and Telegram messages; the minute run is the retry |
-| `accounts.tasks.poll_telegram` | every minute | Long-polls the shop's Telegram bot for about 55 seconds and answers what arrives; a lock stops two polls overlapping |
+| `accounts.tasks.poll_telegram` | without a break; every minute as a restart | Long-polls the shop's Telegram bot for about 55 seconds, answers what arrives, then queues the next poll at once; a lock stops two polls overlapping, and after an outage only the minute run tries again |
 | `orders.tasks.sweep_unpaid_orders` | every minute | Releases up to 100 overdue unpaid orders, each in its own transaction, and records the sweep's time and backlog |
 | `cart.tasks.clean_guest_carts` | daily 03:00 | Deletes guest carts inactive for more than 30 days |
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
@@ -197,7 +197,7 @@ One Huey consumer runs these, scheduled in UTC:
 | `orders.tasks.clean_delivered_details` | daily 03:25 | Deletes delivered details and customer input past their retention deadline ([Retention](order-lifecycle.md#retention)), each item in its own transaction |
 
 - The queue name is derived from the database's host, port and name, never its credentials, so each database has its own consumer. Huey runs asynchronously in development too; tests use in-memory storage and run tasks explicitly.
-- The consumer runs two threads, so the Telegram poll never holds back the minute sender, and it flushes task locks as it starts (`flush_locks`). A worker killed mid-poll never releases its lock, and Redis keeps it across the restart.
+- The consumer runs two threads: the Telegram poll keeps one, and the other runs the minute jobs. It flushes task locks as it starts (`flush_locks`). A worker killed mid-poll never releases its lock, and Redis keeps it across the restart.
 - A stopped worker delays releases but never corrupts them: checkout still validates stock and deadlines under locks, and a restarted worker catches up from the stored deadlines. The panel's order list warns when the last successful sweep is more than three minutes old. `/healthz` checks the database and the cache, not the worker.
 
 ## Email
@@ -228,7 +228,7 @@ Every message is three templates under `templates/email/` (`<name>.subject.txt`,
 
 **Telegram.**
 - **Linking.** The account page's «اتصال تلگرام» issues a random, single-use ten-minute token. Only the account's newest token counts. The page offers it as a `t.me` link to the shop's bot, plus a `/start` line to send by hand. The bot shows the masked email and links only when its confirm button is pressed; spending the token is the cache delete that succeeds. The link and an unlink each email the account holder, and a Telegram linked elsewhere moves, telling its old account by email. Starting in the bot only points to the account page: the bot never sends a link that links on click, which a scammer could pass to a victim. Groups and channels link nothing.
-- **Receiving.** The worker long-polls the Bot API, since Telegram cannot call a server inside Iran or one with no public address. A connection outage logs one ERROR, then WARNINGs until it recovers.
+- **Receiving.** The worker long-polls the Bot API without a break, since Telegram cannot call a server inside Iran or one with no public address. Each worker thread keeps one HTTPS connection open, because through a VPN or the relay a new one costs most of a second. A connection outage logs one ERROR, then WARNINGs until it recovers.
 - **Sending.** Before each Telegram send, the sender locks the customer's row and drops the row as `binding_changed` unless the customer is still linked to the frozen chat. Unlinking waits for an in-flight send, which times out after five seconds. A 429 waits Telegram's `retry_after`; 400 and 403 fail at once; every other failure takes the six-attempt ladder. The mail quota wait holds email rows only.
 - **The token.** It is in every Bot API URL, so the client re-raises failures without the URL, and `redact_url` removes bot tokens from logs and error reports, breadcrumbs included. A blank `TELEGRAM_BOT_TOKEN` switches all of this off.
 

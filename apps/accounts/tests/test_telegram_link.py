@@ -8,7 +8,6 @@ from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from huey.contrib.djhuey import HUEY
-from huey.exceptions import TaskLockedException
 
 from apps.accounts import tasks as account_tasks
 from apps.accounts import telegram as links
@@ -329,13 +328,57 @@ def test_without_a_token_the_poll_does_nothing(settings, monkeypatch):
     assert links.poll(seconds=0) == 0
 
 
-def test_a_killed_workers_lock_is_flushed_when_the_worker_starts(settings):
+def queued_polls():
+    return [task for task in HUEY.pending() if task.name.endswith("poll_telegram")]
+
+
+@pytest.fixture
+def polls(settings, monkeypatch):
+    settings.TELEGRAM_BOT_TOKEN = TOKEN
+    ran = []
+    monkeypatch.setattr(links, "poll", lambda: ran.append(1) or 0)
+    return ran
+
+
+def test_a_killed_workers_lock_is_flushed_when_the_worker_starts(settings, polls):
     assert settings.HUEY["consumer"]["flush_locks"] is True
     assert REGISTERED_AT_IMPORT
-    settings.TELEGRAM_BOT_TOKEN = ""
     # A worker killed mid-poll never runs the lock's release.
     HUEY.put_if_empty(POLL_LOCK, "1")
-    with pytest.raises(TaskLockedException):
-        account_tasks.poll_telegram.call_local()
-    HUEY.flush_locks()  # what run_huey's consumer runs as it starts
     assert account_tasks.poll_telegram.call_local() == 0
+    assert (polls, queued_polls()) == ([], [])
+    HUEY.flush_locks()  # what run_huey's consumer runs as it starts
+    account_tasks.poll_telegram.call_local()
+    assert polls == [1]
+
+
+def test_each_poll_queues_the_next_once_its_lock_is_free(polls, monkeypatch):
+    held = []
+    enqueue = HUEY.enqueue
+
+    def watched(task):
+        held.append(HUEY.storage.has_data_for_key(POLL_LOCK))
+        return enqueue(task)
+
+    monkeypatch.setattr(HUEY, "enqueue", watched)
+    account_tasks.poll_telegram.call_local()
+    assert len(queued_polls()) == 1
+    # Queued while still held, the next poll could start, find the lock and give up.
+    assert held == [False]
+
+
+def test_a_failed_poll_leaves_the_retry_to_the_minute_run(settings, monkeypatch):
+    # An outage must not turn the chain into a loop that fails as fast as it can.
+    settings.TELEGRAM_BOT_TOKEN = TOKEN
+
+    def down(offset, timeout):
+        raise telegram_api.TelegramError(None)
+
+    monkeypatch.setattr(telegram_api, "get_updates", down)
+    account_tasks.poll_telegram.call_local()
+    assert queued_polls() == []
+
+
+def test_without_a_token_no_poll_is_queued():
+    account_tasks.poll_telegram.call_local()
+    assert queued_polls() == []
