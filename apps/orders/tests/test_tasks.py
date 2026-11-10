@@ -16,7 +16,8 @@ pytestmark = pytest.mark.django_db(transaction=True)
 def test_tasks_are_explicitly_asynchronous_with_one_redis_consumer():
     assert settings.HUEY["immediate"] is False
     assert settings.HUEY["huey_class"] == "huey.RedisHuey"
-    assert settings.HUEY["consumer"]["workers"] == 1
+    # One consumer with two threads: the Telegram poll holds one (ADR-0029, 2026-11-10).
+    assert settings.HUEY["consumer"]["workers"] == 2
 
 
 def test_queue_identity_separates_databases_without_using_credentials():

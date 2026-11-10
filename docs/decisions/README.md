@@ -9,13 +9,13 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0001](0001-stack-and-architecture.md) | Stack: Django modular monolith, server-rendered | Accepted, amended | 2026-11-04 |
 | [0002](0002-module-boundaries-and-service-layer.md) | Module boundaries and the service layer | Accepted, amended | 2026-10-28 |
 | [0003](0003-order-status-on-item-seven-states.md) | Status lives on `OrderItem`, with exactly seven states | Accepted, amended | 2026-10-29 |
-| [0004](0004-no-drf-in-phase-1.md) | No DRF and no HTTP API in phase 1 | Accepted | 2026-09-01 |
+| [0004](0004-no-drf-in-phase-1.md) | No DRF and no HTTP API in phase 1 | Accepted, amended | 2026-11-10 |
 | [0005](0005-money-in-toman.md) | All stored amounts are toman, integer-valued decimals | Accepted, amended | 2026-09-01 |
 | [0006](0006-card-to-card-payment-design.md) | Card-to-card payment design | Superseded by [0019](0019-payment-gateway.md) | 2026-09-01 |
 | [0007](0007-credential-encryption-key-escrow-retention.md) | Credential encryption, key escrow and retention | Accepted, amended | 2026-11-07 |
 | [0008](0008-content-free-messages-and-magic-link.md) | Messages carry no credential values; a single-use magic link is the one convenience | Accepted, amended | 2026-10-29 |
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
-| [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-03 |
+| [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-10 |
 | [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
 | [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in and the sign-in alert | Accepted, amended | 2026-10-23 |
 | [0013](0013-payment-provider-interface-deferred.md) | No payment-provider interface until a second gateway exists | Accepted | 2026-09-01 |
@@ -34,7 +34,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0026](0026-storefront-composition.md) | Storefront composition; the current look is in the [design language](../design-language.md) | Accepted, amended | 2026-10-23 |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer | Accepted, amended | 2026-10-20 |
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds | Accepted, amended | 2026-10-31 |
-| [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-10-30 |
+| [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-11-10 |
 | [0030](0030-legal-page-drafts.md) | Legal pages with protected drafts | Accepted, amended | 2026-11-02 |
 
 ## Writing a record

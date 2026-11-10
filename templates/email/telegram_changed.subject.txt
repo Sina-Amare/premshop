@@ -1,0 +1,1 @@
+{% if state == "linked" %}تلگرام به حساب PremShop شما وصل شد{% else %}تلگرام از حساب PremShop شما جدا شد{% endif %}

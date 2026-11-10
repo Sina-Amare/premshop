@@ -1,4 +1,4 @@
-{% extends "accounts/_account_base.html" %}{% load fa %}
+{% extends "accounts/_account_base.html" %}{% load fa static %}
 
 {% block title %}اطلاعات حساب{% endblock %}
 {% block heading %}اطلاعات حساب{% endblock %}
@@ -38,6 +38,40 @@
     </div>
     <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
   </div>
+{% endif %}
+
+{% if telegram %}
+<h2 class="acct__h2" id="telegram">تلگرام</h2>
+{% if telegram.linked %}
+<div class="card acct__card">
+  <div class="fact"><span class="fact__k">وصل به</span><span class="fact__lead"></span><span class="fact__v">{% if telegram.username %}<bdi class="latin">@{{ telegram.username }}</bdi>{% else %}تلگرام شما{% endif %}</span></div>
+</div>
+<form method="post" action="{% url 'account-telegram' %}" class="acct__form acct__form--spaced">
+  {% csrf_token %}
+  <button type="submit" name="action" value="unlink" class="btn btn--secondary">قطع اتصال</button>
+</form>
+{% elif telegram.token %}
+<div class="acct__next" data-telegram-wait="{% url 'account-telegram-state' %}">
+  <div>
+    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. اعتبار این پیوند ۱۰ دقیقه است.</p>
+    <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
+    {# A line of its own: split across two lines, the command is easy to copy half of. #}
+    <p class="small flush"><bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
+  </div>
+  <a class="btn btn--primary" href="{{ telegram.deep_link }}" rel="noopener">باز کردن تلگرام</a>
+</div>
+<script src="{% static 'js/telegram-link.js' %}" defer></script>
+{% else %}
+<div class="acct__next">
+  <div>
+    <p class="small flush">تأیید پرداخت، پشتیبانی، تحویل و گزارش هر سفارش را هم در تلگرام پیگیری کنید.</p>
+  </div>
+  <form method="post" action="{% url 'account-telegram' %}">
+    {% csrf_token %}
+    <button type="submit" name="action" value="link" class="btn btn--secondary">اتصال تلگرام</button>
+  </form>
+</div>
+{% endif %}
 {% endif %}
 
 <h2 class="acct__h2">پشتیبانی</h2>

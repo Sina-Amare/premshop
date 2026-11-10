@@ -73,6 +73,8 @@ _CAMEL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 #: Single-use delivery links are bearer capabilities (ADR-0008): a full URL in
 #: an error report would let anyone holding the report open the credential view.
 _PRIVATE_LINK_RE = re.compile(r"((?:/|%2f)(?:d|track)(?:/|%2f))[^/\s?\"'&#]+", re.IGNORECASE)
+# A Telegram bot token, `<bot id>:<secret>`; the Bot API puts it in every request URL.
+_BOT_TOKEN_RE = re.compile(r"\d{6,}:[A-Za-z0-9_-]{30,}")
 
 _MAX_DEPTH = 12
 
@@ -93,7 +95,7 @@ def _is_sensitive_key(key: str) -> bool:
 
 
 def redact_url(text: str) -> str:
-    """Remove delivery and tracking tokens, including encoded return links."""
+    """Remove delivery and tracking tokens, including encoded return links, and bot tokens."""
 
     def unescape(match: re.Match[str]) -> str:
         character = chr(int(match[1], 16))
@@ -107,7 +109,7 @@ def redact_url(text: str) -> str:
     for _ in range(2):
         decoded = re.sub(r"%([0-9a-f]{2})", unescape, decoded, flags=re.IGNORECASE)
     source = decoded if _PRIVATE_LINK_RE.search(decoded) else text
-    return _PRIVATE_LINK_RE.sub(r"\1" + REDACTED, source)
+    return _BOT_TOKEN_RE.sub(REDACTED, _PRIVATE_LINK_RE.sub(r"\1" + REDACTED, source))
 
 
 class PrivateLinkFilter(logging.Filter):

@@ -9,3 +9,5 @@
 **Alternatives considered:** DRF from day one (a whole parallel interface — auth surface, BOLA risk class, tests — maintained for nobody).
 
 **Consequences:** The fat service layer is what makes adding the API later cheap: endpoints become serializer + one existing service call. Nobody should "helpfully" add DRF before phase 3.
+
+**Amendment — 2026-11-10: the bot polls instead of taking a webhook.** The bot receives its updates by long polling from the worker, not through a webhook view. The local server has no public address, and Telegram cannot call a server hosted inside Iran; polling is outbound only, so it works the same through a relay abroad. The bot still runs in this codebase and calls the account services directly, which is the point of this decision, and there is still no HTTP API. Revisit if the server moves to a host Telegram can reach and long polling proves too slow or too fragile there.

@@ -6,10 +6,13 @@ from typing import Any
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, OuterRef
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.accounts.models import User
 from apps.catalog.models import Product
+from apps.core import telegram
 from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
 from apps.core.richtext import absolute_markdown_links
@@ -35,7 +38,12 @@ def enqueue_event(
     ):
         raise ValueError("Unknown order notification")
     order = Order.objects.values(
-        "user_id", "user__email", "placement_email", "order_number", "total_amount"
+        "user_id",
+        "user__email",
+        "user__telegram_id",
+        "placement_email",
+        "order_number",
+        "total_amount",
     ).get(pk=order_id)
     context: dict[str, Any] = {
         "order_number": order["order_number"],
@@ -69,6 +77,26 @@ def enqueue_event(
             "html_body": html,
         },
     )
+    # After the email row, so a Telegram problem can never cost the email.
+    if settings.TELEGRAM_BOT_TOKEN and order["user__telegram_id"]:
+        Notification.objects.get_or_create(
+            dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:telegram",
+            defaults={
+                "order_id": order_id,
+                "template_name": template_name,
+                "channel": Notification.Channel.TELEGRAM,
+                "chat_id": order["user__telegram_id"],
+                "text_body": render_to_string(
+                    "telegram/order_update.html",
+                    {**context, "subject": subject, "template_name": template_name},
+                ).strip(),
+            },
+        )
+    # Send now instead of at the next minute's run, which stays the retry. Imported here
+    # because the tasks module imports this one.
+    from apps.notifications.tasks import send_order_notifications
+
+    send_order_notifications()
     return row
 
 
@@ -199,7 +227,7 @@ def send_due_notifications() -> int:
                 return sent
             row = (
                 Notification.objects.select_for_update(skip_locked=True)
-                .filter(status="pending", next_attempt_at__lte=now)
+                .filter(channel="email", status="pending", next_attempt_at__lte=now)
                 .order_by("next_attempt_at", "pk")
                 .first()
             )
@@ -219,7 +247,7 @@ def send_due_notifications() -> int:
                 sweep.quota_wait_until = wait
                 sweep.save(update_fields=["quota_wait_until"])
                 Notification.objects.filter(
-                    status="pending", next_attempt_at__lte=timezone.now()
+                    channel="email", status="pending", next_attempt_at__lte=timezone.now()
                 ).update(next_attempt_at=wait)
                 return sent
             except Exception as error:  # noqa: BLE001 - keep only the class and numeric SMTP status
@@ -253,4 +281,54 @@ def send_due_notifications() -> int:
                 row.last_error_class = ""
                 row.smtp_code = None
                 sent += 1
+            row.save()
+
+
+def send_due_telegram() -> int:
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return 0
+    sent = 0
+    while True:
+        with transaction.atomic():
+            row = (
+                Notification.objects.select_for_update(skip_locked=True, of=("self",))
+                .select_related("order")
+                .filter(channel="telegram", status="pending", next_attempt_at__lte=timezone.now())
+                .order_by("next_attempt_at", "pk")
+                .first()
+            )
+            if row is None:
+                return sent
+            # The customer row lock order services already take: an unlink or relink waits
+            # for this send, so no message reaches a chat unlinked between check and send.
+            current = (
+                User.objects.select_for_update(no_key=True)
+                .filter(pk=row.order.user_id)
+                .values_list("telegram_id", flat=True)
+                .first()
+            )
+            row.attempts += 1
+            row.last_attempt_at = timezone.now()
+            if current is None or current != row.chat_id:
+                row.status, row.next_attempt_at = "failed", None
+                row.last_error_class = "binding_changed"
+            else:
+                try:
+                    telegram.send_message(current, row.text_body)
+                except telegram.TelegramError as error:
+                    row.last_error_class = f"TelegramError {error.status or 'network'}"
+                    # 400 and 403 are about this chat or message (bot blocked, chat gone);
+                    # 401, 5xx and timeouts are the shop's side and may clear.
+                    failed = row.attempts == 6 or error.status in (400, 403)
+                    row.status = "failed" if failed else "pending"
+                    row.next_attempt_at = (
+                        None
+                        if failed
+                        else row.last_attempt_at
+                        + timedelta(seconds=max(_DELAYS[row.attempts - 1], error.retry_after or 0))
+                    )
+                else:
+                    row.status, row.sent_at, row.next_attempt_at = "sent", row.last_attempt_at, None
+                    row.last_error_class = ""
+                    sent += 1
             row.save()

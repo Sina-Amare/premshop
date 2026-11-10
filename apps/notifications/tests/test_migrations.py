@@ -31,6 +31,45 @@ def test_existing_orders_stay_ineligible_and_migrations_reverse(buyer):
         MigrationExecutor(connection).migrate(leaves)
 
 
+def test_telegram_migration_keeps_rows_as_email_and_reverses(buyer):
+    executor = MigrationExecutor(connection)
+    leaves = executor.loader.graph.leaf_nodes()
+    before = [("notifications", "0002_order_messages")]
+    try:
+        executor.migrate(before)
+        state = executor.loader.project_state(before)
+        OldOrder = state.apps.get_model("orders", "Order")
+        OldNotification = state.apps.get_model("notifications", "Notification")
+        order = OldOrder.objects.create(user_id=buyer.pk, subtotal=1, total_amount=1)
+        OldNotification.objects.create(
+            order_id=order.pk,
+            dedupe_key="keep:email",
+            template_name="payment_confirmed",
+            recipient="frozen@example.test",
+            subject="Saved subject",
+            text_body="Saved text",
+            html_body="<p>Saved HTML</p>",
+        )
+        saved = list(OldNotification.objects.values())
+        MigrationExecutor(connection).migrate(leaves)
+        from apps.notifications.models import Notification
+
+        kept = Notification.objects.get(dedupe_key="keep:email")
+        assert (kept.channel, kept.chat_id) == ("email", None)
+        Notification.objects.create(
+            order_id=order.pk,
+            dedupe_key="drop:telegram",
+            template_name="payment_confirmed",
+            channel="telegram",
+            chat_id=555,
+            text_body="Saved text",
+        )
+        MigrationExecutor(connection).migrate(before)
+        assert list(OldNotification.objects.values()) == saved
+    finally:
+        MigrationExecutor(connection).migrate(leaves)
+
+
 def test_message_migration_preserves_existing_rows_and_reverses(buyer):
     executor = MigrationExecutor(connection)
     leaves = executor.loader.graph.leaf_nodes()
@@ -62,7 +101,8 @@ def test_message_migration_preserves_existing_rows_and_reverses(buyer):
             "purchase_confirmation"
         }
         current = list(Notification.objects.order_by("pk").values())
-        assert [{k: v for k, v in row.items() if k != "template_name"} for row in current] == saved
+        later = {"template_name", "channel", "chat_id"}  # added by 0002 and 0003
+        assert [{k: v for k, v in row.items() if k not in later} for row in current] == saved
         MigrationExecutor(connection).migrate(before)
         assert list(OldNotification.objects.order_by("pk").values()) == saved
     finally:

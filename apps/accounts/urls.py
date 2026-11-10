@@ -26,6 +26,8 @@ urlpatterns = [
         RedirectView.as_view(pattern_name="account", permanent=False),
         name="account-profile",
     ),
+    path("account/telegram/", views.account_telegram, name="account-telegram"),
+    path("account/telegram/state/", views.account_telegram_state, name="account-telegram-state"),
     path("account/password/", views.account_password, name="account-password"),
     path(
         "account/password/recovery/",

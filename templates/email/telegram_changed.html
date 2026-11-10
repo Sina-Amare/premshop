@@ -1,0 +1,17 @@
+{% extends "email/base.html" %}{% load fa %}
+{% block title %}{% if state == "linked" %}تلگرام وصل شد{% else %}تلگرام جدا شد{% endif %}{% endblock %}
+{% block preheader %}{% if state == "linked" %}تلگرام به حساب شما وصل شد.{% else %}تلگرام از حساب شما جدا شد.{% endif %}{% endblock %}
+{% block content %}
+<h1 style="margin:0 0 12px 0;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">{% if state == "linked" %}تلگرام وصل شد{% else %}تلگرام جدا شد{% endif %}</h1>
+{% if state == "linked" %}
+<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این اتصال کار شما نیست، از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a> قطعش کنید.</p>
+{% elif state == "moved" %}
+<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این کار شما نیست، به پشتیبانی خبر بدهید.</p>
+{% else %}
+<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام{% if telegram %} <bdi dir="ltr">{{ telegram }}</bdi>{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این کار شما نیست، رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.</p>
+{% endif %}
+<p style="font-size:16px;line-height:1.95;color:#57534E;">پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.</p>
+{% endblock %}
