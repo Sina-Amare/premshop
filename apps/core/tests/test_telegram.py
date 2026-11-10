@@ -125,6 +125,16 @@ def test_a_connection_that_failed_is_never_reused(api):
     assert len(api.connections) == 2 and api.connections[0].closed
 
 
+@pytest.mark.parametrize("status", [200, 429])
+def test_a_reply_cut_off_mid_body_closes_its_connection(api, status):
+    api.outcomes.append((status, IncompleteRead(b'{"ok": tr')))
+    with pytest.raises(telegram.TelegramError):
+        telegram.send_message(42, "x")
+    telegram.send_message(42, "x")
+    # The rest of a cut-off reply must never be read as the next request's answer.
+    assert len(api.connections) == 2 and api.connections[0].closed
+
+
 def test_a_connection_idle_too_long_is_replaced(api):
     telegram.send_message(42, "x")
     api.now += telegram.IDLE_SECONDS + 1
