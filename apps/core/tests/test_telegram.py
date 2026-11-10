@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+from http.client import IncompleteRead, InvalidURL
 from urllib.error import HTTPError, URLError
 
 import pytest
@@ -60,6 +61,9 @@ def test_a_message_goes_out_as_escaped_html_without_a_preview(monkeypatch):
         (refused(502, {}), 502, None),
         (URLError(f"no route to {URL}"), None, None),
         (TimeoutError(f"timed out on {URL}"), None, None),
+        # A relay that closes mid-body, and a token with a space, whose error quotes the URL.
+        (IncompleteRead(b"partial"), None, None),
+        (InvalidURL(f"URL can't contain control characters. {URL!r}"), None, None),
     ],
 )
 def test_every_failure_becomes_a_clean_error_without_the_token(
@@ -77,10 +81,11 @@ def test_every_failure_becomes_a_clean_error_without_the_token(
     assert SECRET not in str(caught.value) and SECRET not in repr(caught.value)
 
 
-def test_an_unreadable_reply_is_a_failure(monkeypatch):
+@pytest.mark.parametrize("body", [b"<html>proxy error</html>", b'["not", "an", "object"]'])
+def test_an_unreadable_reply_is_a_failure(monkeypatch, body):
     class Garbage(Reply):
         def __enter__(self):
-            return io.BytesIO(b"<html>proxy error</html>")
+            return io.BytesIO(body)
 
     monkeypatch.setattr(telegram, "urlopen", lambda request, timeout: Garbage({}))
     with pytest.raises(telegram.TelegramError) as caught:

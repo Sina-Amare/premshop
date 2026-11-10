@@ -44,7 +44,7 @@ def call(method: str, payload: dict[str, Any], *, timeout: float = 5) -> Any:
             return json.load(response)["result"]
     except HTTPError as error:
         raise TelegramError(error.code, _retry_after(error)) from None
-    except OSError, ValueError, KeyError:
+    except Exception:  # noqa: BLE001 - http.client and parsing errors too; some quote the URL
         raise TelegramError(None) from None
 
 
