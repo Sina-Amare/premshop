@@ -187,8 +187,8 @@ One Huey consumer runs these, scheduled in UTC:
 
 | Task | Schedule | Does |
 |---|---|---|
-| `notifications.tasks.send_order_notifications` | every minute | Finds new purchase confirmations and sends due order emails and Telegram messages |
-| `accounts.tasks.poll_telegram` | every minute | Long-polls the shop's Telegram bot for about 45 seconds and answers what arrives; a lock stops two polls overlapping |
+| `notifications.tasks.send_order_notifications` | every minute, and at once when an update is queued | Finds new purchase confirmations and sends due order emails and Telegram messages; the minute run is the retry |
+| `accounts.tasks.poll_telegram` | every minute | Long-polls the shop's Telegram bot for about 55 seconds and answers what arrives; a lock stops two polls overlapping |
 | `orders.tasks.sweep_unpaid_orders` | every minute | Releases up to 100 overdue unpaid orders, each in its own transaction, and records the sweep's time and backlog |
 | `cart.tasks.clean_guest_carts` | daily 03:00 | Deletes guest carts inactive for more than 30 days |
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
