@@ -40,6 +40,37 @@
   </div>
 {% endif %}
 
+{% if telegram %}
+<h2 class="acct__h2" id="telegram">تلگرام</h2>
+{% if telegram.linked %}
+<div class="card acct__card">
+  <div class="fact"><span class="fact__k">وصل به</span><span class="fact__lead"></span><span class="fact__v">{% if telegram.username %}<bdi class="latin">@{{ telegram.username }}</bdi>{% else %}تلگرام شما{% endif %}</span></div>
+</div>
+<form method="post" action="{% url 'account-telegram' %}" class="acct__form acct__form--spaced">
+  {% csrf_token %}
+  <button type="submit" name="action" value="unlink" class="btn btn--secondary">قطع اتصال</button>
+</form>
+{% elif telegram.token %}
+<div class="acct__next">
+  <div>
+    <p class="small flush">در تلگرام «شروع» را بزنید و اتصال را تأیید کنید. این پیوند ۱۰ دقیقه کار می‌کند.</p>
+    <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید: <bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
+  </div>
+  <a class="btn btn--primary" href="{{ telegram.deep_link }}" rel="noopener">باز کردن تلگرام</a>
+</div>
+{% else %}
+<div class="acct__next">
+  <div>
+    <p class="small flush">خبر سفارش‌ها را در تلگرام هم بگیرید. ایمیل‌ها مثل قبل می‌رسند.</p>
+  </div>
+  <form method="post" action="{% url 'account-telegram' %}">
+    {% csrf_token %}
+    <button type="submit" name="action" value="link" class="btn btn--secondary">اتصال تلگرام</button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+
 <h2 class="acct__h2">پشتیبانی</h2>
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>

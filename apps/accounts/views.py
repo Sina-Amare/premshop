@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import cast
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
@@ -14,9 +15,9 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.accounts import services
+from apps.accounts import services, telegram
 from apps.accounts.forms import (
     CodeForm,
     EmailForm,
@@ -36,6 +37,8 @@ from apps.orders.selectors import current_order, customer_summary
 PENDING_EMAIL_KEY = "accounts.pending_email"
 PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 PENDING_NEXT_KEY = "accounts.pending_next"
+# The link token the account page is waiting on, kept server-side rather than in a URL.
+TELEGRAM_LINK_KEY = "accounts.telegram_link"
 
 # How long the resend button stays disabled after each send. Long enough that a
 # customer does not fire twice while the first mail is still in flight, short
@@ -304,8 +307,43 @@ def account(request: HttpRequest) -> HttpResponse:
             "profile_form": form,
             "section": "profile",
             "current_order": customer_summary(current) if current else None,
+            "telegram": _telegram_section(request, user),
         },
     )
+
+
+def _telegram_section(request: HttpRequest, user: User) -> dict[str, object] | None:
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return None
+    if user.telegram_id:
+        request.session.pop(TELEGRAM_LINK_KEY, None)
+        return {"linked": True, "username": user.telegram_username}
+    token = request.session.get(TELEGRAM_LINK_KEY)
+    if token and telegram.link_owner(token) != user:
+        # Spent, expired or replaced: the page offers a fresh link instead.
+        request.session.pop(TELEGRAM_LINK_KEY, None)
+        token = None
+    return {
+        "linked": False,
+        "token": token,
+        "deep_link": telegram.deep_link(token) if token else "",
+        "bot": settings.TELEGRAM_BOT_USERNAME,
+    }
+
+
+@never_cache
+@login_required
+@require_POST
+def account_telegram(request: HttpRequest) -> HttpResponse:
+    user = cast(User, request.user)
+    action = request.POST.get("action")
+    if action == "link" and settings.TELEGRAM_BOT_TOKEN:
+        request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
+    elif action == "unlink":
+        telegram.unlink(user)
+        request.session.pop(TELEGRAM_LINK_KEY, None)
+        messages.success(request, "اتصال تلگرام قطع شد.")
+    return redirect(reverse("account") + "#telegram")
 
 
 @never_cache
