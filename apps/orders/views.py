@@ -15,7 +15,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
-from apps.orders.models import OrderItem, OrderSupportIdentifier
+from apps.orders.models import OrderSupportIdentifier
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
@@ -62,23 +62,6 @@ def detail(request: HttpRequest, order_number: int) -> HttpResponse:
 def _render_detail(
     request: HttpRequest, summary: dict[str, Any], *, error: str = "", status: int = 200
 ) -> HttpResponse:
-    states = {line["status"] for group in summary["groups"] for line in group["lines"]}
-    next_step = next(
-        (
-            state
-            for state in (
-                OrderItem.Status.AWAITING_INPUT,
-                OrderItem.Status.PENDING_PAYMENT,
-                OrderItem.Status.REPLACEMENT_REQUESTED,
-                OrderItem.Status.QUEUED,
-                OrderItem.Status.CANCELLED,
-                OrderItem.Status.DELIVERED,
-                OrderItem.Status.REFUNDED,
-            )
-            if state in states
-        ),
-        "",
-    )
     try:
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
     except ImproperlyConfigured:
@@ -91,7 +74,6 @@ def _render_detail(
             "timeline": customer_timeline(summary["order"]),
             "section": "orders",
             "error": error,
-            "next_step": next_step,
             "support_identifier": support_identifier,
         },
         status=status,
