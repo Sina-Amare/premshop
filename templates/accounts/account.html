@@ -1,4 +1,4 @@
-{% extends "accounts/_account_base.html" %}{% load fa %}
+{% extends "accounts/_account_base.html" %}{% load fa static %}
 
 {% block title %}اطلاعات حساب{% endblock %}
 {% block heading %}اطلاعات حساب{% endblock %}
@@ -51,7 +51,7 @@
   <button type="submit" name="action" value="unlink" class="btn btn--secondary">قطع اتصال</button>
 </form>
 {% elif telegram.token %}
-<div class="acct__next">
+<div class="acct__next" data-telegram-wait="{% url 'account-telegram-state' %}">
   <div>
     <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. اعتبار این پیوند ۱۰ دقیقه است.</p>
     <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
@@ -60,6 +60,7 @@
   </div>
   <a class="btn btn--primary" href="{{ telegram.deep_link }}" rel="noopener">باز کردن تلگرام</a>
 </div>
+<script src="{% static 'js/telegram-link.js' %}" defer></script>
 {% else %}
 <div class="acct__next">
   <div>

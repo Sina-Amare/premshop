@@ -12,6 +12,7 @@ from huey.contrib.djhuey import HUEY
 from apps.accounts import tasks as account_tasks
 from apps.accounts import telegram as links
 from apps.accounts.models import User
+from apps.accounts.views import TELEGRAM_LINK_KEY
 from apps.core import ratelimit
 from apps.core import telegram as telegram_api
 
@@ -204,6 +205,45 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     assert settings.SITE_URL + reverse("account") in payload["text"]
     assert "@premshop_support" in payload["text"]
     assert User.objects.get(pk=user.pk).telegram_id is None
+
+
+@pytest.mark.parametrize("text", ["/start", "سلام"])
+def test_a_linked_telegram_is_told_it_is_linked_not_asked_to_link(bot, user, text):
+    User.objects.filter(pk=user.pk).update(telegram_id=555)
+    links.handle_update(start(text))
+    method, payload = bot[-1]
+    assert method == "sendMessage"
+    assert payload["text"].startswith(f"<b>{links.ALREADY}</b>")
+    assert "@premshop_support" in payload["text"]
+    assert "اتصال حساب در سایت" not in payload["text"]
+
+
+def test_the_waiting_page_can_ask_whether_the_link_went_through(bot, client, user):
+    client.force_login(user)
+    state = reverse("account-telegram-state")
+    assert client.get(state).json() == {"state": "unlinked"}
+    client.post(reverse("account-telegram"), {"action": "link"})
+    waiting = client.get(state)
+    assert waiting.json() == {"state": "waiting"}
+    assert "no-store" in waiting["Cache-Control"]
+    assert f'data-telegram-wait="{state}"' in client.get(reverse("account")).content.decode()
+    links.confirm_link(client.session[TELEGRAM_LINK_KEY], {"id": 555, "username": "buyer_tg"})
+    assert client.get(state).json() == {"state": "linked"}
+    assert "data-telegram-wait" not in client.get(reverse("account")).content.decode()
+
+
+def test_a_link_left_to_expire_ends_the_wait(bot, client, user):
+    client.force_login(user)
+    client.post(reverse("account-telegram"), {"action": "link"})
+    with time_machine.travel(timezone.now() + timedelta(seconds=links.LINK_SECONDS + 1)):
+        assert client.get(reverse("account-telegram-state")).json() == {"state": "unlinked"}
+
+
+def test_the_link_state_is_the_signed_in_customers_own_and_read_only(client, user):
+    state = reverse("account-telegram-state")
+    assert client.get(state).status_code == 302
+    client.force_login(user)
+    assert client.post(state).status_code == 405
 
 
 def test_groups_and_channels_link_nothing(bot, user):

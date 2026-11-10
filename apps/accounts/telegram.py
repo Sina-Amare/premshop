@@ -41,6 +41,12 @@ LINKED = (
     '<a href="{account}">مدیریت اتصال در سایت</a>'
 )
 ALREADY = "این تلگرام به حساب پرم‌شاپ شما وصل است."
+HOME = (
+    "<b>" + ALREADY + "</b>\n"
+    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا می‌رسد.\n"
+    "پیام‌های این گفت‌وگو خوانده نمی‌شوند. برای پرسش به @{support} پیام بدهید.\n"
+    '<a href="{account}">مدیریت اتصال در سایت</a>'
+)
 LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
 EXPIRED = 'این پیوند دیگر معتبر نیست.\n<a href="{account}">دریافت پیوند جدید</a>'
 POINTER = (
@@ -192,6 +198,10 @@ def _messaged(message: dict[str, Any]) -> None:
         )
     elif command == "/start" and token:
         telegram.send_message(chat_id, EXPIRED.format(account=_account_url()))
+    elif User.objects.filter(telegram_id=chat_id).exists():
+        telegram.send_message(
+            chat_id, HOME.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
+        )
     else:
         telegram.send_message(
             chat_id, POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)

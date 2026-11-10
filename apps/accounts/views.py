@@ -15,7 +15,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts import services, telegram
 from apps.accounts.forms import (
@@ -330,6 +330,17 @@ def _telegram_section(request: HttpRequest, user: User) -> dict[str, object] | N
         "deep_link": telegram.deep_link(token) if token else "",
         "bot": settings.TELEGRAM_BOT_USERNAME,
     }
+
+
+@never_cache
+@login_required
+@require_GET
+def account_telegram_state(request: HttpRequest) -> JsonResponse:
+    """What the waiting page asks until the bot's confirm goes through or the link expires."""
+    section = _telegram_section(request, cast(User, request.user)) or {}
+    if section.get("linked"):
+        return JsonResponse({"state": "linked"})
+    return JsonResponse({"state": "waiting" if section.get("token") else "unlinked"})
 
 
 @never_cache
