@@ -216,7 +216,9 @@ HUEY = {
     "connection": {"url": REDIS_URL},
     "immediate": False,
     "results": False,
-    "consumer": {"workers": 1, "worker_type": "thread"},
+    # Two threads: the Telegram poll holds one for most of each minute. flush_locks
+    # clears a lock left by a worker killed mid-task, which never ran its release.
+    "consumer": {"workers": 2, "worker_type": "thread", "flush_locks": True},
 }
 
 # OTP codes and rate-limit counters go through Django's cache API rather than a
@@ -264,6 +266,14 @@ SERVER_EMAIL = env("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 # The address customers are told to write to, and the Reply-To on every message.
 # Separate from DEFAULT_FROM_EMAIL, which carries a display name and may change.
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", "premshop.support@gmail.com")
+
+# The shop's Telegram bot: customers link it from the account page and receive order
+# notices there. A blank token switches Telegram off entirely.
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN")
+TELEGRAM_BOT_USERNAME = env("TELEGRAM_BOT_USERNAME").lstrip("@")
+if TELEGRAM_BOT_TOKEN and not TELEGRAM_BOT_USERNAME:
+    # Without it every link the account page opens points at nobody.
+    raise ImproperlyConfigured("TELEGRAM_BOT_TOKEN needs TELEGRAM_BOT_USERNAME. See .env.example.")
 
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
 # EHLO name. Left alone it stamps the machine's own hostname into every customer's
