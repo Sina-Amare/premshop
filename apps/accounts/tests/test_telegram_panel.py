@@ -105,6 +105,23 @@ def test_a_spent_limit_stops_messages_opening_panels(bot, linked):
     assert bot.calls == []
 
 
+def test_a_late_answer_still_redraws_the_panel(bot, linked):
+    # After an outage a press is answered past Telegram's window: the answer fails, the edit
+    # must not.
+    bot.failing.add("answerCallbackQuery")
+    links.handle_update(press("p:orders"))
+    assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
+
+
+def test_a_late_answer_still_links_and_says_so(bot):
+    user = User.objects.create_user("late-confirm@example.test")
+    token = links.start_link(user)
+    bot.failing.add("answerCallbackQuery")
+    links.handle_update(press(f"link:{token}"))
+    assert methods(bot)[-1] == "editMessageText"
+    assert User.objects.get(pk=user.pk).telegram_id == 555
+
+
 def test_panel_presses_in_a_group_do_nothing(bot, linked):
     links.handle_update(press("p:orders", chat_type="group"))
     assert bot.calls == []

@@ -252,8 +252,15 @@ def _pressed(callback: dict[str, Any]) -> None:
         text = ALREADY
     else:
         text = EXPIRED.format(account=_account_url())
-    telegram.answer_callback(callback["id"])
+    _answer(callback["id"])
     telegram.edit_message(chat_id, message["message_id"], text)
+
+
+def _answer(callback_id: str, text: str = "") -> None:
+    # A press queued through an outage is answered past Telegram's window, which refuses
+    # it; the press itself must still be carried out.
+    with suppress(telegram.TelegramError):
+        telegram.answer_callback(callback_id, text=text)
 
 
 def _panel_key(chat_id: int) -> str:
@@ -283,14 +290,14 @@ def _pressed_panel(callback: dict[str, Any], chat_id: int, message_id: int, scre
     # Every press asks again whose Telegram this is: the button itself proves nothing.
     user = User.objects.filter(telegram_id=presser, is_active=True).first()
     if user is None:
-        telegram.answer_callback(callback["id"])
+        _answer(callback["id"])
         pointer = POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
         telegram.edit_message(chat_id, message_id, pointer)
         return
     if not ratelimit.hit(ratelimit.TELEGRAM_PANEL_PRESSES, str(presser)):
-        telegram.answer_callback(callback["id"], text=SLOW)
+        _answer(callback["id"], SLOW)
         return
-    telegram.answer_callback(callback["id"])
+    _answer(callback["id"])
     text, buttons = _screen(user, screen)
     telegram.edit_message(chat_id, message_id, text, buttons=buttons)
 
