@@ -98,7 +98,9 @@ def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, sta
     assert sentence in text
 
 
-@pytest.mark.parametrize("screen", ["o:{other}", "o:x", "o:", "o:-1", "o:" + "9" * 30, "o:²", "nonsense"])
+@pytest.mark.parametrize(
+    "screen", ["o:{other}", "o:x", "o:", "o:-1", "o:" + "9" * 30, "o:²", "nonsense"]
+)
 def test_a_screen_naming_no_order_of_the_customers_shows_the_home(buyer, plan, screen):
     other = placed(User.objects.create_user("other@example.test"), plan)
     text, _ = telegram_panel.render(buyer, screen.format(other=other.order_number))
