@@ -1,3 +1,4 @@
+import logging
 import queue
 import threading
 from datetime import timedelta
@@ -13,6 +14,7 @@ from apps.accounts.models import User
 from apps.core import telegram as telegram_api
 from apps.core.email_log import MailQuotaExceeded
 from apps.notifications import services
+from apps.notifications import tasks as notification_tasks
 from apps.notifications.models import ConfirmationSweep, Notification
 from apps.notifications.tasks import send_order_notifications
 from apps.orders import services as orders
@@ -115,11 +117,38 @@ def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, pl
     assert "\nمهلت جدید: " in text
 
 
+def test_catalogue_text_is_escaped_in_the_notice(buyer, plan, telegram):
+    # Unescaped, a product named with a tag or an ampersand makes Telegram refuse every
+    # notice about it, and a refused notice fails for good.
+    linked(buyer)
+    plan.product.name = "<b>&"
+    plan.product.save(update_fields=["name"])
+    order = placed(buyer, plan)
+    due = timezone.now() + timedelta(days=1)
+    services.enqueue_event("supply_delayed", 64, order.pk, item_id=order.items.get().pk, due_at=due)
+    assert "محصول: &lt;b&gt;&amp;، " in Notification.objects.get(channel="telegram").text_body
+
+
 def test_an_update_starts_a_send_at_once(buyer, plan, telegram):
     # The minute run stays the retry; a fresh notice should not wait for it.
     linked(buyer)
     services.enqueue_event("payment_confirmed", 61, placed(buyer, plan).pk)
     assert any("send_order_notifications" in task.name for task in HUEY.pending())
+
+
+def test_a_refused_send_now_leaves_the_notice_to_the_minute_run(
+    buyer, plan, telegram, monkeypatch, caplog
+):
+    def refused():
+        raise ConnectionError("queue unreachable")
+
+    monkeypatch.setattr(notification_tasks, "send_order_notifications", refused)
+    linked(buyer)
+    with caplog.at_level(logging.WARNING, logger="apps.notifications.services"):
+        services.enqueue_event("payment_confirmed", 65, placed(buyer, plan).pk)
+    # Both rows are saved and the minute run sends them: only the head start is lost.
+    assert Notification.objects.filter(status="pending").count() == 2
+    assert [r.levelname for r in caplog.records if r.name == services.logger.name] == ["WARNING"]
 
 
 def test_a_telegram_row_is_sent(queued, telegram):
