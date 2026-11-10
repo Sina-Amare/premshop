@@ -95,6 +95,16 @@ def test_panel_presses_are_limited_per_telegram(bot, linked):
     assert methods(bot) == ["answerCallbackQuery"] and bot.calls[0][1]["text"]
 
 
+def test_a_spent_limit_stops_messages_opening_panels(bot, linked):
+    # Each panel costs queries and Telegram calls: a scripted /start loop must not keep the
+    # one poll loop busy while other customers wait.
+    for _ in range(ratelimit.TELEGRAM_PANEL_PRESSES.times):
+        links.handle_update(press("p:home"))
+    bot.calls.clear()
+    links.handle_update(start("/start"))
+    assert bot.calls == []
+
+
 def test_panel_presses_in_a_group_do_nothing(bot, linked):
     links.handle_update(press("p:orders", chat_type="group"))
     assert bot.calls == []

@@ -216,6 +216,10 @@ def _messaged(message: dict[str, Any]) -> None:
     elif command == "/start" and token:
         telegram.send_message(chat_id, EXPIRED.format(account=_account_url()))
     elif (linked := User.objects.filter(telegram_id=chat_id, is_active=True).first()) is not None:
+        # Messages spend the presses' budget: a panel costs queries and Telegram calls, and
+        # a scripted /start loop would keep the one poll loop from other customers.
+        if not ratelimit.hit(ratelimit.TELEGRAM_PANEL_PRESSES, str(chat_id)):
+            return
         _open_panel(chat_id, linked)
         if command.startswith("/"):
             # The customer's own command goes too: the chat keeps the panel and the notices.
