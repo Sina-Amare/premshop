@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import timedelta
 
 import pytest
@@ -390,6 +391,28 @@ def test_a_killed_workers_lock_is_flushed_when_the_worker_starts(settings, polls
     HUEY.flush_locks()  # what run_huey's consumer runs as it starts
     account_tasks.poll_telegram.call_local()
     assert polls == [1]
+
+
+@pytest.mark.parametrize("started", [None, -account_tasks.STUCK_SECONDS - 1])
+def test_a_lock_with_no_poll_behind_it_is_reported_and_cleared(polls, caplog, started):
+    # Its release can fail (the store down as a poll ends), leaving the lock to nobody.
+    HUEY.put_if_empty(POLL_LOCK, "1")
+    if started is not None:
+        cache.set(account_tasks.STARTED_KEY, time.time() + started, timeout=None)
+    with caplog.at_level(logging.ERROR, logger="apps.accounts.tasks"):
+        assert account_tasks.poll_telegram.call_local() == 0
+    assert "lock" in caplog.text and not HUEY.storage.has_data_for_key(POLL_LOCK)
+    account_tasks.poll_telegram.call_local()
+    assert polls == [1]
+
+
+def test_a_live_poll_keeps_its_lock(polls, caplog):
+    HUEY.put_if_empty(POLL_LOCK, "1")
+    cache.set(account_tasks.STARTED_KEY, time.time(), timeout=None)
+    with caplog.at_level(logging.WARNING, logger="apps.accounts.tasks"):
+        assert account_tasks.poll_telegram.call_local() == 0
+    assert HUEY.storage.has_data_for_key(POLL_LOCK)
+    assert (caplog.records, polls) == ([], [])
 
 
 def test_each_poll_queues_the_next_once_its_lock_is_free(polls, monkeypatch):
