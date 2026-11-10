@@ -245,7 +245,7 @@ The purchase confirmation is found by polling committed orders, not by an event,
 | `item_refunded` | A12 | The customer after a transfer is recorded |
 | `item.cancellation_requested` (planned; policy unresolved) | A future approved request flow | The operator |
 
-No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). Single-use delivery links, Telegram messages, timed input handling and gateway-failure notices remain planned separately.
+No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). A customer who linked Telegram also receives each customer message there, as its subject and the order link. Single-use delivery links, timed input handling and gateway-failure notices remain planned separately.
 
 ## Tests
 

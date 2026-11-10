@@ -28,6 +28,7 @@ flowchart LR
   worker --> redis
   web -->|SMTP| relay[SMTP2GO]
   worker -->|SMTP| relay
+  worker -->|HTTPS, long polling| telegram[Telegram Bot API]
   web -.->|error reports| glitchtip[GlitchTip]
 ```
 
@@ -35,7 +36,7 @@ flowchart LR
 |---|---|
 | nginx | Terminates TLS, serves the hashed static files, forwards everything else to `web`, and answers with a maintenance page while `web` is down. It sets `X-Real-IP`, the only client address the application trusts. |
 | web | Django under gunicorn as a non-root user: the storefront, the customer pages and the operator panel. |
-| worker | One Huey consumer (`manage.py run_huey`) for the [scheduled jobs](#background-jobs). |
+| worker | One Huey consumer (`manage.py run_huey`), two threads, for the [scheduled jobs](#background-jobs), including the Telegram bot's poll. |
 | PostgreSQL | The system of record. Row locks and CHECK constraints are part of the design, so development and tests run on PostgreSQL as well. |
 | Redis | Django's cache: sign-in codes, rate-limit counters and Huey's queue. Nobody can sign in while it is down. |
 | SMTP2GO | The relay for every outgoing email ([ADR-0022](decisions/0022-transactional-email.md)). |
@@ -60,7 +61,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
 | `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, the staff reveal of customer input, and the operator's delivery of account details. |
 | `payments` | Checkout, payment/refund records, operator-only manual confirmation and recording completed refund transfers through the order editor, and daily reconciliation. The gateway is not built yet. |
-| `notifications` | Purchase confirmation emails through a durable outbox. |
+| `notifications` | Purchase confirmations and order updates through a durable outbox, by email and, for a customer who linked Telegram, by Telegram too. |
 
 Two rules keep the graph honest:
 
@@ -186,7 +187,8 @@ One Huey consumer runs these, scheduled in UTC:
 
 | Task | Schedule | Does |
 |---|---|---|
-| `notifications.tasks.send_order_notifications` | every minute | Finds new purchase confirmations and sends due order emails |
+| `notifications.tasks.send_order_notifications` | every minute | Finds new purchase confirmations and sends due order emails and Telegram messages |
+| `accounts.tasks.poll_telegram` | every minute | Long-polls the shop's Telegram bot for about 45 seconds and answers what arrives; a lock stops two polls overlapping |
 | `orders.tasks.sweep_unpaid_orders` | every minute | Releases up to 100 overdue unpaid orders, each in its own transaction, and records the sweep's time and backlog |
 | `cart.tasks.clean_guest_carts` | daily 03:00 | Deletes guest carts inactive for more than 30 days |
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
@@ -195,6 +197,7 @@ One Huey consumer runs these, scheduled in UTC:
 | `orders.tasks.clean_delivered_details` | daily 03:25 | Deletes delivered details and customer input past their retention deadline ([Retention](order-lifecycle.md#retention)), each item in its own transaction |
 
 - The queue name is derived from the database's host, port and name, never its credentials, so each database has its own consumer. Huey runs asynchronously in development too; tests use in-memory storage and run tasks explicitly.
+- The consumer runs two threads, so the Telegram poll never holds back the minute sender, and it flushes task locks as it starts (`flush_locks`). A worker killed mid-poll never releases its lock, and Redis keeps it across the restart.
 - A stopped worker delays releases but never corrupts them: checkout still validates stock and deadlines under locks, and a restarted worker catches up from the stored deadlines. The panel's order list warns when the last successful sweep is more than three minutes old. `/healthz` checks the database and the cache, not the worker.
 
 ## Email
@@ -222,6 +225,12 @@ Every message is three templates under `templates/email/` (`<name>.subject.txt`,
 **Purchase confirmations.** Every minute the worker finds committed orders that carry a placement email and have no confirmation yet, renders the message and freezes it in a `Notification` row under the unique key `purchase-confirmation:{order_pk}:email`. Sending is attempted six times: at once, then after 1, 5 and 15 minutes, 1 hour and 6 hours. A quota refusal pauses every send for 15 minutes without spending an attempt. An occasional duplicate after an uncertain SMTP result is accepted over a confirmation that never arrives ([ADR-0010](decisions/0010-event-log-and-notification-outbox.md)).
 
 **Order updates.** Explicit service calls register `core.events.emit` callbacks after commit. Each callback freezes an allowlisted message in the same outbox, keyed by template, payment/history occurrence, customer and email channel. Callback failures log IDs and exception classes, never free text, and cannot undo the committed action or stop another callback. Historical events are not replayed. Delivery links open the signed-in order detail; customer credential reveal and magic links remain planned. Purchase confirmations retry every failure; other messages stop at once only when every recipient is refused with a 5xx, and take the same ladder for every other failure, including the account's own login, sender and DATA rejections. All share the durable quota cooldown and the security-mail reserve. The accepted commit-to-enqueue crash gap applies to updates, not purchase-confirmation discovery.
+
+**Telegram.**
+- **Linking.** The account page's «اتصال تلگرام» issues a random, single-use ten-minute token. Only the account's newest token counts. The page offers it as a `t.me` link to the shop's bot, plus a `/start` line to send by hand. The bot shows the masked email and links only when its confirm button is pressed; spending the token is the cache delete that succeeds. The link and an unlink each email the account holder, and a Telegram linked elsewhere moves, telling its old account by email. Starting in the bot only points to the account page: the bot never sends a link that links on click, which a scammer could pass to a victim. Groups and channels link nothing.
+- **Receiving.** The worker long-polls the Bot API, since Telegram cannot call a server inside Iran or one with no public address. A connection outage logs one ERROR, then WARNINGs until it recovers.
+- **Sending.** Before each Telegram send, the sender locks the customer's row and drops the row as `binding_changed` unless the customer is still linked to the frozen chat. Unlinking waits for an in-flight send, which times out after five seconds. A 429 waits Telegram's `retry_after`; 400 and 403 fail at once; every other failure takes the six-attempt ladder. The mail quota wait holds email rows only.
+- **The token.** It is in every Bot API URL, so the client re-raises failures without the URL, and `redact_url` removes bot tokens from logs and error reports, breadcrumbs included. A blank `TELEGRAM_BOT_TOKEN` switches all of this off.
 
 No message carries a credential value or a customer's input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)).
 
@@ -261,7 +270,7 @@ The following are designed and bound by decisions, but not implemented:
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
 | The customer's view of delivered details and the single-use delivery link | [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
 | The reminders and timeout for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
-| The Telegram bot, operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
+| Operator alerts, sign-in codes over Telegram and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
 | The order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
 | An HTTP API | [ADR-0004](decisions/0004-no-drf-in-phase-1.md) |
 

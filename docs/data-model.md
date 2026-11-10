@@ -61,7 +61,8 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 - **Email is unique case-insensitively, in the database** (`user_email_case_insensitive_unique` on `Lower(email)`), not only in the manager, because the panel, a shell or a data import can reach the table without the manager.
 - An account created by a sign-in code has an unusable password until the customer sets one.
 - `is_staff` is the operator. There are no roles beyond it.
-- `phone` is optional. `telegram_id`, `telegram_username` and `telegram_linked_at` are reserved for the Telegram link, which is not built yet.
+- `phone` is optional.
+- `telegram_id`, `telegram_username` and `telegram_linked_at` hold the customer's linked Telegram. They are set when the customer confirms a link in the shop's bot and cleared on unlink. `telegram_id` is unique, so a Telegram account linked to a second shop account leaves the first.
 - Sign-in codes live in Redis with an expiry, not in a table.
 
 ### catalog
@@ -199,6 +200,8 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 
 **Notification** is one frozen order email: its `template_name`, recipient, subject, and plain-text and HTML bodies. Purchase confirmations retain `dedupe_key` `purchase-confirmation:{order_pk}:email`; event updates use `{template_name}:{occurrence_id}:user:{user_id}:email`, with a payment ID for order-level confirmation and an item-history ID for other occurrences. It records `status` (`pending`, `sent` or `failed`), `attempts` (at most six), `next_attempt_at`, its timestamps, and the error class and numeric SMTP code of the last failure. No customer input, credential, operator note or raw SMTP reply is stored. Old rows default to purchase confirmation; no historical updates are enqueued.
 
+`channel` is `email` or `telegram`. For a customer with a linked Telegram, each update also gets a `telegram` row under the same key ending in `:telegram`. That row has no recipient, subject or HTML body: `chat_id` freezes the chat linked when the row was queued, and `text_body` holds the subject and the order link. `notification_channel_recipient` requires a `chat_id` on Telegram rows and forbids one on email rows. The purchase confirmation stays email-only.
+
 **ConfirmationSweep** is a single row holding `quota_wait_until`, the pause every sender shares after a quota refusal.
 
 ### core
@@ -241,7 +244,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
-| Notification | `notification_template_valid`, `notification_status_valid`, `notification_attempts_bounded` |
+| Notification | `notification_template_valid`, `notification_status_valid`, `notification_attempts_bounded`, `notification_channel_recipient` |
 | MailAttempt | `mail_attempt_known_status` |
 | UnpaidExpirySweep, ConfirmationSweep | `unpaid_sweep_singleton`, `confirmation_sweep_singleton` |
 
