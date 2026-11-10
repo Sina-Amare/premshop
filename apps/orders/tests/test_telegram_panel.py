@@ -1,3 +1,4 @@
+import json
 import re
 
 import pytest
@@ -11,6 +12,7 @@ from apps.orders import services as orders
 from apps.orders import telegram_panel
 from apps.orders.models import OrderItem
 from apps.orders.selectors import customer_summary
+from apps.orders.tests.test_delivery import NOTE, VALUE, deliver, queued
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.payments.services import record_manual_payment
 
@@ -116,6 +118,15 @@ def test_no_screen_carries_input_or_a_way_to_pay(buyer, plan, settings):
         assert "SECRET-INPUT" not in text
         # Telegram requires its Stars for goods sold inside a bot: the bot only points to pages.
         assert set(links_in(text, buttons)) <= allowed
+
+
+def test_a_delivered_credential_stays_off_every_screen(buyer, plan, operator):
+    order, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    for screen in ["home", "orders", f"o:{order.order_number}"]:
+        text, buttons = telegram_panel.render(buyer, screen)
+        shown = text + json.dumps(buttons, ensure_ascii=False)
+        assert VALUE not in shown and "note-secret-K9" not in shown
 
 
 def test_catalogue_text_is_escaped_in_every_screen(buyer, plan):
