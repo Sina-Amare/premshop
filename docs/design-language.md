@@ -142,36 +142,53 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
-The register follows the surface:
+### Building a line
+
+The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت، پشتیبانی، تحویل و گزارش هر سفارش را هم در تلگرام پیگیری کنید.»
+
+- **Content first, then one verb.** Name the concrete things, then the one verb that acts on them.
+- **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
+- **Whole sentences a person would say,** never clipped fragments: «پرداختتان نیمه‌کاره مانده؟», not «پرداخت نیمه‌کاره؟».
+- **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
+- **Short sentences, one idea each.** A chain of «که» clauses becomes two sentences.
+
+### Register
+
+The owner set the split on 2026-11-10: conversational Persian belongs to the FAQ, where a buyer's question reads best in their own words; every other surface is written.
 
 | Surface | Register |
 |---|---|
-| Promotional text, guidance, empty states, account hints, buyers' own questions | Respectful conversational Persian: «می‌تونید», «رو», «می‌شه» |
-| Buttons, navigation, field labels | Short and neutral |
-| Prices, payment, delivery, warranty, refunds, deadlines, consequential errors, security emails | Precise written Persian, even inside conversational surroundings |
+| The FAQ: questions as buyers ask them, and the answers | Polite conversational Persian: «می‌تونید», «رو», «می‌شه», «تومن» |
+| Pages, product content, cart and checkout, account and order pages, emails, bot messages, error pages | Standard written Persian, natural and polite: «می‌توانید», «را», «می‌شود» |
+| Buttons, navigation, field labels | Short and neutral; a button is a verb that names what happens |
+| The operator panel | Standard written Persian; labels are noun phrases |
 | SEO text, articles, legal pages | Standard written Persian, without bureaucratic verbs |
 
-Rules for every register:
+A conversational FAQ answer still states money, time and warranty exactly: its commitment keeps all three parts below.
 
-- **Address** is «شما» with «ـید»: «می‌تونید», never «می‌تونین». Never «تو», «واسه» or «می‌باشه».
+### Rules for every register
+
+- **Address** is «شما» with «ـید»: «می‌توانید» (in the FAQ, «می‌تونید»), never «می‌تونین», «تو», «واسه» or «می‌باشه». The verb carries the address; «شما» is not repeated in every sentence.
+- **One point of view:** facts are stated impersonally, the reader is addressed by the verb, and «ما» is only for what the shop itself does.
+- **One register per sentence:** «حسابتان» with «می‌توانید» ✓ · «حسابتون» with «می‌تونید» in the FAQ ✓ · «حسابتان» with «می‌تونید» ✗.
 - **No bureaucratic markers:** «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», or a passive with «توسط».
-- **Spelling never relaxes.** A half-space in «می‌» and «ها», and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»). A clitic joins with no space, except after ه («شماره‌تان»). «تأیید» has one spelling.
-- **One possessive form per sentence:** «حسابتون» with «می‌تونید» ✓ · «حساب شما» with «می‌تونید» ✓ · «حسابتان» with «می‌تونید» ✗.
+- **Spelling never relaxes.** A half-space in «می‌» and «ها», and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»), never «ـهٔ». A clitic joins with no space, except after ه («شماره‌تان»). «تأیید» has one spelling. Persian «ی» and «ک», never Arabic «ي» and «ك».
+- **A Persian line never opens with a Latin word:** Telegram, plain-text email and many editors set a line's direction from its first letter. «سرویس Netflix …», not «Netflix …».
 - **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional is never how money is promised.
 - **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each promise beside its condition, and `apps/catalog/tests/test_promises.py` checks every public product. A warranty, refund or replacement belongs to the product whose verified terms support it.
 - **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbs that name what happens. Explanation belongs in the FAQ and the product's questions.
-- **Say a limit the way a person would:** «از این گزینه تا ۳ تا می‌تونید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
+- **Say a limit the way a person would:** «از این گزینه تا ۳ اشتراک می‌توانید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
 - **Numbers, not adjectives:** «تا ۱۲ ساعت», never «سریع» or «در کمترین زمان ممکن», and no superlative a number could replace («بهترین», «سریع‌ترین»).
 - **Product and tool names stay in English** wherever a customer reads them. Persian spellings appear only in search aliases and page titles, because shoppers search with them.
-- **«تومان» everywhere**; «تومن» only in a Telegram message.
+- **«تومان» everywhere,** except a conversational FAQ answer, which may say «تومن».
 - **Operator text is a field of its own:** a template adds nothing before or after it. A field that sits inside a fixed sentence takes a noun phrase, and its hint in the panel shows the sentence it lands in.
 - **Punctuation:** «،», «؟» and «» always; at most one «؛» on a page; no em dash in Persian text or in a page title.
 - **Length is a target, not a cap.** A yes-or-no answer aims at two sentences and about 25 words, and every FAQ answer is held to two sentences and 30 words. Product content has no cap, and a sentence that commits money is never cut to make an answer shorter.
-- **Questions buyers actually have.** An FAQ answers whether the account is shared, whether they must hand over a password, what happens if access is cut mid-period, whether it works from an Iranian IP address, and how they know the money is safe; not what the shop finds easy to say. A question appears only where it means something: a gift card has no mid-period question.
+- **Questions buyers actually have,** asked in the buyer's own words: whether the account is shared, whether they must hand over a password, what happens if access is cut mid-period, whether it works from an Iranian IP address, and how they know the money is safe; not what the shop finds easy to say. A question appears only where it means something: a gift card has no mid-period question.
 - **The market's own words:** seats are counted in «کاربره» («۲ کاربره»), never «ظرفیت»; streams are «پخش هم‌زمان: ۲ دستگاه»; account kinds are «نوع اکانت: اختصاصی / اشتراکی».
 - **Marketing leads with what the product does,** such as file analysis in ChatGPT Plus or background playback in YouTube Premium, explaining paid capacity without promising unlimited use. No founder story, lifestyle slogan, slang or invented evidence.
-- **Admit a limitation where there is one.** «Netflix را با آی‌پی ایران نمی‌شه باز کرد» does more for trust than any badge.
-- **Phrases that read as generated:** «همچنین», «علاوه بر این», «لازم به ذکر است», «با خیال راحت», «نگران نباشید», «به راحتی», «تنها با چند کلیک», «تجربه‌ای بی‌نظیر», «ما در پرم‌شاپ»; synonym pairs such as «امن و مطمئن»; and three facts in the same grammatical shape.
+- **Admit a limitation where there is one.** «سرویس Netflix با آی‌پی ایران باز نمی‌شود.» does more for trust than any badge.
+- **Phrases that read as generated:** «همچنین», «علاوه بر این», «لازم به ذکر است», «با خیال راحت», «نگران نباشید», «به راحتی», «تنها با چند کلیک», «تجربه‌ای بی‌نظیر», «ما در پرم‌شاپ», «در دنیای امروز», «نه تنها … بلکه»; synonym pairs such as «امن و مطمئن»; and three adjectives or claims in the same grammatical shape («سریع، آسان و مطمئن»). A list of concrete things, as in the owner's example above, is not this.
 
 ### Glossary
 
