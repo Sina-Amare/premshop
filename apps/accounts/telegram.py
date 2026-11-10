@@ -93,7 +93,8 @@ def confirm_link(token: str, sender: dict[str, Any]) -> User | None:
     cache.delete(_current_key(user.pk))
     telegram_id = int(sender["id"])
     username = str(sender.get("username") or "")
-    handle = f"@{username}" if username else str(sender.get("first_name") or "")
+    # Never the display name: it is free text, and a scammer can name theirs as the shop.
+    handle = f"@{username}" if username else str(telegram_id)
     with transaction.atomic():
         for holder in (
             User.objects.select_for_update(no_key=True)

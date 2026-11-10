@@ -98,6 +98,14 @@ def test_confirm_links_once_and_emails_the_holder(bot, user):
     assert not User.objects.filter(telegram_id=777).exists()
 
 
+def test_the_alert_never_names_a_telegram_by_its_display_name(bot, user):
+    # A display name is free text: a scammer can call theirs «پشتیبانی رسمی PremShop».
+    links.confirm_link(links.start_link(user), {"id": 555, "first_name": "پشتیبانی رسمی PremShop"})
+    message = mail.outbox[0]
+    for part in (message.body, message.alternatives[0][0]):
+        assert "رسمی" not in part and "555" in part
+
+
 def test_a_second_press_after_linking_says_it_is_already_linked(bot, user):
     token = links.start_link(user)
     links.handle_update(press(f"link:{token}"))
