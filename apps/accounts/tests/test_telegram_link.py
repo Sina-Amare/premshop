@@ -123,10 +123,11 @@ def test_changes_from_the_account_page_have_a_daily_limit(bot, client, user):
     refused = client.post(url, {"action": "link"}, follow=True)
     assert client.session["accounts.telegram_link"] == issued
     assert "برای امروز" in refused.content.decode()
+    # Unlinking is never refused: it is what the link alert tells a customer to do.
     linked(user)
     client.post(url, {"action": "unlink"})
-    assert User.objects.get(pk=user.pk).telegram_id == 555
-    assert mail.outbox == []
+    assert User.objects.get(pk=user.pk).telegram_id is None
+    assert [message.to for message in mail.outbox] == [[user.email]]
 
 
 def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):

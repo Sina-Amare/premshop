@@ -338,9 +338,9 @@ def _telegram_section(request: HttpRequest, user: User) -> dict[str, object] | N
 def account_telegram(request: HttpRequest) -> HttpResponse:
     user = cast(User, request.user)
     action = request.POST.get("action")
-    if action in ("link", "unlink") and not ratelimit.hit(
-        ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)
-    ):
+    # Unlink is never limited: it is what the link alert tells a customer to do, and only a
+    # linked account can send its email, each link already bounded below and in the bot.
+    if action == "link" and not ratelimit.hit(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)):
         messages.error(request, "سقف تغییر اتصال تلگرام برای امروز پر شده است.")
     elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
