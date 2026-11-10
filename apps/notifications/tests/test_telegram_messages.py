@@ -115,6 +115,18 @@ def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, pl
     assert "\nمهلت جدید: " in text
 
 
+def test_catalogue_text_is_escaped_in_the_notice(buyer, plan, telegram):
+    # Unescaped, a product named with a tag or an ampersand makes Telegram refuse every
+    # notice about it, and a refused notice fails for good.
+    linked(buyer)
+    plan.product.name = "<b>&"
+    plan.product.save(update_fields=["name"])
+    order = placed(buyer, plan)
+    due = timezone.now() + timedelta(days=1)
+    services.enqueue_event("supply_delayed", 64, order.pk, item_id=order.items.get().pk, due_at=due)
+    assert "محصول: &lt;b&gt;&amp;، " in Notification.objects.get(channel="telegram").text_body
+
+
 def test_an_update_starts_a_send_at_once(buyer, plan, telegram):
     # The minute run stays the retry; a fresh notice should not wait for it.
     linked(buyer)
