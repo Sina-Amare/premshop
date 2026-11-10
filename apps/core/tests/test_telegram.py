@@ -162,6 +162,34 @@ def test_a_connection_the_server_closed_is_replaced(api):
     assert len(api.connections) == 2 and api.connections[0].closed
 
 
+def test_panel_calls_carry_their_buttons_and_notes(api):
+    rows = [[{"text": "x", "callback_data": "p:home"}]]
+    telegram.edit_message(42, 7, "t", buttons=rows)
+    telegram.answer_callback("c", text="کمی صبر کنید.")
+    telegram.delete_message(42, 7)
+    telegram.edit_buttons(42, 7, [])
+    sent = [(path.rsplit("/", 1)[1], data) for _, path, data, _ in api.requests]
+    assert sent == [
+        (
+            "editMessageText",
+            {
+                "chat_id": 42,
+                "message_id": 7,
+                "text": "t",
+                "parse_mode": "HTML",
+                "link_preview_options": {"is_disabled": True},
+                "reply_markup": {"inline_keyboard": rows},
+            },
+        ),
+        ("answerCallbackQuery", {"callback_query_id": "c", "text": "کمی صبر کنید."}),
+        ("deleteMessage", {"chat_id": 42, "message_id": 7}),
+        (
+            "editMessageReplyMarkup",
+            {"chat_id": 42, "message_id": 7, "reply_markup": {"inline_keyboard": []}},
+        ),
+    ]
+
+
 def test_a_system_proxy_carries_the_connection_as_urllib_did(api, monkeypatch):
     # A VPN in proxy mode, or a relay set up as one: without it Telegram is out of reach.
     monkeypatch.setattr(telegram, "getproxies", lambda: {"https": "http://127.0.0.1:10809"})

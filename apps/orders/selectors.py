@@ -20,6 +20,17 @@ _STAGES = [
 ]
 
 
+_NEXT_STEPS = [
+    OrderItem.Status.AWAITING_INPUT,
+    OrderItem.Status.PENDING_PAYMENT,
+    OrderItem.Status.REPLACEMENT_REQUESTED,
+    OrderItem.Status.QUEUED,
+    OrderItem.Status.CANCELLED,
+    OrderItem.Status.DELIVERED,
+    OrderItem.Status.REFUNDED,
+]
+
+
 def current_unpaid_order(user: User) -> Order | None:
     pending = OrderItem.objects.filter(
         order_id=OuterRef("pk"), status=OrderItem.Status.PENDING_PAYMENT
@@ -55,9 +66,13 @@ def customer_orders(user: User) -> QuerySet[Order]:
     )
 
 
-def current_order(user: User) -> Order | None:
+def open_orders(user: User) -> QuerySet[Order]:
     active = OrderItem.objects.filter(order_id=OuterRef("pk"), status__in=_STAGES)
-    return customer_orders(user).filter(Exists(active)).first()
+    return customer_orders(user).filter(Exists(active))
+
+
+def current_order(user: User) -> Order | None:
+    return open_orders(user).first()
 
 
 def status_label(values: Iterable[str]) -> str:
@@ -119,6 +134,8 @@ def customer_summary(order: Order) -> dict[str, Any]:
         and statuses <= {OrderItem.Status.PENDING_PAYMENT, OrderItem.Status.CANCELLED},
         "overdue": OrderItem.Status.PENDING_PAYMENT in statuses
         and order.unpaid_expires_at <= timezone.now(),
+        # What the customer should know first: the order page and the bot's panel lead with it.
+        "next_step": next((state for state in _NEXT_STEPS if state in statuses), ""),
     }
 
 

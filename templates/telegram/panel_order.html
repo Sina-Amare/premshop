@@ -1,0 +1,11 @@
+{% load fa %}<b>سفارش {{ order.order_number|fa_digits }}</b>
+<blockquote>وضعیت: {{ status }}{% if next_step == "AWAITING_INPUT" %}
+اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید.{% elif next_step == "PENDING_PAYMENT" %}
+{% if overdue %}مهلت پرداخت تمام شده است.{% else %}مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}{% endif %}{% elif next_step == "CANCELLED" %}
+برای پیگیری پرداخت یا بازپرداخت، با پشتیبانی تماس بگیرید.{% elif next_step %}
+لازم نیست کاری انجام دهید.{% else %}
+برای پیگیری سفارش با پشتیبانی تماس بگیرید.{% endif %}</blockquote>
+{% for group in groups %}{% for line in group.lines %}محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}{% if line.quantity > 1 %}، {{ line.quantity|fa_digits }} عدد{% endif %}{% if mixed_status %}، {{ line.status_label }}{% endif %}
+{% endfor %}{% endfor %}مبلغ: {{ order.total_amount|toman_plain }} تومان
+تاریخ ثبت: {{ order.created_at|jalali }}، ساعت {{ order.created_at|date:"H:i"|fa_digits }}
+<a href="{{ order_url }}">مشاهده‌ی سفارش در سایت</a>

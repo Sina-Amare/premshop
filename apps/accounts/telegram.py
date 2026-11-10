@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 import secrets
 import time
+from collections.abc import Callable
+from contextlib import suppress
 from functools import partial
 from html import escape
 from typing import Any
@@ -32,6 +34,7 @@ logger = logging.getLogger(__name__)
 LINK_SECONDS = 10 * 60
 OFFSET_KEY = "telegram:update-offset"
 DOWN_KEY = "telegram:poll-down"
+COMMANDS_KEY = "telegram:commands"
 
 CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> در پرم‌شاپ را تأیید کنید."
 CONFIRM_BUTTON = "تأیید اتصال"
@@ -41,12 +44,26 @@ LINKED = (
     '<a href="{account}">مدیریت اتصال در سایت</a>'
 )
 ALREADY = "این تلگرام به حساب پرم‌شاپ شما وصل است."
-HOME = (
-    "<b>" + ALREADY + "</b>\n"
-    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا می‌رسد.\n"
-    "پیام‌های این گفت‌وگو خوانده نمی‌شوند. برای پرسش به @{support} پیام بدهید.\n"
-    '<a href="{account}">مدیریت اتصال در سایت</a>'
-)
+SLOW = "کمی صبر کنید و دوباره بزنید."
+COMMAND = "پنل سفارش‌ها"
+
+Screen = tuple[str, list[list[dict[str, Any]]]]
+# The orders app draws the panel's screens, since accounts may not import orders: it
+# registers `render(user, screen)` here as it starts (orders.apps).
+_panel: Callable[[User, str], Screen] | None = None
+
+
+def register_panel(render: Callable[[User, str], Screen]) -> None:
+    global _panel
+    _panel = render
+
+
+def _screen(user: User, name: str) -> Screen:
+    if _panel is None:
+        raise RuntimeError("The bot's panel is not registered")
+    return _panel(user, name)
+
+
 LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
 EXPIRED = 'این پیوند دیگر معتبر نیست.\n<a href="{account}">دریافت پیوند جدید</a>'
 POINTER = (
@@ -198,10 +215,16 @@ def _messaged(message: dict[str, Any]) -> None:
         )
     elif command == "/start" and token:
         telegram.send_message(chat_id, EXPIRED.format(account=_account_url()))
-    elif User.objects.filter(telegram_id=chat_id).exists():
-        telegram.send_message(
-            chat_id, HOME.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
-        )
+    elif (linked := User.objects.filter(telegram_id=chat_id, is_active=True).first()) is not None:
+        # Messages spend the presses' budget: a panel costs queries and Telegram calls, and
+        # a scripted /start loop would keep the one poll loop from other customers.
+        if not ratelimit.hit(ratelimit.TELEGRAM_PANEL_PRESSES, str(chat_id)):
+            return
+        _open_panel(chat_id, linked)
+        if command.startswith("/"):
+            # The customer's own command goes too: the chat keeps the panel and the notices.
+            with suppress(telegram.TelegramError):
+                telegram.delete_message(chat_id, int(message["message_id"]))
     else:
         telegram.send_message(
             chat_id, POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
@@ -214,7 +237,11 @@ def _pressed(callback: dict[str, Any]) -> None:
     if chat_id is None:
         return
     sender = callback["from"]
-    token = str(callback.get("data") or "").removeprefix("link:")
+    data = str(callback.get("data") or "")
+    if data.startswith("p:"):
+        _pressed_panel(callback, chat_id, int(message["message_id"]), data.removeprefix("p:"))
+        return
+    token = data.removeprefix("link:")
     if link_owner(token) is not None and not ratelimit.hit(
         ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM, str(sender["id"])
     ):
@@ -225,8 +252,67 @@ def _pressed(callback: dict[str, Any]) -> None:
         text = ALREADY
     else:
         text = EXPIRED.format(account=_account_url())
-    telegram.answer_callback(callback["id"])
+    _answer(callback["id"])
     telegram.edit_message(chat_id, message["message_id"], text)
+
+
+def _answer(callback_id: str, text: str = "") -> None:
+    # A press queued through an outage is answered past Telegram's window, which refuses
+    # it; the press itself must still be carried out.
+    with suppress(telegram.TelegramError):
+        telegram.answer_callback(callback_id, text=text)
+
+
+def _panel_key(chat_id: int) -> str:
+    return f"telegram-panel:{chat_id}"
+
+
+def _open_panel(chat_id: int, user: User) -> None:
+    text, buttons = _screen(user, "home")
+    sent = telegram.send_message(chat_id, text, buttons=buttons)
+    previous = cache.get(_panel_key(chat_id))
+    cache.set(_panel_key(chat_id), sent["message_id"], timeout=None)
+    if previous:
+        _retire(chat_id, previous)
+
+
+def _retire(chat_id: int, message_id: int) -> None:
+    """An old panel goes; past Telegram's 48 hours for deleting, it loses its buttons."""
+    try:
+        telegram.delete_message(chat_id, message_id)
+    except telegram.TelegramError:
+        with suppress(telegram.TelegramError):  # already gone: the customer deleted it
+            telegram.edit_buttons(chat_id, message_id, [])
+
+
+def _pressed_panel(callback: dict[str, Any], chat_id: int, message_id: int, screen: str) -> None:
+    presser = int(callback["from"]["id"])
+    # Every press asks again whose Telegram this is: the button itself proves nothing.
+    user = User.objects.filter(telegram_id=presser, is_active=True).first()
+    if user is None:
+        _answer(callback["id"])
+        pointer = POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
+        telegram.edit_message(chat_id, message_id, pointer)
+        return
+    if not ratelimit.hit(ratelimit.TELEGRAM_PANEL_PRESSES, str(presser)):
+        _answer(callback["id"], SLOW)
+        return
+    _answer(callback["id"])
+    text, buttons = _screen(user, screen)
+    telegram.edit_message(chat_id, message_id, text, buttons=buttons)
+
+
+def _list_commands() -> None:
+    # Once a day: the menu beside the message box lists /start.
+    if not cache.add(COMMANDS_KEY, True, timeout=24 * 60 * 60):
+        return
+    commands = [{"command": "start", "description": COMMAND}]
+    try:
+        telegram.call(
+            "setMyCommands", {"commands": commands, "scope": {"type": "all_private_chats"}}
+        )
+    except telegram.TelegramError:
+        cache.delete(COMMANDS_KEY)  # the next poll window tries again
 
 
 def poll(seconds: float = 55) -> int:
@@ -238,6 +324,7 @@ def poll(seconds: float = 55) -> int:
     """
     if not settings.TELEGRAM_BOT_TOKEN:
         return 0
+    _list_commands()
     deadline = time.monotonic() + seconds
     received = 0
     while True:
