@@ -32,7 +32,8 @@ def render(user: User, screen: str) -> tuple[str, Buttons]:
     if screen == "orders":
         return _orders(user)
     number = screen.removeprefix("o:")
-    if screen.startswith("o:") and number.isdigit():
+    # ASCII only: str.isdigit() also accepts «²», which int() refuses.
+    if screen.startswith("o:") and number.isascii() and number.isdigit():
         order = customer_orders(user).filter(order_number=int(number)).first()
         if order is not None:
             return _order(order)

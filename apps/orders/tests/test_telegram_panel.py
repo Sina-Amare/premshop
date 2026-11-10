@@ -72,7 +72,7 @@ def test_an_order_screen_shows_its_facts_and_its_page(buyer, plan, settings):
     ]
 
 
-@pytest.mark.parametrize("screen", ["o:{other}", "o:x", "o:", "o:-1", "o:" + "9" * 30, "nonsense"])
+@pytest.mark.parametrize("screen", ["o:{other}", "o:x", "o:", "o:-1", "o:" + "9" * 30, "o:²", "nonsense"])
 def test_a_screen_naming_no_order_of_the_customers_shows_the_home(buyer, plan, screen):
     other = placed(User.objects.create_user("other@example.test"), plan)
     text, _ = telegram_panel.render(buyer, screen.format(other=other.order_number))
