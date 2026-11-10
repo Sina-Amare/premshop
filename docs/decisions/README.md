@@ -34,7 +34,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0026](0026-storefront-composition.md) | Storefront composition; the current look is in the [design language](../design-language.md) | Accepted, amended | 2026-10-23 |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer | Accepted, amended | 2026-10-20 |
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds | Accepted, amended | 2026-10-31 |
-| [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-10-30 |
+| [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-11-10 |
 | [0030](0030-legal-page-drafts.md) | Legal pages with protected drafts | Accepted, amended | 2026-11-02 |
 
 ## Writing a record
