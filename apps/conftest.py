@@ -94,7 +94,7 @@ def memory_tasks(monkeypatch: Any) -> None:
 @pytest.fixture(autouse=True)
 def telegram_off(settings: Any) -> None:
     """Telegram is opt-in per test, whatever bot token the local .env holds."""
-    settings.TELEGRAM_BOT_TOKEN = ""
+    settings.TELEGRAM_BOT_TOKEN = ""  # nosec B105 - an empty token switches Telegram off
 
 
 @pytest.fixture(autouse=True)
