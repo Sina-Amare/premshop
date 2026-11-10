@@ -119,12 +119,33 @@ def send_message(
     return call("sendMessage", payload)
 
 
-def edit_message(chat_id: int, message_id: int, text: str) -> Any:
-    return call("editMessageText", {"chat_id": chat_id, "message_id": message_id, **_text(text)})
+def edit_message(
+    chat_id: int, message_id: int, text: str, *, buttons: list[list[dict[str, Any]]] | None = None
+) -> Any:
+    payload = {"chat_id": chat_id, "message_id": message_id, **_text(text)}
+    if buttons:
+        payload["reply_markup"] = {"inline_keyboard": buttons}
+    return call("editMessageText", payload)
 
 
-def answer_callback(callback_id: str) -> Any:
-    return call("answerCallbackQuery", {"callback_query_id": callback_id})
+def edit_buttons(chat_id: int, message_id: int, buttons: list[list[dict[str, Any]]]) -> Any:
+    markup = {"inline_keyboard": buttons}
+    return call(
+        "editMessageReplyMarkup",
+        {"chat_id": chat_id, "message_id": message_id, "reply_markup": markup},
+    )
+
+
+def delete_message(chat_id: int, message_id: int) -> Any:
+    return call("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
+
+
+def answer_callback(callback_id: str, *, text: str = "") -> Any:
+    """Stops the pressed button's spinner; `text` shows as a passing note."""
+    payload = {"callback_query_id": callback_id}
+    if text:
+        payload["text"] = text
+    return call("answerCallbackQuery", payload)
 
 
 def get_updates(offset: int | None, timeout: int) -> list[dict[str, Any]]:
