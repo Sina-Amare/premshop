@@ -80,11 +80,33 @@ def test_a_press_is_answered_first_then_redraws_the_panel(bot, linked):
 
 
 def test_a_press_from_a_telegram_no_longer_linked_shows_no_account(bot, linked, settings):
+    links.handle_update(start("/start"))
     User.objects.filter(pk=linked.pk).update(telegram_id=None)
     links.handle_update(press("p:orders"))
     edited = bot.calls[-1][1]
     assert "reply_markup" not in edited and "سفارش‌های من" not in edited["text"]
     assert settings.SITE_URL + reverse("account") in edited["text"]
+
+
+def test_a_deactivated_account_shows_nothing(bot, linked, settings):
+    User.objects.filter(pk=linked.pk).update(is_active=False)
+    links.handle_update(start("/start"))
+    links.handle_update(press("p:orders"))
+    shown = [p for m, p in bot.calls if m in ("sendMessage", "editMessageText")]
+    assert len(shown) == 2
+    # Both get the pointer to the account page, never a panel: no buttons to press.
+    assert all("reply_markup" not in payload for payload in shown)
+    assert all(settings.SITE_URL + reverse("account") in payload["text"] for payload in shown)
+
+
+def test_one_telegrams_spent_limit_leaves_another_alone(bot, linked):
+    other = User.objects.create_user("panel-two@example.test")
+    User.objects.filter(pk=other.pk).update(telegram_id=777)
+    for _ in range(ratelimit.TELEGRAM_PANEL_PRESSES.times):
+        links.handle_update(press("p:home"))
+    bot.calls.clear()
+    links.handle_update(press("p:orders", telegram_id=777))
+    assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
 
 
 def test_panel_presses_are_limited_per_telegram(bot, linked):

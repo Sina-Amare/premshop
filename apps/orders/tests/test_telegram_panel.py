@@ -42,6 +42,7 @@ def links_in(text, buttons):
 def test_home_names_the_account_and_counts_its_open_orders(buyer, plan, operator, settings):
     paid(placed(buyer, plan), operator)
     placed(buyer, plan)
+    placed(User.objects.create_user("stranger@example.test"), plan)
     text, buttons = telegram_panel.render(buyer, "home")
     assert mask_email(buyer.email) in text
     assert "سفارش‌های در جریان: ۲" in text
