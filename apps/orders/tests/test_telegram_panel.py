@@ -64,7 +64,7 @@ def test_an_order_screen_shows_its_facts_and_its_page(buyer, plan, settings):
     assert f"<b>سفارش {to_persian_digits(order.order_number)}</b>" in text
     assert "منتظر پرداخت" in text and "مهلت پرداخت: " in text
     assert "سرویس نمونه، یک ماهه" in text
-    assert "مبلغ نهایی: ۲۰۰,۰۰۰ تومان" in text
+    assert "مبلغ: ۲۰۰,۰۰۰ تومان" in text
     assert settings.SITE_URL + reverse("order-detail", args=[order.order_number]) in text
     assert buttons == [
         [{"text": "کپی شماره‌ی سفارش", "copy_text": {"text": str(order.order_number)}}],
@@ -102,6 +102,19 @@ def test_catalogue_text_is_escaped_in_every_screen(buyer, plan):
     for screen in ["orders", f"o:{order.order_number}"]:
         text, _ = telegram_panel.render(buyer, screen)
         assert "&lt;b&gt;&amp;" in text and "<b>&" not in text
+
+
+def test_no_panel_line_opens_with_a_latin_letter(buyer, plan):
+    # Telegram sets each line's direction from its first letter: a line opening with «Poe»
+    # turns left to right and scrambles its Persian (design-language, Voice).
+    plan.product.name = "Poe"
+    plan.product.save(update_fields=["name"])
+    order = placed(buyer, plan)
+    for screen in ["home", "orders", f"o:{order.order_number}"]:
+        text, _ = telegram_panel.render(buyer, screen)
+        for line in re.sub(r"<[^>]+>", "", text).splitlines():
+            letters = [char for char in line if char.isalpha()]
+            assert not letters or not letters[0].isascii(), line
 
 
 def test_a_customer_with_no_orders_is_told_so(buyer):

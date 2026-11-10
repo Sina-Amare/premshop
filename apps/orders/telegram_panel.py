@@ -49,28 +49,33 @@ def _home(user: User) -> tuple[str, Buttons]:
         },
     )
     return text.strip(), [
-        [{"text": "سفارش‌های من", "callback_data": "p:orders"}],
-        [{"text": "پشتیبانی", "url": f"https://t.me/{support.TELEGRAM_HANDLE}"}],
+        [
+            {"text": "سفارش‌های من", "callback_data": "p:orders"},
+            {"text": "پشتیبانی", "url": f"https://t.me/{support.TELEGRAM_HANDLE}"},
+        ]
     ]
 
 
 def _orders(user: User) -> tuple[str, Buttons]:
-    orders = customer_orders(user).order_by("-pk")[:RECENT]
-    summaries = [customer_summary(order) for order in orders]
+    rows = []
+    for order in customer_orders(user).order_by("-pk")[:RECENT]:
+        summary = customer_summary(order)
+        lines = [line for group in summary["groups"] for line in group["lines"]]
+        names = list(dict.fromkeys(line["facts"]["name"] for line in lines))
+        rows.append({"order": order, "status": summary["status"], "names": names})
     text = render_to_string(
-        "telegram/panel_orders.html",
-        {"summaries": summaries, "orders_url": _site("order-list")},
+        "telegram/panel_orders.html", {"rows": rows, "orders_url": _site("order-list")}
     )
-    rows = [
-        [
-            {
-                "text": f"سفارش {to_persian_digits(summary['order'].order_number)}",
-                "callback_data": f"p:o:{summary['order'].order_number}",
-            }
-        ]
-        for summary in summaries
+    buttons = [
+        {
+            "text": f"سفارش {to_persian_digits(row['order'].order_number)}",
+            "callback_data": f"p:o:{row['order'].order_number}",
+        }
+        for row in rows
     ]
-    return text.strip(), [*rows, [{"text": "بازگشت", "callback_data": "p:home"}]]
+    # Two to a row: five full-width buttons push the message off a phone's screen.
+    grid = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+    return text.strip(), [*grid, [{"text": "بازگشت", "callback_data": "p:home"}]]
 
 
 def _order(order: Order) -> tuple[str, Buttons]:
