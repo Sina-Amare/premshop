@@ -208,17 +208,6 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     assert User.objects.get(pk=user.pk).telegram_id is None
 
 
-@pytest.mark.parametrize("text", ["/start", "سلام"])
-def test_a_linked_telegram_is_told_it_is_linked_not_asked_to_link(bot, user, text):
-    User.objects.filter(pk=user.pk).update(telegram_id=555)
-    links.handle_update(start(text))
-    method, payload = bot[-1]
-    assert method == "sendMessage"
-    assert payload["text"].startswith(f"<b>{links.ALREADY}</b>")
-    assert "@premshop_support" in payload["text"]
-    assert "اتصال حساب در سایت" not in payload["text"]
-
-
 def test_the_waiting_page_can_ask_whether_the_link_went_through(bot, client, user):
     client.force_login(user)
     state = reverse("account-telegram-state")

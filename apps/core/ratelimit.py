@@ -48,6 +48,8 @@ SEARCH_SUGGEST_PER_IP = Limit("search-suggest:ip", times=120, seconds=60)
 # for sign-in codes: without a bound, one scripted account could spend it for everyone.
 TELEGRAM_CHANGES_PER_ACCOUNT = Limit("telegram:account", times=5, seconds=24 * 60 * 60)
 TELEGRAM_CONFIRMS_PER_TELEGRAM = Limit("telegram:confirm", times=5, seconds=24 * 60 * 60)
+# Each press of the bot's panel reads the database and makes two Telegram calls.
+TELEGRAM_PANEL_PRESSES = Limit("telegram:panel", times=60, seconds=60)
 
 
 def client_ip(request: HttpRequest) -> str:

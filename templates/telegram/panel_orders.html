@@ -1,0 +1,9 @@
+{% load fa %}<b>سفارش‌های من</b>{% for summary in summaries %}
+
+<b>سفارش {{ summary.order.order_number|fa_digits }}</b> · {{ summary.order.created_at|jalali }}
+{% for group in summary.groups %}{% for line in group.lines %}{% if not forloop.first or not forloop.parentloop.first %} · {% endif %}{{ line.facts.name }}، {{ line.facts.plan_title }}{% endfor %}{% endfor %}
+{{ summary.order.total_amount|toman_plain }} تومان · {{ summary.status }}{% empty %}
+
+هنوز سفارشی ثبت نکرده‌اید.{% endfor %}
+
+<a href="{{ orders_url }}">همه‌ی سفارش‌ها در سایت</a>
