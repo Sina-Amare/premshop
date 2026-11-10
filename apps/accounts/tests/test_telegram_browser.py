@@ -34,7 +34,10 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
             "href", re.compile(r"^https://t\.me/premshop_test_bot\?start=[\w-]{22}$")
         )
         token = opener.get_attribute("href").rsplit("=", 1)[1]
-        expect(page.get_by_text(f"/start {token}")).to_be_visible()
+        command = page.get_by_text(f"/start {token}")
+        expect(command).to_be_visible()
+        # Split over two lines, the command is easy to copy half of.
+        assert command.evaluate("el => el.getClientRects().length") == 1
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"telegram-{width}.png"), full_page=True)
     finally:

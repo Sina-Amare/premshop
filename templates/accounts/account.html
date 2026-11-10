@@ -54,7 +54,9 @@
 <div class="acct__next">
   <div>
     <p class="small flush">در تلگرام «شروع» را بزنید و اتصال را تأیید کنید. این پیوند ۱۰ دقیقه کار می‌کند.</p>
-    <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید: <bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
+    <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
+    {# A line of its own: split across two lines, the command is easy to copy half of. #}
+    <p class="small flush"><bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
   </div>
   <a class="btn btn--primary" href="{{ telegram.deep_link }}" rel="noopener">باز کردن تلگرام</a>
 </div>
