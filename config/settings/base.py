@@ -218,7 +218,9 @@ HUEY = {
     "results": False,
     # Two threads: the Telegram poll holds one for most of each minute. flush_locks
     # clears a lock left by a worker killed mid-task, which never ran its release.
-    "consumer": {"workers": 2, "worker_type": "thread", "flush_locks": True},
+    # max_delay: an idle worker looks at the queue at least every second, so a notice
+    # queued after a payment leaves within seconds rather than at the next minute's run.
+    "consumer": {"workers": 2, "worker_type": "thread", "flush_locks": True, "max_delay": 1.0},
 }
 
 # OTP codes and rate-limit counters go through Django's cache API rather than a

@@ -35,14 +35,18 @@ DOWN_KEY = "telegram:poll-down"
 
 CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> در پرم‌شاپ را تأیید کنید."
 CONFIRM_BUTTON = "تأیید اتصال"
-LINKED = "تلگرام شما به حساب پرم‌شاپ وصل شد.\nقطع اتصال: {account}"
+LINKED = (
+    "<b>تلگرام شما به حساب پرم‌شاپ وصل شد.</b>\n"
+    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.\n"
+    '<a href="{account}">مدیریت اتصال در سایت</a>'
+)
 ALREADY = "این تلگرام به حساب پرم‌شاپ شما وصل است."
 LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
-EXPIRED = "این پیوند دیگر معتبر نیست.\nدریافت پیوند جدید: {account}"
+EXPIRED = 'این پیوند دیگر معتبر نیست.\n<a href="{account}">دریافت پیوند جدید</a>'
 POINTER = (
-    "ربات اطلاع‌رسانی سفارش‌های پرم‌شاپ؛ پیام‌ها اینجا خوانده نمی‌شوند.\n"
-    "پشتیبانی: @{support}\n"
-    "اتصال حساب: {account}"
+    "<b>ربات اطلاع‌رسانی سفارش‌های پرم‌شاپ</b>\n"
+    "پیام‌های این گفت‌وگو خوانده نمی‌شوند. برای پرسش به @{support} پیام بدهید.\n"
+    '<a href="{account}">اتصال حساب در سایت</a>'
 )
 
 
@@ -215,7 +219,7 @@ def _pressed(callback: dict[str, Any]) -> None:
     telegram.edit_message(chat_id, message["message_id"], text)
 
 
-def poll(seconds: float = 45) -> int:
+def poll(seconds: float = 55) -> int:
     """Fetch and answer the bot's updates for about `seconds`. Returns how many arrived.
 
     Each update's offset is kept the moment it is handled, so a crash replays at most

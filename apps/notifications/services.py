@@ -1,12 +1,12 @@
 import logging
 from datetime import datetime, timedelta
-from html import escape
 from smtplib import SMTPException, SMTPRecipientsRefused, SMTPResponseException
 from typing import Any
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, OuterRef
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
@@ -86,11 +86,17 @@ def enqueue_event(
                 "template_name": template_name,
                 "channel": Notification.Channel.TELEGRAM,
                 "chat_id": order["user__telegram_id"],
-                "text_body": escape(subject, quote=False)
-                + "\n"
-                + escape(context["order_url"], quote=False),
+                "text_body": render_to_string(
+                    "telegram/order_update.html",
+                    {**context, "subject": subject, "template_name": template_name},
+                ).strip(),
             },
         )
+    # Send now instead of at the next minute's run, which stays the retry. Imported here
+    # because the tasks module imports this one.
+    from apps.notifications.tasks import send_order_notifications
+
+    send_order_notifications()
     return row
 
 

@@ -7,6 +7,7 @@ import pytest
 from django.db import OperationalError, connection, transaction
 from django.urls import reverse
 from django.utils import timezone
+from huey.contrib.djhuey import HUEY
 
 from apps.accounts.models import User
 from apps.core import telegram as telegram_api
@@ -68,7 +69,10 @@ def test_a_linked_customer_gets_an_email_row_and_a_telegram_row(
     assert row.dedupe_key == email.dedupe_key.removesuffix(":email") + ":telegram"
     assert (row.chat_id, row.recipient, row.subject, row.html_body) == (555, "", "", "")
     url = settings.SITE_URL + reverse("order-detail", args=[order.order_number])
-    assert row.text_body == f"{email.subject}\n{url}"
+    # A bold title, the facts as label and value, and a named link rather than a raw address.
+    assert row.text_body.startswith(f"<b>{email.subject}</b>\n")
+    assert "\nمبلغ: " in row.text_body and "تومان" in row.text_body
+    assert row.text_body.endswith(f'\n<a href="{url}">مشاهده‌ی سفارش</a>')
     assert "PRIVATE-BANK" not in row.text_body
 
 
@@ -95,7 +99,27 @@ def test_the_telegram_text_is_escaped(buyer, plan, telegram, monkeypatch):
     linked(buyer)
     monkeypatch.setattr(services, "render_email", lambda name, context: ("<b>&", "t", "<p>h</p>"))
     services.enqueue_event("payment_confirmed", 54, placed(buyer, plan).pk)
-    assert Notification.objects.get(channel="telegram").text_body.startswith("&lt;b&gt;&amp;\n")
+    assert Notification.objects.get(channel="telegram").text_body.startswith(
+        "<b>&lt;b&gt;&amp;</b>\n"
+    )
+
+
+def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, plan, telegram):
+    linked(buyer)
+    order = placed(buyer, plan)
+    item = order.items.get()
+    due = timezone.now() + timedelta(days=2)
+    services.enqueue_event("supply_delayed", 60, order.pk, item_id=item.pk, due_at=due)
+    text = Notification.objects.get(channel="telegram").text_body
+    assert f"\nمحصول: {item.product_snapshot['name']}" in text
+    assert "\nمهلت جدید: " in text
+
+
+def test_an_update_starts_a_send_at_once(buyer, plan, telegram):
+    # The minute run stays the retry; a fresh notice should not wait for it.
+    linked(buyer)
+    services.enqueue_event("payment_confirmed", 61, placed(buyer, plan).pk)
+    assert any("send_order_notifications" in task.name for task in HUEY.pending())
 
 
 def test_a_telegram_row_is_sent(queued, telegram):
