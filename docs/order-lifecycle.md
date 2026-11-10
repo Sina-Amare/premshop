@@ -239,7 +239,7 @@ The purchase confirmation is found by polling committed orders, not by an event,
 | `input_requested` | A4 | The customer, with the order's input instructions |
 | `delivery_completed` | A5, A10a | The customer, with the signed-in order link |
 | `supply_delayed` | Supply-delay extension | The customer, with the frozen new deadline |
-| `item.replacement_requested` (planned) | S9 customer request | The operator |
+| `item.replacement_requested` (planned) | A customer's replacement request | The operator |
 | `replacement_rejected` | A10b | The customer; operator notes are excluded |
 | `item_cancelled` | A3, A6, A8, A11 | The customer; a refund is owed, not claimed sent |
 | `item_refunded` | A12 | The customer after a transfer is recorded |
