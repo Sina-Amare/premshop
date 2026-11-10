@@ -53,7 +53,7 @@
 {% elif telegram.token %}
 <div class="acct__next">
   <div>
-    <p class="small flush">در تلگرام «شروع» را بزنید و اتصال را تأیید کنید. این پیوند ۱۰ دقیقه کار می‌کند.</p>
+    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. اعتبار این پیوند ۱۰ دقیقه است.</p>
     <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
     {# A line of its own: split across two lines, the command is easy to copy half of. #}
     <p class="small flush"><bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
@@ -63,7 +63,7 @@
 {% else %}
 <div class="acct__next">
   <div>
-    <p class="small flush">خبر سفارش‌ها را در تلگرام هم بگیرید. ایمیل‌ها مثل قبل می‌رسند.</p>
+    <p class="small flush">تأیید پرداخت، پشتیبانی، تحویل و گزارش هر سفارش را هم در تلگرام پیگیری کنید.</p>
   </div>
   <form method="post" action="{% url 'account-telegram' %}">
     {% csrf_token %}

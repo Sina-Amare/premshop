@@ -1,11 +1,11 @@
 {% load fa %}PremShop
 ———
 
-{% if state == "linked" %}در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} تلگرام {{ telegram }} به حساب شما وصل شد و خبر سفارش‌ها آنجا هم می‌رسد.
-اگر خودتان نبودید، اتصال را از صفحه‌ی حساب کاربری قطع کنید و به پشتیبانی خبر بدهید:
-{{ account_url }}{% elif state == "moved" %}در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} تلگرام {{ telegram }} به حساب دیگری در PremShop وصل شد و از حساب شما جدا شد.
-اگر خودتان نبودید، به پشتیبانی خبر بدهید.{% else %}در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} تلگرام{% if telegram %} {{ telegram }}{% endif %} از حساب شما جدا شد و خبر سفارش‌ها دیگر آنجا نمی‌رسد.
-اگر خودتان نبودید، اول رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.{% endif %}
+{% if state == "linked" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.
+اگر این اتصال کار شما نیست، از صفحه‌ی حساب کاربری قطعش کنید:
+{{ account_url }}{% elif state == "moved" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.
+اگر این کار شما نیست، به پشتیبانی خبر بدهید.{% else %}تلگرام{% if telegram %} {{ telegram }}{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.
+اگر این کار شما نیست: تغییر رمز ایمیل و اطلاع به پشتیبانی.{% endif %}
 پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.
 
 ———
