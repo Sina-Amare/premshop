@@ -21,6 +21,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 
 from apps.accounts.models import User
 from apps.core import ratelimit, support, telegram
@@ -45,8 +46,13 @@ POINTER = (
 )
 
 
+def _digest(token: str) -> str:
+    # Stored as an HMAC, as sign-in codes are: a cache dump must not yield a live link.
+    return salted_hmac("apps.accounts.telegram.link", token).hexdigest()
+
+
 def _record_key(token: str) -> str:
-    return f"telegram-link:{token}"
+    return f"telegram-link:{_digest(token)}"
 
 
 def _current_key(user_id: int) -> str:
@@ -62,9 +68,9 @@ def start_link(user: User) -> str:
     token = secrets.token_urlsafe(16)
     previous = cache.get(_current_key(user.pk))
     if previous:
-        cache.delete(_record_key(previous))
+        cache.delete(f"telegram-link:{previous}")
     cache.set(_record_key(token), user.pk, timeout=LINK_SECONDS)
-    cache.set(_current_key(user.pk), token, timeout=LINK_SECONDS)
+    cache.set(_current_key(user.pk), _digest(token), timeout=LINK_SECONDS)
     return token
 
 
@@ -75,7 +81,7 @@ def deep_link(token: str) -> str:
 def link_owner(token: str) -> User | None:
     """The account a live token would link, without spending the token."""
     user_id = cache.get(_record_key(token))
-    if user_id is None or cache.get(_current_key(user_id)) != token:
+    if user_id is None or cache.get(_current_key(user_id)) != _digest(token):
         return None
     return User.objects.filter(pk=user_id, is_active=True).first()
 
@@ -237,6 +243,13 @@ def poll(seconds: float = 45) -> int:
         for update in updates:
             try:
                 handle_update(update)
+            except telegram.TelegramError as error:
+                # A refused reply, such as a 429 in a burst: worth a breadcrumb, not an event each.
+                logger.warning(
+                    "telegram reply for update %s failed: TelegramError %s",
+                    update.get("update_id"),
+                    error.status or "network",
+                )
             except Exception as error:  # noqa: BLE001 - one bad update must not block the rest
                 logger.error(
                     "telegram update %s failed: %s", update.get("update_id"), type(error).__name__

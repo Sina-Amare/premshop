@@ -279,6 +279,8 @@ def send_due_notifications() -> int:
 
 
 def send_due_telegram() -> int:
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return 0
     sent = 0
     while True:
         with transaction.atomic():

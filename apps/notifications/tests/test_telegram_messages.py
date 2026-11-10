@@ -1,7 +1,10 @@
+import queue
+import threading
 from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
+from django.db import OperationalError, connection, transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -13,6 +16,7 @@ from apps.notifications.models import ConfirmationSweep, Notification
 from apps.notifications.tasks import send_order_notifications
 from apps.orders import services as orders
 from apps.orders.tests.test_input_clock import operator as operator
+from apps.orders.tests.test_lifecycle_concurrency import in_connection
 from apps.payments.services import record_manual_payment
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -141,6 +145,40 @@ def test_a_changed_link_receives_nothing(queued, telegram, buyer, now_linked_to)
     queued.refresh_from_db()
     assert (queued.status, queued.last_error_class) == ("failed", "binding_changed")
     assert telegram.sent == []
+
+
+def test_without_a_token_nothing_is_sent(queued, telegram, settings):
+    settings.TELEGRAM_BOT_TOKEN = ""
+    assert services.send_due_telegram() == 0
+    queued.refresh_from_db()
+    assert (queued.status, queued.attempts, telegram.sent) == ("pending", 0, [])
+
+
+def test_an_unlink_waits_for_a_send_in_progress(queued, buyer, monkeypatch):
+    started, release = threading.Event(), threading.Event()
+
+    def slow_send(chat_id, text, **kwargs):
+        started.set()
+        release.wait(10)
+        return {"message_id": 1}
+
+    monkeypatch.setattr(telegram_api, "send_message", slow_send)
+    sender = threading.Thread(
+        target=in_connection, args=(queue.Queue(), services.send_due_telegram)
+    )
+    sender.start()
+    try:
+        assert started.wait(10)
+        # The send holds the customer's row: changing the link must wait, not slip in.
+        with pytest.raises(OperationalError), transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL lock_timeout = '300ms'")
+            User.objects.filter(pk=buyer.pk).update(telegram_id=None)
+    finally:
+        release.set()
+        sender.join(10)
+    queued.refresh_from_db()
+    assert queued.status == "sent"
 
 
 def test_the_email_quota_wait_leaves_telegram_alone(queued, telegram, monkeypatch):

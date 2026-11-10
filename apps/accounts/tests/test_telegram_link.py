@@ -172,7 +172,7 @@ def test_after_a_double_click_only_the_latest_token_links(bot, user):
     second = links.start_link(user)
     # Two clicks at once: the second issue ran before the first was stored, so nothing
     # deleted the first token's record. Only the account's current token may count.
-    cache.set(f"telegram-link:{first}", user.pk)
+    cache.set(links._record_key(first), user.pk)
     assert links.link_owner(first) is None
     assert links.confirm_link(first, {"id": 555, "username": "buyer_tg"}) is None
     assert links.confirm_link(second, {"id": 555, "username": "buyer_tg"}) == user
@@ -296,6 +296,30 @@ def test_an_outage_logs_one_error_then_warnings_until_it_recovers(bot, monkeypat
         logging.ERROR,
     ]
     assert TOKEN not in caplog.text
+
+
+def test_the_cache_never_holds_a_live_token(bot, user):
+    # Keys and values are readable in a Redis dump; the token is stored as an HMAC.
+    token = links.start_link(user).encode()
+    stored = cache._cache  # type: ignore[attr-defined]
+    assert stored and all(token not in key.encode() + value for key, value in stored.items())
+
+
+def test_a_reply_telegram_refuses_logs_a_warning_not_an_error(bot, monkeypatch, caplog):
+    monkeypatch.setattr(telegram_api, "get_updates", lambda offset, timeout: [{"update_id": 9}])
+
+    def refused(update):
+        raise telegram_api.TelegramError(429, 3)
+
+    monkeypatch.setattr(links, "handle_update", refused)
+    with caplog.at_level(logging.INFO, logger="apps.accounts.telegram"):
+        links.poll(seconds=0)
+    assert [record.levelno for record in caplog.records] == [logging.WARNING]
+
+
+def test_telegram_is_off_unless_a_test_turns_it_on(settings):
+    # The local .env may hold the real bot token; a test must not depend on it.
+    assert settings.TELEGRAM_BOT_TOKEN == ""
 
 
 def test_without_a_token_the_poll_does_nothing(settings, monkeypatch):
