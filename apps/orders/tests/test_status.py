@@ -33,6 +33,27 @@ def test_every_item_status_lands_on_a_known_state(value):
     assert status.tracking_state(value) in status.STATES
 
 
+def test_an_unknown_status_fails_loudly_instead_of_reading_as_cancelled():
+    now = timezone.now()
+    with pytest.raises(ValueError):
+        status.item_state(OrderItem(status="LOST"), None, now, now)
+    with pytest.raises(ValueError):
+        status.tracking_state("LOST")
+    assert set(status._TRACKING) | {S.CANCELLED} == set(S.values)
+
+
+@pytest.mark.parametrize(
+    "reason, state",
+    [
+        (OrderItem.CancelReason.EXPIRED_UNPAID, "expired"),
+        (OrderItem.CancelReason.CUSTOMER_BEFORE_PAYMENT, "cancelled"),
+        (OrderItem.CancelReason.SUPPLY_FAILURE, "cancelled"),
+    ],
+)
+def test_tracking_tells_a_lapsed_payment_window_from_a_cancellation(reason, state):
+    assert status.tracking_state(S.CANCELLED, reason) == state
+
+
 @pytest.mark.parametrize("reason", OrderItem.CancelReason.values)
 def test_every_cancel_reason_lands_on_a_known_state(reason):
     now = timezone.now()

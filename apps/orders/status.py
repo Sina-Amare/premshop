@@ -58,6 +58,8 @@ def item_state(
         return "delivered"
     if item.status == S.REFUNDED:
         return "refunded"
+    if item.status != S.CANCELLED:
+        raise ValueError(f"No customer state for item status {item.status!r}")
     if refund is not None:
         return "refund_owed" if refund.status == refund.Status.OWED else "refunded"
     return "expired" if item.cancel_reason == REASON.EXPIRED_UNPAID else "cancelled"
@@ -78,8 +80,12 @@ _TRACKING: dict[str, str] = {
 }
 
 
-def tracking_state(status: str) -> str:
-    return _TRACKING.get(status, "cancelled")
+def tracking_state(status: str, cancel_reason: str = "") -> str:
+    if status == S.CANCELLED:
+        return "expired" if cancel_reason == REASON.EXPIRED_UNPAID else "cancelled"
+    if status not in _TRACKING:
+        raise ValueError(f"No customer state for item status {status!r}")
+    return _TRACKING[status]
 
 
 def pill(state: str) -> dict[str, Any]:
