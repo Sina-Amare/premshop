@@ -12,10 +12,9 @@
 <p class="small">رمز یا کد ورود را در سایت وارد نکنید.</p>
 <a class="btn btn--primary" href="#order-help">ارتباط با پشتیبانی</a></div>
 {% elif next_step == 'PENDING_PAYMENT' %}
-<h2 class="order-status" id="order-next-title">{% if overdue %}مهلت پرداخت تمام شده است.{% else %}منتظر پرداخت{% endif %}</h2>
-<p>سفارش ثبت شده و هنوز پرداخت نشده است.</p>
+<h2 class="order-status" id="order-next-title">{% if overdue %}مهلت پرداخت تمام شده است{% else %}منتظر پرداخت{% endif %}</h2>
 {% if not overdue %}<p>مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}</p>{% endif %}
-<p>پرداخت آنلاین هنوز فعال نیست.</p>
+<p>پرداخت آنلاین هنوز فعال نیست. برای پرداخت، به پشتیبانی پیام بدهید.</p>
 <a href="#order-help">ارتباط با پشتیبانی</a>
 {% elif next_step == 'REPLACEMENT_REQUESTED' %}
 <h2 class="order-status" id="order-next-title">درخواست تعویض در حال بررسی است</h2>
@@ -28,25 +27,24 @@
 <p>لازم نیست کاری انجام دهید.</p>
 {% elif next_step == 'CANCELLED' %}
 <h2 class="order-status" id="order-next-title">{% if mixed_status %}بخشی از سفارش لغو شده است{% else %}سفارش لغو شده است{% endif %}</h2>
-<p>برای پیگیری پرداخت یا بازپرداخت، با پشتیبانی تماس بگیرید.</p>
+<p>برای پیگیری پرداخت یا بازپرداخت، به پشتیبانی پیام بدهید.</p>
 <a href="#order-help">ارتباط با پشتیبانی</a>
 {% elif next_step == 'REFUNDED' %}
 <h2 class="order-status" id="order-next-title">بازپرداخت انجام شده است</h2>
 <p>لازم نیست کاری انجام دهید.</p>
 {% else %}
 <h2 class="order-status" id="order-next-title">وضعیت سفارش</h2>
-<p>برای پیگیری سفارش با پشتیبانی تماس بگیرید.</p>
+<p>برای پیگیری سفارش، به پشتیبانی پیام بدهید.</p>
 <a href="#order-help">ارتباط با پشتیبانی</a>
 {% endif %}
 </section>
 <section class="card order-card" id="order-purchase" aria-labelledby="order-purchase-title">
 <h2 id="order-purchase-title">محصولات و مبلغ سفارش</h2>
 {% include "orders/_groups.html" %}
-<dl class="order-totals"><div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div>{% if order.discount_amount %}<div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div></dl>
+<dl class="order-totals">{% if order.discount_amount %}<div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div><div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div></dl>
 <a class="btn btn--secondary" href="{% url 'order-invoice' order.order_number %}">مشاهده‌ی فاکتور</a>
 </section>
-<section class="card order-card" id="order-help" aria-labelledby="support-identifier-title">
-<h2 id="support-identifier-title">پشتیبانی سفارش</h2>
+<details class="card order-card" id="order-help"{% if next_step != 'REPLACEMENT_REQUESTED' and next_step != 'QUEUED' and next_step != 'DELIVERED' and next_step != 'REFUNDED' %} open{% endif %}><summary>پشتیبانی سفارش</summary>
 {% if support_identifier %}
 <p data-support-instructions>برای پیگیری، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید.</p>
 <div class="order-support-label">شناسه‌ی پشتیبانی</div>
@@ -59,10 +57,10 @@
 <p>با ساخت شناسه‌ی جدید، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% endif %}
-</section>
+</details>
 <div class="order-records">
-{% if order.policy_snapshot %}<details class="order-record" id="order-policies"><summary>شرایط هنگام خرید</summary>
-{% include "orders/_saved_policies.html" with policies=order.policy_snapshot only %}</details>{% endif %}
+{% if groups or order.policy_snapshot %}<details class="order-record" id="order-conditions"><summary>شرایط هنگام خرید</summary>
+{% include "orders/_saved_terms.html" with groups=groups policies=order.policy_snapshot only %}</details>{% endif %}
 <details class="order-record" id="order-tracking"><summary>پیگیری سفارش بدون ورود</summary>
 <p>هر کسی این لینک را داشته باشد، نام محصولات و وضعیت سفارش را می‌بیند.</p>
 <a href="{% url 'order-tracking' order.tracking_token %}" rel="noreferrer">لینک پیگیری سفارش</a></details>

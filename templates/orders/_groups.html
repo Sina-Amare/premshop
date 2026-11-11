@@ -1,9 +1,8 @@
-{% load fa i18n %}
-{% for group in groups %}<section class="order-category">{% if not compact %}<h2>{{ group.name }}</h2>{% endif %}
+{% load fa %}
+{% for group in groups %}<section class="order-category">{% if not compact and groups|length > 1 %}<p class="order-category__name">{{ group.name }}</p>{% endif %}
 {% for line in group.lines %}<article class="order-line">
 <div class="checkout-preview__art" style="--brand: {{ line.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.product %}</div>
 <div class="order-line__facts"><h3><bdi>{{ line.facts.name }}</bdi></h3><p><bdi>{{ line.facts.plan_title }}</bdi>{% if line.quantity > 1 %}، تعداد: {{ line.quantity|fa_digits }}{% endif %}</p>
 </div>
 <div class="order-line__end">{% if mixed_status %}<span class="order-status">{{ line.status_label }}</span>{% endif %}{% if not compact %}<div class="order-line__amount">{{ line.amount|price_html }}</div>{% if line.quantity > 1 %}<small>قیمت هر عدد: {{ line.price|price_html }}</small>{% endif %}{% endif %}</div>
-{% if not compact %}{% language 'fa' %}{% include "orders/_product_conditions.html" with line=line only %}{% endlanguage %}{% endif %}
 </article>{% endfor %}</section>{% endfor %}
