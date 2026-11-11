@@ -114,7 +114,7 @@ def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, pl
     services.enqueue_event("supply_delayed", 60, order.pk, item_id=item.pk, due_at=due)
     text = Notification.objects.get(channel="telegram").text_body
     assert f"\nمحصول: {item.product_snapshot['name']}" in text
-    assert "\nمهلت جدید: " in text
+    assert "\nزمان تحویل جدید: تا " in text
 
 
 def test_catalogue_text_is_escaped_in_the_notice(buyer, plan, telegram):

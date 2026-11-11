@@ -2,6 +2,6 @@
 {% block title %}محصول لغو شد{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">محصول لغو شد</h1>
-{% if amount %}<p>بازپرداخت {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.</p>{% else %}<p>مبلغی برای بازپرداخت این محصول ثبت نشده است.</p>{% endif %}
+{% if amount %}<p>بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.</p>{% else %}<p>این لغو بازگشت وجه ندارد.</p>{% endif %}
 {% include "email/_order_notice.html" %}
 {% endblock %}
