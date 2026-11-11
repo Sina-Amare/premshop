@@ -248,6 +248,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
 - **Amber means attention** (2026-11-11): the customer's move or time running out, in the five status tones described under Colour.
 - **A cancelled order reads red** (2026-11-11), with the cross icon, as described under Colour.
+- **The checkout's warning about the account's email or username** (2026-11-06) is the owner's own sentence: «امکان تغییر … پس از ثبت سفارش وجود ندارد. پیش از ثبت نهایی از درستی … وارد شده اطمینان حاصل کنید.» A copy pass leaves it as written; `apps/payments/tests/test_views.py` pins it.
 - **Emoji in the Telegram bot** (2026-11-11): every panel button carries a related emoji, and every order the product's own, picked from its name with a plain box for a name the list does not know. A bot button holds text only, so the site's SVG icons cannot reach it. They live in `apps/orders/telegram_emoji.py`, the one file the repository's emoji check allows; the website stays without them. Real brand logos (Telegram's custom emoji) need Premium on the bot's owning account.
 
 ## Checklist
