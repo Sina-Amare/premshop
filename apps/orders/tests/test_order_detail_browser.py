@@ -99,6 +99,10 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             ).to_be_visible()
         capture(page, f"order-{state}", width, tmp_path)
         if contact:  # what to send sits in the card, beside the button that opens the chat
+            if state == "delivered":  # inside the warranty it waits behind one quiet question
+                expect(page.locator("#order-next #support-identifier")).to_be_hidden()
+                page.locator(".order-contact-more > summary").focus()
+                page.keyboard.press("Enter")
             expect(page.locator("#order-next #support-identifier")).to_be_visible()
             expect(
                 page.locator("#order-next").get_by_role("link", name="باز کردن تلگرام پشتیبانی")

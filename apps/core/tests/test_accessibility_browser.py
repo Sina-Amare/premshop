@@ -147,7 +147,7 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
     )
     plan.refresh_from_db()
     _, items = paid_order(customer, operator, [services.OrderLine(plan, 2)])
-    deliver(items[0], operator)
+    deliver(items[0], operator, expires_at=timezone.localdate() + timedelta(days=30))
     cancel(items[1], operator)
     unpaid = services.place_order(user=customer, lines=[services.OrderLine(plan, 1)])
     numbers = {
