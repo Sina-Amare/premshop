@@ -36,9 +36,12 @@ STATES: dict[str, tuple[str, str]] = {
     "delivered": ("تحویل‌شده", "done"),
     "refunded": ("بازگشت وجه تکمیل‌شده", "closed"),
     "expired": ("پایان مهلت پرداخت", "closed"),
-    "cancelled": ("لغوشده", "closed"),
+    # Red by the owner's choice (2026-11-11), yet last in the ranking: any other item says more.
+    "cancelled": ("لغوشده", "problem"),
 }
 RANK = list(STATES)
+# A cancellation asks nothing of anyone, so it keeps the cross rather than a delay's alert.
+STATE_ICONS = {"cancelled": "close"}
 
 
 def item_state(
@@ -90,7 +93,8 @@ def tracking_state(status: str, cancel_reason: str = "") -> str:
 
 def pill(state: str) -> dict[str, Any]:
     label, tone = STATES[state]
-    return {"state": state, "label": label, "tone": tone, "badge": BADGE[tone], "icon": ICON[tone]}
+    icon = STATE_ICONS.get(state, ICON[tone])
+    return {"state": state, "label": label, "tone": tone, "badge": BADGE[tone], "icon": icon}
 
 
 def warranty_last_day(item: OrderItem) -> date | None:

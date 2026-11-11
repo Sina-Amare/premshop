@@ -34,14 +34,14 @@ CASES = [
     ("delivered", "تحویل‌شده", "ok", "تحویل در", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
     ("rejected", "تحویل‌شده", "ok", "درخواست تعویض در", True),
-    ("cancelled", "لغوشده", "neutral", "لغو کردید", False),
-    ("operator_cancelled", "لغوشده", "neutral", "پشتیبانی این سفارش را", True),
+    ("cancelled", "لغوشده", "danger", "لغو کردید", False),
+    ("operator_cancelled", "لغوشده", "danger", "پشتیبانی این سفارش را", True),
     ("expired", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("refunded", "بازگشت وجه تکمیل‌شده", "neutral", "برگشت داده شد", False),
     ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
     ("mixed_refund", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
-    ("empty", "لغوشده", "neutral", "این سفارش محصولی ندارد", False),
+    ("empty", "لغوشده", "danger", "این سفارش محصولی ندارد", False),
 ]
 
 
@@ -359,7 +359,7 @@ def test_tracking_shows_pills_but_never_money(client, buyer, plan, operator):
     order = order_for_state(buyer, plan, operator, "owed")
     refund = Refund.objects.get(order_item__order=order)
     body = client.get(reverse("order-tracking", args=[order.tracking_token])).content.decode()
-    assert '<span class="badge badge--neutral"' in body and "لغوشده" in body
+    assert '<span class="badge badge--danger"' in body and "لغوشده" in body
     assert format_toman(refund.amount, with_unit=False) not in body
     assert "به شما برمی‌گردانیم" not in body
 

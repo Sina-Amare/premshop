@@ -89,10 +89,10 @@
 <div class="card">
   <dl class="tone-list">
     <div><dt><span class="badge badge--time">{% include 'storefront/icon.html' with name='clock' %}در انتظار پرداخت</span></dt><dd>توجه: نوبت مشتری است، یا مهلتی رو به پایان است.</dd></div>
-    <div><dt><span class="badge badge--danger">{% include 'storefront/icon.html' with name='alert' %}تأخیر در تحویل</span></dt><dd>مشکلی پیش آمده و کسی باید کاری بکند.</dd></div>
+    <div><dt><span class="badge badge--danger">{% include 'storefront/icon.html' with name='alert' %}تأخیر در تحویل</span> <span class="badge badge--danger">{% include 'storefront/icon.html' with name='close' %}لغوشده</span></dt><dd>مشکلی پیش آمده است: تأخیری که باید پیگیری شود، یا سفارشی که لغو شد.</dd></div>
     <div><dt><span class="badge badge--progress">{% include 'storefront/icon.html' with name='progress' %}در حال آماده‌سازی</span></dt><dd>در دست فروشگاه: کار در جریان است.</dd></div>
     <div><dt><span class="badge badge--ok">{% include 'storefront/icon.html' with name='check' %}تحویل‌شده</span></dt><dd>کار همان‌طور که باید انجام شد.</dd></div>
-    <div><dt><span class="badge badge--neutral">{% include 'storefront/icon.html' with name='close' %}لغوشده</span></dt><dd>بسته شد و کاری باقی نمانده است.</dd></div>
+    <div><dt><span class="badge badge--neutral">{% include 'storefront/icon.html' with name='close' %}پایان مهلت پرداخت</span></dt><dd>بسته شد و کاری باقی نمانده است.</dd></div>
   </dl>
   <p class="small" style="margin-block-start: var(--spacing-4)">
     رنگ هرگز تنها حامل معنی نیست: هر وضعیت متن و نشانه هم دارد. رنگ وضعیت به خود وضعیت وابسته است، نه به خواننده، پس مشتری و اپراتور یک رنگ می‌بینند. آبی کبالتی فقط برای دکمه‌ها و پیوندهاست.

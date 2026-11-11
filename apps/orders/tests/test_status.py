@@ -33,6 +33,22 @@ def test_every_item_status_lands_on_a_known_state(value):
     assert status.tracking_state(value) in status.STATES
 
 
+def test_a_cancellation_reads_red_with_its_cross_and_ranks_last():
+    """The owner's choice (2026-11-11): a cancelled order is red. It asks nothing of anyone,
+    so it keeps the cross rather than the alert of a delay, and any other item says more."""
+    cancelled = status.pill("cancelled")
+    assert (cancelled["tone"], cancelled["badge"], cancelled["icon"]) == (
+        "problem",
+        "danger",
+        "close",
+    )
+    assert status.pill("late")["icon"] == "alert"
+    assert status.lead_state(["late", "cancelled"]) == "late"
+    assert status.lead_state(["delivered", "cancelled"]) == "delivered"
+    # A lapsed payment window stays grey: amber would invite a payment it cannot take.
+    assert status.pill("expired")["tone"] == "closed"
+
+
 def test_an_unknown_status_fails_loudly_instead_of_reading_as_cancelled():
     now = timezone.now()
     with pytest.raises(ValueError):

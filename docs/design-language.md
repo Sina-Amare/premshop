@@ -57,12 +57,12 @@ Every status, on the site, in the panel, in email and in the bot, takes one of f
 | Tone | Means | Site badge | Panel tokens | Icon |
 |---|---|---|---|---|
 | Attention | The customer's move, or time running out | `.badge--time` | `--panel-attention-*` | `clock` |
-| Problem | Something went wrong and someone must act | `.badge--danger` | `--panel-problem-*` | `alert` |
+| Problem | Something went wrong: a delay to chase, or a cancelled order | `.badge--danger` | `--panel-problem-*` | `alert`; `close` for a cancellation |
 | With us | The shop is working on it | `.badge--progress` | `--panel-progress-*` | `progress` |
 | Done | Finished as it should be | `.badge--ok` | `--panel-done-*` | `check` |
-| Closed | Ended, nothing pending | `.badge--neutral` | `--panel-closed-*` | `close` |
+| Closed | Ended, nothing pending: a lapsed payment window, a refund sent | `.badge--neutral` | `--panel-closed-*` | `close` |
 
-The rows are in ranking order: an order leads with its highest-ranked state (`apps/orders/status.py`). A pill is a noun phrase of at most four words («در انتظار پرداخت»); a finished state may be one word («تحویل‌شده», «لغوشده»), as the bot already says it. The heading beside a pill states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
+The rows are in ranking order: an order leads with its highest-ranked state (`apps/orders/status.py`). A cancellation is the exception: red, yet last, since any other item says more about the order. A pill is a noun phrase of at most four words («در انتظار پرداخت»); a finished state may be one word («تحویل‌شده», «لغوشده»), as the bot already says it. The heading beside a pill states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
 - **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`), and its tokens hold the five status tones in both themes. Its loud things are time remaining and what needs the operator.
 
 ## Typography
@@ -247,6 +247,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **A discount clock that counts hours, minutes and seconds** even with days to go (2026-11-08), as described under Numbers.
 - **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
 - **Amber means attention** (2026-11-11): the customer's move or time running out, in the five status tones described under Colour.
+- **A cancelled order reads red** (2026-11-11), with the cross icon, as described under Colour.
 - **Emoji in the Telegram bot** (2026-11-11): every panel button carries a related emoji, and every order the product's own, picked from its name with a plain box for a name the list does not know. A bot button holds text only, so the site's SVG icons cannot reach it. They live in `apps/orders/telegram_emoji.py`, the one file the repository's emoji check allows; the website stays without them. Real brand logos (Telegram's custom emoji) need Premium on the bot's owning account.
 
 ## Checklist
