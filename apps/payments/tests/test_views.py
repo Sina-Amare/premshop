@@ -368,3 +368,11 @@ def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, b
     response = client.get(reverse("checkout"))
     assert "در این مرحله چیزی پرداخت نمی‌کنید." in response.content.decode()
     assert "۲۴ ساعت" in response.content.decode()
+
+
+def test_a_placed_order_is_greeted_on_its_own_page(client, buyer, cart):
+    client.force_login(buyer)
+    quote = quote_checkout(user=buyer)
+    data = {"action": "checkout", "quote": quote.token, "checkout_id": uuid.uuid4()}
+    page = client.post(reverse("checkout"), data, follow=True).content.decode()
+    assert '<div class="form-ok" role="status">سفارشتان ثبت شد.</div>' in page
