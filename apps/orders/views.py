@@ -128,7 +128,9 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
     if request.POST.get("confirm") != "yes":
-        return _render_detail(request, summary, error="ساخت شناسه‌ی جدید را تأیید کنید.", status=400)
+        return _render_detail(
+            request, summary, error="ساخت شناسه‌ی جدید را تأیید کنید.", status=400
+        )
     try:
         replace_support_token(
             order_id=order.pk,

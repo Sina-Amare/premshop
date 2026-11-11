@@ -182,7 +182,9 @@ def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_custo
     body = page(client, buyer, order)
     card = card_of(body)
     figure = format_toman(refund.amount, with_unit=False)
-    assert figure in card and "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in text(card)
+    assert figure in card and "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in text(
+        card
+    )
     assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "تا یک روز کاری" in card
     assert "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد." in card
     owed_row = body.split('data-money="owed"', 1)[1].split("</div>", 1)[0]

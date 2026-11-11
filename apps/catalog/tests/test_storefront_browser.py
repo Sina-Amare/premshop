@@ -674,9 +674,7 @@ def test_the_wide_header_keeps_every_row_after_scrolling_back_up(browser, live_s
         context.close()
 
 
-def test_the_home_page_shows_every_card_of_a_long_category_at_every_width(
-    browser, live_server
-):
+def test_the_home_page_shows_every_card_of_a_long_category_at_every_width(browser, live_server):
     category = Category.objects.create(name="سرگرمی", slug="fun")
     for number in range(6):
         product = Product.objects.create(

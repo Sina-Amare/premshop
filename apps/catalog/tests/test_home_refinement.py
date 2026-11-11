@@ -23,9 +23,7 @@ def products():
 
 
 @pytest.mark.parametrize("width", [320, 390, 760])
-def test_phone_category_shows_every_card_in_two_columns(
-    browser, live_server, products, width
-):
+def test_phone_category_shows_every_card_in_two_columns(browser, live_server, products, width):
     page = browser.new_page(viewport={"width": width, "height": 900})
     try:
         page.goto(live_server.url + "/")
