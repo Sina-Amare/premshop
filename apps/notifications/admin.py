@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 
+from apps.core.admin import detail_fields
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
 from apps.notifications.models import ConfirmationSweep, Notification
 
@@ -31,7 +32,9 @@ class NotificationAdmin(ModelAdmin):
         "smtp_code",
     )
     list_filter = ("status", "channel", "template_name")
-    readonly_fields = tuple(field.name for field in Notification._meta.fields)
+    fields = readonly_fields = detail_fields(
+        Notification, {"id": _("شناسه"), "dedupe_key": _("کلید یکتای پیام")}
+    )
     actions = None
     list_select_related = ("order",)
 

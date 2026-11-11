@@ -1,10 +1,11 @@
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlencode
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
-from django.db.models import QuerySet
+from django.db.models import DateTimeField, Model, QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.html import format_html
@@ -16,12 +17,38 @@ from apps.core.formatting import format_jalali, to_persian_digits
 from apps.core.models import MailAttempt
 
 
+def detail_fields(model: type[Model], labels: dict[str, Any]) -> tuple[Any, ...]:
+    """Every field of a read-only page in the panel's own terms: each moment in the Jalali
+    calendar with its time, and a Persian label where the model gives none."""
+    shown: list[Any] = []
+    for field in model._meta.fields:
+        if isinstance(field, DateTimeField) or field.name in labels:
+            shown.append(_shown(field.attname, labels.get(field.name, field.verbose_name)))
+        else:
+            shown.append(field.name)
+    return tuple(shown)
+
+
+def _shown(name: str, label: Any) -> Callable[[Any], str]:
+    def show(obj: Any) -> str:
+        value = getattr(obj, name)
+        if value is None or value == "":
+            return "—"
+        if hasattr(value, "tzinfo"):
+            moment = timezone.localtime(value)
+            return f"{format_jalali(moment)}، {to_persian_digits(moment.strftime('%H:%M'))}"
+        return to_persian_digits(value) if isinstance(value, int) else str(value)
+
+    show.__name__ = f"{name}_shown"
+    return admin.display(description=label)(show)
+
+
 @admin.register(MailAttempt)
 class MailAttemptAdmin(ModelAdmin):
     list_display = ("requested_at", "status_pill", "template", "smtp_code", "error_type")
     list_filter = ("status", "template")
     search_fields = ("recipient_hash",)
-    readonly_fields = tuple(field.name for field in MailAttempt._meta.fields)
+    fields = readonly_fields = detail_fields(MailAttempt, {"id": _("شناسه")})
     change_list_template = "admin/core/mailattempt/change_list.html"
     actions = None
 

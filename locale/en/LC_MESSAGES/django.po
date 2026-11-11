@@ -2016,3 +2016,9 @@ msgstr "Transfer the %(owed)s refund"
 
 msgid "منتظر پرداخت مشتری"
 msgstr "Waiting for the customer's payment"
+
+msgid "شناسه"
+msgstr "ID"
+
+msgid "کلید یکتای پیام"
+msgstr "Message key"
