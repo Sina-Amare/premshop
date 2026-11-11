@@ -18,12 +18,27 @@ from apps.core.models import MailAttempt
 
 @admin.register(MailAttempt)
 class MailAttemptAdmin(ModelAdmin):
-    list_display = ("requested_at", "status", "template", "smtp_code", "error_type")
+    list_display = ("requested_at", "status_pill", "template", "smtp_code", "error_type")
     list_filter = ("status", "template")
     search_fields = ("recipient_hash",)
     readonly_fields = tuple(field.name for field in MailAttempt._meta.fields)
     change_list_template = "admin/core/mailattempt/change_list.html"
     actions = None
+
+    # The five status tones, as a plain column (Unfold hides its label columns on a phone):
+    # an unclear result asks for a look, and a refusal or a cap is a problem.
+    @admin.display(description=_("نتیجه"), ordering="status")
+    def status_pill(self, obj: MailAttempt) -> str:
+        tone = {
+            "in_flight": "progress",
+            "accepted": "done",
+            "rejected": "problem",
+            "uncertain": "attention",
+            "blocked": "problem",
+        }.get(obj.status, "closed")
+        return format_html(
+            '<span class="panel-pill" data-tone="{}">{}</span>', tone, obj.get_status_display()
+        )
 
     @admin.display(description=_("زمان درخواست"), ordering="created_at")
     def requested_at(self, obj: MailAttempt) -> str:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any, cast
 
 import jdatetime
@@ -35,6 +36,7 @@ from apps.core.formatting import (
     to_persian_digits,
 )
 from apps.core.ratelimit import client_ip
+from apps.orders import status as order_status
 from apps.orders.models import (
     CredentialAccessLog,
     DiscountCode,
@@ -87,6 +89,13 @@ def queue_tab(request: HttpRequest) -> str:
     return value if value in {*_QUEUE_STATES, "all"} else "queued"
 
 
+def _tone(item: OrderItem) -> str:
+    """The item's tone in the panel: the same state the customer's page reads."""
+    refund = getattr(item, "refund", None)
+    state = order_status.item_state(item, refund, item.order.unpaid_expires_at, timezone.now())
+    return order_status.STATES[state][1]
+
+
 class OrderChangeList(ChangeList):
     def get_ordering(self, request: HttpRequest, queryset: QuerySet[Order]) -> Any:
         if "o" not in request.GET and queue_tab(request) != "all":
@@ -103,7 +112,7 @@ class OrderItemInline(TabularInline):
     model = OrderItem
     fields = (
         "purchase",
-        "status",
+        "status_pill",
         "sale_amount",
         "cost_amount",
         "cancel_reason",
@@ -118,14 +127,30 @@ class OrderItemInline(TabularInline):
     show_title = False
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[OrderItem]:
-        return super().get_queryset(request).defer("customer_input").select_related("refund")
+        return (
+            super().get_queryset(request).defer("customer_input").select_related("refund", "order")
+        )
+
+    @admin.display(description=_("وضعیت"))
+    def status_pill(self, obj: OrderItem) -> str:
+        return format_html(
+            '<span class="order-status" data-tone="{}">{}</span>',
+            _tone(obj),
+            obj.get_status_display(),
+        )
 
     @admin.display(description=_("بازپرداخت"))
     def refund_state(self, obj: OrderItem) -> str:
         refund = getattr(obj, "refund", None)
         if refund is None:
             return "—"
-        return f"{format_toman(refund.amount)} · {refund.get_status_display()}"
+        tone = "attention" if refund.status == refund.Status.OWED else "closed"
+        return format_html(
+            '<span class="order-status" data-tone="{}">{} · {}</span>',
+            tone,
+            format_toman(refund.amount),
+            refund.get_status_display(),
+        )
 
     def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
@@ -772,7 +797,7 @@ class OrderAdmin(ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:
         queryset = super().get_queryset(request)
-        items = OrderItem.objects.defer("customer_input").select_related("plan__product")
+        items = OrderItem.objects.defer("customer_input").select_related("plan__product", "refund")
         if request.resolver_match and request.resolver_match.url_name == "orders_order_changelist":
             tab = queue_tab(request)
             if tab in _QUEUE_STATES:
@@ -795,6 +820,8 @@ class OrderAdmin(ModelAdmin):
     def queue_work(self, obj: Order) -> str:
         at = timezone.now()
         rows = []
+        states = []
+        owed = Decimal(0)
         for item in obj.items.all():
             kind, text, since = "neutral", "", None
             if item.status == OrderItem.Status.AWAITING_INPUT and item.sla_paused_at is None:
@@ -827,8 +854,17 @@ class OrderAdmin(ModelAdmin):
                         text = str(_("متوقف")) + " · " + text
                 elif item.status == OrderItem.Status.QUEUED:
                     text = str(_("مهلت ثبت نشده است"))
-            rows.append({"item": item, "kind": kind, "text": text, "since": since})
-        return render_to_string("admin/orders/queue_items.html", {"queue_items": rows})
+            refund = getattr(item, "refund", None)
+            state = order_status.item_state(item, refund, obj.unpaid_expires_at, at)
+            states.append(state)
+            if state == "refund_owed" and refund is not None:
+                owed += refund.amount
+            tone = order_status.STATES[state][1]
+            rows.append({"item": item, "kind": kind, "text": text, "since": since, "tone": tone})
+        return render_to_string(
+            "admin/orders/queue_items.html",
+            {"queue_items": rows, "next": order_status.operator_next(states, owed)},
+        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -868,8 +904,12 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("وضعیت آیتم‌ها"))
     def item_states(self, obj: Order) -> str:
-        states = dict.fromkeys((item.status, item.get_status_display()) for item in obj.items.all())
-        return format_html_join(" ", '<span class="order-status" data-state="{}">{}</span>', states)
+        states = dict.fromkeys(
+            (_tone(item), item.status, item.get_status_display()) for item in obj.items.all()
+        )
+        return format_html_join(
+            " ", '<span class="order-status" data-tone="{}" data-state="{}">{}</span>', states
+        )
 
     @admin.display(description=_("زمان ثبت"), ordering="created_at")
     def placed(self, obj: Order) -> str:

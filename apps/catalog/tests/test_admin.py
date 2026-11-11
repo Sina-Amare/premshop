@@ -205,17 +205,21 @@ def test_every_status_keeps_its_own_colour(client, operator, catalogue):
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     for slug, status, colour in [
-        ("live", Product.Status.ACTIVE, "bg-green-100"),
-        ("draft", Product.Status.DRAFT, "bg-blue-100"),
-        ("gone", Product.Status.UNAVAILABLE, "bg-red-100"),
+        # The five status tones: on sale is done, a draft is work in hand, unavailable a problem.
+        ("live", Product.Status.ACTIVE, "done"),
+        ("draft", Product.Status.DRAFT, "progress"),
+        ("gone", Product.Status.UNAVAILABLE, "problem"),
     ]:
         cell = re.search(
             r'<td class="field-status_label[^"]*"[^>]*>(.*?)</td>', row_of(body, slug), re.S
         )
         assert cell, f"no status cell in the row of {slug}"
-        badge = re.search(rf'<span class="([^"]*)"[^>]*>\s*{status.label}\s*</span>', cell.group(1))
+        badge = re.search(
+            rf'<span class="panel-pill" data-tone="([a-z]+)">\s*{status.label}\s*</span>',
+            cell.group(1),
+        )
         assert badge, f"the status cell of {slug} does not read {status.label}"
-        assert colour in badge.group(1), f"{status.label} should render {colour}"
+        assert badge.group(1) == colour, f"{status.label} should be {colour}"
 
 
 def test_draft_is_not_amber(client, operator, catalogue):
@@ -1273,7 +1277,7 @@ def test_the_english_product_list_is_english(client, english, catalogue):
     assert not [text for text in words if PERSIAN_LETTER.search(text)], words
     options = re.findall(r'<select name="action".*?</select>', body, re.S)[0]
     assert not PERSIAN_LETTER.search(re.sub(r"<[^>]+>", "", options)), options
-    badges = re.findall(r'<span class="[^"]*rounded-default[^"]*"[^>]*>\s*([^<]+?)\s*</span>', body)
+    badges = re.findall(r'<span class="panel-pill"[^>]*>\s*([^<]+?)\s*</span>', body)
     assert {"Active", "Draft", "Unavailable"} <= set(badges), badges
 
 

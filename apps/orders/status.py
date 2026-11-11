@@ -4,12 +4,15 @@ account card, tracking, the invoice and the bot read it here, so they cannot dis
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from django.utils import timezone
 
 from apps.catalog.models import Product
+from apps.core.formatting import format_toman
 from apps.orders.models import OrderItem
 
 if TYPE_CHECKING:
@@ -99,4 +102,26 @@ def warranty_last_day(item: OrderItem) -> date | None:
         return min(end, item.expires_at) if item.expires_at else end
     if warranty == Product.Warranty.FULL_PERIOD:
         return item.expires_at
+    return None
+
+
+# What the operator does next, in the order the work is taken: the operator's own moves
+# first, then what waits on the customer. A finished or closed order needs nothing.
+OPERATOR_NEXT = {
+    "late": "دیر شده: تحویل بدهید",
+    "queued": "تحویل بدهید",
+    "replacement": "درخواست تعویض را بررسی کنید",
+    "refund_owed": "بازگشت وجه {owed} را واریز کنید",
+    "awaiting_input": "منتظر اطلاعات مشتری",
+    "unpaid": "منتظر پرداخت مشتری",
+    "expired": "مهلت پرداخت تمام شد",
+}
+
+
+def operator_next(states: Iterable[str], owed: Decimal = Decimal(0)) -> dict[str, str] | None:
+    present = set(states)
+    for state, words in OPERATOR_NEXT.items():
+        if state in present:
+            text = words.format(owed=format_toman(owed))
+            return {"state": state, "text": text, "tone": STATES[state][1]}
     return None

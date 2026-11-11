@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 
@@ -22,7 +23,7 @@ class NotificationAdmin(ModelAdmin):
         "order",
         "template_name",
         "channel",
-        "status",
+        "status_pill",
         "recipient",
         "attempts",
         "next_send",
@@ -33,6 +34,16 @@ class NotificationAdmin(ModelAdmin):
     readonly_fields = tuple(field.name for field in Notification._meta.fields)
     actions = None
     list_select_related = ("order",)
+
+    # The five status tones, as a plain column: Unfold hides its label columns on a phone.
+    @admin.display(description=_("وضعیت"), ordering="status")
+    def status_pill(self, obj: Notification) -> str:
+        tone = {"pending": "progress", "sent": "done", "failed": "problem"}.get(
+            obj.status, "closed"
+        )
+        return format_html(
+            '<span class="panel-pill" data-tone="{}">{}</span>', tone, obj.get_status_display()
+        )
 
     @admin.display(description=_("تلاش بعدی"))
     def next_send(self, obj: Notification) -> str:

@@ -85,7 +85,9 @@ def test_order_panel_empty_populated_and_long_history(
         assert page.locator("#result_list").is_visible()
         cancelled = page.locator('.order-status[data-state="CANCELLED"]:visible').first
         assert cancelled.is_visible()
-        assert cancelled.evaluate("el => getComputedStyle(el).borderTopStyle") == "dashed"
+        # Cancelled is the closed tone: its own colour, where a dashed border once stood alone.
+        assert cancelled.get_attribute("data-tone") == "closed"
+        assert cancelled.evaluate("el => getComputedStyle(el).color") == "rgb(86, 97, 112)"
         page.screenshot(path=str(tmp_path / f"list-{width}.png"), full_page=True)
         assert not errors
     finally:

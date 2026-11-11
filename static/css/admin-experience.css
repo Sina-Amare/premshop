@@ -91,8 +91,8 @@ html body #result_list tbody td{line-height:1.9}
 html body fieldset>h2{padding-block:16px;border-bottom:1px solid var(--panel-line);color:var(--panel-ink)}
 .order-number{font-weight:600;font-variant-numeric:tabular-nums;color:var(--panel-ink)}
 .order-list-mobile{display:none}
-.order-status{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;font-weight:400;padding:3px 9px;margin:2px 0;background:var(--panel-soft);border:1px solid var(--panel-line);border-radius:5px;color:var(--panel-text)}
-.order-status[data-state=CANCELLED]{border-style:dashed}
+.order-status,.panel-pill{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;font-weight:500;line-height:1.5;padding:2px 9px;margin:2px 0;border:1px solid var(--panel-closed-line);border-radius:5px;background:var(--panel-closed-bg);color:var(--panel-closed-text)}[data-tone=attention]:is(.order-status,.panel-pill){border-color:var(--panel-attention-line);background:var(--panel-attention-bg);color:var(--panel-attention-text)}[data-tone=progress]:is(.order-status,.panel-pill){border-color:var(--panel-progress-line);background:var(--panel-progress-bg);color:var(--panel-progress-text)}[data-tone=done]:is(.order-status,.panel-pill){border-color:var(--panel-done-line);background:var(--panel-done-bg);color:var(--panel-done-text)}[data-tone=problem]:is(.order-status,.panel-pill){border-color:var(--panel-problem-line);background:var(--panel-problem-bg);color:var(--panel-problem-text)}.panel-pill .material-symbols-outlined{font-size:14px}.order-next-line{margin:0 0 6px;font-size:13px;font-weight:600;line-height:1.7;color:var(--panel-closed-text)}.order-next-line[data-tone=attention]{color:var(--panel-attention-text)}.order-next-line[data-tone=progress]{color:var(--panel-progress-text)}.order-next-line[data-tone=problem]{color:var(--panel-problem-text)}
+
 .order-history{border:1px solid var(--panel-line);border-radius:8px;background:var(--panel-surface);margin-top:24px;padding:0 24px 8px}
 .order-history>header{padding:18px 0;border-bottom:1px solid var(--panel-line)}
 .order-payment-form{display:grid;gap:20px;max-inline-size:32rem;margin-block:20px}
