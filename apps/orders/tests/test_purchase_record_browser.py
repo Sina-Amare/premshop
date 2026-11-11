@@ -45,15 +45,16 @@ def test_saved_customer_and_panel_conditions_are_readable(
         try:
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
-            expect(page.get_by_text("شرایط زمان خرید", exact=True).first).to_be_visible()
+            label = "شرایط هنگام خرید" if role == "customer" else "شرایط زمان خرید"
+            expect(page.get_by_text(label, exact=True).first).to_be_visible()
             expect(page.locator(".saved-product")).to_have_count(1)
             if role == "customer":
+                page.locator("#order-conditions > summary").click()
                 assert page.locator(".saved-product").evaluate(
                     "el => el.clientWidth >= el.parentElement.clientWidth * 0.9"
                 )
-            page.locator(".saved-product > summary").click()
-            if role == "customer":
-                page.locator("#order-policies > summary").click()
+            else:
+                page.locator(".saved-product > summary").click()
             for summary in page.locator(".saved-policy > summary").all():
                 summary.click()
             expect(page.locator(".saved-product")).to_contain_text("گارانتی ثبت‌شده")
@@ -87,7 +88,9 @@ def test_older_conditions_render_without_policy_disclosures(
             page.goto(live_server.url + path)
             expect(page).to_have_url(live_server.url + path)
             expect(page.locator(".saved-product")).to_have_count(1)
-            page.locator(".saved-product > summary").click()
+            page.locator(
+                "#order-conditions > summary" if role == "customer" else ".saved-product > summary"
+            ).click()
             assert page.locator("[data-saved-policy]").count() == 0
             assert "توضیح کامل زمان خرید" not in page.content()
             fonts_in_place(page)

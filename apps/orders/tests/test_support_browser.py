@@ -33,13 +33,8 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
     detail = reverse("order-detail", args=[order.order_number])
     try:
         page.goto(live_server.url + detail)
-        expect(
-            page.get_by_role(
-                "heading",
-                name="پشتیبانی سفارش",
-                exact=True,
-            )
-        ).to_be_visible()
+        expect(page.locator("#order-help > summary")).to_have_text("پشتیبانی سفارش")
+        expect(page.locator("#order-help")).to_have_attribute("open", "")
         expect(page.locator("[data-support-instructions]")).to_contain_text(
             "شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید."
         )

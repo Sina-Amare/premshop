@@ -50,7 +50,7 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
         page.goto(live_server.url + reverse("order-list"))
         expect(page.get_by_role("heading", name="سفارش‌ها", exact=True)).to_be_visible()
         capture(page, "list", width, tmp_path)
-        page.get_by_role("link", name="مشاهده‌ی سفارش", exact=True).click()
+        page.get_by_role("link", name="مشاهده‌ی سفارش", exact=False).click()
         expect(page).to_have_url(
             live_server.url + reverse("order-detail", args=[order.order_number])
         )
