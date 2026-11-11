@@ -43,13 +43,13 @@ def test_summary_shows_its_arithmetic_and_confirmed_help(client, plan, discount)
     body = client.get("/cart/").content.decode()
     if discount:
         assert (
-            body.index("قیمت محصولات")
+            body.index("جمع محصولات")
             < body.index("cart-summary__saving")
             < body.index("cart-summary__total")
         )
         assert "۲۰۰,۰۰۰" in body and "۵۰,۰۰۰" in body and "۱۵۰,۰۰۰" in body
     else:
-        assert "قیمت محصولات" not in body and "cart-summary__saving" not in body
+        assert "جمع محصولات" not in body and "cart-summary__saving" not in body
     # The summary states the cart's own longest time, not the site-wide cap.
     assert plan.product.delivery_sentence in body and PROMISES[0].text not in body
     assert details()["hours"] in body and details()["telegram_url"] in body

@@ -655,3 +655,5 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 
 /* The buy box's support line starts where everything else starts. */
 .buybox__help{margin-inline:0;text-align:start}
+/* On a phone's two-column grid the discount tag sat on the logo: the art starts below it. */
+@media(max-width:760px){.grid .pcard__art,.v-category-section .v-track .pcard__art{padding-block-start:24px}}

@@ -41,7 +41,7 @@
 <p>لازم نیست کاری انجام دهید.</p>
 {% elif state == 'expired' %}
 <h2 id="order-next-title">پرداختی برای این سفارش ثبت نشد</h2>
-<p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای پشتیبانی بفرستید.</p>
+<p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را <a href="{{ support.telegram_url }}" rel="noopener noreferrer">در تلگرام</a> برای پشتیبانی بفرستید.</p>
 <a class="btn btn--primary" href="{{ again_url }}">ثبت سفارش جدید</a>
 {% elif not card.products %}
 <h2 id="order-next-title">این سفارش محصولی ندارد</h2>
@@ -72,7 +72,7 @@
 <p>شناسه‌ی پشتیبانی نشان می‌دهد این سفارش متعلق به شماست.</p>
 {% if not card.contact %}{% include "orders/_support_identifier.html" %}{% endif %}
 <p class="order-support-contacts"><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
-<p>ساعت پاسخ‌گویی: {{ support.hours }}</p>
+<p>پاسخ‌گویی: {{ support.hours }}</p>
 {% if support_identifier %}<details class="order-support-replace"><summary>جایگزینی شناسه</summary>
 <p>اگر شناسه را به کسی داده‌اید، شناسه‌ی جدید بسازید. با ساخت آن، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>

@@ -79,7 +79,7 @@
         {% if form.input_fields %}<section class="checkout-box"><h2>اطلاعات فعال‌سازی</h2><p>رمز عبور و کدهای ورود سرویس را در سایت وارد نکنید.</p>
           {% for line, field in form.input_fields %}<div class="checkout-input"><div class="checkout-input__head"><div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.plan.product %}</div><p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p></div>{% include 'accounts/_field.html' %}</div>{% endfor %}
         </section>{% endif %}
-        <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش در همین حساب کاربری ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
+        <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش با حساب کاربری <bdi dir="ltr">{{ request.user.email }}</bdi> ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
         {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا خطای بالا برطرف نشود، سفارش ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
       </div>
       {% if purchase %}<aside class="cart-summary" aria-label="خلاصه‌ی سفارش">

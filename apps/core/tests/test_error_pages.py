@@ -68,7 +68,7 @@ def test_a_stale_form_in_the_panel_leads_back_to_the_panel(db):
     assert response.status_code == 403
     assert "این فرم دیگر کار نمی‌کند" in body
     assert f'href="{reverse("admin:index")}"' in body
-    assert "بازگشت به فهرست محصولات" not in body
+    assert "دیدن محصولات" not in body
 
 
 def test_the_500_page_needs_nothing_that_might_be_what_failed(client):

@@ -944,7 +944,6 @@
     display: inline-flex; align-items: center; gap: var(--spacing-1);
     font-size: 13px; font-weight: 500; line-height: 1.4;
     padding: 3px 10px; border-radius: var(--radius-sm); border: 1px solid;
-    font-variant-numeric: tabular-nums;
   }
   .badge--neutral { background: var(--color-fill-subtle); border-color: var(--color-line-strong); color: var(--color-secondary); }
   /* A fact the operator marked important: the neutral chip in ink and weight,
@@ -1063,7 +1062,8 @@
   .fact__k { font-size: 15px; color: var(--color-muted); }
   /* Lifted off the Persian baseline so it clears the ج descender. */
   .fact__lead { border-block-end: 1px dotted var(--color-line-strong); transform: translateY(-0.28em); }
-  .fact__v { font-size: 15px; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+  .fact__v { font-size: 15px; color: var(--color-ink); }
+  .fact__v a { color: var(--color-accent); }  /* a link in a fact reads as a link */
   .fact + .fact { border-block-start: 1px solid var(--color-line); }
 
   /* --- Tables: hairlines only, no zebra, no filled header --------------- */

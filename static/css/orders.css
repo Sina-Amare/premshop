@@ -95,3 +95,11 @@ details.order-card>p{margin-block:12px 16px}
 .order-document .order-timeline time{display:inline}
 @media(max-width:600px){.order-document{margin:12px;padding:18px}.order-card{padding:18px}}
 @media print{.order-actions,[data-invoice-status]{display:none}.order-document{margin:0;max-inline-size:none;border:0}}
+/* Without a discount the total is the first row: one hairline above it, not two. */
+.order-totals>.order-total:first-child{margin-block-start:0;border-block-start:0}
+/* The copy button sits beside the identifier it copies. */
+.order-actions:has(#support-identifier){justify-content:flex-start}
+/* A line's refund is a fact of the line, quieter than its price. */
+[data-line-money] .price__num{font:500 14px/1.8 var(--font-body);color:var(--v-ink)}
+.order-card__foot a{margin-inline-start:auto}
+.order-document>p a{color:var(--v-accent)}
