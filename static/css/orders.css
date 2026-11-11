@@ -11,18 +11,18 @@
 .order-heading,.order-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .order-heading{align-items:baseline}
 .order-heading h2{margin:0;font:600 18px/1.6 var(--font-head)}
-.order-card .order-heading a{color:var(--v-ink)}
 .order-status{display:inline-flex;align-items:center;padding:2px 10px;font-size:13px;font-weight:500;line-height:1.6;color:var(--v-ink);background:var(--v-soft);border:1px solid var(--v-line);border-radius:var(--radius-sm);white-space:nowrap}
 .order-card>.order-status,.order-document>.order-status{margin-block:0 8px}
 .order-warning{margin-block:8px 24px;padding-inline-start:12px;border-inline-start:3px solid var(--color-line-strong)}
 .order-category{margin-block:16px 0}
 .order-category+.order-category{margin-block-start:8px}
-.order-category h2{margin:0 0 6px;font:500 13px/1.7 var(--font-body);color:var(--v-text)}
+.order-category__name{margin:0 0 6px;font:500 13px/1.7 var(--font-body);color:var(--v-text)}
 .order-line{padding-block:14px;border-block-start:1px solid var(--color-line);overflow-wrap:anywhere}
 .order-line:has(>.checkout-preview__art){display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:0 12px}
 .order-line h3,.order-line h2{margin:0;font:600 17px/1.6 var(--font-head);color:var(--v-ink)}
 .order-line__facts{min-width:0}
-.order-line>.saved-product{grid-column:1/-1;min-inline-size:0;margin-block-start:12px;font-size:14px;line-height:1.9}
+.order-terms__item{min-inline-size:0;padding-block:12px;border-block-end:1px solid var(--v-line);font-size:14px;line-height:1.9}
+.order-terms__name{margin:0 0 4px;font-weight:600;color:var(--v-ink)}
 .saved-product h4{margin:16px 0 6px;font-weight:500}
 .saved-policy{margin-block:12px;min-inline-size:0}
 .saved-policy>summary{cursor:pointer;min-block-size:44px;padding-block:10px;font-weight:500}
@@ -32,10 +32,7 @@
 .order-line__end small{font-size:12px;line-height:1.8;color:var(--v-text)}
 .order-line__end small .price__num{font:500 13px/1.8 var(--font-body);color:var(--v-text)}
 /* The disclosure keeps its native marker, so padding rather than flex makes the 44px target. */
-.order-line details{font-size:13px;color:var(--v-text)}
-.order-line summary{padding-block:12px 10px;margin-block-end:-10px;line-height:22px;cursor:pointer}
-.order-line details p{margin:4px 0;font-size:13px;line-height:1.8}
-details.order-card>summary{padding-block:2px;font-size:14px;font-weight:500;cursor:pointer}
+details.order-card>summary{min-block-size:44px;padding-block:8px;font:600 18px/1.6 var(--font-head);color:var(--v-ink);cursor:pointer}
 details.order-card>p{margin-block:12px 16px}
 .order-cancel{color:var(--color-danger-text);border-color:var(--color-danger)}
 .order-support-identifier{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;user-select:all}

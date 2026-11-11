@@ -92,9 +92,11 @@ def test_the_customers_copy_of_the_conditions_is_persian_whatever_language_is_ac
     holds the template to the same, so it does not rest on the middleware."""
     with translation.override("en"):
         rendered = render_to_string(
-            "orders/_groups.html", {"groups": grouped_items(order.items.all())}
+            "orders/_saved_terms.html",
+            {"groups": grouped_items(order.items.all()), "policies": {}},
         )
-    for label in PERSIAN_LABELS:
+    # The first label heads the panel's copy; the order page names its own disclosure.
+    for label in PERSIAN_LABELS[1:]:
         assert label in rendered, label
     for label in ENGLISH_LABELS:
         assert label not in rendered, label

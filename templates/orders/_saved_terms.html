@@ -1,0 +1,7 @@
+{% load i18n %}{% language 'fa' %}
+{% for group in groups %}{% for line in group.lines %}<section class="order-terms__item">
+<p class="order-terms__name"><bdi>{{ line.facts.name }}</bdi>، <bdi>{{ line.facts.plan_title }}</bdi></p>
+{% include "orders/_product_conditions.html" with line=line bare=True only %}
+</section>{% endfor %}{% endfor %}
+{% if policies %}{% include "orders/_saved_policies.html" with policies=policies only %}{% endif %}
+{% endlanguage %}

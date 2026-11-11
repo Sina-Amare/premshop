@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from apps.core.formatting import format_toman, to_persian_digits
 from apps.orders import services
 from apps.orders.models import OrderItem, OrderItemEvent
 from apps.orders.services import OrderLine
+from apps.orders.tests.test_order_detail import second_plan
 
 pytestmark = pytest.mark.django_db
 
@@ -42,13 +44,30 @@ def test_order_list_and_account_current_summary_are_owner_only(client, buyer, pl
     assert to_persian_digits(hidden.order_number) not in body
     assert "سفارش‌ها" in body and "منتظر پرداخت" in body
     assert reverse("order-detail", args=[order.order_number]) in body
+    assert body.count(reverse("order-detail", args=[order.order_number])) == 1
     account = client.get(reverse("account"))
     assert reverse("order-detail", args=[order.order_number]) in account.content.decode()
     assert reverse("order-detail", args=[hidden.order_number]) not in account.content.decode()
 
 
+def test_account_page_names_itself_and_leads_with_the_order_in_progress(client, buyer, plan):
+    purchase(buyer, plan)
+    client.force_login(buyer)
+    body = client.get(reverse("account")).content.decode()
+    main = body.split('class="acct__main"', 1)[1].split("</main>", 1)[0]
+    assert re.findall(r"<h1[^>]*>(.*?)</h1>", main, re.S) == ["اطلاعات حساب"]
+    assert main.index("current-order-title") < main.index("ایمیل") < main.index("پشتیبانی")
+    h2s = [
+        re.sub(r"<[^>]+>|\s+", " ", t).strip()
+        for t in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)
+    ]
+    assert h2s[0] == "سفارش در جریان" and h2s[-1] == "پشتیبانی"
+
+
 def test_detail_groups_frozen_category_facts_and_represents_order_total_once(client, buyer, plan):
-    order = purchase(buyer, plan, 2)
+    order = services.place_order(
+        user=buyer, lines=[OrderLine(plan, 2), OrderLine(second_plan(), 1)]
+    )
     frozen_name, frozen_category, frozen_title = (
         plan.product.name,
         plan.product.category.name,
@@ -67,7 +86,7 @@ def test_detail_groups_frozen_category_facts_and_represents_order_total_once(cli
     assert body.count("data-order-total") == 1
     assert "تعداد: ۲" in body
     assert "قیمت هر عدد" in body and format_toman(200000, with_unit=False) in body
-    assert "هنوز پرداخت نشده" in body
+    assert "منتظر پرداخت" in body and "هنوز پرداخت نشده" not in body
 
 
 @pytest.mark.parametrize("endpoint", ["order-detail", "order-invoice", "order-cancel"])
