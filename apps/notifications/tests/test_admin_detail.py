@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -52,3 +54,17 @@ def test_a_mail_attempts_page_dates_its_moments_in_jalali(client, operator):
     body = client.get(url).content.decode()
     assert format_jalali(attempt.created_at) in body
     assert not gregorian_months(body)
+
+
+def test_the_order_message_list_counts_in_persian_digits(client, operator):
+    order = Order.objects.create(user=operator, subtotal=0, total_amount=0)
+    Notification.objects.create(
+        order=order,
+        dedupe_key=f"order:{order.pk}:list:email",
+        template_name=Notification.Template.values[0],
+        channel=Notification.Channel.EMAIL,
+        recipient="buyer@example.test",
+        next_attempt_at=timezone.now(),
+    )
+    body = client.get(reverse("admin:notifications_notification_changelist")).content.decode()
+    assert re.search(r"field-attempts_shown[^>]*>\s*۰\s*<", body)

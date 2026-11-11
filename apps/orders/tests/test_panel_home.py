@@ -55,3 +55,11 @@ def test_the_queue_raises_the_expiry_check_only_when_something_is_wrong(
     stale = client.get(queue).content.decode()
     assert '<section class="order-expiry" data-tone="problem"' in stale
     assert "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده" in stale
+
+
+def test_a_search_looks_through_every_order_whatever_the_tab(client, buyer, plan, operator):
+    owed = order_for_state(buyer, plan, operator, "owed")
+    client.force_login(operator)
+    queue = reverse("admin:orders_order_changelist")
+    body = client.get(queue, {"tab": "queued", "q": str(owed.order_number)}).content.decode()
+    assert reverse("admin:orders_order_change", args=[owed.pk]) in body

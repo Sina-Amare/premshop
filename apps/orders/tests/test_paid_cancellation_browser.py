@@ -34,7 +34,7 @@ def test_operator_cancels_a_queued_item_and_sees_the_owed_refund_with_the_keyboa
         page.keyboard.type(REASON)
         page.keyboard.press("Tab")
         page.keyboard.press("Enter")
-        expect(page.get_by_text(f"{format_toman(200000)} · در انتظار واریز")).to_be_visible()
+        expect(page.get_by_text(f"{format_toman(200000)}، در انتظار واریز")).to_be_visible()
         assert page.url == detail
         fits()
         assert Refund.objects.get().order_item_id == item.pk

@@ -26,10 +26,10 @@ class NotificationAdmin(ModelAdmin):
         "channel",
         "status_pill",
         "recipient",
-        "attempts",
+        "attempts_shown",
         "next_send",
         "last_error_class",
-        "smtp_code",
+        "smtp_shown",
     )
     list_filter = ("status", "channel", "template_name")
     fields = readonly_fields = detail_fields(
@@ -51,6 +51,19 @@ class NotificationAdmin(ModelAdmin):
         return format_html(
             '<span class="panel-pill" data-tone="{}">{}</span>', tone, obj.get_status_display()
         )
+
+    # Counts and codes in Persian digits, as every other figure in the panel.
+    @admin.display(
+        description=Notification._meta.get_field("attempts").verbose_name, ordering="attempts"
+    )
+    def attempts_shown(self, obj: Notification) -> str:
+        return to_persian_digits(obj.attempts)
+
+    @admin.display(
+        description=Notification._meta.get_field("smtp_code").verbose_name, ordering="smtp_code"
+    )
+    def smtp_shown(self, obj: Notification) -> str:
+        return to_persian_digits(obj.smtp_code) if obj.smtp_code else "—"
 
     @admin.display(description=_("تلاش بعدی"))
     def next_send(self, obj: Notification) -> str:

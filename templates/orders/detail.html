@@ -84,7 +84,7 @@
 <p>هر کسی این لینک را داشته باشد، نام محصولات و وضعیت سفارش را می‌بیند.</p>
 <a href="{% url 'order-tracking' order.tracking_token %}" rel="noreferrer">لینک پیگیری سفارش</a></details>
 {% if timeline %}<details class="order-record" id="order-history"><summary>تاریخچه‌ی سفارش</summary>
-<ol class="order-timeline">{% for event in timeline %}<li><p><bdi>{{ event.name }}</bdi> · {{ event.status }}</p><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></details>{% endif %}
+<ol class="order-timeline">{% for event in timeline %}<li><p><bdi>{{ event.name }}</bdi>، {{ event.status }}</p><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></details>{% endif %}
 {% if can_cancel %}<details class="order-record" id="order-cancel"><summary>لغو سفارش</summary>
 <p>با لغو سفارش، همه‌ی محصولات آن لغو می‌شوند. برای خرید دوباره باید سفارش جدیدی ثبت کنید.</p>
 <form method="post" action="{% url 'order-cancel' order.order_number %}">{% csrf_token %}<button class="btn btn--secondary order-cancel" type="submit" name="confirm" value="yes">بله، لغو سفارش</button></form>

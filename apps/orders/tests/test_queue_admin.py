@@ -58,8 +58,9 @@ def test_tabs_counts_urgency_search_and_mixed_orders(client, operator, buyer, pl
             "waiting": 0,
             "claims": 0,
         }
+    # A search looks through every order, whatever tab it starts from.
     response = client.get(listing(), {"q": buyer.email.upper()})
-    assert len(response.context["cl"].result_list) == 3
+    assert len(response.context["cl"].result_list) == 4
     assert client.get(listing(), {"q": "missing@example.test"}).context["cl"].result_count == 0
     assert client.get(listing(), {"tab": "all"}).context["cl"].result_count == 4
 

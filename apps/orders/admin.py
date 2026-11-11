@@ -128,6 +128,9 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
 
 
 def queue_tab(request: HttpRequest) -> str:
+    # A search looks through every order: the one a customer asks about may sit in any tab.
+    if request.GET.get("q", "").strip():
+        return "all"
     value = request.GET.get("tab", "queued")
     return value if value in {*_QUEUE_STATES, "all"} else "queued"
 

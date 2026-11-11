@@ -17,7 +17,7 @@
 {% if cl.result_count %}{{ block.super }}{% else %}
 <section class="order-queue-empty">
   <p>{% translate "سفارشی پیدا نکردیم." %}</p>
-  {% if cl.query %}<a href="?tab={{ queue_tab }}">{% translate "پاک کردن جستجو" %}</a>{% else %}<a href="{{ request.get_full_path }}">{% translate "تازه‌سازی" %}</a>{% endif %}
+  {% if cl.query %}<a href="?tab={{ request.GET.tab|default:'queued'|urlencode }}">{% translate "پاک کردن جستجو" %}</a>{% else %}<a href="{{ request.get_full_path }}">{% translate "تازه‌سازی" %}</a>{% endif %}
 </section>
 {% endif %}
 {% endblock %}
