@@ -6,13 +6,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from django.utils import timezone
 
 from apps.catalog.models import Product
-from apps.core.formatting import format_toman
 from apps.orders.models import OrderItem
 
 if TYPE_CHECKING:
@@ -66,6 +64,13 @@ def item_state(
     return "expired" if item.cancel_reason == REASON.EXPIRED_UNPAID else "cancelled"
 
 
+def item_tone(item: OrderItem) -> str:
+    """An item's tone in the panel: the same state the customer's page reads."""
+    refund = getattr(item, "refund", None)
+    state = item_state(item, refund, item.order.unpaid_expires_at, timezone.now())
+    return STATES[state][1]
+
+
 def lead_state(states: list[str]) -> str:
     return min(states, key=RANK.index) if states else "cancelled"
 
@@ -106,22 +111,11 @@ def warranty_last_day(item: OrderItem) -> date | None:
 
 
 # What the operator does next, in the order the work is taken: the operator's own moves
-# first, then what waits on the customer. A finished or closed order needs nothing.
-OPERATOR_NEXT = {
-    "late": "دیر شده: تحویل بدهید",
-    "queued": "تحویل بدهید",
-    "replacement": "درخواست تعویض را بررسی کنید",
-    "refund_owed": "بازگشت وجه {owed} را واریز کنید",
-    "awaiting_input": "منتظر اطلاعات مشتری",
-    "unpaid": "منتظر پرداخت مشتری",
-    "expired": "مهلت پرداخت تمام شد",
-}
+# first, in the customer's ranking, then what waits on the customer. A finished or closed
+# order needs nothing, and a lapsed payment window is the sweep's to close, not a task.
+OPERATOR_ORDER = ["late", "replacement", "queued", "refund_owed", "awaiting_input", "unpaid"]
 
 
-def operator_next(states: Iterable[str], owed: Decimal = Decimal(0)) -> dict[str, str] | None:
+def operator_next(states: Iterable[str]) -> str | None:
     present = set(states)
-    for state, words in OPERATOR_NEXT.items():
-        if state in present:
-            text = words.format(owed=format_toman(owed))
-            return {"state": state, "text": text, "tone": STATES[state][1]}
-    return None
+    return next((state for state in OPERATOR_ORDER if state in present), None)

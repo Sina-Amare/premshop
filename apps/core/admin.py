@@ -25,17 +25,18 @@ class MailAttemptAdmin(ModelAdmin):
     change_list_template = "admin/core/mailattempt/change_list.html"
     actions = None
 
-    # The five status tones, as a plain column (Unfold hides its label columns on a phone):
-    # an unclear result asks for a look, and a refusal or a cap is a problem.
+    # The five status tones, as a plain column: the panel's CSS hides every `status_label`
+    # column on a phone. An unclear result, a refusal or a cap is a problem to look at.
     @admin.display(description=_("نتیجه"), ordering="status")
     def status_pill(self, obj: MailAttempt) -> str:
-        tone = {
-            "in_flight": "progress",
-            "accepted": "done",
-            "rejected": "problem",
-            "uncertain": "attention",
-            "blocked": "problem",
-        }.get(obj.status, "closed")
+        tones: dict[str, str] = {
+            MailAttempt.Status.IN_FLIGHT: "progress",
+            MailAttempt.Status.ACCEPTED: "done",
+            MailAttempt.Status.REJECTED: "problem",
+            MailAttempt.Status.UNCERTAIN: "problem",
+            MailAttempt.Status.BLOCKED: "problem",
+        }
+        tone = tones.get(obj.status, "closed")
         return format_html(
             '<span class="panel-pill" data-tone="{}">{}</span>', tone, obj.get_status_display()
         )

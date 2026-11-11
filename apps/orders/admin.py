@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from datetime import date, timedelta
+from collections.abc import Callable, Iterable
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast
 
@@ -89,11 +89,34 @@ def queue_tab(request: HttpRequest) -> str:
     return value if value in {*_QUEUE_STATES, "all"} else "queued"
 
 
-def _tone(item: OrderItem) -> str:
-    """The item's tone in the panel: the same state the customer's page reads."""
-    refund = getattr(item, "refund", None)
-    state = order_status.item_state(item, refund, item.order.unpaid_expires_at, timezone.now())
-    return order_status.STATES[state][1]
+# The operator's next step, by the state apps/orders/status.py ranks first.
+_NEXT_WORDS = {
+    "late": _("دیر شده: تحویل بدهید"),
+    "queued": _("تحویل بدهید"),
+    "replacement": _("درخواست تعویض را بررسی کنید"),
+    "refund_owed": _("بازگشت وجه %(owed)s را واریز کنید"),
+    "awaiting_input": _("منتظر اطلاعات مشتری"),
+    "unpaid": _("منتظر پرداخت مشتری"),
+}
+
+
+def _next_step(
+    items: Iterable[OrderItem], unpaid_until: datetime, at: datetime
+) -> dict[str, str] | None:
+    """The one line above an order's items: every item counts, whatever the tab shows."""
+    states, owed = [], Decimal(0)
+    for item in items:
+        refund = getattr(item, "refund", None)
+        state = order_status.item_state(item, refund, unpaid_until, at)
+        states.append(state)
+        if state == "refund_owed" and refund is not None:
+            owed += refund.amount
+    first = order_status.operator_next(states)
+    if first is None:
+        return None
+    words = _NEXT_WORDS[first]
+    text = words % {"owed": format_toman(owed)} if first == "refund_owed" else str(words)
+    return {"text": text, "tone": order_status.STATES[first][1]}
 
 
 class OrderChangeList(ChangeList):
@@ -135,7 +158,7 @@ class OrderItemInline(TabularInline):
     def status_pill(self, obj: OrderItem) -> str:
         return format_html(
             '<span class="order-status" data-tone="{}">{}</span>',
-            _tone(obj),
+            order_status.item_tone(obj),
             obj.get_status_display(),
         )
 
@@ -798,10 +821,12 @@ class OrderAdmin(ModelAdmin):
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:
         queryset = super().get_queryset(request)
         items = OrderItem.objects.defer("customer_input").select_related("plan__product", "refund")
+        tab_filters = False
         if request.resolver_match and request.resolver_match.url_name == "orders_order_changelist":
             tab = queue_tab(request)
             if tab in _QUEUE_STATES:
                 state = _QUEUE_STATES[tab]
+                tab_filters = True
                 items = items.filter(status=state)
                 queryset = queryset.filter(
                     Exists(OrderItem.objects.filter(order_id=OuterRef("pk"), status=state))
@@ -814,14 +839,17 @@ class OrderAdmin(ModelAdmin):
                     queryset = queryset.annotate(
                         queue_first=Min(f"items__{field}", filter=Q(items__status=state))
                     ).order_by(F("queue_first").asc(nulls_last=True), "pk")
-        return queryset.select_related("user").prefetch_related(Prefetch("items", queryset=items))
+        prefetches = [Prefetch("items", queryset=items)]
+        if tab_filters:
+            # A tab shows one kind of item, but the next step weighs all of them.
+            every = OrderItem.objects.defer("customer_input").select_related("refund")
+            prefetches.append(Prefetch("items", queryset=every, to_attr="every_item"))
+        return queryset.select_related("user").prefetch_related(*prefetches)
 
     @admin.display(description=_("محصول و مهلت"))
     def queue_work(self, obj: Order) -> str:
         at = timezone.now()
         rows = []
-        states = []
-        owed = Decimal(0)
         for item in obj.items.all():
             kind, text, since = "neutral", "", None
             if item.status == OrderItem.Status.AWAITING_INPUT and item.sla_paused_at is None:
@@ -856,14 +884,17 @@ class OrderAdmin(ModelAdmin):
                     text = str(_("مهلت ثبت نشده است"))
             refund = getattr(item, "refund", None)
             state = order_status.item_state(item, refund, obj.unpaid_expires_at, at)
-            states.append(state)
-            if state == "refund_owed" and refund is not None:
-                owed += refund.amount
             tone = order_status.STATES[state][1]
             rows.append({"item": item, "kind": kind, "text": text, "since": since, "tone": tone})
+        every = getattr(obj, "every_item", None)
         return render_to_string(
             "admin/orders/queue_items.html",
-            {"queue_items": rows, "next": order_status.operator_next(states, owed)},
+            {
+                "queue_items": rows,
+                "next": _next_step(
+                    obj.items.all() if every is None else every, obj.unpaid_expires_at, at
+                ),
+            },
         )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
@@ -905,7 +936,8 @@ class OrderAdmin(ModelAdmin):
     @admin.display(description=_("وضعیت آیتم‌ها"))
     def item_states(self, obj: Order) -> str:
         states = dict.fromkeys(
-            (_tone(item), item.status, item.get_status_display()) for item in obj.items.all()
+            (order_status.item_tone(item), item.status, item.get_status_display())
+            for item in obj.items.all()
         )
         return format_html_join(
             " ", '<span class="order-status" data-tone="{}" data-state="{}">{}</span>', states
@@ -924,12 +956,16 @@ class OrderAdmin(ModelAdmin):
         )
         rows = format_html_join(
             "",
-            '<li><div class="order-timeline__head"><strong>{}</strong><span>{}</span></div>'
+            '<li><div class="order-timeline__head">{}<span>{}</span></div>'
             '<p class="order-timeline__meta">{} · {} · {} · {}</p>'
             '<p class="order-timeline__note">{}</p></li>',
             (
                 (
-                    event.get_to_status_display(),
+                    format_html(
+                        '<span class="order-status" data-tone="{}">{}</span>',
+                        order_status.STATES[order_status.tracking_state(event.to_status)][1],
+                        event.get_to_status_display(),
+                    ),
                     format_jalali(event.created_at),
                     format_html(
                         "<bdi>{}</bdi>؛ <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""

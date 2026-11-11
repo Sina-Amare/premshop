@@ -2000,3 +2000,19 @@ msgstr "Channel"
 
 msgid "گفت‌وگوی تلگرام"
 msgstr "Telegram chat"
+
+msgid "دیر شده: تحویل بدهید"
+msgstr "Late: deliver now"
+
+msgid "تحویل بدهید"
+msgstr "Deliver"
+
+msgid "درخواست تعویض را بررسی کنید"
+msgstr "Review the replacement request"
+
+#, python-format
+msgid "بازگشت وجه %(owed)s را واریز کنید"
+msgstr "Transfer the %(owed)s refund"
+
+msgid "منتظر پرداخت مشتری"
+msgstr "Waiting for the customer's payment"

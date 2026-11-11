@@ -35,12 +35,16 @@ class NotificationAdmin(ModelAdmin):
     actions = None
     list_select_related = ("order",)
 
-    # The five status tones, as a plain column: Unfold hides its label columns on a phone.
+    # The five status tones, as a plain column: the panel's CSS hides every `status_label`
+    # column on a phone.
     @admin.display(description=_("وضعیت"), ordering="status")
     def status_pill(self, obj: Notification) -> str:
-        tone = {"pending": "progress", "sent": "done", "failed": "problem"}.get(
-            obj.status, "closed"
-        )
+        tones: dict[str, str] = {
+            Notification.Status.PENDING: "progress",
+            Notification.Status.SENT: "done",
+            Notification.Status.FAILED: "problem",
+        }
+        tone = tones.get(obj.status, "closed")
         return format_html(
             '<span class="panel-pill" data-tone="{}">{}</span>', tone, obj.get_status_display()
         )

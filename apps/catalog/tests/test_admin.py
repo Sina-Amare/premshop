@@ -229,8 +229,9 @@ def test_draft_is_not_amber(client, operator, catalogue):
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     draft_row = row_of(body, "draft")
+    assert 'class="panel-pill" data-tone="progress"' in draft_row
+    assert 'data-tone="attention"' not in draft_row
     assert "orange" not in draft_row
-    assert "panel-time" not in draft_row
 
 
 def test_the_product_mark_is_served_over_http_not_from_the_disk(

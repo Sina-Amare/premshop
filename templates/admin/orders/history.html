@@ -1,4 +1,4 @@
-{% load i18n fa %}
+{% load i18n fa order_tones %}
 <section class="order-history" aria-labelledby="order-support-title">
   <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
   <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند." %}</p>
@@ -13,7 +13,7 @@
   {% for control in input_controls %}
     <article class="saved-purchase">
       <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>؛ <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
-      <p>{{ control.item.get_status_display }}</p>
+      <p><span class="order-status" data-tone="{{ control.item|item_tone }}">{{ control.item.get_status_display }}</span></p>
       {% if control.item.status == 'AWAITING_INPUT' and control.item.input_requested_at %}<p>{% translate "زمان درخواست اطلاعات" %}: {{ control.item.input_requested_at|jalali }}، {{ control.item.input_requested_at|date:'H:i'|fa_digits }}</p>{% endif %}
       <button type="submit" formmethod="post" formaction="{% url 'admin:orders_order_input_action' original.pk control.item.pk control.action %}" name="expected_event_id" value="{{ control.event_id }}" class="order-input-action">{{ control.label }}</button>
     </article>
@@ -25,7 +25,7 @@
   <header><h2 id="order-payment-title">{% translate "پرداخت‌های سفارش" %}</h2></header>
   {% for payment in payment_history %}
     <article class="saved-purchase">
-      <p>{{ payment.get_method_display }} · {{ payment.get_status_display }} · {{ payment.amount|toman }}</p>
+      <p>{{ payment.get_method_display }} · <span class="order-status" data-tone="{{ payment|payment_tone }}">{{ payment.get_status_display }}</span> · {{ payment.amount|toman }}</p>
       <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
       <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %} · {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
     </article>
@@ -37,7 +37,7 @@
 <section class="order-history" aria-labelledby="refund-history-title">
   <header><h2 id="refund-history-title">{% translate "بازپرداخت‌های سفارش" %}</h2></header>
   {% for refund in refund_history %}<article class="saved-purchase">
-    <p>{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }} · {{ refund.amount|toman }} · {{ refund.get_status_display }}</p>
+    <p>{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }} · {{ refund.amount|toman }} · <span class="order-status" data-tone="closed">{{ refund.get_status_display }}</span></p>
     {% if refund.executed_at %}
     <p>{{ refund.executed_at|jalali }} · {{ refund.executed_at|date:'H:i:s'|fa_digits }} · <bdi>{{ refund.executed_by.email }}</bdi></p>
     <p>{{ refund.get_destination_kind_display }} · <bdi dir="ltr">{{ refund.destination_last4 }}</bdi> · <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
