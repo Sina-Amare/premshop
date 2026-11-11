@@ -97,7 +97,7 @@
       {% if product.delivery_type %}<details class="buybox__facts"><summary>{% include 'storefront/icon.html' with name='info' %}<span>{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</span><span class="buybox__type">{{ product.get_delivery_type_display }}</span>{% include 'storefront/icon.html' with name='chevron' %}</summary>{% include 'catalog/_delivery_type_note.html' %}</details>{% endif %}
       {% if product.status == "unavailable" and not snapshot %}
       <button type="button" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
-      <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+      <p class="micro buybox__hint">زمان موجود شدن دوباره را از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید.</p>
       {% else %}
       {% cart_purchase plans wanted_plan as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
@@ -141,11 +141,11 @@
         <p data-preview-target="customer-input" data-preview-field="input_type telegram_required customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         {% include 'catalog/_buybox_selection.html' %}
         {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif purchase.chosen.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
-        {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
+        {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">زمان موجود شدن دوباره را از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید.</p>{% endif %}
         <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not purchase.chosen or purchase.chosen.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
-        <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+        <p class="micro buybox__hint">زمان موجود شدن دوباره را از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید.</p>
         {% endif %}
         <p class="cart-add-error" role="alert" hidden></p>
       </form>
