@@ -116,10 +116,14 @@
 
   --color-ok: #16a34a;
   --color-ok-text: #166534;
-  --color-time: #d97706;     /* reserved: deadlines and countdowns only */
+  --color-time: #d97706;     /* attention: the customer's move, or time running out */
   --color-time-text: #92400e;
   --color-danger: #dc2626;
   --color-danger-text: #991b1b;
+  /* With us: the shop is working on it. Cyan, kept clear of cobalt, which marks
+     what can be pressed; a status is never pressable. */
+  --color-progress: #0891b2;
+  --color-progress-text: #155e75;
 
   /* Two radii, and the step between them is the information: 6px is a control
      you act on, 14px is a surface that holds goods. One value for everything
@@ -950,7 +954,11 @@
   .badge--accent  { background: var(--color-accent-tint); border-color: color-mix(in oklab, var(--color-accent) 28%, var(--color-ground)); color: var(--color-accent); }
   .badge--ok      { background: color-mix(in oklab, var(--color-ok) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-ok) 28%, var(--color-ground)); color: var(--color-ok-text); }
   .badge--danger  { background: color-mix(in oklab, var(--color-danger) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-danger) 28%, var(--color-ground)); color: var(--color-danger-text); }
-  /* Amber lives here and nowhere else on the site. */
+  .tone-list { display: grid; gap: var(--spacing-3); margin: 0; }
+  .tone-list > div { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); }
+  .tone-list dd { margin: 0; font-size: 14px; color: var(--color-secondary); }
+  .badge--progress { background: color-mix(in oklab, var(--color-progress) 10%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-progress) 28%, var(--color-ground)); color: var(--color-progress-text); }
+  /* Amber means attention: the customer's move, or time running out (owner, 2026-11-11). */
   .badge--time    { background: color-mix(in oklab, var(--color-time) 12%, var(--color-ground)); border-color: color-mix(in oklab, var(--color-time) 34%, var(--color-ground)); color: var(--color-time-text); }
   /* A discount whose clock reached zero reads as the neutral badge. After
      `.badge--time`, or amber wins; secondary rather than muted text, which is

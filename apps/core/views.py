@@ -105,15 +105,15 @@ def styleguide(request: HttpRequest) -> HttpResponse:
                     "product": "اشتراک یک‌ماهه‌ی Claude Pro",
                     "duration": 30,
                     "price": Decimal("1200000"),
-                    "status": "تحویل شد",
+                    "status": "تحویل‌شده",
                     "kind": "ok",
                 },
                 {
                     "product": "گیفت کارت ۱۰ دلاری",
                     "duration": 0,
                     "price": Decimal("890000"),
-                    "status": "در صف انجام",
-                    "kind": "accent",
+                    "status": "در حال آماده‌سازی",
+                    "kind": "progress",
                 },
                 {
                     "product": "اشتراک سه‌ماهه‌ی ابزار توسعه",

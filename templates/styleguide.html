@@ -84,20 +84,21 @@
   </div>
 </div>
 
-<h2>وضعیت سفارش</h2>
+<section id="status-tones">
+<h2>لحن وضعیت‌ها</h2>
 <div class="card">
-  <div style="display:flex; flex-wrap:wrap; gap: var(--spacing-3)">
-    <span class="badge badge--neutral">در انتظار پرداخت</span>
-    <span class="badge badge--accent">در صف انجام</span>
-    <span class="badge badge--ok">تحویل شد</span>
-    <span class="badge badge--danger">لغو شد</span>
-    <span class="badge badge--time">۳ ساعت تا پایان مهلت</span>
-  </div>
+  <dl class="tone-list">
+    <div><dt><span class="badge badge--time">{% include 'storefront/icon.html' with name='clock' %}در انتظار پرداخت</span></dt><dd>توجه: نوبت مشتری است، یا زمانی رو به پایان است.</dd></div>
+    <div><dt><span class="badge badge--progress">{% include 'storefront/icon.html' with name='progress' %}در حال آماده‌سازی</span></dt><dd>در دست فروشگاه: کار در جریان است.</dd></div>
+    <div><dt><span class="badge badge--ok">{% include 'storefront/icon.html' with name='check' %}تحویل‌شده</span></dt><dd>انجام شد، همان‌طور که باید.</dd></div>
+    <div><dt><span class="badge badge--neutral">{% include 'storefront/icon.html' with name='close' %}لغوشده</span></dt><dd>بسته شد و کاری باقی نمانده است.</dd></div>
+    <div><dt><span class="badge badge--danger">{% include 'storefront/icon.html' with name='alert' %}تأخیر در تحویل</span></dt><dd>مشکلی پیش آمده و کسی باید کاری بکند.</dd></div>
+  </dl>
   <p class="small" style="margin-block-start: var(--spacing-4)">
-    رنگ هرگز تنها حامل معنی نیست؛ هر وضعیت متن هم دارد. رنگ کهربایی فقط و فقط
-    برای زمان به کار می‌رود، تا چشم اپراتور یک نشانه ثابت یاد بگیرد.
+    رنگ هرگز تنها حامل معنی نیست: هر وضعیت متن و نشانه هم دارد. رنگ وضعیت به خود وضعیت بسته است، نه به خواننده، پس مشتری و اپراتور یک رنگ می‌بینند. آبی کبالتی فقط برای چیزی است که می‌شود فشارش داد.
   </p>
 </div>
+</section>
 
 <h2>سطر دفتری</h2>
 <div class="card">

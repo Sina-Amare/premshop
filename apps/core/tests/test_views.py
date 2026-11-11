@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest import mock
 
 import pytest
@@ -88,6 +89,19 @@ class TestStyleguide:
         for token in tokens:
             assert token["value"] in body, token
         assert "#FAFAF9" not in body, "the warm-stone palette is gone from the stylesheet"
+
+    def test_the_styleguide_shows_the_five_status_tones_in_their_ranking(self, client):
+        body = client.get(reverse("styleguide")).content.decode()
+        section = body.split('id="status-tones"', 1)[1].split("</section>", 1)[0]
+        assert re.findall(r"badge badge--([a-z]+)", section) == [
+            "time",
+            "progress",
+            "ok",
+            "neutral",
+            "danger",
+        ]
+        assert section.count('<use href="#i-') == 5
+        assert "badge--accent" not in body.split('id="status-tones"', 1)[1]
 
     def test_ledger_signature_is_present(self, client: Client) -> None:
         body = client.get(reverse("styleguide")).content.decode()
