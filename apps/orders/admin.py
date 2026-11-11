@@ -397,10 +397,11 @@ class OrderAdmin(ModelAdmin):
         "amount",
         "queue_work",
     )
+    # What to do next and by when comes first: it is what the operator opens an order for.
     fieldsets = (
+        (_("انجام سفارش"), {"fields": ("queue_work",)}),
         (_("مشخصات سفارش"), {"fields": (("number", "customer"), ("channel", "placed"))}),
         (_("مبلغ‌های سفارش"), {"fields": (("subtotal_amount", "discount", "amount"),)}),
-        (_("انجام سفارش"), {"fields": ("queue_work",)}),
     )
     change_form_after_template = "admin/orders/history.html"
 
