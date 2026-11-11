@@ -52,7 +52,7 @@ def test_mail_panel_states_and_private_address_search(
             expect(page.locator(".field-requested_at").first).to_contain_text(
                 format_jalali(datetime.now(UTC))
             )
-            assert page.locator(".field-status").first.evaluate("el => el.clientWidth >= 140")
+            assert page.locator(".field-status_pill").first.evaluate("el => el.clientWidth >= 140")
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.evaluate("document.fonts.ready")

@@ -1,5 +1,5 @@
 {% load i18n fa richtext %}
-<details class="saved-product"><summary>{% translate "شرایط زمان خرید" %}</summary>
+{% if bare %}<div class="saved-product">{% else %}<details class="saved-product"><summary>{% translate "شرایط زمان خرید" %}</summary>{% endif %}
 {% if line.delivery %}<p>{% translate "روش تحویل" %}: {{ line.delivery }}</p>{% endif %}
 {% if line.facts.delivery_note %}<p>{{ line.facts.delivery_note }}</p>{% elif line.facts.delivery_hours %}<p>{% blocktranslate with hours=line.facts.delivery_hours|fa_digits %}تحویل تا {{ hours }} ساعت پس از تأیید پرداخت{% endblocktranslate %}</p>{% endif %}
 {% if line.warranty %}<p>{% translate "گارانتی" %}: {{ line.warranty }}</p>{% endif %}
@@ -9,4 +9,4 @@
 {% if line.facts.refund_note %}<h4>{% translate "شرایط لغو و بازگشت وجه" %}</h4><div class="rich rich__scroll" tabindex="0">{{ line.facts.refund_note|markdown:"" }}</div>{% endif %}
 {% if line.facts.full_description %}<h4>{% translate "توضیحات محصول" %}</h4><div class="rich rich__scroll" tabindex="0">{{ line.facts.full_description|markdown:"56" }}</div>{% endif %}
 {% for section in line.facts.sections %}<section class="saved-product-section">{% if section.title %}<h4><bdi>{{ section.title }}</bdi></h4>{% endif %}<div class="rich rich__scroll" tabindex="0">{{ section.body|markdown:"56" }}</div></section>{% endfor %}
-</details>
+{% if bare %}</div>{% else %}</details>{% endif %}

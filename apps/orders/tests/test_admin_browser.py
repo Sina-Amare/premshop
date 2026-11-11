@@ -85,7 +85,11 @@ def test_order_panel_empty_populated_and_long_history(
         assert page.locator("#result_list").is_visible()
         cancelled = page.locator('.order-status[data-state="CANCELLED"]:visible').first
         assert cancelled.is_visible()
-        assert cancelled.evaluate("el => getComputedStyle(el).borderTopStyle") == "dashed"
+        # Cancelled reads red with its cross (owner, 2026-11-11), not a delay's alert.
+        assert cancelled.get_attribute("data-tone") == "problem"
+        icon = cancelled.evaluate("el => getComputedStyle(el, '::before').content")
+        assert "close" in icon, icon
+        assert cancelled.evaluate("el => getComputedStyle(el).color") == "rgb(153, 27, 27)"
         page.screenshot(path=str(tmp_path / f"list-{width}.png"), full_page=True)
         assert not errors
     finally:

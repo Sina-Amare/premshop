@@ -119,7 +119,7 @@ def test_category_page_and_its_empty_state(client, category, product):
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "توی این دسته فعلاً محصولی نداریم" in body
+    assert "در این دسته فعلاً محصولی نیست" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):
@@ -376,7 +376,8 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
     assert ">ناموجود</button>" in body
-    assert "این محصول فعلاً موجود نیست" in body
+    assert "بپرسید چه زمانی دوباره موجود می‌شود." in body
+    assert "این محصول فعلاً موجود نیست" not in body
 
 
 # Attributes allowed after the class: a discount with an end carries data-left.
@@ -435,7 +436,8 @@ def test_home_groups_products_under_their_department(client, category, product):
     assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
     catalog = body.split('id="products"', 1)[1].split("</main>", 1)[0]
     assert re.findall(r"<p>([۰-۹]+) محصول</p>", catalog) == ["۱", "۱"]
-    assert len(re.findall(r'class="v-view-all" href="/c/[^"]+/"', body)) == 2
+    # Each department shows all its products, so none links out to its own page.
+    assert re.findall(r'class="v-view-all" href="/c/[^"]+/"', body) == []
     assert 'href="/c/gift/"' in body
 
 
@@ -660,7 +662,7 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "الان جستجوها زیاد شده." in response.content.decode()
+    assert "الان تعداد جستجوها زیاد است." in response.content.decode()
 
 
 @pytest.mark.parametrize("query", ["خرید اکانت جمینای", "خرید اکانت جمینای پرو", "اکانت gemini"])
@@ -684,7 +686,7 @@ def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product)
 
     assert "محصولی پیدا نکردیم" in body
     assert '<bdi class="v-query">xbox</bdi>' in body
-    assert "می‌تونید این محصولات رو هم ببینید:" in body
+    assert "این محصولات را هم ببینید:" in body
 
 
 def test_the_search_page_is_not_indexed(client, product):
@@ -803,3 +805,16 @@ def test_an_empty_query_does_not_spend_the_search_budget(client, category, produ
 
     spent = client.get(reverse("search"), {"q": product.name})
     assert spent.status_code == 200, "a real query after many empty ones still works"
+
+
+def test_every_product_shows_and_a_department_links_out_only_when_the_cap_hid_some(
+    client, category, product, monkeypatch
+):
+    sibling = make_product(category, "copilot")
+    link = f'aria-label="همه‌ی محصولات {category.name}"'
+    body = client.get(reverse("home")).content.decode()
+    catalog = body.split('id="products"', 1)[1].split("v-faq-band", 1)[0]
+    assert f'href="/p/{product.slug}/"' in catalog and f'href="/p/{sibling.slug}/"' in catalog
+    assert "data-rail" not in catalog and link not in catalog
+    monkeypatch.setattr("apps.catalog.views.HOME_PRODUCT_CAP", 1)
+    assert link in client.get(reverse("home")).content.decode()

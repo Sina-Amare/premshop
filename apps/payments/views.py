@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
@@ -132,4 +133,6 @@ def checkout(request: HttpRequest) -> HttpResponse:
             error=" ".join(exc.messages),
             status=409 if getattr(exc, "code", None) == "quote_changed" else 400,
         )
+    # The order's own card says how to pay; the greeting only confirms it was placed.
+    messages.success(request, "سفارشتان ثبت شد.")
     return redirect("order-detail", order_number=order.order_number)

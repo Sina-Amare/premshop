@@ -255,7 +255,7 @@ def test_every_faq_answer_is_short(client, shop):
 
 def test_the_faq_says_a_refund_after_delivery_pays_for_the_unused_days(client, shop):
     body = client.get(reverse("faq")).content.decode()
-    assert "اگر اشتراکم وسط دوره قطع شود، چه می‌شود؟" in body
+    assert "اگر اشتراکم وسط دوره قطع بشه، چی می‌شه؟" in body
     assert "مبلغ روزهای استفاده‌نشده را برمی‌گردانیم." in body
 
 

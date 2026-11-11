@@ -1,19 +1,12 @@
-{% load i18n fa %}
-<section class="order-history" aria-labelledby="order-support-title">
-  <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
-  <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند." %}</p>
-  <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
-  <input id="support-token" name="support_token" form="order-support-match" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
-  </div><button type="submit" form="order-support-match" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>
-</section>
+{% load i18n fa order_tones %}
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
   <p>{% translate "درخواست را در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را اینجا وارد نکنید." %}</p>
   {% for control in input_controls %}
     <article class="saved-purchase">
-      <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>؛ <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
-      <p>{{ control.item.get_status_display }}</p>
+      <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>، <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
+      <p><span class="order-status" data-tone="{{ control.item|item_tone }}">{{ control.item.get_status_display }}</span></p>
       {% if control.item.status == 'AWAITING_INPUT' and control.item.input_requested_at %}<p>{% translate "زمان درخواست اطلاعات" %}: {{ control.item.input_requested_at|jalali }}، {{ control.item.input_requested_at|date:'H:i'|fa_digits }}</p>{% endif %}
       <button type="submit" formmethod="post" formaction="{% url 'admin:orders_order_input_action' original.pk control.item.pk control.action %}" name="expected_event_id" value="{{ control.event_id }}" class="order-input-action">{{ control.label }}</button>
     </article>
@@ -25,9 +18,9 @@
   <header><h2 id="order-payment-title">{% translate "پرداخت‌های سفارش" %}</h2></header>
   {% for payment in payment_history %}
     <article class="saved-purchase">
-      <p>{{ payment.get_method_display }} · {{ payment.get_status_display }} · {{ payment.amount|toman }}</p>
+      <p>{{ payment.get_method_display }}، <span class="order-status" data-tone="{{ payment|payment_tone }}">{{ payment.get_status_display }}</span>، {{ payment.amount|toman }}</p>
       <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
-      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %} · {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
+      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %}، {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
     </article>
   {% endfor %}
   {% if can_record_payment %}<a class="order-input-action" href="{% url 'admin:orders_order_record_manual_payment' original.pk %}">{% translate "ثبت پرداخت خارج از درگاه" %}</a>{% endif %}
@@ -37,19 +30,26 @@
 <section class="order-history" aria-labelledby="refund-history-title">
   <header><h2 id="refund-history-title">{% translate "بازپرداخت‌های سفارش" %}</h2></header>
   {% for refund in refund_history %}<article class="saved-purchase">
-    <p>{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }} · {{ refund.amount|toman }} · {{ refund.get_status_display }}</p>
+    <p>{% translate "آیتم" %} {{ refund.order_item_id|fa_digits }}، {{ refund.amount|toman }}، <span class="order-status" data-tone="closed">{{ refund.get_status_display }}</span></p>
     {% if refund.executed_at %}
-    <p>{{ refund.executed_at|jalali }} · {{ refund.executed_at|date:'H:i:s'|fa_digits }} · <bdi>{{ refund.executed_by.email }}</bdi></p>
-    <p>{{ refund.get_destination_kind_display }} · <bdi dir="ltr">{{ refund.destination_last4 }}</bdi> · <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
+    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by.email }}</bdi></p>
+    <p>{{ refund.get_destination_kind_display }}، <bdi dir="ltr">{{ refund.destination_last4 }}</bdi>، <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
     {% endif %}
   </article>{% endfor %}
   {% if can_execute_refunds %}<a class="order-input-action" href="{% url 'admin:orders_order_execute_refunds' original.pk %}">{% translate "ثبت واریز بازپرداخت" %}</a>{% endif %}
 </section>
 {% endif %}
+<section class="order-history" aria-labelledby="order-support-title">
+  <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
+  <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند." %}</p>
+  <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
+  <input id="support-token" name="support_token" form="order-support-match" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  </div><button type="submit" form="order-support-match" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>
+</section>
 <section class="order-history saved-conditions" aria-labelledby="saved-conditions-title">
   <header><h2 id="saved-conditions-title">{% translate "شرایط زمان خرید" %}</h2></header>
   {% for group in purchase_groups %}{% for line in group.lines %}<article class="saved-purchase">
-    <h3><bdi>{{ line.facts.name }}</bdi>؛ <bdi>{{ line.facts.plan_title }}</bdi></h3>
+    <h3><bdi>{{ line.facts.name }}</bdi>، <bdi>{{ line.facts.plan_title }}</bdi></h3>
     {% include "orders/_product_conditions.html" with line=line only %}
   </article>{% endfor %}{% endfor %}
   {% if original.policy_snapshot %}{% include "orders/_saved_policies.html" with policies=original.policy_snapshot only %}{% endif %}
@@ -63,8 +63,8 @@
   <ol class="order-timeline">
     {% for row in input_access_log %}
       <li>
-        <div class="order-timeline__head"><strong><bdi>{{ row.item_name|default_if_none:"" }}</bdi>؛ <bdi>{{ row.item_plan|default_if_none:"" }}</bdi></strong><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|jalali }} · {{ row.created_at|date:"H:i"|fa_digits }}</time></div>
-        <p class="order-timeline__meta">{% translate "آیتم" %} {{ row.order_item_id|fa_digits }} · {{ row.get_target_display }} · <bdi dir="ltr">{{ row.user.email }}</bdi></p>
+        <div class="order-timeline__head"><strong><bdi>{{ row.item_name|default_if_none:"" }}</bdi>، <bdi>{{ row.item_plan|default_if_none:"" }}</bdi></strong><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|jalali }}، {{ row.created_at|date:"H:i"|fa_digits }}</time></div>
+        <p class="order-timeline__meta">{% translate "آیتم" %} {{ row.order_item_id|fa_digits }}، {{ row.get_target_display }}، <bdi dir="ltr">{{ row.user.email }}</bdi></p>
       </li>
     {% empty %}
       <li>{% translate "هنوز اطلاعاتی نمایش داده نشده." %}</li>

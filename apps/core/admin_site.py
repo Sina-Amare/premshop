@@ -15,6 +15,9 @@ from apps.core.sessions import login_session
 
 
 class PanelSite(UnfoldAdminSite):
+    # Django's «-» beside the panel's own «—» read as two kinds of empty.
+    empty_value_display = "—"
+
     def each_context(self, request: HttpRequest) -> dict[str, Any]:
         from apps.core import email_log
 

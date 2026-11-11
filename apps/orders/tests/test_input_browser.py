@@ -34,7 +34,7 @@ def test_operator_input_cycle_and_customer_handoff(
     )
     page = context.new_page()
     detail = reverse("admin:orders_order_change", args=[order.pk])
-    receipt = "اطلاعات رسید؛ ادامه‌ی انجام" if language == "fa" else "Details received; continue"
+    receipt = "ثبت دریافت اطلاعات" if language == "fa" else "Record the details as received"
     request = "ثبت درخواست اطلاعات" if language == "fa" else "Record a request for details"
     heading = "اطلاعات فعال‌سازی" if language == "fa" else "Activation details"
 
@@ -105,15 +105,13 @@ def test_operator_input_cycle_and_customer_handoff(
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert "expected_event_id" not in page.content()
         assert "Details received" not in page.content()
+        # Sending the details is the action, so the card holds what to send and where.
         expect(
-            page.locator("#order-next").get_by_role("link", name="ارتباط با پشتیبانی", exact=True)
-        ).to_have_attribute("href", "#order-help")
-        page.locator("#order-next").get_by_role(
-            "link", name="ارتباط با پشتیبانی", exact=True
-        ).click()
-        expect(page.locator("#support-identifier")).to_be_in_viewport()
-        expect(page.locator("#order-help a").first).to_have_attribute(
-            "href", "https://t.me/premshop_support"
+            page.locator("#order-next").get_by_role("link", name="پیام به پشتیبانی در تلگرام")
+        ).to_have_attribute("href", "https://t.me/premshop_support")
+        expect(page.locator("#order-next #support-identifier")).to_be_visible()
+        expect(page.locator("#order-next")).to_contain_text(
+            "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد."
         )
     finally:
         context.close()

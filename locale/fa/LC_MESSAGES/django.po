@@ -232,10 +232,10 @@ msgid "Thanks for spending some quality time with the web site today."
 msgstr ""
 
 msgid "This item will be deleted."
-msgstr "این مورد حذف می‌شه."
+msgstr "این مورد حذف می‌شود."
 
 msgid "This page yielded into no results. Create a new item or reset your filters."
-msgstr "چیزی پیدا نکردیم. یک مورد جدید اضافه کنید یا فیلترها رو پاک کنید."
+msgstr "چیزی پیدا نکردیم. جستجو یا فیلترها را تغییر دهید."
 
 msgid "Time"
 msgstr "ساعت"
@@ -432,10 +432,10 @@ msgid "Delete selected %(verbose_name_plural)s"
 msgstr "حذف این %(verbose_name_plural)s"
 
 msgid "Are you sure you want to delete the selected %(objects_name)s? All of the following objects and their related items will be deleted:"
-msgstr "%(objects_name)s انتخاب‌شده رو حذف می‌کنید؟ همه‌ی موارد زیر و اطلاعات وابسته‌شون هم حذف می‌شن:"
+msgstr "%(objects_name)s انتخاب‌شده حذف شود؟ همه‌ی موارد زیر و اطلاعات وابسته به آن‌ها هم حذف می‌شوند:"
 
 msgid "Deleting the selected %(objects_name)s would require deleting the following protected related objects:"
-msgstr "نمی‌شه %(objects_name)s انتخاب‌شده رو حذف کرد؛ موارد زیر بهشون وابسته‌ان:"
+msgstr "%(objects_name)s انتخاب‌شده حذف نمی‌شود، چون موارد زیر به آن‌ها وابسته‌اند:"
 
 msgid "Deleting the selected %(objects_name)s would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
 msgstr "با حذف %(objects_name)s انتخاب‌شده، موارد زیر هم حذف می‌شن؛ اما حسابتون اجازه‌ی حذفشون رو نداره:"
@@ -495,10 +495,10 @@ msgid "The {name} “{obj}” was changed successfully."
 msgstr "تغییرات {name} «{obj}» ذخیره شد."
 
 msgid "The {name} “{obj}” was added successfully. You may edit it again below."
-msgstr "{name} «{obj}» اضافه شد. می‌تونید همین‌جا ویرایشش کنید."
+msgstr "{name} «{obj}» افزوده شد."
 
 msgid "The {name} “{obj}” was changed successfully. You may edit it again below."
-msgstr "تغییرات {name} «{obj}» ذخیره شد. می‌تونید همین‌جا به ویرایش ادامه بدید."
+msgstr "تغییرات {name} «{obj}» ذخیره شد."
 
 msgid "The {name} “{obj}” was added successfully. You may add another {name} below."
 msgstr "{name} «{obj}» اضافه شد. می‌تونید {name} بعدی رو ثبت کنید."

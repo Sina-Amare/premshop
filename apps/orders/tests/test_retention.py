@@ -199,7 +199,7 @@ def test_an_unpaid_or_queued_items_input_is_kept(buyer, plan, operator):
         assert raw(item)[2] != ""
 
 
-def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, operator):
+def test_customers_see_a_moved_delivery_time_but_never_a_deletion(buyer, plan, operator):
     start = timezone.now()
     order, item = queued(buyer, plan, operator)
     with time_machine.travel(start + timedelta(minutes=5), tick=False):
@@ -214,7 +214,9 @@ def test_customers_never_see_a_history_row_that_kept_its_status(buyer, plan, ope
     tracked = selectors.order_for_tracking(order.tracking_token)
     assert tracked is not None
     for shown in (timeline, [row["status"] for row in tracked[0]["timeline"]]):
-        assert len(shown) == len(set(shown)) == 3
+        # Placed, paid, the moved delivery time and the delivery: the deletion stays unseen.
+        assert len(shown) == len(set(shown)) == 4
+        assert "زمان تحویل تغییر کرد" in shown
 
 
 @pytest.mark.parametrize("change", ["claim", "later_expiry"])

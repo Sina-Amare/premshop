@@ -92,9 +92,11 @@ def test_the_customers_copy_of_the_conditions_is_persian_whatever_language_is_ac
     holds the template to the same, so it does not rest on the middleware."""
     with translation.override("en"):
         rendered = render_to_string(
-            "orders/_groups.html", {"groups": grouped_items(order.items.all())}
+            "orders/_saved_terms.html",
+            {"groups": grouped_items(order.items.all()), "policies": {}},
         )
-    for label in PERSIAN_LABELS:
+    # The first label heads the panel's copy; the order page names its own disclosure.
+    for label in PERSIAN_LABELS[1:]:
         assert label in rendered, label
     for label in ENGLISH_LABELS:
         assert label not in rendered, label
@@ -127,7 +129,7 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
 
     timeline = section(body, 'aria-labelledby="order-history-title"')
     access = section(body, 'id="input-access-history"')
-    named = "<bdi>سرویس نمونه</bdi>؛ <bdi>یک ماهه</bdi>"
+    named = "<bdi>سرویس نمونه</bdi>، <bdi>یک ماهه</bdi>"
     assert OrderItemEvent.objects.filter(order_item=item).exists()
     assert named in timeline and named in access
     number = f"آیتم {to_persian_digits(item.pk)}"

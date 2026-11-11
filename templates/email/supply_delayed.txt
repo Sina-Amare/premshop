@@ -1,7 +1,7 @@
 {% load fa %}PremShop
-تحویل {{ product_name }}، {{ plan_title }}، با تأخیر انجام می‌شود.
+تحویل {{ product_name }}، {{ plan_title }}، از زمانی که گفته بودیم دیرتر می‌شود.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-مهلت جدید: {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
+زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
 وضعیت سفارش:
 {{ order_url }}
 

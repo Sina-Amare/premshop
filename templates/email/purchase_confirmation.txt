@@ -5,9 +5,9 @@
 برای دیدن وضعیت فعلی سفارش، وارد حسابتان شوید:
 {{ order_url }}
 
-{% for line in lines %}{{ line.facts.name }}؛ {{ line.facts.plan_title }}
+{% for line in lines %}محصول: {{ line.facts.name }}؛ {{ line.facts.plan_title }}
 تعداد: {{ line.quantity|fa_digits }}
-قیمت هر عدد: {{ line.price|toman_plain }} تومان
+قیمت واحد: {{ line.price|toman_plain }} تومان
 جمع: {{ line.amount|toman_plain }} تومان
 {% if line.facts.duration_days %}مدت: {{ line.facts.duration_days|fa_digits }} روز
 {% endif %}{% if line.delivery %}روش تحویل: {{ line.delivery }}

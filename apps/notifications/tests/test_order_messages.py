@@ -180,7 +180,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         executed_at=timezone.now(),
     )
     refunded = rows("item_refunded").get()
-    assert "واریز شد" in refunded.text_body
+    assert "به شما برگرداندیم" in refunded.text_body
     for row in (cancelled, refunded):
         assert "SECRET-TRANSFER-REF" not in row.text_body + row.html_body
         assert "2468" not in row.text_body + row.html_body
@@ -190,7 +190,7 @@ def test_unpaid_cancellation_does_not_claim_a_refund(buyer, plan):
     order = orders.place_order(user=buyer, lines=[orders.OrderLine(plan, 1)])
     orders.cancel_unpaid_order(order_id=order.pk, actor=buyer)
     row = rows("item_cancelled").get()
-    assert "مبلغی برای بازپرداخت" in row.text_body
+    assert "این لغو بازگشت وجه ندارد." in row.text_body
     assert "در انتظار واریز" not in row.text_body
 
 

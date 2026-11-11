@@ -78,9 +78,7 @@ class CodeForm(forms.Form):
 
 # The four validators in AUTH_PASSWORD_VALIDATORS, in one breath. If a validator is
 # ever added or removed there, this line is wrong — hence the test that renders it.
-PASSWORD_HINT = (
-    "حداقل ۸ کاراکتر. نباید رایج، شبیه ایمیل شما یا فقط عدد باشد."  # noqa: S105  # nosec B105
-)
+PASSWORD_HINT = "رمز عبور باید حداقل ۸ کاراکتر باشد و رایج، شبیه ایمیلتان یا فقط عدد نباشد."  # noqa: S105  # nosec B105
 
 
 class RuleErrorsOnTheFirstField(auth_forms.SetPasswordMixin):

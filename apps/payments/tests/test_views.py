@@ -73,7 +73,7 @@ def test_review_anchors_each_product_with_its_logo_total_and_facts(client, buyer
     assert "checkout-preview__art" in item
     assert "۴۰۰,۰۰۰" in item and "هرکدام" in item and "تعداد: ۲" in item
     assert 'class="checkout-item__facts"' in item and "v-icon" in item
-    assert "قیمت هر عدد" not in item
+    assert "قیمت واحد" not in item
 
 
 def test_guest_checkout_has_inline_code_and_html_fallback(client):
@@ -149,7 +149,7 @@ def test_review_and_confirmation_use_server_totals_without_consent(client, buyer
     assert response.url == reverse("order-detail", args=[order.order_number])
     assert order.total_amount == 200000 and not cart.items.exists()
     detail = client.get(response.url)
-    assert detail.status_code == 200 and "منتظر پرداخت" in detail.content.decode()
+    assert detail.status_code == 200 and "در انتظار پرداخت" in detail.content.decode()
     client.force_login(User.objects.create_user("outsider@example.test"))
     assert client.get(response.url).status_code == 404
 
@@ -355,7 +355,7 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    explanation = "تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید."
+    explanation = "برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید."
     assert explanation in response.content.decode()
     assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
     with pytest.raises(UnpaidOrderExists) as caught:
@@ -368,3 +368,11 @@ def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, b
     response = client.get(reverse("checkout"))
     assert "در این مرحله چیزی پرداخت نمی‌کنید." in response.content.decode()
     assert "۲۴ ساعت" in response.content.decode()
+
+
+def test_a_placed_order_is_greeted_on_its_own_page(client, buyer, cart):
+    client.force_login(buyer)
+    quote = quote_checkout(user=buyer)
+    data = {"action": "checkout", "quote": quote.token, "checkout_id": uuid.uuid4()}
+    page = client.post(reverse("checkout"), data, follow=True).content.decode()
+    assert '<div class="form-ok" role="status">سفارشتان ثبت شد.</div>' in page

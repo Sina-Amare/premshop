@@ -11,7 +11,7 @@
     <h2 id="current-order-title" class="acct-order__title">سفارش در جریان</h2>
     <p class="acct-order__details">
       <span>سفارش {{ current_order.order.order_number|fa_digits }}</span>
-      <span class="acct-order__status">{{ current_order.status }}</span>
+      <span class="badge badge--{{ current_order.lead.badge }}">{% include 'storefront/icon.html' with name=current_order.lead.icon %}{{ current_order.lead.label }}</span>
     </p>
   </div>
   <p class="acct-order__amount"><span class="acct-order__label">مبلغ نهایی</span>{{ current_order.order.total_amount|price_html }}</p>
@@ -53,7 +53,7 @@
 {% elif telegram.token %}
 <div class="acct__next" data-telegram-wait="{% url 'account-telegram-state' %}">
   <div>
-    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. اعتبار این پیوند ۱۰ دقیقه است.</p>
+    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. این پیوند تا ۱۰ دقیقه اعتبار دارد.</p>
     <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
     {# A line of its own: split across two lines, the command is easy to copy half of. #}
     <p class="small flush"><bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
@@ -78,7 +78,7 @@
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>
   <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></span></div>
-  <div class="fact"><span class="fact__k">ساعات پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
+  <div class="fact"><span class="fact__k">پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
 </div>
 <p class="small acct__hint"><a href="{% url 'faq' %}">سؤال‌های پرتکرار</a></p>
 {% endblock %}

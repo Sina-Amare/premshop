@@ -54,18 +54,18 @@
       add(`شماره‌ی سفارش: ${data.number}`);
       add(`تاریخ ثبت: ${data.date}`);
       add(`وضعیت: ${data.status}`);
-      add(data.notice, 26, 400, 32);
+      if (data.paid) add(data.paid, 26);
+      if (data.notice) add(data.notice, 26, 400, 32);
       for (const line of data.lines) {
         add(line.name, 30);
         add(line.plan, 26);
         add(`وضعیت: ${line.status}`, 24);
-        add(`تعداد: ${line.quantity}    قیمت هر عدد: ${line.price}`, 26);
+        add(`تعداد: ${line.quantity}    قیمت واحد: ${line.price}`, 26);
         add(`جمع این محصول: ${line.amount}`, 26, 400, 30);
       }
       add(`جمع محصولات: ${data.subtotal}`);
       add(`تخفیف: ${data.discount}`);
       add(`مبلغ نهایی سفارش: ${data.total}`, 32);
-      add(data.notice, 24);
       const height = Math.ceil(y + margin);
       // Bound pixel memory while retaining every row in long orders.
       const scale = Math.min(1, Math.sqrt(16000000 / (width * height)), 30000 / height);
@@ -94,7 +94,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       status.textContent = 'تصویر فاکتور آماده شد.';
     } catch (_) {
-      status.textContent = 'تصویر فاکتور ساخته نشد. دوباره امتحان کنید. متن فاکتور در همین صفحه هست.';
+      status.textContent = 'تصویر فاکتور ساخته نشد. دوباره امتحان کنید. متن فاکتور در همین صفحه است.';
     } finally {
       button.disabled = false;
     }

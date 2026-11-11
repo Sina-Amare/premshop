@@ -9,5 +9,5 @@ def test_missing_page_still_renders_when_legal_navigation_cannot_load(client):
         response = client.get("/this-page-does-not-exist/")
 
     assert response.status_code == 404
-    assert "این صفحه رو پیدا نکردیم" in response.content.decode()
+    assert "این صفحه را پیدا نکردیم" in response.content.decode()
     assert response.context["legal_pages"] == []

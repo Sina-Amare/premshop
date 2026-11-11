@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest import mock
 
 import pytest
@@ -88,6 +89,20 @@ class TestStyleguide:
         for token in tokens:
             assert token["value"] in body, token
         assert "#FAFAF9" not in body, "the warm-stone palette is gone from the stylesheet"
+
+    def test_the_styleguide_shows_the_five_status_tones_in_their_ranking(self, client):
+        body = client.get(reverse("styleguide")).content.decode()
+        section = body.split('id="status-tones"', 1)[1].split("</section>", 1)[0]
+        # Attention, problem, with us, done, closed: the ranking apps/orders/status.py holds.
+        badges = re.findall(r"badge badge--([a-z]+)", section)
+        assert list(dict.fromkeys(badges)) == ["time", "danger", "progress", "ok", "neutral"]
+        icons = re.findall(r'<use href="#i-([a-z]+)"', section)
+        assert len(icons) == len(badges)
+        # The problem tone's two pills: a delay's alert, a cancellation's cross (owner, 2026-11-11).
+        assert icons[1:3] == ["alert", "close"]
+        for name in icons:
+            assert f'id="i-{name}"' in body, f"the sprite has no {name} symbol"
+        assert "badge--accent" not in body.split('id="status-tones"', 1)[1]
 
     def test_ledger_signature_is_present(self, client: Client) -> None:
         body = client.get(reverse("styleguide")).content.decode()

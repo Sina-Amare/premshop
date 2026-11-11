@@ -1,24 +1,27 @@
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 from playwright.sync_api import expect
 
 from apps.core.formatting import to_persian_digits
+from apps.orders import services
 from apps.orders.models import Order
 from apps.orders.tests.test_customer_browser import capture, context_for
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_order_detail import CASES, order_for_state
+from apps.orders.tests.test_order_detail import CASES, order_for_state, second_plan
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize(
-    "state,heading,needs_input",
+    "state,pill,badge,fragment,contact",
     CASES
     + [
-        ("long", "در صف انجام", False),
-        ("unavailable", "در صف انجام", False),
-        ("error", "در صف انجام", False),
+        ("long", "در حال آماده‌سازی", "progress", "تحویل", False),
+        ("unavailable", "در حال آماده‌سازی", "progress", "تحویل", False),
+        ("error", "در حال آماده‌سازی", "progress", "تحویل", False),
     ],
 )
 def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
@@ -29,8 +32,10 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
     operator,
     settings,
     state,
-    heading,
-    needs_input,
+    pill,
+    badge,
+    fragment,
+    contact,
     width,
     tmp_path,
 ):
@@ -57,14 +62,20 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
                 "heading", name=f"سفارش {to_persian_digits(order.order_number)}", exact=True
             )
         ).to_be_visible()
-        expect(page.locator("#order-next-title")).to_have_text(heading)
+        expect(page.locator("#order-next-title")).to_contain_text(fragment)
+        expect(page.locator(f"#order-next .badge--{badge}")).to_have_text(pill)
         boxes = [
             page.locator(selector).bounding_box()
-            for selector in ("#order-next", "#order-purchase", "#order-help")
+            for selector in ("#order-next", "#order-purchase", ".order-records")
         ]
         assert all(abs(box["x"] - boxes[0]["x"]) < 1 for box in boxes)
         assert boxes[0]["y"] < boxes[1]["y"] < boxes[2]["y"]
-        assert page.locator("[data-input-request]").count() == int(needs_input)
+        assert page.locator("[data-support-contact]").count() == int(contact)
+        if state in ("error", "unavailable"):  # support waits closed among the records
+            expect(page.locator("#order-help")).not_to_have_attribute("open", "")
+            page.locator("#order-help > summary").focus()
+            page.keyboard.press("Enter")
+            expect(page.locator("#order-help")).to_have_attribute("open", "")
         if state == "error":
             page.locator(".order-support-replace > summary").focus()
             page.keyboard.press("Enter")
@@ -86,19 +97,20 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
                     "link", name="@premshop_support", exact=True
                 )
             ).to_be_visible()
-        if state == "long":
-            page.locator(".saved-product > summary").first.focus()
-            page.keyboard.press("Enter")
-            expect(page.get_by_text("توضیحات محصول", exact=True)).to_be_visible()
         capture(page, f"order-{state}", width, tmp_path)
-        if needs_input:
-            page.locator("#order-next").get_by_role(
-                "link", name="ارتباط با پشتیبانی", exact=True
-            ).focus()
-            page.keyboard.press("Enter")
-            expect(page.locator("#support-identifier")).to_be_in_viewport()
-        page.locator("#order-policies > summary").focus()
+        if contact:  # what to send sits in the card, beside the button that opens the chat
+            if state == "delivered":  # inside the warranty it waits behind one quiet question
+                expect(page.locator("#order-next #support-identifier")).to_be_hidden()
+                page.locator(".order-contact-more > summary").focus()
+                page.keyboard.press("Enter")
+            expect(page.locator("#order-next #support-identifier")).to_be_visible()
+            expect(
+                page.locator("#order-next").get_by_role("link", name="پیام به پشتیبانی در تلگرام")
+            ).to_have_attribute("href", "https://t.me/premshop_support")
+        page.locator("#order-conditions > summary").focus()
         page.keyboard.press("Enter")
+        if state == "long":
+            expect(page.get_by_text("توضیحات محصول", exact=True)).to_be_visible()
         page.locator(".saved-policy > summary").focus()
         page.keyboard.press("Enter")
         expect(page.get_by_text("متن زمان ثبت سفارش", exact=True)).to_be_visible()
@@ -111,5 +123,31 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             expect(page.locator(".order-timeline")).to_be_visible()
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert not errors
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_a_discounted_order_in_two_categories_shows_its_subtotal_and_names(
+    browser, live_server, buyer, plan, width, tmp_path
+):
+    order = services.place_order(
+        user=buyer, lines=[services.OrderLine(plan, 1), services.OrderLine(second_plan(), 1)]
+    )
+    Order.objects.filter(pk=order.pk).update(
+        discount_amount=Decimal("50000"),
+        total_amount=order.total_amount - Decimal("50000"),
+        discount_snapshot={"code": "SAVE"},
+    )
+    context = context_for(browser, live_server, buyer, width)
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("order-detail", args=[order.order_number]))
+        expect(page.locator(".order-category__name")).to_have_text(["نمونه", "دسته‌ی دوم"])
+        expect(page.locator(".order-totals dt")).to_have_text(
+            ["جمع محصولات", "تخفیف SAVE", "مبلغ نهایی سفارش"]
+        )
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+        capture(page, "order-discounted", width, tmp_path)
     finally:
         context.close()

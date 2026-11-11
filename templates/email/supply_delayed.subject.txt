@@ -1,1 +1,1 @@
-{% load fa %}مهلت تحویل سفارش {{ order_number|fa_digits }} تغییر کرد
+{% load fa %}زمان تحویل سفارش {{ order_number|fa_digits }} تغییر کرد

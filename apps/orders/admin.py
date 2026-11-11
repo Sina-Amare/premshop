@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from datetime import date, timedelta
+from collections.abc import Callable, Iterable
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any, cast
 
 import jdatetime
@@ -35,6 +36,7 @@ from apps.core.formatting import (
     to_persian_digits,
 )
 from apps.core.ratelimit import client_ip
+from apps.orders import status as order_status
 from apps.orders.models import (
     CredentialAccessLog,
     DiscountCode,
@@ -65,6 +67,7 @@ from apps.orders.services import (
     reveal_customer_input,
     reveal_delivery,
 )
+from apps.payments.models import Refund
 
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted
@@ -82,9 +85,84 @@ _QUEUE_STATES = {
 _QUEUE_ORDER = {"queued": "due_at", "waiting": "input_requested_at", "claims": "delivered_at"}
 
 
+def _moment(at: Any) -> str:
+    """A date with its time, so two moves on one day can be told apart."""
+    local = timezone.localtime(at)
+    return f"{format_jalali(local)}، {to_persian_digits(local.strftime('%H:%M'))}"
+
+
+def queue_overview(user: Any) -> list[dict[str, Any]]:
+    """The order work the panel's home counts, by order, each linked to the tab that holds it.
+    A count of nothing reads grey, so colour marks only work that exists."""
+    items = OrderItem.objects.filter(order_id=OuterRef("pk"))
+    flags = {
+        "late": Exists(items.filter(status=OrderItem.Status.QUEUED, due_at__lte=timezone.now())),
+        **{name: Exists(items.filter(status=state)) for name, state in _QUEUE_STATES.items()},
+        "refunds": Exists(
+            Refund.objects.filter(order_item__order_id=OuterRef("pk"), status=Refund.Status.OWED)
+        ),
+    }
+    counts = Order.objects.aggregate(
+        **{name: Count("pk", filter=flag) for name, flag in flags.items()}
+    )
+    queue = reverse("admin:orders_order_changelist")
+    tiles = [
+        ("late", _("دیر شده"), "problem", f"{queue}?tab=queued"),
+        ("queued", _("در صف انجام"), "progress", f"{queue}?tab=queued"),
+        ("claims", _("درخواست تعویض"), "progress", f"{queue}?tab=claims"),
+        ("waiting", _("منتظر اطلاعات مشتری"), "attention", f"{queue}?tab=waiting"),
+        ("unpaid", _("منتظر پرداخت"), "attention", f"{queue}?tab=unpaid"),
+    ]
+    if user.has_perm("payments.view_refund"):
+        reconciliation = reverse("admin:orders_order_reconciliation")
+        tiles.append(("refunds", _("بازپرداخت در انتظار واریز"), "attention", reconciliation))
+    return [
+        {
+            "label": label,
+            "count": counts[name],
+            "tone": tone if counts[name] else "closed",
+            "url": url,
+        }
+        for name, label, tone, url in tiles
+    ]
+
+
 def queue_tab(request: HttpRequest) -> str:
+    # A search looks through every order: the one a customer asks about may sit in any tab.
+    if request.GET.get("q", "").strip():
+        return "all"
     value = request.GET.get("tab", "queued")
     return value if value in {*_QUEUE_STATES, "all"} else "queued"
+
+
+# The operator's next step, by the state apps/orders/status.py ranks first.
+_NEXT_WORDS = {
+    "late": _("دیر شده: تحویل بدهید"),
+    "queued": _("تحویل بدهید"),
+    "replacement": _("درخواست تعویض را بررسی کنید"),
+    "refund_owed": _("بازپرداخت %(owed)s را واریز کنید"),
+    "awaiting_input": _("اطلاعات فعال‌سازی را در تلگرام پیگیری کنید"),
+    "unpaid": _("پرداخت را در تلگرام پیگیری کنید"),
+}
+
+
+def _next_step(
+    items: Iterable[OrderItem], unpaid_until: datetime, at: datetime
+) -> dict[str, str] | None:
+    """The one line above an order's items: every item counts, whatever the tab shows."""
+    states, owed = [], Decimal(0)
+    for item in items:
+        refund = getattr(item, "refund", None)
+        state = order_status.item_state(item, refund, unpaid_until, at)
+        states.append(state)
+        if state == "refund_owed" and refund is not None:
+            owed += refund.amount
+    first = order_status.operator_next(states)
+    if first is None:
+        return None
+    words = _NEXT_WORDS[first]
+    text = words % {"owed": format_toman(owed)} if first == "refund_owed" else str(words)
+    return {"text": text, "tone": order_status.STATES[first][1]}
 
 
 class OrderChangeList(ChangeList):
@@ -103,7 +181,7 @@ class OrderItemInline(TabularInline):
     model = OrderItem
     fields = (
         "purchase",
-        "status",
+        "status_pill",
         "sale_amount",
         "cost_amount",
         "cancel_reason",
@@ -118,14 +196,31 @@ class OrderItemInline(TabularInline):
     show_title = False
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[OrderItem]:
-        return super().get_queryset(request).defer("customer_input").select_related("refund")
+        return (
+            super().get_queryset(request).defer("customer_input").select_related("refund", "order")
+        )
+
+    @admin.display(description=_("وضعیت"))
+    def status_pill(self, obj: OrderItem) -> str:
+        return format_html(
+            '<span class="order-status" data-tone="{}" data-state="{}">{}</span>',
+            order_status.item_tone(obj),
+            obj.status,
+            obj.get_status_display(),
+        )
 
     @admin.display(description=_("بازپرداخت"))
     def refund_state(self, obj: OrderItem) -> str:
         refund = getattr(obj, "refund", None)
         if refund is None:
             return "—"
-        return f"{format_toman(refund.amount)} · {refund.get_status_display()}"
+        tone = "attention" if refund.status == refund.Status.OWED else "closed"
+        return format_html(
+            '<span class="order-status" data-tone="{}">{}، {}</span>',
+            tone,
+            format_toman(refund.amount),
+            refund.get_status_display(),
+        )
 
     def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
@@ -170,7 +265,7 @@ class OrderItemInline(TabularInline):
             )
         if obj.status == OrderItem.Status.AWAITING_INPUT:
             return format_html(
-                '<a class="order-input-action" href="{}">{}</a>',
+                '<a class="order-input-action" data-danger href="{}">{}</a>',
                 reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
                 _("لغو و بازپرداخت"),
             )
@@ -311,10 +406,11 @@ class OrderAdmin(ModelAdmin):
         "amount",
         "queue_work",
     )
+    # What to do next and by when comes first: it is what the operator opens an order for.
     fieldsets = (
+        (_("انجام سفارش"), {"fields": ("queue_work",)}),
         (_("مشخصات سفارش"), {"fields": (("number", "customer"), ("channel", "placed"))}),
         (_("مبلغ‌های سفارش"), {"fields": (("subtotal_amount", "discount", "amount"),)}),
-        (_("انجام سفارش"), {"fields": ("queue_work",)}),
     )
     change_form_after_template = "admin/orders/history.html"
 
@@ -749,7 +845,7 @@ class OrderAdmin(ModelAdmin):
                         action, label = "request", _("ثبت درخواست اطلاعات")
                     elif item.status == OrderItem.Status.AWAITING_INPUT:
                         action = "receive" if item.due_at is None else "resume"
-                        label = _("اطلاعات رسید؛ ادامه‌ی انجام")
+                        label = _("ثبت دریافت اطلاعات")
                     else:
                         continue
                     controls.append(
@@ -772,11 +868,13 @@ class OrderAdmin(ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Order]:
         queryset = super().get_queryset(request)
-        items = OrderItem.objects.defer("customer_input").select_related("plan__product")
+        items = OrderItem.objects.defer("customer_input").select_related("plan__product", "refund")
+        tab_filters = False
         if request.resolver_match and request.resolver_match.url_name == "orders_order_changelist":
             tab = queue_tab(request)
             if tab in _QUEUE_STATES:
                 state = _QUEUE_STATES[tab]
+                tab_filters = True
                 items = items.filter(status=state)
                 queryset = queryset.filter(
                     Exists(OrderItem.objects.filter(order_id=OuterRef("pk"), status=state))
@@ -789,7 +887,12 @@ class OrderAdmin(ModelAdmin):
                     queryset = queryset.annotate(
                         queue_first=Min(f"items__{field}", filter=Q(items__status=state))
                     ).order_by(F("queue_first").asc(nulls_last=True), "pk")
-        return queryset.select_related("user").prefetch_related(Prefetch("items", queryset=items))
+        prefetches = [Prefetch("items", queryset=items)]
+        if tab_filters:
+            # A tab shows one kind of item, but the next step weighs all of them.
+            every = OrderItem.objects.defer("customer_input").select_related("refund")
+            prefetches.append(Prefetch("items", queryset=every, to_attr="every_item"))
+        return queryset.select_related("user").prefetch_related(*prefetches)
 
     @admin.display(description=_("محصول و مهلت"))
     def queue_work(self, obj: Order) -> str:
@@ -822,13 +925,25 @@ class OrderAdmin(ModelAdmin):
                     seconds = (deadline - reference).total_seconds()
                     kind = "paused" if paused else ("overdue" if seconds <= 0 else "remaining")
                     label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
-                    text = f"{format_countdown(abs(int(seconds)))} · {label}"
+                    text = f"{format_countdown(abs(int(seconds)))} {label}"
                     if paused:
-                        text = str(_("متوقف")) + " · " + text
+                        text = str(_("متوقف")) + "، " + text
                 elif item.status == OrderItem.Status.QUEUED:
                     text = str(_("مهلت ثبت نشده است"))
-            rows.append({"item": item, "kind": kind, "text": text, "since": since})
-        return render_to_string("admin/orders/queue_items.html", {"queue_items": rows})
+            refund = getattr(item, "refund", None)
+            state = order_status.item_state(item, refund, obj.unpaid_expires_at, at)
+            tone = order_status.panel_tone(item, state)
+            rows.append({"item": item, "kind": kind, "text": text, "since": since, "tone": tone})
+        every = getattr(obj, "every_item", None)
+        return render_to_string(
+            "admin/orders/queue_items.html",
+            {
+                "queue_items": rows,
+                "next": _next_step(
+                    obj.items.all() if every is None else every, obj.unpaid_expires_at, at
+                ),
+            },
+        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -843,11 +958,10 @@ class OrderAdmin(ModelAdmin):
     def number(self, obj: Order) -> str:
         return format_html(
             '<span class="order-number">{}</span><span class="order-list-mobile">'
-            "<span>{}</span><strong>{}</strong><span>{}</span></span>",
+            "<span>{}</span><strong>{}</strong></span>",
             to_persian_digits(obj.order_number),
             self.customer(obj),
             self.amount(obj),
-            self.item_states(obj),
         )
 
     @admin.display(description=_("مشتری"))
@@ -864,16 +978,23 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("تخفیف"))
     def discount(self, obj: Order) -> str:
+        if not obj.discount_amount:
+            return str(_("بدون تخفیف"))
         return format_toman(obj.discount_amount, with_unit=False) + " تومان"
 
     @admin.display(description=_("وضعیت آیتم‌ها"))
     def item_states(self, obj: Order) -> str:
-        states = dict.fromkeys((item.status, item.get_status_display()) for item in obj.items.all())
-        return format_html_join(" ", '<span class="order-status" data-state="{}">{}</span>', states)
+        states = dict.fromkeys(
+            (order_status.item_tone(item), item.status, item.get_status_display())
+            for item in obj.items.all()
+        )
+        return format_html_join(
+            " ", '<span class="order-status" data-tone="{}" data-state="{}">{}</span>', states
+        )
 
     @admin.display(description=_("زمان ثبت"), ordering="created_at")
     def placed(self, obj: Order) -> str:
-        return format_jalali(obj.created_at)
+        return _moment(obj.created_at)
 
     @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
@@ -884,15 +1005,20 @@ class OrderAdmin(ModelAdmin):
         )
         rows = format_html_join(
             "",
-            '<li><div class="order-timeline__head"><strong>{}</strong><span>{}</span></div>'
-            '<p class="order-timeline__meta">{} · {} · {} · {}</p>'
+            '<li><div class="order-timeline__head">{}<span>{}</span></div>'
+            '<p class="order-timeline__meta">{}، {}، {}، {}</p>'
             '<p class="order-timeline__note">{}</p></li>',
             (
                 (
-                    event.get_to_status_display(),
-                    format_jalali(event.created_at),
                     format_html(
-                        "<bdi>{}</bdi>؛ <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
+                        '<span class="order-status" data-tone="{}" data-state="{}">{}</span>',
+                        order_status.STATES[order_status.tracking_state(event.to_status)][1],
+                        event.to_status,
+                        event.get_to_status_display(),
+                    ),
+                    _moment(event.created_at),
+                    format_html(
+                        "<bdi>{}</bdi>، <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
                     ),
                     _("آیتم %(number)s") % {"number": to_persian_digits(event.order_item_id)},
                     event.get_actor_display(),

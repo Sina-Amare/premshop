@@ -251,7 +251,7 @@ def test_leaving_after_a_failed_save_still_warns(open_panel, product):
 
 def test_the_discount_countdown_is_in_the_time_colour(open_panel, product):
     """The countdown was grey while the code, the commit and the tests all
-    said amber (ADR-0016: amber means time and nothing else)."""
+    said amber (ADR-0016: amber means attention, here a clock)."""
     plan = product.plans.get()
     plan.promo_price = Decimal("1190000")
     plan.promo_ends_at = timezone.now() + timedelta(hours=5)

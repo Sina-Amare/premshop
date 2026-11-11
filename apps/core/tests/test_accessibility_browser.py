@@ -19,12 +19,16 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 from django.conf import settings
 from django.test import Client
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
+from apps.orders import services
+from apps.orders.tests.test_delivery import deliver
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
@@ -56,10 +60,18 @@ VISITOR = {
     "code request": "/login/code/",
     "404": "/no-such-page/",
 }
-CUSTOMER = {"account": "/account/"}
+CUSTOMER = {
+    "account": "/account/",
+    "orders": "/account/orders/",
+    "order, unpaid": "/account/orders/{unpaid}/",
+    "order, delivered and refund owed": "/account/orders/{mixed}/",
+    "invoice": "/account/orders/{unpaid}/invoice/",
+    "tracking": "/track/{token}/",
+}
 OPERATOR = {
     "panel: products": "/admin/catalog/product/",
     "panel: product form": "/admin/catalog/product/{pk}/change/",
+    "panel: orders": "/admin/orders/order/?tab=all",
 }
 
 # (rule, page, element) for a violation accepted with its reason. Per element,
@@ -126,9 +138,28 @@ def scan(context, url: str) -> list[dict]:
         page.close()
 
 
-def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server, shop):
+def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server, shop, settings):
+    # The delivery below encrypts its details, so the test brings its own key.
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    settings.FIELD_ENCRYPTION_KEY_FALLBACKS = []
     customer = User.objects.create_user("customer@example.test", is_verified=True)
     operator = User.objects.create_superuser("operator@example.test")
+    # The order pages carry every tone: the customer's move, work in hand, done and closed.
+    plan = shop.plans.get()
+    Plan.objects.filter(pk=plan.pk).update(
+        max_quantity=2, input_type=Plan.InputType.NONE, telegram_required=False
+    )
+    plan.refresh_from_db()
+    _, items = paid_order(customer, operator, [services.OrderLine(plan, 2)])
+    deliver(items[0], operator, expires_at=timezone.localdate() + timedelta(days=30))
+    cancel(items[1], operator)
+    unpaid = services.place_order(user=customer, lines=[services.OrderLine(plan, 1)])
+    numbers = {
+        "pk": shop.pk,
+        "unpaid": unpaid.order_number,
+        "mixed": items[0].order.order_number,
+        "token": items[0].order.tracking_token,
+    }
     # Otherwise the two search scans read the same page.
     assert Product.objects.public().search("chatgpt").exists()
     assert not Product.objects.public().search("netflix").exists()
@@ -146,7 +177,7 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
             context = context_for(browser, live_server, width, user)
             try:
                 for name, path in pages.items():
-                    url = live_server.url + path.format(pk=shop.pk)
+                    url = live_server.url + path.format(**numbers)
                     record(name, width, scan(context, url))
                 if user is None:
                     page = context.new_page()

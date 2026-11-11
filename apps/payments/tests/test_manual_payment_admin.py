@@ -177,7 +177,7 @@ def test_customer_sees_queue_without_reference_on_any_public_projection(
         assert response.status_code == 200
         assert reference not in response.content.decode()
         if name == "order-detail":
-            assert "در صف انجام" in response.content.decode()
+            assert "در حال آماده‌سازی" in response.content.decode()
             assert "پرداخت آنلاین هنوز فعال نیست" not in response.content.decode()
     assert client.get(url(order)).status_code == 302
 

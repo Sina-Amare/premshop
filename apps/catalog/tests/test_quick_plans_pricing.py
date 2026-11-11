@@ -24,7 +24,7 @@ REFUSAL = (
     "سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
 )
 SECONDARY = "rgb(86, 97, 112)"  # --color-secondary on the storefront
-TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text, the amber kept for time
+TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text, the amber kept for attention
 OLD_ORANGE = "rgb(154, 52, 18)"  # #9a3412, which the sheet's offer line used
 
 

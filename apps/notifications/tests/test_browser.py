@@ -78,9 +78,9 @@ def test_order_email_previews(browser, live_server, settings, monkeypatch, width
         "input_requested": "منتظر اطلاعات شما هستیم",
         "delivery_completed": "محصول تحویل شد",
         "replacement_rejected": "درخواست تعویض رد شد",
-        "supply_delayed": "مهلت تحویل تغییر کرد",
+        "supply_delayed": "زمان تحویل تغییر کرد",
         "item_cancelled": "محصول لغو شد",
-        "item_refunded": "بازپرداخت واریز شد",
+        "item_refunded": "بازگشت وجه انجام شد",
     }
     try:
         for name, heading in headings.items():
@@ -110,7 +110,7 @@ def test_order_email_previews(browser, live_server, settings, monkeypatch, width
             },
         )
         page.goto(f"{live_server.url}/dev/emails/item_cancelled/")
-        expect(page.get_by_text("مبلغی برای بازپرداخت این محصول ثبت نشده است.")).to_be_visible()
+        expect(page.get_by_text("این لغو بازگشت وجه ندارد.")).to_be_visible()
         page.screenshot(path=str(tmp_path / f"cancelled-zero-{width}.png"), full_page=True)
     finally:
         context.close()

@@ -1,8 +1,8 @@
 {% extends "email/base.html" %}{% load fa %}
-{% block title %}مهلت تحویل تغییر کرد{% endblock %}
+{% block title %}زمان تحویل تغییر کرد{% endblock %}
 {% block content %}
-<h1 style="font-size:21px;line-height:1.6;">مهلت تحویل تغییر کرد</h1>
-<p>تحویل این محصول با تأخیر انجام می‌شود.</p>
-<p>مهلت جدید: {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</p>
+<h1 style="font-size:21px;line-height:1.6;">زمان تحویل تغییر کرد</h1>
+<p>تحویل این محصول از زمانی که گفته بودیم دیرتر می‌شود.</p>
+<p>زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</p>
 {% include "email/_order_notice.html" %}
 {% endblock %}

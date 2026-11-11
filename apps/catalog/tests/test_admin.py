@@ -205,28 +205,33 @@ def test_every_status_keeps_its_own_colour(client, operator, catalogue):
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     for slug, status, colour in [
-        ("live", Product.Status.ACTIVE, "bg-green-100"),
-        ("draft", Product.Status.DRAFT, "bg-blue-100"),
-        ("gone", Product.Status.UNAVAILABLE, "bg-red-100"),
+        # The five status tones: on sale is done, a draft is work in hand, unavailable a problem.
+        ("live", Product.Status.ACTIVE, "done"),
+        ("draft", Product.Status.DRAFT, "progress"),
+        ("gone", Product.Status.UNAVAILABLE, "problem"),
     ]:
         cell = re.search(
             r'<td class="field-status_label[^"]*"[^>]*>(.*?)</td>', row_of(body, slug), re.S
         )
         assert cell, f"no status cell in the row of {slug}"
-        badge = re.search(rf'<span class="([^"]*)"[^>]*>\s*{status.label}\s*</span>', cell.group(1))
+        badge = re.search(
+            rf'<span class="panel-pill" data-tone="([a-z]+)">\s*{status.label}\s*</span>',
+            cell.group(1),
+        )
         assert badge, f"the status cell of {slug} does not read {status.label}"
-        assert colour in badge.group(1), f"{status.label} should render {colour}"
+        assert badge.group(1) == colour, f"{status.label} should be {colour}"
 
 
 def test_draft_is_not_amber(client, operator, catalogue):
-    """ADR-0016 reserves amber for time and nothing else, and Unfold's
-    `warning` variant is orange. A draft is not a clock. The only amber in
-    this panel belongs to a promotion running out."""
+    """ADR-0016 keeps amber for attention, and Unfold's
+    `warning` variant is orange. A draft asks nothing of anyone. On the product
+    list, the only amber belongs to a promotion running out."""
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     draft_row = row_of(body, "draft")
+    assert 'class="panel-pill" data-tone="progress"' in draft_row
+    assert 'data-tone="attention"' not in draft_row
     assert "orange" not in draft_row
-    assert "panel-time" not in draft_row
 
 
 def test_the_product_mark_is_served_over_http_not_from_the_disk(
@@ -308,8 +313,8 @@ def test_a_running_discount_shows_its_time_left(client, operator, catalogue):
 
 
 def test_the_countdown_is_in_the_time_colour(client, operator, catalogue):
-    """Amber is the one loud thing in this panel and it means time
-    (ADR-0016). The countdown was a grey badge while the code and the
+    """Amber is a loud thing in this panel and it means attention, here
+    time running out (ADR-0016). The countdown was a grey badge while the code and the
     commit both said amber."""
     plan = catalogue["live"].plans.first()
     plan.promo_price = Decimal("150000")
@@ -1068,7 +1073,7 @@ def test_the_bulk_delete_confirmation_reads_as_persian(client, operator, catalog
     for leak in ("موجودیت", "ذیل", "در خصوص", "اشیا"):
         assert leak not in body, leak
     # One product is named in the singular, and a plural verb did not agree.
-    assert "محصول انتخاب‌شده رو حذف می‌کنید؟" in body
+    assert "محصول انتخاب‌شده حذف شود؟" in body
     assert "حذف شوند؟" not in body
 
 
@@ -1273,7 +1278,7 @@ def test_the_english_product_list_is_english(client, english, catalogue):
     assert not [text for text in words if PERSIAN_LETTER.search(text)], words
     options = re.findall(r'<select name="action".*?</select>', body, re.S)[0]
     assert not PERSIAN_LETTER.search(re.sub(r"<[^>]+>", "", options)), options
-    badges = re.findall(r'<span class="[^"]*rounded-default[^"]*"[^>]*>\s*([^<]+?)\s*</span>', body)
+    badges = re.findall(r'<span class="panel-pill"[^>]*>\s*([^<]+?)\s*</span>', body)
     assert {"Active", "Draft", "Unavailable"} <= set(badges), badges
 
 
@@ -1562,7 +1567,7 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
 
     live.refresh_from_db()
     assert live.status == Product.Status.DRAFT
-    # Blue like the same list on the form: orange is too close to the amber kept for time.
+    # Blue like the same list on the form: orange is too close to the amber kept for attention.
     [note] = [str(m) for m in response.context["messages"] if m.level_tag == "info"]
     headline, _, rest = note.partition('<ul class="panel-reasons">')
     assert headline == "برای انتشار دوباره‌ی «⁨live⁩»، این موارد رو اصلاح کنید.", note

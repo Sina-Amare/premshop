@@ -68,7 +68,7 @@ def test_a_stale_form_in_the_panel_leads_back_to_the_panel(db):
     assert response.status_code == 403
     assert "این فرم دیگر کار نمی‌کند" in body
     assert f'href="{reverse("admin:index")}"' in body
-    assert "بازگشت به فهرست محصولات" not in body
+    assert "دیدن محصولات" not in body
 
 
 def test_the_500_page_needs_nothing_that_might_be_what_failed(client):
@@ -102,7 +102,7 @@ def test_a_nul_in_the_address_is_refused_before_the_database(client, url):
     response = client.get(url)
 
     assert response.status_code == 404
-    assert "این صفحه رو پیدا نکردیم" in response.content.decode()
+    assert "این صفحه را پیدا نکردیم" in response.content.decode()
 
 
 def test_a_nul_in_the_session_cookie_never_reaches_the_database(client, settings):

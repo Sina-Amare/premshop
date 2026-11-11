@@ -97,7 +97,7 @@
       {% if product.delivery_type %}<details class="buybox__facts"><summary>{% include 'storefront/icon.html' with name='info' %}<span>{% if product.delivery_type == "ready_account" or product.delivery_type == "on_customer_account" %}اکانت{% else %}نوع تحویل{% endif %}</span><span class="buybox__type">{{ product.get_delivery_type_display }}</span>{% include 'storefront/icon.html' with name='chevron' %}</summary>{% include 'catalog/_delivery_type_note.html' %}</details>{% endif %}
       {% if product.status == "unavailable" and not snapshot %}
       <button type="button" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
-      <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+      <p class="micro buybox__hint">از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید چه زمانی دوباره موجود می‌شود.</p>
       {% else %}
       {% cart_purchase plans wanted_plan as purchase %}
       {% with available_plans=purchase.selectable max_quantity=purchase.maximum %}
@@ -130,9 +130,9 @@
         <div data-preview-target="quantity" data-preview-field="max_quantity" class="buybox__row" id="qty-row"{% if purchase.initial_maximum < 2 %} hidden{% endif %}>
           <label class="buybox__label" for="qty">تعداد</label>
           <div class="stepper" aria-describedby="qty-limit">
-            <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
-            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr" aria-describedby="qty-limit">
             <button type="button" class="stepper__btn" data-step="1" aria-label="بیشتر">+</button>
+            <input class="stepper__input" id="qty" name="quantity" type="number" inputmode="numeric" min="1" max="{{ purchase.initial_maximum|default:1 }}" value="1" dir="ltr" aria-describedby="qty-limit">
+            <button type="button" class="stepper__btn" data-step="-1" aria-label="کمتر">−</button>
           </div>
         </div>
         <p class="micro buybox__limit" id="qty-limit" hidden></p>
@@ -141,11 +141,11 @@
         <p data-preview-target="customer-input" data-preview-field="input_type telegram_required customer_input_label" class="micro buybox__hint" id="asks-hint" hidden></p>
         {% include 'catalog/_buybox_selection.html' %}
         {% if available_plans %}<button type="submit" class="btn btn--primary buybox__cta"{% if snapshot %} disabled{% elif purchase.chosen.max_add == 0 %} hidden{% endif %}>افزودن به سبد خرید</button>
-        {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>{% endif %}
+        {% else %}<button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button><p class="micro buybox__hint">از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید چه زمانی دوباره موجود می‌شود.</p>{% endif %}
         <a class="btn btn--primary buybox__cart" href="{% url 'cart' %}"{% if not purchase.chosen or purchase.chosen.max_add != 0 %} hidden{% endif %}>مشاهده‌ی سبد خرید{% include 'storefront/icon.html' with name='cart' %}</a>
         {% else %}
         <button type="submit" class="btn btn--primary buybox__cta" disabled>ناموجود</button>
-        <p class="micro buybox__hint">این محصول فعلاً موجود نیست.</p>
+        <p class="micro buybox__hint">از <a href="{{ support.telegram_url }}" rel="noopener">پشتیبانی در تلگرام</a> بپرسید چه زمانی دوباره موجود می‌شود.</p>
         {% endif %}
         <p class="cart-add-error" role="alert" hidden></p>
       </form>

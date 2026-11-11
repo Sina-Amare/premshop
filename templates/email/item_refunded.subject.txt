@@ -1,1 +1,1 @@
-{% load fa %}بازپرداخت سفارش {{ order_number|fa_digits }} واریز شد
+{% load fa %}بازگشت وجه سفارش {{ order_number|fa_digits }} انجام شد

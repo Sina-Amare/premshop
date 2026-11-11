@@ -1,4 +1,6 @@
 {% extends "admin/change_form.html" %}
+{# Nothing writes Django's change log for orders: the order's own history is on the page. #}
+{% block object-tools-items %}{% endblock %}
 {% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
 {# Outside the order form, so Enter in the identifier field cannot fire an item's reveal button. #}
 {% block form_after %}{% if original %}<form id="order-support-match" method="post" action="{% url 'admin:orders_order_support_match' original.pk %}">{% csrf_token %}</form>{% endif %}{% endblock %}

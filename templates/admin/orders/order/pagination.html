@@ -3,5 +3,5 @@
   {% if pagination_required %}<nav aria-label="{% translate 'صفحه‌های سفارش‌ها' %}">
     {% for number in page_range %}{% if number == cl.paginator.ELLIPSIS %}<span>{{ number }}</span>{% elif number == cl.page_num %}<span aria-current="page">{{ number|fa_digits }}</span>{% else %}<a href="{% querystring p=number %}">{{ number|fa_digits }}</a>{% endif %}{% endfor %}
   </nav>{% endif %}
-  <span>{{ cl.result_count|fa_digits }} {{ cl.opts.verbose_name_plural }}</span>
+  <span>{{ cl.result_count|fa_digits }} {{ cl.opts.verbose_name }}</span>
 </div>

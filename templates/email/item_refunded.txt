@@ -1,5 +1,5 @@
 {% load fa %}PremShop
-بازپرداخت {{ product_name }}، {{ plan_title }}، به مبلغ {{ amount|toman_plain }} تومان واریز شد.
+مبلغ {{ amount|toman_plain }} تومان را بابت {{ product_name }}، {{ plan_title }}، به شما برگرداندیم.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 وضعیت سفارش:
 {{ order_url }}

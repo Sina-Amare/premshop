@@ -816,7 +816,7 @@ msgstr "Alternative search names; these do not appear on the product page."
 msgid "بستن"
 msgstr "Close"
 
-msgid "نتیجه‌ی تغییرها رو همین‌جا ببینید. پیش‌نمایش چیزی رو ذخیره نمی‌کنه."
+msgid "نتیجه‌ی تغییرها را همین‌جا ببینید. پیش‌نمایش چیزی را ذخیره نمی‌کند."
 msgstr "See where each field appears. Previewing does not save changes."
 
 msgid "تاریخ آخرین بررسی اطلاعات؛ پایین توضیحات محصول"
@@ -852,7 +852,7 @@ msgstr "Show in preview"
 msgid "رنگ خنثی"
 msgstr "Neutral color"
 
-msgid "رنگ رو با # و شش رقم وارد کنید؛ مثل #10a37f."
+msgid "رنگ را با # و شش رقم وارد کنید؛ مثل #10a37f."
 msgstr "Enter # followed by six hexadecimal digits, such as #10a37f."
 
 msgid "موقع انتشار اثر داره؛ روی سایت چیزی نشون نمی‌ده."
@@ -906,7 +906,7 @@ msgstr "This product content section; Before buying has a fixed position, others
 msgid "همین سؤال و جواب در سؤال‌های پرتکرار محصول"
 msgstr "This question and answer in the product FAQ"
 
-msgid "پیش‌نمایش به‌روز نشد. خطاهای فرم رو اصلاح کنید."
+msgid "پیش‌نمایش به‌روز نشد. خطاهای فرم را اصلاح کنید."
 msgstr "Preview was not refreshed. Correct the form errors."
 
 msgid "پیش‌نمایش به‌روز نشد. فعلاً همون نسخه‌ی قبلی رو می‌بینید."
@@ -2000,3 +2000,59 @@ msgstr "Channel"
 
 msgid "گفت‌وگوی تلگرام"
 msgstr "Telegram chat"
+
+msgid "دیر شده: تحویل بدهید"
+msgstr "Late: deliver now"
+
+msgid "تحویل بدهید"
+msgstr "Deliver"
+
+msgid "درخواست تعویض را بررسی کنید"
+msgstr "Review the replacement request"
+
+#, python-format
+msgid "بازگشت وجه %(owed)s را واریز کنید"
+msgstr "Transfer the %(owed)s refund"
+
+msgid "منتظر پرداخت مشتری"
+msgstr "Waiting for the customer's payment"
+
+msgid "شناسه"
+msgstr "ID"
+
+msgid "کلید یکتای پیام"
+msgstr "Message key"
+
+msgid "کار سفارش‌ها"
+msgstr "Order work"
+
+msgid "دیر شده"
+msgstr "Late"
+
+msgid "بازگشت وجه در انتظار واریز"
+msgstr "Refunds to transfer"
+
+#, python-format
+msgid "بازپرداخت %(owed)s را واریز کنید"
+msgstr "Transfer the %(owed)s refund"
+
+msgid "اطلاعات فعال‌سازی را در تلگرام پیگیری کنید"
+msgstr "Follow up the activation details on Telegram"
+
+msgid "پرداخت را در تلگرام پیگیری کنید"
+msgstr "Follow up the payment on Telegram"
+
+msgid "بازپرداخت در انتظار واریز"
+msgstr "Refunds to transfer"
+
+msgid "بدون تخفیف"
+msgstr "No discount"
+
+msgid "ثبت دریافت اطلاعات"
+msgstr "Record the details as received"
+
+msgid "آخرین به‌روزرسانی صفحه"
+msgstr "Page last refreshed"
+
+msgid "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. پردازش پس‌زمینه‌ی سرور را بررسی کنید."
+msgstr "The automatic check has not run for over 3 minutes. Check the server's background worker."

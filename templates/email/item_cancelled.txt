@@ -1,7 +1,7 @@
 {% load fa %}PremShop
-{{ product_name }}، {{ plan_title }}، لغو شد.
+خرید {{ product_name }}، {{ plan_title }}، لغو شد.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-{% if amount %}بازپرداخت {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% else %}مبلغی برای بازپرداخت این محصول ثبت نشده است.{% endif %}
+{% if amount %}بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% else %}این لغو بازگشت وجه ندارد.{% endif %}
 وضعیت سفارش:
 {{ order_url }}
 

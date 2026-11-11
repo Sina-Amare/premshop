@@ -286,7 +286,7 @@ input.vTimeField {
 }
 
 /* --- What the figures mean ------------------------------------------------ */
-/* Time, the one loud thing in this panel and the only amber (ADR-0016): the
+/* Time, a loud thing in this panel and amber, which means attention (ADR-0016): the
    storefront's .badge--time, at the panel's density. */
 .panel-time {
   display: inline-block;
@@ -351,7 +351,7 @@ input.vTimeField {
 }
 
 /* --- Tables on a phone ---------------------------------------------------- */
-.app-core.model-mailattempt #result_list .field-status {
+.app-core.model-mailattempt #result_list .field-status_pill {
   min-width: 9rem;
   color: var(--panel-ink);
 }

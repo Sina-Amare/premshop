@@ -18,7 +18,7 @@ The visual and verbal system of the storefront, the operator panel and the email
 
 - **Visible bookkeeping.** A buyer's biggest fear is paying and receiving nothing. The shop answers it the way a small business that keeps records would: hairlines, aligned figures, exact amounts, stated hours and plainly stated terms. It should not read like a brand campaign or a landing page.
 - **Colour belongs to the goods.** Product brand colours appear in the products' artwork; the interface around them stays neutral, with one accent for what can be pressed.
-- **Amber means time** (deadlines and countdowns) and nothing else.
+- **Amber means attention:** the customer's move (an unpaid order, details awaited, a card number for a refund) or time running out (deadlines and countdowns), and nothing else (owner, 2026-11-11).
 - **Nothing moves unless a person acts**, with one exception: the service scene on the home page.
 - **Every choice is argued from this business, never defaulted.** Purple-blue gradients, glassmorphism, glowing dark heroes, large radii on everything, emoji as icons and entrance animations are generated-template habits, and they cost a shop like this its customers' trust.
 
@@ -40,7 +40,8 @@ Semantic colours (`input.css`):
 
 | Role | Value | Use |
 |---|---|---|
-| Time | `#D97706`, text `#92400E` | Deadlines and countdowns only |
+| Attention | `#D97706`, text `#92400E` | The customer's move, and deadlines and countdowns |
+| With us | `#0891B2`, text `#155E75` | Work the shop is doing; cyan, kept apart from cobalt |
 | Success | `#16A34A`, text `#166534` | Delivered, confirmed |
 | Danger | `#DC2626`, text `#991B1B` | Overdue, failed, destructive |
 | Field edge | `#8C8C8C` | The border of a control a person types into: 3.4:1 on white, where WCAG 1.4.11 asks 3:1 |
@@ -48,7 +49,21 @@ Semantic colours (`input.css`):
 - **Cobalt marks what can be pressed:** buttons, links, the discount chip and interactive icons. Bold text that cannot be pressed stays ink or grey, so the primary button is the one blue mass in its area.
 - **Neutrals carry the structure.** A border means an edge, a background step means a separate surface, and a shadow means something sits above the page.
 - **Badges** are a tint, a border and dark text, never a saturated fill. Colour is never the only carrier of meaning: every status also has words.
-- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`). The only loud thing in it is time remaining.
+
+### Status tones
+
+Every status, on the site, in the panel, in email and in the bot, takes one of five tones; the tones and their tokens exist, and each page adopts them as it is rebuilt. The tone belongs to the state, not to the reader, so the customer and the operator see the same colour for the same order. Each pill carries words and an icon from the shared set, and none is pressable.
+
+| Tone | Means | Site badge | Panel tokens | Icon |
+|---|---|---|---|---|
+| Attention | The customer's move, or time running out | `.badge--time` | `--panel-attention-*` | `clock` |
+| Problem | Something went wrong: a delay to chase, or a cancelled order | `.badge--danger` | `--panel-problem-*` | `alert`; `close` for a cancellation |
+| With us | The shop is working on it | `.badge--progress` | `--panel-progress-*` | `progress` |
+| Done | Finished as it should be | `.badge--ok` | `--panel-done-*` | `check` |
+| Closed | Ended, nothing pending: a lapsed payment window, a refund sent | `.badge--neutral` | `--panel-closed-*` | `close` |
+
+The rows are in ranking order: an order leads with its highest-ranked state (`apps/orders/status.py`). A cancellation is the exception: red, yet last, since any other item says more about the order. A pill is a noun phrase of at most four words («در انتظار پرداخت»); a finished state may be one word («تحویل‌شده», «لغوشده»), as the bot already says it. The heading beside a pill states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
+- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`), and its tokens hold the five status tones in both themes. Its loud things are time remaining and what needs the operator.
 
 ## Typography
 
@@ -116,8 +131,9 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 
 - **The ledger line** (`.fact`). Every fact-and-value pair is a row: label at the start, value at the end, joined by a dotted leader lifted `-0.28em` to clear the ج descender. The leader is the visual grammar of an invoice or a receipt, and says "this is a real operation" in a way a trust badge cannot. One ledger group per page region; summaries show subtotal, discount and total as three lines, never one figure.
 - **Product card.** One linked card. The artwork is the service's mark on a pale panel in the product's brand colour, 2:1 on wide screens and 16:9 on phones, with the shop's name, «PremShop», small in its corner; the small tiles in the cart, the checkout and the search suggestions carry none. Title, delivery time, offer and starting price are text outside the artwork. The offer names its own plan and the starting price names the cheapest available plan, so the two may differ. An offer badge is neutral; amber appears only for its remaining time. «گزینه‌های خرید» opens a read-only dialog of the plans' prices, rendered by the same server code as the product page, and the card's link still works without JavaScript.
-- **Home page.** The hero introduces the shop as a whole and never headlines one product: a line naming the range, the headline «اشتراک دلاری، پرداخت تومانی.», one sentence on buying without a foreign card and seeing each product's terms before paying, the deepest current discount when there is one (a number from the catalogue, never «ارزان‌تر»), and only site-wide facts, namely the promise in `apps/catalog/promises.py` and the support hours. Each category opens with one header row (mark, name, count and «همه‌ی محصولات») over a hairline. On phones a category shows two columns and at most four products with a link to the rest.
+- **Home page.** The hero introduces the shop as a whole and never headlines one product: a line naming the range, the headline «اشتراک دلاری، پرداخت تومانی.», the deepest current discount when there is one (a number from the catalogue, never «ارزان‌تر»), and only site-wide facts, namely the promise in `apps/catalog/promises.py` and the support hours. Department tiles under the hero lead to each department's page, and the current discounts sit in one rail. Below them, under «همه‌ی محصولات», every product shows, department by department, in a grid: four across, three on a narrow window, two on a phone, never a rail. Each department opens with one header row (mark, name and count) over a hairline, and links to its own page only when the home page's cap left products out.
 - **Product page.** On a phone the page reads title, buy box, then details, so the price is never below the questions. Key specifications sit as chips beside the title. The benefits come before the full specification table: one sentence on what the free plan withholds, then one gain per item, the limit last. The selected plan is the accent's one appearance in the buy box. Under the buy button there is only the link to the buying conditions: delivery is already on the page, and payment in toman is stated on the home page. «پیش از خرید» appears only when it says more than the warranty beside the title.
+- **Order groups.** The customer's order list splits into the bot's four groups, «در انتظار پرداخت», «در جریان», «تحویل‌شده» and «لغوشده», as links with their counts, two by two on a phone. An order sits under the state it leads with (`apps/orders/status.py`), so a delivered product beside a refund still owed keeps it «در جریان», and the list opens on the first group that holds an order.
 - **Order rows.** The cart, checkout, order pages and the order preview share one product row: a 48px tile (56px in the cart), the name at 17px, the plan at 14px and the figure at 18px, with hairlines between rows and never a box inside a box. From three products up, on phones, the total and the action sit in a bottom bar that steps aside while a field has focus.
 - **Cart.** No stock hold and no countdown. An unavailable selection stays visible with a neutral status, a restock-support link and a remove action; it blocks checkout, and the subtotal of the remaining rows says so. A quantity control appears only where the plan allows several units, with its limits visibly disabled and explained. Changes happen in place, keeping errors visible and focus where it was.
 - **Footer.** A graphite band. Its sales band appears only where people are still choosing, never on the cart, checkout, account or order pages. A site-wide promise is stated once per screen.
@@ -132,7 +148,7 @@ Email is a different medium with its own rules ([ADR-0023](decisions/0023-email-
 
 - **Layout** is tables with inline styles, because Outlook renders with Word's engine.
 - **Fonts.** No web font is loaded. The stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first one installed.
-- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks time only: a code's expiry and a delivery link's expiry. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
+- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks attention only: a code's expiry, a delivery link's expiry and the customer's next move. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
 - **The wordmark is set in type**, never as an image, because blocked images would show a broken box on the messages where trust matters most. It is `PremShop`, in Latin, everywhere: the site header and footer, the sender name, subjects and the masthead.
 - **Code cells** show six isolated Latin digits in a left-to-right row; what is typed is what is shown. Persian digits are isolated forms that never join, so the reason for the tracking rule does not reach them, and the sign-in code carries `letter-spacing: 3px`. No other element does.
 
@@ -231,6 +247,9 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The shop's name on every product card** (2026-10-31), as described under Components.
 - **A discount clock that counts hours, minutes and seconds** even with days to go (2026-11-08), as described under Numbers.
 - **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
+- **Amber means attention** (2026-11-11): the customer's move or time running out, in the five status tones described under Colour.
+- **A cancelled order reads red** (2026-11-11), with the cross icon, as described under Colour.
+- **The checkout's warning about the account's email or username** (2026-11-06) is the owner's own sentence: «امکان تغییر … پس از ثبت سفارش وجود ندارد. پیش از ثبت نهایی از درستی … وارد شده اطمینان حاصل کنید.» A copy pass leaves it as written; `apps/payments/tests/test_views.py` pins it.
 - **Emoji in the Telegram bot** (2026-11-11): every panel button carries a related emoji, and every order the product's own, picked from its name with a plain box for a name the list does not know. A bot button holds text only, so the site's SVG icons cannot reach it. They live in `apps/orders/telegram_emoji.py`, the one file the repository's emoji check allows; the website stays without them. Real brand logos (Telegram's custom emoji) need Premium on the bot's owning account.
 
 ## Checklist
@@ -241,7 +260,7 @@ For any new page or component:
 - [ ] Space between components from the nine tokens; optical spacing only inside a component
 - [ ] Every gap between groups at least twice the gap within them; headings own the space after them
 - [ ] Corners from `--radius-sm` and `--radius-lg`; edges that touch the viewport square
-- [ ] Cobalt only on what can be pressed; amber only on time; new colours as tokens
+- [ ] Cobalt only on what can be pressed; amber only on attention; every status in one of the five tones, with words and an icon; new colours as tokens
 - [ ] Body 17px, prose line height 1.85, text blocks at most 32rem wide
 - [ ] Estedad only in headings and price figures, never both faces in one line
 - [ ] Persian digits out, Latin digits in inputs; tabular figures for counts, codes and clocks

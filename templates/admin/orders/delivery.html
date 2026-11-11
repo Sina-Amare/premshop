@@ -3,7 +3,7 @@
 {% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
 {% block content %}
 <section class="order-history" aria-labelledby="delivery-title">
-  <header><h2 id="delivery-title">{{ title }} · {% translate "سفارش" %} {{ order.order_number|fa_digits }} · {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
+  <header><h2 id="delivery-title">{{ title }}، {% translate "سفارش" %} {{ order.order_number|fa_digits }}، {% translate "آیتم" %} {{ item.pk|fa_digits }}</h2></header>
   <div class="order-purchase"><bdi>{{ item.product_snapshot.name }}</bdi><span><bdi>{{ item.product_snapshot.plan_title }}</bdi></span></div>
   <div class="delivery-columns">
     <section aria-labelledby="delivery-customer-title">
@@ -78,7 +78,7 @@
       <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'reject' %}" class="order-payment-form delivery-form" autocomplete="off" aria-labelledby="reject-title">
         {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
         <div><label for="reject-note">{% translate "دلیل رد درخواست" %}</label><textarea id="reject-note" name="note" rows="3" maxlength="2000" required></textarea></div>
-        <button type="submit" class="order-input-action">{% translate "رد درخواست تعویض" %}</button>
+        <button data-danger type="submit" class="order-input-action">{% translate "رد درخواست تعویض" %}</button>
       </form>
     {% endif %}
   {% elif mode != "claim" %}
@@ -91,7 +91,7 @@
       <div><label for="cancel-reason">{% translate "دلیل لغو" %}</label><select id="cancel-reason" name="reason">{% for reason, label, amount in cancel_options %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
       <p>{% translate "مبلغ بازپرداخت" %}: {{ cancel_options.0.2|toman }}</p>
       <div><label for="cancel-note">{% translate "توضیح لغو" %}</label><textarea id="cancel-note" name="note" rows="2" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این توضیح در سابقه‌ی سفارش می‌ماند." %}</p></div>
-      <button type="submit" class="order-input-action">{% translate "لغو و ثبت بازپرداخت" %}</button>
+      <button data-danger type="submit" class="order-input-action">{% translate "لغو و ثبت بازپرداخت" %}</button>
     </form>
   {% elif cancel_refusal %}
     <p class="delivery-claim">{{ cancel_refusal }}</p>

@@ -90,7 +90,7 @@ def test_the_discount_clock_counts_down(browser, live_server, discounted):
         context.close()
 
 
-TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber means time pressure
+TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber, attention, here a clock
 
 
 def test_a_maximum_price_and_currency_fit_inside_a_phone_card(browser, live_server, discounted):
@@ -497,8 +497,8 @@ def test_the_phone_header_gives_way_reading_down_and_returns_on_the_way_up(
 def test_a_category_opens_with_one_header_row_above_its_cards(
     browser, live_server, discounted, viewport
 ):
-    """The owner rejected tall side panels for the categories: the name, the
-    count and «همه‌ی محصولات» share one row above the cards."""
+    """The owner rejected tall side panels for the categories: the name and the
+    count share one row above the cards, and every card is on the page."""
     context = browser.new_context(viewport=viewport, device_scale_factor=1)
     page = context.new_page()
     try:
@@ -506,11 +506,9 @@ def test_a_category_opens_with_one_header_row_above_its_cards(
         section = page.locator(".v-category-section").first
         head = section.locator(".v-section__head").bounding_box()
         track = section.locator(".v-track").bounding_box()
-        title = section.locator(".v-category-heading h2").bounding_box()
-        link = section.locator(".v-view-all").bounding_box()
         assert head["y"] + head["height"] <= track["y"] + 1
         assert head["height"] < 120, "a header row, not a panel"
-        assert link["y"] < title["y"] + title["height"] and title["y"] < link["y"] + link["height"]
+        expect(section.locator(".v-view-all")).to_have_count(0)
     finally:
         context.close()
 
@@ -676,9 +674,7 @@ def test_the_wide_header_keeps_every_row_after_scrolling_back_up(browser, live_s
         context.close()
 
 
-def test_a_phone_home_shows_four_cards_of_a_long_category_and_all_of_them_wide(
-    browser, live_server
-):
+def test_the_home_page_shows_every_card_of_a_long_category_at_every_width(browser, live_server):
     category = Category.objects.create(name="سرگرمی", slug="fun")
     for number in range(6):
         product = Product.objects.create(
@@ -698,7 +694,7 @@ def test_a_phone_home_shows_four_cards_of_a_long_category_and_all_of_them_wide(
                 "[...document.querySelectorAll('.v-category-section .pcard')]"
                 ".filter(card => card.offsetParent).length"
             )
-            expect(page.locator(".v-category-section .v-view-all").first).to_be_visible()
+            expect(page.locator(".v-category-section .v-view-all")).to_have_count(0)
         finally:
             context.close()
-    assert counts == {"phone": 4, "desktop": 6}
+    assert counts == {"phone": 6, "desktop": 6}

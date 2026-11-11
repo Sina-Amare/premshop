@@ -43,13 +43,13 @@ def test_summary_shows_its_arithmetic_and_confirmed_help(client, plan, discount)
     body = client.get("/cart/").content.decode()
     if discount:
         assert (
-            body.index("قیمت محصولات")
+            body.index("جمع محصولات")
             < body.index("cart-summary__saving")
             < body.index("cart-summary__total")
         )
         assert "۲۰۰,۰۰۰" in body and "۵۰,۰۰۰" in body and "۱۵۰,۰۰۰" in body
     else:
-        assert "قیمت محصولات" not in body and "cart-summary__saving" not in body
+        assert "جمع محصولات" not in body and "cart-summary__saving" not in body
     # The summary states the cart's own longest time, not the site-wide cap.
     assert plan.product.delivery_sentence in body and PROMISES[0].text not in body
     assert details()["hours"] in body and details()["telegram_url"] in body
@@ -62,7 +62,7 @@ def test_summary_shows_its_arithmetic_and_confirmed_help(client, plan, discount)
 
 def test_empty_cart_explains_sign_in_only_to_visitors(client, buyer):
     body = client.get("/cart/").content.decode()
-    assert body.index("برای شروع، یک محصول انتخاب کنید.") < body.index("مشاهده‌ی محصولات")
+    assert body.index("برای شروع، یک محصول انتخاب کنید.") < body.index("دیدن محصولات")
     # The paragraph's own link, not the header's, which goes to the same page.
     signin = body[body.index('class="cart-empty__signin"') :]
     assert signin.split("</p>")[0].count(f'href="{reverse("login-code")}?next=/cart/"') == 1
@@ -139,7 +139,7 @@ def test_four_lines_keep_long_amounts_and_unavailable_items_readable(
         expect(page.locator(".cart-line")).to_have_count(4)
         expect(page.locator(".cart-line--unavailable")).to_have_count(1)
         expect(page.locator(".cart-line__restock")).to_have_text(
-            "از پشتیبانی بپرسید کی دوباره موجود می‌شود."
+            "از پشتیبانی بپرسید چه زمانی دوباره موجود می‌شود."
         )
         if width == 390:
             long_line = page.locator(".cart-line").last

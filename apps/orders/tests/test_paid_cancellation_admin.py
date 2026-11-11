@@ -86,7 +86,7 @@ def test_cancelling_lists_the_owed_refund_on_the_order_page(buyer, plan, operato
     detail = reverse("admin:orders_order_change", args=[order.pk])
     assert response.status_code == 302 and response["Location"] == detail
     body = client.get(detail).content.decode()
-    assert f"{format_toman(200000)} · در انتظار واریز" in body
+    assert f"{format_toman(200000)}، در انتظار واریز" in body
     assert Refund.objects.get().order_item_id == item.pk
 
 

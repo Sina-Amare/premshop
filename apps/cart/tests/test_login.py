@@ -48,7 +48,7 @@ def test_password_login_combines_existing_cart_and_shows_reduction(client, buyer
         {"email": buyer.email, "password": "CartPassword!2026", "next": "/cart/"},
         follow=True,
     )
-    assert "به اندازه‌ی موجودی و سقف خرید کم کردیم" in response.content.decode()
+    assert "تا سقف خرید هر سفارش کم کردیم" in response.content.decode()
     assert account.items.get().quantity == 3
     assert Cart.objects.count() == 1
 
