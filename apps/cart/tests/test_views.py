@@ -258,7 +258,7 @@ def test_cart_summary_keeps_the_site_wide_sentence_when_a_line_has_no_time(clien
 
     help_text = _summary_help(client.get("/cart/"))
 
-    assert "حداکثر ۴۸ ساعت پس از تأیید پرداخت" in help_text
+    assert "تحویل تا ۴۸ ساعت پس از تأیید پرداخت" in help_text
 
 
 def test_cart_summary_states_hours_from_the_longest_line_and_when_they_start(client, plan):

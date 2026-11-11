@@ -26,9 +26,7 @@ from apps.core.formatting import to_persian_digits
 # The cap, not the slowest product: a number that moves whenever the operator
 # edits one product is not a promise.
 DELIVERY_CAP_HOURS = 48
-DELIVERY_COMMITMENT = (
-    f"در اولین فرصت، حداکثر تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت."
-)
+DELIVERY_COMMITMENT = f"تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت."
 
 
 @dataclass(frozen=True)
@@ -39,7 +37,7 @@ class Promise:
 
 PROMISES = (
     Promise(
-        f"تحویل حداکثر {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت",
+        f"تحویل تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت",
         lambda product: product.delivery_hours <= DELIVERY_CAP_HOURS,
     ),
 )

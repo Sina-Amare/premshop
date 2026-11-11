@@ -84,7 +84,7 @@ def _validate_quantity(plan: Plan, quantity: int) -> None:
     if type(quantity) is not int or quantity < 1:
         raise ValidationError("باید حداقل ۱ تا انتخاب کنید.")
     if quantity > limit:
-        raise ValidationError(f"از این گزینه حداکثر {to_persian_digits(limit)} تا می‌توانید بخرید.")
+        raise ValidationError(f"سقف خرید این گزینه در هر سفارش {to_persian_digits(limit)} است.")
 
 
 def _capacity(plan: Plan) -> int:

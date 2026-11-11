@@ -65,7 +65,7 @@
         button.disabled = +button.dataset.step > 0 ? +qty.value >= max : +qty.value <= 1;
       });
       if (limit) {
-        var text = max > 0 ? 'از این گزینه تا ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' تا می‌تونید بخرید.' : 'بیشتر از این نمی‌تونید از این گزینه بخرید.';
+        var text = max > 0 ? 'سقف خرید این گزینه در هر سفارش ' + String(max).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }) + ' است.' : 'از این گزینه بیشتر نمی‌توانید بخرید.';
         if (limit.textContent !== text) limit.textContent = text;
         limit.hidden = qtyRow.hidden && max > 0;
       }
