@@ -46,7 +46,7 @@
             {% if line.purchasable %}<div class="checkout-preview__amount">{{ line.line_total|price_html }}</div>{% elif line.unavailable %}<p class="checkout-preview__warning">ناموجود</p>{% else %}<p class="checkout-preview__warning">تعداد را کم کنید.</p>{% endif %}
           </div>
         </article>
-        {% empty %}<p>سبد خرید شما خالی است</p><a href="{% url 'home' %}#products">مشاهده‌ی محصولات</a>{% endfor %}
+        {% empty %}<p>سبد خرید شما خالی است</p><a href="{% url 'home' %}#products">دیدن محصولات</a>{% endfor %}
         {% if cart.lines %}
         <div class="checkout-preview__total"><span>{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات آماده‌ی خرید{% endif %}</span><div class="cart-money">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}—{% endif %}</div></div>
         {% endif %}

@@ -64,7 +64,7 @@
     <span class="cart-empty__icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 22h34l3 32H12l3-32Z"/><path d="M23 25V17a9 9 0 0 1 18 0v8"/><path d="M25 36h14"/></svg></span>
     <h2>سبد خرید شما خالی است</h2>
     <p>برای شروع، یک محصول انتخاب کنید.</p>
-    <a class="btn btn--primary" href="{% url 'home' %}#products">مشاهده‌ی محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
+    <a class="btn btn--primary" href="{% url 'home' %}#products">دیدن محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
     {% if not user.is_authenticated %}<p class="cart-empty__signin">اگر قبلاً با حساب کاربری خودتان محصولی انتخاب کرده‌اید، بعد از <a href="{% url 'login-code' %}?next={{ request.path|urlencode }}">ورود به حساب</a> آن را همین‌جا می‌بینید.</p>{% endif %}
   </div>
   {% endif %}
