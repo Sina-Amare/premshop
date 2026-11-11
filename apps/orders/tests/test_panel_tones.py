@@ -38,7 +38,7 @@ def next_line(tone, words):
         ("claimed", "progress", "درخواست تعویض را بررسی کنید"),
         ("owed", "attention", "بازگشت وجه ۲۰۰,۰۰۰ تومان را واریز کنید"),
         ("delivered", "done", None),
-        ("cancelled", "closed", None),
+        ("cancelled", "problem", None),
         ("overdue", "closed", None),
     ],
 )
@@ -89,7 +89,8 @@ def test_the_order_page_shows_each_items_status_in_its_tone(client, buyer, plan,
     # The payment's history reads in its tone, and each move in the order's history carries
     # the tone of the status it reached.
     assert '<span class="order-status" data-tone="done">تأییدشده</span>' in body
-    assert '<span class="order-status" data-tone="closed">' in body
+    # A cancellation is red with its cross, here as on the customer's page (owner, 2026-11-11).
+    assert '<span class="order-status" data-tone="problem" data-state="CANCELLED">' in body
 
 
 def test_a_sent_refund_reads_as_closed_in_the_orders_history(client, buyer, plan, operator):

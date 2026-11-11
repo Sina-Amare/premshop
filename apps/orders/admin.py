@@ -157,8 +157,9 @@ class OrderItemInline(TabularInline):
     @admin.display(description=_("وضعیت"))
     def status_pill(self, obj: OrderItem) -> str:
         return format_html(
-            '<span class="order-status" data-tone="{}">{}</span>',
+            '<span class="order-status" data-tone="{}" data-state="{}">{}</span>',
             order_status.item_tone(obj),
+            obj.status,
             obj.get_status_display(),
         )
 
@@ -962,8 +963,9 @@ class OrderAdmin(ModelAdmin):
             (
                 (
                     format_html(
-                        '<span class="order-status" data-tone="{}">{}</span>',
+                        '<span class="order-status" data-tone="{}" data-state="{}">{}</span>',
                         order_status.STATES[order_status.tracking_state(event.to_status)][1],
+                        event.to_status,
                         event.get_to_status_display(),
                     ),
                     format_jalali(event.created_at),
