@@ -156,7 +156,9 @@ def test_checkout_terms_open_without_losing_typed_details(browser, live_server, 
         page.goto(live_server.url + reverse("checkout"))
         details = page.locator(f"#id_customer_input_{plan.pk}")
         details.fill("typed@example.test")
-        expect(page.locator(f"#id_customer_input_{plan.pk}_helptext")).to_contain_text("نمی‌توانید عوض کنید")
+        expect(page.locator(f"#id_customer_input_{plan.pk}_helptext")).to_contain_text(
+            "نمی‌توانید عوض کنید"
+        )
         summary = page.get_by_role("complementary", name="خلاصه‌ی سفارش")
         with context.expect_page(timeout=5000) as terms_tab:
             summary.get_by_role("link", name="قوانین خرید", exact=True).click()
