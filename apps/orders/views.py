@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.crypto import salted_hmac
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
@@ -17,15 +18,18 @@ from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.orders import status as order_status
 from apps.orders.models import OrderSupportIdentifier
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
     customer_timeline,
     order_for_tracking,
+    order_lead,
 )
 from apps.orders.services import cancel_unpaid_order, replace_support_token
 
+ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
 INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
@@ -35,15 +39,27 @@ INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
 @login_required
 @require_GET
 def order_list(request: HttpRequest) -> HttpResponse:
-    page = Paginator(customer_orders(cast(User, request.user)), 20).get_page(
-        request.GET.get("page")
-    )
+    now = timezone.now()
+    groups: dict[str, list[Any]] = {key: [] for key in order_status.TABS}
+    for order in customer_orders(cast(User, request.user)):
+        groups[order_status.tab_of(order_lead(order, now))].append(order)
+    tab = request.GET.get("tab", "")
+    if tab not in groups:
+        tab = next((key for key, orders in groups.items() if orders), "current")
+    page = Paginator(groups[tab], ORDERS_PER_PAGE).get_page(request.GET.get("page"))
     return render(
         request,
         "orders/list.html",
         {
             "page": page,
             "summaries": [customer_summary(order) for order in page],
+            "tab": tab,
+            "tabs": [
+                {"key": key, "label": label, "count": len(groups[key])}
+                for key, (label, _) in order_status.TABS.items()
+            ],
+            "empty": order_status.TABS[tab][1],
+            "has_orders": any(groups.values()),
             "section": "orders",
         },
     )

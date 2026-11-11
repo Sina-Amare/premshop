@@ -104,6 +104,18 @@ def customer_orders(user: User) -> QuerySet[Order]:
     )
 
 
+def order_lead(order: Order, now: datetime) -> str:
+    """The state an order leads with, ranked as on its page, without building the page."""
+    return order_status.lead_state(
+        [
+            order_status.item_state(
+                item, getattr(item, "refund", None), order.unpaid_expires_at, now
+            )
+            for item in order.items.all()
+        ]
+    )
+
+
 def current_order(user: User) -> Order | None:
     """The order the customer most needs to hear about: the highest-ranked open state,
     the newest first among equals."""
