@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
+from apps.core import support
 from apps.core.formatting import to_persian_digits
 from apps.orders import services as orders
 from apps.orders import status as order_status
@@ -178,12 +179,16 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
 NOTHING_TO_DO = "لازم نیست کاری انجام دهید."
 
 
+# The bot names the one account a customer's message should go to.
+HANDLE = support.details()["telegram"]
+
+
 @pytest.mark.parametrize(
     ("state", "sentence"),
     [
-        ("awaiting_input", "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید."),
-        ("refund_owed", "شماره‌ی کارت یا شبای به نام خودتان را برای پشتیبانی بفرستید."),
-        ("late", "زمان تحویل گذشته است. برای پیگیری، به پشتیبانی پیام بدهید."),
+        ("awaiting_input", f"اطلاعات فعال‌سازی را برای {HANDLE} بفرستید."),
+        ("refund_owed", f"شماره‌ی کارت یا شبای به نام خودتان را برای {HANDLE} بفرستید."),
+        ("late", f"زمان تحویل گذشته است. برای پیگیری، به {HANDLE} پیام بدهید."),
         ("replacement", NOTHING_TO_DO),
         ("queued", NOTHING_TO_DO),
         ("delivered", NOTHING_TO_DO),
@@ -195,7 +200,8 @@ NOTHING_TO_DO = "لازم نیست کاری انجام دهید."
 def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, state, sentence):
     summary = customer_summary(placed(buyer, plan))
     summary["card"] = {**summary["card"], **order_status.pill(state)}
-    text = render_to_string("telegram/panel_order.html", {**summary, "order_url": "/"})
+    context = {**summary, "support": support.details(), "order_url": "/"}
+    text = render_to_string("telegram/panel_order.html", context)
     assert sentence in text and "تماس بگیرید" not in text
 
 
