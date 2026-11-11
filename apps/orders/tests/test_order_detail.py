@@ -3,20 +3,21 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+import time_machine
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
 from apps.core import support
-from apps.core.formatting import format_toman, to_persian_digits
-from apps.orders import services, telegram_panel
+from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.orders import selectors, services, telegram_panel
 from apps.orders.models import Order, OrderItem
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_paid_cancellation import cancel, paid_order
-from apps.orders.tests.test_replacement import claim
+from apps.orders.tests.test_replacement import claim, reject
 from apps.payments.models import Refund
 from apps.payments.tests.test_refund_execution import execute
 
@@ -28,10 +29,14 @@ CASES = [
     ("unpaid", "در انتظار پرداخت", "time", "پرداخت تا", True),
     ("overdue", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
+    ("late", "تأخیر در تحویل", "danger", "گذشت", True),
     ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
-    ("delivered", "تحویل‌شده", "ok", "تحویل در", False),
+    ("delivered", "تحویل‌شده", "ok", "تحویل در", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
+    ("rejected", "تحویل‌شده", "ok", "درخواست تعویض در", True),
     ("cancelled", "لغوشده", "neutral", "لغو کردید", False),
+    ("operator_cancelled", "لغوشده", "neutral", "پشتیبانی این سفارش را", True),
+    ("expired", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("refunded", "بازگشت وجه تکمیل‌شده", "neutral", "برگشت داده شد", False),
     ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
@@ -44,12 +49,18 @@ def order_for_state(buyer, plan, operator, state):
     if state == "empty":
         return Order.objects.create(user=buyer, subtotal=0, total_amount=0)
     lines = [services.OrderLine(plan, 2 if state in ("mixed", "mixed_refund") else 1)]
-    if state in ("unpaid", "overdue", "cancelled"):
+    if state in ("unpaid", "overdue", "expired", "cancelled", "operator_cancelled"):
         order = services.place_order(user=buyer, lines=lines)
-        if state == "overdue":
-            Order.objects.filter(pk=order.pk).update(unpaid_expires_at=timezone.now())
-        elif state == "cancelled":
-            services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
+        if state in ("overdue", "expired"):
+            lapsed = timezone.now() - timedelta(minutes=1)
+            Order.objects.filter(pk=order.pk).update(unpaid_expires_at=lapsed)
+            if state == "expired":
+                services.expire_unpaid_orders()
+        elif state in ("cancelled", "operator_cancelled"):
+            if state == "operator_cancelled":
+                services.cancel_unpaid_order(order_id=order.pk, actor=operator, note="ناموجود")
+            else:
+                services.cancel_unpaid_order(order_id=order.pk, actor=buyer)
         return order
     order, items = paid_order(buyer, operator, lines)
     if state in ("waiting", "mixed"):
@@ -57,10 +68,16 @@ def order_for_state(buyer, plan, operator, state):
     elif state == "mixed_refund":
         deliver(items[0], operator)
         cancel(items[1], operator)
-    elif state in ("delivered", "claimed"):
+    elif state == "late":
+        OrderItem.objects.filter(pk=items[0].pk).update(
+            due_at=timezone.now() - timedelta(minutes=5)
+        )
+    elif state in ("delivered", "claimed", "rejected"):
         deliver(items[0], operator)
-        if state == "claimed":
+        if state in ("claimed", "rejected"):
             claim(items[0], operator)
+        if state == "rejected":
+            reject(items[0], operator)
     elif state in ("owed", "refunded"):
         cancel(items[0], operator)
         if state == "refunded":
@@ -125,6 +142,8 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
     assert body.count('id="support-identifier"') <= 1
     assert "تماس بگیرید" not in body
     assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
+    # A pill is read, never followed.
+    assert not re.search(r'<a [^>]*class="badge', body)
     assert 'name="customer_input"' not in body and "expected_event_id" not in body
 
 
@@ -163,7 +182,7 @@ def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_custo
     body = page(client, buyer, order)
     card = card_of(body)
     figure = format_toman(refund.amount, with_unit=False)
-    assert figure in card and "تأمین آن ممکن نشد" in card
+    assert figure in card and "خرید سرویس نمونه لغو شد، چون تأمین ممکن نشد." in text(card)
     assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "تا یک روز کاری" in card
     assert "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید." in card
     owed_row = body.split('data-money="owed"', 1)[1].split("</div>", 1)[0]
@@ -179,7 +198,7 @@ def test_a_refund_paid_shows_its_amount_and_date_but_never_where_it_went(
     assert format_toman(refund.amount, with_unit=False) in card_of(body)
     assert 'data-money="returned"' in body
     for staff_only in (refund.destination_last4, refund.bank_ref, "6037", "transfer-private"):
-        assert staff_only not in body
+        assert staff_only not in body and to_persian_digits(staff_only) not in body
 
 
 def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
@@ -212,7 +231,128 @@ def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer
     order.items.update(expires_at=end)
     card = card_of(page(client, buyer, order))
     assert "اشتراک تا" in card and "گارانتی تا پایان" in card
-    assert "مشکلی هست؟" not in card or support.details()["telegram_url"] in card
+    # Inside the warranty, what to send waits behind one quiet question.
+    assert "<summary>مشکلی هست؟</summary>" in card and "data-support-contact" in card
+
+
+def test_a_delivered_item_past_its_warranty_offers_no_support(client, buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "delivered")
+    order.items.update(delivered_at=timezone.now() - timedelta(days=10))
+    card = card_of(page(client, buyer, order))
+    assert "مشکلی هست؟" not in card and "data-support-contact" not in card
+    assert 'id="support-identifier"' in page(client, buyer, order)
+
+
+def two_products(buyer, plan, operator):
+    lines = [services.OrderLine(plan, 1), services.OrderLine(second_plan(), 1)]
+    return paid_order(buyer, operator, lines)[1]
+
+
+def line_money(body):
+    return [text(found) for found in re.findall(r"<p data-line-money>(.*?)</p>", body, re.S)]
+
+
+def test_two_refunds_owed_name_each_product_with_its_own_reason_and_amount(
+    client, buyer, plan, operator
+):
+    with time_machine.travel(timezone.now() - timedelta(days=22), tick=False):
+        items = two_products(buyer, plan, operator)
+        act(services.request_input, items[1], operator)
+    cancel(items[0], operator)
+    cancel(items[1], operator, reason=OrderItem.CancelReason.INPUT_TIMEOUT)
+    body = page(client, buyer, items[0].order)
+    card = text(card_of(body))
+    assert format_toman(Decimal(500000), with_unit=False) in card
+    assert "خرید سرویس نمونه لغو شد، چون تأمین ممکن نشد." in card
+    assert "خرید سرویس دوم لغو شد، چون اطلاعات فعال‌سازی در ۲۱ روز نرسید." in card
+    lines = line_money(body)
+    assert len(lines) == 2
+    for amount in (200000, 300000):
+        assert any(format_toman(Decimal(amount), with_unit=False) in line for line in lines)
+
+
+def test_refunds_sent_on_different_days_each_keep_their_own_day(client, buyer, plan, operator):
+    earlier = timezone.now() - timedelta(days=10)
+    with time_machine.travel(earlier, tick=False):
+        items = two_products(buyer, plan, operator)
+        cancel(items[0], operator)
+        cancel(items[1], operator)
+        execute(items[0].order, [Refund.objects.get(order_item=items[0])], operator)
+    execute(items[0].order, [Refund.objects.get(order_item=items[1])], operator)
+    body = page(client, buyer, items[0].order)
+    card = text(card_of(body))
+    days = {200000: format_jalali(earlier), 300000: format_jalali(timezone.now())}
+    assert not any(day in card for day in days.values())
+    lines = line_money(body)
+    for amount, day in days.items():
+        assert any(
+            format_toman(Decimal(amount), with_unit=False) in line and day in line for line in lines
+        ), lines
+
+
+def test_details_awaited_for_two_products_promise_the_longer_time(client, buyer, plan, operator):
+    items = two_products(buyer, plan, operator)
+    for item, hours in zip(items, (2, 24), strict=True):
+        act(services.request_input, item, operator)
+        OrderItem.objects.filter(pk=item.pk).update(
+            due_at=None,
+            sla_paused_at=None,
+            product_snapshot={**item.product_snapshot, "delivery_hours": hours},
+        )
+    card = text(card_of(page(client, buyer, items[0].order)))
+    assert "تا ۲۴ ساعت" in card and "تا ۲ ساعت" not in card
+
+
+def test_products_delivered_weeks_apart_each_keep_their_own_dates(client, buyer, plan, operator):
+    items = two_products(buyer, plan, operator)
+    for item in items:
+        deliver(item, operator)
+    weeks_ago = timezone.now() - timedelta(days=20)
+    OrderItem.objects.filter(pk=items[0].pk).update(
+        delivered_at=weeks_ago, expires_at=timezone.localdate() + timedelta(days=10)
+    )
+    OrderItem.objects.filter(pk=items[1].pk).update(
+        expires_at=timezone.localdate() + timedelta(days=90)
+    )
+    body = page(client, buyer, items[0].order)
+    card = card_of(body)
+    # One date cannot speak for both, and the second is still inside its warranty.
+    assert "تحویل در" not in text(card) and "<summary>مشکلی هست؟</summary>" in card
+    purchase = text(body.split('id="order-purchase"', 1)[1].split('class="order-records"', 1)[0])
+    for day in (weeks_ago, timezone.now()):
+        assert f"تحویل در {format_jalali(day)}" in purchase
+
+
+def test_a_replacement_request_and_its_rejection_carry_their_dates(client, buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "claimed")
+    today = format_jalali(timezone.now())
+    assert f"در {today} ثبت شد" in text(card_of(page(client, buyer, order)))
+    reject(order.items.get(), operator)
+    card = text(card_of(page(client, buyer, order)))
+    assert f"درخواست تعویض در {today} رد شد" in card
+    assert "دلیل رد را از پشتیبانی بپرسید." in card
+
+
+def test_tracking_and_the_order_page_agree_on_a_lapsed_payment_window(
+    client, buyer, plan, operator
+):
+    order = order_for_state(buyer, plan, operator, "expired")
+    body = client.get(reverse("order-tracking", args=[order.tracking_token])).content.decode()
+    assert "پایان مهلت پرداخت" in body and "لغوشده" not in body
+
+
+def test_the_bot_says_where_to_send_a_card_number_and_warns_about_codes(buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "owed")
+    screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
+    assert support.details()["telegram"] in screen
+    assert "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید." in screen
+
+
+def test_the_account_card_finds_an_open_order_behind_many_newer_closed_ones(buyer, plan, operator):
+    owed = order_for_state(buyer, plan, operator, "owed")
+    for _ in range(21):
+        order_for_state(buyer, plan, operator, "empty")
+    assert selectors.current_order(buyer) == owed
 
 
 def test_tracking_shows_pills_but_never_money(client, buyer, plan, operator):
@@ -235,7 +375,8 @@ def test_the_page_the_list_the_account_card_and_the_bot_lead_with_the_same_state
     assert badge
     label = text(badge[1])
     listed = client.get(reverse("order-list")).content.decode()
-    assert label in listed
+    header = re.search(r'<header class="order-heading">(.*?)</header>', listed, re.S)
+    assert header and label in text(header[1])
     account = client.get(reverse("account")).content.decode()
     assert label in account.split('id="current-order-title"', 1)[1].split("</section>", 1)[0]
     screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")

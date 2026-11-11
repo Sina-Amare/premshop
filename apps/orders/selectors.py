@@ -1,12 +1,12 @@
 """Customer purchase facts and a smaller public tracking projection."""
 
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from math import ceil
 from typing import Any
 
-from django.db.models import Exists, F, OuterRef, Prefetch, Q, QuerySet
+from django.db.models import Exists, F, OuterRef, Prefetch, Q, QuerySet, Subquery
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -26,6 +26,12 @@ _MOVES: dict[tuple[str | None, str], str] = {
     (S.AWAITING_INPUT, S.QUEUED): "اطلاعات فعال‌سازی رسید",
     (S.QUEUED, S.QUEUED): "زمان تحویل تغییر کرد",
 }
+# An item's latest move: when a replacement was asked for, and whether the answer was no.
+_LAST_MOVE = (
+    OrderItemEvent.objects.filter(order_item_id=OuterRef("pk"))
+    .exclude(from_status=F("to_status"))
+    .order_by("-created_at", "-pk")
+)
 _ARRIVALS: dict[str, str] = {
     S.PENDING_PAYMENT: "سفارش ثبت شد",
     S.QUEUED: "پرداخت تأیید شد",
@@ -78,6 +84,14 @@ def customer_orders(user: User) -> QuerySet[Order]:
                 "refund__status",
                 "refund__executed_at",
             )
+            .annotate(
+                moved_from=Subquery(_LAST_MOVE.values("from_status")[:1]),
+                moved_at=Subquery(_LAST_MOVE.values("created_at")[:1]),
+                moved_by=Subquery(_LAST_MOVE.values("pk")[:1]),
+            )
+            .annotate(
+                moved_with_delivery=Exists(Delivery.objects.filter(event_id=OuterRef("moved_by")))
+            )
             .order_by("pk"),
         ),
         Prefetch(
@@ -93,8 +107,12 @@ def customer_orders(user: User) -> QuerySet[Order]:
 def current_order(user: User) -> Order | None:
     """The order the customer most needs to hear about: the highest-ranked open state,
     the newest first among equals."""
+    still_open = OrderItem.objects.filter(order_id=OuterRef("pk")).filter(
+        Q(status__in=[S.PENDING_PAYMENT, S.AWAITING_INPUT, S.QUEUED, S.REPLACEMENT_REQUESTED])
+        | Q(refund__status=Refund.Status.OWED)
+    )
     best: tuple[int, Order] | None = None
-    for order in customer_orders(user).order_by("-pk")[:20]:
+    for order in customer_orders(user).filter(Exists(still_open)).order_by("-pk"):
         state = customer_summary(order)["lead"]["state"]
         rank = order_status.RANK.index(state)
         if state in _OPEN and (best is None or rank < best[0]):
@@ -111,6 +129,7 @@ def grouped_items(
     for item in items:
         facts = item.product_snapshot
         state = states.get(item.pk) if states is not None else None
+        key = _line_key(item) if states is not None else None
         category = (facts.get("category_id"), facts.get("category_name") or "محصولات سفارش")
         group = categories.setdefault(category, {"name": category[1], "lines": []})
         line = next(
@@ -121,6 +140,7 @@ def grouped_items(
                 and existing["price"] == item.price_snapshot
                 and existing["status"] == item.status
                 and existing["state"] == state
+                and existing["key"] == key
             ),
             None,
         )
@@ -134,6 +154,7 @@ def grouped_items(
                 "amount": Decimal(0),
                 "status": item.status,
                 "state": state,
+                "key": key,
                 "pill": pill,
                 "status_label": pill["label"] if pill else str(_LABELS[item.status]),
                 "warranty": str(dict(Product.Warranty.choices).get(facts.get("warranty"), "")),
@@ -155,6 +176,17 @@ def grouped_items(
     return list(categories.values())
 
 
+def _day(moment: datetime | None) -> date | None:
+    return timezone.localdate(moment) if moment else None
+
+
+def _line_key(item: OrderItem) -> tuple[Any, ...]:
+    """Units merge into one line only when every fact the line prints is the same."""
+    refund = getattr(item, "refund", None)
+    sent = refund.executed_at if refund is not None else None
+    return (_day(item.delivered_at), item.expires_at, item.cancel_reason, _day(sent))
+
+
 def _add_customer_facts(line: dict[str, Any], item: OrderItem) -> None:
     refund = getattr(item, "refund", None)
     if refund is not None:
@@ -163,7 +195,7 @@ def _add_customer_facts(line: dict[str, Any], item: OrderItem) -> None:
             line["refunded_at"] is None or refund.executed_at > line["refunded_at"]
         ):
             line["refunded_at"] = refund.executed_at
-    if item.due_at and (line["due_at"] is None or item.due_at < line["due_at"]):
+    if item.due_at and (line["due_at"] is None or item.due_at > line["due_at"]):
         line["due_at"] = item.due_at
     line["delivered_at"] = line["delivered_at"] or item.delivered_at
     line["expires_at"] = line["expires_at"] or item.expires_at
@@ -181,11 +213,14 @@ def customer_summary(order: Order) -> dict[str, Any]:
     lead = order_status.lead_state(list(states.values()))
     statuses = {item.status for item in items}
     groups = grouped_items(items, states)
+    card = _card(order, lead, [item for item in items if states[item.pk] == lead], refunds)
     return {
         "order": order,
         "status": order_status.pill(lead)["label"],
         "lead": order_status.pill(lead),
         "mixed_status": len(set(states.values())) > 1,
+        # Each line prints its own dates when the card's one date cannot speak for all.
+        "line_facts": len(set(states.values())) > 1 or not card["uniform"],
         "groups": groups,
         # One refund line's amount is already the card's heading and a totals row.
         "refund_lines": sum(
@@ -197,7 +232,7 @@ def customer_summary(order: Order) -> dict[str, Any]:
         and S.PENDING_PAYMENT in statuses
         and statuses <= {S.PENDING_PAYMENT, S.CANCELLED},
         # What the customer should know first: the order page and the bot's panel lead with it.
-        "card": _card(order, lead, [item for item in items if states[item.pk] == lead], refunds),
+        "card": card,
         "money": _money(order, refunds),
     }
 
@@ -207,33 +242,94 @@ def _card(
 ) -> dict[str, Any]:
     card: dict[str, Any] = {
         **order_status.pill(lead),
-        # Writing to support is the action only here; elsewhere support waits in its disclosure.
-        "contact": lead in {"unpaid", "awaiting_input", "refund_owed"},
         "products": list(dict.fromkeys(item.product_snapshot.get("name", "") for item in items)),
         "deadline": order.unpaid_expires_at,
         "total": order.total_amount,
         "cancelled_at": order.cancelled_at,
         "reason": "",
+        "reasons": [],
         "paid": False,
+        "uniform": True,
+        "in_warranty": False,
+        "rejected_at": None,
     }
-    if not items:
-        return card
-    first = items[0]
-    rows = [refund for item in items if (refund := refunds[item.pk]) is not None]
-    warranty_end = order_status.warranty_last_day(first)
-    card.update(
-        reason=first.cancel_reason or "",
-        paid=first.paid_at is not None,
-        due_at=min((item.due_at for item in items if item.due_at), default=None),
-        hours=_hours_after_details(first),
-        delivered_at=first.delivered_at,
-        expires_at=first.expires_at,
-        warranty_end=warranty_end,
-        in_warranty=warranty_end is not None and timezone.localdate() <= warranty_end,
-        refund=sum((row.amount for row in rows), Decimal(0)),
-        refunded_at=max((row.executed_at for row in rows if row.executed_at), default=None),
+    if items:
+        card.update(_card_facts(lead, items, refunds))
+    # Writing to support is the action only here; elsewhere support waits in its disclosure.
+    card["contact"] = (
+        lead in {"unpaid", "awaiting_input", "refund_owed", "late"}
+        or (lead == "delivered" and (card["in_warranty"] or card["rejected_at"] is not None))
+        or (
+            lead == "cancelled"
+            and card["reason"] == OrderItem.CancelReason.OPERATOR
+            and not card["paid"]
+        )
     )
     return card
+
+
+def _card_facts(
+    lead: str, items: list[OrderItem], refunds: dict[int, Refund | None]
+) -> dict[str, Any]:
+    rows = [refund for item in items if (refund := refunds[item.pk]) is not None]
+    ends = [order_status.warranty_last_day(item) for item in items]
+    by_reason: dict[str, list[str]] = {}
+    for item in items:
+        names = by_reason.setdefault(item.cancel_reason or "", [])
+        if (name := item.product_snapshot.get("name", "")) not in names:
+            names.append(name)
+    dates = {
+        (_day(item.delivered_at), item.expires_at, end)
+        for item, end in zip(items, ends, strict=True)
+    }
+    sent = [row.executed_at for row in rows if row.executed_at]
+    sent_days = {_day(moment) for moment in sent}
+    dues = [item.due_at for item in items if item.due_at]
+    hours = [found for item in items if (found := _hours_after_details(item)) is not None]
+    today = timezone.localdate()
+    return {
+        "reason": next(iter(by_reason)) if len(by_reason) == 1 else "",
+        "reasons": [
+            {"reason": key, "products": "، ".join(names)} for key, names in by_reason.items()
+        ],
+        "paid": any(item.paid_at for item in items),
+        # The promise covers every item; a delay counts from the first time missed.
+        "due_at": (min if lead == "late" else max)(dues, default=None),
+        "hours": max(hours, default=None),
+        "delivered_at": items[0].delivered_at,
+        "expires_at": items[0].expires_at,
+        "warranty_end": ends[0],
+        "in_warranty": any(end is not None and today <= end for end in ends),
+        "refund": sum((row.amount for row in rows), Decimal(0)),
+        "refunded_at": max(sent) if len(sent_days) == 1 else None,
+        "requested_at": max(
+            (
+                moved
+                for item in items
+                if item.status == S.REPLACEMENT_REQUESTED
+                and (moved := getattr(item, "moved_at", None))
+            ),
+            default=None,
+        ),
+        "rejected_at": max(
+            (
+                moved
+                for item in items
+                if _rejected(item) and (moved := getattr(item, "moved_at", None))
+            ),
+            default=None,
+        ),
+        "uniform": len(dates) == 1 and len(sent_days) <= 1,
+    }
+
+
+def _rejected(item: OrderItem) -> bool:
+    """A replacement request answered with no: back to delivered with nothing delivered."""
+    return (
+        item.status == S.DELIVERED
+        and getattr(item, "moved_from", None) == S.REPLACEMENT_REQUESTED
+        and not getattr(item, "moved_with_delivery", True)
+    )
 
 
 def _hours_after_details(item: OrderItem) -> int | None:
@@ -306,7 +402,7 @@ def order_for_tracking(token: str) -> list[dict[str, Any]] | None:
     rows = list(
         OrderItem.objects.filter(order_id=order_id)
         .order_by("pk")
-        .values("pk", "product_snapshot__name", "status", "created_at")
+        .values("pk", "product_snapshot__name", "status", "cancel_reason", "created_at")
     )
     groups: dict[str, dict[str, Any]] = {}
     names = {}
@@ -316,7 +412,9 @@ def order_for_tracking(token: str) -> list[dict[str, Any]] | None:
         group = groups.setdefault(
             name, {"name": name, "states": [], "created_at": row["created_at"], "timeline": []}
         )
-        group["states"].append(order_status.tracking_state(row["status"]))
+        group["states"].append(
+            order_status.tracking_state(row["status"], row["cancel_reason"] or "")
+        )
     seen = set()
     for item_id, _, before, after, at, delivered in _history(order_item__order_id=order_id):
         name = names[item_id]

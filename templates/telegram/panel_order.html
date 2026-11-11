@@ -1,10 +1,11 @@
 {% load fa %}{{ emoji }} <b>سفارش {{ order.order_number|fa_digits }}</b>
 <blockquote>وضعیت: {{ lead.label }}{% with state=card.state %}{% if state == "awaiting_input" %}
-اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید.{% elif state == "unpaid" %}
+اطلاعات فعال‌سازی را برای {{ support.telegram }} بفرستید.{% elif state == "unpaid" %}
 مهلت پرداخت: {{ card.deadline|jalali }}، ساعت {{ card.deadline|date:"H:i"|fa_digits }}{% elif state == "refund_owed" %}
-{{ card.refund|toman_plain }} تومان را به شما برمی‌گردانیم. شماره‌ی کارت یا شبای به نام خودتان را برای پشتیبانی بفرستید.{% elif state == "expired" %}
+{{ card.refund|toman_plain }} تومان را به شما برمی‌گردانیم. شماره‌ی کارت یا شبای به نام خودتان را برای {{ support.telegram }} بفرستید. رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید.{% elif state == "expired" %}
 پرداختی برای این سفارش ثبت نشد.{% elif state == "late" %}
-زمان تحویل گذشته است. برای پیگیری، به پشتیبانی پیام بدهید.{% elif state == "cancelled" %}
+زمان تحویل گذشته است. برای پیگیری، به {{ support.telegram }} پیام بدهید.{% elif state == "delivered" and card.rejected_at %}
+درخواست تعویض رد شد. دلیل رد را از {{ support.telegram }} بپرسید.{% elif state == "cancelled" %}
 {% if card.paid %}مبلغی برای بازگشت ثبت نشده است.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% else %}
 لازم نیست کاری انجام دهید.{% endif %}{% endwith %}</blockquote>
 {% for group in groups %}{% for line in group.lines %}محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}{% if line.quantity > 1 %}، {{ line.quantity|fa_digits }} عدد{% endif %}{% if mixed_status %}، {{ line.status_label }}{% endif %}

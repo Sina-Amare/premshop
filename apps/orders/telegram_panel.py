@@ -123,6 +123,7 @@ def _order(order: Order) -> tuple[str, Buttons]:
         "telegram/panel_order.html",
         {
             **customer_summary(order),
+            "support": support.details(),
             "emoji": _emoji_of(order),
             "order_url": _site("order-detail", order.order_number),
         },

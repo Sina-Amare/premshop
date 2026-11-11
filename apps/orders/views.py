@@ -55,12 +55,20 @@ def _owned_summary(request: HttpRequest, order_number: int) -> dict[str, Any]:
 
 
 def _again_url(summary: dict[str, Any]) -> str:
-    """Where buying again starts: the product's own page while it is on sale, else the shop."""
-    for group in summary["groups"]:
-        for line in group["lines"]:
-            product = line["product"]
-            if product is not None and Product.objects.public().filter(pk=product.pk).exists():
-                return product.get_absolute_url()
+    """Where buying again starts: the first product still on sale, else the shop. Only the
+    closed cards offer it."""
+    if summary["card"]["state"] not in ("expired", "cancelled"):
+        return ""
+    ids = [
+        line["product"].pk
+        for group in summary["groups"]
+        for line in group["lines"]
+        if line["product"] is not None
+    ]
+    on_sale = {product.pk: product for product in Product.objects.public().filter(pk__in=ids)}
+    for pk in ids:
+        if pk in on_sale:
+            return on_sale[pk].get_absolute_url()
     return reverse("home")
 
 
