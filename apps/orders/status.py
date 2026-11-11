@@ -84,19 +84,21 @@ def lead_state(states: list[str]) -> str:
     return min(states, key=RANK.index) if states else "cancelled"
 
 
-# The order list's groups and the line an empty one shows. An order sits under the state it
-# leads with, so a delivered product beside a refund still owed keeps its order current.
+# The order list's groups, as the bot's lists name them, and the line an empty one shows.
+# An order sits under the state it leads with, so a delivered product beside a refund still
+# owed keeps its order in progress.
 TABS: dict[str, tuple[str, str]] = {
-    "current": ("جاری", "سفارش جاری ندارید."),
+    "unpaid": ("در انتظار پرداخت", "سفارشی در انتظار پرداخت ندارید."),
+    "current": ("در جریان", "سفارشی در جریان ندارید."),
     "delivered": ("تحویل‌شده", "سفارش تحویل‌شده‌ای ندارید."),
     "cancelled": ("لغوشده", "سفارش لغوشده‌ای ندارید."),
 }
-_SETTLED = {"delivered": "delivered", "refunded": "cancelled", "expired": "cancelled",
-            "cancelled": "cancelled"}  # fmt: skip
+_GROUP = {"unpaid": "unpaid", "delivered": "delivered", "refunded": "cancelled",
+          "expired": "cancelled", "cancelled": "cancelled"}  # fmt: skip
 
 
 def tab_of(lead: str) -> str:
-    return _SETTLED.get(lead, "current")
+    return _GROUP.get(lead, "current")
 
 
 # The public tracking page reads statuses only, with no refund or clock behind them.
