@@ -160,7 +160,7 @@ Signing in rotates the session and merges the visitor's guest cart into the acco
 | Path | Page |
 |---|---|
 | `/account/` | Profile, password and the current order |
-| `/account/orders/` | The customer's orders, 20 per page |
+| `/account/orders/` | The customer's orders in four groups, by the state each order leads with, 20 per page |
 | `/account/orders/<number>/` | One order: what was bought, its status and history, the saved terms |
 | `/account/orders/<number>/cancel/` | Cancelling an unpaid order (a confirmed POST) |
 | `/account/orders/<number>/invoice/` | A standalone HTML invoice; the PNG export is drawn in the browser |
