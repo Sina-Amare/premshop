@@ -102,4 +102,4 @@ details.order-card>p{margin-block:12px 16px}
 /* A line's refund is a fact of the line, quieter than its price. */
 [data-line-money] .price__num{font:500 14px/1.8 var(--font-body);color:var(--v-ink)}
 .order-card__foot a{margin-inline-start:auto}
-.order-document>p a{color:var(--v-accent)}
+:is(.order-card,.order-document) p a{color:var(--v-accent);border-bottom:1px solid currentColor}

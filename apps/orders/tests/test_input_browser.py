@@ -34,7 +34,7 @@ def test_operator_input_cycle_and_customer_handoff(
     )
     page = context.new_page()
     detail = reverse("admin:orders_order_change", args=[order.pk])
-    receipt = "اطلاعات رسید؛ ادامه‌ی انجام" if language == "fa" else "Details received; continue"
+    receipt = "ثبت دریافت اطلاعات" if language == "fa" else "Record the details as received"
     request = "ثبت درخواست اطلاعات" if language == "fa" else "Record a request for details"
     heading = "اطلاعات فعال‌سازی" if language == "fa" else "Activation details"
 

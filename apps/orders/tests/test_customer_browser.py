@@ -137,7 +137,7 @@ def test_font_failure_keeps_html_and_offers_an_export_retry(browser, live_server
     try:
         page.goto(live_server.url + reverse("order-invoice", args=[order.order_number]))
         page.get_by_role("button", name="دانلود تصویر فاکتور").click()
-        expect(page.locator("[data-invoice-status]")).to_contain_text("متن فاکتور در همین صفحه هست")
+        expect(page.locator("[data-invoice-status]")).to_contain_text("متن فاکتور در همین صفحه است")
         expect(page.get_by_role("button", name="دانلود تصویر فاکتور")).to_be_enabled()
         expect(page.locator("[data-order-total]")).to_contain_text("۲۰۰,۰۰۰")
         assert not downloads

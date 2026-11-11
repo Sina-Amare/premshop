@@ -100,7 +100,7 @@ def test_queue_tabs_keyboard_search_and_delivery_shell(
         expect(page.locator("#result_list tbody tr")).to_have_count(1)
         page.goto(live_server.url + reverse("admin:orders_order_change", args=[paused.pk]))
         check("detail-paused", "متوقف")
-        expect(page.get_by_role("button", name="اطلاعات رسید؛ ادامه‌ی انجام")).to_be_visible()
+        expect(page.get_by_role("button", name="ثبت دریافت اطلاعات")).to_be_visible()
         paging_buyer = User.objects.create_user("queue-paging@example.test")
         for _ in range(26):
             make_order(paging_buyer, plan, due_at=now + timedelta(hours=3))
