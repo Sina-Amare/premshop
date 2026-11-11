@@ -4,12 +4,13 @@
 <nav class="order-queue-tabs" aria-label="{% translate 'صف سفارش‌ها' %}">
   {% for tab in queue_tabs %}<a href="{{ tab.url }}"{% if tab.name == queue_tab %} aria-current="page"{% endif %}>{{ tab.label }}{% if tab.count != None %} <span>{{ tab.count|fa_digits }}</span>{% endif %}</a>{% endfor %}
 </nav>
-<p class="order-queue-as-of">{% translate "زمان بررسی" %}: {{ queue_as_of|jalali }}، {{ queue_as_of|date:'H:i:s'|fa_digits }} · <a href="{{ request.get_full_path }}">{% translate "تازه‌سازی" %}</a></p>
-<section class="mb-6 border border-base-200 dark:border-base-800 rounded-default p-4" aria-label="{% translate 'بررسی مهلت پرداخت' %}">
+<p class="order-queue-as-of">{% translate "زمان بررسی" %}: {{ queue_as_of|jalali }}، {{ queue_as_of|date:'H:i:s'|fa_digits }} · <a href="{{ request.get_full_path }}">{% translate "تازه‌سازی" %}</a>{% if not expiry_stale %} · {% translate "آخرین بررسی مهلت پرداخت" %}: {{ expiry_state.last_success_at|jalali }}، {% translate "ساعت" %} {{ expiry_state.last_success_at|time:"H:i"|fa_digits }}{% if expiry_backlog %} · {% translate "سفارش‌های گذشته از مهلت پرداخت" %}: {{ expiry_backlog|fa_digits }}{% endif %}{% endif %}</p>
+{% comment %}The expiry check speaks up only when it needs the operator: when it has stopped running. A healthy check clears its own backlog within minutes.{% endcomment %}
+{% if expiry_stale %}<section class="order-expiry" data-tone="problem" aria-label="{% translate 'بررسی مهلت پرداخت' %}">
   <p>{% translate "آخرین بررسی مهلت پرداخت" %}: {% if expiry_state %}{{ expiry_state.last_success_at|jalali }}، {% translate "ساعت" %} {{ expiry_state.last_success_at|time:"H:i"|fa_digits }}{% else %}{% translate "هنوز اجرا نشده است" %}{% endif %}</p>
   <p>{% translate "سفارش‌های گذشته از مهلت پرداخت" %}: {{ expiry_backlog|fa_digits }}</p>
   {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار به‌روز نیست. ببینید هنوز اجرا می‌شود یا نه." %}</p>{% endif %}
-</section>
+</section>{% endif %}
 {{ block.super }}
 {% endblock %}
 {% block result_list %}

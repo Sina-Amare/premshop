@@ -36,3 +36,22 @@ def test_the_panels_home_counts_the_order_work_in_its_tones(client, buyer, plan,
     # Nothing waiting reads grey, so colour marks only work that exists.
     assert found["منتظر پرداخت"] == ("closed", none, f"{queue}?tab=unpaid")
     assert found["درخواست تعویض"][:2] == ("closed", none)
+
+
+def test_the_queue_raises_the_expiry_check_only_when_something_is_wrong(
+    client, buyer, plan, operator
+):
+    from apps.orders.models import UnpaidExpirySweep
+
+    UnpaidExpirySweep.objects.create(
+        last_success_at=timezone.now(), processed_count=0, overdue_count=0
+    )
+    client.force_login(operator)
+    queue = reverse("admin:orders_order_changelist")
+    healthy = client.get(queue).content.decode()
+    assert 'class="order-expiry"' not in healthy
+    assert "آخرین بررسی مهلت پرداخت" in healthy.split('class="order-queue-as-of"', 1)[1][:600]
+    UnpaidExpirySweep.objects.update(last_success_at=timezone.now() - timedelta(hours=1))
+    stale = client.get(queue).content.decode()
+    assert '<section class="order-expiry" data-tone="problem"' in stale
+    assert "بررسی خودکار به‌روز نیست" in stale
