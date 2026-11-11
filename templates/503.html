@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}ورود فعلاً ممکن نیست{% endblock %}
+{% block title %}این صفحه فعلاً باز نمی‌شود{% endblock %}
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block content %}
 <div class="wrap page">
 <div class="auth-shell">
   <div class="card auth-card">
-    <h1 class="auth-title">ورود فعلاً ممکن نیست</h1>
+    <h1 class="auth-title">این صفحه فعلاً باز نمی‌شود</h1>
     <p class="prose auth-lead">مشکل از طرف ماست. کمی بعد دوباره امتحان کنید.</p>
     <p class="small auth-fine">این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.</p>
-    <a class="btn btn--secondary" href="{% url 'login-code' %}">تلاش دوباره</a>
+    <a class="btn btn--secondary" href="{{ request.get_full_path }}">تلاش دوباره</a>
   </div>
   <p class="micro auth-aside">
     اگر ادامه داشت، به <span class="latin">{{ support.email }}</span> ایمیل بزنید.

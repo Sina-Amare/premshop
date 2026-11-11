@@ -355,7 +355,7 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    explanation = "تا زمانی که سفارش فعلی منتظر پرداخت است، نمی‌توانید سفارش جدیدی ثبت کنید."
+    explanation = "برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید."
     assert explanation in response.content.decode()
     assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
     with pytest.raises(UnpaidOrderExists) as caught:

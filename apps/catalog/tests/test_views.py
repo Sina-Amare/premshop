@@ -119,7 +119,7 @@ def test_category_page_and_its_empty_state(client, category, product):
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "توی این دسته فعلاً محصولی نداریم" in body
+    assert "در این دسته فعلاً محصولی نیست" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):
@@ -660,7 +660,7 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "الان جستجوها زیاد شده." in response.content.decode()
+    assert "الان تعداد جستجوها زیاد است." in response.content.decode()
 
 
 @pytest.mark.parametrize("query", ["خرید اکانت جمینای", "خرید اکانت جمینای پرو", "اکانت gemini"])
@@ -684,7 +684,7 @@ def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product)
 
     assert "محصولی پیدا نکردیم" in body
     assert '<bdi class="v-query">xbox</bdi>' in body
-    assert "می‌تونید این محصولات رو هم ببینید:" in body
+    assert "این محصولات را هم ببینید:" in body
 
 
 def test_the_search_page_is_not_indexed(client, product):
