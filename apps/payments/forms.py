@@ -150,8 +150,8 @@ class CheckoutForm(forms.Form):
                 self.fields[name] = forms.CharField(
                     label=line.plan.activation_input_label,
                     help_text=(
-                        f"پس از ثبت سفارش، {kind} را نمی‌توانید عوض کنید. "
-                        "آن را با دقت وارد کنید."
+                        f"امکان تغییر {kind} پس از ثبت سفارش وجود ندارد. "
+                        f"پیش از ثبت نهایی از درستی {kind} وارد شده اطمینان حاصل کنید."
                     ),
                     max_length=254 if line.plan.input_type == "email" else 151,
                     widget=forms.TextInput(
