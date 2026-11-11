@@ -30,51 +30,32 @@ def catalog():
             )
 
 
-def place_two_shelves(page):
-    page.evaluate("""() => {
-      const roots=[...document.querySelectorAll('[data-rail]')];
-      const a=roots[0].getBoundingClientRect(), b=roots[1].getBoundingClientRect();
-      const header=document.querySelector('.v-header').getBoundingClientRect().height;
-      scrollTo(0,scrollY+(a.top+b.bottom)/2-(innerHeight+header)/2);
-    }""")
-    page.mouse.move(0, 0)
-    page.wait_for_timeout(300)
-    assert (
-        page.locator("[data-rail]")
-        .nth(0)
-        .evaluate("e=>{let r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}")
-    )
-    assert (
-        page.locator("[data-rail]")
-        .nth(1)
-        .evaluate("e=>{let r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}")
-    )
-
-
-def test_visible_shelves_wait_for_the_visitor_after_focus_leaves(browser, live_server, catalog):
+def test_the_offers_shelf_waits_for_the_visitor_after_focus_leaves(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 2000})
     try:
         page.goto(live_server.url + "/")
         expect(page.locator("[data-hero-toggle],[data-rail-toggle]")).to_have_count(0)
-        place_two_shelves(page)
-        tracks = page.locator("[data-rail-track]")
-        first, second = tracks.nth(0), tracks.nth(1)
-        page.locator("[data-rail]").first.locator("[data-rail-next]").focus()
-        before = first.evaluate("e=>e.scrollLeft")
+        # Every department is a grid now; the offers are the one shelf left.
+        expect(page.locator("[data-rail]")).to_have_count(1)
+        rail = page.locator("[data-rail]")
+        rail.scroll_into_view_if_needed()
+        page.mouse.move(0, 0)
+        track = rail.locator("[data-rail-track]")
+        rail.locator("[data-rail-next]").focus()
+        before = track.evaluate("e=>e.scrollLeft")
         page.evaluate("document.activeElement.blur()")
         page.wait_for_timeout(6300)
-        assert first.evaluate("e=>e.scrollLeft") == before
-        assert second.evaluate("e=>e.scrollLeft") == 0
-        page.locator("[data-rail]").first.locator("[data-rail-next]").click()
+        assert track.evaluate("e=>e.scrollLeft") == before
+        rail.locator("[data-rail-next]").click()
         page.wait_for_function(
             'Math.abs(document.querySelector("[data-rail-track]").scrollLeft)>50'
         )
-        first.evaluate("e=>e.scrollTo({left:-e.scrollWidth,behavior:'instant'})")
-        expect(page.locator("[data-rail]").first.locator("[data-rail-next]")).to_be_disabled()
+        track.evaluate("e=>e.scrollTo({left:-e.scrollWidth,behavior:'instant'})")
+        expect(rail.locator("[data-rail-next]")).to_be_disabled()
         page.evaluate("document.activeElement.blur()")
         page.wait_for_timeout(1000)
-        assert abs(first.evaluate("e=>e.scrollLeft")) > 50
-        assert first.locator(".pcard").count() == 8
+        assert abs(track.evaluate("e=>e.scrollLeft")) > 50
+        assert track.locator(".pcard").count() == 8
     finally:
         page.close()
 

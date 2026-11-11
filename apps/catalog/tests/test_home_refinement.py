@@ -23,7 +23,7 @@ def products():
 
 
 @pytest.mark.parametrize("width", [320, 390, 760])
-def test_phone_category_has_four_cards_in_two_columns_and_a_category_link(
+def test_phone_category_shows_every_card_in_two_columns(
     browser, live_server, products, width
 ):
     page = browser.new_page(viewport={"width": width, "height": 900})
@@ -33,12 +33,13 @@ def test_phone_category_has_four_cards_in_two_columns_and_a_category_link(
         page.evaluate("() => document.fonts.ready")
         section = page.locator(".v-category-section").first
         cards = section.locator(".pcard:visible")
-        expect(cards).to_have_count(4)
+        expect(cards).to_have_count(8)
         boxes = [card.bounding_box() for card in cards.all()]
         assert abs(boxes[0]["y"] - boxes[1]["y"]) < 1
         assert boxes[2]["y"] > boxes[0]["y"]
-        expect(section.locator(".v-view-all")).to_have_attribute("href", "/c/ai/")
-        assert section.locator("[data-rail-track]").get_attribute("tabindex") == "-1"
+        # Every card is already here, so the department needs no link out and no rail.
+        expect(section.locator(".v-view-all")).to_have_count(0)
+        expect(section.locator("[data-rail-track]")).to_have_count(0)
         for card in cards.all():
             art = card.locator(".pcard__art").bounding_box()
             assert abs(art["width"] / art["height"] - 16 / 9) < 0.03

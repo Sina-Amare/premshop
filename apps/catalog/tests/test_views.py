@@ -435,7 +435,8 @@ def test_home_groups_products_under_their_department(client, category, product):
     assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
     catalog = body.split('id="products"', 1)[1].split("</main>", 1)[0]
     assert re.findall(r"<p>([۰-۹]+) محصول</p>", catalog) == ["۱", "۱"]
-    assert len(re.findall(r'class="v-view-all" href="/c/[^"]+/"', body)) == 2
+    # Each department shows all its products, so none links out to its own page.
+    assert re.findall(r'class="v-view-all" href="/c/[^"]+/"', body) == []
     assert 'href="/c/gift/"' in body
 
 
@@ -803,3 +804,16 @@ def test_an_empty_query_does_not_spend_the_search_budget(client, category, produ
 
     spent = client.get(reverse("search"), {"q": product.name})
     assert spent.status_code == 200, "a real query after many empty ones still works"
+
+
+def test_every_product_shows_and_a_department_links_out_only_when_the_cap_hid_some(
+    client, category, product, monkeypatch
+):
+    sibling = make_product(category, "copilot")
+    link = f'aria-label="همه‌ی محصولات {category.name}"'
+    body = client.get(reverse("home")).content.decode()
+    catalog = body.split('id="products"', 1)[1].split("v-faq-band", 1)[0]
+    assert f'href="/p/{product.slug}/"' in catalog and f'href="/p/{sibling.slug}/"' in catalog
+    assert "data-rail" not in catalog and link not in catalog
+    monkeypatch.setattr("apps.catalog.views.HOME_PRODUCT_CAP", 1)
+    assert link in client.get(reverse("home")).content.decode()
