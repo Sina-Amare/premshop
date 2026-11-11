@@ -20,10 +20,10 @@ catalogue and what needs the operator there; the recent actions stay beside it.
             <div class="panel-stats">{% for tile in work %}<a href="{{ tile.url }}" data-tone="{{ tile.tone }}"><span>{{ tile.label }}</span><strong>{{ tile.count|fa_digits }}</strong></a>{% endfor %}</div>
         </section>
         <div class="panel-stats">
-            <a href="{% url 'admin:catalog_product_changelist' %}"><span>{% translate "محصول منتشرشده" %}</span><strong>{{ attention.published|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_product_changelist' %}?status__exact=active"><span>{% translate "محصول منتشرشده" %}</span><strong>{{ attention.published|fa_digits }}</strong></a>
             <a href="{% url 'admin:catalog_plan_changelist' %}"><span>{% translate "تخفیف فعال" %}</span><strong>{{ attention.on_sale|fa_digits }}</strong></a>
-            <a href="{% url 'admin:catalog_plan_changelist' %}"><span>{% translate "پلن ناموجود" %}</span><strong>{{ attention.sold_out|length|fa_digits }}</strong></a>
-            <a href="{% url 'admin:catalog_product_changelist' %}"><span>{% translate "پیش‌نویس" %}</span><strong>{{ attention.drafts|length|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_plan_changelist' %}?is_available__exact=0"><span>{% translate "پلن ناموجود" %}</span><strong>{{ attention.sold_out|length|fa_digits }}</strong></a>
+            <a href="{% url 'admin:catalog_product_changelist' %}?status__exact=draft"><span>{% translate "پیش‌نویس" %}</span><strong>{{ attention.drafts|length|fa_digits }}</strong></a>
         </div>
         <section class="panel-attention">
             <h2>{% translate "نیاز به رسیدگی" %}</h2>

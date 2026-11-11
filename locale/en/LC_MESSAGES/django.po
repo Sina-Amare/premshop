@@ -2031,3 +2031,28 @@ msgstr "Late"
 
 msgid "بازگشت وجه در انتظار واریز"
 msgstr "Refunds to transfer"
+
+#, python-format
+msgid "بازپرداخت %(owed)s را واریز کنید"
+msgstr "Transfer the %(owed)s refund"
+
+msgid "اطلاعات فعال‌سازی را در تلگرام پیگیری کنید"
+msgstr "Follow up the activation details on Telegram"
+
+msgid "پرداخت را در تلگرام پیگیری کنید"
+msgstr "Follow up the payment on Telegram"
+
+msgid "بازپرداخت در انتظار واریز"
+msgstr "Refunds to transfer"
+
+msgid "بدون تخفیف"
+msgstr "No discount"
+
+msgid "ثبت دریافت اطلاعات"
+msgstr "Record the details as received"
+
+msgid "آخرین به‌روزرسانی صفحه"
+msgstr "Page last refreshed"
+
+msgid "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. پردازش پس‌زمینه‌ی سرور را بررسی کنید."
+msgstr "The automatic check has not run for over 3 minutes. Check the server's background worker."

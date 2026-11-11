@@ -129,7 +129,7 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
 
     timeline = section(body, 'aria-labelledby="order-history-title"')
     access = section(body, 'id="input-access-history"')
-    named = "<bdi>سرویس نمونه</bdi>؛ <bdi>یک ماهه</bdi>"
+    named = "<bdi>سرویس نمونه</bdi>، <bdi>یک ماهه</bdi>"
     assert OrderItemEvent.objects.filter(order_item=item).exists()
     assert named in timeline and named in access
     number = f"آیتم {to_persian_digits(item.pk)}"

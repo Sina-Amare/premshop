@@ -32,7 +32,7 @@ def test_the_panels_home_counts_the_order_work_in_its_tones(client, buyer, plan,
     queue = reverse("admin:orders_order_changelist")
     assert found["دیر شده"] == ("problem", one, f"{queue}?tab=queued")
     assert found["در صف انجام"] == ("progress", one, f"{queue}?tab=queued")
-    assert found["بازگشت وجه در انتظار واریز"][:2] == ("attention", one)
+    assert found["بازپرداخت در انتظار واریز"][:2] == ("attention", one)
     # Nothing waiting reads grey, so colour marks only work that exists.
     assert found["منتظر پرداخت"] == ("closed", none, f"{queue}?tab=unpaid")
     assert found["درخواست تعویض"][:2] == ("closed", none)
@@ -54,4 +54,4 @@ def test_the_queue_raises_the_expiry_check_only_when_something_is_wrong(
     UnpaidExpirySweep.objects.update(last_success_at=timezone.now() - timedelta(hours=1))
     stale = client.get(queue).content.decode()
     assert '<section class="order-expiry" data-tone="problem"' in stale
-    assert "بررسی خودکار به‌روز نیست" in stale
+    assert "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده" in stale

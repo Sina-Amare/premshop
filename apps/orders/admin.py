@@ -85,6 +85,12 @@ _QUEUE_STATES = {
 _QUEUE_ORDER = {"queued": "due_at", "waiting": "input_requested_at", "claims": "delivered_at"}
 
 
+def _moment(at: Any) -> str:
+    """A date with its time, so two moves on one day can be told apart."""
+    local = timezone.localtime(at)
+    return f"{format_jalali(local)}، {to_persian_digits(local.strftime('%H:%M'))}"
+
+
 def queue_overview(user: Any) -> list[dict[str, Any]]:
     """The order work the panel's home counts, by order, each linked to the tab that holds it.
     A count of nothing reads grey, so colour marks only work that exists."""
@@ -109,7 +115,7 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
     ]
     if user.has_perm("payments.view_refund"):
         reconciliation = reverse("admin:orders_order_reconciliation")
-        tiles.append(("refunds", _("بازگشت وجه در انتظار واریز"), "attention", reconciliation))
+        tiles.append(("refunds", _("بازپرداخت در انتظار واریز"), "attention", reconciliation))
     return [
         {
             "label": label,
@@ -131,9 +137,9 @@ _NEXT_WORDS = {
     "late": _("دیر شده: تحویل بدهید"),
     "queued": _("تحویل بدهید"),
     "replacement": _("درخواست تعویض را بررسی کنید"),
-    "refund_owed": _("بازگشت وجه %(owed)s را واریز کنید"),
-    "awaiting_input": _("منتظر اطلاعات مشتری"),
-    "unpaid": _("منتظر پرداخت مشتری"),
+    "refund_owed": _("بازپرداخت %(owed)s را واریز کنید"),
+    "awaiting_input": _("اطلاعات فعال‌سازی را در تلگرام پیگیری کنید"),
+    "unpaid": _("پرداخت را در تلگرام پیگیری کنید"),
 }
 
 
@@ -207,7 +213,7 @@ class OrderItemInline(TabularInline):
             return "—"
         tone = "attention" if refund.status == refund.Status.OWED else "closed"
         return format_html(
-            '<span class="order-status" data-tone="{}">{} · {}</span>',
+            '<span class="order-status" data-tone="{}">{}، {}</span>',
             tone,
             format_toman(refund.amount),
             refund.get_status_display(),
@@ -256,7 +262,7 @@ class OrderItemInline(TabularInline):
             )
         if obj.status == OrderItem.Status.AWAITING_INPUT:
             return format_html(
-                '<a class="order-input-action" href="{}">{}</a>',
+                '<a class="order-input-action" data-danger href="{}">{}</a>',
                 reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
                 _("لغو و بازپرداخت"),
             )
@@ -836,7 +842,7 @@ class OrderAdmin(ModelAdmin):
                         action, label = "request", _("ثبت درخواست اطلاعات")
                     elif item.status == OrderItem.Status.AWAITING_INPUT:
                         action = "receive" if item.due_at is None else "resume"
-                        label = _("اطلاعات رسید؛ ادامه‌ی انجام")
+                        label = _("ثبت دریافت اطلاعات")
                     else:
                         continue
                     controls.append(
@@ -916,9 +922,9 @@ class OrderAdmin(ModelAdmin):
                     seconds = (deadline - reference).total_seconds()
                     kind = "paused" if paused else ("overdue" if seconds <= 0 else "remaining")
                     label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
-                    text = f"{format_countdown(abs(int(seconds)))} · {label}"
+                    text = f"{format_countdown(abs(int(seconds)))} {label}"
                     if paused:
-                        text = str(_("متوقف")) + " · " + text
+                        text = str(_("متوقف")) + "، " + text
                 elif item.status == OrderItem.Status.QUEUED:
                     text = str(_("مهلت ثبت نشده است"))
             refund = getattr(item, "refund", None)
@@ -949,11 +955,10 @@ class OrderAdmin(ModelAdmin):
     def number(self, obj: Order) -> str:
         return format_html(
             '<span class="order-number">{}</span><span class="order-list-mobile">'
-            "<span>{}</span><strong>{}</strong><span>{}</span></span>",
+            "<span>{}</span><strong>{}</strong></span>",
             to_persian_digits(obj.order_number),
             self.customer(obj),
             self.amount(obj),
-            self.item_states(obj),
         )
 
     @admin.display(description=_("مشتری"))
@@ -970,6 +975,8 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("تخفیف"))
     def discount(self, obj: Order) -> str:
+        if not obj.discount_amount:
+            return str(_("بدون تخفیف"))
         return format_toman(obj.discount_amount, with_unit=False) + " تومان"
 
     @admin.display(description=_("وضعیت آیتم‌ها"))
@@ -984,7 +991,7 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("زمان ثبت"), ordering="created_at")
     def placed(self, obj: Order) -> str:
-        return format_jalali(obj.created_at)
+        return _moment(obj.created_at)
 
     @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
@@ -996,7 +1003,7 @@ class OrderAdmin(ModelAdmin):
         rows = format_html_join(
             "",
             '<li><div class="order-timeline__head">{}<span>{}</span></div>'
-            '<p class="order-timeline__meta">{} · {} · {} · {}</p>'
+            '<p class="order-timeline__meta">{}، {}، {}، {}</p>'
             '<p class="order-timeline__note">{}</p></li>',
             (
                 (
@@ -1006,9 +1013,9 @@ class OrderAdmin(ModelAdmin):
                         event.to_status,
                         event.get_to_status_display(),
                     ),
-                    format_jalali(event.created_at),
+                    _moment(event.created_at),
                     format_html(
-                        "<bdi>{}</bdi>؛ <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
+                        "<bdi>{}</bdi>، <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
                     ),
                     _("آیتم %(number)s") % {"number": to_persian_digits(event.order_item_id)},
                     event.get_actor_display(),

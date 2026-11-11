@@ -35,10 +35,10 @@ def next_line(tone, words):
     "state, tone, line_tone, line",
     [
         ("queued", "progress", "progress", "تحویل بدهید"),
-        ("unpaid", "attention", "attention", "منتظر پرداخت مشتری"),
-        ("waiting", "attention", "attention", "منتظر اطلاعات مشتری"),
+        ("unpaid", "attention", "attention", "پرداخت را در تلگرام پیگیری کنید"),
+        ("waiting", "attention", "attention", "اطلاعات فعال‌سازی را در تلگرام پیگیری کنید"),
         ("claimed", "progress", "progress", "درخواست تعویض را بررسی کنید"),
-        ("owed", "problem", "attention", "بازگشت وجه ۲۰۰,۰۰۰ تومان را واریز کنید"),
+        ("owed", "problem", "attention", "بازپرداخت ۲۰۰,۰۰۰ تومان را واریز کنید"),
         ("delivered", "done", None, None),
         ("cancelled", "problem", None, None),
         ("overdue", "closed", None, None),
@@ -87,7 +87,7 @@ def test_the_order_page_shows_each_items_status_in_its_tone(client, buyer, plan,
     client.force_login(operator)
     body = client.get(reverse("admin:orders_order_change", args=[order.pk])).content.decode()
     assert '<span class="order-status" data-tone="attention">' in body
-    assert next_line("attention", "بازگشت وجه ۲۰۰,۰۰۰ تومان را واریز کنید") in body
+    assert next_line("attention", "بازپرداخت ۲۰۰,۰۰۰ تومان را واریز کنید") in body
     # The payment's history reads in its tone, and each move in the order's history carries
     # the tone of the status it reached.
     assert '<span class="order-status" data-tone="done">تأییدشده</span>' in body

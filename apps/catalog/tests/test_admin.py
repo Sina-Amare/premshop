@@ -1073,7 +1073,7 @@ def test_the_bulk_delete_confirmation_reads_as_persian(client, operator, catalog
     for leak in ("موجودیت", "ذیل", "در خصوص", "اشیا"):
         assert leak not in body, leak
     # One product is named in the singular, and a plural verb did not agree.
-    assert "محصول انتخاب‌شده رو حذف می‌کنید؟" in body
+    assert "محصول انتخاب‌شده حذف شود؟" in body
     assert "حذف شوند؟" not in body
 
 

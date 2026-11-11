@@ -214,3 +214,4 @@ html.dark .field-image img{padding:4px;border-radius:6px}
 html body .selector .list-footer-display{display:none}html body .selector .selector-chosen--with-filtered .list-footer-display{display:block}
 
 .order-expiry{margin-block-end:24px;padding:14px 16px;border:1px solid var(--panel-problem-line);border-radius:8px;background:var(--panel-problem-bg);color:var(--panel-problem-text)}.order-expiry p{margin:2px 0}
+.order-purchase{align-items:flex-start}.order-input-action[data-danger],button[data-danger]{color:var(--panel-problem-text);border-color:var(--panel-problem-line)}html body kbd{direction:ltr}
