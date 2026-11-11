@@ -19,6 +19,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 from django.conf import settings
 from django.test import Client
 from django.utils import timezone
@@ -137,7 +138,10 @@ def scan(context, url: str) -> list[dict]:
         page.close()
 
 
-def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server, shop):
+def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server, shop, settings):
+    # The delivery below encrypts its details, so the test brings its own key.
+    settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    settings.FIELD_ENCRYPTION_KEY_FALLBACKS = []
     customer = User.objects.create_user("customer@example.test", is_verified=True)
     operator = User.objects.create_superuser("operator@example.test")
     # The order pages carry every tone: the customer's move, work in hand, done and closed.
