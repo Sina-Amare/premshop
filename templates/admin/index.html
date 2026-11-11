@@ -2,8 +2,8 @@
 {% load i18n fa %}
 {% comment %}
 Unfold's first page listed the same links as the sidebar. This one counts the
-catalogue and names what needs the operator, each item linked to its form;
-the recent actions stay beside it.
+order work first, each count linked to the queue tab that holds it, then the
+catalogue and what needs the operator there; the recent actions stay beside it.
 {% endcomment %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
@@ -15,6 +15,10 @@ the recent actions stay beside it.
 {% block content %}
 <div class="flex flex-col lg:flex-row gap-6">
     <div class="panel-dashboard grow">
+        <section class="panel-work" aria-labelledby="panel-work-title">
+            <h2 id="panel-work-title">{% translate "کار سفارش‌ها" %}</h2>
+            <div class="panel-stats">{% for tile in work %}<a href="{{ tile.url }}" data-tone="{{ tile.tone }}"><span>{{ tile.label }}</span><strong>{{ tile.count|fa_digits }}</strong></a>{% endfor %}</div>
+        </section>
         <div class="panel-stats">
             <a href="{% url 'admin:catalog_product_changelist' %}"><span>{% translate "محصول منتشرشده" %}</span><strong>{{ attention.published|fa_digits }}</strong></a>
             <a href="{% url 'admin:catalog_plan_changelist' %}"><span>{% translate "تخفیف فعال" %}</span><strong>{{ attention.on_sale|fa_digits }}</strong></a>

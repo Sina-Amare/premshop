@@ -9,6 +9,7 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.catalog.models import Plan, Product
+from apps.orders.admin import queue_overview
 
 # Long enough to notice on a day off, short enough not to list every running offer.
 ENDING_SOON = timedelta(hours=48)
@@ -19,6 +20,7 @@ def dashboard_callback(request: HttpRequest, context: dict[str, Any]) -> dict[st
     plans = list(Plan.objects.filter(product__in=public).select_related("product"))
     soon = timezone.now() + ENDING_SOON
     on_sale = [plan for plan in plans if plan.promotion_is_active]
+    context["work"] = queue_overview(request.user)
     context["attention"] = {
         "published": public.count(),
         "on_sale": len(on_sale),

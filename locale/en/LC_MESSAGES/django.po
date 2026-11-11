@@ -2022,3 +2022,12 @@ msgstr "ID"
 
 msgid "کلید یکتای پیام"
 msgstr "Message key"
+
+msgid "کار سفارش‌ها"
+msgstr "Order work"
+
+msgid "دیر شده"
+msgstr "Late"
+
+msgid "بازگشت وجه در انتظار واریز"
+msgstr "Refunds to transfer"

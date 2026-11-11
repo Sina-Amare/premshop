@@ -67,6 +67,7 @@ from apps.orders.services import (
     reveal_customer_input,
     reveal_delivery,
 )
+from apps.payments.models import Refund
 
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted
@@ -82,6 +83,42 @@ _QUEUE_STATES = {
 }
 # What each tab's oldest work is measured by.
 _QUEUE_ORDER = {"queued": "due_at", "waiting": "input_requested_at", "claims": "delivered_at"}
+
+
+def queue_overview(user: Any) -> list[dict[str, Any]]:
+    """The order work the panel's home counts, by order, each linked to the tab that holds it.
+    A count of nothing reads grey, so colour marks only work that exists."""
+    items = OrderItem.objects.filter(order_id=OuterRef("pk"))
+    flags = {
+        "late": Exists(items.filter(status=OrderItem.Status.QUEUED, due_at__lte=timezone.now())),
+        **{name: Exists(items.filter(status=state)) for name, state in _QUEUE_STATES.items()},
+        "refunds": Exists(
+            Refund.objects.filter(order_item__order_id=OuterRef("pk"), status=Refund.Status.OWED)
+        ),
+    }
+    counts = Order.objects.aggregate(
+        **{name: Count("pk", filter=flag) for name, flag in flags.items()}
+    )
+    queue = reverse("admin:orders_order_changelist")
+    tiles = [
+        ("late", _("دیر شده"), "problem", f"{queue}?tab=queued"),
+        ("queued", _("در صف انجام"), "progress", f"{queue}?tab=queued"),
+        ("claims", _("درخواست تعویض"), "progress", f"{queue}?tab=claims"),
+        ("waiting", _("منتظر اطلاعات مشتری"), "attention", f"{queue}?tab=waiting"),
+        ("unpaid", _("منتظر پرداخت"), "attention", f"{queue}?tab=unpaid"),
+    ]
+    if user.has_perm("payments.view_refund"):
+        reconciliation = reverse("admin:orders_order_reconciliation")
+        tiles.append(("refunds", _("بازگشت وجه در انتظار واریز"), "attention", reconciliation))
+    return [
+        {
+            "label": label,
+            "count": counts[name],
+            "tone": tone if counts[name] else "closed",
+            "url": url,
+        }
+        for name, label, tone, url in tiles
+    ]
 
 
 def queue_tab(request: HttpRequest) -> str:
