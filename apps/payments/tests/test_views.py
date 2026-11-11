@@ -73,7 +73,7 @@ def test_review_anchors_each_product_with_its_logo_total_and_facts(client, buyer
     assert "checkout-preview__art" in item
     assert "۴۰۰,۰۰۰" in item and "هرکدام" in item and "تعداد: ۲" in item
     assert 'class="checkout-item__facts"' in item and "v-icon" in item
-    assert "قیمت هر عدد" not in item
+    assert "قیمت واحد" not in item
 
 
 def test_guest_checkout_has_inline_code_and_html_fallback(client):

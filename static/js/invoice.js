@@ -60,7 +60,7 @@
         add(line.name, 30);
         add(line.plan, 26);
         add(`وضعیت: ${line.status}`, 24);
-        add(`تعداد: ${line.quantity}    قیمت هر عدد: ${line.price}`, 26);
+        add(`تعداد: ${line.quantity}    قیمت واحد: ${line.price}`, 26);
         add(`جمع این محصول: ${line.amount}`, 26, 400, 30);
       }
       add(`جمع محصولات: ${data.subtotal}`);

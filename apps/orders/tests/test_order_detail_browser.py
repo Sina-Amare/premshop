@@ -105,7 +105,7 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
                 page.keyboard.press("Enter")
             expect(page.locator("#order-next #support-identifier")).to_be_visible()
             expect(
-                page.locator("#order-next").get_by_role("link", name="باز کردن تلگرام پشتیبانی")
+                page.locator("#order-next").get_by_role("link", name="پیام به پشتیبانی در تلگرام")
             ).to_have_attribute("href", "https://t.me/premshop_support")
         page.locator("#order-conditions > summary").focus()
         page.keyboard.press("Enter")

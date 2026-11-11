@@ -39,7 +39,7 @@ _ARRIVALS: dict[str, str] = {
     S.DELIVERED: "تحویل شد",
     S.REPLACEMENT_REQUESTED: "درخواست تعویض ثبت شد",
     S.CANCELLED: "لغو شد",
-    S.REFUNDED: "وجه برگشت داده شد",
+    S.REFUNDED: "بازگشت وجه انجام شد",
 }
 
 

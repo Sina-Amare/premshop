@@ -17,28 +17,26 @@
 {% if card.hours %}<p>پس از رسیدن اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
 {% elif state == 'refund_owed' %}
 <h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
-{% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> لغو شد{% if group.reason == 'supply_failure' %}، چون تأمین ممکن نشد{% elif group.reason == 'input_timeout' %}، چون اطلاعات فعال‌سازی در ۲۱ روز نرسید{% elif group.reason == 'warranty_refund' %}، چون جایگزینی در دوره‌ی گارانتی ممکن نشد. مبلغ آن برای روزهای باقی‌مانده‌ی اشتراک است{% endif %}.</p>{% endfor %}
-<p>برای واریز، شماره‌ی کارت یا شبای به نام خودتان را در تلگرام برای پشتیبانی بفرستید. تا یک روز کاری پس از رسیدن شماره واریز می‌کنیم.</p>
+{% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> لغو شد{% if group.reason == 'supply_failure' %}، چون نتوانستیم آن را تهیه کنیم{% elif group.reason == 'input_timeout' %}، چون اطلاعات فعال‌سازی تا ۲۱ روز به دستمان نرسید{% elif group.reason == 'warranty_refund' %}، چون در دوره‌ی گارانتی نتوانستیم آن را جایگزین کنیم. این مبلغ برای روزهای باقی‌مانده‌ی اشتراک است{% endif %}.</p>{% endfor %}
+<p>برای واریز، شماره‌ی کارت یا شبای به نام خودتان را در تلگرام برای پشتیبانی بفرستید. تا یک روز کاری پس از دریافت شماره، مبلغ را واریز می‌کنیم.</p>
 {% elif state == 'late' %}
-<h2 id="order-next-title">زمان تحویل {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} گذشت</h2>
-<p>برای پیگیری تحویل <bdi>{{ products }}</bdi>، به پشتیبانی پیام بدهید.</p>
+<h2 id="order-next-title">زمان تحویل گذشته است</h2>
+<p>قرار بود <bdi>{{ products }}</bdi> تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل شود. بابت تأخیر عذرخواهی می‌کنیم.</p>
 {% elif state == 'replacement' %}
 <h2 id="order-next-title">درخواست تعویض <bdi>{{ products }}</bdi>{% if card.requested_at %} در {{ card.requested_at|jalali }}{% endif %} ثبت شد</h2>
-<p>لازم نیست کاری انجام دهید. نتیجه را خبر می‌دهیم.</p>
+<p>فعلاً کاری لازم نیست. نتیجه را به شما خبر می‌دهیم.</p>
 {% elif state == 'queued' %}
-<h2 id="order-next-title">{% if card.due_at %}تحویل تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }}{% elif card.hours %}تحویل تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت{% else %}<bdi>{{ products }}</bdi> در حال آماده‌سازی است{% endif %}</h2>
-<p>لازم نیست کاری انجام دهید. پس از تحویل خبر می‌دهیم.</p>
+<h2 id="order-next-title">{% if card.due_at %}تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم{% elif card.hours %}تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت تحویل می‌دهیم{% else %}<bdi>{{ products }}</bdi> در حال آماده‌سازی است{% endif %}</h2>
+<p>فعلاً کاری لازم نیست. پس از تحویل به شما خبر می‌دهیم.</p>
 {% elif state == 'delivered' %}
 {% if card.rejected_at %}<h2 id="order-next-title">درخواست تعویض در {{ card.rejected_at|jalali }} رد شد</h2>
-<p>دلیل رد را از پشتیبانی بپرسید.</p>
-{% elif card.uniform %}<h2 id="order-next-title">تحویل در {{ card.delivered_at|jalali }}</h2>
+<p>دلیلش را از پشتیبانی بپرسید.</p>
+{% elif card.uniform %}<h2 id="order-next-title">در {{ card.delivered_at|jalali }} تحویل شد</h2>
 {% else %}<h2 id="order-next-title">تحویل <bdi>{{ products }}</bdi> انجام شد</h2>
-{% endif %}{% if card.uniform %}{% if card.expires_at %}<p>اشتراک تا {{ card.expires_at|jalali }}</p>{% endif %}
-{% if card.warranty_end %}<p>گارانتی تا پایان {{ card.warranty_end|jalali }}</p>{% endif %}{% endif %}
-{% if not card.rejected_at %}<p>لازم نیست کاری انجام دهید.</p>{% endif %}
+{% endif %}{% if card.uniform %}{% if card.expires_at %}<p>اشتراک: تا {{ card.expires_at|jalali }}</p>{% endif %}
+{% if card.warranty_end %}<p>گارانتی: تا پایان {{ card.warranty_end|jalali }}</p>{% endif %}{% endif %}
 {% elif state == 'refunded' %}
-<h2 id="order-next-title">{{ card.refund|price_html }}{% if card.refunded_at %} در {{ card.refunded_at|jalali }}{% endif %} برگشت داده شد</h2>
-<p>لازم نیست کاری انجام دهید.</p>
+<h2 id="order-next-title">{{ card.refund|price_html }} را{% if card.refunded_at %} در {{ card.refunded_at|jalali }}{% endif %} به شما برگرداندیم</h2>
 {% elif state == 'expired' %}
 <h2 id="order-next-title">پرداختی برای این سفارش ثبت نشد</h2>
 <p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را <a href="{{ support.telegram_url }}" rel="noopener noreferrer">در تلگرام</a> برای پشتیبانی بفرستید.</p>
@@ -48,10 +46,10 @@
 <a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
 {% elif card.paid %}
 <h2 id="order-next-title">این سفارش لغو شد</h2>
-<p>مبلغی برای بازگشت ثبت نشده است.</p>
+<p>این لغو بازگشت وجه ندارد. اگر سؤالی دارید، از پشتیبانی بپرسید.</p>
 {% elif card.reason == 'operator' %}
 <h2 id="order-next-title">پشتیبانی این سفارش را{% if card.cancelled_at %} در {{ card.cancelled_at|jalali }}{% endif %} لغو کرد</h2>
-<p>پرداختی برای آن ثبت نشده بود. دلیل لغو را از پشتیبانی بپرسید.</p>
+<p>پرداختی برای آن ثبت نشده بود. دلیلش را از پشتیبانی بپرسید.</p>
 {% else %}
 <h2 id="order-next-title">این سفارش را{% if card.cancelled_at %} در {{ card.cancelled_at|jalali }}{% endif %} لغو کردید</h2>
 <p>پرداختی برای آن ثبت نشده بود.</p>
@@ -69,12 +67,12 @@
 </section>
 <div class="order-records">
 <details class="order-record" id="order-help"><summary>پشتیبانی این سفارش</summary>
-<p>شناسه‌ی پشتیبانی نشان می‌دهد این سفارش متعلق به شماست.</p>
+<p>شناسه‌ی پشتیبانی را همراه شماره‌ی سفارش بفرستید تا مطمئن شویم سفارش را خودتان ثبت کرده‌اید.</p>
 {% if not card.contact %}{% include "orders/_support_identifier.html" %}{% endif %}
 <p class="order-support-contacts"><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
 <p>پاسخ‌گویی: {{ support.hours }}</p>
-{% if support_identifier %}<details class="order-support-replace"><summary>جایگزینی شناسه</summary>
-<p>اگر شناسه را به کسی داده‌اید، شناسه‌ی جدید بسازید. با ساخت آن، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
+{% if support_identifier %}<details class="order-support-replace"><summary>شناسه را به کسی داده‌اید؟</summary>
+<p>شناسه‌ی جدید بسازید. شناسه‌ی قبلی از همان لحظه باطل می‌شود.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% endif %}
 </details>

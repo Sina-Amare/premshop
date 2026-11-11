@@ -31,14 +31,14 @@ CASES = [
     ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
     ("late", "تأخیر در تحویل", "danger", "گذشت", True),
     ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
-    ("delivered", "تحویل‌شده", "ok", "تحویل در", True),
+    ("delivered", "تحویل‌شده", "ok", "تحویل شد", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
     ("rejected", "تحویل‌شده", "ok", "درخواست تعویض در", True),
     ("cancelled", "لغوشده", "danger", "لغو کردید", False),
     ("operator_cancelled", "لغوشده", "danger", "پشتیبانی این سفارش را", True),
     ("expired", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
-    ("refunded", "بازگشت وجه تکمیل‌شده", "neutral", "برگشت داده شد", False),
+    ("refunded", "بازگشت وجه تکمیل‌شده", "neutral", "به شما برگرداندیم", False),
     ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
     ("mixed_refund", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("empty", "لغوشده", "danger", "این سفارش محصولی ندارد", False),
@@ -182,9 +182,9 @@ def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_custo
     body = page(client, buyer, order)
     card = card_of(body)
     figure = format_toman(refund.amount, with_unit=False)
-    assert figure in card and "خرید سرویس نمونه لغو شد، چون تأمین ممکن نشد." in text(card)
+    assert figure in card and "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in text(card)
     assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "تا یک روز کاری" in card
-    assert "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید." in card
+    assert "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد." in card
     owed_row = body.split('data-money="owed"', 1)[1].split("</div>", 1)[0]
     assert figure in owed_row
 
@@ -211,7 +211,7 @@ def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
     order = items[0].order
     assert not Refund.objects.filter(order_item__order=order).exists()
     card = card_of(page(client, buyer, order))
-    assert "مبلغی برای بازگشت ثبت نشده است." in card
+    assert "این لغو بازگشت وجه ندارد." in card
     assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
 
 
@@ -230,7 +230,7 @@ def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer
     end = timezone.localdate() + timedelta(days=30)
     order.items.update(expires_at=end)
     card = card_of(page(client, buyer, order))
-    assert "اشتراک تا" in card and "گارانتی تا پایان" in card
+    assert "اشتراک: تا" in card and "گارانتی: تا پایان" in card
     # Inside the warranty, what to send waits behind one quiet question.
     assert "<summary>مشکلی هست؟</summary>" in card and "data-support-contact" in card
 
@@ -263,8 +263,8 @@ def test_two_refunds_owed_name_each_product_with_its_own_reason_and_amount(
     body = page(client, buyer, items[0].order)
     card = text(card_of(body))
     assert format_toman(Decimal(500000), with_unit=False) in card
-    assert "خرید سرویس نمونه لغو شد، چون تأمین ممکن نشد." in card
-    assert "خرید سرویس دوم لغو شد، چون اطلاعات فعال‌سازی در ۲۱ روز نرسید." in card
+    assert "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in card
+    assert "خرید سرویس دوم لغو شد، چون اطلاعات فعال‌سازی تا ۲۱ روز به دستمان نرسید." in card
     lines = line_money(body)
     assert len(lines) == 2
     for amount in (200000, 300000):
@@ -330,7 +330,7 @@ def test_a_replacement_request_and_its_rejection_carry_their_dates(client, buyer
     reject(order.items.get(), operator)
     card = text(card_of(page(client, buyer, order)))
     assert f"درخواست تعویض در {today} رد شد" in card
-    assert "دلیل رد را از پشتیبانی بپرسید." in card
+    assert "دلیلش را از پشتیبانی بپرسید." in card
 
 
 def test_tracking_and_the_order_page_agree_on_a_lapsed_payment_window(
@@ -345,7 +345,7 @@ def test_the_bot_says_where_to_send_a_card_number_and_warns_about_codes(buyer, p
     order = order_for_state(buyer, plan, operator, "owed")
     screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
     assert support.details()["telegram"] in screen
-    assert "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید." in screen
+    assert "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد." in screen
 
 
 def test_the_account_card_finds_an_open_order_behind_many_newer_closed_ones(buyer, plan, operator):

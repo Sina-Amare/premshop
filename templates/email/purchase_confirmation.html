@@ -11,7 +11,7 @@
 <section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
 <h2 style="font-size:19px;color:#292524;">{{ line.facts.name|bdi }}</h2>
 <p>{{ line.facts.plan_title|bdi }}؛ تعداد: {{ line.quantity|fa_digits }}</p>
-<p>قیمت هر عدد: {{ line.price|toman_plain }} تومان؛ جمع: {{ line.amount|toman_plain }} تومان</p>
+<p>قیمت واحد: {{ line.price|toman_plain }} تومان؛ جمع: {{ line.amount|toman_plain }} تومان</p>
 {% if line.facts.duration_days %}<p>مدت: {{ line.facts.duration_days|fa_digits }} روز</p>{% endif %}
 <h3 style="font-size:17px;color:#292524;">شرایط زمان خرید</h3>
 {% if line.delivery %}<p>روش تحویل: {{ line.delivery }}</p>{% endif %}

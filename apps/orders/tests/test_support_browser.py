@@ -61,7 +61,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)
         page.locator("#order-help > summary").click()
-        replace = page.get_by_text("جایگزینی شناسه", exact=True)
+        replace = page.get_by_text("شناسه را به کسی داده‌اید؟", exact=True)
         assert replace.bounding_box()["height"] >= 44
         replace.click()
         expect(

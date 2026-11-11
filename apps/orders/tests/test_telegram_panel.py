@@ -176,7 +176,7 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
     ]
 
 
-NOTHING_TO_DO = "لازم نیست کاری انجام دهید."
+NOTHING_TO_DO = "کاری لازم نیست."
 
 
 # The bot names the one account a customer's message should go to.

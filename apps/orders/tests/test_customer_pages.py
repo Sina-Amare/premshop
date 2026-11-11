@@ -85,7 +85,7 @@ def test_detail_groups_frozen_category_facts_and_represents_order_total_once(cli
     assert "نام جدید" not in body and "پلن جدید" not in body
     assert body.count("data-order-total") == 1
     assert "تعداد: ۲" in body
-    assert "قیمت هر عدد" in body and format_toman(200000, with_unit=False) in body
+    assert "قیمت واحد" in body and format_toman(200000, with_unit=False) in body
     assert "در انتظار پرداخت" in body and "هنوز پرداخت نشده" not in body
 
 

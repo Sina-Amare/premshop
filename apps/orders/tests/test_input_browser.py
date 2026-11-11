@@ -107,11 +107,11 @@ def test_operator_input_cycle_and_customer_handoff(
         assert "Details received" not in page.content()
         # Sending the details is the action, so the card holds what to send and where.
         expect(
-            page.locator("#order-next").get_by_role("link", name="باز کردن تلگرام پشتیبانی")
+            page.locator("#order-next").get_by_role("link", name="پیام به پشتیبانی در تلگرام")
         ).to_have_attribute("href", "https://t.me/premshop_support")
         expect(page.locator("#order-next #support-identifier")).to_be_visible()
         expect(page.locator("#order-next")).to_contain_text(
-            "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید."
+            "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد."
         )
     finally:
         context.close()
