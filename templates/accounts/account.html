@@ -53,7 +53,7 @@
 {% elif telegram.token %}
 <div class="acct__next" data-telegram-wait="{% url 'account-telegram-state' %}">
   <div>
-    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. اعتبار این پیوند ۱۰ دقیقه است.</p>
+    <p class="small flush">در تلگرام، «شروع» و سپس «تأیید اتصال» را بزنید. این پیوند تا ۱۰ دقیقه اعتبار دارد.</p>
     <p class="small flush">اگر تلگرام باز نشد، این پیام را برای <bdi class="latin">@{{ telegram.bot }}</bdi> بفرستید:</p>
     {# A line of its own: split across two lines, the command is easy to copy half of. #}
     <p class="small flush"><bdi class="latin"><code>/start {{ telegram.token }}</code></bdi></p>
