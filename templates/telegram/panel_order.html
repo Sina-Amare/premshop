@@ -1,4 +1,4 @@
-{% load fa %}<b>سفارش {{ order.order_number|fa_digits }}</b>
+{% load fa %}{{ emoji }} <b>سفارش {{ order.order_number|fa_digits }}</b>
 <blockquote>وضعیت: {{ status }}{% if next_step == "AWAITING_INPUT" %}
 اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید.{% elif next_step == "PENDING_PAYMENT" %}
 {% if overdue %}مهلت پرداخت تمام شده است.{% else %}مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}{% endif %}{% elif next_step == "CANCELLED" %}

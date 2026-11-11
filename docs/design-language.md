@@ -124,7 +124,7 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 - **Empty states** take the blame and offer one action: «پیدا نکردیم», never «پیدا نشد». A search that finds nothing lists the catalogue.
 - **Category pages** have no filters; if one is ever needed, sorting comes first.
 - **Focus and selection.** Everything interactive has a `:focus-visible` ring, one continuous edge; links keep visible keyboard focus without a hover underline. `::selection`, `caret-color` and `accent-color` are set.
-- **Icons** come from the shared SVG set and carry text or an accessible name. Emoji never stand in for icons.
+- **Icons** come from the shared SVG set and carry text or an accessible name. Emoji never stand in for icons on the site; the Telegram bot is the owner's exception, under «Decided by the owner».
 
 ## Email
 
@@ -231,6 +231,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The shop's name on every product card** (2026-10-31), as described under Components.
 - **A discount clock that counts hours, minutes and seconds** even with days to go (2026-11-08), as described under Numbers.
 - **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
+- **Emoji in the Telegram bot** (2026-11-11): every panel button carries a related emoji, and every order the product's own, picked from its name with a plain box for a name the list does not know. A bot button holds text only, so the site's SVG icons cannot reach it. They live in `apps/orders/telegram_emoji.py`, the one file the repository's emoji check allows; the website stays without them. Real brand logos (Telegram's custom emoji) need Premium on the bot's owning account.
 
 ## Checklist
 
