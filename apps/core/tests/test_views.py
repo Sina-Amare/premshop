@@ -94,15 +94,12 @@ class TestStyleguide:
         body = client.get(reverse("styleguide")).content.decode()
         section = body.split('id="status-tones"', 1)[1].split("</section>", 1)[0]
         # Attention, problem, with us, done, closed: the ranking apps/orders/status.py holds.
-        assert re.findall(r"badge badge--([a-z]+)", section) == [
-            "time",
-            "danger",
-            "progress",
-            "ok",
-            "neutral",
-        ]
+        badges = re.findall(r"badge badge--([a-z]+)", section)
+        assert list(dict.fromkeys(badges)) == ["time", "danger", "progress", "ok", "neutral"]
         icons = re.findall(r'<use href="#i-([a-z]+)"', section)
-        assert len(icons) == 5
+        assert len(icons) == len(badges)
+        # The problem tone's two pills: a delay's alert, a cancellation's cross (owner, 2026-11-11).
+        assert icons[1:3] == ["alert", "close"]
         for name in icons:
             assert f'id="i-{name}"' in body, f"the sprite has no {name} symbol"
         assert "badge--accent" not in body.split('id="status-tones"', 1)[1]

@@ -36,10 +36,11 @@ def test_each_tone_draws_its_own_colour_and_icon(browser, live_server, settings,
     page = browser.new_page(viewport={"width": width, "height": 900})
     try:
         page.goto(live_server.url + reverse("styleguide"))
-        assert page.locator("#status-tones .badge").count() == len(WORDS)
+        # One pill per tone, and a second red one: a cancellation keeps its cross.
+        assert page.locator("#status-tones .badge").count() == len(WORDS) + 1
         tints = site_badges()
         for tone, colour in WORDS.items():
-            pill = page.locator(f"#status-tones .badge--{tone}")
+            pill = page.locator(f"#status-tones .badge--{tone}").first
             assert pill.evaluate("el => getComputedStyle(el).color") == colour, tone
             # The tint as drawn: an unlayered rule elsewhere could repaint it silently.
             drawn = pill.evaluate(DRAWN)

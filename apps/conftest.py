@@ -7,9 +7,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from django.utils import translation
 from playwright.sync_api import Browser, Error, sync_playwright
 
 REPOSITORY = Path(__file__).resolve().parent.parent
@@ -33,6 +35,15 @@ def no_output_in_the_repository() -> Iterator[None]:
     written = sorted(path for path, mtime in written_output().items() if before.get(path) != mtime)
     if written:
         pytest.fail(f"tests wrote into the repository instead of tmp_path: {written[:10]}")
+
+
+@pytest.fixture(autouse=True)
+def shop_language() -> Iterator[None]:
+    """A test client's request through an English panel leaves English active in the test's
+    thread, and the next test on that worker would read its expectations in English."""
+    translation.activate(settings.LANGUAGE_CODE)
+    yield
+    translation.deactivate()
 
 
 class Answering(threading.Condition):
