@@ -205,7 +205,7 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     assert "منقضی" in status.text_content()
     assert "badge--time" not in page.get_attribute(
         "#code-clock", "class"
-    ), "amber is a running clock"
+    ), "amber marks the running clock"
     page.screenshot(path=str(tmp_path / "06-expired.png"))
 
     # Resend: a new mail, a new clock, cells alive again, and the new code works.

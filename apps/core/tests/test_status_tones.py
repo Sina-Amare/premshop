@@ -128,7 +128,15 @@ def test_the_with_us_tone_is_not_the_colour_of_what_can_be_pressed():
     assert dark
     dark_accent = hex_tokens(dark[1])["--panel-accent"]
     site = hex_tokens((CSS / "input.css").read_text(encoding="utf-8"))
-    for colour in (site["--color-progress"], site["--color-progress-text"]):
+    light = re.search(r":root\{([^}]*)\}", panel)
+    assert light
+    cyans = [site["--color-progress"], site["--color-progress-text"]]
+    cyans += [
+        hex_tokens(theme[1])[f"--panel-progress-{part}"]
+        for theme in (light, dark)
+        for part in ("bg", "text")
+    ]
+    for colour in cyans:
         for accent in (cobalt, dark_accent):
             distance = abs(hue(colour) - hue(accent))
             assert min(distance, 360 - distance) >= 25, (colour, accent)

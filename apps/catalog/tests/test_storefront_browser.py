@@ -90,7 +90,7 @@ def test_the_discount_clock_counts_down(browser, live_server, discounted):
         context.close()
 
 
-TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber means time pressure
+TIME_TEXT = "rgb(146, 64, 14)"  # --color-time-text: amber, attention, here a clock
 
 
 def test_a_maximum_price_and_currency_fit_inside_a_phone_card(browser, live_server, discounted):

@@ -107,6 +107,7 @@ def styleguide(request: HttpRequest) -> HttpResponse:
                     "price": Decimal("1200000"),
                     "status": "تحویل‌شده",
                     "kind": "ok",
+                    "icon": "check",
                 },
                 {
                     "product": "گیفت کارت ۱۰ دلاری",
@@ -114,6 +115,7 @@ def styleguide(request: HttpRequest) -> HttpResponse:
                     "price": Decimal("890000"),
                     "status": "در حال آماده‌سازی",
                     "kind": "progress",
+                    "icon": "progress",
                 },
                 {
                     "product": "اشتراک سه‌ماهه‌ی ابزار توسعه",
@@ -121,6 +123,7 @@ def styleguide(request: HttpRequest) -> HttpResponse:
                     "price": Decimal("3150000"),
                     "status": "۳ ساعت تا مهلت",
                     "kind": "time",
+                    "icon": "clock",
                 },
             ],
             # Read from the stylesheet, never retyped. This list described the

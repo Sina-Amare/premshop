@@ -219,9 +219,9 @@ def test_every_status_keeps_its_own_colour(client, operator, catalogue):
 
 
 def test_draft_is_not_amber(client, operator, catalogue):
-    """ADR-0016 reserves amber for time and nothing else, and Unfold's
-    `warning` variant is orange. A draft is not a clock. The only amber in
-    this panel belongs to a promotion running out."""
+    """ADR-0016 keeps amber for attention, and Unfold's
+    `warning` variant is orange. A draft asks nothing of anyone. On the product
+    list, the only amber belongs to a promotion running out."""
     body = client.get(reverse("admin:catalog_product_changelist")).content.decode()
 
     draft_row = row_of(body, "draft")
@@ -308,8 +308,8 @@ def test_a_running_discount_shows_its_time_left(client, operator, catalogue):
 
 
 def test_the_countdown_is_in_the_time_colour(client, operator, catalogue):
-    """Amber is the one loud thing in this panel and it means time
-    (ADR-0016). The countdown was a grey badge while the code and the
+    """Amber is a loud thing in this panel and it means attention, here
+    time running out (ADR-0016). The countdown was a grey badge while the code and the
     commit both said amber."""
     plan = catalogue["live"].plans.first()
     plan.promo_price = Decimal("150000")
@@ -1562,7 +1562,7 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
 
     live.refresh_from_db()
     assert live.status == Product.Status.DRAFT
-    # Blue like the same list on the form: orange is too close to the amber kept for time.
+    # Blue like the same list on the form: orange is too close to the amber kept for attention.
     [note] = [str(m) for m in response.context["messages"] if m.level_tag == "info"]
     headline, _, rest = note.partition('<ul class="panel-reasons">')
     assert headline == "برای انتشار دوباره‌ی «⁨live⁩»، این موارد رو اصلاح کنید.", note

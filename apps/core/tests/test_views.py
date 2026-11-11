@@ -93,14 +93,18 @@ class TestStyleguide:
     def test_the_styleguide_shows_the_five_status_tones_in_their_ranking(self, client):
         body = client.get(reverse("styleguide")).content.decode()
         section = body.split('id="status-tones"', 1)[1].split("</section>", 1)[0]
+        # Attention, problem, with us, done, closed: the ranking apps/orders/status.py holds.
         assert re.findall(r"badge badge--([a-z]+)", section) == [
             "time",
+            "danger",
             "progress",
             "ok",
             "neutral",
-            "danger",
         ]
-        assert section.count('<use href="#i-') == 5
+        icons = re.findall(r'<use href="#i-([a-z]+)"', section)
+        assert len(icons) == 5
+        for name in icons:
+            assert f'id="i-{name}"' in body, f"the sprite has no {name} symbol"
         assert "badge--accent" not in body.split('id="status-tones"', 1)[1]
 
     def test_ledger_signature_is_present(self, client: Client) -> None:

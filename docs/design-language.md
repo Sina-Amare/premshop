@@ -52,18 +52,18 @@ Semantic colours (`input.css`):
 
 ### Status tones
 
-Every status, on the site, in the panel, in email and in the bot, takes one of five tones. The tone belongs to the state, not to the reader, so the customer and the operator see the same colour for the same order. Each pill carries words and an icon from the shared set, and none is pressable.
+Every status, on the site, in the panel, in email and in the bot, takes one of five tones; the tones and their tokens exist, and each page adopts them as it is rebuilt. The tone belongs to the state, not to the reader, so the customer and the operator see the same colour for the same order. Each pill carries words and an icon from the shared set, and none is pressable.
 
 | Tone | Means | Site badge | Panel tokens | Icon |
 |---|---|---|---|---|
 | Attention | The customer's move, or time running out | `.badge--time` | `--panel-attention-*` | `clock` |
+| Problem | Something went wrong and someone must act | `.badge--danger` | `--panel-problem-*` | `alert` |
 | With us | The shop is working on it | `.badge--progress` | `--panel-progress-*` | `progress` |
 | Done | Finished as it should be | `.badge--ok` | `--panel-done-*` | `check` |
 | Closed | Ended, nothing pending | `.badge--neutral` | `--panel-closed-*` | `close` |
-| Problem | Something went wrong and someone must act | `.badge--danger` | `--panel-problem-*` | `alert` |
 
-A pill is a noun phrase of two to four words («در انتظار پرداخت», «تحویل‌شده»). The heading beside it states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
-- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`), and the five status tones in both themes. Its loud things are time remaining and what needs the operator.
+The rows are in ranking order: an order leads with its highest-ranked state (`apps/orders/status.py`). A pill is a noun phrase of at most four words («در انتظار پرداخت»); a finished state may be one word («تحویل‌شده», «لغوشده»), as the bot already says it. The heading beside a pill states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
+- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`), and its tokens hold the five status tones in both themes. Its loud things are time remaining and what needs the operator.
 
 ## Typography
 

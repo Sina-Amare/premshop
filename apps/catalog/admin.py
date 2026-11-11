@@ -69,7 +69,7 @@ STALE_FACTS_DAYS = 30
 # language switch is used, and Unfold falls through to grey without raising.
 #
 # Draft is `info`, not `warning`: Unfold's warning variant renders orange, and
-# this project reserves amber for time and nothing else (ADR-0016).
+# amber means attention here, and a draft asks nothing of anyone (ADR-0016).
 STATUS_VARIANTS: dict[str, str] = {
     Product.Status.ACTIVE: "success",
     Product.Status.DRAFT: "info",

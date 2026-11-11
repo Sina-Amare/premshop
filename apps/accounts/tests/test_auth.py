@@ -757,7 +757,7 @@ STEPS = ("اول رمز ایمیلتان", "بعد رمز عبور PremShop", "�
 
 
 def test_the_alert_carries_no_amber():
-    """Amber means a clock is running, and nothing in this mail is timed."""
+    """Amber means attention; this mail only informs, and nothing in it is timed."""
     _, _, html = render_email("signin_alert", EMAIL_PREVIEWS["signin_alert"])
 
     for amber in ("#FDF6EC", "#F0DFC4", "#92400E"):
