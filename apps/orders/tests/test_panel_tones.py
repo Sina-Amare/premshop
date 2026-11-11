@@ -29,21 +29,23 @@ def next_line(tone, words):
     return f'<p class="order-next-line" data-tone="{tone}">{words}</p>'
 
 
+# A pill shows the operator's own word for the item, so its colour follows that word: an item
+# cancelled with a refund owed reads «لغو شده» in red, and the refund is the amber next step.
 @pytest.mark.parametrize(
-    "state, tone, line",
+    "state, tone, line_tone, line",
     [
-        ("queued", "progress", "تحویل بدهید"),
-        ("unpaid", "attention", "منتظر پرداخت مشتری"),
-        ("waiting", "attention", "منتظر اطلاعات مشتری"),
-        ("claimed", "progress", "درخواست تعویض را بررسی کنید"),
-        ("owed", "attention", "بازگشت وجه ۲۰۰,۰۰۰ تومان را واریز کنید"),
-        ("delivered", "done", None),
-        ("cancelled", "problem", None),
-        ("overdue", "closed", None),
+        ("queued", "progress", "progress", "تحویل بدهید"),
+        ("unpaid", "attention", "attention", "منتظر پرداخت مشتری"),
+        ("waiting", "attention", "attention", "منتظر اطلاعات مشتری"),
+        ("claimed", "progress", "progress", "درخواست تعویض را بررسی کنید"),
+        ("owed", "problem", "attention", "بازگشت وجه ۲۰۰,۰۰۰ تومان را واریز کنید"),
+        ("delivered", "done", None, None),
+        ("cancelled", "problem", None, None),
+        ("overdue", "closed", None, None),
     ],
 )
 def test_the_queue_gives_each_item_its_tone_and_each_order_its_next_step(
-    client, buyer, plan, operator, state, tone, line
+    client, buyer, plan, operator, state, tone, line_tone, line
 ):
     order = order_for_state(buyer, plan, operator, state)
     item = order.items.get()
@@ -51,7 +53,7 @@ def test_the_queue_gives_each_item_its_tone_and_each_order_its_next_step(
     pill = f'data-tone="{tone}" data-state="{item.status}">{item.get_status_display()}</span>'
     assert f'class="order-status order-queue-state" {pill}' in body
     if line:
-        assert next_line(tone, line) in body
+        assert next_line(line_tone, line) in body
     else:
         assert 'class="order-next-line"' not in body
 

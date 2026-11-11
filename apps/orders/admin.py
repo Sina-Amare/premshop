@@ -923,7 +923,7 @@ class OrderAdmin(ModelAdmin):
                     text = str(_("مهلت ثبت نشده است"))
             refund = getattr(item, "refund", None)
             state = order_status.item_state(item, refund, obj.unpaid_expires_at, at)
-            tone = order_status.STATES[state][1]
+            tone = order_status.panel_tone(item, state)
             rows.append({"item": item, "kind": kind, "text": text, "since": since, "tone": tone})
         every = getattr(obj, "every_item", None)
         return render_to_string(

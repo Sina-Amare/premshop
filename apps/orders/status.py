@@ -69,11 +69,15 @@ def item_state(
     return "expired" if item.cancel_reason == REASON.EXPIRED_UNPAID else "cancelled"
 
 
+def panel_tone(item: OrderItem, state: str) -> str:
+    """The tone of an item's pill in the panel, which shows the operator's own word for it: a
+    cancelled item reads as cancelled whatever its refund, which carries a pill of its own."""
+    return STATES["cancelled" if item.status == S.CANCELLED else state][1]
+
+
 def item_tone(item: OrderItem) -> str:
-    """An item's tone in the panel: the same state the customer's page reads."""
     refund = getattr(item, "refund", None)
-    state = item_state(item, refund, item.order.unpaid_expires_at, timezone.now())
-    return STATES[state][1]
+    return panel_tone(item, item_state(item, refund, item.order.unpaid_expires_at, timezone.now()))
 
 
 def lead_state(states: list[str]) -> str:
