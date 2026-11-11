@@ -18,7 +18,7 @@ The visual and verbal system of the storefront, the operator panel and the email
 
 - **Visible bookkeeping.** A buyer's biggest fear is paying and receiving nothing. The shop answers it the way a small business that keeps records would: hairlines, aligned figures, exact amounts, stated hours and plainly stated terms. It should not read like a brand campaign or a landing page.
 - **Colour belongs to the goods.** Product brand colours appear in the products' artwork; the interface around them stays neutral, with one accent for what can be pressed.
-- **Amber means time** (deadlines and countdowns) and nothing else.
+- **Amber means attention:** the customer's move (an unpaid order, details awaited, a card number for a refund) or time running out (deadlines and countdowns), and nothing else (owner, 2026-11-11).
 - **Nothing moves unless a person acts**, with one exception: the service scene on the home page.
 - **Every choice is argued from this business, never defaulted.** Purple-blue gradients, glassmorphism, glowing dark heroes, large radii on everything, emoji as icons and entrance animations are generated-template habits, and they cost a shop like this its customers' trust.
 
@@ -40,7 +40,8 @@ Semantic colours (`input.css`):
 
 | Role | Value | Use |
 |---|---|---|
-| Time | `#D97706`, text `#92400E` | Deadlines and countdowns only |
+| Attention | `#D97706`, text `#92400E` | The customer's move, and deadlines and countdowns |
+| With us | `#0891B2`, text `#155E75` | Work the shop is doing; cyan, kept apart from cobalt |
 | Success | `#16A34A`, text `#166534` | Delivered, confirmed |
 | Danger | `#DC2626`, text `#991B1B` | Overdue, failed, destructive |
 | Field edge | `#8C8C8C` | The border of a control a person types into: 3.4:1 on white, where WCAG 1.4.11 asks 3:1 |
@@ -48,7 +49,21 @@ Semantic colours (`input.css`):
 - **Cobalt marks what can be pressed:** buttons, links, the discount chip and interactive icons. Bold text that cannot be pressed stays ink or grey, so the primary button is the one blue mass in its area.
 - **Neutrals carry the structure.** A border means an edge, a background step means a separate surface, and a shadow means something sits above the page.
 - **Badges** are a tint, a border and dark text, never a saturated fill. Colour is never the only carrier of meaning: every status also has words.
-- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`). The only loud thing in it is time remaining.
+
+### Status tones
+
+Every status, on the site, in the panel, in email and in the bot, takes one of five tones. The tone belongs to the state, not to the reader, so the customer and the operator see the same colour for the same order. Each pill carries words and an icon from the shared set, and none is pressable.
+
+| Tone | Means | Site badge | Panel tokens | Icon |
+|---|---|---|---|---|
+| Attention | The customer's move, or time running out | `.badge--time` | `--panel-attention-*` | `clock` |
+| With us | The shop is working on it | `.badge--progress` | `--panel-progress-*` | `progress` |
+| Done | Finished as it should be | `.badge--ok` | `--panel-done-*` | `check` |
+| Closed | Ended, nothing pending | `.badge--neutral` | `--panel-closed-*` | `close` |
+| Problem | Something went wrong and someone must act | `.badge--danger` | `--panel-problem-*` | `alert` |
+
+A pill is a noun phrase of two to four words («در انتظار پرداخت», «تحویل‌شده»). The heading beside it states the fact or the action and never repeats it. `apps/core/tests/test_status_tones.py` holds every tone's words at 4.5:1 or more on its tint, in both panel themes, and the cyan apart from cobalt.
+- **The panel** uses the same cobalt on light and dark surfaces (`admin-experience.css`), and the five status tones in both themes. Its loud things are time remaining and what needs the operator.
 
 ## Typography
 
@@ -132,7 +147,7 @@ Email is a different medium with its own rules ([ADR-0023](decisions/0023-email-
 
 - **Layout** is tables with inline styles, because Outlook renders with Word's engine.
 - **Fonts.** No web font is loaded. The stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first one installed.
-- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks time only: a code's expiry and a delivery link's expiry. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
+- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks attention only: a code's expiry, a delivery link's expiry and the customer's next move. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
 - **The wordmark is set in type**, never as an image, because blocked images would show a broken box on the messages where trust matters most. It is `PremShop`, in Latin, everywhere: the site header and footer, the sender name, subjects and the masthead.
 - **Code cells** show six isolated Latin digits in a left-to-right row; what is typed is what is shown. Persian digits are isolated forms that never join, so the reason for the tracking rule does not reach them, and the sign-in code carries `letter-spacing: 3px`. No other element does.
 
@@ -231,6 +246,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The shop's name on every product card** (2026-10-31), as described under Components.
 - **A discount clock that counts hours, minutes and seconds** even with days to go (2026-11-08), as described under Numbers.
 - **The home orbit keeps moving, with no pause button,** and only the orbit stops while a logo is pointed at (2026-10-28 and 2026-11-06), as described under Motion.
+- **Amber means attention** (2026-11-11): the customer's move or time running out, in the five status tones described under Colour.
 - **Emoji in the Telegram bot** (2026-11-11): every panel button carries a related emoji, and every order the product's own, picked from its name with a plain box for a name the list does not know. A bot button holds text only, so the site's SVG icons cannot reach it. They live in `apps/orders/telegram_emoji.py`, the one file the repository's emoji check allows; the website stays without them. Real brand logos (Telegram's custom emoji) need Premium on the bot's owning account.
 
 ## Checklist
@@ -241,7 +257,7 @@ For any new page or component:
 - [ ] Space between components from the nine tokens; optical spacing only inside a component
 - [ ] Every gap between groups at least twice the gap within them; headings own the space after them
 - [ ] Corners from `--radius-sm` and `--radius-lg`; edges that touch the viewport square
-- [ ] Cobalt only on what can be pressed; amber only on time; new colours as tokens
+- [ ] Cobalt only on what can be pressed; amber only on attention; every status in one of the five tones, with words and an icon; new colours as tokens
 - [ ] Body 17px, prose line height 1.85, text blocks at most 32rem wide
 - [ ] Estedad only in headings and price figures, never both faces in one line
 - [ ] Persian digits out, Latin digits in inputs; tabular figures for counts, codes and clocks

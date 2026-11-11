@@ -23,3 +23,5 @@ The storefront now uses cobalt (#2459d3) on white and graphite, retaining the ex
 
 
 **Amendment — 2026-10-28: unused styles removed.** The unused department rows, category icon, filter chips and former promise-strip styles are removed. Current product shelves and storefront remain the active design. Shared spacing tokens allow component-level optical adjustments; floating tiles and controls have their existing local shadows.
+
+**Amendment — 2026-11-11: status tones and amber.** Every order status looked alike: one grey chip on the site and one neutral pill in the panel, while the tone badges went unused. Statuses now take five tones keyed to the state, the same for customer and operator: attention (amber), with us (a new cyan, kept apart from cobalt), done (green), closed (neutral) and problem (red), each with words and an icon. By the owner's decision, amber means attention, the customer's move or time running out, where it meant time alone. Cobalt still marks only what can be pressed. The tones and their contrast are held by `apps/core/tests/test_status_tones.py`; the rule text is in `docs/design-language.md` under Colour.
