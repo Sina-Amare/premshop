@@ -149,7 +149,7 @@ def test_review_and_confirmation_use_server_totals_without_consent(client, buyer
     assert response.url == reverse("order-detail", args=[order.order_number])
     assert order.total_amount == 200000 and not cart.items.exists()
     detail = client.get(response.url)
-    assert detail.status_code == 200 and "منتظر پرداخت" in detail.content.decode()
+    assert detail.status_code == 200 and "در انتظار پرداخت" in detail.content.decode()
     client.force_login(User.objects.create_user("outsider@example.test"))
     assert client.get(response.url).status_code == 404
 

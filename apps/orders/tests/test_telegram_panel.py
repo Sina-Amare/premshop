@@ -9,6 +9,7 @@ from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
 from apps.core.formatting import to_persian_digits
 from apps.orders import services as orders
+from apps.orders import status as order_status
 from apps.orders import telegram_emoji as emoji
 from apps.orders import telegram_panel
 from apps.orders.models import OrderItem
@@ -117,7 +118,7 @@ def test_a_list_shows_the_customers_own_recent_orders(buyer, plan, operator):
     expected = [str(order.order_number) for order in reversed(mine[1:])]
     assert shown_orders(buttons) == expected
     assert f"سفارش {to_persian_digits(stranger.order_number)}" not in text
-    assert "در صف انجام" in text
+    assert "در حال آماده‌سازی" in text
     assert buttons[-1] == [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:home"}]
 
 
@@ -159,7 +160,7 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
     order = placed(buyer, plan)
     text, buttons = telegram_panel.render(buyer, f"o:{order.order_number}")
     assert f"<b>سفارش {to_persian_digits(order.order_number)}</b>" in text
-    assert "منتظر پرداخت" in text and "مهلت پرداخت: " in text
+    assert "در انتظار پرداخت" in text and "مهلت پرداخت: " in text
     assert "سرویس نمونه، یک ماهه" in text
     assert "مبلغ: ۲۰۰,۰۰۰ تومان" in text
     assert settings.SITE_URL + reverse("order-detail", args=[order.order_number]) in text
@@ -180,19 +181,22 @@ NOTHING_TO_DO = "لازم نیست کاری انجام دهید."
 @pytest.mark.parametrize(
     ("state", "sentence"),
     [
-        ("AWAITING_INPUT", "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید."),
-        ("REPLACEMENT_REQUESTED", NOTHING_TO_DO),
-        ("QUEUED", NOTHING_TO_DO),
-        ("DELIVERED", NOTHING_TO_DO),
-        ("CANCELLED", "برای پیگیری پرداخت یا بازپرداخت، با پشتیبانی تماس بگیرید."),
-        ("REFUNDED", NOTHING_TO_DO),
-        ("", "برای پیگیری سفارش با پشتیبانی تماس بگیرید."),
+        ("awaiting_input", "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید."),
+        ("refund_owed", "شماره‌ی کارت یا شبای به نام خودتان را برای پشتیبانی بفرستید."),
+        ("late", "زمان تحویل گذشته است. برای پیگیری، به پشتیبانی پیام بدهید."),
+        ("replacement", NOTHING_TO_DO),
+        ("queued", NOTHING_TO_DO),
+        ("delivered", NOTHING_TO_DO),
+        ("refunded", NOTHING_TO_DO),
+        ("expired", "پرداختی برای این سفارش ثبت نشد."),
+        ("cancelled", "پرداختی برای این سفارش ثبت نشده بود."),
     ],
 )
 def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, state, sentence):
-    summary = {**customer_summary(placed(buyer, plan)), "next_step": state}
+    summary = customer_summary(placed(buyer, plan))
+    summary["card"] = {**summary["card"], **order_status.pill(state)}
     text = render_to_string("telegram/panel_order.html", {**summary, "order_url": "/"})
-    assert sentence in text
+    assert sentence in text and "تماس بگیرید" not in text
 
 
 @pytest.mark.parametrize(

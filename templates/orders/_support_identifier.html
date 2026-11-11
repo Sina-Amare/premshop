@@ -1,0 +1,5 @@
+{% comment %}Once per page: order-support.js finds the identifier and its copy button by id.{% endcomment %}{% if support_identifier %}
+<div class="order-support-label">شناسه‌ی پشتیبانی</div>
+<div class="order-actions"><bdi dir="ltr" id="support-identifier" class="order-support-identifier">{{ support_identifier.grouped_token }}</bdi><button type="button" class="btn btn--secondary" data-copy-support hidden>کپی شناسه</button></div>
+<p aria-live="polite" aria-atomic="true" data-copy-status></p>
+{% else %}<p role="status">شناسه‌ی پشتیبانی در دسترس نیست.</p>{% endif %}

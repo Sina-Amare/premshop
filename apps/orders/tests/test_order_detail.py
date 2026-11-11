@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -7,9 +8,10 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
-from apps.core.formatting import to_persian_digits
-from apps.orders import services
-from apps.orders.models import Order
+from apps.core import support
+from apps.core.formatting import format_toman, to_persian_digits
+from apps.orders import services, telegram_panel
+from apps.orders.models import Order, OrderItem
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act
 from apps.orders.tests.test_input_clock import operator as operator
@@ -20,19 +22,21 @@ from apps.payments.tests.test_refund_execution import execute
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+# The research note's state table: pill, badge, a fragment of the heading, and whether
+# writing to support is the card's action (2026-11-11-status-clarity.md).
 CASES = [
-    ("unpaid", "منتظر پرداخت", False),
-    ("overdue", "مهلت پرداخت تمام شده است", False),
-    ("queued", "در صف انجام", False),
-    ("waiting", "اطلاعات فعال‌سازی لازم است", True),
-    ("delivered", "تحویل داده شده", False),
-    ("claimed", "درخواست تعویض در حال بررسی است", False),
-    ("cancelled", "سفارش لغو شده است", False),
-    ("owed", "سفارش لغو شده است", False),
-    ("refunded", "بازپرداخت انجام شده است", False),
-    ("mixed", "اطلاعات فعال‌سازی لازم است", True),
-    ("mixed_refund", "بخشی از سفارش لغو شده است", False),
-    ("empty", "وضعیت سفارش", False),
+    ("unpaid", "در انتظار پرداخت", "time", "پرداخت تا", True),
+    ("overdue", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
+    ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
+    ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
+    ("delivered", "تحویل‌شده", "ok", "تحویل در", False),
+    ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
+    ("cancelled", "لغوشده", "neutral", "لغو کردید", False),
+    ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
+    ("refunded", "بازگشت وجه تکمیل‌شده", "neutral", "برگشت داده شد", False),
+    ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
+    ("mixed_refund", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
+    ("empty", "لغوشده", "neutral", "این سفارش محصولی ندارد", False),
 ]
 
 
@@ -64,68 +68,24 @@ def order_for_state(buyer, plan, operator, state):
     return order
 
 
-@pytest.mark.parametrize("state,heading,needs_input", CASES)
-def test_order_detail_shows_the_next_step_for_each_state(
-    client, buyer, plan, operator, state, heading, needs_input
-):
-    order = order_for_state(buyer, plan, operator, state)
-    client.force_login(buyer)
-    response = client.get(reverse("order-detail", args=[order.order_number]))
-    body = response.content.decode()
-    assert response.status_code == 200
-    assert '<section class="card order-card order-next"' in body
-    assert f'id="order-next-title">{heading}</h2>' in body
-    assert ("اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید." in body) is needs_input
-    assert ("data-input-request" in body) is needs_input
-    assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
-    if state in ("queued", "delivered", "claimed", "refunded"):
-        assert "لازم نیست کاری انجام دهید." in body
-    if state in ("cancelled", "owed"):
-        assert "برای پیگیری پرداخت یا بازپرداخت، به پشتیبانی پیام بدهید." in body
-    assert "تماس بگیرید" not in body  # support is a chat and an email address, not a phone
-    assert 'name="customer_input"' not in body and "expected_event_id" not in body
-
-
-def test_order_detail_keeps_purchase_help_and_quiet_records_in_reading_order(
-    client, buyer, plan, operator
-):
-    order = order_for_state(buyer, plan, operator, "unpaid")
-    Order.objects.filter(pk=order.pk).update(
-        policy_snapshot={"terms": {"title": "قوانین فروشگاه", "body": "متن ثبت‌شده"}}
-    )
-    client.force_login(buyer)
-    response = client.get(reverse("order-detail", args=[order.order_number]))
-    body = response.content.decode()
-    positions = [
-        body.index(marker)
-        for marker in (
-            'id="order-next"',
-            'id="order-purchase"',
-            'id="order-help"',
-            'class="order-records"',
-        )
-    ]
-    assert positions == sorted(positions)
-    assert '<details class="order-record" id="order-conditions">' in body
-    assert '<details class="order-record" id="order-history">' in body
-    assert '<details class="order-record" id="order-tracking">' in body
-    assert reverse("order-tracking", args=[order.tracking_token]) in body
-    assert reverse("order-invoice", args=[order.order_number]) in body
-    assert order.support_identifier.grouped_token in body
-    assert "متن ثبت‌شده" in body
-    assert body.count("data-order-total") == 1
-
-
 def page(client, buyer, order):
     client.force_login(buyer)
     return client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+
+def card_of(body):
+    return body.split('id="order-next"', 1)[1].split("</section>", 1)[0]
+
+
+def text(html):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html)).strip()
 
 
 def headings(body, level):
     """The text of every heading of one level in the account area, footer excluded."""
     main = body.split('class="acct__main"', 1)[1].split("</main>", 1)[0]
     found = re.findall(rf"<h{level}[^>]*>(.*?)</h{level}>", main, re.S)
-    return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", text)).strip() for text in found]
+    return [text(found_text) for found_text in found]
 
 
 def second_plan():
@@ -147,6 +107,162 @@ def second_plan():
         input_type=Plan.InputType.NONE,
         telegram_required=False,
     )
+
+
+@pytest.mark.parametrize("state,pill,badge,fragment,contact", CASES)
+def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
+    client, buyer, plan, operator, state, pill, badge, fragment, contact
+):
+    order = order_for_state(buyer, plan, operator, state)
+    body = page(client, buyer, order)
+    card = card_of(body)
+    assert f'<span class="badge badge--{badge}"' in card and pill in card
+    heading = re.search(r'id="order-next-title">(.*?)</h2>', card, re.S)
+    assert heading and fragment in text(heading[1]), heading
+    # Support sits in the card only when writing to it is the action.
+    assert ("data-support-contact" in card) is contact
+    assert "#order-help" not in card
+    assert body.count('id="support-identifier"') <= 1
+    assert "تماس بگیرید" not in body
+    assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
+    assert 'name="customer_input"' not in body and "expected_event_id" not in body
+
+
+@pytest.mark.parametrize("state,pill,badge,fragment,contact", CASES)
+def test_page_headings_are_the_card_titles_and_nothing_else(
+    client, buyer, plan, operator, state, pill, badge, fragment, contact
+):
+    order = order_for_state(buyer, plan, operator, state)
+    body = page(client, buyer, order)
+    assert headings(body, 1) == [f"سفارش {to_persian_digits(order.order_number)}"]
+    titles = headings(body, 2)
+    assert len(titles) == 2 and fragment in titles[0]
+    assert titles[1] == "محصولات و مبلغ سفارش"
+
+
+def test_a_cancelled_unpaid_order_says_no_payment_was_recorded_and_offers_no_support(
+    client, buyer, plan, operator
+):
+    card = card_of(page(client, buyer, order_for_state(buyer, plan, operator, "cancelled")))
+    assert "پرداختی برای آن ثبت نشده بود." in card
+    assert support.details()["telegram_url"] not in card
+    assert "دیدن محصولات" in card
+
+
+def test_an_overdue_order_offers_a_new_order_and_no_payment(client, buyer, plan, operator):
+    card = card_of(page(client, buyer, order_for_state(buyer, plan, operator, "overdue")))
+    assert "ثبت سفارش جدید" in card and plan.product.get_absolute_url() in card
+    assert "پرداخت آنلاین" not in card and "data-support-contact" not in card
+
+
+def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_customers_name(
+    client, buyer, plan, operator
+):
+    order = order_for_state(buyer, plan, operator, "owed")
+    refund = Refund.objects.get(order_item__order=order)
+    body = page(client, buyer, order)
+    card = card_of(body)
+    figure = format_toman(refund.amount, with_unit=False)
+    assert figure in card and "تأمین آن ممکن نشد" in card
+    assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "تا یک روز کاری" in card
+    assert "رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید." in card
+    owed_row = body.split('data-money="owed"', 1)[1].split("</div>", 1)[0]
+    assert figure in owed_row
+
+
+def test_a_refund_paid_shows_its_amount_and_date_but_never_where_it_went(
+    client, buyer, plan, operator
+):
+    order = order_for_state(buyer, plan, operator, "refunded")
+    refund = Refund.objects.get(order_item__order=order)
+    body = page(client, buyer, order)
+    assert format_toman(refund.amount, with_unit=False) in card_of(body)
+    assert 'data-money="returned"' in body
+    for staff_only in (refund.destination_last4, refund.bank_ref, "6037", "transfer-private"):
+        assert staff_only not in body
+
+
+def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
+    client, buyer, plan, operator
+):
+    _, items = paid_order(buyer, operator, [services.OrderLine(plan, 1)])
+    OrderItem.objects.filter(pk=items[0].pk).update(discount_share=items[0].price_snapshot)
+    items[0].refresh_from_db()
+    cancel(items[0], operator)
+    order = items[0].order
+    assert not Refund.objects.filter(order_item__order=order).exists()
+    card = card_of(page(client, buyer, order))
+    assert "مبلغی برای بازگشت ثبت نشده است." in card
+    assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
+
+
+def test_a_queued_item_past_its_delivery_time_reads_as_late_and_points_to_support(
+    client, buyer, plan, operator
+):
+    order = order_for_state(buyer, plan, operator, "queued")
+    order.items.update(due_at=timezone.now() - timedelta(minutes=5))
+    card = card_of(page(client, buyer, order))
+    assert '<span class="badge badge--danger"' in card and "تأخیر در تحویل" in card
+    assert "گذشت" in card and support.details()["telegram_url"] in card
+
+
+def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "delivered")
+    end = timezone.localdate() + timedelta(days=30)
+    order.items.update(expires_at=end)
+    card = card_of(page(client, buyer, order))
+    assert "اشتراک تا" in card and "گارانتی تا پایان" in card
+    assert "مشکلی هست؟" not in card or support.details()["telegram_url"] in card
+
+
+def test_tracking_shows_pills_but_never_money(client, buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "owed")
+    refund = Refund.objects.get(order_item__order=order)
+    body = client.get(reverse("order-tracking", args=[order.tracking_token])).content.decode()
+    assert '<span class="badge badge--neutral"' in body and "لغوشده" in body
+    assert format_toman(refund.amount, with_unit=False) not in body
+    assert "به شما برمی‌گردانیم" not in body
+
+
+@pytest.mark.parametrize("state", ["mixed_refund", "mixed", "owed", "queued"])
+def test_the_page_the_list_the_account_card_and_the_bot_lead_with_the_same_state(
+    client, buyer, plan, operator, state
+):
+    order = order_for_state(buyer, plan, operator, state)
+    badge = re.search(
+        r'<span class="badge[^"]*"[^>]*>(.*?)</span>', card_of(page(client, buyer, order)), re.S
+    )
+    assert badge
+    label = text(badge[1])
+    listed = client.get(reverse("order-list")).content.decode()
+    assert label in listed
+    account = client.get(reverse("account")).content.decode()
+    assert label in account.split('id="current-order-title"', 1)[1].split("</section>", 1)[0]
+    screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
+    assert f"وضعیت: {label}" in screen
+
+
+def test_order_detail_keeps_purchase_and_quiet_records_in_reading_order(
+    client, buyer, plan, operator
+):
+    order = order_for_state(buyer, plan, operator, "unpaid")
+    Order.objects.filter(pk=order.pk).update(
+        policy_snapshot={"terms": {"title": "قوانین فروشگاه", "body": "متن ثبت‌شده"}}
+    )
+    body = page(client, buyer, order)
+    positions = [
+        body.index(marker)
+        for marker in ('id="order-next"', 'id="order-purchase"', 'class="order-records"')
+    ]
+    assert positions == sorted(positions)
+    records = body.split('class="order-records"', 1)[1]
+    for disclosure in ("order-help", "order-conditions", "order-tracking", "order-history"):
+        assert f'<details class="order-record" id="{disclosure}">' in records
+    assert reverse("order-tracking", args=[order.tracking_token]) in body
+    assert reverse("order-invoice", args=[order.order_number]) in body
+    assert order.support_identifier.grouped_token in body
+    assert "متن ثبت‌شده" in body
+    assert body.count("data-order-total") == 1
 
 
 def test_subtotal_row_appears_only_beside_a_discount(client, buyer, plan, operator):
@@ -179,16 +295,6 @@ def test_product_terms_and_shop_pages_share_one_disclosure(client, buyer, plan, 
     assert plan.product.name in inside
 
 
-@pytest.mark.parametrize("state,heading,needs_input", CASES)
-def test_page_headings_are_the_card_titles_and_nothing_else(
-    client, buyer, plan, operator, state, heading, needs_input
-):
-    order = order_for_state(buyer, plan, operator, state)
-    body = page(client, buyer, order)
-    assert headings(body, 1) == [f"سفارش {to_persian_digits(order.order_number)}"]
-    assert headings(body, 2) == [heading, "محصولات و مبلغ سفارش"]
-
-
 def test_category_names_show_only_for_several_categories_and_are_not_headings(
     client, buyer, plan, operator
 ):
@@ -206,42 +312,11 @@ def test_category_names_show_only_for_several_categories_and_are_not_headings(
     assert not set(names) & set(headings(body, 2) + headings(body, 3))
 
 
-HELP_OPEN = {
-    "unpaid": True,
-    "overdue": True,
-    "waiting": True,
-    "mixed": True,
-    "cancelled": True,
-    "owed": True,
-    "mixed_refund": True,
-    "empty": True,
-    "queued": False,
-    "delivered": False,
-    "claimed": False,
-    "refunded": False,
-}
-
-
-@pytest.mark.parametrize("state,heading,needs_input", CASES)
-def test_support_is_open_where_the_card_points_to_it_and_closed_otherwise(
-    client, buyer, plan, operator, state, heading, needs_input
+def test_one_refund_is_stated_by_the_card_and_the_totals_not_again_on_its_line(
+    client, buyer, plan, operator
 ):
-    order = order_for_state(buyer, plan, operator, state)
+    order = order_for_state(buyer, plan, operator, "mixed_refund")
     body = page(client, buyer, order)
-    tag = re.search(r'<details[^>]*id="order-help"[^>]*>', body)
-    assert tag, "support is a disclosure"
-    assert (" open" in tag.group(0)) is HELP_OPEN[state]
-    assert "<summary>پشتیبانی سفارش</summary>" in body
-    if 'href="#order-help"' in body:
-        assert " open" in tag.group(0), "a link must land on an open section"
-
-
-@pytest.mark.parametrize("state,heading,needs_input", CASES)
-def test_the_next_card_names_one_action_or_says_none_is_needed(
-    client, buyer, plan, operator, state, heading, needs_input
-):
-    order = order_for_state(buyer, plan, operator, state)
-    body = page(client, buyer, order)
-    card = body.split('id="order-next"', 1)[1].split("</section>", 1)[0]
-    actions = len(re.findall(r"<(?:a|button)\b", card))
-    assert actions + ("لازم نیست کاری انجام دهید." in card) == 1
+    purchase = body.split('id="order-purchase"', 1)[1].split('class="order-records"', 1)[0]
+    assert "data-line-money" not in purchase
+    assert 'data-money="owed"' in purchase and "به شما برمی‌گردانیم" in card_of(body)

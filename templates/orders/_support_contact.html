@@ -1,0 +1,6 @@
+<div class="order-contact" data-support-contact>
+<p data-support-instructions>{% if support_identifier %}در تلگرام، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید.{% else %}در تلگرام، شماره‌ی سفارش را بفرستید.{% endif %}</p>
+{% include "orders/_support_identifier.html" %}
+<a class="btn btn--primary" href="{{ support.telegram_url }}" rel="noopener noreferrer">باز کردن تلگرام پشتیبانی</a>
+<p class="small">پشتیبانی فقط از <bdi dir="ltr">{{ support.telegram }}</bdi> پیام می‌دهد. رمز کارت یا کد بانکی را برای هیچ‌کس نفرستید.</p>
+</div>

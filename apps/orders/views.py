@@ -7,12 +7,14 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.crypto import salted_hmac
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import User
+from apps.catalog.models import Product
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders.models import OrderSupportIdentifier
@@ -52,6 +54,16 @@ def _owned_summary(request: HttpRequest, order_number: int) -> dict[str, Any]:
     return customer_summary(order)
 
 
+def _again_url(summary: dict[str, Any]) -> str:
+    """Where buying again starts: the product's own page while it is on sale, else the shop."""
+    for group in summary["groups"]:
+        for line in group["lines"]:
+            product = line["product"]
+            if product is not None and Product.objects.public().filter(pk=product.pk).exists():
+                return product.get_absolute_url()
+    return reverse("home")
+
+
 @never_cache
 @login_required
 @require_GET
@@ -75,6 +87,7 @@ def _render_detail(
             "section": "orders",
             "error": error,
             "support_identifier": support_identifier,
+            "again_url": _again_url(summary),
         },
         status=status,
     )
@@ -119,7 +132,7 @@ def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
         except ValidationError as invalid:
             error = " ".join(invalid.messages)
         else:
-            messages.success(request, "سفارش لغو شد.")
+            # The page itself now says it was cancelled; a flash above it would say it twice.
             return redirect("order-detail", order_number=order.order_number)
     return _render_detail(request, summary, error=error, status=400)
 
@@ -130,6 +143,14 @@ def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
 def invoice(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
+    money = summary["money"]
+    # Until a payment is verified the sheet is no receipt; afterwards it says when it was paid.
+    notice = "" if money["paid"] is not None else INVOICE_NOTICE
+    paid = (
+        f"پرداخت‌شده در {format_jalali(money['paid_at'])}: {format_toman(money['paid'])}"
+        if money["paid"] is not None and money["paid_at"]
+        else ""
+    )
     data = {
         "number": to_persian_digits(order.order_number),
         "date": format_jalali(order.created_at),
@@ -149,10 +170,11 @@ def invoice(request: HttpRequest, order_number: int) -> HttpResponse:
         "subtotal": format_toman(order.subtotal),
         "discount": format_toman(order.discount_amount, with_unit=False) + " تومان",
         "total": format_toman(order.total_amount),
-        "notice": INVOICE_NOTICE,
+        "notice": notice,
+        "paid": paid,
     }
     response = render(
-        None, "orders/invoice.html", {**summary, "invoice_data": data, "notice": INVOICE_NOTICE}
+        None, "orders/invoice.html", {**summary, "invoice_data": data, "notice": notice}
     )
     response["X-Robots-Tag"] = "noindex, nofollow"
     response["Referrer-Policy"] = "no-referrer"

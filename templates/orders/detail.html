@@ -5,60 +5,78 @@
 {% block section %}
 {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
 <p class="order-created">تاریخ ثبت: {{ order.created_at|jalali }}، ساعت {{ order.created_at|date:"H:i"|fa_digits }}</p>
-<section class="card order-card order-next" id="order-next" aria-labelledby="order-next-title">
-{% if next_step == 'AWAITING_INPUT' %}
-<h2 class="order-status" id="order-next-title">اطلاعات فعال‌سازی لازم است</h2>
+<section class="card order-card order-next" id="order-next" data-tone="{{ card.tone }}" aria-labelledby="order-next-title">
+<span class="badge badge--{{ card.badge }}" data-state="{{ card.state }}">{% include 'storefront/icon.html' with name=card.icon %}{{ card.label }}</span>
+{% with state=card.state products=card.products|join:"، " %}
+{% if state == 'unpaid' %}
+<h2 id="order-next-title">پرداخت تا {{ card.deadline|jalali }}، ساعت {{ card.deadline|date:"H:i"|fa_digits }}</h2>
+<p>پرداخت آنلاین هنوز فعال نیست. برای پرداخت {{ card.total|price_html }}، به پشتیبانی در تلگرام پیام بدهید.</p>
+{% elif state == 'awaiting_input' %}
+<h2 id="order-next-title">اطلاعات فعال‌سازی <bdi>{{ products }}</bdi> لازم است</h2>
 <div data-input-request><p>اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید.</p>
-<p class="small">رمز یا کد ورود را در سایت وارد نکنید.</p>
-<a class="btn btn--primary" href="#order-help">ارتباط با پشتیبانی</a></div>
-{% elif next_step == 'PENDING_PAYMENT' %}
-<h2 class="order-status" id="order-next-title">{% if overdue %}مهلت پرداخت تمام شده است{% else %}منتظر پرداخت{% endif %}</h2>
-{% if not overdue %}<p>مهلت پرداخت: {{ order.unpaid_expires_at|jalali }}، ساعت {{ order.unpaid_expires_at|date:"H:i"|fa_digits }}</p>{% endif %}
-<p>پرداخت آنلاین هنوز فعال نیست. برای پرداخت، به پشتیبانی پیام بدهید.</p>
-<a href="#order-help">ارتباط با پشتیبانی</a>
-{% elif next_step == 'REPLACEMENT_REQUESTED' %}
-<h2 class="order-status" id="order-next-title">درخواست تعویض در حال بررسی است</h2>
+{% if card.hours %}<p>پس از رسیدن اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
+{% elif state == 'refund_owed' %}
+<h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
+<p><bdi>{{ products }}</bdi> لغو شد{% if card.reason == 'supply_failure' %}، چون تأمین آن ممکن نشد{% elif card.reason == 'input_timeout' %}، چون اطلاعات فعال‌سازی در ۲۱ روز نرسید{% elif card.reason == 'warranty_refund' %}، چون جایگزینی آن در دوره‌ی گارانتی ممکن نشد. این مبلغ برای روزهای باقی‌مانده‌ی اشتراک است{% endif %}.</p>
+<p>برای واریز، شماره‌ی کارت یا شبای به نام خودتان را در تلگرام برای پشتیبانی بفرستید. تا یک روز کاری پس از رسیدن شماره واریز می‌کنیم.</p>
+{% elif state == 'late' %}
+<h2 id="order-next-title">زمان تحویل {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} گذشت</h2>
+<p>تحویل <bdi>{{ products }}</bdi> دیر شده است. برای پیگیری، به پشتیبانی پیام بدهید.</p>
+<a class="btn btn--secondary" href="{{ support.telegram_url }}" rel="noopener noreferrer">پیام به پشتیبانی</a>
+{% elif state == 'replacement' %}
+<h2 id="order-next-title">درخواست تعویض <bdi>{{ products }}</bdi> ثبت شده است</h2>
+<p>لازم نیست کاری انجام دهید. نتیجه را خبر می‌دهیم.</p>
+{% elif state == 'queued' %}
+<h2 id="order-next-title">{% if card.due_at %}تحویل تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }}{% elif card.hours %}تحویل تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت{% else %}<bdi>{{ products }}</bdi> در حال آماده‌سازی است{% endif %}</h2>
+<p>لازم نیست کاری انجام دهید. پس از تحویل خبر می‌دهیم.</p>
+{% elif state == 'delivered' %}
+<h2 id="order-next-title">تحویل در {{ card.delivered_at|jalali }}</h2>
+{% if card.expires_at %}<p>اشتراک تا {{ card.expires_at|jalali }}</p>{% endif %}
+{% if card.warranty_end %}<p>گارانتی تا پایان {{ card.warranty_end|jalali }}</p>{% endif %}
+<p>لازم نیست کاری انجام دهید.{% if card.in_warranty %} اگر مشکلی هست، به پشتیبانی پیام بدهید.{% endif %}</p>
+{% if card.in_warranty %}<a href="{{ support.telegram_url }}" rel="noopener noreferrer">پیام به پشتیبانی</a>{% endif %}
+{% elif state == 'refunded' %}
+<h2 id="order-next-title">{{ card.refund|price_html }}{% if card.refunded_at %} در {{ card.refunded_at|jalali }}{% endif %} برگشت داده شد</h2>
 <p>لازم نیست کاری انجام دهید.</p>
-{% elif next_step == 'QUEUED' %}
-<h2 class="order-status" id="order-next-title">در صف انجام</h2>
-<p>لازم نیست کاری انجام دهید.</p>
-{% elif next_step == 'DELIVERED' %}
-<h2 class="order-status" id="order-next-title">تحویل داده شده</h2>
-<p>لازم نیست کاری انجام دهید.</p>
-{% elif next_step == 'CANCELLED' %}
-<h2 class="order-status" id="order-next-title">{% if mixed_status %}بخشی از سفارش لغو شده است{% else %}سفارش لغو شده است{% endif %}</h2>
-<p>برای پیگیری پرداخت یا بازپرداخت، به پشتیبانی پیام بدهید.</p>
-<a href="#order-help">ارتباط با پشتیبانی</a>
-{% elif next_step == 'REFUNDED' %}
-<h2 class="order-status" id="order-next-title">بازپرداخت انجام شده است</h2>
-<p>لازم نیست کاری انجام دهید.</p>
+{% elif state == 'expired' %}
+<h2 id="order-next-title">پرداختی برای این سفارش ثبت نشد</h2>
+<p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای پشتیبانی بفرستید.</p>
+<a class="btn btn--primary" href="{{ again_url }}">ثبت سفارش جدید</a>
+{% elif not card.products %}
+<h2 id="order-next-title">این سفارش محصولی ندارد</h2>
+<a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
+{% elif card.paid %}
+<h2 id="order-next-title">این سفارش لغو شد</h2>
+<p>مبلغی برای بازگشت ثبت نشده است.</p>
+{% elif card.reason == 'operator' %}
+<h2 id="order-next-title">پشتیبانی این سفارش را{% if card.cancelled_at %} در {{ card.cancelled_at|jalali }}{% endif %} لغو کرد</h2>
+<p>پرداختی برای آن ثبت نشده بود. برای دلیل لغو، به پشتیبانی پیام بدهید.</p>
+<a href="{{ support.telegram_url }}" rel="noopener noreferrer">پیام به پشتیبانی</a>
 {% else %}
-<h2 class="order-status" id="order-next-title">وضعیت سفارش</h2>
-<p>برای پیگیری سفارش، به پشتیبانی پیام بدهید.</p>
-<a href="#order-help">ارتباط با پشتیبانی</a>
+<h2 id="order-next-title">این سفارش را{% if card.cancelled_at %} در {{ card.cancelled_at|jalali }}{% endif %} لغو کردید</h2>
+<p>پرداختی برای آن ثبت نشده بود.</p>
+<a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
 {% endif %}
+{% endwith %}
+{% if card.contact %}{% include "orders/_support_contact.html" %}{% endif %}
 </section>
 <section class="card order-card" id="order-purchase" aria-labelledby="order-purchase-title">
 <h2 id="order-purchase-title">محصولات و مبلغ سفارش</h2>
 {% include "orders/_groups.html" %}
-<dl class="order-totals">{% if order.discount_amount %}<div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div><div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div></dl>
+<dl class="order-totals">{% if order.discount_amount %}<div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div><div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div>{% if money.paid is not None %}<div data-money="paid"><dt>پرداخت‌شده{% if money.paid_at %} در {{ money.paid_at|jalali }}{% endif %}</dt><dd>{{ money.paid|price_html }}</dd></div>{% endif %}{% if money.returned %}<div data-money="returned"><dt>برگشت داده شده</dt><dd>{{ money.returned|price_html }}</dd></div>{% endif %}{% if money.owed %}<div data-money="owed"><dt>در انتظار بازگشت</dt><dd>{{ money.owed|price_html }}</dd></div>{% endif %}</dl>
 <a class="btn btn--secondary" href="{% url 'order-invoice' order.order_number %}">مشاهده‌ی فاکتور</a>
 </section>
-<details class="card order-card" id="order-help"{% if next_step != 'REPLACEMENT_REQUESTED' and next_step != 'QUEUED' and next_step != 'DELIVERED' and next_step != 'REFUNDED' %} open{% endif %}><summary>پشتیبانی سفارش</summary>
-{% if support_identifier %}
-<p data-support-instructions>برای پیگیری، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید.</p>
-<div class="order-support-label">شناسه‌ی پشتیبانی</div>
-<div class="order-actions"><bdi dir="ltr" id="support-identifier" class="order-support-identifier">{{ support_identifier.grouped_token }}</bdi><button type="button" class="btn btn--secondary" data-copy-support hidden>کپی شناسه</button></div>
-<p aria-live="polite" aria-atomic="true" data-copy-status></p>
-{% else %}<p role="status">شناسه‌ی پشتیبانی در دسترس نیست.</p>
-<p>برای پیگیری، شماره‌ی سفارش را برای پشتیبانی بفرستید.</p>{% endif %}
+<div class="order-records">
+<details class="order-record" id="order-help"><summary>پشتیبانی این سفارش</summary>
+<p>با شناسه‌ی پشتیبانی، پشتیبانی مطمئن می‌شود این سفارش مال شماست.</p>
+{% if not card.contact %}{% include "orders/_support_identifier.html" %}{% endif %}
 <p class="order-support-contacts"><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
+<p>ساعت پاسخ‌گویی: {{ support.hours }}</p>
 {% if support_identifier %}<details class="order-support-replace"><summary>جایگزینی شناسه</summary>
-<p>با ساخت شناسه‌ی جدید، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
+<p>اگر شناسه را به کسی داده‌اید، شناسه‌ی جدید بسازید. با ساخت آن، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% endif %}
 </details>
-<div class="order-records">
 {% if groups or order.policy_snapshot %}<details class="order-record" id="order-conditions"><summary>شرایط هنگام خرید</summary>
 {% include "orders/_saved_terms.html" with groups=groups policies=order.policy_snapshot only %}</details>{% endif %}
 <details class="order-record" id="order-tracking"><summary>پیگیری سفارش بدون ورود</summary>

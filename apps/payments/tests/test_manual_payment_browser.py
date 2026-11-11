@@ -90,9 +90,9 @@ def test_operator_records_payment_and_customer_sees_queue(
         )
         customer = reverse("order-detail", args=[order.order_number])
         page.goto(live_server.url + customer)
-        expect(page.locator(".order-status").first).to_have_text("در صف انجام")
+        expect(page.locator("#order-next .badge")).to_have_text("در حال آماده‌سازی")
         assert reference not in page.content()
-        shot("customer", customer, "در صف انجام")
+        shot("customer", customer, "در حال آماده‌سازی")
         assert not errors
     finally:
         context.close()

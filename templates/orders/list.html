@@ -3,7 +3,7 @@
 {% block head_extra %}<link rel="stylesheet" href="{% static 'css/orders.css' %}">{% endblock %}
 {% block section %}
 {% for summary in summaries %}<article class="card order-card order-card--summary">
-<header class="order-heading"><h2>سفارش {{ summary.order.order_number|fa_digits }}</h2><span class="order-status">{{ summary.status }}</span></header>
+<header class="order-heading"><h2>سفارش {{ summary.order.order_number|fa_digits }}</h2><span class="badge badge--{{ summary.lead.badge }}">{% include 'storefront/icon.html' with name=summary.lead.icon %}{{ summary.lead.label }}</span></header>
 <p class="small">ثبت در {{ summary.order.created_at|jalali }}</p>
 {% include "orders/_groups.html" with groups=summary.groups compact=True mixed_status=summary.mixed_status %}
 <footer class="order-card__foot"><p class="order-total" data-order-total>مبلغ نهایی سفارش: {{ summary.order.total_amount|price_html }}</p>

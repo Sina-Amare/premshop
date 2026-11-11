@@ -16,12 +16,12 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 @pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize(
-    "state,heading,needs_input",
+    "state,pill,badge,fragment,contact",
     CASES
     + [
-        ("long", "در صف انجام", False),
-        ("unavailable", "در صف انجام", False),
-        ("error", "در صف انجام", False),
+        ("long", "در حال آماده‌سازی", "progress", "تحویل", False),
+        ("unavailable", "در حال آماده‌سازی", "progress", "تحویل", False),
+        ("error", "در حال آماده‌سازی", "progress", "تحویل", False),
     ],
 )
 def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
@@ -32,8 +32,10 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
     operator,
     settings,
     state,
-    heading,
-    needs_input,
+    pill,
+    badge,
+    fragment,
+    contact,
     width,
     tmp_path,
 ):
@@ -60,15 +62,16 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
                 "heading", name=f"سفارش {to_persian_digits(order.order_number)}", exact=True
             )
         ).to_be_visible()
-        expect(page.locator("#order-next-title")).to_have_text(heading)
+        expect(page.locator("#order-next-title")).to_contain_text(fragment)
+        expect(page.locator(f"#order-next .badge--{badge}")).to_have_text(pill)
         boxes = [
             page.locator(selector).bounding_box()
-            for selector in ("#order-next", "#order-purchase", "#order-help")
+            for selector in ("#order-next", "#order-purchase", ".order-records")
         ]
         assert all(abs(box["x"] - boxes[0]["x"]) < 1 for box in boxes)
         assert boxes[0]["y"] < boxes[1]["y"] < boxes[2]["y"]
-        assert page.locator("[data-input-request]").count() == int(needs_input)
-        if state in ("error", "unavailable"):  # queued orders keep support closed
+        assert page.locator("[data-support-contact]").count() == int(contact)
+        if state in ("error", "unavailable"):  # support waits closed among the records
             expect(page.locator("#order-help")).not_to_have_attribute("open", "")
             page.locator("#order-help > summary").focus()
             page.keyboard.press("Enter")
@@ -95,12 +98,11 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
                 )
             ).to_be_visible()
         capture(page, f"order-{state}", width, tmp_path)
-        if needs_input:
-            page.locator("#order-next").get_by_role(
-                "link", name="ارتباط با پشتیبانی", exact=True
-            ).focus()
-            page.keyboard.press("Enter")
-            expect(page.locator("#support-identifier")).to_be_in_viewport()
+        if contact:  # what to send sits in the card, beside the button that opens the chat
+            expect(page.locator("#order-next #support-identifier")).to_be_visible()
+            expect(
+                page.locator("#order-next").get_by_role("link", name="باز کردن تلگرام پشتیبانی")
+            ).to_have_attribute("href", "https://t.me/premshop_support")
         page.locator("#order-conditions > summary").focus()
         page.keyboard.press("Enter")
         if state == "long":

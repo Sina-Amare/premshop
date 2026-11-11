@@ -33,8 +33,10 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
     detail = reverse("order-detail", args=[order.order_number])
     try:
         page.goto(live_server.url + detail)
-        expect(page.locator("#order-help > summary")).to_have_text("پشتیبانی سفارش")
-        expect(page.locator("#order-help")).to_have_attribute("open", "")
+        # Details awaited: what to send sits in the card; support's record stays closed.
+        expect(page.locator("#order-help > summary")).to_have_text("پشتیبانی این سفارش")
+        expect(page.locator("#order-help")).not_to_have_attribute("open", "")
+        expect(page.locator("#order-next #support-identifier")).to_be_visible()
         expect(page.locator("[data-support-instructions]")).to_contain_text(
             "شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید."
         )
@@ -58,14 +60,12 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         )
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)
+        page.locator("#order-help > summary").click()
         replace = page.get_by_text("جایگزینی شناسه", exact=True)
         assert replace.bounding_box()["height"] >= 44
         replace.click()
         expect(
-            page.get_by_text(
-                "با ساخت شناسه‌ی جدید، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.",
-                exact=True,
-            )
+            page.get_by_text("با ساخت آن، شناسه‌ی فعلی دیگر پذیرفته نمی‌شود.", exact=False)
         ).to_be_visible()
         capture(page, "support-confirm", width, tmp_path)
         old = order.support_identifier.support_token

@@ -74,12 +74,14 @@ def test_order_journey_invoice_png_tracking_and_whole_cancellation(
         page.get_by_role("link", name="بازگشت به سفارش").click()
         page.locator("summary").filter(has_text="لغو سفارش").click()
         page.get_by_role("button", name="بله، لغو سفارش").click()
-        expect(page.locator(".acct__main [role=status]")).to_contain_text("سفارش لغو شد.")
+        # The card says it, so no flash repeats it above the card.
+        expect(page.locator("#order-next-title")).to_contain_text("لغو کردید")
+        expect(page.locator(".acct__main [role=status]")).to_have_count(0)
         capture(page, "cancelled", width, tmp_path)
         page.locator("#order-tracking > summary").click()
         page.get_by_role("link", name="لینک پیگیری سفارش").click()
         expect(page.get_by_role("heading", name="پیگیری سفارش", exact=True)).to_be_visible()
-        expect(page.locator("main")).to_contain_text("لغو شده")
+        expect(page.locator("main")).to_contain_text("لغوشده")
         assert buyer.email not in page.content() and order.tracking_token not in page.content()
         capture(page, "tracking", width, tmp_path)
         assert not errors
@@ -170,7 +172,7 @@ def test_export_draws_each_mixed_order_line_status(browser, live_server, buyer, 
         with page.expect_download():
             page.get_by_role("button", name="دانلود تصویر فاکتور").click()
         texts = page.evaluate("window.invoiceTexts")
-        assert "وضعیت: تحویل داده شده" in texts
-        assert "وضعیت: لغو شده" in texts
+        assert "وضعیت: تحویل‌شده" in texts
+        assert "وضعیت: لغوشده" in texts
     finally:
         context.close()

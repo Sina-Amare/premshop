@@ -54,7 +54,8 @@
       add(`شماره‌ی سفارش: ${data.number}`);
       add(`تاریخ ثبت: ${data.date}`);
       add(`وضعیت: ${data.status}`);
-      add(data.notice, 26, 400, 32);
+      if (data.paid) add(data.paid, 26);
+      if (data.notice) add(data.notice, 26, 400, 32);
       for (const line of data.lines) {
         add(line.name, 30);
         add(line.plan, 26);
@@ -65,7 +66,6 @@
       add(`جمع محصولات: ${data.subtotal}`);
       add(`تخفیف: ${data.discount}`);
       add(`مبلغ نهایی سفارش: ${data.total}`, 32);
-      add(data.notice, 24);
       const height = Math.ceil(y + margin);
       // Bound pixel memory while retaining every row in long orders.
       const scale = Math.min(1, Math.sqrt(16000000 / (width * height)), 30000 / height);
