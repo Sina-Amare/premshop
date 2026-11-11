@@ -341,7 +341,6 @@
     padding: var(--spacing-4) var(--spacing-4) var(--spacing-5);
     transition: border-color var(--dur) var(--ease);
   }
-  .card:hover { border-color: var(--color-line-strong); }  /* colour only, never width */
 
   /* A list of things is one bordered container with hairlines — not N cards. */
   .list { background: var(--color-surface); border: 1px solid var(--color-line);
