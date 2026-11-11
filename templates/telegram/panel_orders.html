@@ -1,7 +1,7 @@
-{% load fa %}<b>سفارش‌های من</b>
+{% load fa %}{{ icon }} <b>{{ label }}</b>
 {% if rows %}برای جزئیات هر سفارش، شماره‌ی آن را بزنید.
-{% for row in rows %}<blockquote><b>سفارش {{ row.order.order_number|fa_digits }}</b>، {{ row.order.created_at|jalali }}
+{% for row in rows %}<blockquote>{{ row.emoji }} <b>سفارش {{ row.order.order_number|fa_digits }}</b>، {{ row.order.created_at|jalali }}
 {% if row.names|length > 1 %}محصولات{% else %}محصول{% endif %}: {{ row.names|join:" و " }}
 وضعیت: {{ row.status }}</blockquote>
-{% endfor %}{% else %}هنوز سفارشی ثبت نکرده‌اید.
+{% endfor %}{% else %}سفارشی در این بخش ندارید.
 {% endif %}<a href="{{ orders_url }}">همه‌ی سفارش‌ها در سایت</a>

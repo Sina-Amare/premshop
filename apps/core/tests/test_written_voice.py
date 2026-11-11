@@ -69,6 +69,11 @@ EMOJI = re.compile("[\\U0001f000-\\U0001faff\\u2705\\u274c\\u2728\\u2049\\u2757]
 # this one path so that it cannot quietly grow into a list.
 SELF = Path(__file__).resolve()
 
+# The owner chose emoji for the Telegram bot, whose buttons hold text only
+# (design-language, «Decided by the owner», 2026-11-11). They live in this one
+# file, which is still held to every other rule here; the site stays without them.
+BOT_EMOJI = (ROOT / "apps/orders/telegram_emoji.py").resolve()
+
 
 def tracked_files() -> list[Path]:
     git = shutil.which("git")
@@ -88,12 +93,13 @@ def tracked_files() -> list[Path]:
     return [path for path in found if path.resolve() != SELF]
 
 
-def offences(text: str) -> list[str]:
+def offences(text: str, emoji_allowed: bool = False) -> list[str]:
     """Every banned marker in one file's text."""
     found = [
         f"{name}: {m.group(0).strip()!r}" for name, pat in BANNED for m in re.finditer(pat, text)
     ]
-    found += [f"emoji: {m.group(0)!r}" for m in EMOJI.finditer(text)]
+    if not emoji_allowed:
+        found += [f"emoji: {m.group(0)!r}" for m in EMOJI.finditer(text)]
     return found
 
 
@@ -105,11 +111,18 @@ def test_the_file_list_is_not_empty():
     assert SELF.exists() and SELF not in files, "it excludes itself, and only itself"
 
 
+def test_the_bot_file_is_the_one_place_emoji_may_live():
+    """An exemption whose file moved or emptied would excuse nothing and hide that."""
+    assert BOT_EMOJI in [path.resolve() for path in tracked_files()]
+    assert EMOJI.search(BOT_EMOJI.read_text(encoding="utf-8"))
+
+
 def test_no_tracked_file_carries_a_machine_register_marker():
     bad = {}
     for path in tracked_files():
         try:
-            found = offences(path.read_text(encoding="utf-8"))
+            text = path.read_text(encoding="utf-8")
+            found = offences(text, emoji_allowed=path.resolve() == BOT_EMOJI)
         except UnicodeDecodeError:
             # Every scanned suffix is text, so this is damage, such as a Persian file
             # rewritten as UTF-16 by an editor or a shell; skipping it hid the damage.
