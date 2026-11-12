@@ -44,6 +44,15 @@ def normalize_mobile_phone(value: str) -> str:
     return "0" + mobile.group(1)
 
 
+def phone_search_term(term: str) -> str:
+    """A panel search, with a number pasted in any spelling turned into the stored one;
+    any other text unchanged."""
+    try:
+        return normalize_mobile_phone(term) or term
+    except ValidationError:
+        return term
+
+
 class MinimumLengthValidator(password_validation.MinimumLengthValidator):
     def validate(self, password: str, user: Any = None) -> None:
         if len(password) < self.min_length:

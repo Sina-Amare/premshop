@@ -13,6 +13,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -21,7 +22,7 @@ from unfold.forms import AuthenticationForm
 
 from apps.accounts import services
 from apps.accounts.models import User
-from apps.accounts.validators import normalize_mobile_phone
+from apps.accounts.validators import normalize_mobile_phone, phone_search_term
 from apps.core import ratelimit
 from apps.core.admin_site import PASSWORD_BACKEND
 from apps.core.formatting import format_jalali, to_persian_digits
@@ -113,6 +114,11 @@ class UserAdmin(ModelAdmin):
             return "—"
         when = timezone.localtime(obj.last_login)
         return f"{format_jalali(when)}، {to_persian_digits(when.strftime('%H:%M'))}"
+
+    def get_search_results(
+        self, request: HttpRequest, queryset: QuerySet[User], search_term: str
+    ) -> tuple[QuerySet[User], bool]:
+        return super().get_search_results(request, queryset, phone_search_term(search_term))
 
     def has_add_permission(self, request: HttpRequest, obj: User | None = None) -> bool:
         # Accounts are created by the customer's first code, never by hand:

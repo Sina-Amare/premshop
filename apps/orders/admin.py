@@ -27,6 +27,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.views import ChangeList
 
 from apps.accounts.models import User
+from apps.accounts.validators import phone_search_term
 from apps.catalog.models import Product
 from apps.core.formatting import (
     format_countdown,
@@ -834,7 +835,8 @@ class OrderAdmin(ModelAdmin):
     def get_search_results(
         self, request: HttpRequest, queryset: QuerySet[Order], search_term: str
     ) -> tuple[QuerySet[Order], bool]:
-        return super().get_search_results(request, queryset, to_latin_digits(search_term))
+        term = phone_search_term(to_latin_digits(search_term))
+        return super().get_search_results(request, queryset, term)
 
     def render_change_form(
         self,
