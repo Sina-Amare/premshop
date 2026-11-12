@@ -13,11 +13,11 @@ from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
 from apps.accounts.tests.test_telegram_link import framed
 from apps.core import support
+from apps.core import telegram_emoji as emoji
 from apps.core.formatting import to_persian_digits
 from apps.core.templatetags.fa import jalali
 from apps.orders import services as orders
 from apps.orders import status as order_status
-from apps.core import telegram_emoji as emoji
 from apps.orders import telegram_panel
 from apps.orders.models import Order, OrderItem
 from apps.orders.selectors import customer_orders, customer_summary, order_lead

@@ -46,6 +46,7 @@ def account_button(text, settings):
     url = settings.SITE_URL + reverse("account") + "#telegram"
     return {"text": text, "url": url, "style": "primary"}
 
+
 TOKEN = "123456789:AAEexampleSECRETexampleSECRETexample12"  # noqa: S105  # nosec B105
 POLL_LOCK = f"{HUEY.name}.lock.telegram-updates"
 # Collection imports this module before any test runs a poll, so this records what a
@@ -147,7 +148,11 @@ def test_confirm_links_once_and_emails_the_holder(bot, user):
     assert (user.telegram_id, user.telegram_username) == (555, "buyer_tg")
     assert user.telegram_linked_at is not None
     # The screen changes first, then the press is answered, then the panel opens.
-    assert [method for method, _ in bot] == ["editMessageText", "answerCallbackQuery", "sendMessage"]
+    assert [method for method, _ in bot] == [
+        "editMessageText",
+        "answerCallbackQuery",
+        "sendMessage",
+    ]
     assert len(mail.outbox) == 1 and mail.outbox[0].to == [user.email]
     assert "@buyer_tg" in mail.outbox[0].body and token not in mail.outbox[0].body
     assert links.link_owner(token) is None

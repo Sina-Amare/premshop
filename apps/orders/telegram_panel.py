@@ -17,9 +17,9 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
 from apps.core import support
+from apps.core import telegram_emoji as emoji
 from apps.core.formatting import to_persian_digits
 from apps.orders import status as order_status
-from apps.core import telegram_emoji as emoji
 from apps.orders.models import Order
 from apps.orders.selectors import customer_orders, customer_summary, order_lead
 
