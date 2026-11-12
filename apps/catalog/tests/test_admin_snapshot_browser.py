@@ -171,7 +171,6 @@ def test_plan_guidance_applies_to_costs_and_supplier_links(open_panel, product):
     for field in ("supplier_url", "cost_price"):
         guidance = page.locator(f"#id_plans-0-{field}_helptext")
         expect(guidance).to_contain_text("مشتری این را نمی‌بیند")
-        expect(guidance).to_contain_text("مشتری این را نمی‌بیند")
     expect(page.locator("#id_plans-0-supplier_url_helptext")).not_to_contain_text("این قیمت")
 
 

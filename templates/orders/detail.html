@@ -18,7 +18,7 @@
 {% elif state == 'refund_owed' %}
 <h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
 {% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> لغو شد{% if group.reason == 'supply_failure' %}، چون نتوانستیم آن را تهیه کنیم{% elif group.reason == 'input_timeout' %}، چون اطلاعات فعال‌سازی تا ۲۱ روز به دستمان نرسید{% elif group.reason == 'warranty_refund' %}، چون در دوره‌ی گارانتی نتوانستیم آن را جایگزین کنیم. این مبلغ برای روزهای باقی‌مانده‌ی اشتراک است{% endif %}.</p>{% endfor %}
-<p data-support-instructions>برای واریز، شماره‌ی کارت یا شبای به نام خودتان{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید. تا یک روز کاری پس از دریافت شماره، مبلغ را واریز می‌کنیم.</p>
+<p data-support-instructions>برای واریز، شماره‌ی کارت یا شبای به نام خودتان{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید. تا یک روز کاری پس از دریافت شماره‌ی کارت یا شبا، مبلغ را واریز می‌کنیم.</p>
 {% elif state == 'late' %}
 <h2 id="order-next-title">زمان تحویل گذشته است</h2>
 <p>قرار بود <bdi>{{ products }}</bdi> تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل شود. بابت تأخیر عذرخواهی می‌کنیم.</p>

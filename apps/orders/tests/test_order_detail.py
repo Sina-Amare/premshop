@@ -137,6 +137,9 @@ def test_a_card_asks_once_for_what_to_send_in_telegram(client, buyer, plan, oper
     sentences = re.findall(r"[^.؟]+[.؟]", text(said))
     asks = [one for one in sentences if "تلگرام" in one and re.search("بفرستید|پیام بدهید", one)]
     assert len(asks) == 1, asks
+    if state in ("owed", "mixed_refund"):
+        # Two numbers are asked for, so the promise names the one it counts from.
+        assert "پس از دریافت شماره‌ی کارت یا شبا،" in text(said)
 
 
 def test_the_copied_line_carries_the_order_number_and_the_panel_finds_its_identifier(
