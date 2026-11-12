@@ -132,7 +132,7 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     named = "<bdi>سرویس نمونه</bdi>، <bdi>یک ماهه</bdi>"
     assert OrderItemEvent.objects.filter(order_item=item).exists()
     assert named in timeline and named in access
-    number = f"آیتم {to_persian_digits(item.pk)}"
+    number = "آیتم ۱،"
     assert number in timeline and number in access
     # Stored, so its absence from the page is the page's doing and not a lost input.
     assert item.customer_input == target

@@ -47,7 +47,7 @@ from apps.orders.models import (
     OrderSupportIdentifier,
     UnpaidExpirySweep,
 )
-from apps.orders.selectors import grouped_items
+from apps.orders.selectors import grouped_items, item_numbers
 from apps.orders.services import (
     DELIVERY_LINES,
     PAID_CANCELLATIONS,
@@ -642,6 +642,7 @@ class OrderAdmin(ModelAdmin):
                     "title": title,
                     "order": order,
                     "item": item,
+                    "item_number": item_numbers([order.pk])[item.pk],
                     "opts": self.opts,
                 },
             )
@@ -753,6 +754,7 @@ class OrderAdmin(ModelAdmin):
                 }.get(mode or "", _("تحویل محصول")),
                 "order": order,
                 "item": item,
+                "item_number": item_numbers([order.pk])[item.pk],
                 "form": form,
                 "preview": preview,
                 "error": error,
@@ -871,6 +873,7 @@ class OrderAdmin(ModelAdmin):
                 context["input_controls"] = controls
             context["purchase_groups"] = grouped_items(obj.items.all())
             context["order_timeline"] = self.history(obj)
+            context["item_numbers"] = item_numbers([obj.pk])
             context["input_access_log"] = (
                 CredentialAccessLog.objects.filter(order_item__order_id=obj.pk)
                 .select_related("user")
@@ -1022,6 +1025,7 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
+        numbers = item_numbers([obj.pk])
         events = (
             OrderItemEvent.objects.filter(order_item__order=obj)
             .annotate(item_name=_ITEM_NAME, item_plan=_ITEM_PLAN)
@@ -1044,7 +1048,8 @@ class OrderAdmin(ModelAdmin):
                     format_html(
                         "<bdi>{}</bdi>، <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
                     ),
-                    _("آیتم %(number)s") % {"number": to_persian_digits(event.order_item_id)},
+                    _("آیتم %(number)s")
+                    % {"number": to_persian_digits(numbers[event.order_item_id])},
                     event.get_actor_display(),
                     (
                         _("وضعیت قبلی: %(state)s") % {"state": event.get_from_status_display()}

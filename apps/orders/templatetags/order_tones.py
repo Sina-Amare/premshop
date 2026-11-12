@@ -20,6 +20,12 @@ register.filter("item_tone", order_status.item_tone)
 
 
 @register.filter
+def item_place(numbers: dict[int, int], item_id: int) -> int:
+    """`selectors.item_numbers` read in a template: an item's place in its order."""
+    return numbers[item_id]
+
+
+@register.filter
 def state_label(state: str) -> str:
     return order_status.STATES[state][0]
 

@@ -13,6 +13,7 @@ from apps.accounts.validators import normalize_mobile_phone
 from apps.catalog.inputs import normalize_customer_input
 from apps.core.formatting import format_jalali, format_toman, to_latin_digits, to_persian_digits
 from apps.orders.clock import TEHRAN
+from apps.orders.selectors import item_numbers
 from apps.orders.services import Purchase
 from apps.payments.models import Refund
 
@@ -90,12 +91,14 @@ class RefundTransferForm(ManualPaymentForm):
     def __init__(self, *args: Any, refunds: list[Refund], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["amount"].label = _("مبلغ واریزشده (تومان)")
+        # Each item by its place in its order, never its database id.
+        places = item_numbers({row.order_item.order_id for row in refunds})
         cast(forms.TypedMultipleChoiceField, self.fields["refund_ids"]).choices = [
             (
                 row.pk,
                 _("آیتم %(item)s · %(amount)s · %(status)s")
                 % {
-                    "item": f"\u2068{row.order_item.product_snapshot.get('name', '')}\u2069؛ \u2068{row.order_item.product_snapshot.get('plan_title', '')}\u2069 ({to_persian_digits(row.order_item_id)})",
+                    "item": f"\u2068{row.order_item.product_snapshot.get('name', '')}\u2069؛ \u2068{row.order_item.product_snapshot.get('plan_title', '')}\u2069 ({to_persian_digits(places[row.order_item_id])})",
                     "amount": format_toman(row.amount),
                     "status": row.get_status_display(),
                 },
