@@ -14,7 +14,7 @@ from apps.core import support
 from apps.core.formatting import to_persian_digits
 from apps.orders import services as orders
 from apps.orders import status as order_status
-from apps.orders import telegram_emoji as emoji
+from apps.core import telegram_emoji as emoji
 from apps.orders import telegram_panel
 from apps.orders.models import Order, OrderItem
 from apps.orders.selectors import customer_orders, customer_summary, order_lead
