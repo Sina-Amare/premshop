@@ -72,3 +72,16 @@ def test_the_account_page_shows_the_number_and_edits_the_email(client, phone_onl
     phone_only.refresh_from_db()
     assert phone_only.email == "new@example.test" and phone_only.phone == "09123456789"
     assert "۰۹۱۲۳۴۵۶۷۸۹" in client.get(reverse("account")).content.decode()
+
+
+def test_an_account_with_no_number_never_reads_none(client, plan):
+    # Made before the number was the identity, so it has none.
+    account = User.objects.create_user("legacy@example.test")
+    cart = Cart.objects.create(user=account)
+    CartItem.objects.create(cart=cart, plan=plan, quantity=1)
+    client.force_login(account)
+
+    for url in (reverse("checkout"), reverse("account")):
+        page = client.get(url)
+        assert page.status_code == 200
+        assert "None" not in page.content.decode(), url

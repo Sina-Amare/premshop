@@ -19,7 +19,7 @@
 </section>
 {% endif %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">شماره‌ی موبایل</span><span class="fact__lead"></span><span class="fact__v"><bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi></span></div>
+  {% if request.user.phone %}<div class="fact"><span class="fact__k">شماره‌ی موبایل</span><span class="fact__lead"></span><span class="fact__v"><bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi></span></div>{% endif %}
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
