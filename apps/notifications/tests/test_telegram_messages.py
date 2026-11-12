@@ -11,7 +11,9 @@ from django.utils import timezone
 from huey.contrib.djhuey import HUEY
 
 from apps.accounts.models import User
+from apps.accounts.tests.test_telegram_link import framed
 from apps.core import telegram as telegram_api
+from apps.core import telegram_emoji as emoji
 from apps.core.email_log import MailQuotaExceeded
 from apps.notifications import services
 from apps.notifications import tasks as notification_tasks
@@ -33,7 +35,7 @@ def telegram(settings, monkeypatch):
     fake = SimpleNamespace(sent=[], error=None)
 
     def send_message(chat_id, text, **kwargs):
-        fake.sent.append((chat_id, text))
+        fake.sent.append((chat_id, text, kwargs.get("buttons")))
         if fake.error:
             raise fake.error
         return {"message_id": 1}
@@ -70,11 +72,12 @@ def test_a_linked_customer_gets_an_email_row_and_a_telegram_row(
     row = Notification.objects.get(template_name="payment_confirmed", channel="telegram")
     assert row.dedupe_key == email.dedupe_key.removesuffix(":email") + ":telegram"
     assert (row.chat_id, row.recipient, row.subject, row.html_body) == (555, "", "", "")
-    url = settings.SITE_URL + reverse("order-detail", args=[order.order_number])
-    # A bold title, the facts as label and value, and a named link rather than a raw address.
-    assert row.text_body.startswith(f"<b>{email.subject}</b>\n")
-    assert "\nمبلغ: " in row.text_body and "تومان" in row.text_body
-    assert row.text_body.endswith(f'\n<a href="{url}">مشاهده‌ی سفارش</a>')
+    # The product's emoji and a bold title, the state in a quote, the facts as label and value;
+    # the order's page is a button the send adds (test_a_telegram_row_is_sent).
+    assert row.text_body.startswith(f"{emoji.OTHER_PRODUCT} <b>{email.subject}</b>\n")
+    assert f"\n<blockquote>{emoji.STATUS} وضعیت: " in row.text_body
+    assert f"\n{emoji.AMOUNT} مبلغ: " in row.text_body and "تومان" in row.text_body
+    framed(row.text_body)
     assert "PRIVATE-BANK" not in row.text_body
 
 
@@ -102,19 +105,33 @@ def test_the_telegram_text_is_escaped(buyer, plan, telegram, monkeypatch):
     monkeypatch.setattr(services, "render_email", lambda name, context: ("<b>&", "t", "<p>h</p>"))
     services.enqueue_event("payment_confirmed", 54, placed(buyer, plan).pk)
     assert Notification.objects.get(channel="telegram").text_body.startswith(
-        "<b>&lt;b&gt;&amp;</b>\n"
+        f"{emoji.OTHER_PRODUCT} <b>&lt;b&gt;&amp;</b>\n"
     )
 
 
 def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, plan, telegram):
     linked(buyer)
+    plan.product.name = "Netflix Premium"
+    plan.product.save(update_fields=["name"])
     order = placed(buyer, plan)
     item = order.items.get()
     due = timezone.now() + timedelta(days=2)
     services.enqueue_event("supply_delayed", 60, order.pk, item_id=item.pk, due_at=due)
     text = Notification.objects.get(channel="telegram").text_body
-    assert f"\nمحصول: {item.product_snapshot['name']}" in text
-    assert "\nزمان تحویل جدید: تا " in text
+    assert text.startswith(f"{emoji.PRODUCTS['netflix']} <b>")
+    assert f"\n{emoji.PRODUCT} محصول: {item.product_snapshot['name']}، " in text
+    assert f"\n{emoji.DEADLINE} زمان تحویل جدید: تا " in text
+
+
+@pytest.mark.parametrize(
+    "template_name", sorted(set(Notification.Template.values) - {"purchase_confirmation"})
+)
+def test_every_notice_keeps_the_frame(buyer, plan, telegram, template_name):
+    linked(buyer)
+    order = placed(buyer, plan)
+    due = timezone.now() + timedelta(days=1)
+    services.enqueue_event(template_name, 66, order.pk, item_id=order.items.get().pk, due_at=due)
+    framed(Notification.objects.get(channel="telegram").text_body)
 
 
 def test_catalogue_text_is_escaped_in_the_notice(buyer, plan, telegram):
@@ -151,11 +168,15 @@ def test_a_refused_send_now_leaves_the_notice_to_the_minute_run(
     assert [r.levelname for r in caplog.records if r.name == services.logger.name] == ["WARNING"]
 
 
-def test_a_telegram_row_is_sent(queued, telegram):
+def test_a_telegram_row_is_sent(queued, telegram, settings):
     assert services.send_due_telegram() == 1
     queued.refresh_from_db()
     assert queued.status == "sent" and queued.sent_at is not None
-    assert telegram.sent == [(555, queued.text_body)]
+    url = settings.SITE_URL.rstrip("/") + reverse("order-detail", args=[queued.order.order_number])
+    # The button comes from the row's order at send time, so a queued notice needs no new column.
+    button = {"text": f"{emoji.ORDER} مشاهده‌ی سفارش", "url": url, "style": "primary"}
+    assert telegram.sent == [(555, queued.text_body, [[button]])]
+    framed(queued.text_body, [[button]])
 
 
 @pytest.mark.parametrize(

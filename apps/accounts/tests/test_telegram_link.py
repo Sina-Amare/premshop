@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from datetime import timedelta
 
@@ -14,10 +15,37 @@ from apps.accounts import tasks as account_tasks
 from apps.accounts import telegram as links
 from apps.accounts.models import User
 from apps.accounts.views import TELEGRAM_LINK_KEY
-from apps.core import ratelimit
+from apps.core import ratelimit, support
 from apps.core import telegram as telegram_api
+from apps.core import telegram_emoji as emoji
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def framed(text, buttons=(), *, success=False):
+    """The frame of every bot screen: a bold title behind its emoji, links only as buttons,
+    two buttons to a row at most, and at most one coloured button, never red."""
+    title = text.split("\n", 1)[0]
+    assert re.fullmatch(r"[^\w<]+ <b>[^<]+</b>", title), title
+    assert "<a " not in text
+    assert all(len(row) <= 2 for row in buttons)
+    styles = [button["style"] for row in buttons for button in row if "style" in button]
+    assert len(styles) <= 1 and set(styles) <= ({"success"} if success else {"primary"}), styles
+
+
+def shown(calls):
+    """Every screen the bot drew: (text, buttons) of each message sent or edited."""
+    return [
+        (payload["text"], payload.get("reply_markup", {}).get("inline_keyboard", []))
+        for method, payload in calls
+        if method in ("sendMessage", "editMessageText")
+    ]
+
+
+def account_button(text, settings):
+    url = settings.SITE_URL + reverse("account") + "#telegram"
+    return {"text": text, "url": url, "style": "primary"}
+
 
 TOKEN = "123456789:AAEexampleSECRETexampleSECRETexample12"  # noqa: S105  # nosec B105
 POLL_LOCK = f"{HUEY.name}.lock.telegram-updates"
@@ -79,10 +107,38 @@ def test_start_shows_the_masked_email_and_keeps_the_token(bot, user):
     links.handle_update(start(f"/start {token}"))
     method, payload = bot[-1]
     assert method == "sendMessage" and payload["chat_id"] == 555
-    assert "b•••@example.test" in payload["text"] and user.email not in payload["text"]
-    button = payload["reply_markup"]["inline_keyboard"][0][0]
-    assert button["callback_data"] == f"link:{token}"
+    assert f"{emoji.ACCOUNT} حساب کاربری: <code>b•••@example.test</code>" in payload["text"]
+    assert user.email not in payload["text"]
+    # The one green button in the bot: the customer's own yes.
+    framed(payload["text"], payload["reply_markup"]["inline_keyboard"], success=True)
+    assert payload["reply_markup"]["inline_keyboard"] == [
+        [
+            {
+                "text": f"{emoji.CONFIRM} تأیید اتصال",
+                "callback_data": f"link:{token}",
+                "style": "success",
+            }
+        ]
+    ]
     assert links.link_owner(token) == user
+
+
+def test_a_confirmed_link_offers_its_settings_and_opens_the_panel_beneath(bot, user, settings):
+    links.handle_update(press(f"link:{links.start_link(user)}"))
+    (linked_text, linked_buttons), (panel_text, panel_buttons) = shown(bot)
+    framed(linked_text, linked_buttons)
+    assert linked_buttons == [
+        [
+            {
+                "text": f"{emoji.LINK} مدیریت اتصال",
+                "url": settings.SITE_URL + reverse("account") + "#telegram",
+            }
+        ]
+    ]
+    # The panel is a message of its own below, so the next press edits the panel, not this.
+    assert [method for method, _ in bot][-1] == "sendMessage"
+    assert panel_buttons[0][0]["callback_data"] == "p:l:unpaid"
+    assert cache.get("telegram-panel:555") == 99
 
 
 def test_confirm_links_once_and_emails_the_holder(bot, user):
@@ -91,7 +147,12 @@ def test_confirm_links_once_and_emails_the_holder(bot, user):
     user.refresh_from_db()
     assert (user.telegram_id, user.telegram_username) == (555, "buyer_tg")
     assert user.telegram_linked_at is not None
-    assert [method for method, _ in bot] == ["answerCallbackQuery", "editMessageText"]
+    # The screen changes first, then the press is answered, then the panel opens.
+    assert [method for method, _ in bot] == [
+        "editMessageText",
+        "answerCallbackQuery",
+        "sendMessage",
+    ]
     assert len(mail.outbox) == 1 and mail.outbox[0].to == [user.email]
     assert "@buyer_tg" in mail.outbox[0].body and token not in mail.outbox[0].body
     assert links.link_owner(token) is None
@@ -138,6 +199,7 @@ def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):
     bot.clear()
     links.handle_update(press(f"link:{token}"))
     assert "برای امروز" in dict(bot)["editMessageText"]["text"]
+    framed(dict(bot)["editMessageText"]["text"])
     assert links.link_owner(token) == user
 
 
@@ -148,9 +210,10 @@ def test_a_second_press_after_linking_says_it_is_already_linked(bot, user):
     links.handle_update(press(f"link:{token}"))
     edited = dict(bot)["editMessageText"]
     assert "وصل است" in edited["text"]
+    framed(edited["text"])
 
 
-def test_an_expired_or_made_up_token_links_nothing(bot, user):
+def test_an_expired_or_made_up_token_links_nothing(bot, user, settings):
     token = links.start_link(user)
     with time_machine.travel(timezone.now() + timedelta(minutes=11), tick=False):
         assert links.link_owner(token) is None
@@ -158,7 +221,11 @@ def test_an_expired_or_made_up_token_links_nothing(bot, user):
     links.handle_update(press("link:made-up-token"))
     links.handle_update(start("/start made-up-token"))
     assert User.objects.filter(telegram_id__isnull=False).count() == 0
-    assert all("reply_markup" not in payload for _, payload in bot)
+    screens = shown(bot)
+    assert len(screens) == 3
+    # No confirm button: only the way back to the account page for a new link.
+    for _, buttons in screens:
+        assert buttons == [[account_button(f"{emoji.LINK} دریافت پیوند جدید", settings)]]
 
 
 def test_a_newer_token_kills_the_older_one(bot, user):
@@ -203,8 +270,19 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     links.handle_update(start(text))
     method, payload = bot[-1]
     assert method == "sendMessage"
-    assert settings.SITE_URL + reverse("account") in payload["text"]
-    assert "@premshop_support" in payload["text"]
+    buttons = payload["reply_markup"]["inline_keyboard"]
+    framed(payload["text"], buttons)
+    # What the bot is for, then the three steps of linking, each named by its button's label.
+    assert "اتصال در سه قدم" in payload["text"]
+    for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
+        assert label in payload["text"]
+    assert buttons == [
+        [account_button(f"{emoji.LINK} اتصال حساب", settings)],
+        [
+            {"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")},
+            {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support.details()["telegram_url"]},
+        ],
+    ]
     assert User.objects.get(pk=user.pk).telegram_id is None
 
 

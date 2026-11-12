@@ -1,7 +1,7 @@
 {% load fa %}{{ emoji }} <b>سفارش {{ order.order_number|fa_digits }}</b>
-<blockquote>وضعیت: {{ lead.label }}{% with state=card.state %}{% if state == "awaiting_input" %}
+<blockquote>{{ e.STATUS }} وضعیت: {{ lead.label }}{% with state=card.state %}{% if state == "awaiting_input" %}
 اطلاعات فعال‌سازی و شماره‌ی سفارش را برای {{ support.telegram }} بفرستید.{% elif state == "unpaid" %}
-مهلت پرداخت: {{ card.deadline|jalali }}، ساعت {{ card.deadline|date:"H:i"|fa_digits }}{% elif state == "refund_owed" %}
+{{ e.DEADLINE }} مهلت پرداخت: {{ card.deadline|jalali }}، ساعت {{ card.deadline|date:"H:i"|fa_digits }}{% elif state == "refund_owed" %}
 {{ card.refund|toman_plain }} تومان را به شما برمی‌گردانیم. شماره‌ی کارت یا شبای به نام خودتان و شماره‌ی سفارش را برای {{ support.telegram }} بفرستید. پشتیبانی هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد.{% elif state == "expired" %}
 پرداختی برای این سفارش ثبت نشد.{% elif state == "late" %}
 زمان تحویل گذشته است. برای پیگیری، به {{ support.telegram }} پیام بدهید.{% elif state == "delivered" and card.rejected_at %}
@@ -9,7 +9,6 @@
 مشکلی هست؟ به {{ support.telegram }} پیام بدهید.{% elif state == "cancelled" %}
 {% if card.paid %}این لغو بازگشت وجه ندارد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% if card.reason == "operator" %} دلیلش را از {{ support.telegram }} بپرسید.{% endif %}{% endif %}{% else %}
 کاری لازم نیست.{% endif %}{% endwith %}</blockquote>
-{% for group in groups %}{% for line in group.lines %}محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}{% if line.quantity > 1 %}، {{ line.quantity|fa_digits }} عدد{% endif %}{% if mixed_status %}، {{ line.status_label }}{% endif %}
-{% endfor %}{% endfor %}مبلغ: {{ order.total_amount|toman_plain }} تومان
-تاریخ ثبت: {{ order.created_at|jalali }}، ساعت {{ order.created_at|date:"H:i"|fa_digits }}
-<a href="{{ order_url }}">مشاهده‌ی سفارش در سایت</a>
+{% for group in groups %}{% for line in group.lines %}{{ e.PRODUCT }} محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}{% if line.quantity > 1 %}، {{ line.quantity|fa_digits }} عدد{% endif %}{% if mixed_status %}، {{ line.status_label }}{% endif %}
+{% endfor %}{% endfor %}{{ e.AMOUNT }} مبلغ: {{ order.total_amount|toman_plain }} تومان
+{{ e.DATE }} تاریخ ثبت: {{ order.created_at|jalali }}، ساعت {{ order.created_at|date:"H:i"|fa_digits }}

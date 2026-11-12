@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core import telegram
+from apps.core import telegram_emoji as emoji
 from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
 from apps.core.richtext import absolute_markdown_links
@@ -22,6 +23,16 @@ from apps.orders.models import Order, OrderItem
 
 logger = logging.getLogger(__name__)
 _DELAYS = (60, 300, 900, 3600, 21600)
+
+
+def _order_url(order_number: int) -> str:
+    return settings.SITE_URL.rstrip("/") + reverse("order-detail", args=[order_number])
+
+
+def _order_button(order: Order) -> list[list[dict[str, str]]]:
+    # A row keeps only its text, so a notice's button is built as it is sent.
+    text = f"{emoji.ORDER} مشاهده‌ی سفارش"
+    return [[{"text": text, "url": _order_url(order.order_number), "style": "primary"}]]
 
 
 def enqueue_event(
@@ -47,8 +58,7 @@ def enqueue_event(
     ).get(pk=order_id)
     context: dict[str, Any] = {
         "order_number": order["order_number"],
-        "order_url": settings.SITE_URL.rstrip("/")
-        + reverse("order-detail", args=[order["order_number"]]),
+        "order_url": _order_url(order["order_number"]),
         "amount": order["total_amount"],
         "due_at": due_at,
     }
@@ -99,7 +109,13 @@ def enqueue_event(
                 "chat_id": order["user__telegram_id"],
                 "text_body": render_to_string(
                     "telegram/order_update.html",
-                    {**context, "subject": subject, "template_name": template_name},
+                    {
+                        **context,
+                        "subject": subject,
+                        "template_name": template_name,
+                        "icon": emoji.for_product(items[0].product_snapshot.get("name", "")),
+                        "e": emoji,
+                    },
                 ).strip(),
             },
         )
@@ -328,7 +344,7 @@ def send_due_telegram() -> int:
                 row.last_error_class = "binding_changed"
             else:
                 try:
-                    telegram.send_message(current, row.text_body)
+                    telegram.send_message(current, row.text_body, buttons=_order_button(row.order))
                 except telegram.TelegramError as error:
                     row.last_error_class = f"TelegramError {error.status or 'network'}"
                     # 400 and 403 are about this chat or message (bot blocked, chat gone);

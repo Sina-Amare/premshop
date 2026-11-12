@@ -72,7 +72,7 @@ SELF = Path(__file__).resolve()
 # The owner chose emoji for the Telegram bot, whose buttons hold text only
 # (design-language, «Decided by the owner», 2026-11-11). They live in this one
 # file, which is still held to every other rule here; the site stays without them.
-BOT_EMOJI = (ROOT / "apps/orders/telegram_emoji.py").resolve()
+BOT_EMOJI = (ROOT / "apps/core/telegram_emoji.py").resolve()
 
 
 def tracked_files() -> list[Path]:
