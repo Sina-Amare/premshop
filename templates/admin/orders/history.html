@@ -20,7 +20,7 @@
     <article class="saved-purchase">
       <p>{{ payment.get_method_display }}، <span class="order-status" data-tone="{{ payment|payment_tone }}">{{ payment.get_status_display }}</span>، {{ payment.amount|toman }}</p>
       <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
-      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %}، {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
+      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by }}</bdi>{% if payment.verified_at %}، {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
     </article>
   {% endfor %}
   {% if can_record_payment %}<a class="order-input-action" href="{% url 'admin:orders_order_record_manual_payment' original.pk %}">{% translate "ثبت پرداخت خارج از درگاه" %}</a>{% endif %}
@@ -32,7 +32,7 @@
   {% for refund in refund_history %}<article class="saved-purchase">
     <p>{% translate "آیتم" %} {{ item_numbers|item_place:refund.order_item_id|fa_digits }}، {{ refund.amount|toman }}، <span class="order-status" data-tone="closed">{{ refund.get_status_display }}</span></p>
     {% if refund.executed_at %}
-    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by.email }}</bdi></p>
+    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by }}</bdi></p>
     <p>{{ refund.get_destination_kind_display }}، <bdi dir="ltr">{{ refund.destination_last4 }}</bdi>، <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
     {% endif %}
   </article>{% endfor %}
