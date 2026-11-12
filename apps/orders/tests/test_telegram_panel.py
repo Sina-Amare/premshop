@@ -220,8 +220,8 @@ HANDLE = support.details()["telegram"]
 @pytest.mark.parametrize(
     ("state", "card", "sentence"),
     [
-        ("awaiting_input", {}, f"اطلاعات فعال‌سازی را برای {HANDLE} بفرستید."),
-        ("refund_owed", {}, f"شماره‌ی کارت یا شبای به نام خودتان را برای {HANDLE} بفرستید."),
+        ("awaiting_input", {}, f"اطلاعات فعال‌سازی و شماره‌ی سفارش را برای {HANDLE} بفرستید."),
+        ("refund_owed", {}, f"شماره‌ی کارت یا شبای به نام خودتان و شماره‌ی سفارش را برای {HANDLE} بفرستید."),
         ("late", {}, f"زمان تحویل گذشته است. برای پیگیری، به {HANDLE} پیام بدهید."),
         ("replacement", {}, NOTHING_TO_DO),
         ("queued", {}, NOTHING_TO_DO),
