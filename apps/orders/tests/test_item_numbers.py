@@ -36,3 +36,22 @@ def test_the_panel_names_an_item_by_its_place_in_its_order(client, buyer, plan, 
     form = client.get(reverse("admin:orders_order_execute_refunds", args=[order.pk]))
     choices = re.findall(r"\(([۰-۹]+)\) · ", form.content.decode())
     assert choices == ["۳"] and not set(choices) & ids
+
+
+def test_numbering_items_costs_the_same_queries_for_one_refund_and_three(
+    client, buyer, plan, operator, queries_for
+):
+    plan.input_type, plan.telegram_required, plan.max_quantity = "none", False, 3
+    plan.save()
+    order, items = paid_order(buyer, operator, [OrderLine(plan, 3)])
+    cancel(items[0], operator)
+    client.force_login(operator)
+    pages = [
+        reverse("admin:orders_order_change", args=[order.pk]),
+        reverse("admin:orders_order_reconciliation"),
+    ]
+    one = [queries_for(url)[0] for url in pages]
+    for item in items[1:]:
+        cancel(item, operator)
+    three = [queries_for(url)[0] for url in pages]
+    assert three == one
