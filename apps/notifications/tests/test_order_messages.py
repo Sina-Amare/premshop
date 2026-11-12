@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from apps.core import events
 from apps.core.formatting import format_jalali, to_persian_digits
+from apps.core.templatetags.fa import toman_plain
 from apps.notifications import services
 from apps.notifications.models import Notification
 from apps.notifications.tests.test_telegram_messages import linked
@@ -31,7 +32,7 @@ from apps.orders.tests.test_delivery import NOTE, VALUE, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_lifecycle_concurrency import in_connection
-from apps.orders.tests.test_paid_cancellation import cancel
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 from apps.orders.tests.test_replacement import claim
 from apps.payments.models import Refund
 from apps.payments.services import execute_refunds, record_manual_payment
@@ -408,3 +409,20 @@ def test_missing_consumer_is_logged_without_breaking_the_action(
     assert order.items.get().status == "QUEUED"
     assert "RuntimeError" in caplog.text
     assert not Notification.objects.exists()
+
+
+def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(
+    buyer, plan, operator, telegram
+):
+    linked(buyer)
+    plan.max_quantity = 2
+    plan.save()
+    order, items = paid_order(buyer, operator, [orders.OrderLine(plan, 2)])
+    cancel(items[0], operator)
+    refund = Refund.objects.get(order_item=items[0])
+    assert refund.amount < order.total_amount, "positive control: one unit of two"
+    found = rows("item_cancelled").filter(order=order)
+    for row in (found.get(channel="email"), found.get(channel="telegram")):
+        body = row.text_body + row.html_body
+        assert toman_plain(refund.amount) in body, body
+        assert toman_plain(order.total_amount) not in body
