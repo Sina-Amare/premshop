@@ -1,6 +1,6 @@
 # ADR-0012 — Auth: email identity, inline checkout OTP, and the sign-in alert
 
-**Status:** Accepted · 2026-09-01
+**Status:** Accepted · 2026-09-01 · superseded by [ADR-0031](0031-sign-in-by-phone.md), 2026-11-12
 
 **Context:** Email is the username and the recovery channel, which makes email possession equivalent to account access (OTP login and password reset both ride it) — irreducibly so, until a second factor exists. Meanwhile a hard "verify before you may buy" gate turns every undelivered email into a lost sale.
 

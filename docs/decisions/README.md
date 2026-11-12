@@ -17,7 +17,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-10 |
 | [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
-| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in, one way in per account | Accepted, amended | 2026-11-12 |
+| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in, one way in per account | Superseded by 0031 | 2026-11-12 |
 | [0013](0013-payment-provider-interface-deferred.md) | No payment-provider interface until a second gateway exists | Accepted | 2026-09-01 |
 | [0014](0014-deliberate-simplifications.md) | Deliberate simplifications, each with its flip condition | Accepted, amended | 2026-11-04 |
 | [0015](0015-error-tracking-glitchtip.md) | Error tracking: sentry-sdk reporting to self-hosted GlitchTip | Accepted | 2026-09-01 |
@@ -36,10 +36,11 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0028](0028-product-page-content-model.md) | A product page is facts in fields and prose in sections of six kinds | Accepted, amended | 2026-10-31 |
 | [0029](0029-unpaid-claims-and-scheduled-release.md) | Unpaid claims, whole-order release and scheduled jobs | Accepted, amended | 2026-11-10 |
 | [0030](0030-legal-page-drafts.md) | Legal pages with protected drafts | Accepted, amended | 2026-11-02 |
+| [0031](0031-sign-in-by-phone.md) | Sign-in by mobile number and SMS code | Accepted | 2026-11-12 |
 
 ## Writing a record
 
-1. Take the next number, `0031`, and name the file `NNNN-short-title.md`.
+1. Take the next number, `0032`, and name the file `NNNN-short-title.md`.
 2. Follow the shape of the existing records: status, context, decision, alternatives considered, consequences, and when to revisit.
 3. Add a row to the table above.
 4. To change an accepted decision, append `**Amendment — YYYY-MM-DD.**` with what changed and why, and update its row here. To replace one, write a new record and mark the old one superseded.

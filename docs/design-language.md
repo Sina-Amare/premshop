@@ -150,7 +150,6 @@ Email is a different medium with its own rules ([ADR-0023](decisions/0023-email-
 - **Fonts.** No web font is loaded. The stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first one installed.
 - **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks attention only: a code's expiry, a delivery link's expiry and the customer's next move. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
 - **The wordmark is set in type**, never as an image, because blocked images would show a broken box on the messages where trust matters most. It is `PremShop`, in Latin, everywhere: the site header and footer, the sender name, subjects and the masthead.
-- **Code cells** show six isolated Latin digits in a left-to-right row; what is typed is what is shown. Persian digits are isolated forms that never join, so the reason for the tracking rule does not reach them, and the sign-in code carries `letter-spacing: 3px`. No other element does.
 
 Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` is on.
 
