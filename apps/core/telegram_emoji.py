@@ -9,7 +9,11 @@ from django.utils.text import slugify
 
 UNPAID, ACTIVE, DELIVERED, CLOSED = "⏳", "🔄", "✅", "❌"
 BUY, ACCOUNT, SUPPORT, BACK, COPY = "🛒", "👤", "💬", "🔙", "📋"
-OTHER_PRODUCT = "📦"
+HOME, BOT, LINK, CONFIRM, EXPIRED, LIMITED = "🏠", "🔔", "🔗", "✅", "⌛", "⚠️"
+WEB, SHARE, ORDER = "🌐", "📤", "🧾"
+# Field labels: «📦 محصول: …».
+PRODUCT, STATUS, AMOUNT, DATE, DEADLINE = "📦", "🔖", "💰", "📅", "⏰"
+OTHER_PRODUCT = PRODUCT
 
 # Matched as whole words of the product's name, first match first, so a narrower name
 # (apple-music) comes before a wider one (apple).

@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts import telegram as links
 from apps.accounts.models import User
-from apps.accounts.tests.test_telegram_link import TOKEN, press, start
+from apps.accounts.tests.test_telegram_link import TOKEN, framed, press, shown, start
 from apps.core import ratelimit
 from apps.core import telegram as telegram_api
 
@@ -71,32 +71,48 @@ def test_an_old_panel_past_the_deletion_window_loses_its_buttons(bot, linked):
     ) in bot.calls
 
 
-def test_a_press_is_answered_first_then_redraws_the_panel(bot, linked):
+def test_a_press_redraws_the_panel_then_answers(bot, linked):
+    # The customer sees the new screen after one round trip to Telegram, not two: the edit
+    # replaces the pressed button, and the answer after it only clears Telegram's wait.
     links.handle_update(press("p:l:current"))
-    (answer, _), (edit, edited) = bot.calls
-    assert (answer, edit) == ("answerCallbackQuery", "editMessageText")
+    (edit, edited), (answer, _) = bot.calls
+    assert (edit, answer) == ("editMessageText", "answerCallbackQuery")
     assert edited["message_id"] == 11 and "در جریان" in edited["text"]
     assert edited["reply_markup"]["inline_keyboard"][-1][0]["callback_data"] == "p:home"
+
+
+def test_a_refused_redraw_still_answers_the_press(bot, linked):
+    bot.failing.add("editMessageText")
+    with pytest.raises(telegram_api.TelegramError):
+        links.handle_update(press("p:l:current"))
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery"]
+
+
+def pointer_only(screens, settings):
+    """The visitor's reply and nothing of a panel: no button that opens an order or a list."""
+    for text, buttons in screens:
+        framed(text, buttons)
+        assert not any("callback_data" in button for row in buttons for button in row)
+        urls = [button["url"] for row in buttons for button in row]
+        assert settings.SITE_URL + reverse("account") + "#telegram" in urls
 
 
 def test_a_press_from_a_telegram_no_longer_linked_shows_no_account(bot, linked, settings):
     links.handle_update(start("/start"))
     User.objects.filter(pk=linked.pk).update(telegram_id=None)
     links.handle_update(press("p:l:current"))
-    edited = bot.calls[-1][1]
-    assert "reply_markup" not in edited and "سفارش‌های من" not in edited["text"]
-    assert settings.SITE_URL + reverse("account") in edited["text"]
+    assert bot.calls[-2][0] == "editMessageText"
+    pointer_only(shown(bot.calls[-2:]), settings)
 
 
 def test_a_deactivated_account_shows_nothing(bot, linked, settings):
     User.objects.filter(pk=linked.pk).update(is_active=False)
     links.handle_update(start("/start"))
     links.handle_update(press("p:l:current"))
-    shown = [p for m, p in bot.calls if m in ("sendMessage", "editMessageText")]
-    assert len(shown) == 2
-    # Both get the pointer to the account page, never a panel: no buttons to press.
-    assert all("reply_markup" not in payload for payload in shown)
-    assert all(settings.SITE_URL + reverse("account") in payload["text"] for payload in shown)
+    screens = shown(bot.calls)
+    assert len(screens) == 2
+    # Both get the pointer to the account page, never a panel.
+    pointer_only(screens, settings)
 
 
 def test_one_telegrams_spent_limit_leaves_another_alone(bot, linked):
@@ -106,7 +122,7 @@ def test_one_telegrams_spent_limit_leaves_another_alone(bot, linked):
         links.handle_update(press("p:home"))
     bot.calls.clear()
     links.handle_update(press("p:l:current", telegram_id=777))
-    assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery"]
 
 
 def test_panel_presses_are_limited_per_telegram(bot, linked):
@@ -132,7 +148,7 @@ def test_a_late_answer_still_redraws_the_panel(bot, linked):
     # must not.
     bot.failing.add("answerCallbackQuery")
     links.handle_update(press("p:l:current"))
-    assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery"]
 
 
 def test_a_late_answer_still_links_and_says_so(bot):
@@ -140,7 +156,7 @@ def test_a_late_answer_still_links_and_says_so(bot):
     token = links.start_link(user)
     bot.failing.add("answerCallbackQuery")
     links.handle_update(press(f"link:{token}"))
-    assert methods(bot)[-1] == "editMessageText"
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendMessage"]
     assert User.objects.get(pk=user.pk).telegram_id == 555
 
 

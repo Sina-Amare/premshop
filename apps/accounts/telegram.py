@@ -27,6 +27,7 @@ from django.utils.crypto import salted_hmac
 
 from apps.accounts.models import User
 from apps.core import ratelimit, support, telegram
+from apps.core import telegram_emoji as emoji
 from apps.core.email import send_templated_email
 
 logger = logging.getLogger(__name__)
@@ -36,18 +37,23 @@ OFFSET_KEY = "telegram:update-offset"
 DOWN_KEY = "telegram:poll-down"
 COMMANDS_KEY = "telegram:commands"
 
-CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> در PremShop را تأیید کنید."
-CONFIRM_BUTTON = "تأیید اتصال"
-LINKED = (
-    "<b>تلگرام شما به حساب PremShop وصل شد.</b>\n"
-    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.\n"
-    '<a href="{account}">مدیریت اتصال در سایت</a>'
+# Every screen opens with its emoji and a bold title, and its links are buttons (TB).
+CONFIRM = (
+    f"{emoji.LINK} <b>اتصال تلگرام به PremShop</b>\n"
+    f"{emoji.ACCOUNT} حساب کاربری: <code>{{email}}</code>\n"
+    "اتصال این تلگرام به حساب کاربری بالا را تأیید کنید."
 )
-ALREADY = "این تلگرام به حساب PremShop شما وصل است."
+CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
+LINKED = (
+    f"{emoji.CONFIRM} <b>تلگرام شما به حساب PremShop وصل شد.</b>\n"
+    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد."
+)
+ALREADY = f"{emoji.CONFIRM} <b>این تلگرام به حساب PremShop شما وصل است.</b>"
 SLOW = "کمی صبر کنید و دوباره بزنید."
 COMMAND = "پنل سفارش‌ها"
 
-Screen = tuple[str, list[list[dict[str, Any]]]]
+Buttons = list[list[dict[str, Any]]]
+Screen = tuple[str, Buttons]
 # The orders app draws the panel's screens, since accounts may not import orders: it
 # registers `render(user, screen)` here as it starts (orders.apps).
 _panel: Callable[[User, str], Screen] | None = None
@@ -64,13 +70,36 @@ def _screen(user: User, name: str) -> Screen:
     return _panel(user, name)
 
 
-LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
-EXPIRED = 'این پیوند دیگر معتبر نیست.\n<a href="{account}">دریافت پیوند جدید</a>'
+LIMITED = f"{emoji.LIMITED} <b>سقف اتصال این تلگرام برای امروز پر شده است.</b>"
+EXPIRED = f"{emoji.EXPIRED} <b>این پیوند دیگر معتبر نیست.</b>"
 POINTER = (
-    "<b>ربات اطلاع‌رسانی سفارش‌های PremShop</b>\n"
-    "پیام‌های این گفت‌وگو خوانده نمی‌شوند. برای پرسش به @{support} پیام بدهید.\n"
-    '<a href="{account}">اتصال حساب در سایت</a>'
+    f"{emoji.BOT} <b>ربات اطلاع‌رسانی سفارش‌های PremShop</b>\n"
+    "با اتصال حساب کاربری، خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا هم می‌رسد.\n\n"
+    "<b>اتصال در سه قدم</b>\n"
+    "۱. در سایت وارد حساب کاربری شوید.\n"
+    "۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.\n"
+    "۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.\n\n"
+    "پیام‌های این گفت‌وگو خوانده نمی‌شوند؛ برای پرسش «پشتیبانی» را بزنید."
 )
+
+
+def _link_settings(text: str) -> dict[str, Any]:
+    return {"text": text, "url": f"{_account_url()}#telegram"}
+
+
+def _pointer() -> Screen:
+    """The reply to anyone the bot does not know: what it is for and how to link."""
+    return POINTER, [
+        [{**_link_settings(f"{emoji.LINK} اتصال حساب"), "style": "primary"}],
+        [
+            {"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")},
+            {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support.details()["telegram_url"]},
+        ],
+    ]
+
+
+def _expired() -> Screen:
+    return EXPIRED, [[{**_link_settings(f"{emoji.LINK} دریافت پیوند جدید"), "style": "primary"}]]
 
 
 def _digest(token: str) -> str:
@@ -208,13 +237,14 @@ def _messaged(message: dict[str, Any]) -> None:
     token = token.strip()
     user = link_owner(token) if command == "/start" and token else None
     if user is not None:
+        # The bot's one green button: the customer's own yes.
+        button = {"text": CONFIRM_BUTTON, "callback_data": f"link:{token}", "style": "success"}
         telegram.send_message(
-            chat_id,
-            CONFIRM.format(email=escape(mask_email(user.email))),
-            buttons=[[{"text": CONFIRM_BUTTON, "callback_data": f"link:{token}"}]],
+            chat_id, CONFIRM.format(email=escape(mask_email(user.email))), buttons=[[button]]
         )
     elif command == "/start" and token:
-        telegram.send_message(chat_id, EXPIRED.format(account=_account_url()))
+        text, buttons = _expired()
+        telegram.send_message(chat_id, text, buttons=buttons)
     elif (linked := User.objects.filter(telegram_id=chat_id, is_active=True).first()) is not None:
         # Messages spend the presses' budget: a panel costs queries and Telegram calls, and
         # a scripted /start loop would keep the one poll loop from other customers.
@@ -226,9 +256,22 @@ def _messaged(message: dict[str, Any]) -> None:
             with suppress(telegram.TelegramError):
                 telegram.delete_message(chat_id, int(message["message_id"]))
     else:
-        telegram.send_message(
-            chat_id, POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
-        )
+        text, buttons = _pointer()
+        telegram.send_message(chat_id, text, buttons=buttons)
+
+
+def _show(callback: dict[str, Any], chat_id: int, message_id: int, screen: Screen) -> None:
+    """Draw the pressed message's next screen, then answer the press.
+
+    The edit replaces the pressed button, so the customer sees the result after one round
+    trip to Telegram rather than two; the answer only ends Telegram's wait, and goes even
+    when the edit is refused.
+    """
+    text, buttons = screen
+    try:
+        telegram.edit_message(chat_id, message_id, text, buttons=buttons)
+    finally:
+        _answer(callback["id"])
 
 
 def _pressed(callback: dict[str, Any]) -> None:
@@ -242,18 +285,22 @@ def _pressed(callback: dict[str, Any]) -> None:
         _pressed_panel(callback, chat_id, int(message["message_id"]), data.removeprefix("p:"))
         return
     token = data.removeprefix("link:")
+    user: User | None = None
+    screen: Screen
     if link_owner(token) is not None and not ratelimit.hit(
         ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM, str(sender["id"])
     ):
-        text = LIMITED
-    elif confirm_link(token, sender) is not None:
-        text = LINKED.format(account=_account_url())
+        screen = (LIMITED, [])
+    elif (user := confirm_link(token, sender)) is not None:
+        screen = (LINKED, [[_link_settings(f"{emoji.LINK} مدیریت اتصال")]])
     elif User.objects.filter(telegram_id=sender["id"]).exists():
-        text = ALREADY
+        screen = (ALREADY, [])
     else:
-        text = EXPIRED.format(account=_account_url())
-    _answer(callback["id"])
-    telegram.edit_message(chat_id, message["message_id"], text)
+        screen = _expired()
+    _show(callback, chat_id, int(message["message_id"]), screen)
+    if user is not None:
+        # The panel opens beneath as a message of its own, so the link's note stays above it.
+        _open_panel(chat_id, user)
 
 
 def _answer(callback_id: str, text: str = "") -> None:
@@ -290,16 +337,12 @@ def _pressed_panel(callback: dict[str, Any], chat_id: int, message_id: int, scre
     # Every press asks again whose Telegram this is: the button itself proves nothing.
     user = User.objects.filter(telegram_id=presser, is_active=True).first()
     if user is None:
-        _answer(callback["id"])
-        pointer = POINTER.format(account=_account_url(), support=support.TELEGRAM_HANDLE)
-        telegram.edit_message(chat_id, message_id, pointer)
+        _show(callback, chat_id, message_id, _pointer())
         return
     if not ratelimit.hit(ratelimit.TELEGRAM_PANEL_PRESSES, str(presser)):
         _answer(callback["id"], SLOW)
         return
-    _answer(callback["id"])
-    text, buttons = _screen(user, screen)
-    telegram.edit_message(chat_id, message_id, text, buttons=buttons)
+    _show(callback, chat_id, message_id, _screen(user, screen))
 
 
 def _list_commands() -> None:
