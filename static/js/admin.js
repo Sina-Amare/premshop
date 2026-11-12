@@ -108,8 +108,9 @@
 
   // Numbers Django and Unfold write with Latin digits, on load and again on
   // every tick or added row: the selection count, the number on an unsaved
-  // inline row, and a search's count of results.
-  const LATIN_NUMBERS = ".action-counter, .stacked-counter, h1 .text-subtle";
+  // inline row, a search's count of results, and a long list's page numbers,
+  // whose links keep the Latin number Django reads.
+  const LATIN_NUMBERS = ".action-counter, .stacked-counter, h1 .text-subtle, [data-page-number]";
   const persianNumbers = () => {
     if (!persianPanel()) return;
     document.querySelectorAll(LATIN_NUMBERS).forEach((element) => {

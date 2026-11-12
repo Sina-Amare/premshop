@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 from smtplib import (
     SMTPDataError,
@@ -142,6 +143,20 @@ def test_attempt_cleanup_keeps_the_last_90_days():
     MailAttempt.objects.filter(pk=row.pk).update(created_at=datetime.now(UTC) - timedelta(days=91))
     assert clean_mail_attempts.call_local() == 1
     assert not MailAttempt.objects.exists()
+
+
+def test_the_mail_list_and_its_page_print_the_service_code_in_persian(client, django_user_model):
+    from apps.core.models import MailAttempt
+
+    user = django_user_model.objects.create_superuser("owner@example.test", "owner-password")
+    row = MailAttempt.objects.create(
+        template="otp_code", recipient_hash="0" * 64, status="rejected", smtp_code=421
+    )
+    client.force_login(user)
+    listing = client.get(reverse("admin:core_mailattempt_changelist")).content.decode()
+    detail = client.get(reverse("admin:core_mailattempt_change", args=[row.pk])).content.decode()
+    for body in (listing, detail):
+        assert "۴۲۱" in body and not re.search(r">\s*421\s*<", body)
 
 
 def test_panel_search_is_exact_and_read_only(client, django_user_model):

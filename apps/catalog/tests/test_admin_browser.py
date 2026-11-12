@@ -408,6 +408,20 @@ def test_the_panel_numbers_its_rows_and_results_in_persian_digits(open_panel, pr
     assert not LATIN_DIGIT.search(count.inner_text()), count.inner_text()
 
 
+def test_a_long_lists_page_numbers_read_in_persian_and_link_in_latin(open_panel):
+    from apps.core.models import MailAttempt
+
+    MailAttempt.objects.bulk_create(
+        MailAttempt(template="otp_code", recipient_hash="0" * 64, status="accepted")
+        for _ in range(101)
+    )
+    page = open_panel("/admin/core/mailattempt/")
+    numbers = page.locator("[data-page-number]")
+    assert numbers.count() >= 2, "positive control: the list runs to a second page"
+    assert not LATIN_DIGIT.search(" ".join(numbers.all_inner_texts()))
+    assert page.locator('[data-page-number] a[href*="p=2"]').count() == 1
+
+
 def test_the_english_panel_keeps_its_own_digits_and_names(open_panel, product, live_server):
     """The language switch's English side: Latin digits, and English names
     for the controls that are only an icon."""
