@@ -22,6 +22,7 @@ from django.http import HttpRequest
 from django.utils.html import format_html
 
 from apps.accounts import otp
+from apps.accounts.backends import CODE_SIGN_IN
 from apps.accounts.models import User
 from apps.core import ratelimit, support
 from apps.core.sessions import login_session
@@ -178,7 +179,7 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
 
     A right code for a staff account gets the same None: a staff session opens the
     operator panel, which only the panel's password may open, so a stolen mailbox
-    or SIM is not the panel's key.
+    is not the panel's key.
     """
     email = otp.normalize_email(email)
     ip = ratelimit.client_ip(request)
@@ -203,7 +204,7 @@ def complete_code_login(request: HttpRequest, email: str, code: str) -> User | N
     # session fixation — an attacker who planted a known session id in the
     # browser before login cannot reuse it after.
     with login_session(request):
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        django_login(request, user, backend=CODE_SIGN_IN)
 
     # Receiving the code proves the address works, which is the only claim email
     # verification ever makes. Hence no separate "click to verify" mail (ADR-0012).

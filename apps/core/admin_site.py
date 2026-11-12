@@ -6,12 +6,15 @@ from typing import Any
 
 from django.contrib import admin
 from django.contrib.admin import sites
+from django.contrib.auth import BACKEND_SESSION_KEY
 from django.http import HttpRequest, HttpResponse
 from unfold.apps import DefaultAppConfig
 from unfold.dataclasses import SearchResult
 from unfold.sites import UnfoldAdminSite
 
 from apps.core.sessions import login_session
+
+PASSWORD_BACKEND = "django.contrib.auth.backends.ModelBackend"
 
 
 class PanelSite(UnfoldAdminSite):
@@ -36,6 +39,15 @@ class PanelSite(UnfoldAdminSite):
             except Exception:  # noqa: BLE001 — the panel must explain an accounting outage
                 context["mail_quota"] = {"warning": True, "unavailable": True}
         return context
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        # Only the panel's own password sign-in opens the panel. A session any other
+        # way in opened (a sign-in code's) stays out, even on an account made staff
+        # afterwards, since a session does not change when is_staff does.
+        return (
+            super().has_permission(request)
+            and request.session.get(BACKEND_SESSION_KEY) == PASSWORD_BACKEND
+        )
 
     def login(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None

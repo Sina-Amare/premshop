@@ -1,9 +1,7 @@
 """Customers in the admin: look one up, see whether the email is verified, deactivate.
 
-Read-mostly by design. Passwords are never shown or set here — an OTP-only
-account stays OTP-only until the customer sets one — and the operator panel
-proper (S7) is where account actions belong. This exists so the customer list is
-not invisible until then.
+Read-mostly by design. Passwords are never shown or set here: a customer has
+none, and staff change theirs on the panel's own password page.
 """
 
 from __future__ import annotations
@@ -23,6 +21,7 @@ from apps.accounts import services
 from apps.accounts.models import User
 from apps.accounts.otp import normalize_email
 from apps.core import ratelimit
+from apps.core.admin_site import PASSWORD_BACKEND
 from apps.core.formatting import format_jalali, to_persian_digits
 
 
@@ -49,6 +48,8 @@ class PanelLoginForm(AuthenticationForm):
                 raise ValidationError(error.message, code="rate_limited") from None
             if self.user_cache is None:
                 raise self.get_invalid_login_error()
+            # The password backend, never the code's: the panel lets this session in.
+            self.user_cache.backend = PASSWORD_BACKEND
             self.confirm_login_allowed(self.user_cache)
         # Only a sign-in that passed. A post with no password skips the check
         # and returns cleanly too; clearing on it would undo the limit.

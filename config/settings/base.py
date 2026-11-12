@@ -288,6 +288,12 @@ DNS_NAME._fqdn = env("EMAIL_HELO_NAME", "premshop.ir")
 # model only while the database has no tables; afterwards it is a hand-rebuilt
 # schema on a live system. accounts.0001 is migration one of the whole history.
 AUTH_USER_MODEL = "accounts.User"
+# Django's own backend first, which the panel's password sign-in and force_login use;
+# the second only names the sessions a sign-in code opened, so the panel can refuse them.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "apps.accounts.backends.CodeSignInBackend",
+]
 
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
 FIELD_ENCRYPTION_KEY_FALLBACKS = env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")

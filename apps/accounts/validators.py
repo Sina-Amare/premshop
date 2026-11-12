@@ -1,10 +1,9 @@
 """Django's password validators, saying the same thing in this shop's words.
 
 Django ships Persian translations of its validator messages, but they say
-«گذرواژه» where every screen here says «رمز عبور». The hint under the field, the
-error beside it and the confirmation above it have to use one word for the
-thing, or the page reads as two systems bolted together. The rules themselves
-are Django's, untouched — only the sentence a customer sees changes.
+«گذرواژه» where every screen here says «رمز عبور». The rules themselves are
+Django's, untouched; only the sentence changes. Staff are the only accounts with
+a password, and they meet these on the panel's password page.
 """
 
 from __future__ import annotations

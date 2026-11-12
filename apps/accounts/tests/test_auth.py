@@ -664,21 +664,21 @@ def test_code_login_returns_you_to_the_page_you_asked_for(client):
     """The code flow spans three requests, so the destination rides the
     session rather than the URL."""
     client.post(
-        reverse("login-code") + "?next=/account/password/",
-        {"email": "lands@example.test", "next": "/account/password/"},
+        reverse("login-code") + "?next=/account/orders/",
+        {"email": "lands@example.test", "next": "/account/orders/"},
     )
     code = code_from(mail.outbox[-1])
 
     response = client.post(reverse("login-code-verify"), {"code": code})
 
     assert response.status_code == 302
-    assert response.headers["Location"] == "/account/password/"
+    assert response.headers["Location"] == "/account/orders/"
 
 
 def test_the_json_path_reports_the_same_destination(client):
     client.post(
-        reverse("login-code") + "?next=/account/password/",
-        {"email": "json@example.test", "next": "/account/password/"},
+        reverse("login-code") + "?next=/account/orders/",
+        {"email": "json@example.test", "next": "/account/orders/"},
     )
     code = code_from(mail.outbox[-1])
 
@@ -686,7 +686,7 @@ def test_the_json_path_reports_the_same_destination(client):
         reverse("login-code-verify"), {"code": code}, headers={"accept": "application/json"}
     )
 
-    assert json.loads(response.content)["next"] == "/account/password/"
+    assert json.loads(response.content)["next"] == "/account/orders/"
 
 
 @pytest.mark.parametrize(

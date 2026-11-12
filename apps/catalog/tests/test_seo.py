@@ -110,7 +110,6 @@ ALL_PAGES = {
     "search": lambda shop: reverse("search") + "?q=claude",
     "search miss": lambda shop: reverse("search") + "?q=xbox",
     "sign-in": lambda shop: reverse("login-code"),
-    "code request": lambda shop: reverse("login-code"),
     "404": lambda shop: "/no-such-page/",
 }
 

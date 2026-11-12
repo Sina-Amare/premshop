@@ -292,8 +292,7 @@ def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
 
 
 def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
-    """The password form lives on its own page, so a phone error cannot reach
-    it. What must still hold is that exactly one field is marked."""
+    """The account page holds one field, so exactly one field is marked."""
     client.force_login(user)
 
     body = client.post(reverse("account"), {"phone": "12345"}).content.decode()
@@ -451,6 +450,6 @@ def test_the_dashboard_names_one_next_step_at_a_time(client, user):
 
     body = client.get(reverse("account")).content.decode()
 
-    # Nothing to prompt: this account can already sign in both ways, and the
-    # phone is an ordinary editable field rather than a chore to nag about.
+    # Nothing to prompt: the phone is an ordinary editable field rather than a
+    # chore to nag about.
     assert 'class="acct__next"' not in body
