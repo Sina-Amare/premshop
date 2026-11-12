@@ -21,3 +21,5 @@
 
 
 **Invoice and tracking amendment — 2026-10-29.** The owner-only downloadable invoice is now built as a frozen purchase summary. It contains no credentials, customer inputs/contact, tracking tokens or support identifiers; unpaid/cancelled state and a payment-evidence disclaimer are explicit. Public tracking is a separate read-only projection of product names and safe statuses/times, never invoice access. The operator payment lookup and verified-payment activation remain future work.
+
+**Amendment — 2026-11-12: email is no longer proof.** Since [ADR-0031](0031-sign-in-by-phone.md) an account's email is a contact address that nobody confirms, typed at checkout or on the account page, so holding it no longer equals holding the account, and the context's premise for email no longer holds. The magic link goes only through a linked Telegram, or to an email address the account has confirmed first; until such a confirmation exists, no link goes by email.

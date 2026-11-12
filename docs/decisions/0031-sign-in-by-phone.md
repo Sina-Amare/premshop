@@ -30,5 +30,6 @@
 - **An SMS outage stops new sign-ins until Telegram codes exist.** Domestic SMS was cut for about nine days in January 2026. A signed-in device keeps its two-week session.
 - **The shop-wide ceiling trades availability for money.** Spending the shop's day of SMS stops codes for every customer until the window turns, but cannot drain the balance.
 - **A customer who gives no email receives no mail.** Their order notices reach them through Telegram or the order page.
+- **An email is never proof of the account.** Anyone can type any address, so a delivery link never goes to an unconfirmed one ([ADR-0008](0008-content-free-messages-and-magic-link.md), amended 2026-11-12).
 
 **Revisit when** SMS proves unreliable or dearer than Telegram's own code service, when normal trade reaches the daily budget, or when a customer without an Iranian number needs an account.
