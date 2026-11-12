@@ -1866,10 +1866,8 @@ def test_an_svg_logo_is_refused_in_persian(client, operator, catalogue, media):
     assert response.status_code == 200
     error = errors_under(response.content.decode(), "image")
     # Every logo the shop has is an SVG: the message names the formats, not "no image".
-    assert (
-        "این فایل سالم نیست یا فرمت آن پشتیبانی نمی‌شود. یک تصویر PNG، JPEG یا WebP انتخاب کنید."
-        in error
-    ), error
+    # The same sentence the shop's own image check gives (apps/catalog/models.py).
+    assert "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است." in error, error
     assert not [path for path in media.rglob("*") if path.is_file()]
 
 

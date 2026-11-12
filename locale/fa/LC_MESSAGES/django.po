@@ -426,7 +426,7 @@ msgid "Choose file to upload"
 msgstr "انتخاب فایل"
 
 msgid "Upload a valid image. The file you uploaded was either not an image or a corrupted image."
-msgstr "این فایل سالم نیست یا فرمت آن پشتیبانی نمی‌شود. یک تصویر PNG، JPEG یا WebP انتخاب کنید."
+msgstr "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."
 
 msgid "Delete selected %(verbose_name_plural)s"
 msgstr "حذف این %(verbose_name_plural)s"
