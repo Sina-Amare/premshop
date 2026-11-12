@@ -113,7 +113,9 @@ def test_no_template_leaks_an_unrendered_placeholder(name):
 def test_the_message_is_multipart_with_both_halves():
     """HTML-only mail scores worse with spam filters and is unreadable to some clients."""
     sent = send_templated_email(
-        "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]
+        "telegram_changed",
+        to=["customer@example.test"],
+        context=EMAIL_PREVIEWS["telegram_changed"],
     )
 
     assert sent == 1
@@ -125,25 +127,11 @@ def test_the_message_is_multipart_with_both_halves():
     assert "<!doctype html>" in html.lower()
 
 
-def test_the_code_reaches_both_halves_in_persian_digits():
-    """A customer reading either part must see the same code they have to type."""
-    _, text, html = render_email("otp_code", EMAIL_PREVIEWS["otp_code"])
-
-    assert "۴۱۸۳۰۵" in text
-    assert "۴۱۸۳۰۵" in html
-    assert "418305" not in text
-
-
-def test_code_mail_warns_against_sharing_without_an_inbox_access_claim():
-    _, text, html = render_email("otp_code", EMAIL_PREVIEWS["otp_code"])
-    for body in (text, html):
-        assert "این کد را به کسی ندهید." in body
-        assert "بدون دسترسی به ایمیل" not in body
-
-
 def test_replies_go_to_the_support_mailbox():
     send_templated_email(
-        "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]
+        "telegram_changed",
+        to=["customer@example.test"],
+        context=EMAIL_PREVIEWS["telegram_changed"],
     )
 
     assert mail.outbox[0].reply_to == [settings.SUPPORT_EMAIL]
@@ -152,9 +140,9 @@ def test_replies_go_to_the_support_mailbox():
 def test_a_newline_in_the_context_cannot_inject_a_header():
     """The classic header-injection vector: everything after a raw newline in a
     header is parsed as a new header. The subject is normalised before it can."""
-    poisoned = {**EMAIL_PREVIEWS["otp_code"], "code": "111111\nBcc: attacker@example.test"}
+    poisoned = {**EMAIL_PREVIEWS["sms_budget"], "sent": "100\nBcc: attacker@example.test"}
 
-    subject, _, _ = render_email("otp_code", poisoned)
+    subject, _, _ = render_email("sms_budget", poisoned)
 
     assert "\n" not in subject
     assert "\r" not in subject
@@ -249,8 +237,6 @@ def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
 
     for value in spaced:
         assert value.strip() in {"0", "3px"}, f"unexpected tracking on Persian text: {value}"
-    if name == "otp_code":
-        assert "3px" in spaced, "the code lost its tracking"
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))

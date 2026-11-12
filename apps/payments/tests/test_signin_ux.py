@@ -37,7 +37,7 @@ def test_empty_guest_review_has_an_explicit_empty_state(client):
 def test_a_guest_signs_in_at_checkout_by_code_only(client, plan):
     client.post(reverse("cart-add"), {"plan": plan.pk})
     body = client.get(reverse("checkout")).content.decode()
-    assert 'name="email"' in body
+    assert 'name="phone"' in body
     assert 'type="password"' not in body
 
 
@@ -81,11 +81,11 @@ def test_cart_polling_never_replaces_checkout_or_discards_typed_values(
         expect(summary.get_by_role("link", name="ویرایش سبد خرید", exact=True)).to_be_visible()
         expect(page.locator(".cart-heading a")).to_have_count(0)
         field = (
-            page.locator('[name="phone"]')
+            page.locator('[name="email"]')
             if authenticated
-            else page.get_by_label("ایمیل", exact=True)
+            else page.get_by_label("شماره‌ی موبایل", exact=True)
         )
-        value = "09121234567" if authenticated else "typed@example.test"
+        value = "typed@example.test" if authenticated else "09121234567"
         field.fill(value)
         page.clock.fast_forward(16000)
         page.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
@@ -154,8 +154,8 @@ def test_inline_signin_disables_the_visible_submit_while_request_is_pending(brow
     try:
         page.goto(live_server.url + reverse("checkout"))
         page.route("**/login/code/", lambda route: held.append(route))
-        form = page.locator("[data-inline-email]")
-        form.get_by_label("ایمیل", exact=True).fill("buyer@example.test")
+        form = page.locator("[data-inline-phone]")
+        form.get_by_label("شماره‌ی موبایل", exact=True).fill("09121234567")
         submit = form.locator('[type="submit"]')
         submit.click()
         expect(form).to_have_attribute("aria-busy", "true")

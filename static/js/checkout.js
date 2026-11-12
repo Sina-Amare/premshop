@@ -4,7 +4,7 @@
     document.querySelector('[data-checkout-error]')?.focus();
     return;
   }
-  const email = root.querySelector('[data-inline-email]');
+  const phone = root.querySelector('[data-inline-phone]');
   const code = root.querySelector('[data-inline-code]');
   const resend = root.querySelector('[data-inline-resend]');
   const status = root.querySelector('[data-login-status]');
@@ -12,13 +12,13 @@
   let resendAt = 0;
   let timer;
   edit.addEventListener('click', () => {
-    email.hidden = false;
+    phone.hidden = false;
     code.hidden = true;
     resend.hidden = true;
     edit.hidden = true;
     code.reset();
     status.hidden = true;
-    email.querySelector('input[name=email]').focus();
+    phone.querySelector('input[name=phone]').focus();
   });
   function cooldown(seconds) {
     resendAt = Date.now() + seconds * 1000;
@@ -33,7 +33,7 @@
     tick();
     timer = setInterval(tick, 1000);
   }
-  for (const form of [email, code, resend]) {
+  for (const form of [phone, code, resend]) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
@@ -58,12 +58,12 @@
           window.location.assign(window.location.pathname);
           return;
         }
-        email.hidden = true;
+        phone.hidden = true;
         code.hidden = false;
         resend.hidden = false;
         edit.hidden = false;
-        status.textContent = 'کد ورود را به ایمیلتان فرستادیم. آن را در کادر زیر وارد کنید.';
-        cooldown(data.cooldown || 60);
+        status.textContent = 'کد ورود را با پیامک فرستادیم. آن را در کادر زیر وارد کنید.';
+        cooldown(data.cooldown || 120);
         code.querySelector('input[name=code]').focus();
       } catch {
         status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';

@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.accounts.telegram import mask_email
+from apps.accounts.telegram import account_label
 from apps.accounts.tests.test_telegram_link import framed
 from apps.core import support
 from apps.core import telegram_emoji as emoji
@@ -77,7 +77,7 @@ def test_home_is_a_grid_counting_each_kind_of_order(buyer, plan, operator, setti
     placed(buyer, plan)
     placed(User.objects.create_user("stranger@example.test"), plan)
     text, buttons = telegram_panel.render(buyer, "home")
-    assert f"{emoji.ACCOUNT} حساب کاربری: {mask_email(buyer.email)}" in text
+    assert f"{emoji.ACCOUNT} حساب کاربری: {account_label(buyer)}" in text
     framed(text, buttons)
     site = settings.SITE_URL
     assert buttons == [

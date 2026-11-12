@@ -14,10 +14,10 @@ import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from django.core import mail
 
 from apps.accounts.models import User
 from apps.accounts.tests.test_auth import ASCII_TO_PERSIAN, PASSWORD, code_from
+from apps.core import ratelimit, sms
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
@@ -57,20 +57,22 @@ def page(browser):
 
 @pytest.fixture
 def user():
-    return User.objects.create_user("browser@example.test", PASSWORD, is_verified=True)
+    return User.objects.create_user(
+        "browser@example.test", PASSWORD, phone="09121234560", is_verified=True
+    )
 
 
-def request_code(page, live_server, email: str) -> None:
+def request_code(page, live_server, phone: str) -> None:
     page.goto(f"{live_server.url}/login/code/")
-    page.fill("main input[name=email]", email)
+    page.fill("main input[name=phone]", phone)
     page.click("main button[type=submit]")  # not the header search button
     page.wait_for_url("**/login/code/verify/")
 
 
 def test_resend_stays_disabled_while_its_request_is_pending(page, live_server, user):
     page.clock.install()
-    request_code(page, live_server, user.email)
-    page.clock.fast_forward("01:01")
+    request_code(page, live_server, user.phone)
+    page.clock.fast_forward("02:01")
     held = []
     page.route("**/login/code/resend/", lambda route: held.append(route))
     page.click("#resend")
@@ -90,7 +92,7 @@ def test_resend_stays_disabled_while_its_request_is_pending(page, live_server, u
 
 
 def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_path):
-    request_code(page, live_server, user.email)
+    request_code(page, live_server, user.phone)
 
     # Fresh: six cells, the plain field hidden, the clock running, resend cooling down.
     cells = page.locator(".otp__cell")
@@ -117,11 +119,11 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_pat
     assert cells.first.evaluate("el => document.activeElement === el")
     assert "/login/code/verify/" in page.url
 
-    # Paste the real code, in Persian digits, exactly as the email shows it.
+    # Paste the real code in Persian digits, as a customer may type it.
     # The page records its green cells at every change, and its first way out
     # answers 204, which keeps it in place: what the row did is read from the
     # page itself, not sampled from here inside a 350ms window.
-    persian = code_from(mail.outbox[0]).translate(ASCII_TO_PERSIAN)
+    persian = code_from(sms.outbox[0]).translate(ASCII_TO_PERSIAN)
     page.evaluate(WATCH_THE_ROW)
     left = []
 
@@ -169,7 +171,7 @@ def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_pat
 
 def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user, tmp_path):
     page.clock.install()
-    request_code(page, live_server, user.email)
+    request_code(page, live_server, user.phone)
     # The fake clock freezes CSS transitions mid-way, so a screenshot taken under
     # it shows colours no real user sees (measured: values strictly between the
     # focused and disabled states). Settle them for this test's captures only.
@@ -182,14 +184,14 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     status = page.locator("#code-status")
     assert status.text_content() == ""
 
-    # A minute in: the resend cooldown is over, the code is still live.
-    page.clock.fast_forward("01:01")
+    # Two minutes in: the resend cooldown is over, the code is still live.
+    page.clock.fast_forward("02:01")
     page.wait_for_function("() => !document.querySelector('#resend').disabled")
     assert "مانده" in page.locator("#code-clock").inner_text()
     assert status.text_content() == "", "nine minutes left is nothing to announce"
     page.screenshot(path=str(tmp_path / "05-resend-ready.png"))
 
-    page.clock.fast_forward("08:00")
+    page.clock.fast_forward("07:00")
     page.wait_for_function(
         "() => document.querySelector('#code-status').textContent.includes('یک دقیقه')"
     )
@@ -208,41 +210,43 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     ), "amber marks the running clock"
     page.screenshot(path=str(tmp_path / "06-expired.png"))
 
-    # Resend: a new mail, a new clock, cells alive again, and the new code works.
-    sent_before = len(mail.outbox)
+    # Resend: a new SMS, a new clock, cells alive again, and the new code works. The
+    # page's clock is fake and the server's is not, so its cooldown is lifted here.
+    ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
+    sent_before = len(sms.outbox)
     page.click("#resend")
     page.wait_for_function("() => document.querySelectorAll('.otp__cell')[0].disabled === false")
-    assert len(mail.outbox) == sent_before + 1
+    assert len(sms.outbox) == sent_before + 1
     assert "مانده" in page.locator("#code-clock").inner_text()
     assert "badge--time" in page.get_attribute("#code-clock", "class")
     assert page.locator("#resend").is_disabled(), "the cooldown restarts after a resend"
     page.screenshot(path=str(tmp_path / "07-after-resend.png"))
 
-    page.evaluate(PASTE_JS, code_from(mail.outbox[-1]))
+    page.evaluate(PASTE_JS, code_from(sms.outbox[-1]))
     page.wait_for_url("**/account/")
 
 
-def test_a_failed_resend_leaves_the_inbox_code_and_its_clock(page, live_server, user, monkeypatch):
-    """Owner ruling 2026-11-04: a resend the relay did not take says so, and
-    the code already in the inbox still signs in, on the clock it was mailed
-    with."""
-    from django.core.mail.backends.locmem import EmailBackend
-
+def test_a_failed_resend_leaves_the_code_on_the_phone_and_its_clock(
+    page, live_server, user, monkeypatch
+):
+    """Owner ruling 2026-11-04: a resend SMS.ir did not take says so, and the
+    code already on the phone still signs in, on the clock it was sent with."""
     from apps.accounts.tests.test_auth import disconnect
 
     page.clock.install()
-    request_code(page, live_server, user.email)
-    page.clock.fast_forward("01:01")
+    request_code(page, live_server, user.phone)
+    page.clock.fast_forward("02:01")
     page.wait_for_function("() => !document.querySelector('#resend').disabled")
-    monkeypatch.setattr(EmailBackend, "send_messages", disconnect)
+    ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
+    monkeypatch.setattr(sms, "send_code", disconnect)
 
     page.click("#resend")
 
     page.wait_for_selector("#code-error:not([hidden])")
     assert "@premshop_support" in page.locator("#code-error").inner_text()
     # A code sent now would have restarted the clock at ten minutes.
-    assert page.locator("#code-clock").inner_text().startswith("۸:")
-    page.evaluate(PASTE_JS, code_from(mail.outbox[0]))
+    assert page.locator("#code-clock").inner_text().startswith("۷:")
+    page.evaluate(PASTE_JS, code_from(sms.outbox[0]))
     page.wait_for_url("**/account/")
 
 
@@ -255,7 +259,7 @@ def test_a_wrong_code_animation_cannot_reopen_expired_cells(
 
     page.set_viewport_size({"width": width, "height": 900})
     page.clock.install()
-    request_code(page, live_server, user.email)
+    request_code(page, live_server, user.phone)
     page.clock.pause_at((datetime.now(UTC) + timedelta(minutes=1)).replace(microsecond=500000))
 
     def one_second_left(route):
@@ -295,7 +299,7 @@ def test_a_page_opened_after_its_code_ran_out_offers_a_new_one_at_once(page, liv
     """Reloaded after expiry, the page started a 60-second cooldown on a code
     that was already dead, and the focus meant for «ارسال دوباره» found it
     disabled."""
-    request_code(page, live_server, user.email)
+    request_code(page, live_server, user.phone)
 
     def as_if_expired(route):
         response = route.fetch()
@@ -316,7 +320,7 @@ def test_a_page_opened_with_under_a_minute_left_offers_resend_when_the_code_runs
     """Reloaded with 30 seconds left, the page still started a 60-second
     cooldown: at expiry the cells went dead under the cursor, focus was sent
     to a disabled button and fell to the page, and the button kept counting."""
-    request_code(page, live_server, user.email)
+    request_code(page, live_server, user.phone)
 
     def thirty_seconds_left(route):
         response = route.fetch()
@@ -339,26 +343,27 @@ def test_without_javascript_the_code_page_still_does_its_whole_job(
     browser, live_server, user, tmp_path
 ):
     """Resend was a disabled button outside any form, enabled only by script,
-    and the page offered no way back from a mistyped address."""
+    and the page offered no way back from a mistyped number."""
     context = browser.new_context(
         java_script_enabled=False, viewport={"width": 390, "height": 844}, device_scale_factor=1
     )
     page = context.new_page()
     try:
-        request_code(page, live_server, user.email)
+        request_code(page, live_server, user.phone)
         assert page.locator("#resend").is_enabled(), "no way to ask for a second code"
+        ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
         page.click("#resend")
         page.wait_for_url("**/login/code/verify/")
         assert "کد جدید را فرستادیم." in page.locator("main").inner_text()
-        assert len(mail.outbox) == 2
+        assert len(sms.outbox) == 2
         page.screenshot(path=str(tmp_path / "10-nojs-resent.png"), full_page=True)
 
-        page.click("main a:has-text('تغییر ایمیل')")
+        page.click("main a:has-text('تغییر شماره')")
         page.wait_for_url(re.compile(r"/login/code/\?next="))
-        assert page.input_value("main input[name=email]") == user.email
+        assert page.input_value("main input[name=phone]") == user.phone
 
         page.go_back()
-        page.fill("main input[name=code]", code_from(mail.outbox[-1]))
+        page.fill("main input[name=code]", code_from(sms.outbox[-1]))
         page.click("#code-submit")
         page.wait_for_url("**/account/")
     finally:
@@ -370,7 +375,7 @@ def test_the_page_at_phone_width(browser, live_server, user, tmp_path):
     context = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1)
     page = context.new_page()
     try:
-        request_code(page, live_server, user.email)
+        request_code(page, live_server, user.phone)
         page.screenshot(path=str(tmp_path / "08-phone.png"), full_page=True)
         width = page.evaluate("() => document.documentElement.scrollWidth")
         assert width <= 390, f"horizontal overflow at phone width: {width}px"
@@ -386,7 +391,7 @@ def test_the_code_cells_stay_inside_the_card_on_a_small_phone(browser, live_serv
     context = browser.new_context(viewport={"width": 320, "height": 700}, device_scale_factor=1)
     page = context.new_page()
     try:
-        request_code(page, live_server, user.email)
+        request_code(page, live_server, user.phone)
         card = page.locator(".card", has=page.locator(".otp")).bounding_box()
         cells = page.locator(".otp__cell")
         assert cells.count() == 6

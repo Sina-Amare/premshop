@@ -3,23 +3,23 @@ from unittest.mock import patch
 
 import pytest
 from django.conf import settings
-from django.core import mail
 from django.test import Client
 
 from apps.cart.models import Cart, CartItem
 from apps.cart.services import GUEST_CART_ID
+from apps.core import sms
 
 pytestmark = pytest.mark.django_db
 
 
 def mailed_code() -> str:
-    found = re.search(r"[۰-۹]{6}", mail.outbox[-1].body)
-    assert found, "no code in the sign-in mail"
-    return found.group().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+    found = re.search(r"\b\d{6}\b", sms.outbox[-1][1])
+    assert found, "no code in the sign-in message"
+    return found.group()
 
 
-def sign_in_by_code(client, email: str, *, follow: bool = False, **extra):
-    client.post("/login/code/", {"email": email, **extra})
+def sign_in_by_code(client, phone: str, *, follow: bool = False, **extra):
+    client.post("/login/code/", {"phone": phone, **extra})
     return client.post("/login/code/verify/", {"code": mailed_code()}, follow=follow)
 
 
@@ -27,7 +27,7 @@ def test_real_login_rotates_session_keeps_cart_and_restores_auth_lifetime(client
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     guest = Cart.objects.get()
     guest_key, guest_id = client.session.session_key, guest.pk
-    response = sign_in_by_code(client, buyer.email, next="/cart/")
+    response = sign_in_by_code(client, buyer.phone, next="/cart/")
     assert response.status_code == 302
     assert response.url == "/cart/"
     assert client.session.session_key != guest_key
@@ -42,7 +42,7 @@ def test_code_login_combines_existing_cart_and_shows_reduction(client, buyer, pl
     account = Cart.objects.create(user=buyer)
     CartItem.objects.create(cart=account, plan=plan, quantity=2)
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
-    response = sign_in_by_code(client, buyer.email, follow=True, next="/cart/")
+    response = sign_in_by_code(client, buyer.phone, follow=True, next="/cart/")
     assert "تا سقف خرید هر سفارش کم کردیم" in response.content.decode()
     assert account.items.get().quantity == 3
     assert Cart.objects.count() == 1
@@ -64,7 +64,7 @@ def test_existing_custom_session_expiry_survives_guest_cart_and_login(client, bu
     session.set_expiry(3600)
     session.save()
     client.post("/cart/add/", {"plan": plan.pk})
-    sign_in_by_code(client, buyer.email)
+    sign_in_by_code(client, buyer.phone)
     assert client.session.get_expiry_age() == 3600
 
 
@@ -83,9 +83,9 @@ def test_failed_merge_leaves_the_original_guest_session_usable(client, buyer, pl
     if login == "admin":
         buyer.is_staff = True
         buyer.save(update_fields=["is_staff"])
-        url, data = "/admin/login/", {"username": buyer.email, "password": "CartPassword!2026"}
+        url, data = "/admin/login/", {"username": buyer.phone, "password": "CartPassword!2026"}
     else:
-        client.post("/login/code/", {"email": buyer.email})
+        client.post("/login/code/", {"phone": buyer.phone})
         url, data = "/login/code/verify/", {"code": mailed_code()}
     with patch("apps.cart.signals.merge_carts", side_effect=RuntimeError("merge failed")):
         with pytest.raises(RuntimeError):

@@ -4,9 +4,11 @@ from django.test import Client
 from django.urls import reverse
 from playwright.sync_api import expect
 
+from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan, Product
 from apps.cms.models import Page
+from apps.core import sms
 from apps.orders.models import Order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -170,25 +172,25 @@ def test_checkout_terms_open_without_losing_typed_details(browser, live_server, 
 
 @pytest.mark.parametrize("javascript", [True, False])
 def test_inline_invalid_fields_use_persian_errors_in_english_browser(
-    browser, live_server, javascript, monkeypatch, mailoutbox
+    browser, live_server, javascript, monkeypatch
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
     context = browser.new_context(locale="en-US", java_script_enabled=javascript)
     page = context.new_page()
     try:
         page.goto(live_server.url + reverse("checkout"))
-        page.get_by_label("ایمیل", exact=True).fill("invalid")
+        page.get_by_label("شماره‌ی موبایل", exact=True).fill("12345")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         if javascript:
-            expect(page.locator("[data-login-status]")).to_contain_text("این ایمیل درست نیست")
-            page.get_by_label("ایمیل", exact=True).fill("buyer@example.test")
+            expect(page.locator("[data-login-status]")).to_contain_text("۱۱ رقم")
+            page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230002")
             page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
             expect(page.locator("[data-inline-code]")).to_be_visible()
             page.get_by_role("button", name="تأیید کد و ادامه").click()
             expect(page.locator("[data-login-status]")).to_contain_text("کد را وارد کنید")
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
-            expect(page.locator(".field__error")).to_contain_text("این ایمیل درست نیست")
+            expect(page.locator(".field__error")).to_contain_text("۱۱ رقم")
     finally:
         context.close()
 
@@ -201,10 +203,10 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     plan,
     width,
     monkeypatch,
-    mailoutbox,
     tmp_path,
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
+    User.objects.filter(pk=buyer.pk).update(phone="09121230003")
     context, cart, guest_key = guest_context(browser, live_server, buyer, plan, width)
     page = context.new_page()
     errors = []
@@ -212,7 +214,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     try:
         page.goto(live_server.url + reverse("checkout"))
         screenshot(page, "guest", width, tmp_path)
-        page.get_by_label("ایمیل", exact=True).fill(buyer.email)
+        page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230003")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page.locator("[data-inline-code]")).to_be_visible()
         page.get_by_label("کد ورود", exact=True).fill("000000")
@@ -244,21 +246,22 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
             live_server.url + reverse("order-detail", args=[Order.objects.get().order_number])
         )
         assert Order.objects.get().total_amount == 500000 and not cart.items.exists()
-        assert not errors and len(mailoutbox) == 1
+        assert not errors and len(sms.outbox) == 1
     finally:
         context.close()
 
 
 @pytest.mark.parametrize("width", [390, 1440])
 def test_no_javascript_signin_returns_to_checkout_and_can_submit(
-    browser, live_server, buyer, plan, width, monkeypatch, mailoutbox
+    browser, live_server, buyer, plan, width, monkeypatch
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
+    User.objects.filter(pk=buyer.pk).update(phone="09121230004")
     context, cart, _ = guest_context(browser, live_server, buyer, plan, width, javascript=False)
     page = context.new_page()
     try:
         page.goto(live_server.url + reverse("checkout"))
-        page.get_by_label("ایمیل", exact=True).fill(buyer.email)
+        page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230004")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page).to_have_url(live_server.url + reverse("login-code-verify"))
         page.locator("#id_code").fill("123456")
@@ -268,7 +271,7 @@ def test_no_javascript_signin_returns_to_checkout_and_can_submit(
         assert page.get_by_role("checkbox").count() == 0
         page.get_by_role("button", name="ثبت سفارش", exact=True).click()
         assert Order.objects.count() == 1 and not cart.items.exists()
-        assert len(mailoutbox) == 1
+        assert len(sms.outbox) == 1
     finally:
         context.close()
 

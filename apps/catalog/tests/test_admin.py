@@ -881,27 +881,32 @@ def test_the_plan_search_finds_a_plan_by_its_products_spelling(client, operator,
 PASSWORD = "a long enough passphrase"  # noqa: S105 — a fixture value, not a credential
 
 
+PANEL_PHONE = "09127770001"
+
+
 @pytest.fixture
 def staff_account():
-    return User.objects.create_user("panel@example.test", PASSWORD, is_staff=True)
+    return User.objects.create_user(
+        "panel@example.test", PASSWORD, phone=PANEL_PHONE, is_staff=True
+    )
 
 
 def panel_login(client, password: str) -> None:
     client.post(
         reverse("admin:login"),
-        {"username": "panel@example.test", "password": password, "next": "/admin/"},
+        {"username": PANEL_PHONE, "password": password, "next": "/admin/"},
     )
 
 
 def test_the_panel_refuses_the_eleventh_attempt_even_with_the_right_password(client, staff_account):
     """The storefront's sign-in had a budget and the panel's had none, while
     the panel is the one that can change every price on the shop."""
-    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times):
+    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times):
         panel_login(client, "wrong")
 
     response = client.post(
         reverse("admin:login"),
-        {"username": "panel@example.test", "password": PASSWORD, "next": "/admin/"},
+        {"username": PANEL_PHONE, "password": PASSWORD, "next": "/admin/"},
     )
 
     assert "_auth_user_id" not in client.session
@@ -912,13 +917,11 @@ def test_the_panel_refuses_a_network_that_spent_its_budget(client, staff_account
     """Thirty tries per IP in an hour, across every address: with only the
     budget per address, one client could spread its guesses over many."""
     for n in range(ratelimit.LOGIN_ATTEMPTS_PER_IP.times):
-        client.post(
-            reverse("admin:login"), {"username": f"guess{n}@example.test", "password": "wrong"}
-        )
+        client.post(reverse("admin:login"), {"username": f"0912000{n:04d}", "password": "wrong"})
 
     response = client.post(
         reverse("admin:login"),
-        {"username": "panel@example.test", "password": PASSWORD, "next": "/admin/"},
+        {"username": PANEL_PHONE, "password": PASSWORD, "next": "/admin/"},
     )
 
     assert "_auth_user_id" not in client.session
@@ -932,7 +935,7 @@ def test_a_wrong_guess_never_buys_time_at_the_panel(client, staff_account):
     with time_machine.travel(1_790_000_000, tick=False) as clock:
         panel_login(client, "wrong")
         clock.shift(14 * 60)
-        for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times - 1):
+        for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times - 1):
             panel_login(client, "wrong")
         panel_login(client, PASSWORD)
         assert "_auth_user_id" not in client.session, "the eleventh attempt got in"
@@ -942,18 +945,18 @@ def test_a_wrong_guess_never_buys_time_at_the_panel(client, staff_account):
         assert "_auth_user_id" in client.session
 
 
-def test_the_panel_counts_per_address_whatever_its_case(client, staff_account):
-    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times):
-        client.post(reverse("admin:login"), {"username": "PANEL@example.test", "password": "wrong"})
+def test_the_panel_counts_per_number_whatever_its_spelling(client, staff_account):
+    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times):
+        client.post(reverse("admin:login"), {"username": "+98 912 777 0001", "password": "wrong"})
 
     panel_login(client, PASSWORD)
 
     assert "_auth_user_id" not in client.session
 
 
-def test_the_panel_accepts_the_accounts_email_in_mixed_case(client, staff_account):
+def test_the_panel_accepts_the_number_in_any_spelling(client, staff_account):
     response = client.post(
-        reverse("admin:login"), {"username": "PaNel@EXAMPLE.test", "password": PASSWORD}
+        reverse("admin:login"), {"username": "۰۹۱۲ ۷۷۷ ۰۰۰۱", "password": PASSWORD}
     )
 
     assert response.status_code == 302
@@ -964,9 +967,9 @@ def test_only_a_real_sign_in_clears_the_budget(client, staff_account):
     """A post with the address and no password skips the password check. If
     it also cleared the budget, an empty submission after every nine guesses
     would make the limit endless."""
-    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times):
+    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times):
         panel_login(client, "wrong")
-    client.post(reverse("admin:login"), {"username": "panel@example.test", "password": ""})
+    client.post(reverse("admin:login"), {"username": PANEL_PHONE, "password": ""})
 
     panel_login(client, PASSWORD)
 
@@ -977,8 +980,8 @@ def test_signing_in_at_the_panel_clears_the_budget(client, staff_account):
     panel_login(client, "wrong")
     panel_login(client, PASSWORD)
 
-    assert ratelimit.remaining(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, "panel@example.test") == (
-        ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times
+    assert ratelimit.remaining(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, PANEL_PHONE) == (
+        ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times
     )
 
 
@@ -987,7 +990,7 @@ def test_signing_in_at_the_panel_lands_in_the_panel(client, staff_account):
     visit to /admin/login/ signed the operator in and sent them to the
     customer's /account/."""
     data = form_of(client, reverse("admin:login"), form_id="login-form")
-    data.update(username=["panel@example.test"], password=[PASSWORD])
+    data.update(username=[PANEL_PHONE], password=[PASSWORD])
 
     response = client.post(reverse("admin:login"), data)
 
@@ -1015,11 +1018,11 @@ def test_the_sign_in_boxes_keep_unfolds_styling(client):
 def test_a_signed_in_customer_is_told_in_persian_why_the_panel_refused(client):
     """Django's own Persian: «…customer@example.testوارد شده اید. ولی اجازه
     مشاهده صفحه فوق را نداریدو…»."""
-    customer = User.objects.create_user("customer@example.test", PASSWORD)
+    customer = User.objects.create_user("customer@example.test", PASSWORD, phone="09127770002")
     client.force_login(customer)
 
     body = client.post(
-        reverse("admin:login"), {"username": "customer@example.test", "password": PASSWORD}
+        reverse("admin:login"), {"username": "09127770002", "password": PASSWORD}
     ).content.decode()
 
     assert "اما این حساب به پنل دسترسی ندارد. با حساب مدیر وارد شوید." in body

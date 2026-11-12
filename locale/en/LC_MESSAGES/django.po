@@ -68,14 +68,14 @@ msgstr "The sending limit has been reached. Sending is paused until capacity bec
 msgid "شروع دوره‌ی بعدی:"
 msgstr "Next period starts:"
 
-msgid "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های ورود و امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید."
-msgstr "Mail accounting is unavailable. Sign-in and security email will still attempt sending; other mail is paused. Check the settings and database connection."
+msgid "شمارش ارسال ایمیل در دسترس نیست. ایمیل‌های امنیتی همچنان برای ارسال تلاش می‌کنند؛ بقیه متوقف‌اند. تنظیمات و اتصال پایگاه داده را بررسی کنید."
+msgstr "Mail accounting is unavailable. Security email will still attempt sending; other mail is paused. Check the settings and database connection."
 
 msgid "شماره پاسخ سرویس"
 msgstr "SMTP response code"
 
-msgid "ظرفیت باقی‌مانده برای ایمیل‌های ورود و امنیتی نگه داشته شده است."
-msgstr "Remaining capacity is reserved for sign-in and security email."
+msgid "ظرفیت باقی‌مانده برای ایمیل‌های امنیتی نگه داشته شده است."
+msgstr "Remaining capacity is reserved for security email."
 
 msgid "متوقف‌شده به‌خاطر سقف ارسال"
 msgstr "Blocked by sending limit"

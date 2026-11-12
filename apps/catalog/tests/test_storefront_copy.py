@@ -244,9 +244,7 @@ def rendered_pages(client) -> dict[str, str]:
     )
     pages["500"] = server_error(request).content.decode()
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
-        pages["503"] = client.post(
-            reverse("login-code"), {"email": "x@example.test"}
-        ).content.decode()
+        pages["503"] = client.post(reverse("login-code"), {"phone": "09125550013"}).content.decode()
     for _ in range(ratelimit.SEARCH_PER_IP.times):
         client.get("/search/?q=a")
     pages["search, rate-limited"] = client.get("/search/?q=a").content.decode()
@@ -283,7 +281,7 @@ def test_every_email_speaks_written_persian_in_both_halves():
         )
         if found:
             bad[name] = found
-    assert {"otp_code", "item_delivered", "telegram_changed"} <= set(EMAIL_PREVIEWS)
+    assert {"item_delivered", "telegram_changed", "sms_budget"} <= set(EMAIL_PREVIEWS)
     assert not bad
 
 

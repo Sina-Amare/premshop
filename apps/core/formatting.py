@@ -45,6 +45,13 @@ def to_latin_digits(value: str) -> str:
     return value.translate(_PERSIAN_TO_LATIN)
 
 
+def mask_phone(phone: str) -> str:
+    """A mobile number half hidden, «۰۹۱۲•••۶۷۸۹»: enough for its owner to know it,
+    too little for anyone reading over a shoulder. Callers isolate it left to right,
+    or the bullets flip its two halves in right-to-left text."""
+    return to_persian_digits(f"{phone[:4]}•••{phone[-4:]}") if phone else ""
+
+
 def format_toman(amount: Decimal | int, *, with_unit: bool = True) -> str:
     """Format a toman amount: Persian digits, thousands separators, «تومان».
 

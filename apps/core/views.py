@@ -199,10 +199,6 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
             ("item_refunded", "refunded"),
         )
     },
-    "otp_code": {
-        "code": "418305",
-        "ttl_minutes": 10,
-    },
     "item_delivered": {
         "order_number": "PS-1405-0217",
         # A ready account: Claude Pro is activated on the customer's own and
@@ -218,6 +214,12 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "telegram": "@premshop_customer",
         "changed_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
         "account_url": "https://premshop.ir/account/",
+    },
+    "sms_budget": {
+        "sent": 100,
+        "ceiling": 300,
+        # 11:02 UTC is 14:32 in Tehran — the template must render local time.
+        "at": datetime(2026, 11, 12, 11, 2, tzinfo=UTC),
     },
 }
 

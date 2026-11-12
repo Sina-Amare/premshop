@@ -12,14 +12,13 @@ import re
 import time
 
 import pytest
-from django.core import mail
 from django.urls import reverse
 
-from apps.accounts import otp
+from apps.accounts import otp, services
 from apps.accounts.models import User
 from apps.accounts.tests.test_auth import PASSWORD, code_from
-from apps.accounts.views import PENDING_EXPIRES_KEY, RESEND_COOLDOWN_SECONDS
-from apps.core import ratelimit
+from apps.accounts.views import PENDING_EXPIRES_KEY, PENDING_PHONE_KEY, RESEND_COOLDOWN_SECONDS
+from apps.core import ratelimit, sms
 
 pytestmark = pytest.mark.django_db
 
@@ -28,13 +27,15 @@ JSON = {"HTTP_ACCEPT": "application/json"}
 
 @pytest.fixture
 def user():
-    return User.objects.create_user("customer@example.test", PASSWORD, is_verified=True)
+    return User.objects.create_user(
+        "customer@example.test", PASSWORD, phone="09121112233", is_verified=True
+    )
 
 
 @pytest.fixture
 def waiting(client, user):
     """A client that has asked for a code and is on the entry page."""
-    client.post(reverse("login-code"), {"email": user.email})
+    client.post(reverse("login-code"), {"phone": user.phone})
     return client
 
 
@@ -70,7 +71,7 @@ def test_the_plain_input_is_still_there_for_a_browser_without_javascript(waiting
 
 
 def test_a_correct_code_answers_json_with_where_to_go(waiting, user):
-    code = code_from(mail.outbox[0])
+    code = code_from(sms.outbox[0])
 
     response = waiting.post(reverse("login-code-verify"), {"code": code}, **JSON)
 
@@ -97,7 +98,7 @@ def test_a_malformed_code_answers_json_with_the_form_error(waiting):
 
 
 def test_too_many_guesses_answer_429_in_json(waiting):
-    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL.times):
+    for _ in range(ratelimit.LOGIN_ATTEMPTS_PER_PHONE.times):
         waiting.post(reverse("login-code-verify"), {"code": "000000"}, **JSON)
 
     response = waiting.post(reverse("login-code-verify"), {"code": "000000"}, **JSON)
@@ -106,7 +107,7 @@ def test_too_many_guesses_answer_429_in_json(waiting):
     assert response.json()["ok"] is False
     assert (
         response.json()["error"]
-        == "برای این ایمیل چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+        == "برای این شماره چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
     )
 
 
@@ -122,8 +123,9 @@ def test_without_the_accept_header_the_view_still_answers_html(waiting):
 
 
 def test_resend_replaces_the_code_and_restarts_the_clock(waiting, user):
-    first_code = code_from(mail.outbox[0])
+    first_code = code_from(sms.outbox[0])
     first_expiry = waiting.session[PENDING_EXPIRES_KEY]
+    ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
 
     response = waiting.post(reverse("login-code-resend"), **JSON)
 
@@ -133,23 +135,23 @@ def test_resend_replaces_the_code_and_restarts_the_clock(waiting, user):
     assert data["cooldown"] == RESEND_COOLDOWN_SECONDS
     assert 0 < data["expires_in"] <= otp.CODE_TTL_SECONDS
     assert waiting.session[PENDING_EXPIRES_KEY] >= first_expiry
-    assert len(mail.outbox) == 2
-    second_code = code_from(mail.outbox[1])
+    assert len(sms.outbox) == 2
+    second_code = code_from(sms.outbox[1])
 
-    assert not otp.verify(user.email, first_code), "the old code must be dead"
-    assert otp.verify(user.email, second_code), "the new one must work"
+    assert not otp.verify(user.phone, first_code), "the old code must be dead"
+    assert otp.verify(user.phone, second_code), "the new one must work"
 
 
 def test_resend_is_rate_limited_like_a_first_request(waiting):
-    """The 60-second cooldown is a courtesy in the browser; this is the defence."""
-    for _ in range(ratelimit.OTP_REQUESTS_PER_EMAIL.times - 1):
+    """The button's cooldown is a courtesy in the browser; this is the defence."""
+    for _ in range(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN.times - 1):
         waiting.post(reverse("login-code-resend"), **JSON)
-    sent_before = len(mail.outbox)
+    sent_before = len(sms.outbox)
 
     response = waiting.post(reverse("login-code-resend"), **JSON)
 
     assert response.status_code == 429
-    assert len(mail.outbox) == sent_before
+    assert len(sms.outbox) == sent_before
 
 
 def test_resend_without_a_pending_address_is_refused(client):
@@ -181,46 +183,47 @@ def test_resend_is_a_form_a_browser_can_submit_on_its_own(waiting):
 
 
 def test_a_plain_resend_comes_back_to_the_page_with_a_new_code(waiting, user):
+    ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
     response = waiting.post(reverse("login-code-resend"))
 
     assert response.status_code == 302
     assert response["Location"] == reverse("login-code-verify")
-    assert len(mail.outbox) == 2
+    assert len(sms.outbox) == 2
     assert "کد جدید را فرستادیم." in waiting.get(response["Location"]).content.decode()
-    assert otp.verify(user.email, code_from(mail.outbox[1]))
+    assert otp.verify(user.phone, code_from(sms.outbox[1]))
 
 
 def test_a_refused_plain_resend_says_why_and_sends_nothing(waiting):
-    for _ in range(ratelimit.OTP_REQUESTS_PER_EMAIL.times - 1):
+    for _ in range(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN.times - 1):
         waiting.post(reverse("login-code-resend"))
-    sent_before = len(mail.outbox)
+    sent_before = len(sms.outbox)
 
     response = waiting.post(reverse("login-code-resend"), follow=True)
 
-    assert len(mail.outbox) == sent_before
+    assert len(sms.outbox) == sent_before
     assert response.redirect_chain[-1][0] == reverse("login-code-verify")
-    assert "پشت سر هم" in response.content.decode()
+    assert services.CODE_COOLDOWN in response.content.decode()
 
 
 def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
     response = client.post(reverse("login-code-resend"), follow=True)
 
     assert response.redirect_chain[-1][0] == reverse("login-code")
-    # Printed on the email page, so it names the page that ran out.
+    # Printed on the number page, so it names the page that ran out.
     assert "صفحه‌ی کد ورود دیگر کار نمی‌کند." in response.content.decode()
 
 
-def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):
-    """The page named the address and offered no way back from it; Back could
+def test_a_mistyped_number_can_be_corrected_without_retyping_it(waiting, user):
+    """The page named the number and offered no way back from it; Back could
     land on the browser's «Confirm form resubmission» page."""
     body = waiting.get(reverse("login-code-verify")).content.decode()
 
-    assert "ایمیل اشتباه است؟" in body
+    assert "شماره اشتباه است؟" in body
     assert f'href="{reverse("login-code")}?next=' in body
-    assert f'value="{user.email}"' in waiting.get(reverse("login-code")).content.decode()
+    assert f'value="{user.phone}"' in waiting.get(reverse("login-code")).content.decode()
 
 
-# --- The account page additions --------------------------------------------
+# --- The number on the way in, and the account page's email ------------------
 
 
 @pytest.mark.parametrize(
@@ -233,7 +236,6 @@ def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):
         ("0098 912 345 6789", "09123456789"),
         ("0912-345-6789", "09123456789"),
         ("(0912) 345 6789", "09123456789"),
-        ("", ""),
         # Copied from a contact card or a chat on a right-to-left phone, a
         # number arrives wrapped in invisible direction marks.
         ("‪+98 912 345 6789‬", "09123456789"),
@@ -242,62 +244,42 @@ def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):
         ("‪+98 (912) 345-67-89‬", "09123456789"),
     ],
 )
-def test_the_phone_is_normalised_on_the_way_in(client, user, typed, stored):
-    client.force_login(user)
+def test_the_number_is_normalised_on_the_way_in(client, typed, stored):
+    client.post(reverse("login-code"), {"phone": typed})
 
-    client.post(reverse("account"), {"phone": typed})
-
-    user.refresh_from_db()
-    assert user.phone == stored
+    assert client.session[PENDING_PHONE_KEY] == stored
+    assert sms.outbox[-1][0] == stored
 
 
-@pytest.mark.parametrize("typed", ["abc", "0912abc3456789", "0912345678²"])
-def test_anything_but_a_number_is_refused_and_the_stored_one_kept(client, user, typed):
-    """Letters used to be dropped in silence: «abc» blanked the stored number
-    under a green «saved», letters inside digits vanished, and a superscript
-    two passed str.isdigit() and was stored as typed."""
-    user.phone = "09351112233"
-    user.save()
-    client.force_login(user)
+@pytest.mark.parametrize("typed", ["abc", "0912abc3456789", "0912345678²", "02122334455", ""])
+def test_anything_but_an_iranian_mobile_is_refused_before_anything_is_sent(client, typed):
+    """Letters used to be dropped in silence, and a superscript two passed
+    str.isdigit(); a landline is a number no code can reach."""
+    response = client.post(reverse("login-code"), {"phone": typed})
 
-    response = client.post(reverse("account"), {"phone": typed})
-
-    user.refresh_from_db()
-    assert user.phone == "09351112233"
-    assert "۱۱ رقم" in response.content.decode()
+    assert "شماره‌ی موبایل" in response.content.decode()
+    assert PENDING_PHONE_KEY not in client.session
+    assert not sms.outbox
 
 
-def test_emptying_the_field_removes_the_number_and_says_so(client, user):
-    """An empty field is the one way to remove a number on purpose, and the
+def test_emptying_the_email_removes_it_and_says_so(client, user):
+    """An empty field is the one way to remove the address on purpose, and the
     message names what happened rather than calling it a save."""
-    user.phone = "09351112233"
-    user.save()
     client.force_login(user)
 
-    body = client.post(reverse("account"), {"phone": ""}, follow=True).content.decode()
+    body = client.post(reverse("account"), {"email": ""}, follow=True).content.decode()
 
     user.refresh_from_db()
-    assert user.phone == ""
-    assert "شماره‌ی موبایل حذف شد." in body
+    assert user.email == ""
+    assert "ایمیل حذف شد." in body
 
 
-def test_a_phone_that_is_not_an_iranian_mobile_is_refused(client, user):
-    client.force_login(user)
-
-    response = client.post(reverse("account"), {"phone": "02122334455"})
-
-    user.refresh_from_db()
-    assert user.phone == ""
-    assert "۱۱ رقم" in response.content.decode()
-
-
-def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
+def test_a_rejected_email_paints_one_field_and_nothing_else(client, user):
     """The account page holds one field, so exactly one field is marked."""
     client.force_login(user)
 
-    body = client.post(reverse("account"), {"phone": "12345"}).content.decode()
+    body = client.post(reverse("account"), {"email": "nope"}).content.decode()
 
-    assert "رمز عبور فعلی" not in body
     assert body.count("field__error") == 1
 
 
@@ -365,18 +347,14 @@ def test_a_dashboard_section_requires_a_session(client, name):
 
 
 def test_one_fact_lives_in_one_place(client, user):
-    """The phone number used to be printed on an overview page and edited on
-    another. One fact in two places means no way to tell which is
-    authoritative, and two pages to keep in step."""
-    # Not the number in the field's own example, which would collide.
-    user.phone = "09351112233"
-    user.save()
+    """A fact printed on one page and edited on another leaves no way to tell
+    which is authoritative. The email appears once: in the field that edits it."""
     client.force_login(user)
 
     body = client.get(reverse("account")).content.decode()
 
-    assert body.count("09351112233") == 1, "the stored number is rendered more than once"
-    assert 'value="09351112233"' in body, "and the one place is the field that edits it"
+    assert body.count(user.email) == 1, "the email is rendered more than once"
+    assert f'value="{user.email}"' in body, "and the one place is the field that edits it"
 
 
 def test_the_navigation_marks_exactly_one_current_section(client, user):

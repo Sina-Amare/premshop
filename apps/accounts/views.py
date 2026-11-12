@@ -17,31 +17,30 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts import services, telegram
-from apps.accounts.forms import CodeForm, EmailForm, ProfileForm
+from apps.accounts.forms import CodeForm, PhoneForm, ProfileForm
 from apps.accounts.models import User
 from apps.core import ratelimit
-from apps.core.email_log import MailQuotaExceeded
+from apps.core.formatting import mask_phone
 from apps.orders.selectors import current_order, customer_summary
 
-# The address a code was sent to, carried between the two steps of the code flow.
+# The number a code was sent to, carried between the two steps of the code flow.
 # In the session rather than a hidden field so it cannot be swapped for someone
-# else's address between requests.
-PENDING_EMAIL_KEY = "accounts.pending_email"
+# else's number between requests.
+PENDING_PHONE_KEY = "accounts.pending_phone"
 PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 PENDING_NEXT_KEY = "accounts.pending_next"
 # The link token the account page is waiting on, kept server-side rather than in a URL.
 TELEGRAM_LINK_KEY = "accounts.telegram_link"
 
-# How long the resend button stays disabled after each send. Long enough that a
-# customer does not fire twice while the first mail is still in flight, short
-# enough that a mail that really did not arrive is not a two-minute wait.
-RESEND_COOLDOWN_SECONDS = 60
+# How long the resend button stays disabled after each send: the server takes one
+# code per number every two minutes, so the button waits as long.
+RESEND_COOLDOWN_SECONDS = 120
 
 WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
 CODE_RESENT = "کد جدید را فرستادیم."
-# Shown on the code page by its script and on the email page without one, so
+# Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر کار نمی‌کند. دوباره ایمیلتان را وارد کنید."
+PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر کار نمی‌کند. دوباره شماره‌ی موبایلتان را وارد کنید."
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -72,17 +71,17 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             return JsonResponse({"ok": True, "next": _safe_next(request)})
         return redirect(_safe_next(request))
 
-    # Back from «ایمیل اشتباه است؟» on the code page: the address the code went
+    # Back from «شماره اشتباه است؟» on the code page: the number the code went
     # to is already in the field, so a typo is corrected rather than retyped.
-    form = EmailForm(
-        request.POST or None, initial={"email": request.session.get(PENDING_EMAIL_KEY)}
+    form = PhoneForm(
+        request.POST or None, initial={"phone": request.session.get(PENDING_PHONE_KEY)}
     )
     status = 400
     if request.method == "POST" and form.is_valid():
-        email = form.cleaned_data["email"]
+        phone = form.cleaned_data["phone"]
         try:
-            issued = services.request_login_code(request, email)
-        except (MailQuotaExceeded, services.CodeNotSent) as exc:
+            issued = services.request_login_code(request, phone)
+        except services.CodeNotSent as exc:
             if _wants_json(request):
                 return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
             form.add_error(None, exc.message)
@@ -91,10 +90,10 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             form.add_error(None, exc.message)
             status = 429
         else:
-            request.session[PENDING_EMAIL_KEY] = email
+            request.session[PENDING_PHONE_KEY] = phone
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
             # The code flow spans three requests, so the destination rides the
-            # session with the address rather than the URL. It is validated
+            # session with the number rather than the URL. It is validated
             # here, on the way in, and never re-read from the request after.
             request.session[PENDING_NEXT_KEY] = _safe_next(request)
             if _wants_json(request):
@@ -121,8 +120,8 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
 @never_cache
 @require_http_methods(["GET", "POST"])
 def login_code_verify(request: HttpRequest) -> HttpResponse:
-    email = request.session.get(PENDING_EMAIL_KEY)
-    if not email:
+    phone = request.session.get(PENDING_PHONE_KEY)
+    if not phone:
         if request.method == "POST" and _wants_json(request):
             return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         return redirect("login-code")
@@ -131,13 +130,13 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
     status = 200
     if request.method == "POST" and form.is_valid():
         try:
-            user = services.complete_code_login(request, email, form.cleaned_data["code"])
+            user = services.complete_code_login(request, phone, form.cleaned_data["code"])
         except services.RateLimited as exc:
             form.add_error(None, exc.message)
             status = 429
         else:
             if user is not None:
-                request.session.pop(PENDING_EMAIL_KEY, None)
+                request.session.pop(PENDING_PHONE_KEY, None)
                 request.session.pop(PENDING_EXPIRES_KEY, None)
                 destination = request.session.pop(PENDING_NEXT_KEY, None) or reverse("account")
                 if _wants_json(request):
@@ -159,7 +158,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
         "accounts/login_code_verify.html",
         {
             "form": form,
-            "email": email,
+            "phone": mask_phone(phone),
             "expires_in": _seconds_left(request.session.get(PENDING_EXPIRES_KEY, 0)),
             "resend_cooldown": RESEND_COOLDOWN_SECONDS,
             "next": request.session.get(PENDING_NEXT_KEY) or reverse("account"),
@@ -171,9 +170,9 @@ def _wants_json(request: HttpRequest) -> bool:
     return "application/json" in request.headers.get("Accept", "")
 
 
-def _as_text(exc: MailQuotaExceeded | services.CodeNotSent) -> str:
+def _as_text(exc: services.CodeNotSent) -> str:
     """For a script, which sets the message as text, where markup would show."""
-    return exc.text if isinstance(exc, services.CodeNotSent) else str(exc.message)
+    return exc.text
 
 
 def _seconds_left(expires_at: int) -> int:
@@ -185,26 +184,26 @@ def _seconds_left(expires_at: int) -> int:
 @never_cache
 @require_http_methods(["POST"])
 def login_code_resend(request: HttpRequest) -> HttpResponse:
-    """Send a fresh code to the address already waiting in the session.
+    """Send a fresh code to the number already waiting in the session.
 
-    Replaces the outstanding code once the new mail is accepted; a send that
-    fails leaves the code in the inbox, and its expiry, as they were. The page's
-    script asks for JSON and restarts its countdown from the new expiry; a plain
-    form post, from a browser with JavaScript off, is sent back to the page with
-    a message.
-    The same rate limit as the first request applies — three per address per
-    fifteen minutes — so the button's 60-second cooldown is a courtesy, not the
+    Replaces the outstanding code once the new message is accepted; a send that
+    fails leaves the code already on the phone, and its expiry, as they were. The
+    page's script asks for JSON and restarts its countdown from the new expiry; a
+    plain form post, from a browser with JavaScript off, is sent back to the page
+    with a message.
+    The same limits as the first request apply — one code per number every two
+    minutes, five an hour — so the button's cooldown is a courtesy, not the
     defence, and without JavaScript there is no cooldown at all.
     """
-    email = request.session.get(PENDING_EMAIL_KEY)
-    if not email:
+    phone = request.session.get(PENDING_PHONE_KEY)
+    if not phone:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         messages.error(request, PAGE_EXPIRED)
         return redirect("login-code")
     try:
-        issued = services.request_login_code(request, email)
-    except (MailQuotaExceeded, services.CodeNotSent) as exc:
+        issued = services.request_login_code(request, phone)
+    except services.CodeNotSent as exc:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
         messages.error(request, exc.message)
@@ -240,18 +239,17 @@ def logout(request: HttpRequest) -> HttpResponse:
 def account(request: HttpRequest) -> HttpResponse:
     """Everything about the account itself, on one page.
 
-    It used to be two: an overview that listed the phone number and a profile
-    page that listed it again and let you edit it. Two pages, one fact, and a
-    first word — «پیشخوان» — that said nothing about what was on them. The
-    shop grows by adding sections that are genuinely different (سفارش‌ها at
-    S4b, اشتراک‌ها at S9), not by splitting one.
+    It used to be two: an overview that listed a fact and a profile page that
+    listed it again and let you edit it. Two pages, one fact, and a first word —
+    «پیشخوان» — that said nothing about what was on them. The shop grows by
+    adding sections that are genuinely different, not by splitting one.
     """
     user = cast(User, request.user)  # @login_required guarantees this
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
-        form.save(commit=False).save(update_fields=["phone"])
-        saved = "ذخیره شد" if user.phone else "حذف شد"
-        messages.success(request, f"شماره‌ی موبایل {saved}.")
+        form.save(commit=False).save(update_fields=["email"])
+        saved = "ذخیره شد" if user.email else "حذف شد"
+        messages.success(request, f"ایمیل {saved}.")
         return redirect(reverse("account"))
     current = current_order(user)
     return render(

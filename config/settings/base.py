@@ -277,6 +277,20 @@ if TELEGRAM_BOT_TOKEN and not TELEGRAM_BOT_USERNAME:
     # Without it every link the account page opens points at nobody.
     raise ImproperlyConfigured("TELEGRAM_BOT_TOKEN needs TELEGRAM_BOT_USERNAME. See .env.example.")
 
+# Sign-in codes by SMS (ADR-0031). "fake" keeps each message in memory for tests and
+# sends nothing; a value that is neither would otherwise send nothing without a word.
+SMS_BACKEND = env("SMS_BACKEND", "smsir")
+if SMS_BACKEND not in ("smsir", "fake"):
+    raise ImproperlyConfigured("SMS_BACKEND must be smsir or fake. See .env.example.")
+SMS_IR_API_KEY = env("SMS_IR_API_KEY")
+SMS_IR_TEMPLATE_ID = env("SMS_IR_TEMPLATE_ID")
+SMS_IR_LINE_NUMBER = env("SMS_IR_LINE_NUMBER")
+if SMS_IR_API_KEY and not (SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER):
+    # With neither, every code would be refused by SMS.ir after the customer asked.
+    raise ImproperlyConfigured(
+        "SMS_IR_API_KEY needs SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
+    )
+
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
 # EHLO name. Left alone it stamps the machine's own hostname into every customer's
 # inbox, and its own source warns the lookup "can take a couple of seconds" — it runs

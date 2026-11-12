@@ -226,7 +226,8 @@ def test_csrf_and_expired_session_return_to_masked_order(input_order, operator, 
 
     client = Client(enforce_csrf_checks=True)
     operator.set_password("test-only-password-24")
-    operator.save(update_fields=["password"])
+    operator.phone = "09127770009"
+    operator.save(update_fields=["password", "phone"])
     client.force_login(operator)
     url = reveal_url(input_order)
     detail = reverse("admin:orders_order_change", args=[input_order.pk])
@@ -243,7 +244,7 @@ def test_csrf_and_expired_session_return_to_masked_order(input_order, operator, 
     response = client.post(
         login_url,
         {
-            "username": operator.email,
+            "username": "09127770009",
             "password": "test-only-password-24",
             "csrfmiddlewaretoken": client.cookies[settings.CSRF_COOKIE_NAME].value,
         },

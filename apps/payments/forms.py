@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.accounts.validators import normalize_mobile_phone
+from apps.accounts.otp import normalize_email
 from apps.catalog.inputs import normalize_customer_input
 from apps.core.formatting import format_jalali, format_toman, to_latin_digits, to_persian_digits
 from apps.orders.clock import TEHRAN
@@ -129,13 +129,14 @@ class CheckoutForm(forms.Form):
             attrs={"class": "field__input", "dir": "ltr", "autocomplete": "off"}
         ),
     )
-    phone = forms.CharField(
-        label="شماره‌ی موبایل (اختیاری)",
-        max_length=32,
+    email = forms.EmailField(
+        label="ایمیل (اختیاری)",
+        max_length=254,
         required=False,
-        help_text="فقط اگر در حساب کاربری شما شماره‌ای ثبت نشده باشد، این شماره را ذخیره می‌کنیم.",
-        widget=forms.TextInput(
-            attrs={"class": "field__input", "dir": "ltr", "type": "tel", "autocomplete": "tel"}
+        help_text="رسید و خبرهای سفارش را به این ایمیل می‌فرستیم.",
+        error_messages={"invalid": "این ایمیل درست نیست."},
+        widget=forms.EmailInput(
+            attrs={"class": "field__input", "dir": "ltr", "autocomplete": "email"}
         ),
     )
 
@@ -170,8 +171,8 @@ class CheckoutForm(forms.Form):
                 )
                 self.input_fields.append((line, self[name]))
 
-    def clean_phone(self) -> str:
-        return normalize_mobile_phone(self.cleaned_data["phone"])
+    def clean_email(self) -> str:
+        return normalize_email(self.cleaned_data["email"])
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}

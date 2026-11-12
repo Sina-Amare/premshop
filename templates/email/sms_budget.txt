@@ -1,0 +1,10 @@
+{% load fa %}PremShop
+———
+
+تا {{ at|jalali }}، ساعت {{ at|time:"H:i"|fa_digits }}، {{ sent|fa_digits }} پیامک کد ورود فرستاده شده است.
+از {{ ceiling|fa_digits }} پیامک به بعد، فرستادن کد تا پایان این ۲۴ ساعت متوقف می‌شود.
+اگر این همه ورود از مشتری‌ها نیست، گزارش ارسال را در پنل SMS.ir ببینید.
+
+———
+پشتیبانی: {{ support.email }}
+premshop.ir

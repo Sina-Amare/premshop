@@ -401,7 +401,7 @@ class OrderAdmin(ModelAdmin):
     list_per_page = 25
     list_max_show_all = 0
     show_full_result_count = False
-    search_fields = ("=order_number", "user__email")
+    search_fields = ("=order_number", "user__phone", "user__email")
     ordering = ("-created_at", "-pk")
     actions = None
     inlines = (OrderItemInline,)
@@ -993,7 +993,7 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("مشتری"))
     def customer(self, obj: Order) -> str:
-        return format_html('<bdi class="order-customer" dir="ltr">{}</bdi>', obj.user.email)
+        return format_html('<bdi class="order-customer" dir="ltr">{}</bdi>', obj.user)
 
     @admin.display(description=_("جمع نهایی"), ordering="total_amount")
     def amount(self, obj: Order) -> str:

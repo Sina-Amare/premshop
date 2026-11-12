@@ -1,4 +1,4 @@
-"""One-time login codes.
+"""One-time sign-in codes, sent by SMS to a mobile number.
 
 Codes live in the cache with a TTL, not in a table: an expired code should
 evaporate rather than accumulate as dead rows for someone to sweep, and there is
@@ -6,7 +6,7 @@ no state here worth keeping after the fact — the audit trail that matters is t
 session it creates, not the code that created it.
 
 The code is stored HASHED. A cache dump is a bad day either way, but a plaintext
-six-digit code next to an email address in a monitoring tool or a log line is a
+six-digit code next to a phone number in a monitoring tool or a log line is a
 live credential lying in the open, and hashing costs nothing to avoid it.
 """
 
@@ -21,8 +21,9 @@ from django.core.cache import cache
 from django.utils.crypto import constant_time_compare, salted_hmac
 
 from apps.accounts.models import User
+from apps.accounts.validators import PERSIAN_TO_ASCII_DIGITS, normalize_digits
 
-PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+__all__ = ["PERSIAN_TO_ASCII_DIGITS", "normalize_digits"]
 
 CODE_LENGTH = 6
 CODE_TTL_SECONDS = 10 * 60  # Owner ruling 2026-09-04; contract C12 updated to match.
@@ -36,16 +37,16 @@ class Issued:
     expires_at: int  # unix seconds; the page counts down to this
 
 
-def _key(email: str) -> str:
-    return f"otp:{email.lower().strip()}"
+def _key(phone: str) -> str:
+    return f"otp:{phone.lower().strip()}"
 
 
-def _record_key(email: str, issuance: str) -> str:
-    return f"otp-code:{issuance}:{email.lower().strip()}"
+def _record_key(phone: str, issuance: str) -> str:
+    return f"otp-code:{issuance}:{phone.lower().strip()}"
 
 
-def _attempts_key(email: str, issuance: str) -> str:
-    return f"otp-attempts:{issuance}:{email.lower().strip()}"
+def _attempts_key(phone: str, issuance: str) -> str:
+    return f"otp-attempts:{issuance}:{phone.lower().strip()}"
 
 
 def _digest(code: str) -> str:
@@ -53,14 +54,14 @@ def _digest(code: str) -> str:
     return salted_hmac("premshop.accounts.otp", code, secret=settings.SECRET_KEY).hexdigest()
 
 
-def issue(email: str) -> Issued:
-    """Generate a code, replacing any outstanding one for this address.
+def issue(phone: str) -> Issued:
+    """Generate a code, replacing any outstanding one for this number.
 
-    Replacing rather than reusing matters: a customer who clicks "send again"
-    expects the newest mail to be the one that works. Two live codes would mean
-    the older mail silently fails, which reads as a broken shop.
+    Replacing rather than reusing matters: a customer who presses "send again"
+    expects the newest message to be the one that works. Two live codes would mean
+    the older message silently fails, which reads as a broken shop.
     """
-    return _store(email, _new_code())
+    return _store(phone, _new_code())
 
 
 def _new_code() -> str:
@@ -84,7 +85,7 @@ def _store(subject: str, code: str) -> Issued:
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
-def verify(email: str, code: str) -> bool:
+def verify(phone: str, code: str) -> bool:
     """Check a code and consume it. A correct code is single-use.
 
     Every attempt is counted before it is compared, and the wrong guess that
@@ -94,11 +95,11 @@ def verify(email: str, code: str) -> bool:
     Each issuance owns its record and attempt budget. A stale request can never
     delete a replacement; only the request deleting its record spends a code.
     """
-    key = _key(email)
+    key = _key(phone)
     issuance = cache.get(key)
     if not isinstance(issuance, str):
         return False
-    record_key = _record_key(email, issuance)
+    record_key = _record_key(phone, issuance)
     record = cache.get(record_key)
     if not record:
         return False
@@ -109,7 +110,7 @@ def verify(email: str, code: str) -> bool:
     if remaining <= 0:
         return False
 
-    attempt = _count_attempt(email, issuance, remaining)
+    attempt = _count_attempt(phone, issuance, remaining)
     if attempt > MAX_ATTEMPTS or cache.get(key) != issuance:
         return False
 
@@ -119,9 +120,9 @@ def verify(email: str, code: str) -> bool:
     return bool(matches and cache.delete(record_key))
 
 
-def _count_attempt(email: str, issuance: str, ttl: int) -> int:
+def _count_attempt(phone: str, issuance: str, ttl: int) -> int:
     """This attempt's number. Two requests at the same instant get two numbers."""
-    key = _attempts_key(email, issuance)
+    key = _attempts_key(phone, issuance)
     if cache.add(key, 1, timeout=ttl):
         return 1
     try:
@@ -139,48 +140,27 @@ def _count_attempt(email: str, issuance: str, ttl: int) -> int:
     return count
 
 
-def normalize_digits(value: str) -> str:
-    """Persian ۰-۹ (and Arabic-Indic ٠-٩) to ASCII.
+def send_login_code(phone: str) -> Issued:
+    """Text a new code, then make it the live one. Raises SmsNotSent if SMS.ir
+    refuses — never silently.
 
-    The OTP email renders the code in Persian digits because that is what an
-    Iranian reader expects to see. A customer who copies what they were shown
-    would otherwise submit ۴۱۸۳۰۵ against a stored 418305 and be told, correctly
-    and uselessly, that the code is wrong.
+    Stored only once the send is accepted. Stored before, a send that then failed
+    left the customer a countdown running for a code that never arrived, and
+    replaced the one already on the phone. A failed send changes nothing, so that
+    code keeps its own deadline and its own count of wrong guesses.
     """
-    return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
-
-
-def send_login_code(email: str) -> Issued:
-    """Mail a new code, then make it the live one. Raises if the relay refuses —
-    never silently.
-
-    Stored only once the relay has accepted the mail. Stored before, a send that
-    then failed left the customer a dead code in the inbox and a countdown
-    still running for it. A failed send now changes nothing, so the inbox code
-    keeps its own deadline and its own count of wrong guesses.
-    """
-    from smtplib import SMTPException
-
-    from apps.core.email import send_templated_email
+    from apps.core import sms
 
     code = _new_code()
-    sent = send_templated_email(
-        "otp_code", to=[email], context={"code": code, "ttl_minutes": CODE_TTL_SECONDS // 60}
-    )
-    if not sent:
-        raise SMTPException("Code email was not accepted")
-    # Two accepted at once: the later store wins, not always the newer mail. One code stays live.
-    return _store(email, code)
+    sms.send_code(phone, code)
+    # Two accepted at once: the later store wins, not always the newer message. One code stays live.
+    return _store(phone, code)
 
 
 def normalize_email(email: str) -> str:
-    """One spelling of an address everywhere: lowercase, trimmed.
-
-    The rate limiter keys on this. Without it "Ali@" and "ali@" get separate
-    budgets, and the per-email limit is bypassed by holding down shift.
-    """
+    """One spelling of an address everywhere: lowercase, trimmed."""
     return (email or "").strip().lower()
 
 
-def user_for(email: str) -> User | None:
-    return User.objects.filter(email__iexact=email.strip()).first()
+def user_for(phone: str) -> User | None:
+    return User.objects.filter(phone=phone).first()

@@ -21,7 +21,7 @@ INLINE = {
 @pytest.mark.parametrize("name", ["login-code", "login-code-verify"])
 def test_the_sign_in_pages_have_no_inline_code(client, name):
     if name == "login-code-verify":
-        client.post(reverse("login-code"), {"email": "markup@example.test"})
+        client.post(reverse("login-code"), {"phone": "09123330003"})
 
     body = client.get(reverse(name)).content.decode()
 
@@ -31,7 +31,7 @@ def test_the_sign_in_pages_have_no_inline_code(client, name):
 
 
 def test_the_code_page_loads_its_script_from_a_file(client):
-    client.post(reverse("login-code"), {"email": "markup@example.test"})
+    client.post(reverse("login-code"), {"phone": "09123330003"})
 
     body = client.get(reverse("login-code-verify")).content.decode()
 

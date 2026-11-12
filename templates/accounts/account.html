@@ -19,14 +19,14 @@
 </section>
 {% endif %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
+  <div class="fact"><span class="fact__k">شماره‌ی موبایل</span><span class="fact__lead"></span><span class="fact__v"><bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi></span></div>
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
 {# The field carries its own label; a heading above it says the same word twice. #}
 <form method="post" class="acct__form acct__form--spaced" novalidate>
   {% csrf_token %}
-  {% include "accounts/_field.html" with field=profile_form.phone %}
+  {% include "accounts/_field.html" with field=profile_form.email %}
   <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
 </form>
 

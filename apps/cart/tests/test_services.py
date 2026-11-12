@@ -253,7 +253,7 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
     client.post("/cart/add/", {"plan": plan.pk})
     stale = request_for(session=SessionStore(session_key=client.session.session_key))
     assert stale.session[GUEST_CART_ID] == Cart.objects.get().pk
-    sign_in_by_code(client, buyer.email)
+    sign_in_by_code(client, buyer.phone)
     with pytest.raises(ValidationError):
         add_to_cart(stale, plan_id=plan.pk)
     assert Cart.objects.count() == 1
@@ -263,7 +263,7 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
 def test_first_add_is_merged_even_if_login_already_cached_the_session(client, plan, buyer):
     from apps.accounts import services
 
-    client.post("/login/code/", {"email": buyer.email})
+    client.post("/login/code/", {"phone": buyer.phone})
     key = client.session.session_key
     guest = request_for(session=SessionStore(session_key=key))
     real_login = services.complete_code_login
@@ -291,7 +291,7 @@ def test_login_waits_for_guest_write_then_merges_the_fresh_session(plan, buyer):
     from apps.accounts import otp
     from apps.accounts.services import complete_code_login
 
-    code = otp.issue(buyer.email).code
+    code = otp.issue(buyer.phone).code
     session = SessionStore()
     session.save()
     key = session.session_key
@@ -308,7 +308,7 @@ def test_login_waits_for_guest_write_then_merges_the_fresh_session(plan, buyer):
                 pids.put(cursor.fetchone()[0])
                 cursor.execute("SET statement_timeout = '12s'")
             if login:
-                user = complete_code_login(login_request, buyer.email, code)
+                user = complete_code_login(login_request, buyer.phone, code)
                 login_request.session.save()
                 return user.pk
             with transaction.atomic():

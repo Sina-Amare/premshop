@@ -1,4 +1,5 @@
-"""Django's password validators, saying the same thing in this shop's words.
+"""What a customer types, in one form: digits, the mobile number, and Django's
+password validators in this shop's words.
 
 Django ships Persian translations of its validator messages, but they say
 «گذرواژه» where every screen here says «رمز عبور». The rules themselves are
@@ -15,8 +16,18 @@ from typing import Any
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
-from apps.accounts.otp import normalize_digits
 from apps.core.formatting import to_persian_digits
+
+PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def normalize_digits(value: str) -> str:
+    """Persian ۰-۹ (and Arabic-Indic ٠-٩) to ASCII.
+
+    A customer who copies a code or a number as they were shown it, in Persian
+    digits, would otherwise be told, correctly and uselessly, that it is wrong.
+    """
+    return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
 
 
 def normalize_mobile_phone(value: str) -> str:

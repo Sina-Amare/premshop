@@ -108,6 +108,24 @@ def telegram_off(settings: Any) -> None:
     settings.TELEGRAM_BOT_TOKEN = ""  # nosec B105 - an empty token switches Telegram off
 
 
+@pytest.fixture
+def admin_user(db: Any, django_user_model: Any) -> Any:
+    """pytest-django's own makes the username «admin», and the username is a mobile
+    number here."""
+    return django_user_model.objects.create_superuser(
+        "admin@example.com", "password", phone="09120000000"
+    )
+
+
+@pytest.fixture(autouse=True)
+def sms_kept_in_memory(settings: Any) -> None:
+    """No test sends a real SMS, whatever key the local .env holds; each starts empty."""
+    from apps.core import sms
+
+    settings.SMS_BACKEND = "fake"
+    sms.outbox.clear()
+
+
 @pytest.fixture(autouse=True)
 def ordinary_catalog(settings: Any) -> None:
     """Review notices are opt-in, independent of the local preview's .env."""

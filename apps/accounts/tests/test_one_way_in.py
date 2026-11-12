@@ -17,26 +17,29 @@ from django.urls import NoReverseMatch, reverse
 
 from apps.accounts import views
 from apps.accounts.models import User
+from apps.core import sms
 
 pytestmark = pytest.mark.django_db
 
 PASSWORD = "CorrectHorse!2026"  # noqa: S105 — a fixture value, not a credential
-PERSIAN_TO_ASCII = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
+STAFF, CUSTOMER = "09123330001", "09123330002"
 
 
-def sign_in_by_code(client, email: str):
-    client.post(reverse("login-code"), {"email": email})
-    found = re.search(r"[۰-۹]{6}", mail.outbox[-1].body)
-    assert found, "no code in the sign-in mail"
-    return client.post(
-        reverse("login-code-verify"), {"code": found.group(0).translate(PERSIAN_TO_ASCII)}
-    )
+def texted_code() -> str:
+    found = re.search(r"\b\d{6}\b", sms.outbox[-1][1])
+    assert found, "no code in the sign-in message"
+    return found.group(0)
+
+
+def sign_in_by_code(client, phone: str):
+    client.post(reverse("login-code"), {"phone": phone})
+    return client.post(reverse("login-code-verify"), {"code": texted_code()})
 
 
 def test_a_staff_account_cannot_sign_in_on_the_shop_by_code(client):
-    User.objects.create_user("operator@example.test", PASSWORD, is_staff=True)
+    User.objects.create_user("operator@example.test", PASSWORD, phone=STAFF, is_staff=True)
 
-    response = sign_in_by_code(client, "operator@example.test")
+    response = sign_in_by_code(client, STAFF)
 
     assert "_auth_user_id" not in client.session
     assert views.WRONG_CODE in response.content.decode()
@@ -47,11 +50,9 @@ def test_a_staff_accounts_right_code_is_answered_as_a_wrong_one(client, answer):
     """The same status and words as a wrong code, on the page and on checkout's
     script path, so probing with codes cannot list the staff addresses."""
     accept = {"HTTP_ACCEPT": "application/json"} if answer == "json" else {}
-    User.objects.create_user("operator@example.test", PASSWORD, is_staff=True)
-    client.post(reverse("login-code"), {"email": "operator@example.test"})
-    found = re.search(r"[۰-۹]{6}", mail.outbox[-1].body)
-    assert found
-    right = found.group(0).translate(PERSIAN_TO_ASCII)
+    User.objects.create_user("operator@example.test", PASSWORD, phone=STAFF, is_staff=True)
+    client.post(reverse("login-code"), {"phone": STAFF})
+    right = texted_code()
     wrong = f"{(int(right) + 1) % 10**6:06d}"
 
     refused = client.post(reverse("login-code-verify"), {"code": wrong}, **accept)
@@ -67,8 +68,8 @@ def test_a_staff_accounts_right_code_is_answered_as_a_wrong_one(client, answer):
 def test_a_code_session_never_opens_the_panel_even_once_the_account_is_staff(client):
     """The panel checks only is_staff, so a session a code opened must carry its
     own mark: ticking is_staff on a customer's account later does not change it."""
-    customer = User.objects.create_user("customer@example.test")
-    sign_in_by_code(client, "customer@example.test")
+    customer = User.objects.create_user(phone=CUSTOMER)
+    sign_in_by_code(client, CUSTOMER)
     User.objects.filter(pk=customer.pk).update(is_staff=True, is_superuser=True)
 
     response = client.get(reverse("admin:index"))
@@ -77,13 +78,13 @@ def test_a_code_session_never_opens_the_panel_even_once_the_account_is_staff(cli
     assert response["Location"].startswith(reverse("admin:login"))
 
 
-def test_a_code_sign_in_sends_no_alert_even_to_an_account_with_a_password(client):
-    User.objects.create_user("customer@example.test", PASSWORD)
+def test_a_code_sign_in_sends_no_mail_even_to_an_account_with_a_password(client):
+    User.objects.create_user("customer@example.test", PASSWORD, phone=CUSTOMER)
 
-    sign_in_by_code(client, "customer@example.test")
+    sign_in_by_code(client, CUSTOMER)
 
     assert "_auth_user_id" in client.session
-    assert len(mail.outbox) == 1, [message.subject for message in mail.outbox]
+    assert not mail.outbox, [message.subject for message in mail.outbox]
 
 
 @pytest.mark.parametrize(
@@ -130,7 +131,7 @@ def test_saving_the_account_page_writes_only_its_own_column(client):
     client.force_login(User.objects.create_user("operator@example.test", PASSWORD, is_staff=True))
 
     with CaptureQueriesContext(connection) as queries:
-        client.post(reverse("account"), {"phone": "09123456789"})
+        client.post(reverse("account"), {"email": "operator@example.test"})
 
     updates = [q["sql"] for q in queries if q["sql"].startswith('UPDATE "accounts_user"')]
     assert updates and all('"password"' not in sql for sql in updates), updates

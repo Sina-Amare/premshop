@@ -16,6 +16,7 @@ from ipaddress import ip_address
 from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import EmailValidator
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, F, OuterRef, Q, Sum, TextField
 from django.db.models.functions import Cast, Length
@@ -24,7 +25,7 @@ from django.utils.crypto import constant_time_compare
 from django.utils.translation import gettext_lazy
 
 from apps.accounts.models import User
-from apps.accounts.validators import normalize_mobile_phone
+from apps.accounts.otp import normalize_email
 from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
@@ -957,7 +958,7 @@ def place_order(
     *,
     user: User,
     lines: Sequence[OrderLine],
-    phone: str = "",
+    email: str = "",
     channel: str = Order.Channel.WEB,
     discount_code: str = "",
     checkout_id: uuid.UUID | None = None,
@@ -985,7 +986,9 @@ def place_order(
         or any(type(line.plan.pk) is not int for line in lines)
     ):
         raise ValidationError("اطلاعات سفارش درست نیست.")
-    phone = normalize_mobile_phone(phone)
+    email = normalize_email(email)
+    if email:
+        EmailValidator(message="این ایمیل درست نیست.")(email)
     name = _code_name(discount_code)
     requested_code_id = (
         DiscountCode.objects.filter(code=name).values_list("pk", flat=True).first()
@@ -1059,7 +1062,7 @@ def place_order(
                 discount_amount=purchase.discount,
                 discount_snapshot=purchase.discount_snapshot,
                 policy_snapshot=purchase.policy_snapshot,
-                placement_email=account.email,
+                placement_email=email or account.email,
                 channel=channel,
                 created_at=at,
                 unpaid_expires_at=at + timedelta(hours=24),
@@ -1123,8 +1126,9 @@ def place_order(
         )
         code.used_count += 1
         code.save(update_fields=["used_count"])
-    if phone and not account.phone:
-        User.objects.filter(pk=account.pk).update(phone=phone)
+    # The order's address becomes the account's when it has none, as the checkout says.
+    if email and not account.email:
+        User.objects.filter(pk=account.pk).update(email=email)
     return order
 
 

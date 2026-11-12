@@ -53,10 +53,12 @@ def test_security_headers_present(production, client, settings):
     assert page["Referrer-Policy"] == "same-origin"
     assert page["X-Frame-Options"] == "DENY"
 
-    get_user_model().objects.create_user("panel@example.test", PASSWORD, is_staff=True)
+    get_user_model().objects.create_user(
+        "panel@example.test", PASSWORD, phone="09127770008", is_staff=True
+    )
     form = client.get(reverse("admin:login"), **HTTPS)
     signed_in = client.post(
-        reverse("admin:login"), {"username": "panel@example.test", "password": PASSWORD}, **HTTPS
+        reverse("admin:login"), {"username": "09127770008", "password": PASSWORD}, **HTTPS
     )
     assert signed_in.status_code == 302
     for cookie in (

@@ -9,7 +9,6 @@ reached the same point.
 
 from __future__ import annotations
 
-import smtplib
 import threading
 from collections.abc import Callable
 
@@ -17,6 +16,7 @@ import pytest
 from django.core.cache import cache
 
 from apps.accounts import otp
+from apps.core import sms
 
 EMAIL = "race@example.test"
 
@@ -191,20 +191,19 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
     began, accepted_done = threading.Event(), threading.Event()
     failing_thread: list[threading.Thread] = []
 
-    def send(name, **kwargs):
+    def send(mobile, code):
         if threading.current_thread() in failing_thread:
             began.set()
             assert accepted_done.wait(timeout=5)
-            raise smtplib.SMTPServerDisconnected("lost the line")
-        return 1
+            raise sms.SmsNotSent(None)
 
-    monkeypatch.setattr("apps.core.email.send_templated_email", send)
+    monkeypatch.setattr(sms, "send_code", send)
     failures: list[Exception] = []
 
     def resend_that_fails() -> None:
         try:
             otp.send_login_code(EMAIL)
-        except smtplib.SMTPServerDisconnected as error:
+        except sms.SmsNotSent as error:
             failures.append(error)
 
     failing = threading.Thread(target=resend_that_fails)
@@ -216,7 +215,7 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
     accepted_done.set()
     failing.join(timeout=10)
 
-    assert while_mailing == live, "the address moved before the failing send's mail was accepted"
+    assert while_mailing == live, "the number moved before the failing send was accepted"
     assert len(failures) == 1 and not failing.is_alive()
     assert [otp.verify(EMAIL, code) for code in (previous.code, mailed.code)] == [False, True]
 

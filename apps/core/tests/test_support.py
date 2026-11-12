@@ -17,6 +17,7 @@ from django.urls import reverse
 
 from apps.core import support
 from apps.core.email import render_email
+from apps.core.views import EMAIL_PREVIEWS
 
 pytestmark = pytest.mark.django_db
 
@@ -78,7 +79,7 @@ def test_every_email_gets_the_same_details():
         return "x"
 
     with mock.patch("apps.core.email.render_to_string", side_effect=capture):
-        render_email("otp_code", {"code": "123456"})
+        render_email("sms_budget", EMAIL_PREVIEWS["sms_budget"])
 
     assert captured["support"] == support.details()
     assert captured["support"]["email"] == settings.SUPPORT_EMAIL
