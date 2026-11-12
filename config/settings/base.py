@@ -324,7 +324,11 @@ LOGOUT_REDIRECT_URL = "/"
 # Django's rules, with the error sentences in this shop's words — its own Persian
 # says «گذرواژه» where every screen here says «رمز عبور» (apps/accounts/validators.py).
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "apps.accounts.validators.UserAttributeSimilarityValidator"},
+    {
+        # The username is the phone now, which Django's default list does not name.
+        "NAME": "apps.accounts.validators.UserAttributeSimilarityValidator",
+        "OPTIONS": {"user_attributes": ("phone", "email")},
+    },
     {"NAME": "apps.accounts.validators.MinimumLengthValidator"},
     {"NAME": "apps.accounts.validators.CommonPasswordValidator"},
     {"NAME": "apps.accounts.validators.NumericPasswordValidator"},

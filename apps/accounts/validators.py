@@ -90,7 +90,9 @@ class UserAttributeSimilarityValidator(password_validation.UserAttributeSimilari
         try:
             super().validate(password, user)
         except ValidationError as exc:
-            raise ValidationError("رمز عبور خیلی شبیه ایمیل شماست.", code=exc.code) from None
+            raise ValidationError(
+                "رمز عبور خیلی شبیه شماره‌ی موبایل یا ایمیل شماست.", code=exc.code
+            ) from None
 
     def get_help_text(self) -> str:
-        return "رمز عبور نباید شبیه ایمیل شما باشد."
+        return "رمز عبور نباید شبیه شماره‌ی موبایل یا ایمیل شما باشد."

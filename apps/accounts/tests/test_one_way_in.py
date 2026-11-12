@@ -110,13 +110,18 @@ def test_the_old_password_addresses_are_not_found(client, path):
         ("Ab1!", "رمز عبور باید حداقل ۸ کاراکتر باشد."),
         ("123456789", "رمز عبور نباید فقط عدد باشد."),
         ("password", "این رمز عبور خیلی رایج است."),
-        ("operator@example.test", "رمز عبور خیلی شبیه ایمیل شماست."),
+        ("operator@example.test", "رمز عبور خیلی شبیه شماره‌ی موبایل یا ایمیل شماست."),
+        ("Shop09127770002", "رمز عبور خیلی شبیه شماره‌ی موبایل یا ایمیل شماست."),
     ],
 )
 def test_the_panels_password_rules_speak_the_shops_words(client, new, expected):
     """Staff change their password on the panel's own page, where these four rules
     are the shop's validators and not Django's wording."""
-    client.force_login(User.objects.create_user("operator@example.test", PASSWORD, is_staff=True))
+    client.force_login(
+        User.objects.create_user(
+            "operator@example.test", PASSWORD, phone="09127770002", is_staff=True
+        )
+    )
 
     body = client.post(
         reverse("admin:password_change"),
