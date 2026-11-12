@@ -17,7 +17,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-10 |
 | [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
-| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in and the sign-in alert | Accepted, amended | 2026-10-23 |
+| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in, one way in per account | Accepted, amended | 2026-11-12 |
 | [0013](0013-payment-provider-interface-deferred.md) | No payment-provider interface until a second gateway exists | Accepted | 2026-09-01 |
 | [0014](0014-deliberate-simplifications.md) | Deliberate simplifications, each with its flip condition | Accepted, amended | 2026-11-04 |
 | [0015](0015-error-tracking-glitchtip.md) | Error tracking: sentry-sdk reporting to self-hosted GlitchTip | Accepted | 2026-09-01 |
@@ -29,7 +29,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0021](0021-promotional-pricing.md) | Promotional pricing lives on the plan, behind one function | Accepted, amended | 2026-10-24 |
 | [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-02 |
 | [0023](0023-email-templates.md) | Email templates: hand-built tables, system fonts, wordmark set in type | Accepted, amended | 2026-10-31 |
-| [0024](0024-auth-implementation.md) | Authentication: cache-backed codes, one flow for sign-in and registration | Accepted, amended | 2026-11-03 |
+| [0024](0024-auth-implementation.md) | Authentication: cache-backed codes, one flow for sign-in and registration | Accepted, amended | 2026-11-12 |
 | [0025](0025-catalog-implementation.md) | Catalogue: whole-toman money, one price function, a seeded shop | Accepted, amended | 2026-11-04 |
 | [0026](0026-storefront-composition.md) | Storefront composition; the current look is in the [design language](../design-language.md) | Accepted, amended | 2026-10-23 |
 | [0027](0027-operator-text-restricted-markdown.md) | Operator-written text is restricted Markdown through one renderer | Accepted, amended | 2026-10-20 |

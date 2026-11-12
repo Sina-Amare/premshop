@@ -59,8 +59,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 
 - **It is frozen as the project's first migration** (`accounts/0001`). Once other tables hold keys to it, replacing the model means rebuilding the schema by hand on live data, so identity fields arrive as additive migrations.
 - **Email is unique case-insensitively, in the database** (`user_email_case_insensitive_unique` on `Lower(email)`), not only in the manager, because the panel, a shell or a data import can reach the table without the manager.
-- An account created by a sign-in code has an unusable password until the customer sets one.
-- `is_staff` is the operator. There are no roles beyond it.
+- A customer's account has an unusable password: customers sign in by code only. `is_staff` is the operator, the one account with a password, used only at the panel's sign-in. There are no roles beyond it.
 - `phone` is optional.
 - `telegram_id`, `telegram_username` and `telegram_linked_at` hold the customer's linked Telegram. They are set when the customer confirms a link in the shop's bot and cleared on unlink. `telegram_id` is unique, so a Telegram account linked to a second shop account leaves the first.
 - Sign-in codes live in Redis with an expiry, not in a table.
