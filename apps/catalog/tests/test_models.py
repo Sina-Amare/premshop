@@ -505,7 +505,7 @@ def test_publishing_needs_usage_notes(ready, notes):
     ready.usage_notes = notes
 
     assert ready.publish_problems() == [
-        "نکات استفاده رو بنویسید. اگه نکته‌ای نداره، عبارت «موضوعیت ندارد» رو وارد کنید."
+        "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
     ]
 
 
@@ -527,8 +527,8 @@ def test_usage_notes_ask_for_no_source(ready):
 @pytest.mark.parametrize(
     "field, problem",
     [
-        ("delivery_type", "نوع تحویل رو انتخاب کنید."),
-        ("short_description", "معرفی کوتاه محصول رو بنویسید."),
+        ("delivery_type", "نوع تحویل انتخاب نشده است."),
+        ("short_description", "معرفی کوتاه محصول را بنویسید."),
     ],
 )
 def test_each_missing_fact_is_named(ready, field, problem):
@@ -540,7 +540,7 @@ def test_each_missing_fact_is_named(ready, field, problem):
 def test_publishing_needs_a_plan_on_sale(ready):
     ready.plans.update(is_available=False)
 
-    assert ready.publish_problems() == ["برای انتشار، حداقل یک پلن با وضعیت «موجود» لازمه."]
+    assert ready.publish_problems() == ["برای انتشار، حداقل یک پلن با وضعیت «موجود» لازم است."]
 
 
 MARKERS = ["[تصمیم مالک، تصمیم ۴: چند روز]", "[وابسته به تصمیم ۸: …]", "[از تحویل آزمایشی: …]"]
@@ -570,7 +570,7 @@ def test_a_placeholder_is_named_with_its_section_and_field(ready):
     ProductSection.objects.create(product=ready, kind="before_buying", body="[تصمیم مالک، تصمیم ۴]")
 
     assert ready.publish_problems() == [
-        "بخش محتوا «\u2068پیش از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» رو کامل کنید."
+        "بخش محتوا «\u2068پیش از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» هنوز پر نشده است."
     ]
 
 
@@ -811,9 +811,7 @@ def test_anything_but_png_jpeg_or_webp_is_refused(product, media, name, data):
     with pytest.raises(ValidationError) as excinfo:
         section.full_clean()
 
-    assert excinfo.value.message_dict["image"] == [
-        "این فایل سالم نیست یا فرمتش پشتیبانی نمی‌شه. یک تصویر PNG، JPEG یا WebP انتخاب کنید."
-    ]
+    assert excinfo.value.message_dict["image"] == ["این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."]
     assert not [path for path in media.rglob("*") if path.is_file()], "nothing was stored"
 
 

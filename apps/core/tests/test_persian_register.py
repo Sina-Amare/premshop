@@ -63,6 +63,41 @@ BANNED = [
     (r"(?<![\w‌])می [اآبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", "a half-space: «می‌…»"),
 ]
 
+# Spoken Persian belongs to the FAQ alone (docs/design-language.md, §Register);
+# the operator panel is written. Each marker is a form that only speech has,
+# matched as a whole word so «روی» and «روز» stay clean, and «می‌توان» and
+# «می‌خواند» are not read as «می‌شه» and «می‌خوان».
+_WORD = r"[\w‌]"
+SPOKEN = [
+    (rf"(?<!{_WORD})رو(?!{_WORD})", "«را»: «حسابتان را», not «حسابتون رو»"),
+    (
+        rf"(?<!{_WORD})(?:توی|اگه|دیگه|اون|اونا|اونجا|یه|چی|چیه|اینجوری)(?!{_WORD})",
+        "«در», «اگر», «دیگر», «آن», «یک», «چه»",
+    ),
+    (rf"(?<!{_WORD})(?:میاد|بیار(?:ید|ین)?)(?!{_WORD})", "«می‌آید», «بیاورید»"),
+    (r"همون|بذار|نشون|برگردون|کدوم", "«همان», «بگذار», «نشان», «برگردان», «کدام»"),
+    (
+        rf"(?<!{_WORD})ن?می‌{_WORD}*(?:ه|(?<!توا)ن)(?!{_WORD})",
+        "«می‌شود», «می‌کنند»: the written ending",
+    ),
+    (rf"(?<!{_WORD})ن?می‌تون", "«می‌توانید»"),
+    (rf"ن?می‌خوا(?:ید|ی|د|ن)(?!{_WORD})", "«می‌خواهید»"),
+    (
+        rf"(?<!{_WORD})(?:ب(?:شه|شن|شید|شین|دید|گید|دین|گین)|ب?کنه|ب?کنن|ن?داره|ن?دارن|باش[هن]|هستن)"
+        rf"(?!{_WORD})",
+        "«بشود», «بدهید», «بگویید», «باشد», «دارد»",
+    ),
+    (
+        rf"(?<!{_WORD})(?:ممکن|کافی|لازم|مناسب|ثابت|لاتین|مطمئن|درست|معتبر|اشتباه|بخش|همین|خالی|به‌روز)ه"
+        rf"(?!{_WORD})",
+        "«است» written out: «ممکن است»",
+    ),
+    (rf"(?<!{_WORD})اینجاست(?!{_WORD})", "«اینجا است»"),
+    (rf"‌(?:ست|ان)(?!{_WORD})", "«است», «اند» written out: «آماده است»"),
+    (rf"(?<={_WORD})(?:تون|شون)(?:ه|ن)?(?!{_WORD})", "«‌تان», «‌شان»: «حسابتان»"),
+    (rf"(?<!{_WORD})(?:ویرایش|گزارش|نمایش)ش(?!{_WORD})", "«گزارش آن»: the pronoun as a word"),
+]
+
 # Latin digits inside a Persian sentence. Identifiers, codes and format
 # placeholders are exempt: this is about quantities a person reads.
 #
@@ -128,12 +163,20 @@ def panel_strings() -> list[tuple[str, str]]:
 def test_the_panel_walk_reads_the_catalogue_and_the_code():
     found = panel_strings()
     assert len(found) > 200, len(found)
-    assert any(text == "ذخیره نشد. خطاهای زیر رو اصلاح کنید." for _, text in found)
+    # An entry of the catalogue, and a source string of the panel's code.
     assert any(text == "انتخاب فایل" for _, text in found)
+    assert any(text == "ذخیره نشد. خطاهای زیر را درست کنید." for _, text in found)
 
 
 @pytest.mark.parametrize("pattern, instead", BANNED)
 def test_no_panel_string_uses_a_banned_form(pattern, instead):
+    bad = [f"{where}: {text}" for where, text in panel_strings() if re.search(pattern, text)]
+    assert not bad, f"write {instead} — {bad}"
+
+
+@pytest.mark.parametrize("pattern, instead", SPOKEN)
+def test_no_panel_string_is_spoken_persian(pattern, instead):
+    """The FAQ is the one conversational surface; the panel reads as written."""
     bad = [f"{where}: {text}" for where, text in panel_strings() if re.search(pattern, text)]
     assert not bad, f"write {instead} — {bad}"
 
@@ -277,10 +320,68 @@ def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
     ],
 )
 def test_the_lint_leaves_good_persian_alone(text):
-    """Colloquial lexis is not the target. «آب می‌خورد» and «توی» are the
-    strongest signal that a person wrote this; only the bookish forms go."""
+    """BANNED goes after the bookish forms only; spoken ones are not its target.
+    The panel is held to SPOKEN as well (below), the FAQ is not."""
     assert not any(re.search(p, text) for p, _ in BANNED), text
     assert not LATIN_DIGIT_IN_PERSIAN.search(text), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ذخیره نشد. خطاهای زیر رو اصلاح کنید.",
+        "فقط توی پنل دیده می‌شه.",
+        "اگه خالی بذارید، تخفیف همین الان شروع می‌شه.",
+        "قیمت با تخفیف باید از قیمت فروش کمتر باشه.",
+        "برای هر سفارش فقط ۱ تا نمی‌تونه باشه.",
+        "قیمت خرید و فروش نمی‌تونن منفی باشن.",
+        "اسم‌هایی که مشتری ممکنه جستجو کنه.",
+        "محصول برای انتشار آماده‌ست.",
+        "رمز عبورتون تغییر کرد.",
+        "اجازه‌ی حذفشون رو نداره.",
+        "کد رنگ رو به شکل #10a37f وارد کنید.",
+        "همون بخش رو ویرایش کنید.",
+        "این بخش توی لینک صفحه میاد.",
+        "اول بگید این محصول برای کی نیست.",
+        "برای هرکدوم یه مثال بزنید.",
+        "نباید اطلاعات مشتری رو نشون بده.",
+        "به اطلاعات مشتری نیاز داره.",
+        "این بخش لازمه.",
+        "حالا می‌تونید وارد بشید.",
+        "نمی‌خواید این پلن فروخته بشه؟",
+        "موارد زیر بهش وابسته‌ان.",
+        "اینجاست.",
+        "گزارشش ایمیل شد.",
+        "پیش‌نمایش به‌روزه.",
+    ],
+)
+def test_the_spoken_lint_catches_what_it_is_meant_to_catch(text):
+    """Every line is spoken Persian that the panel really carried."""
+    assert any(re.search(p, text) for p, _ in SPOKEN), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "روی صفحه‌ی محصول و در روز بررسی.",
+        "اگر خالی بگذارید، تخفیف همین حالا شروع می‌شود.",
+        "کنار نام محصول، بالای صفحه می‌آید.",
+        "می‌توان همین‌جا دوباره ویرایش کرد.",
+        "قیمت خرید و فروش نمی‌توانند منفی باشند.",
+        "می‌خواهید این پلن فروخته نشود؟",
+        "این بخش را می‌خواند و ذخیره می‌کند.",
+        "میان‌برهای فهرست",
+        "رمز عبورتان تغییر کرد.",
+        "اجازه‌ی حذفشان را ندارد.",
+        "اسم‌هایی که مشتری ممکن است جستجو کند.",
+        "محصول برای انتشار آماده است.",
+        "نمونه و هماهنگی",
+        "شش روز بعد، پنجاه و شش مورد، پوشش کامل.",
+        "همانطور که نوشته‌اید، بگذارید بماند.",
+    ],
+)
+def test_the_spoken_lint_leaves_written_persian_alone(text):
+    assert not any(re.search(p, text) for p, _ in SPOKEN), text
 
 
 PERSIAN_NAMES = re.compile(

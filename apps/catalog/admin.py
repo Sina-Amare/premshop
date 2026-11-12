@@ -924,7 +924,7 @@ class ProductAdmin(PreviewAdminMixin):
             field.widget = BrandColourWidget(obj, attrs=field.widget.attrs)
         if "status" in form.base_fields:
             form.base_fields["status"].help_text = _(
-                "پیش‌نویس روی سایت دیده نمی‌شه. ناموجود، اگه آماده‌ی انتشار باشه، صفحه داره ولی فروخته نمی‌شه."
+                "پیش‌نویس روی سایت دیده نمی‌شود. ناموجود، اگر آماده‌ی انتشار باشد، صفحه دارد ولی فروخته نمی‌شود."
             )
         return form
 
