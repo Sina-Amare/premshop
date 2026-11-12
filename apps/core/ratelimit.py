@@ -81,7 +81,13 @@ def _key(limit: Limit, subject: str) -> str:
 
 
 def hit(limit: Limit, subject: str) -> bool:
-    """Count one event. Returns False when the budget is already spent.
+    """Count one event. Returns False when the budget is already spent."""
+    return count(limit, subject) <= limit.times
+
+
+def count(limit: Limit, subject: str) -> int:
+    """Count one event and return its number in the window. INCR hands out each
+    number once, so exactly one event of a window is, say, the 100th.
 
     cache.add() sets the key only if absent, which is what creates the window and
     its expiry atomically. incr() then raises ValueError if the key expired
@@ -94,15 +100,15 @@ def hit(limit: Limit, subject: str) -> bool:
     """
     key = _key(limit, subject)
     if cache.add(key, 1, timeout=limit.seconds):
-        return True
+        return 1
     try:
-        count = cache.incr(key)
+        number = cache.incr(key)
     except ValueError:
         cache.set(key, 1, timeout=limit.seconds)
-        return True
-    if count == 1:
+        return 1
+    if number == 1:
         cache.touch(key, limit.seconds)
-    return count <= limit.times
+    return int(number)
 
 
 def remaining(limit: Limit, subject: str) -> int:

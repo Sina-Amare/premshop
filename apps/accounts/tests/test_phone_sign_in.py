@@ -184,6 +184,23 @@ def test_the_hundredth_sms_of_the_day_tells_the_operator_once(rf):
     assert "۱۰۰" in alerts[0].body
 
 
+def test_the_next_days_hundredth_sms_tells_the_operator_again(rf):
+    with time_machine.travel("2026-11-03 08:00:00", tick=False) as clock:
+        for _ in range(ratelimit.SMS_ALERT_AT - 1):
+            ratelimit.hit(ratelimit.SMS_DAILY_BUDGET, "shop")
+        clock.shift(12 * 60 * 60)
+        services.request_login_code(at(rf), PHONE)
+        # The day that opened at 08:00 is over by 09:00 the next morning.
+        clock.shift(13 * 60 * 60)
+        services.request_login_code(at(rf, "10.0.0.2"), "09120000001")
+        for _ in range(ratelimit.SMS_ALERT_AT - 2):
+            ratelimit.hit(ratelimit.SMS_DAILY_BUDGET, "shop")
+        services.request_login_code(at(rf, "10.0.0.3"), "09120000002")
+
+    alerts = [message for message in mail.outbox if message.to == [settings.SUPPORT_EMAIL]]
+    assert len(alerts) == 2
+
+
 def test_past_the_days_ceiling_no_code_is_sent(rf):
     for _ in range(ratelimit.SMS_DAILY_BUDGET.times):
         ratelimit.hit(ratelimit.SMS_DAILY_BUDGET, "shop")

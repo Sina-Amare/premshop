@@ -19,7 +19,6 @@ import secrets
 from django.conf import settings
 from django.contrib.auth import login as django_login
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpRequest
 from django.utils import timezone
@@ -158,12 +157,10 @@ def _code_sent(request: HttpRequest, phone: str) -> None:
     # shortcut: preflight can race; short windows bound concurrent daily overshoot.
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone)
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP_DAILY, ratelimit.client_ip(request))
-    ratelimit.hit(ratelimit.SMS_DAILY_BUDGET, "shop")
-    budget = ratelimit.SMS_DAILY_BUDGET
-    sent = budget.times - ratelimit.remaining(budget, "shop")
-    # One alert in any 24 hours, however many sends cross the mark at once.
-    if sent >= ratelimit.SMS_ALERT_AT and cache.add("sms:budget-alert", 1, budget.seconds):
-        _alert_operator(sent)
+    # One send of each window is the 100th, so the operator hears once a window,
+    # however many sends cross the mark at once.
+    if ratelimit.count(ratelimit.SMS_DAILY_BUDGET, "shop") == ratelimit.SMS_ALERT_AT:
+        _alert_operator(ratelimit.SMS_ALERT_AT)
 
 
 def _alert_operator(sent: int) -> None:
