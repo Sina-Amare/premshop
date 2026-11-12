@@ -10,8 +10,12 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.core.formatting import to_persian_digits
+from apps.orders.admin import queue_overview
 from apps.orders.models import Order, OrderItem
 from apps.orders.services import OrderLine, place_order
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order
+from apps.payments.models import Refund
+from apps.payments.tests.test_refund_execution import execute
 
 pytestmark = pytest.mark.django_db
 
@@ -45,7 +49,13 @@ def test_tabs_counts_urgency_search_and_mixed_orders(client, operator, buyer, pl
     unpaid = make_order(buyer, plan, "PENDING_PAYMENT")
     response = client.get(listing())
     assert list(response.context["cl"].result_list) == [overdue, waiting, later]
-    assert response.context["queue_counts"] == {"unpaid": 1, "queued": 3, "waiting": 1, "claims": 0}
+    assert response.context["queue_counts"] == {
+        "unpaid": 1,
+        "queued": 3,
+        "waiting": 1,
+        "claims": 0,
+        "refunds": 0,
+    }
     for tab, expected in [("unpaid", [unpaid]), ("waiting", [waiting])]:
         response = client.get(listing(), {"tab": tab})
         assert list(response.context["cl"].result_list) == expected
@@ -57,12 +67,46 @@ def test_tabs_counts_urgency_search_and_mixed_orders(client, operator, buyer, pl
             "queued": 1,
             "waiting": 0,
             "claims": 0,
+            "refunds": 0,
         }
     # A search looks through every order, whatever tab it starts from.
     response = client.get(listing(), {"q": buyer.email.upper()})
     assert len(response.context["cl"].result_list) == 4
     assert client.get(listing(), {"q": "missing@example.test"}).context["cl"].result_count == 0
     assert client.get(listing(), {"tab": "all"}).context["cl"].result_count == 4
+
+
+def test_the_refunds_tab_lists_what_is_owed_oldest_first_to_whoever_may_see_refunds(
+    client, operator, buyer, plan
+):
+    plan.input_type, plan.telegram_required = "none", False
+    plan.save()
+    first, (first_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
+    second, (second_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
+    # The later order is cancelled first: its refund is the older debt, so it leads.
+    cancel(second_item, operator)
+    cancel(first_item, operator)
+    settled, (settled_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
+    cancel(settled_item, operator)
+    execute(settled, list(Refund.objects.filter(order_item=settled_item)), operator)
+    paid_order(buyer, operator, [OrderLine(plan, 1)])
+    response = client.get(listing(), {"tab": "refunds"})
+    assert response.context["queue_tab"] == "refunds"
+    assert list(response.context["cl"].result_list) == [second, first]
+    assert response.context["queue_counts"]["refunds"] == 2
+    assert "refunds" in [tab["name"] for tab in response.context["queue_tabs"]]
+    home = {tile["url"]: tile["count"] for tile in queue_overview(operator)}
+    assert home[f"{listing()}?tab=refunds"] == 2
+
+    # Hiding the tab is not enough: the request itself is refused the refunds.
+    staff = User.objects.create_user("orders-only@example.test", is_staff=True)
+    staff.user_permissions.add(Permission.objects.get(codename="view_order"))
+    client.force_login(staff)
+    response = client.get(listing(), {"tab": "refunds"})
+    assert response.context["queue_tab"] == "queued"
+    assert "refunds" not in response.context["queue_counts"]
+    assert "refunds" not in [tab["name"] for tab in response.context["queue_tabs"]]
+    assert f"{listing()}?tab=refunds" not in [tile["url"] for tile in queue_overview(staff)]
 
 
 def test_waits_freeze_the_clock_without_inventing_a_deadline(client, operator, buyer, plan):
