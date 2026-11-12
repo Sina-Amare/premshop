@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django import forms
-from django.contrib.auth import forms as auth_forms
-from django.contrib.auth.hashers import check_password
 
 from apps.accounts import otp
 from apps.accounts.models import User
@@ -33,17 +29,6 @@ class EmailForm(forms.Form):
 
     def clean_email(self) -> str:
         return otp.normalize_email(self.cleaned_data["email"])
-
-
-class PasswordLoginForm(EmailForm):
-    password = forms.CharField(
-        label="رمز عبور",
-        strip=False,
-        error_messages={"required": "رمز عبور را وارد کنید."},
-        widget=forms.PasswordInput(
-            attrs={"class": "field__input", "autocomplete": "current-password"}
-        ),
-    )
 
 
 class CodeForm(forms.Form):
@@ -74,94 +59,6 @@ class CodeForm(forms.Form):
         if not (value.isdigit() and len(value) == otp.CODE_LENGTH):
             raise forms.ValidationError("کد باید ۶ رقم باشد.")
         return value
-
-
-# The four validators in AUTH_PASSWORD_VALIDATORS, in one breath. If a validator is
-# ever added or removed there, this line is wrong — hence the test that renders it.
-PASSWORD_HINT = "رمز عبور باید حداقل ۸ کاراکتر باشد و رایج، شبیه ایمیلتان یا فقط عدد نباشد."  # noqa: S105  # nosec B105
-
-
-class RuleErrorsOnTheFirstField(auth_forms.SetPasswordMixin):
-    """Django checks the password rules while cleaning the repeat field, so their
-    errors landed under «تکرار رمز عبور». They belong under the password they are
-    about, beside the hint that states the rules; a mismatch stays on the repeat."""
-
-    # A field name, not a password; bandit reads the parameter's name.
-    def validate_password_for_user(
-        self, user: User, password_field_name: str = ""  # nosec B107
-    ) -> None:
-        super().validate_password_for_user(user, "new_password1")
-
-
-class StyledPasswordChangeForm(RuleErrorsOnTheFirstField, auth_forms.PasswordChangeForm):
-    """Django's PasswordChangeForm with this project's field styling and wording.
-
-    Two reasons this subclass has to exist rather than the template patching it:
-
-    - Tailwind's preflight sets `border-width: 0` on every element, so an input
-      that does not carry `field__input` renders with NO BORDER AT ALL. Django's
-      own widgets carry no class, so the two new-password boxes were invisible on
-      screen while still being focusable and submittable. Nothing errors; the page
-      just silently becomes unusable.
-    - Django's Persian translations say «گذرواژه» where the rest of this UI says
-      «رمز عبور». Two words for one thing on the same page reads as two different
-      systems bolted together, which is exactly the impression the shop cannot
-      afford.
-    """
-
-    def clean_old_password(self) -> str:
-        password = self.cleaned_data["old_password"]
-        # Hash upgrades write the account; only the locked service may do that.
-        if not check_password(password, self.user.password):
-            raise forms.ValidationError(
-                self.error_messages["password_incorrect"], code="password_incorrect"
-            )
-        return password
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.error_messages = {
-            **self.error_messages,
-            "password_incorrect": "رمز عبور فعلی اشتباه است.",  # nosec B105
-            "password_mismatch": "رمز عبور و تکرار آن یکسان نیستند.",  # nosec B105
-        }
-        labels = {
-            "old_password": "رمز عبور فعلی",  # nosec B105
-            "new_password1": "رمز عبور جدید",
-            "new_password2": "تکرار رمز عبور جدید",
-        }
-        for name, field in self.fields.items():
-            field.label = labels.get(name, field.label)
-            # Django's default help text is a bulleted list in translated Persian.
-            # One line, matching the four validators in settings exactly, on the
-            # field where the rule bites; nothing on the confirmation field.
-            field.help_text = PASSWORD_HINT if name == "new_password1" else ""
-            field.widget.attrs["class"] = "field__input"
-
-
-class StyledSetPasswordForm(RuleErrorsOnTheFirstField, auth_forms.SetPasswordForm):
-    """The same, for an account that has no password yet — an OTP-only customer
-    setting one for the first time. Django's SetPasswordForm asks for no current
-    password, which is correct: there isn't one to ask for."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.error_messages = {
-            **self.error_messages,
-            "password_mismatch": "رمز عبور و تکرار آن یکسان نیستند.",  # nosec B105
-        }
-        labels = {"new_password1": "رمز عبور", "new_password2": "تکرار رمز عبور"}
-        for name, field in self.fields.items():
-            field.label = labels.get(name, field.label)
-            field.help_text = PASSWORD_HINT if name == "new_password1" else ""
-            field.widget.attrs["class"] = "field__input"
-
-
-class PasswordRecoveryForm(StyledSetPasswordForm, CodeForm):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["code"].label = "کد بازیابی"
-        self.order_fields(["code", "new_password1", "new_password2"])
 
 
 class ProfileForm(forms.ModelForm):

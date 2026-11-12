@@ -30,16 +30,6 @@
   <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
 </form>
 
-{% if not request.user.has_usable_password %}
-  <div class="acct__next">
-    <div>
-      <h2 class="acct__next-t">رمز عبور</h2>
-      <p class="small flush">با رمز عبور، برای ورود لازم نیست منتظر کد بمانید.</p>
-    </div>
-    <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
-  </div>
-{% endif %}
-
 {% if telegram %}
 <h2 class="acct__h2" id="telegram">تلگرام</h2>
 {% if telegram.linked %}

@@ -35,7 +35,6 @@ crumbs
 deadline
 faq
 field
-field__eye
 field__hint
 grid
 micro

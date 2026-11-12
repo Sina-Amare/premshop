@@ -56,7 +56,6 @@ VISITOR = {
     "search, a hit": "/search/?q=chatgpt",
     "search, a miss": "/search/?q=netflix",
     "faq": "/faq/",
-    "sign-in": "/login/password/",
     "code request": "/login/code/",
     "404": "/no-such-page/",
 }
@@ -366,7 +365,6 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
     [
         "otp_code",
         "item_delivered",
-        "signin_alert",
         "telegram_changed",
         "purchase_confirmation",
         "payment_confirmed",

@@ -1,10 +1,4 @@
-"""One word for one thing, on every screen.
-
-Django's own Persian says «گذرواژه»; this shop says «رمز عبور». The hint under the
-field, the error beside it and the confirmation above it must agree, or the page
-reads as two systems bolted together. These pin the places Django's wording
-would otherwise leak through.
-"""
+"""One word for one thing, on every screen, written rather than translated."""
 
 from __future__ import annotations
 
@@ -14,102 +8,13 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import User
-from apps.accounts.tests.test_auth import PASSWORD
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def user():
-    return User.objects.create_user("copy@example.test", PASSWORD, is_verified=True)
-
-
-def change_password(client, old: str, new: str) -> str:
-    return client.post(
-        reverse("account-password"),
-        {"old_password": old, "new_password1": new, "new_password2": new},
-    ).content.decode()
-
-
-@pytest.mark.parametrize(
-    "new, expected",
-    [
-        ("Ab1!", "رمز عبور باید حداقل ۸ کاراکتر باشد."),
-        ("123456789", "رمز عبور نباید فقط عدد باشد."),
-        ("password", "این رمز عبور خیلی رایج است."),
-        ("copy@example.test", "رمز عبور خیلی شبیه ایمیل شماست."),
-    ],
-)
-def test_every_password_rule_speaks_the_shops_words(client, user, new, expected):
-    client.force_login(user)
-
-    body = change_password(client, PASSWORD, new)
-
-    assert expected in body
-    assert "گذرواژه" not in body, "Django's own wording leaked through"
-
-
-def test_a_wrong_current_password_speaks_the_shops_words(client, user):
-    client.force_login(user)
-
-    body = change_password(client, "not-it", "Str0ng-enough-pass")
-
-    assert "رمز عبور فعلی اشتباه است." in body
-    assert "گذرواژه" not in body
-
-
-def test_a_mismatched_repeat_speaks_the_shops_words(client, user):
-    client.force_login(user)
-
-    body = client.post(
-        reverse("account-password"),
-        {
-            "old_password": PASSWORD,
-            "new_password1": "Str0ng-enough-pass",
-            "new_password2": "Str0ng-enough-pasS",
-        },
-    ).content.decode()
-
-    assert "رمز عبور و تکرار آن یکسان نیستند." in body
-    assert "گذرواژه" not in body
-
-
-@pytest.mark.parametrize("has_password", [True, False], ids=["change", "first-time"])
-def test_a_rule_error_sits_under_the_password_it_is_about(client, user, has_password):
-    """Django checks the rules while cleaning the repeat field, so «too short»
-    appeared under «تکرار رمز عبور», red border and all, while the hint that
-    states the rule sat under the field above it."""
-    if not has_password:
-        user.set_unusable_password()
-        user.save()
-    client.force_login(user)
-
-    form = client.post(
-        reverse("account-password"),
-        {"old_password": PASSWORD, "new_password1": "Ab1!", "new_password2": "Ab1!"},
-    ).context["form"]
-
-    assert form.errors == {"new_password1": ["رمز عبور باید حداقل ۸ کاراکتر باشد."]}
-
-
-def test_a_mismatch_stays_under_the_repeat(client, user):
-    client.force_login(user)
-
-    form = client.post(
-        reverse("account-password"),
-        {
-            "old_password": PASSWORD,
-            "new_password1": "Str0ng-enough-pass",
-            "new_password2": "Str0ng-enough-pasS",
-        },
-    ).context["form"]
-
-    assert form.errors == {"new_password2": ["رمز عبور و تکرار آن یکسان نیستند."]}
-
-
-@pytest.mark.parametrize("name", ["login-password", "login-code"])
-def test_no_page_says_gozarvazheh(client, name):
-    assert "گذرواژه" not in client.get(reverse(name)).content.decode()
+    return User.objects.create_user("copy@example.test", is_verified=True)
 
 
 # --- The register, not just the vocabulary ------------------------------------
@@ -138,7 +43,7 @@ BANNED = [
     r"&quot;",  # ASCII quotes around Persian; the shop uses «»
 ]
 
-SHOP_PAGES = ["home", "search", "login-password", "login-code"]
+SHOP_PAGES = ["home", "search", "login-code"]
 
 
 @pytest.mark.parametrize("name", SHOP_PAGES)

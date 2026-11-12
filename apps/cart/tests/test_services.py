@@ -22,6 +22,7 @@ from apps.cart.services import (
     remove_from_cart,
     set_quantity,
 )
+from apps.cart.tests.test_login import mailed_code, sign_in_by_code
 
 pytestmark = pytest.mark.django_db
 
@@ -252,7 +253,7 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
     client.post("/cart/add/", {"plan": plan.pk})
     stale = request_for(session=SessionStore(session_key=client.session.session_key))
     assert stale.session[GUEST_CART_ID] == Cart.objects.get().pk
-    client.post("/login/password/", {"email": buyer.email, "password": "CartPassword!2026"})
+    sign_in_by_code(client, buyer.email)
     with pytest.raises(ValidationError):
         add_to_cart(stale, plan_id=plan.pk)
     assert Cart.objects.count() == 1
@@ -262,19 +263,18 @@ def test_already_started_guest_edit_cannot_recreate_a_cart_after_login(client, p
 def test_first_add_is_merged_even_if_login_already_cached_the_session(client, plan, buyer):
     from apps.accounts import services
 
+    client.post("/login/code/", {"email": buyer.email})
     key = client.session.session_key
     guest = request_for(session=SessionStore(session_key=key))
-    real_login = services.login_with_password
+    real_login = services.complete_code_login
 
-    def login_after_concurrent_add(request, email, password):
+    def login_after_concurrent_add(request, email, code):
         assert request.session.get(GUEST_CART_ID) is None
         add_to_cart(guest, plan_id=plan.pk)
-        return real_login(request, email, password)
+        return real_login(request, email, code)
 
-    with patch.object(services, "login_with_password", login_after_concurrent_add):
-        response = client.post(
-            "/login/password/", {"email": buyer.email, "password": "CartPassword!2026"}
-        )
+    with patch.object(services, "complete_code_login", login_after_concurrent_add):
+        response = client.post("/login/code/verify/", {"code": mailed_code()})
     assert response.status_code == 302
     assert Cart.objects.count() == 1
     assert CartItem.objects.get(cart__user=buyer).quantity == 1
@@ -288,8 +288,10 @@ def test_login_waits_for_guest_write_then_merges_the_fresh_session(plan, buyer):
 
     from django.db import connection
 
-    from apps.accounts.services import login_with_password
+    from apps.accounts import otp
+    from apps.accounts.services import complete_code_login
 
+    code = otp.issue(buyer.email).code
     session = SessionStore()
     session.save()
     key = session.session_key
@@ -306,7 +308,7 @@ def test_login_waits_for_guest_write_then_merges_the_fresh_session(plan, buyer):
                 pids.put(cursor.fetchone()[0])
                 cursor.execute("SET statement_timeout = '12s'")
             if login:
-                user = login_with_password(login_request, buyer.email, "CartPassword!2026")
+                user = complete_code_login(login_request, buyer.email, code)
                 login_request.session.save()
                 return user.pk
             with transaction.atomic():

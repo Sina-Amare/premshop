@@ -134,9 +134,8 @@ def test_the_code_reaches_both_halves_in_persian_digits():
     assert "418305" not in text
 
 
-@pytest.mark.parametrize("name", ["otp_code", "password_reset"])
-def test_code_mail_warns_against_sharing_without_an_inbox_access_claim(name):
-    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+def test_code_mail_warns_against_sharing_without_an_inbox_access_claim():
+    _, text, html = render_email("otp_code", EMAIL_PREVIEWS["otp_code"])
     for body in (text, html):
         assert "این کد را به کسی ندهید." in body
         assert "بدون دسترسی به ایمیل" not in body
@@ -302,7 +301,7 @@ def test_the_delivery_link_lifetime_matches_the_adr():
         assert "۷۲" in part
 
 
-@pytest.mark.parametrize("name", ["signin_alert", "password_changed"])
+@pytest.mark.parametrize("name", ["telegram_changed"])
 def test_security_notice_names_support_instead_of_denying_site_signin(name):
     from django.utils.html import strip_tags
 

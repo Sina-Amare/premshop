@@ -199,8 +199,6 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
             ("item_refunded", "refunded"),
         )
     },
-    "password_reset": {"code": "418305", "ttl_minutes": 10},
-    "password_changed": {"changed_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC)},
     "otp_code": {
         "code": "418305",
         "ttl_minutes": 10,
@@ -220,12 +218,6 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "telegram": "@premshop_customer",
         "changed_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
         "account_url": "https://premshop.ir/account/",
-    },
-    "signin_alert": {
-        # 11:02 UTC is 14:32 in Tehran — the template must render local time.
-        "signed_in_at": datetime(2026, 9, 18, 11, 2, tzinfo=UTC),
-        # The page where a password is changed, not a password.
-        "password_url": "https://premshop.ir/account/password/",  # nosec B105
     },
 }
 

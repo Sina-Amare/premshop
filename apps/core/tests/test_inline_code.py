@@ -171,7 +171,6 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     yield "cart", client.get(reverse("cart"))
     yield "checkout", client.get(reverse("checkout"))
     yield "account", client.get(reverse("account"))
-    yield "account password", client.get(reverse("account-password"))
     orderer = User.objects.create_user("orderer@example.test")
     order = place_order(user=orderer, lines=[OrderLine(plans[1], 1)])
     client.force_login(orderer)

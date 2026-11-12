@@ -9,7 +9,6 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -18,15 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts import services, telegram
-from apps.accounts.forms import (
-    CodeForm,
-    EmailForm,
-    PasswordLoginForm,
-    PasswordRecoveryForm,
-    ProfileForm,
-    StyledPasswordChangeForm,
-    StyledSetPasswordForm,
-)
+from apps.accounts.forms import CodeForm, EmailForm, ProfileForm
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.email_log import MailQuotaExceeded
@@ -46,7 +37,6 @@ TELEGRAM_LINK_KEY = "accounts.telegram_link"
 # enough that a mail that really did not arrive is not a two-minute wait.
 RESEND_COOLDOWN_SECONDS = 60
 
-WRONG_CREDENTIALS = "ایمیل یا رمز عبور اشتباه است."
 WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
 CODE_RESENT = "کد جدید را فرستادیم."
 # Shown on the code page by its script and on the email page without one, so
@@ -72,43 +62,6 @@ def _safe_next(request: HttpRequest) -> str:
     ):
         return candidate
     return reverse("account")
-
-
-@never_cache
-@require_http_methods(["GET", "POST"])
-def login_password(request: HttpRequest) -> HttpResponse:
-    if request.user.is_authenticated:
-        if _wants_json(request):
-            return JsonResponse({"ok": True, "next": _safe_next(request)})
-        return redirect(_safe_next(request))
-
-    form = PasswordLoginForm(request.POST or None)
-    status = 400
-    if request.method == "POST" and form.is_valid():
-        email = form.cleaned_data["email"]
-        try:
-            user = services.login_with_password(request, email, form.cleaned_data["password"])
-        except services.RateLimited as exc:
-            form.add_error(None, exc.message)
-            status = 429
-        else:
-            if user is not None:
-                if _wants_json(request):
-                    return JsonResponse({"ok": True, "next": _safe_next(request)})
-                return redirect(_safe_next(request))
-            form.add_error(None, WRONG_CREDENTIALS)
-
-    if request.method == "POST" and _wants_json(request):
-        error = next(
-            (error for errors in form.errors.values() for error in errors), WRONG_CREDENTIALS
-        )
-        return JsonResponse({"ok": False, "error": str(error)}, status=status)
-
-    # The destination rides a hidden field, because the form posts to this URL
-    # without its query string.
-    return render(
-        request, "accounts/login_password.html", {"form": form, "next": _safe_next(request)}
-    )
 
 
 @never_cache
@@ -360,68 +313,3 @@ def account_telegram(request: HttpRequest) -> HttpResponse:
         request.session.pop(TELEGRAM_LINK_KEY, None)
         messages.success(request, "اتصال تلگرام قطع شد.")
     return redirect(reverse("account") + "#telegram")
-
-
-@never_cache
-@login_required
-@require_http_methods(["GET", "POST"])
-def account_password(request: HttpRequest) -> HttpResponse:
-    # An OTP-only account has no current password to ask for, and asking anyway
-    # would be an unanswerable question on the page that is supposed to fix it.
-    user = cast(User, request.user)
-    had_password = user.has_usable_password()
-    form_class = StyledPasswordChangeForm if had_password else StyledSetPasswordForm
-    form = form_class(user, request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        try:
-            services.change_password(
-                request,
-                password=form.cleaned_data["new_password1"],
-                old_password=form.cleaned_data.get("old_password", ""),
-            )
-        except ValidationError as error:
-            form.add_error(None, error)
-        else:
-            messages.success(request, "رمز عبور تغییر کرد." if had_password else "رمز عبور ثبت شد.")
-            return redirect(reverse("account-password"))
-    return render(request, "accounts/account_password.html", {"form": form, "section": "password"})
-
-
-@never_cache
-@login_required
-@require_http_methods(["GET", "POST"])
-def account_password_recovery(request: HttpRequest) -> HttpResponse:
-    user = cast(User, request.user)
-    changing = request.method == "POST" and request.POST.get("action") == "change"
-    form = PasswordRecoveryForm(user, request.POST if changing else None)
-    status = 200
-    if request.method == "POST":
-        try:
-            if request.POST.get("action") == "request":
-                services.request_password_recovery(request)
-                messages.success(request, "کد جدید را به ایمیلتان فرستادیم. تا ۱۰ دقیقه معتبر است.")
-            elif changing and form.is_valid():
-                result = services.complete_password_recovery(
-                    request,
-                    code=form.cleaned_data["code"],
-                    password=form.cleaned_data["new_password1"],
-                )
-                if result is not None:
-                    messages.success(request, "رمز عبور تغییر کرد. از دستگاه‌های دیگر خارج شدید.")
-                    return redirect("account-password")
-                form.add_error("code", "کد درست نیست یا منقضی شده است. کد جدید درخواست کنید.")
-        except (MailQuotaExceeded, services.CodeNotSent) as exc:
-            messages.error(request, exc.message)
-            status = 503
-        except services.RateLimited as exc:
-            if changing:
-                form.add_error(None, exc.message)
-            else:
-                messages.error(request, exc.message)
-            status = 429
-    return render(
-        request,
-        "accounts/password_recovery.html",
-        {"form": form, "section": "password"},
-        status=status,
-    )

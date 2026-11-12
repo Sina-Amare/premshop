@@ -12,23 +12,22 @@ from apps.cart.services import GUEST_CART_ID
 pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.parametrize("login", ["password", "code"])
-def test_real_login_rotates_session_keeps_cart_and_restores_auth_lifetime(
-    client, buyer, plan, login
-):
+def mailed_code() -> str:
+    found = re.search(r"[۰-۹]{6}", mail.outbox[-1].body)
+    assert found, "no code in the sign-in mail"
+    return found.group().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+
+
+def sign_in_by_code(client, email: str, *, follow: bool = False, **extra):
+    client.post("/login/code/", {"email": email, **extra})
+    return client.post("/login/code/verify/", {"code": mailed_code()}, follow=follow)
+
+
+def test_real_login_rotates_session_keeps_cart_and_restores_auth_lifetime(client, buyer, plan):
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     guest = Cart.objects.get()
     guest_key, guest_id = client.session.session_key, guest.pk
-    if login == "password":
-        response = client.post(
-            "/login/password/",
-            {"email": buyer.email, "password": "CartPassword!2026", "next": "/cart/"},
-        )
-    else:
-        client.post("/login/code/", {"email": buyer.email, "next": "/cart/"})
-        digits = re.search(r"[۰-۹]{6}", mail.outbox[-1].body).group()
-        code = digits.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
-        response = client.post("/login/code/verify/", {"code": code})
+    response = sign_in_by_code(client, buyer.email, next="/cart/")
     assert response.status_code == 302
     assert response.url == "/cart/"
     assert client.session.session_key != guest_key
@@ -39,15 +38,11 @@ def test_real_login_rotates_session_keeps_cart_and_restores_auth_lifetime(
     assert guest.pk == guest_id and guest.items.get().quantity == 2
 
 
-def test_password_login_combines_existing_cart_and_shows_reduction(client, buyer, plan):
+def test_code_login_combines_existing_cart_and_shows_reduction(client, buyer, plan):
     account = Cart.objects.create(user=buyer)
     CartItem.objects.create(cart=account, plan=plan, quantity=2)
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
-    response = client.post(
-        "/login/password/",
-        {"email": buyer.email, "password": "CartPassword!2026", "next": "/cart/"},
-        follow=True,
-    )
+    response = sign_in_by_code(client, buyer.email, follow=True, next="/cart/")
     assert "تا سقف خرید هر سفارش کم کردیم" in response.content.decode()
     assert account.items.get().quantity == 3
     assert Cart.objects.count() == 1
@@ -69,7 +64,7 @@ def test_existing_custom_session_expiry_survives_guest_cart_and_login(client, bu
     session.set_expiry(3600)
     session.save()
     client.post("/cart/add/", {"plan": plan.pk})
-    client.post("/login/password/", {"email": buyer.email, "password": "CartPassword!2026"})
+    sign_in_by_code(client, buyer.email)
     assert client.session.get_expiry_age() == 3600
 
 
@@ -81,7 +76,7 @@ def test_logout_does_not_expose_account_cart_to_the_next_visitor(client, buyer, 
     assert CartItem.objects.get().quantity == 1
 
 
-@pytest.mark.parametrize("login", ["password", "code", "admin"])
+@pytest.mark.parametrize("login", ["code", "admin"])
 def test_failed_merge_leaves_the_original_guest_session_usable(client, buyer, plan, login):
     client.post("/cart/add/", {"plan": plan.pk})
     original_key = client.session.session_key
@@ -89,12 +84,9 @@ def test_failed_merge_leaves_the_original_guest_session_usable(client, buyer, pl
         buyer.is_staff = True
         buyer.save(update_fields=["is_staff"])
         url, data = "/admin/login/", {"username": buyer.email, "password": "CartPassword!2026"}
-    elif login == "password":
-        url, data = "/login/password/", {"email": buyer.email, "password": "CartPassword!2026"}
     else:
         client.post("/login/code/", {"email": buyer.email})
-        digits = re.search(r"[۰-۹]{6}", mail.outbox[-1].body).group()
-        url, data = "/login/code/verify/", {"code": digits}
+        url, data = "/login/code/verify/", {"code": mailed_code()}
     with patch("apps.cart.signals.merge_carts", side_effect=RuntimeError("merge failed")):
         with pytest.raises(RuntimeError):
             client.post(url, data)

@@ -223,16 +223,6 @@ def test_a_mistyped_address_can_be_corrected_without_retyping_it(waiting, user):
 # --- The account page additions --------------------------------------------
 
 
-def test_the_password_hint_names_the_rules(client, user):
-    from apps.accounts.forms import PASSWORD_HINT
-
-    client.force_login(user)
-    body = client.get(reverse("account-password")).content.decode()
-
-    assert PASSWORD_HINT in body
-    assert "۸" in PASSWORD_HINT, "the minimum length in settings is 8"
-
-
 @pytest.mark.parametrize(
     "typed, stored",
     [
@@ -316,7 +306,7 @@ def test_a_rejected_phone_paints_one_field_and_nothing_else(client, user):
 
 
 def test_the_header_account_link_goes_to_login_when_signed_out(client):
-    body = client.get(reverse("login-password")).content.decode()
+    body = client.get(reverse("login-code")).content.decode()
 
     assert f'class="v-account" href="{reverse("login-code")}"' in body
     # Labelled, not a bare pictogram: a first-time visitor has to be able to
@@ -338,7 +328,7 @@ def test_the_header_account_link_goes_to_the_account_when_signed_in(client, user
 
 @pytest.mark.parametrize(
     ("name", "heading"),
-    [("account", "اطلاعات حساب"), ("account-password", "رمز عبور")],
+    [("account", "اطلاعات حساب"), ("order-list", "سفارش‌ها")],
 )
 def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
     client.force_login(user)
@@ -349,26 +339,13 @@ def test_every_dashboard_section_has_its_own_page(client, user, name, heading):
     assert heading in response.content.decode()
 
 
-@pytest.mark.parametrize("name", ["account", "account-password"])
+@pytest.mark.parametrize("name", ["account", "order-list"])
 def test_an_account_page_has_one_main_landmark(client, user, name):
     """The section used a <main> inside the page's own <main>: two landmarks,
     invalid nesting, and an ambiguous «jump to content»."""
     client.force_login(user)
 
     assert client.get(reverse(name)).content.decode().count("<main") == 1
-
-
-def test_a_first_password_is_reported_as_set_not_changed(client):
-    """Under the heading «ثبت رمز عبور» the confirmation said «تغییر کرد»."""
-    client.force_login(User.objects.create_user("first@example.test"))
-
-    body = client.post(
-        reverse("account-password"),
-        {"new_password1": "Str0ng-enough-pass", "new_password2": "Str0ng-enough-pass"},
-        follow=True,
-    ).content.decode()
-
-    assert "رمز عبور ثبت شد." in body
 
 
 def test_the_old_profile_address_still_goes_somewhere(client, user):
@@ -383,7 +360,7 @@ def test_the_old_profile_address_still_goes_somewhere(client, user):
     assert response["Location"] == reverse("account")
 
 
-@pytest.mark.parametrize("name", ["account", "account-password"])
+@pytest.mark.parametrize("name", ["account", "order-list"])
 def test_a_dashboard_section_requires_a_session(client, name):
     assert client.get(reverse(name)).status_code == 302
 
@@ -477,16 +454,3 @@ def test_the_dashboard_names_one_next_step_at_a_time(client, user):
     # Nothing to prompt: this account can already sign in both ways, and the
     # phone is an ordinary editable field rather than a chore to nag about.
     assert 'class="acct__next"' not in body
-
-
-def test_an_otp_only_account_is_offered_a_password_and_nothing_else(client):
-    """An account created by a code login has no password. That is the single
-    step worth naming for them, and it is the only one — a dashboard that
-    lists three optional chores teaches the customer to ignore it."""
-    only_code = User.objects.create_user("codeonly@example.test", None, is_verified=True)
-    client.force_login(only_code)
-
-    body = client.get(reverse("account")).content.decode()
-
-    assert body.count('class="acct__next"') == 1
-    assert "ثبت رمز عبور" in body

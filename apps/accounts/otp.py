@@ -53,27 +53,14 @@ def _digest(code: str) -> str:
     return salted_hmac("premshop.accounts.otp", code, secret=settings.SECRET_KEY).hexdigest()
 
 
-def _subject(email: str, purpose: str, binding: str) -> str:
-    if purpose == "login" and not binding:
-        return email
-    if purpose != "password_reset" or not binding:
-        raise ValueError("Recovery codes require a session binding.")
-    return (
-        "password-reset:"
-        + salted_hmac(
-            "premshop.accounts.recovery", f"{normalize_email(email)}:{binding}"
-        ).hexdigest()
-    )
-
-
-def issue(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
+def issue(email: str) -> Issued:
     """Generate a code, replacing any outstanding one for this address.
 
     Replacing rather than reusing matters: a customer who clicks "send again"
     expects the newest mail to be the one that works. Two live codes would mean
     the older mail silently fails, which reads as a broken shop.
     """
-    return _store(_subject(email, purpose, binding), _new_code())
+    return _store(email, _new_code())
 
 
 def _new_code() -> str:
@@ -97,7 +84,7 @@ def _store(subject: str, code: str) -> Issued:
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
-def verify(email: str, code: str, *, purpose: str = "login", binding: str = "") -> bool:
+def verify(email: str, code: str) -> bool:
     """Check a code and consume it. A correct code is single-use.
 
     Every attempt is counted before it is compared, and the wrong guess that
@@ -107,7 +94,6 @@ def verify(email: str, code: str, *, purpose: str = "login", binding: str = "") 
     Each issuance owns its record and attempt budget. A stale request can never
     delete a replacement; only the request deleting its record spends a code.
     """
-    email = _subject(email, purpose, binding)
     key = _key(email)
     issuance = cache.get(key)
     if not isinstance(issuance, str):
@@ -164,7 +150,7 @@ def normalize_digits(value: str) -> str:
     return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
 
 
-def send_login_code(email: str, *, purpose: str = "login", binding: str = "") -> Issued:
+def send_login_code(email: str) -> Issued:
     """Mail a new code, then make it the live one. Raises if the relay refuses —
     never silently.
 
@@ -177,17 +163,14 @@ def send_login_code(email: str, *, purpose: str = "login", binding: str = "") ->
 
     from apps.core.email import send_templated_email
 
-    subject = _subject(email, purpose, binding)  # a bad binding fails before any mail
     code = _new_code()
     sent = send_templated_email(
-        "password_reset" if purpose == "password_reset" else "otp_code",
-        to=[email],
-        context={"code": code, "ttl_minutes": CODE_TTL_SECONDS // 60},
+        "otp_code", to=[email], context={"code": code, "ttl_minutes": CODE_TTL_SECONDS // 60}
     )
     if not sent:
         raise SMTPException("Code email was not accepted")
     # Two accepted at once: the later store wins, not always the newer mail. One code stays live.
-    return _store(subject, code)
+    return _store(email, code)
 
 
 def normalize_email(email: str) -> str:

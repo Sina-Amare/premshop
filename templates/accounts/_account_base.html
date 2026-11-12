@@ -13,7 +13,6 @@
     </div>
     <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
     <a href="{% url 'order-list' %}"{% if section == "orders" %} aria-current="page"{% endif %}>سفارش‌ها</a>
-    <a href="{% url 'account-password' %}"{% if section == "password" %} aria-current="page"{% endif %}>رمز عبور</a>
     <form method="post" action="{% url 'logout' %}" class="acct__out">
       {% csrf_token %}
       <button type="submit" class="btn btn--ghost">خروج از حساب</button>

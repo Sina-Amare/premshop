@@ -628,7 +628,6 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .crumbs a{padding-block:12px;margin-block:-12px}
 .stepper__btn{inline-size:44px;min-block-size:44px}
 .stepper__input{min-block-size:44px}
-.field__eye{inset-inline-end:1px;inline-size:44px;block-size:44px}
 .shelf__all,.buybox__note a,.v-hero__deal{display:inline-flex;align-items:center;min-block-size:44px}
 .auth-card + :is(p,div) a,.auth-card :is(.small,.micro) a{display:inline-flex;align-items:center;min-block-size:32px}
 @media(max-width:760px){

@@ -252,7 +252,7 @@ def test_customer_and_email_sources_use_the_same_persian(ui_source_strings, patt
 
 
 def test_copy_scan_reaches_templates_scripts_and_python_messages(ui_source_strings):
-    assert any(where.endswith("password_recovery.html") for where, _ in ui_source_strings)
+    assert any(where.endswith("login_code_request.html") for where, _ in ui_source_strings)
     assert any(where.endswith(".js") for where, _ in ui_source_strings)
     assert any("accounts" in where and "views.py:" in where for where, _ in ui_source_strings)
     assert len(ui_source_strings) > 300

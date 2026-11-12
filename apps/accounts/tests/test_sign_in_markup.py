@@ -18,7 +18,7 @@ INLINE = {
 }
 
 
-@pytest.mark.parametrize("name", ["login-code", "login-code-verify", "login-password"])
+@pytest.mark.parametrize("name", ["login-code", "login-code-verify"])
 def test_the_sign_in_pages_have_no_inline_code(client, name):
     if name == "login-code-verify":
         client.post(reverse("login-code"), {"email": "markup@example.test"})

@@ -2,7 +2,6 @@ import smtplib
 
 import pytest
 import time_machine
-from django.contrib.messages import get_messages
 from django.core import mail
 from django.urls import reverse
 
@@ -26,18 +25,12 @@ def budgets():
 
 
 @pytest.mark.parametrize("blocked", range(4))
-@pytest.mark.parametrize("recovery", [False, True])
-def test_each_refusal_has_its_own_message_and_spends_no_other_budget(client, blocked, recovery):
-    if recovery:
-        client.force_login(User.objects.create_user(EMAIL))
+def test_each_refusal_has_its_own_message_and_spends_no_other_budget(client, blocked):
     limit, subject = budgets()[blocked]
     for _ in range(limit.times):
         ratelimit.hit(limit, subject)
     before = [ratelimit.remaining(*budget) for budget in budgets()]
-    path = "account-password-recovery" if recovery else "login-code"
-    response = client.post(
-        reverse(path), {"email": EMAIL, "action": "request"}, HTTP_ACCEPT="application/json"
-    )
+    response = client.post(reverse("login-code"), {"email": EMAIL}, HTTP_ACCEPT="application/json")
     assert response.status_code == 429
     expected = [
         "درخواست کد برای این ایمیل به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید.",
@@ -45,10 +38,7 @@ def test_each_refusal_has_its_own_message_and_spends_no_other_budget(client, blo
         services.TOO_MANY_CODES,
         services.TOO_MANY_CODES_FROM_NETWORK,
     ][blocked]
-    if recovery:
-        assert expected in [str(message) for message in get_messages(response.wsgi_request)]
-    else:
-        assert response.json()["error"] == expected
+    assert response.json()["error"] == expected
     assert [ratelimit.remaining(*budget) for budget in budgets()] == before
     assert not mail.outbox
 
@@ -62,56 +52,34 @@ def test_daily_refusal_precedes_exhausted_short_windows(rf):
 
 
 @pytest.mark.parametrize("failure", [smtplib.SMTPException, MailQuotaExceeded, "zero"])
-@pytest.mark.parametrize("recovery", [False, True])
-def test_an_unsent_code_spends_short_windows_but_no_daily_unit(
-    client, rf, monkeypatch, failure, recovery
-):
+def test_an_unsent_code_spends_short_windows_but_no_daily_unit(rf, monkeypatch, failure):
     def refuse(*args, **kwargs):
         if failure == "zero":
             return 0
         raise failure
 
     monkeypatch.setattr("apps.core.email.send_templated_email", refuse)
-    if recovery:
-        client.force_login(User.objects.create_user(EMAIL))
     # A relay failure is answered on the page as the quota's refusal is, rather
     # than escaping to the general error page.
-    if recovery:
-        assert (
-            client.post(reverse("account-password-recovery"), {"action": "request"}).status_code
-            == 503
-        )
-    else:
-        with pytest.raises(
-            MailQuotaExceeded if failure is MailQuotaExceeded else services.CodeNotSent
-        ):
-            services.request_login_code(rf.post("/"), EMAIL)
+    with pytest.raises(MailQuotaExceeded if failure is MailQuotaExceeded else services.CodeNotSent):
+        services.request_login_code(rf.post("/"), EMAIL)
     assert [ratelimit.remaining(*budget) for budget in budgets()] == [10, 20, 2, 9]
 
 
-def test_daily_email_is_shared_normalized_not_reset_on_login_and_expires(client, rf):
-    user = User.objects.create_user(EMAIL, "fixture-passphrase-827!")
-    client.force_login(user)
+def test_daily_email_is_normalized_not_reset_on_login_and_expires(client, rf):
+    User.objects.create_user(EMAIL)
     with time_machine.travel("2026-11-03 10:00:00", tick=False) as clock:
         for index in range(10):
-            if index % 2:
-                assert (
-                    client.post(
-                        reverse("account-password-recovery"), {"action": "request"}
-                    ).status_code
-                    == 200
-                )
-            else:
-                services.request_login_code(rf.post("/"), EMAIL.upper())
-            clock.shift(901)
+            if index:
+                clock.shift(901)
+            issued = services.request_login_code(
+                rf.post("/"), EMAIL.upper() if index % 2 else EMAIL
+            )
         assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, EMAIL) == 0
-        assert (
-            services.login_with_password(rf_request(client, rf), EMAIL, "fixture-passphrase-827!")
-            is not None
-        )
+        assert services.complete_code_login(rf_request(client, rf), EMAIL, issued.code) is not None
         with pytest.raises(services.RateLimited, match="سقف روزانه"):
             services.request_login_code(rf.post("/"), EMAIL)
-        clock.shift(86400 - 9010)
+        clock.shift(86400 - 9 * 901)
         services.request_login_code(rf.post("/"), EMAIL)
         assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, EMAIL) == 9
 
