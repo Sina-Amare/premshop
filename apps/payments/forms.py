@@ -133,7 +133,10 @@ class CheckoutForm(forms.Form):
         label="ایمیل (اختیاری)",
         max_length=254,
         required=False,
-        help_text="رسید و خبرهای سفارش را به این ایمیل می‌فرستیم.",
+        help_text=(
+            "رسید و خبرهای سفارش را به این ایمیل می‌فرستیم. "
+            "اگر حسابتان ایمیل ندارد، همین را در حساب هم ثبت می‌کنیم."
+        ),
         error_messages={"invalid": "این ایمیل درست نیست."},
         widget=forms.EmailInput(
             attrs={"class": "field__input", "dir": "ltr", "autocomplete": "email"}

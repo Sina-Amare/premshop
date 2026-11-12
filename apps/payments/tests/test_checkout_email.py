@@ -97,3 +97,11 @@ def test_the_services_refuse_an_email_the_form_would(phone_only, plan, email):
         place_order(user=phone_only, lines=[OrderLine(plan, 1, None)], email=email)
     with pytest.raises(ValidationError):
         check_out(phone_only, email=email)
+
+
+def test_checkout_says_a_typed_email_is_kept_on_an_account_without_one(client, phone_only):
+    client.force_login(phone_only)
+
+    page = client.get(reverse("checkout")).content.decode()
+
+    assert "اگر حسابتان ایمیل ندارد، همین را در حساب هم ثبت می‌کنیم." in page
