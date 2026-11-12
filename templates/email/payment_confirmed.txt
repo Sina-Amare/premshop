@@ -1,6 +1,7 @@
-{% load fa %}PremShop
+{% load fa order_tones %}PremShop
 پرداخت سفارش {{ order_number|fa_digits }} به مبلغ {{ amount|toman_plain }} تومان تأیید شد.
-وضعیت هر محصول و قدم بعدی را در صفحه‌ی سفارش ببینید:
+{% if pill_state %}وضعیت: {{ pill_state|state_label }}
+{% endif %}وضعیت هر محصول و قدم بعدی را در صفحه‌ی سفارش ببینید:
 {{ order_url }}
 
 پشتیبانی: {{ support.email }}

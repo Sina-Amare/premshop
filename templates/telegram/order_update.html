@@ -1,7 +1,8 @@
-{% load fa %}<b>{{ subject }}</b>{% if product_name %}
-محصول: {{ product_name }}، {{ plan_title }}{% endif %}{% if template_name == "payment_confirmed" %}
-مبلغ: {{ amount|toman_plain }} تومان{% elif template_name == "item_cancelled" and amount %}
-در انتظار بازگشت وجه: {{ amount|toman_plain }} تومان{% elif template_name == "item_refunded" %}
-بازگشت وجه انجام‌شده: {{ amount|toman_plain }} تومان{% elif template_name == "supply_delayed" and due_at %}
+{% load fa order_tones %}<b>{{ subject }}</b>{% if product_name %}
+محصول: {{ product_name }}، {{ plan_title }}{% elif products %}
+{% if products|length > 1 %}محصولات{% else %}محصول{% endif %}: {{ products|join:" و " }}{% endif %}{% if pill_state %}
+وضعیت: {{ pill_state|state_label }}{% endif %}{% if template_name == "payment_confirmed" or template_name == "item_refunded" or template_name == "item_cancelled" and amount %}
+مبلغ: {{ amount|toman_plain }} تومان{% elif template_name == "item_cancelled" and products %}
+{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% elif template_name == "supply_delayed" and due_at %}
 زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}{% endif %}
 <a href="{{ order_url }}">مشاهده‌ی سفارش</a>

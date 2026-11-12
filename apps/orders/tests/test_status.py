@@ -24,6 +24,16 @@ def test_every_state_has_words_a_known_tone_and_an_icon():
         assert 2 <= len(label.split()) <= 4 or label in {"تحویل‌شده", "لغوشده"}, label
 
 
+def test_email_tones_are_the_panels_light_tones(settings):
+    css = (settings.BASE_DIR / "static/css/admin-experience.css").read_text(encoding="utf-8")
+    light = css[css.index("--panel-attention-bg") :]
+    light = light[: light.index("}")].replace(" ", "")
+    assert set(status.EMAIL_TONES) == set(status.BADGE)
+    for tone, colours in status.EMAIL_TONES.items():
+        for part, value in zip(("bg", "text", "line"), colours, strict=True):
+            assert f"--panel-{tone}-{part}:{value};" in light + ";", (tone, part)
+
+
 @pytest.mark.parametrize("value", S.values)
 def test_every_item_status_lands_on_a_known_state(value):
     now = timezone.now()

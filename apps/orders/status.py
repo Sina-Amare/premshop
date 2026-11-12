@@ -24,6 +24,15 @@ BADGE = {"attention": "time", "progress": "progress", "done": "ok", "closed": "n
          "problem": "danger"}  # fmt: skip
 ICON = {"attention": "clock", "progress": "progress", "done": "check", "closed": "close",
         "problem": "alert"}  # fmt: skip
+# The panel's light tones as an email's inline background, text and border: an email reads
+# no stylesheet. A test keeps them equal to static/css/admin-experience.css.
+EMAIL_TONES = {
+    "attention": ("#fef6e7", "#92400e", "#f3d5a4"),
+    "progress": ("#e7f6fa", "#155e75", "#a5dceb"),
+    "done": ("#e9f7ee", "#166534", "#b1dfc0"),
+    "closed": ("#f5f6f8", "#566170", "#dfe3e9"),
+    "problem": ("#fdecec", "#991b1b", "#f3b9b9"),
+}
 
 # The customer's words and the tone, in ranking order: the customer's own moves first,
 # then what went wrong, work in hand, what is finished, and what is closed.

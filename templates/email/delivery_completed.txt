@@ -1,7 +1,8 @@
-{% load fa %}PremShop
+{% load fa order_tones %}PremShop
 تحویل {{ product_name }}، {{ plan_title }}، انجام شد.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-جزئیات آن را پس از ورود به حساب کاربری، در صفحه‌ی سفارش می‌بینید:
+{% if pill_state %}وضعیت: {{ pill_state|state_label }}
+{% endif %}جزئیات آن را پس از ورود به حساب کاربری، در صفحه‌ی سفارش می‌بینید:
 {{ order_url }}
 اطلاعات ورود را در ایمیل ارسال نمی‌کنیم.
 

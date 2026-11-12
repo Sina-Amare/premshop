@@ -1371,6 +1371,7 @@ def _release(
             plan.stock_quantity = quantity
             Plan.objects.filter(pk=plan_id).update(stock_quantity=quantity)
     _release_redemption(order, code, at)
+    released = []
     for item in pending:
         item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
         item.save(update_fields=["status", "cancel_reason"])
@@ -1390,7 +1391,9 @@ def _release(
             actor_user=actor,
             note=note if reason == OrderItem.CancelReason.OPERATOR else "",
         )
-        events.emit("item_cancelled", event.pk, order.pk, item_id=item.pk)
+        released.append(event.pk)
+    # One cancellation, one message for the whole order, keyed by its first history row.
+    events.emit("item_cancelled", released[0], order.pk)
     order.cancelled_at = at
     order.save(update_fields=["cancelled_at"])
     return True

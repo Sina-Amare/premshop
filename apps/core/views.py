@@ -177,7 +177,9 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         "order_number": 14050217,
         "order_url": "https://premshop.ir/account/orders/14050217/",
         "amount": Decimal("1450000"),
+        "pill_state": "queued",
     },
+    # Each notice with the state it reports, named as apps/orders/status.py names it.
     **{
         name: {
             "order_number": 14050217,
@@ -186,14 +188,15 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
             "plan_title": "یک ماهه",
             "amount": Decimal("1450000"),
             "due_at": datetime(2026, 11, 11, 11, 2, tzinfo=UTC),
+            "pill_state": state,
         }
-        for name in (
-            "input_requested",
-            "delivery_completed",
-            "replacement_rejected",
-            "supply_delayed",
-            "item_cancelled",
-            "item_refunded",
+        for name, state in (
+            ("input_requested", "awaiting_input"),
+            ("delivery_completed", "delivered"),
+            ("replacement_rejected", "delivered"),
+            ("supply_delayed", "queued"),
+            ("item_cancelled", "refund_owed"),
+            ("item_refunded", "refunded"),
         )
     },
     "password_reset": {"code": "418305", "ttl_minutes": 10},

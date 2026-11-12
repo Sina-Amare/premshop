@@ -1,1 +1,1 @@
-سفارش {{ order_number }} در PremShop ثبت شد
+{% load fa %}سفارش {{ order_number|fa_digits }} در PremShop ثبت شد

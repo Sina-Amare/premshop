@@ -1,8 +1,9 @@
-{% load fa %}PremShop
+{% load fa order_tones %}PremShop
 تحویل {{ product_name }}، {{ plan_title }}، از زمانی که گفته بودیم دیرتر می‌شود.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
-وضعیت سفارش:
+{% if pill_state %}وضعیت: {{ pill_state|state_label }}
+{% endif %}زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
+مشاهده‌ی سفارش:
 {{ order_url }}
 
 پشتیبانی: {{ support.email }}
