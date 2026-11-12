@@ -223,12 +223,12 @@ def test_every_font_stack_names_platform_faces_after_vazirmatn(name):
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
-def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
+def test_tracking_is_zero_everywhere(name):
     """Arabic is cursive: tracking breaks the joins, so letter-spacing is banned.
 
-    Persian digits ۰-۹ never join, so the rule's reason does not reach them and the
-    OTP code carries 3px. That is the only exception, and this pins it — a stray
-    letter-spacing on Persian prose is invisible in review and wrong on screen.
+    The emailed code's spaced digits were the one exception, and codes go by SMS
+    now. A stray letter-spacing on Persian prose is invisible in review and wrong
+    on screen.
     """
     import re
 
@@ -236,7 +236,7 @@ def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
     spaced = re.findall(r'letter-spacing:\s*([^;"\']+)', html)
 
     for value in spaced:
-        assert value.strip() in {"0", "3px"}, f"unexpected tracking on Persian text: {value}"
+        assert value.strip() == "0", f"unexpected tracking on Persian text: {value}"
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))

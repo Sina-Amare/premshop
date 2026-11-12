@@ -17,7 +17,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0009](0009-sla-clock-and-input-timeout-ladder.md) | Delivery deadlines, pause arithmetic and the input-timeout ladder | Accepted, amended | 2026-11-05 |
 | [0010](0010-event-log-and-notification-outbox.md) | Append-only event log and notification outbox | Accepted, amended | 2026-11-10 |
 | [0011](0011-buy-now-checkout-no-cart.md) | Buy-now checkout without a cart | Superseded by [0018](0018-shopping-cart-and-guest-checkout.md) | 2026-10-23 |
-| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in, one way in per account | Superseded by 0031 | 2026-11-12 |
+| [0012](0012-auth-email-otp.md) | Email identity, inline checkout sign-in, one way in per account | Superseded by [0031](0031-sign-in-by-phone.md) | 2026-11-12 |
 | [0013](0013-payment-provider-interface-deferred.md) | No payment-provider interface until a second gateway exists | Accepted | 2026-09-01 |
 | [0014](0014-deliberate-simplifications.md) | Deliberate simplifications, each with its flip condition | Accepted, amended | 2026-11-04 |
 | [0015](0015-error-tracking-glitchtip.md) | Error tracking: sentry-sdk reporting to self-hosted GlitchTip | Accepted | 2026-09-01 |

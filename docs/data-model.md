@@ -133,7 +133,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `subtotal`, `discount_code`, `discount_amount`, `total_amount` | The ledger (below) |
 | `discount_snapshot` | The code's rule and arithmetic as applied |
 | `policy_snapshot` | The published terms, refunds and contact pages at placement, each with a content hash |
-| `placement_email` | Where the purchase confirmation goes. Empty on orders placed before confirmations existed |
+| `placement_email` | Where the order's mail goes: the address typed at checkout, else the account's when the order was placed. Empty when there was neither, and on orders placed before confirmations existed; order updates then fall back to the account's current address |
 | `unpaid_expires_at` | 24 hours after placement. Never extended |
 | `expiry_last_attempt_at`, `cancelled_at` | Sweep bookkeeping and the time of a whole-order cancellation |
 | `channel` | `web`, `bot` or `legacy` |

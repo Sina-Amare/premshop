@@ -88,7 +88,7 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 
 **Absolute rules.**
 
-- `letter-spacing: 0` everywhere: Persian is cursive and tracking breaks the joins. The one exception is the sign-in code's digits in email (below).
+- `letter-spacing: 0` everywhere: Persian is cursive and tracking breaks the joins. The one exception is the sign-in code's field, whose six digits stand apart and never join.
 - No italic: neither family ships one, and a synthesised slant shears the joins. `font-synthesis: none`.
 - No `text-transform`, which would uppercase the Latin half of «اشتراک Claude Pro», and no `justify`, since no browser implements kashida.
 - Never both faces in one line.
@@ -148,7 +148,7 @@ Email is a different medium with its own rules ([ADR-0023](decisions/0023-email-
 
 - **Layout** is tables with inline styles, because Outlook renders with Word's engine.
 - **Fonts.** No web font is loaded. The stack is `'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif`, so each reader sees the first one installed.
-- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks attention only: a code's expiry, a delivery link's expiry and the customer's next move. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
+- **Colour.** A warm-stone ramp (`#1C1917`, `#57534E`, `#78716C` on `#FAFAF9`, lines `#E7E5E4`) with cobalt `#2459D3` buttons and links. Amber marks attention only: a delivery link's expiry and the customer's next move. Prose runs at a line height of 1.95, cards and buttons have a 10px radius, and a button is padded `13px 26px 11px`.
 - **The wordmark is set in type**, never as an image, because blocked images would show a broken box on the messages where trust matters most. It is `PremShop`, in Latin, everywhere: the site header and footer, the sender name, subjects and the masthead.
 
 Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` is on.
