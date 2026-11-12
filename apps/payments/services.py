@@ -342,6 +342,8 @@ def checkout(
         str(plan_id): normalize_customer_input(kind, customer_inputs.get(str(plan_id)))
         for plan_id, kind in payload["inputs"]
     }
+    if not isinstance(email, str):
+        raise ValidationError("این ایمیل درست نیست.")
     email = normalize_email(email)
     submission = _json(
         {

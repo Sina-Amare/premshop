@@ -85,3 +85,15 @@ def test_an_account_with_no_number_never_reads_none(client, plan):
         page = client.get(url)
         assert page.status_code == 200
         assert "None" not in page.content.decode(), url
+
+
+@pytest.mark.parametrize("email", ["a" * 250 + "@example.test", 42])
+def test_the_services_refuse_an_email_the_form_would(phone_only, plan, email):
+    from django.core.exceptions import ValidationError
+
+    from apps.orders.services import OrderLine, place_order
+
+    with pytest.raises(ValidationError):
+        place_order(user=phone_only, lines=[OrderLine(plan, 1, None)], email=email)
+    with pytest.raises(ValidationError):
+        check_out(phone_only, email=email)

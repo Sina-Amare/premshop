@@ -986,6 +986,9 @@ def place_order(
         or any(type(line.plan.pk) is not int for line in lines)
     ):
         raise ValidationError("اطلاعات سفارش درست نیست.")
+    # The column holds 254 characters, fewer than the validator allows.
+    if not isinstance(email, str) or len(normalize_email(email)) > 254:
+        raise ValidationError("این ایمیل درست نیست.")
     email = normalize_email(email)
     if email:
         EmailValidator(message="این ایمیل درست نیست.")(email)
