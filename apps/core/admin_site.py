@@ -14,7 +14,7 @@ from unfold.sites import UnfoldAdminSite
 
 from apps.core.sessions import login_session
 
-PASSWORD_BACKEND = "django.contrib.auth.backends.ModelBackend"
+PASSWORD_BACKEND = "django.contrib.auth.backends.ModelBackend"  # noqa: S105  # nosec B105
 
 
 class PanelSite(UnfoldAdminSite):
