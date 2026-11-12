@@ -97,6 +97,15 @@ SPOKEN = [
     (rf"(?<={_WORD})(?:تون|شون)(?:ه|ن)?(?!{_WORD})", "«‌تان», «‌شان»: «حسابتان»"),
     (rf"(?<!{_WORD})(?:ویرایش|گزارش|نمایش)ش(?!{_WORD})", "«گزارش آن»: the pronoun as a word"),
 ]
+# Written words a marker would read as speech: «ستون» and «کارتون» end in «تون», and
+# «می‌شده» in «ه». They go before a search. «رو به» stays caught: in «کد رنگ رو به شکل …»
+# it is the spoken object marker, so a hint that means "facing" writes «به سمت».
+WRITTEN = re.compile(rf"(?<!{_WORD})(?:ستون|کارتون|می‌شده)(?!{_WORD})")
+
+
+def spoken(pattern: str, text: str) -> bool:
+    return re.search(pattern, WRITTEN.sub("", text)) is not None
+
 
 # Latin digits inside a Persian sentence. Identifiers, codes and format
 # placeholders are exempt: this is about quantities a person reads.
@@ -177,7 +186,7 @@ def test_no_panel_string_uses_a_banned_form(pattern, instead):
 @pytest.mark.parametrize("pattern, instead", SPOKEN)
 def test_no_panel_string_is_spoken_persian(pattern, instead):
     """The FAQ is the one conversational surface; the panel reads as written."""
-    bad = [f"{where}: {text}" for where, text in panel_strings() if re.search(pattern, text)]
+    bad = [f"{where}: {text}" for where, text in panel_strings() if spoken(pattern, text)]
     assert not bad, f"write {instead} — {bad}"
 
 
@@ -357,7 +366,7 @@ def test_the_lint_leaves_good_persian_alone(text):
 )
 def test_the_spoken_lint_catches_what_it_is_meant_to_catch(text):
     """Every line is spoken Persian that the panel really carried."""
-    assert any(re.search(p, text) for p, _ in SPOKEN), text
+    assert any(spoken(p, text) for p, _ in SPOKEN), text
 
 
 @pytest.mark.parametrize(
@@ -378,10 +387,13 @@ def test_the_spoken_lint_catches_what_it_is_meant_to_catch(text):
         "نمونه و هماهنگی",
         "شش روز بعد، پنجاه و شش مورد، پوشش کامل.",
         "همانطور که نوشته‌اید، بگذارید بماند.",
+        "این ستون مبلغ هر سفارش را نشان می‌دهد.",
+        "کالا در کارتون بسته‌بندی می‌شود.",
+        "این پیام پیش از این هم فرستاده می‌شده است.",
     ],
 )
 def test_the_spoken_lint_leaves_written_persian_alone(text):
-    assert not any(re.search(p, text) for p, _ in SPOKEN), text
+    assert not any(spoken(p, text) for p, _ in SPOKEN), text
 
 
 PERSIAN_NAMES = re.compile(
