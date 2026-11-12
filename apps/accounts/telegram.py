@@ -37,7 +37,7 @@ OFFSET_KEY = "telegram:update-offset"
 DOWN_KEY = "telegram:poll-down"
 COMMANDS_KEY = "telegram:commands"
 
-# Every screen opens with its emoji and a bold title, and its links are buttons (TB).
+# Every screen opens with its emoji and a bold title, and its links are buttons.
 CONFIRM = (
     f"{emoji.LINK} <b>اتصال تلگرام به PremShop</b>\n"
     f"{emoji.ACCOUNT} حساب کاربری: <code>{{email}}</code>\n"
