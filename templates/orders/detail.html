@@ -24,10 +24,10 @@
 <p>قرار بود <bdi>{{ products }}</bdi> تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل شود. بابت تأخیر عذرخواهی می‌کنیم.</p>
 {% elif state == 'replacement' %}
 <h2 id="order-next-title">درخواست تعویض <bdi>{{ products }}</bdi>{% if card.requested_at %} در {{ card.requested_at|jalali }}{% endif %} ثبت شد</h2>
-<p>فعلاً کاری لازم نیست. نتیجه را به شما خبر می‌دهیم.</p>
+<p>فعلاً کاری لازم نیست. {% if reachable %}نتیجه را به شما خبر می‌دهیم.{% else %}نتیجه را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای اینکه خبرها به شما برسد، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را وارد کنید یا تلگرام را وصل کنید.</p>{% endif %}
 {% elif state == 'queued' %}
 <h2 id="order-next-title">{% if card.due_at %}تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم{% elif card.hours %}تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت تحویل می‌دهیم{% else %}<bdi>{{ products }}</bdi> در حال آماده‌سازی است{% endif %}</h2>
-<p>فعلاً کاری لازم نیست. پس از تحویل به شما خبر می‌دهیم.</p>
+<p>فعلاً کاری لازم نیست. {% if reachable %}پس از تحویل به شما خبر می‌دهیم.{% else %}پس از تحویل، اطلاعات را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای اینکه خبرها به شما برسد، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را وارد کنید یا تلگرام را وصل کنید.</p>{% endif %}
 {% elif state == 'delivered' %}
 {% if card.rejected_at %}<h2 id="order-next-title">درخواست تعویض در {{ card.rejected_at|jalali }} رد شد</h2>
 <p>دلیلش را از پشتیبانی بپرسید.</p>

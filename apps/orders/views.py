@@ -112,6 +112,12 @@ def _render_detail(
             "error": error,
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
+            # Order news goes by email or Telegram; with neither, this page is the news.
+            "reachable": bool(
+                summary["order"].placement_email
+                or summary["order"].user.email
+                or summary["order"].user.telegram_id
+            ),
         },
         status=status,
     )
