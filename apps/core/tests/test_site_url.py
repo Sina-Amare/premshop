@@ -24,6 +24,10 @@ PRODUCTION = {
     "FIELD_ENCRYPTION_KEY_FALLBACKS": "",
     "SENTRY_DSN": "",
     "ADMIN_PATH": "ops-7c2f/",
+    "SMS_BACKEND": "smsir",
+    "SMS_IR_API_KEY": "sms-key",
+    "SMS_IR_LINE_NUMBER": "500032685089846",
+    "SMS_IR_TEMPLATE_ID": "",
 }
 
 

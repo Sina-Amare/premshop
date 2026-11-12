@@ -74,6 +74,12 @@ if not DEFAULT_FROM_EMAIL.strip().rstrip(">").endswith("@premshop.ir"):  # noqa:
         f"sender domain. Got: {DEFAULT_FROM_EMAIL!r}"  # noqa: F405
     )
 
+# Customers sign in only by SMS code (ADR-0031). Without a key every code request
+# fails, and the fake backend tells customers a code went that never did.
+SMS_IR_API_KEY = env("SMS_IR_API_KEY", required=True)
+if SMS_BACKEND != "smsir":  # noqa: F405
+    raise ImproperlyConfigured("SMS_BACKEND must be smsir in production.")
+
 # Without it every canonical link, preview image and email link would be built on a
 # development address, and nothing on the page would look broken.
 SITE_URL = site_url(env("SITE_URL", required=True))

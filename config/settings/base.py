@@ -290,6 +290,11 @@ if SMS_IR_API_KEY and not (SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER):
     raise ImproperlyConfigured(
         "SMS_IR_API_KEY needs SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
     )
+if not all(value.isdecimal() for value in (SMS_IR_TEMPLATE_ID, SMS_IR_LINE_NUMBER) if value):
+    # SMS.ir takes both as numbers; a typo would be a crash on every code request.
+    raise ImproperlyConfigured(
+        "SMS_IR_TEMPLATE_ID and SMS_IR_LINE_NUMBER are numbers. See .env.example."
+    )
 
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
 # EHLO name. Left alone it stamps the machine's own hostname into every customer's
