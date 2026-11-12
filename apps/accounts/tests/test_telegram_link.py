@@ -512,3 +512,13 @@ def test_a_failed_poll_leaves_the_retry_to_the_minute_run(settings, monkeypatch)
 def test_without_a_token_no_poll_is_queued():
     account_tasks.poll_telegram.call_local()
     assert queued_polls() == []
+
+
+def test_start_isolates_the_half_hidden_number_left_to_right(bot, user):
+    # Without the isolate marks Telegram draws the two halves in the wrong order.
+    User.objects.filter(pk=user.pk).update(phone="09123456789")
+    user.refresh_from_db()
+    links.handle_update(start(f"/start {links.start_link(user)}"))
+    text = bot[-1][1]["text"]
+    assert "\N{LEFT-TO-RIGHT ISOLATE}۰۹۱۲•••۶۷۸۹\N{POP DIRECTIONAL ISOLATE}" in text
+    assert "09123456789" not in text
