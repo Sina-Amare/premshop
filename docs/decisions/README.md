@@ -27,7 +27,7 @@ A record is never rewritten. A later change is a dated amendment appended to it,
 | [0019](0019-payment-gateway.md) | The payment gateway is the rail; verification is server-side and confirmation idempotent | Accepted, amended | 2026-11-08 |
 | [0020](0020-discount-codes.md) | Discount codes: scoped, server-computed, concurrency-safe, floored at zero | Accepted, amended | 2026-11-08 |
 | [0021](0021-promotional-pricing.md) | Promotional pricing lives on the plan, behind one function | Accepted, amended | 2026-10-24 |
-| [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-02 |
+| [0022](0022-transactional-email.md) | Transactional email through an SMTP relay, with attempt accounting | Accepted, amended | 2026-11-12 |
 | [0023](0023-email-templates.md) | Email templates: hand-built tables, system fonts, wordmark set in type | Accepted, amended | 2026-10-31 |
 | [0024](0024-auth-implementation.md) | Authentication: cache-backed codes, one flow for sign-in and registration | Accepted, amended | 2026-11-12 |
 | [0025](0025-catalog-implementation.md) | Catalogue: whole-toman money, one price function, a seeded shop | Accepted, amended | 2026-11-04 |

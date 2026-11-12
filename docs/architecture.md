@@ -55,7 +55,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | App | Owns |
 |---|---|
 | `core` | Shared infrastructure: the encrypted field, email sending and mail accounting, the rate limiter, Persian formatting filters, the restricted Markdown renderer, support details, middleware, error pages, the health check and the panel's admin site. |
-| `accounts` | The `User` model, sign-in by code, and the account page. |
+| `accounts` | The `User` model, sign-in by code, the panel's password sign-in, and the account page. |
 | `catalog` | Categories, products, plans, page sections and questions; the price function, search, the publishing rule, the storefront pages, SEO and the catalogue editor in the panel. |
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
@@ -128,7 +128,7 @@ Every storefront page has a tested query budget: six queries on the home page, f
 
 ### Sign-in
 
-`/login/` is one flow for signing in and registering, by a six-digit code sent by email ([ADR-0024](decisions/0024-auth-implementation.md)). Each account has one way in: a customer signs in by code and has no password, and staff sign in only at the panel, with a password. A right code for a staff account gets the wrong-code answer, because a staff session opens the panel.
+`/login/` is one flow for signing in and registering, by a six-digit code sent by email ([ADR-0024](decisions/0024-auth-implementation.md)). Each account has one way in: a customer signs in by code and has no password, and staff sign in only at the panel, with a password. A right code for a staff account gets the wrong-code answer, and the panel admits only a session its own password sign-in opened, so a code session stays out even on an account made staff later.
 
 - **Codes** are stored hashed in Redis for ten minutes, with their deadline beside them. Each guess increments an attempt counter before the code is compared, and the code is spent by the one delete that removes it, so two requests carrying the right code cannot both sign in.
 - **Rate limits** apply per email and per IP address on every sign-in endpoint. The panel's sign-in draws on the same budgets, so an address has one budget wherever it is guessed at. Accepted code emails also have a daily budget.
