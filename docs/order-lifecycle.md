@@ -162,7 +162,7 @@ The expected history event identifies the waiting episode. Immediate repeats ret
 
 ## Operator queue
 
-The existing order list opens on queued work, with unpaid and waiting-for-details tabs and an all-orders view. Each row is an order; a mixed order appears in each relevant tab, and tab counts count orders rather than items. A search by order number or customer email opens the all-orders view, whichever tab it started from, and applies to the counts too. Pages contain at most 25 orders.
+The existing order list opens on queued work, with unpaid, waiting-for-details and replacement tabs, a refunds tab of owed refunds, oldest first, for an operator who may see refunds, and an all-orders view. Each row is an order; a mixed order appears in each relevant tab, and tab counts count orders rather than items. A search by order number or customer email opens the all-orders view, whichever tab it started from, and applies to the counts too. Pages contain at most 25 orders.
 
 Unpaid orders sort by payment expiry; queued orders sort by their earliest item deadline, overdue first; waiting orders sort by their oldest information request; open warranty claims, in their own tab, sort by their oldest first delivery. A first wait shows the request time without a deadline. A paused item shows `due_at - sla_paused_at`, including time already overdue when paused. The displayed times are snapshots, with a check time and a refresh link on the list. Opening a page never writes a deadline.
 
@@ -241,7 +241,7 @@ The purchase confirmation is found by polling committed orders, not by an event,
 | `supply_delayed` | Supply-delay extension | The customer, with the frozen new deadline |
 | `item.replacement_requested` (planned) | A customer's replacement request | The operator |
 | `replacement_rejected` | A10b | The customer; operator notes are excluded |
-| `item_cancelled` | A3, A6, A8, A11 | The customer; a refund is owed, not claimed sent |
+| `item_cancelled` | A3, A6, A8, A11 | The customer, once per cancelled unpaid order or per cancelled paid item; a refund is owed, not claimed sent |
 | `item_refunded` | A12 | The customer after a transfer is recorded |
 | `item.cancellation_requested` (planned; policy unresolved) | A future approved request flow | The operator |
 
