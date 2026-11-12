@@ -198,9 +198,11 @@ def test_the_code_is_never_stored_in_the_clear(client, user):
     client.post(reverse("login-code"), {"phone": user.phone})
     code = code_from(sms.outbox[0])
 
-    stored = cache.get(f"otp:{user.phone}")
+    # The number's key holds only the issuance; the record it points to holds the code.
+    issuance = cache.get(f"otp:{user.phone}")
+    stored = cache.get(f"otp-code:{issuance}:{user.phone}")
 
-    assert stored is not None
+    assert stored is not None and stored["digest"]
     assert code not in str(stored)
 
 
