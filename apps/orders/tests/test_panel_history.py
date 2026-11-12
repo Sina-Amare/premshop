@@ -119,6 +119,9 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
         input_type="email", requires_customer_input=True, max_quantity=1
     )
     target = "private-target@example.test"
+    # A decoy order first, so the item's database id is not its place in its order.
+    decoy = User.objects.create_user("decoy@example.test")
+    place_order(user=decoy, lines=[OrderLine(plan, 1, "decoy-input@example.test")])
     order = place_order(user=buyer, lines=[OrderLine(plan, 1, target)])
     item = order.items.get()
     operator = User.objects.create_superuser("operator@example.test")
@@ -132,8 +135,10 @@ def test_both_histories_name_the_product_and_plan_and_never_the_input(client, bu
     named = "<bdi>سرویس نمونه</bdi>، <bdi>یک ماهه</bdi>"
     assert OrderItemEvent.objects.filter(order_item=item).exists()
     assert named in timeline and named in access
-    number = "آیتم ۱،"
+    number, database_id = "آیتم ۱،", f"آیتم {to_persian_digits(item.pk)}،"
+    assert item.pk != 1, "positive control: the id differs from the place"
     assert number in timeline and number in access
+    assert database_id not in timeline and database_id not in access
     # Stored, so its absence from the page is the page's doing and not a lost input.
     assert item.customer_input == target
     assert target not in body
