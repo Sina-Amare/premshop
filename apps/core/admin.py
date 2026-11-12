@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
-from django.db.models import DateTimeField, Model, QuerySet
+from django.db.models import DateTimeField, Model, PositiveSmallIntegerField, QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.html import format_html
@@ -19,10 +19,11 @@ from apps.core.models import MailAttempt
 
 def detail_fields(model: type[Model], labels: dict[str, Any]) -> tuple[Any, ...]:
     """Every field of a read-only page in the panel's own terms: each moment in the Jalali
-    calendar with its time, and a Persian label where the model gives none."""
+    calendar with its time, each count and service code in Persian digits, and a Persian label
+    where the model gives none. Ids and chat ids stay as stored: they are copied, not read."""
     shown: list[Any] = []
     for field in model._meta.fields:
-        if isinstance(field, DateTimeField) or field.name in labels:
+        if isinstance(field, DateTimeField | PositiveSmallIntegerField) or field.name in labels:
             shown.append(_shown(field.attname, labels.get(field.name, field.verbose_name)))
         else:
             shown.append(field.name)
@@ -45,7 +46,7 @@ def _shown(name: str, label: Any) -> Callable[[Any], str]:
 
 @admin.register(MailAttempt)
 class MailAttemptAdmin(ModelAdmin):
-    list_display = ("requested_at", "status_pill", "template", "smtp_code", "error_type")
+    list_display = ("requested_at", "status_pill", "template", "smtp_shown", "error_type")
     list_filter = ("status", "template")
     search_fields = ("recipient_hash",)
     fields = readonly_fields = detail_fields(MailAttempt, {"id": _("شناسه")})
@@ -75,6 +76,10 @@ class MailAttemptAdmin(ModelAdmin):
             format_jalali(obj.created_at),
             to_persian_digits(timezone.localtime(obj.created_at).strftime("%H:%M:%S")),
         )
+
+    @admin.display(description=_("شماره پاسخ سرویس"), ordering="smtp_code")
+    def smtp_shown(self, obj: MailAttempt) -> str:
+        return "—" if obj.smtp_code is None else to_persian_digits(obj.smtp_code)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

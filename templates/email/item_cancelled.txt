@@ -1,8 +1,10 @@
-{% load fa %}PremShop
-خرید {{ product_name }}، {{ plan_title }}، لغو شد.
+{% load fa order_tones %}PremShop
+{% if product_name %}خرید {{ product_name }}، {{ plan_title }}، لغو شد.{% else %}این سفارش لغو شد.{% endif %}
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-{% if amount %}بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% else %}این لغو بازگشت وجه ندارد.{% endif %}
-وضعیت سفارش:
+{% if pill_state %}وضعیت: {{ pill_state|state_label }}
+{% endif %}{% if products %}{% if products|length > 1 %}محصولات{% else %}محصول{% endif %}: {{ products|join:"، " }}
+{% endif %}{% if amount %}بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% elif products %}{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد. اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای {{ support.telegram }} بفرستید.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% else %}این لغو بازگشت وجه ندارد.{% endif %}
+مشاهده‌ی سفارش:
 {{ order_url }}
 
 پشتیبانی: {{ support.email }}

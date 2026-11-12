@@ -1,5 +1,6 @@
 """Customer purchase facts and a smaller public tracking projection."""
 
+from collections import Counter
 from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal
@@ -53,6 +54,18 @@ def current_unpaid_order(user: User) -> Order | None:
         .order_by("pk")
         .first()
     )
+
+
+def item_numbers(order_ids: Iterable[int]) -> dict[int, int]:
+    """Each item's place in its order, from 1: the panel's «آیتم n», where a database id would
+    mean nothing to the operator. Items are never added to a placed order, so a place holds."""
+    numbers: dict[int, int] = {}
+    count: Counter[int] = Counter()
+    items = OrderItem.objects.filter(order_id__in=set(order_ids)).order_by("order_id", "pk")
+    for pk, order_id in items.values_list("pk", "order_id"):
+        count[order_id] += 1
+        numbers[pk] = count[order_id]
+    return numbers
 
 
 def customer_orders(user: User) -> QuerySet[Order]:

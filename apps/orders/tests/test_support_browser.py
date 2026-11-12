@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from playwright.sync_api import expect
 
+from apps.core.formatting import to_persian_digits
 from apps.orders.models import CredentialAccessLog, Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_customer_browser import capture, context_for
 
@@ -37,24 +38,28 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         expect(page.locator("#order-help > summary")).to_have_text("پشتیبانی این سفارش")
         expect(page.locator("#order-help")).not_to_have_attribute("open", "")
         expect(page.locator("#order-next #support-identifier")).to_be_visible()
+        expect(page.locator("[data-support-instructions]")).to_have_count(1)
         expect(page.locator("[data-support-instructions]")).to_contain_text(
-            "شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید."
+            "شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید."
         )
         identifier = page.locator("#support-identifier")
         expect(identifier).to_have_text(order.support_identifier.grouped_token)
         assert identifier.get_attribute("dir") == "ltr"
         assert page.url.endswith(detail)
         capture(page, "support-customer", width, tmp_path)
-        page.get_by_role("button", name="کپی شناسه", exact=True).focus()
+        copy = page.get_by_role("button", name="کپی شماره‌ی سفارش و شناسه", exact=True)
+        copy.focus()
         page.keyboard.press("Enter")
         expect(page.locator("[data-copy-status]")).to_have_text("کپی شد")
         expect(page.locator("[data-copy-status]")).to_have_attribute("aria-live", "polite")
         expect(page.locator("[data-copy-status]")).to_have_attribute("aria-atomic", "true")
-        assert page.evaluate("window.copiedSupport") == order.support_identifier.grouped_token
+        number = to_persian_digits(order.order_number)
+        token = order.support_identifier.grouped_token
+        assert page.evaluate("window.copiedSupport") == f"سفارش {number}، شناسه‌ی پشتیبانی {token}"
         page.evaluate(
             "() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; }"
         )
-        page.get_by_role("button", name="کپی شناسه", exact=True).click()
+        copy.click()
         expect(page.locator("[data-copy-status]")).to_have_text(
             "کپی انجام نشد؛ شناسه را انتخاب و کپی کنید."
         )

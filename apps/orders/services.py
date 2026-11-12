@@ -63,10 +63,19 @@ def match_support_token(*, order_id: int, actor: User, support_token: str) -> bo
     identifier = OrderSupportIdentifier.objects.get(order_id=order_id)
     if len(support_token) > 64:
         return False
-    support_token = re.sub(r"[\s-]", "", to_latin_digits(support_token)).upper()
-    return bool(
-        re.fullmatch(f"[{SUPPORT_ALPHABET}]{{12}}", support_token)
-    ) and constant_time_compare(identifier.support_token, support_token)
+    pasted = to_latin_digits(support_token).upper()
+    token = re.sub(r"[\s-]", "", pasted)
+    if not re.fullmatch(f"[{SUPPORT_ALPHABET}]{{12}}", token):
+        # The customer's copied line («سفارش …، شناسه‌ی پشتیبانی XXXX XXXX XXXX»): its one
+        # grouped token, which the line's words keep apart from the order number.
+        group = f"[{SUPPORT_ALPHABET}]{{4}}"
+        found = re.findall(
+            f"(?<![{SUPPORT_ALPHABET}])(?:{group} ){{2}}{group}(?![{SUPPORT_ALPHABET}])", pasted
+        )
+        if len(found) != 1:
+            return False
+        token = found[0].replace(" ", "")
+    return constant_time_compare(identifier.support_token, token)
 
 
 @transaction.atomic
@@ -1371,6 +1380,7 @@ def _release(
             plan.stock_quantity = quantity
             Plan.objects.filter(pk=plan_id).update(stock_quantity=quantity)
     _release_redemption(order, code, at)
+    released = []
     for item in pending:
         item.status, item.cancel_reason = OrderItem.Status.CANCELLED, reason
         item.save(update_fields=["status", "cancel_reason"])
@@ -1390,7 +1400,9 @@ def _release(
             actor_user=actor,
             note=note if reason == OrderItem.CancelReason.OPERATOR else "",
         )
-        events.emit("item_cancelled", event.pk, order.pk, item_id=item.pk)
+        released.append(event.pk)
+    # One cancellation, one message for the whole order, keyed by its first history row.
+    events.emit("item_cancelled", released[0], order.pk)
     order.cancelled_at = at
     order.save(update_fields=["cancelled_at"])
     return True

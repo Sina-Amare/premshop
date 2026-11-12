@@ -68,3 +68,22 @@ def test_the_order_message_list_counts_in_persian_digits(client, operator):
     )
     body = client.get(reverse("admin:notifications_notification_changelist")).content.decode()
     assert re.search(r"field-attempts_shown[^>]*>\s*۰\s*<", body)
+
+
+def test_a_message_page_prints_its_counts_and_codes_in_persian_digits(client, operator):
+    order = Order.objects.create(user=operator, subtotal=0, total_amount=0)
+    row = Notification.objects.create(
+        order=order,
+        dedupe_key=f"order:{order.pk}:detail:telegram",
+        template_name=Notification.Template.values[0],
+        channel=Notification.Channel.TELEGRAM,
+        chat_id=987654321,
+        attempts=3,
+        smtp_code=550,
+        next_attempt_at=timezone.now(),
+    )
+    url = reverse("admin:notifications_notification_change", args=[row.pk])
+    body = client.get(url).content.decode()
+    assert "۵۵۰" in body and not re.search(r">\s*(3|550)\s*<", body)
+    # A chat id is a code to copy, not a count to read: it stays as Telegram writes it.
+    assert "987654321" in body

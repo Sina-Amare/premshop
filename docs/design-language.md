@@ -221,7 +221,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 | The option a buyer picks | on the shop, «مدت اشتراک» or «مبلغ کارت»; in the panel, «پلن» | «پلن» to a customer |
 | How long delivery takes | to the customer, «زمان تحویل»; to the operator, «مهلت تحویل» | «مهلت هر محصول» to a customer |
 | Warranty | «گارانتی», always with its length and starting point | «پشتیبانی: تا پایان دوره» as a specification |
-| Refund | «بازگشت وجه», always with its condition | «ضمانت بازگشت وجه», «پول برمی‌گرده» |
+| Refund | to the customer, «بازگشت وجه», always with its condition; to the operator, «بازپرداخت» | «ضمانت بازگشت وجه», «پول برمی‌گرده» |
 | What is left | «مانده», «باقی‌مانده» | «مونده», «باقی‌مونده» |
 | A discount that has ended | «تخفیف تمام شد» | «تخفیف تموم شد» |
 | The discounts section | «تخفیف‌ها» | «تخفیف‌دارها» |

@@ -47,6 +47,30 @@ def test_every_template_renders_all_three_parts(name):
     assert 'dir="rtl"' in html
 
 
+# item_delivered is the old delivery message, which no code sends any more.
+@pytest.mark.parametrize("name", sorted(set(EMAIL_PREVIEWS) - {"item_delivered"}))
+def test_a_subject_prints_its_numbers_in_persian_digits(name):
+    subject, _, _ = render_email(name, EMAIL_PREVIEWS[name])
+    assert not any(char in "0123456789" for char in subject), subject
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "payment_confirmed",
+        "input_requested",
+        "delivery_completed",
+        "replacement_rejected",
+        "supply_delayed",
+        "item_cancelled",
+        "item_refunded",
+    ],
+)
+def test_an_order_notice_names_its_state(name):
+    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
+    assert "\nوضعیت: " in text and "وضعیت: " in html
+
+
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_email_does_not_request_google_fonts(name):
     _, _, html = render_email(name, EMAIL_PREVIEWS[name])

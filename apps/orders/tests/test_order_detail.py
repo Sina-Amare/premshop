@@ -1,6 +1,7 @@
 import re
 from datetime import timedelta
 from decimal import Decimal
+from html import unescape
 
 import pytest
 import time_machine
@@ -12,7 +13,7 @@ from apps.catalog.models import Category, Plan, Product
 from apps.core import support
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders import selectors, services, telegram_panel
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act
 from apps.orders.tests.test_input_clock import operator as operator
@@ -124,6 +125,46 @@ def second_plan():
         input_type=Plan.InputType.NONE,
         telegram_required=False,
     )
+
+
+@pytest.mark.parametrize("state", [case[0] for case in CASES if case[-1]])
+def test_a_card_asks_once_for_what_to_send_in_telegram(client, buyer, plan, operator, state):
+    card = card_of(page(client, buyer, order_for_state(buyer, plan, operator, state)))
+    # The button and the safety line name Telegram but ask for nothing.
+    said = re.sub(
+        r'<a class="btn[^"]*"[^>]*>.*?</a>|<p class="small">.*?</p>', "", card, flags=re.S
+    )
+    sentences = re.findall(r"[^.؟]+[.؟]", text(said))
+    asks = [one for one in sentences if "تلگرام" in one and re.search("بفرستید|پیام بدهید", one)]
+    assert len(asks) == 1, asks
+    if state in ("owed", "mixed_refund"):
+        # Two numbers are asked for, so the promise names the one it counts from.
+        assert "پس از دریافت شماره‌ی کارت یا شبا،" in text(said)
+
+
+def test_the_copied_line_carries_the_order_number_and_the_panel_finds_its_identifier(
+    client, buyer, plan, operator
+):
+    order = services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
+    # Every digit here is also in the identifier's alphabet, so only the line's words keep
+    # the number from running into the identifier.
+    Order.objects.filter(pk=order.pk).update(order_number=23456789)
+    order.refresh_from_db()
+    grouped = OrderSupportIdentifier.objects.get(order_id=order.pk).grouped_token
+    copied = unescape(re.search(r'data-copy-text="([^"]+)"', page(client, buyer, order))[1])
+    assert copied == f"سفارش ۲۳۴۵۶۷۸۹، شناسه‌ی پشتیبانی {grouped}"
+    match = services.match_support_token
+    assert match(order_id=order.pk, actor=operator, support_token=copied)
+    assert match(order_id=order.pk, actor=operator, support_token=grouped)
+    last = "3" if grouped[-1] == "2" else "2"
+    wrong = copied[:-1] + last
+    assert not match(order_id=order.pk, actor=operator, support_token=wrong)
+    assert not match(order_id=order.pk, actor=operator, support_token=copied + " " * 30)
+    other = services.place_order(
+        user=User.objects.create_user("other@example.test"),
+        lines=[services.OrderLine(plan, 1)],
+    )
+    assert not match(order_id=other.pk, actor=operator, support_token=copied)
 
 
 @pytest.mark.parametrize("state,pill,badge,fragment,contact", CASES)

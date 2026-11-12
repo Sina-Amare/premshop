@@ -1,8 +1,9 @@
-{% load fa %}PremShop
+{% load fa order_tones %}PremShop
 درخواست تعویض {{ product_name }}، {{ plan_title }}، رد شد.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
-دلیل رد شدن را از پشتیبانی بپرسید.
-وضعیت سفارش:
+{% if pill_state %}وضعیت: {{ pill_state|state_label }}
+{% endif %}دلیل رد شدن را از پشتیبانی بپرسید.
+مشاهده‌ی سفارش:
 {{ order_url }}
 
 پشتیبانی: {{ support.email }}

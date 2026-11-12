@@ -21,14 +21,18 @@ from django.utils import timezone
 
 from apps.core import events
 from apps.core.formatting import format_jalali, to_persian_digits
+from apps.core.templatetags.fa import toman_plain
 from apps.notifications import services
 from apps.notifications.models import Notification
+from apps.notifications.tests.test_telegram_messages import linked
+from apps.notifications.tests.test_telegram_messages import telegram as telegram
 from apps.orders import services as orders
+from apps.orders import status as order_status
 from apps.orders.tests.test_delivery import NOTE, VALUE, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_lifecycle_concurrency import in_connection
-from apps.orders.tests.test_paid_cancellation import cancel
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 from apps.orders.tests.test_replacement import claim
 from apps.payments.models import Refund
 from apps.payments.services import execute_refunds, record_manual_payment
@@ -186,12 +190,74 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         assert "2468" not in row.text_body + row.html_body
 
 
-def test_unpaid_cancellation_does_not_claim_a_refund(buyer, plan):
-    order = orders.place_order(user=buyer, lines=[orders.OrderLine(plan, 1)])
-    orders.cancel_unpaid_order(order_id=order.pk, actor=buyer)
-    row = rows("item_cancelled").get()
-    assert "این لغو بازگشت وجه ندارد." in row.text_body
-    assert "در انتظار واریز" not in row.text_body
+@pytest.mark.parametrize("path", ["customer", "operator", "expiry"])
+def test_an_unpaid_cancellation_is_one_message_for_the_whole_order(
+    buyer, plan, operator, telegram, path
+):
+    linked(buyer)
+    plan.max_quantity = 2
+    plan.save()
+    order = orders.place_order(user=buyer, lines=[orders.OrderLine(plan, 2)])
+    if path == "customer":
+        orders.cancel_unpaid_order(order_id=order.pk, actor=buyer)
+    elif path == "operator":
+        orders.cancel_unpaid_order(order_id=order.pk, actor=operator, note="مشتری خواست")
+    else:
+        orders.Order.objects.filter(pk=order.pk).update(
+            unpaid_expires_at=timezone.now() - timedelta(minutes=1)
+        )
+        assert orders.expire_unpaid_orders() == 1
+    # One cancellation the customer lived through: one email and one bot message, not one per unit.
+    email = rows("item_cancelled").get(channel="email")
+    bot = rows("item_cancelled").get(channel="telegram")
+    assert email.subject == f"سفارش {to_persian_digits(order.order_number)} لغو شد"
+    if path == "expiry":
+        said, state = "پرداختی برای این سفارش ثبت نشد.", "پایان مهلت پرداخت"
+    else:
+        said, state = "پرداختی برای این سفارش ثبت نشده بود.", "لغوشده"
+    for body in (email.text_body, email.html_body, bot.text_body):
+        assert "در انتظار واریز" not in body and "بازگشت وجه" not in body
+        assert said in body and state in body and "سرویس نمونه" in body
+
+
+def test_each_notice_names_its_state_in_words_and_colour(buyer, plan, operator, telegram):
+    linked(buyer)
+    delivered, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    owed, owed_item = queued(buyer, plan, operator)
+    cancel(owed_item, operator)
+    refund = Refund.objects.get(order_item=owed_item)
+    execute_refunds(
+        order_id=owed.pk,
+        refund_ids=[refund.pk],
+        actor=operator,
+        amount=refund.amount,
+        destination_kind="card",
+        destination_last4="6037",
+        bank_ref="SECRET-TRANSFER-REF",
+        executed_at=timezone.now(),
+    )
+    withdrawn = orders.place_order(user=buyer, lines=[orders.OrderLine(plan, 1)])
+    orders.cancel_unpaid_order(order_id=withdrawn.pk, actor=buyer)
+    cases = [
+        ("payment_confirmed", delivered, "queued"),
+        ("delivery_completed", delivered, "delivered"),
+        ("item_cancelled", owed, "refund_owed"),
+        ("item_refunded", owed, "refunded"),
+        ("item_cancelled", withdrawn, "cancelled"),
+    ]
+    assert {order_status.STATES[state][1] for _, _, state in cases} == set(
+        order_status.EMAIL_TONES
+    ), "positive control: every tone is shown once"
+    for template, order, state in cases:
+        label, tone = order_status.STATES[state]
+        found = rows(template).filter(order=order)
+        email, bot = found.get(channel="email"), found.get(channel="telegram")
+        assert f"وضعیت: {label}" in email.text_body and f"وضعیت: {label}" in bot.text_body
+        background, color, border = order_status.EMAIL_TONES[tone]
+        assert label in email.html_body
+        assert f"background:{background}" in email.html_body
+        assert f"color:{color}" in email.html_body and border in email.html_body
 
 
 @pytest.mark.parametrize("historical", [False, True])
@@ -343,3 +409,20 @@ def test_missing_consumer_is_logged_without_breaking_the_action(
     assert order.items.get().status == "QUEUED"
     assert "RuntimeError" in caplog.text
     assert not Notification.objects.exists()
+
+
+def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(
+    buyer, plan, operator, telegram
+):
+    linked(buyer)
+    plan.max_quantity = 2
+    plan.save()
+    order, items = paid_order(buyer, operator, [orders.OrderLine(plan, 2)])
+    cancel(items[0], operator)
+    refund = Refund.objects.get(order_item=items[0])
+    assert refund.amount < order.total_amount, "positive control: one unit of two"
+    found = rows("item_cancelled").filter(order=order)
+    for row in (found.get(channel="email"), found.get(channel="telegram")):
+        body = row.text_body + row.html_body
+        assert toman_plain(refund.amount) in body, body
+        assert toman_plain(order.total_amount) not in body

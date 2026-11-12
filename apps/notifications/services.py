@@ -17,8 +17,8 @@ from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
 from apps.core.richtext import absolute_markdown_links
 from apps.notifications.models import ConfirmationSweep, Notification
+from apps.orders import status as order_status
 from apps.orders.models import Order, OrderItem
-from apps.payments.models import Refund
 
 logger = logging.getLogger(__name__)
 _DELAYS = (60, 300, 900, 3600, 21600)
@@ -52,18 +52,29 @@ def enqueue_event(
         "amount": order["total_amount"],
         "due_at": due_at,
     }
+    rows = OrderItem.objects.filter(order_id=order_id).select_related("order", "refund")
+    rows = rows.defer("customer_input")
+    items = [rows.get(pk=item_id)] if item_id is not None else list(rows)
     if item_id is not None:
-        facts = OrderItem.objects.values_list("product_snapshot", flat=True).get(
-            pk=item_id, order_id=order_id
-        )
+        facts = items[0].product_snapshot
         context.update(product_name=facts["name"], plan_title=facts["plan_title"])
-        if template_name in ("item_cancelled", "item_refunded"):
-            context["amount"] = (
-                Refund.objects.filter(order_item_id=item_id)
-                .values_list("amount", flat=True)
-                .first()
-                or 0
+    elif template_name == "item_cancelled":
+        # An unpaid order's cancellation: no payment, so no refund line, and every product.
+        context["products"] = list(dict.fromkeys(one.product_snapshot["name"] for one in items))
+    if template_name in ("item_cancelled", "item_refunded"):
+        refund = getattr(items[0], "refund", None) if item_id is not None else None
+        context["amount"] = refund.amount if refund is not None else 0
+    # The state the message reports, in the site's words: its item's, or for a message about
+    # the whole order, the state the order leads with.
+    now = timezone.now()
+    context["pill_state"] = order_status.lead_state(
+        [
+            order_status.item_state(
+                one, getattr(one, "refund", None), one.order.unpaid_expires_at, now
             )
+            for one in items
+        ]
+    )
     recipient = order["placement_email"] or order["user__email"]
     subject, text, html = render_email(template_name, context)
     row, _ = Notification.objects.get_or_create(

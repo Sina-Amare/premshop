@@ -47,7 +47,7 @@ from apps.orders.models import (
     OrderSupportIdentifier,
     UnpaidExpirySweep,
 )
-from apps.orders.selectors import grouped_items
+from apps.orders.selectors import grouped_items, item_numbers
 from apps.orders.services import (
     DELIVERY_LINES,
     PAID_CANCELLATIONS,
@@ -91,6 +91,12 @@ def _moment(at: Any) -> str:
     return f"{format_jalali(local)}، {to_persian_digits(local.strftime('%H:%M'))}"
 
 
+def _owes_refund() -> Exists:
+    return Exists(
+        Refund.objects.filter(order_item__order_id=OuterRef("pk"), status=Refund.Status.OWED)
+    )
+
+
 def queue_overview(user: Any) -> list[dict[str, Any]]:
     """The order work the panel's home counts, by order, each linked to the tab that holds it.
     A count of nothing reads grey, so colour marks only work that exists."""
@@ -98,9 +104,7 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
     flags = {
         "late": Exists(items.filter(status=OrderItem.Status.QUEUED, due_at__lte=timezone.now())),
         **{name: Exists(items.filter(status=state)) for name, state in _QUEUE_STATES.items()},
-        "refunds": Exists(
-            Refund.objects.filter(order_item__order_id=OuterRef("pk"), status=Refund.Status.OWED)
-        ),
+        "refunds": _owes_refund(),
     }
     counts = Order.objects.aggregate(
         **{name: Count("pk", filter=flag) for name, flag in flags.items()}
@@ -114,8 +118,9 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
         ("unpaid", _("منتظر پرداخت"), "attention", f"{queue}?tab=unpaid"),
     ]
     if user.has_perm("payments.view_refund"):
-        reconciliation = reverse("admin:orders_order_reconciliation")
-        tiles.append(("refunds", _("بازپرداخت در انتظار واریز"), "attention", reconciliation))
+        tiles.append(
+            ("refunds", _("بازپرداخت در انتظار واریز"), "attention", f"{queue}?tab=refunds")
+        )
     return [
         {
             "label": label,
@@ -132,7 +137,11 @@ def queue_tab(request: HttpRequest) -> str:
     if request.GET.get("q", "").strip():
         return "all"
     value = request.GET.get("tab", "queued")
-    return value if value in {*_QUEUE_STATES, "all"} else "queued"
+    tabs = {*_QUEUE_STATES, "all"}
+    # Refunds answer only an operator who may see refunds, whatever link was followed.
+    if request.user.has_perm("payments.view_refund"):
+        tabs.add("refunds")
+    return value if value in tabs else "queued"
 
 
 # The operator's next step, by the state apps/orders/status.py ranks first.
@@ -633,6 +642,7 @@ class OrderAdmin(ModelAdmin):
                     "title": title,
                     "order": order,
                     "item": item,
+                    "item_number": item_numbers([order.pk])[item.pk],
                     "opts": self.opts,
                 },
             )
@@ -744,6 +754,7 @@ class OrderAdmin(ModelAdmin):
                 }.get(mode or "", _("تحویل محصول")),
                 "order": order,
                 "item": item,
+                "item_number": item_numbers([order.pk])[item.pk],
                 "form": form,
                 "preview": preview,
                 "error": error,
@@ -771,15 +782,18 @@ class OrderAdmin(ModelAdmin):
             name: Exists(OrderItem.objects.filter(order_id=OuterRef("pk"), status=state))
             for name, state in _QUEUE_STATES.items()
         }
-        counts = base.aggregate(**{name: Count("pk", filter=flag) for name, flag in flags.items()})
-        tabs = []
-        for name, label in (
+        names = [
             ("unpaid", _("منتظر پرداخت")),
             ("queued", _("در صف انجام")),
             ("waiting", _("منتظر اطلاعات مشتری")),
             ("claims", _("درخواست تعویض")),
-            ("all", _("همه‌ی سفارش‌ها")),
-        ):
+        ]
+        if request.user.has_perm("payments.view_refund"):
+            flags["refunds"] = _owes_refund()
+            names.append(("refunds", _("بازپرداخت")))
+        counts = base.aggregate(**{name: Count("pk", filter=flag) for name, flag in flags.items()})
+        tabs = []
+        for name, label in (*names, ("all", _("همه‌ی سفارش‌ها"))):
             params = request.GET.copy()
             for key in ("p", "o", "all"):
                 params.pop(key, None)
@@ -859,6 +873,7 @@ class OrderAdmin(ModelAdmin):
                 context["input_controls"] = controls
             context["purchase_groups"] = grouped_items(obj.items.all())
             context["order_timeline"] = self.history(obj)
+            context["item_numbers"] = item_numbers([obj.pk])
             context["input_access_log"] = (
                 CredentialAccessLog.objects.filter(order_item__order_id=obj.pk)
                 .select_related("user")
@@ -872,7 +887,19 @@ class OrderAdmin(ModelAdmin):
         tab_filters = False
         if request.resolver_match and request.resolver_match.url_name == "orders_order_changelist":
             tab = queue_tab(request)
-            if tab in _QUEUE_STATES:
+            if tab == "refunds":
+                # Each order once, by its oldest refund still owed.
+                owed = Q(refund__status=Refund.Status.OWED)
+                tab_filters = True
+                items = items.filter(owed)
+                queryset = queryset.filter(_owes_refund())
+                queryset = queryset.annotate(
+                    queue_first=Min(
+                        "items__refund__created_at",
+                        filter=Q(items__refund__status=Refund.Status.OWED),
+                    )
+                ).order_by("queue_first", "pk")
+            elif tab in _QUEUE_STATES:
                 state = _QUEUE_STATES[tab]
                 tab_filters = True
                 items = items.filter(status=state)
@@ -998,6 +1025,7 @@ class OrderAdmin(ModelAdmin):
 
     @admin.display(description=_("سابقه‌ی سفارش"))
     def history(self, obj: Order) -> str:
+        numbers = item_numbers([obj.pk])
         events = (
             OrderItemEvent.objects.filter(order_item__order=obj)
             .annotate(item_name=_ITEM_NAME, item_plan=_ITEM_PLAN)
@@ -1020,7 +1048,8 @@ class OrderAdmin(ModelAdmin):
                     format_html(
                         "<bdi>{}</bdi>، <bdi>{}</bdi>", event.item_name or "", event.item_plan or ""
                     ),
-                    _("آیتم %(number)s") % {"number": to_persian_digits(event.order_item_id)},
+                    _("آیتم %(number)s")
+                    % {"number": to_persian_digits(numbers[event.order_item_id])},
                     event.get_actor_display(),
                     (
                         _("وضعیت قبلی: %(state)s") % {"state": event.get_from_status_display()}

@@ -452,8 +452,9 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
 
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    # Unpaid: paying through support is the action, so the card says what to send.
-    assert "در تلگرام، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید." in body
+    # Unpaid: paying through support is the action, so the card says what to send, once.
+    assert "شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید." in body
+    assert "در تلگرام، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید." not in body
     assert f'<a href="{details["telegram_url"]}"' in body
     assert f'<a href="mailto:{details["email"]}"' in body
 

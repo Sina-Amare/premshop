@@ -1,1 +1,1 @@
-{% load fa %}محصولی از سفارش {{ order_number|fa_digits }} لغو شد
+{% load fa %}{% if product_name %}محصولی از سفارش {{ order_number|fa_digits }} لغو شد{% else %}سفارش {{ order_number|fa_digits }} لغو شد{% endif %}

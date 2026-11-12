@@ -1,7 +1,7 @@
 {% extends "email/base.html" %}{% load fa %}
-{% block title %}محصول لغو شد{% endblock %}
+{% block title %}{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}{% endblock %}
 {% block content %}
-<h1 style="font-size:21px;line-height:1.6;">محصول لغو شد</h1>
-{% if amount %}<p>بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.</p>{% else %}<p>این لغو بازگشت وجه ندارد.</p>{% endif %}
+<h1 style="font-size:21px;line-height:1.6;">{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}</h1>
+{% if amount %}<p>بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.</p>{% elif products %}<p>{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد. اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}</p>{% else %}<p>این لغو بازگشت وجه ندارد.</p>{% endif %}
 {% include "email/_order_notice.html" %}
 {% endblock %}

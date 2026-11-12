@@ -386,13 +386,14 @@ PRICE_COMPONENT = re.compile(
 )
 
 
-def test_only_the_product_plan_strikes_its_original_price(client, product):
-    """A card names an offer separately; only the plan row compares its own prices."""
+def test_a_promotional_price_strikes_its_original_on_the_card_and_the_page(client, product):
+    """Wherever a promotional price shows, its original stands beside it, struck."""
     listing = client.get(reverse("category", args=[product.category.slug])).content.decode()
     page = client.get(reverse("product", args=[product.slug])).content.decode()
 
-    assert '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>' in page
-    assert '<del class="price__was">' not in listing.split("</main>", 1)[0]
+    struck = '<del class="price__was"><span class="sr-only">قیمت قبلی </span>۱,۴۵۰,۰۰۰</del>'
+    assert struck in page
+    assert struck in listing.split("</main>", 1)[0]
     for body in (listing, page):
         assert "۱,۲۰۰,۰۰۰" in body
         prices = PRICE_COMPONENT.findall(body)

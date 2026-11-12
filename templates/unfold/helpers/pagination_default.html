@@ -15,7 +15,7 @@ original rule is what reads correctly.
 
 {% if pagination_required %}
     {% for i in page_range %}
-        <div class="{% if forloop.last %}pr-2{% else %}pr-4{% endif %}">
+        <div class="{% if forloop.last %}pr-2{% else %}pr-4{% endif %}" data-page-number>
             {% paginator_number cl i %}
         </div>
     {% endfor %}

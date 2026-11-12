@@ -81,7 +81,10 @@ def test_customer_sees_request_and_support_without_private_metadata(client, buye
     client.force_login(buyer)
     response = client.get(reverse("order-detail", args=[order.order_number]))
     body = response.content.decode()
-    assert "اطلاعات فعال‌سازی را در تلگرام برای پشتیبانی بفرستید." in body
+    assert (
+        "اطلاعات فعال‌سازی، شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید."
+        in body
+    )
     assert "https://t.me/premshop_support" in body
     assert "expected_event_id" not in body and 'name="customer_input"' not in body
     act(services.receive_input, item, operator)

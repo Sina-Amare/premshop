@@ -11,26 +11,26 @@ from typing import Any
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
 from apps.core import support
 from apps.core.formatting import to_persian_digits
+from apps.orders import status as order_status
 from apps.orders import telegram_emoji as emoji
-from apps.orders.models import Order, OrderItem
-from apps.orders.selectors import customer_orders, customer_summary
+from apps.orders.models import Order
+from apps.orders.selectors import customer_orders, customer_summary, order_lead
 
 RECENT = 5
 Buttons = list[list[dict[str, Any]]]
-S = OrderItem.Status
 
-# An order sits in the first list holding one of its items' statuses: a paid order with
-# one item still at work is «در جریان», and one delivered beside a refund is delivered.
-LISTS = {
-    "unpaid": ("منتظر پرداخت", emoji.UNPAID, {S.PENDING_PAYMENT}),
-    "active": ("در جریان", emoji.ACTIVE, {S.QUEUED, S.AWAITING_INPUT, S.REPLACEMENT_REQUESTED}),
-    "delivered": ("تحویل‌شده", emoji.DELIVERED, {S.DELIVERED}),
-    "closed": ("لغو و بازپرداخت", emoji.CLOSED, {S.CANCELLED, S.REFUNDED}),
+# The lists are the site's order groups, so the bot and the order list file an order alike.
+LIST_EMOJI = {
+    "unpaid": emoji.UNPAID,
+    "current": emoji.ACTIVE,
+    "delivered": emoji.DELIVERED,
+    "cancelled": emoji.CLOSED,
 }
 
 
@@ -38,12 +38,8 @@ def _site(name: str, *args: object) -> str:
     return settings.SITE_URL.rstrip("/") + reverse(name, args=args)
 
 
-def list_for(statuses: set[str]) -> str:
-    return next((key for key, (_, _, held) in LISTS.items() if statuses & held), "closed")
-
-
 def _list_of(order: Order) -> str:
-    return list_for({item.status for item in order.items.all()})
+    return order_status.tab_of(order_lead(order, timezone.now()))
 
 
 def _emoji_of(order: Order) -> str:
@@ -53,7 +49,7 @@ def _emoji_of(order: Order) -> str:
 
 def render(user: User, screen: str) -> tuple[str, Buttons]:
     """`screen` comes from a button and is never trusted: an order shows only if it is the user's."""
-    if screen.startswith("l:") and screen[2:] in LISTS:
+    if screen.startswith("l:") and screen[2:] in order_status.TABS:
         return _list(user, screen[2:])
     number = screen.removeprefix("o:")
     # ASCII only: str.isdigit() also accepts «²», which int() refuses.
@@ -66,17 +62,17 @@ def render(user: User, screen: str) -> tuple[str, Buttons]:
 
 def _home(user: User) -> tuple[str, Buttons]:
     text = render_to_string("telegram/panel_home.html", {"email": mask_email(user.email)})
-    counts = dict.fromkeys(LISTS, 0)
+    counts = dict.fromkeys(order_status.TABS, 0)
     for order in customer_orders(user):
         counts[_list_of(order)] += 1
     grid = [
         {
-            "text": f"{icon} {label} {to_persian_digits(counts[key])}",
+            "text": f"{LIST_EMOJI[key]} {label} {to_persian_digits(counts[key])}",
             "callback_data": f"p:l:{key}",
         }
-        for key, (label, icon, _) in LISTS.items()
+        for key, (label, _) in order_status.TABS.items()
     ]
-    support_url = f"https://t.me/{support.TELEGRAM_HANDLE}"
+    support_url = support.details()["telegram_url"]
     return text.strip(), [
         grid[:2],
         grid[2:],
@@ -89,7 +85,7 @@ def _home(user: User) -> tuple[str, Buttons]:
 
 
 def _list(user: User, key: str) -> tuple[str, Buttons]:
-    label, icon, _ = LISTS[key]
+    label, empty = order_status.TABS[key]
     rows = []
     for order in customer_orders(user).order_by("-pk"):
         if _list_of(order) != key:
@@ -104,7 +100,13 @@ def _list(user: User, key: str) -> tuple[str, Buttons]:
             break
     text = render_to_string(
         "telegram/panel_orders.html",
-        {"icon": icon, "label": label, "rows": rows, "orders_url": _site("order-list")},
+        {
+            "icon": LIST_EMOJI[key],
+            "label": label,
+            "empty": empty,
+            "rows": rows,
+            "orders_url": _site("order-list"),
+        },
     )
     buttons = [
         {
@@ -119,11 +121,13 @@ def _list(user: User, key: str) -> tuple[str, Buttons]:
 
 
 def _order(order: Order) -> tuple[str, Buttons]:
+    summary = customer_summary(order)
+    contact = support.details()
     text = render_to_string(
         "telegram/panel_order.html",
         {
-            **customer_summary(order),
-            "support": support.details(),
+            **summary,
+            "support": contact,
             "emoji": _emoji_of(order),
             "order_url": _site("order-detail", order.order_number),
         },
@@ -132,5 +136,13 @@ def _order(order: Order) -> tuple[str, Buttons]:
         "text": f"{emoji.COPY} کپی شماره‌ی سفارش",
         "copy_text": {"text": str(order.order_number)},
     }
+    buttons: Buttons = [[copy]]
+    card = summary["card"]
+    # Support is offered where the order page offers it, except on an unpaid order, which is
+    # paid through support: a bot may not offer a way to pay.
+    if card["contact"] and card["state"] != "unpaid":
+        buttons.append(
+            [{"text": f"{emoji.SUPPORT} پیام به پشتیبانی", "url": contact["telegram_url"]}]
+        )
     back = {"text": f"{emoji.BACK} بازگشت", "callback_data": f"p:l:{_list_of(order)}"}
-    return text.strip(), [[copy], [back]]
+    return text.strip(), [*buttons, [back]]

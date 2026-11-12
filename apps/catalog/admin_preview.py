@@ -71,16 +71,16 @@ class PreviewAdminMixin(ModelAdmin):
         context["field_placements"] = field_placements(self.opts.model_name)
         context["snapshot_text"] = {
             "open": _("دیدن در پیش‌نمایش"),
-            "stale": _("فرم تغییر کرده؛ برای دیدن نسخه‌ی جدید، پیش‌نمایش رو به‌روز کنید."),
+            "stale": _("فرم تغییر کرده؛ برای دیدن نسخه‌ی جدید، پیش‌نمایش را به‌روز کنید."),
             "busy": _("در حال آماده‌کردن پیش‌نمایش…"),
-            "fresh": _("پیش‌نمایش به‌روزه. هنوز چیزی ذخیره نشده."),
-            "failed": _("پیش‌نمایش به‌روز نشد. فعلاً همون نسخه‌ی قبلی رو می‌بینید."),
-            "absent": _("این بخش با اطلاعات فعلی نمایش داده نمی‌شه. راهنمای کنار فیلد رو ببینید."),
+            "fresh": _("پیش‌نمایش به‌روز است. هنوز چیزی ذخیره نشده."),
+            "failed": _("پیش‌نمایش به‌روز نشد. فعلاً همان نسخه‌ی قبلی را می‌بینید."),
+            "absent": _("این بخش با اطلاعات فعلی نمایش داده نمی‌شود. راهنمای کنار فیلد را ببینید."),
             "empty": _(
-                "اینجا جای این بخشه. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، توی سایت دیده می‌شه."
+                "اینجا جای این بخش است. با تکمیل اطلاعات یا فعال‌کردن گزینه‌اش، در سایت دیده می‌شود."
             ),
             "deleted": _(
-                "این ردیف برای حذف انتخاب شده. اگه حذف رو برگردونید، دوباره اینجا نمایش داده می‌شه."
+                "این ردیف برای حذف انتخاب شده است. اگر انتخاب حذف را بردارید، دوباره اینجا نمایش داده می‌شود."
             ),
         }
         return super().render_change_form(request, context, *args, **kwargs)
@@ -109,7 +109,7 @@ class PreviewAdminMixin(ModelAdmin):
             for row_form in formset.forms:
                 submitted_id = row_form.data.get(row_form.add_prefix("id"))
                 if submitted_id and submitted_id not in allowed_ids:
-                    row_form.add_error(None, _("این ردیف مال این محصول نیست."))
+                    row_form.add_error(None, _("این ردیف متعلق به این محصول نیست."))
             valid = formset.is_valid() and valid
         errors: list[dict[str, Any]] = []
         for bound in [form, *(row for formset in formsets for row in formset.forms)]:

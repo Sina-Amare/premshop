@@ -43,7 +43,7 @@ def test_a_non_cheapest_plan_offer_is_visible_on_every_card(offers):
     body = render_to_string("catalog/_card.html", {"product": offers})
     assert "۳ ماهه" in body and "۱۰٪ تخفیف" in body
     assert "۱,۴۵۰,۰۰۰" in body and "۱ ماهه" in body
-    # The offer line strikes the quarter's own price; the starting price is never struck.
+    # The offer line strikes the quarter's own price; the undiscounted starting price strikes none.
     assert "<del" not in body.split('class="pcard__price-state"', 1)[1]
 
 

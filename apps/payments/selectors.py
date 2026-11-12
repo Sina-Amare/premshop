@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from django.db.models import Q, QuerySet
 
 from apps.orders.models import Order
+from apps.orders.selectors import item_numbers
 from apps.payments.models import Payment, Refund
 
 TEHRAN = ZoneInfo("Asia/Tehran")
@@ -84,6 +85,7 @@ def reconciliation(day: date, *, orders: QuerySet[Order] | None = None) -> dict[
     return {
         "payments": payments,
         "refunds": refunds,
+        "item_numbers": item_numbers({row["refund"].order_item.order_id for row in refunds}),
         "payment_total": sum((row["payment"].amount for row in payments), Decimal(0)),
         "owed_total": sum(
             (row["refund"].amount for row in refunds if row["owed_today"]), Decimal(0)

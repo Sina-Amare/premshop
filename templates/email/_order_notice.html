@@ -1,6 +1,7 @@
-{% load fa %}
+{% load fa order_tones %}
 <div style="overflow-wrap:anywhere;word-break:break-word;">
+{% if pill_state %}{% with pill=pill_state|email_pill %}<p>وضعیت: <span style="display:inline-block;padding:3px 10px;border-radius:6px;border:1px solid {{ pill.border }};background:{{ pill.background }};color:{{ pill.color }};font-size:13px;font-weight:500;line-height:1.8;">{{ pill.label }}</span></p>{% endwith %}{% endif %}
 <p>شماره‌ی سفارش: {{ order_number|fa_digits }}</p>
-{% if product_name %}<p>محصول: {{ product_name|bdi }}؛ {{ plan_title|bdi }}</p>{% endif %}
+{% if product_name %}<p>محصول: {{ product_name|bdi }}؛ {{ plan_title|bdi }}</p>{% elif products %}<p>{% if products|length > 1 %}محصولات{% else %}محصول{% endif %}: {% for name in products %}{{ name|bdi }}{% if not forloop.last %}، {% endif %}{% endfor %}</p>{% endif %}
 {% include "email/_button.html" with url=order_url label="مشاهده‌ی سفارش" %}
 </div>

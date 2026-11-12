@@ -115,6 +115,7 @@ def test_both_models_accept_view_or_change(client, input_order, order_permission
     response = client.post(reveal_url(input_order))
     assert response.status_code == 200
     assert VALUE in response.content.decode()
+    assert "آیتم ۱" in response.content.decode()
     assert models.CredentialAccessLog.objects.get().user_id == staff.pk
 
 
