@@ -6,7 +6,9 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.urls import reverse
 
+from apps.accounts.backends import CODE_SIGN_IN
 from apps.accounts.models import User
 
 pytestmark = pytest.mark.django_db
@@ -101,3 +103,20 @@ def test_going_back_is_refused_while_an_account_has_no_email(back_to_the_latest)
 
     with pytest.raises(RuntimeError, match="no email"):
         migrate(BEFORE)
+
+
+def test_moving_an_account_to_a_new_number_signs_out_the_old_one(admin_client, client):
+    customer = User.objects.create_user(phone="09121112233", is_verified=True)
+    client.force_login(customer, backend=CODE_SIGN_IN)
+    assert client.get(reverse("account")).status_code == 200
+
+    moved = admin_client.post(
+        reverse("admin:accounts_user_change", args=[customer.pk]),
+        {"phone": "0912 444 5566", "is_active": "on"},
+    )
+
+    assert moved.status_code == 302
+    customer.refresh_from_db()
+    assert customer.phone == "09124445566"
+    assert not customer.is_verified, "the new number is proven by its first code"
+    assert client.get(reverse("account")).status_code == 302

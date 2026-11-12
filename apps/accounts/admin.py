@@ -91,6 +91,13 @@ class UserAdmin(ModelAdmin):
 
     def save_model(self, request: HttpRequest, obj: User, form: Any, change: bool) -> None:
         changed = set(form.changed_data) & {"phone", "is_active", "is_staff"}
+        if "phone" in changed and not obj.has_usable_password():
+            # Support moving a customer to a new number, after a lost SIM: a fresh
+            # unusable mark changes the session hash, so whoever holds the old
+            # number is signed out, and the new number is proven by its first code.
+            obj.set_unusable_password()
+            obj.is_verified = False
+            changed |= {"password", "is_verified"}
         if changed:
             obj.save(update_fields=changed)
 
