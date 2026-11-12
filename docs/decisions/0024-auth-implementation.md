@@ -59,3 +59,9 @@ No captcha or separate unknown-address allowance is introduced until the mail lo
 ```sh
 python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, '09123456789')"
 ```
+
+The shop's day of SMS begins at its first send; the operator hears at the 100th, and a failed alert is logged as an error rather than sent again. Once the cause of a spent day is found, codes resume before the day ends with:
+
+```sh
+python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.SMS_DAILY_BUDGET, 'shop')"
+```
