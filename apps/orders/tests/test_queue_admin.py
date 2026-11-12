@@ -83,20 +83,22 @@ def test_the_refunds_tab_lists_what_is_owed_oldest_first_to_whoever_may_see_refu
     plan.save()
     first, (first_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
     second, (second_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
-    # The later order is cancelled first: its refund is the older debt, so it leads.
+    third, (third_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
+    # Refunds owed middle, first, last: neither order number's direction gives this order.
     cancel(second_item, operator)
     cancel(first_item, operator)
+    cancel(third_item, operator)
     settled, (settled_item,) = paid_order(buyer, operator, [OrderLine(plan, 1)])
     cancel(settled_item, operator)
     execute(settled, list(Refund.objects.filter(order_item=settled_item)), operator)
     paid_order(buyer, operator, [OrderLine(plan, 1)])
     response = client.get(listing(), {"tab": "refunds"})
     assert response.context["queue_tab"] == "refunds"
-    assert list(response.context["cl"].result_list) == [second, first]
-    assert response.context["queue_counts"]["refunds"] == 2
+    assert list(response.context["cl"].result_list) == [second, first, third]
+    assert response.context["queue_counts"]["refunds"] == 3
     assert "refunds" in [tab["name"] for tab in response.context["queue_tabs"]]
     home = {tile["url"]: tile["count"] for tile in queue_overview(operator)}
-    assert home[f"{listing()}?tab=refunds"] == 2
+    assert home[f"{listing()}?tab=refunds"] == 3
 
     # Hiding the tab is not enough: the request itself is refused the refunds.
     staff = User.objects.create_user("orders-only@example.test", is_staff=True)
