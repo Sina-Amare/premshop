@@ -160,6 +160,17 @@ def test_a_late_answer_still_links_and_says_so(bot):
     assert User.objects.get(pk=user.pk).telegram_id == 555
 
 
+def test_a_refused_redraw_after_a_link_still_opens_the_panel(bot):
+    # A 429 or a timeout on the edit: the link stands, so the customer still gets the panel.
+    user = User.objects.create_user("refused-edit@example.test")
+    token = links.start_link(user)
+    bot.failing.add("editMessageText")
+    with pytest.raises(telegram_api.TelegramError):
+        links.handle_update(press(f"link:{token}"))
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendMessage"]
+    assert User.objects.get(pk=user.pk).telegram_id == 555
+
+
 def test_panel_presses_in_a_group_do_nothing(bot, linked):
     links.handle_update(press("p:l:current", chat_type="group"))
     assert bot.calls == []

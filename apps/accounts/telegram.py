@@ -297,10 +297,13 @@ def _pressed(callback: dict[str, Any]) -> None:
         screen = (ALREADY, [])
     else:
         screen = _expired()
-    _show(callback, chat_id, int(message["message_id"]), screen)
-    if user is not None:
-        # The panel opens beneath as a message of its own, so the link's note stays above it.
-        _open_panel(chat_id, user)
+    try:
+        _show(callback, chat_id, int(message["message_id"]), screen)
+    finally:
+        # The panel opens beneath as a message of its own, so the link's note stays above
+        # it; a refused edit does not undo the link, so the panel still opens.
+        if user is not None:
+            _open_panel(chat_id, user)
 
 
 def _answer(callback_id: str, text: str = "") -> None:
