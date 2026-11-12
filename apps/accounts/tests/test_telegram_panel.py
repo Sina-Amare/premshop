@@ -72,7 +72,7 @@ def test_an_old_panel_past_the_deletion_window_loses_its_buttons(bot, linked):
 
 
 def test_a_press_is_answered_first_then_redraws_the_panel(bot, linked):
-    links.handle_update(press("p:l:active"))
+    links.handle_update(press("p:l:current"))
     (answer, _), (edit, edited) = bot.calls
     assert (answer, edit) == ("answerCallbackQuery", "editMessageText")
     assert edited["message_id"] == 11 and "در جریان" in edited["text"]
@@ -82,7 +82,7 @@ def test_a_press_is_answered_first_then_redraws_the_panel(bot, linked):
 def test_a_press_from_a_telegram_no_longer_linked_shows_no_account(bot, linked, settings):
     links.handle_update(start("/start"))
     User.objects.filter(pk=linked.pk).update(telegram_id=None)
-    links.handle_update(press("p:l:active"))
+    links.handle_update(press("p:l:current"))
     edited = bot.calls[-1][1]
     assert "reply_markup" not in edited and "سفارش‌های من" not in edited["text"]
     assert settings.SITE_URL + reverse("account") in edited["text"]
@@ -91,7 +91,7 @@ def test_a_press_from_a_telegram_no_longer_linked_shows_no_account(bot, linked, 
 def test_a_deactivated_account_shows_nothing(bot, linked, settings):
     User.objects.filter(pk=linked.pk).update(is_active=False)
     links.handle_update(start("/start"))
-    links.handle_update(press("p:l:active"))
+    links.handle_update(press("p:l:current"))
     shown = [p for m, p in bot.calls if m in ("sendMessage", "editMessageText")]
     assert len(shown) == 2
     # Both get the pointer to the account page, never a panel: no buttons to press.
@@ -105,7 +105,7 @@ def test_one_telegrams_spent_limit_leaves_another_alone(bot, linked):
     for _ in range(ratelimit.TELEGRAM_PANEL_PRESSES.times):
         links.handle_update(press("p:home"))
     bot.calls.clear()
-    links.handle_update(press("p:l:active", telegram_id=777))
+    links.handle_update(press("p:l:current", telegram_id=777))
     assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
 
 
@@ -113,7 +113,7 @@ def test_panel_presses_are_limited_per_telegram(bot, linked):
     for _ in range(ratelimit.TELEGRAM_PANEL_PRESSES.times):
         links.handle_update(press("p:home"))
     bot.calls.clear()
-    links.handle_update(press("p:l:active"))
+    links.handle_update(press("p:l:current"))
     assert methods(bot) == ["answerCallbackQuery"] and bot.calls[0][1]["text"]
 
 
@@ -131,7 +131,7 @@ def test_a_late_answer_still_redraws_the_panel(bot, linked):
     # After an outage a press is answered past Telegram's window: the answer fails, the edit
     # must not.
     bot.failing.add("answerCallbackQuery")
-    links.handle_update(press("p:l:active"))
+    links.handle_update(press("p:l:current"))
     assert methods(bot) == ["answerCallbackQuery", "editMessageText"]
 
 
@@ -145,7 +145,7 @@ def test_a_late_answer_still_links_and_says_so(bot):
 
 
 def test_panel_presses_in_a_group_do_nothing(bot, linked):
-    links.handle_update(press("p:l:active", chat_type="group"))
+    links.handle_update(press("p:l:current", chat_type="group"))
     assert bot.calls == []
 
 

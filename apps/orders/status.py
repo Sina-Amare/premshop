@@ -84,7 +84,7 @@ def lead_state(states: list[str]) -> str:
     return min(states, key=RANK.index) if states else "cancelled"
 
 
-# The order list's groups, as the bot's lists name them, and the line an empty one shows.
+# The groups of the site's order list and the bot's lists, and the line an empty one shows.
 # An order sits under the state it leads with, so a delivered product beside a refund still
 # owed keeps its order in progress.
 TABS: dict[str, tuple[str, str]] = {

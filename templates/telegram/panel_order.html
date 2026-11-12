@@ -5,8 +5,9 @@
 {{ card.refund|toman_plain }} تومان را به شما برمی‌گردانیم. شماره‌ی کارت یا شبای به نام خودتان را برای {{ support.telegram }} بفرستید. پشتیبانی هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد.{% elif state == "expired" %}
 پرداختی برای این سفارش ثبت نشد.{% elif state == "late" %}
 زمان تحویل گذشته است. برای پیگیری، به {{ support.telegram }} پیام بدهید.{% elif state == "delivered" and card.rejected_at %}
-درخواست تعویض رد شد. دلیلش را از {{ support.telegram }} بپرسید.{% elif state == "cancelled" %}
-{% if card.paid %}این لغو بازگشت وجه ندارد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% else %}
+درخواست تعویض رد شد. دلیلش را از {{ support.telegram }} بپرسید.{% elif state == "delivered" and card.in_warranty %}
+مشکلی هست؟ به {{ support.telegram }} پیام بدهید.{% elif state == "cancelled" %}
+{% if card.paid %}این لغو بازگشت وجه ندارد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% if card.reason == "operator" %} دلیلش را از {{ support.telegram }} بپرسید.{% endif %}{% endif %}{% else %}
 کاری لازم نیست.{% endif %}{% endwith %}</blockquote>
 {% for group in groups %}{% for line in group.lines %}محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}{% if line.quantity > 1 %}، {{ line.quantity|fa_digits }} عدد{% endif %}{% if mixed_status %}، {{ line.status_label }}{% endif %}
 {% endfor %}{% endfor %}مبلغ: {{ order.total_amount|toman_plain }} تومان

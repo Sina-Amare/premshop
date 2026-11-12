@@ -36,14 +36,14 @@ OFFSET_KEY = "telegram:update-offset"
 DOWN_KEY = "telegram:poll-down"
 COMMANDS_KEY = "telegram:commands"
 
-CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> در پرم‌شاپ را تأیید کنید."
+CONFIRM = "اتصال این تلگرام به حساب <code>{email}</code> در PremShop را تأیید کنید."
 CONFIRM_BUTTON = "تأیید اتصال"
 LINKED = (
-    "<b>تلگرام شما به حساب پرم‌شاپ وصل شد.</b>\n"
+    "<b>تلگرام شما به حساب PremShop وصل شد.</b>\n"
     "خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.\n"
     '<a href="{account}">مدیریت اتصال در سایت</a>'
 )
-ALREADY = "این تلگرام به حساب پرم‌شاپ شما وصل است."
+ALREADY = "این تلگرام به حساب PremShop شما وصل است."
 SLOW = "کمی صبر کنید و دوباره بزنید."
 COMMAND = "پنل سفارش‌ها"
 
@@ -67,7 +67,7 @@ def _screen(user: User, name: str) -> Screen:
 LIMITED = "سقف اتصال این تلگرام برای امروز پر شده است."
 EXPIRED = 'این پیوند دیگر معتبر نیست.\n<a href="{account}">دریافت پیوند جدید</a>'
 POINTER = (
-    "<b>ربات اطلاع‌رسانی سفارش‌های پرم‌شاپ</b>\n"
+    "<b>ربات اطلاع‌رسانی سفارش‌های PremShop</b>\n"
     "پیام‌های این گفت‌وگو خوانده نمی‌شوند. برای پرسش به @{support} پیام بدهید.\n"
     '<a href="{account}">اتصال حساب در سایت</a>'
 )
