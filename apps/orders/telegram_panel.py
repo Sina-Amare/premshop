@@ -7,6 +7,7 @@ bot, so every payment stays on the site, one link away.
 """
 
 from typing import Any
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -61,7 +62,9 @@ def render(user: User, screen: str) -> tuple[str, Buttons]:
 
 
 def _home(user: User) -> tuple[str, Buttons]:
-    text = render_to_string("telegram/panel_home.html", {"email": mask_email(user.email)})
+    text = render_to_string(
+        "telegram/panel_home.html", {"email": mask_email(user.email), "e": emoji}
+    )
     counts = dict.fromkeys(order_status.TABS, 0)
     for order in customer_orders(user):
         counts[_list_of(order)] += 1
@@ -73,14 +76,17 @@ def _home(user: User) -> tuple[str, Buttons]:
         for key, (label, _) in order_status.TABS.items()
     ]
     support_url = support.details()["telegram_url"]
+    # Telegram's own share sheet: the customer picks a chat and the shop's address goes there.
+    share = "https://t.me/share/url?" + urlencode({"url": _site("home")})
     return text.strip(), [
         grid[:2],
         grid[2:],
-        [{"text": f"{emoji.BUY} خرید از سایت", "url": _site("home")}],
+        [{"text": f"{emoji.BUY} خرید از سایت", "url": _site("home"), "style": "primary"}],
         [
             {"text": f"{emoji.ACCOUNT} حساب کاربری", "url": _site("account")},
             {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support_url},
         ],
+        [{"text": f"{emoji.SHARE} معرفی PremShop", "url": share}],
     ]
 
 
@@ -100,13 +106,7 @@ def _list(user: User, key: str) -> tuple[str, Buttons]:
             break
     text = render_to_string(
         "telegram/panel_orders.html",
-        {
-            "icon": LIST_EMOJI[key],
-            "label": label,
-            "empty": empty,
-            "rows": rows,
-            "orders_url": _site("order-list"),
-        },
+        {"icon": LIST_EMOJI[key], "label": label, "empty": empty, "rows": rows, "e": emoji},
     )
     buttons = [
         {
@@ -117,7 +117,11 @@ def _list(user: User, key: str) -> tuple[str, Buttons]:
     ]
     # Two to a row: five full-width buttons push the message off a phone's screen.
     grid = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
-    return text.strip(), [*grid, [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:home"}]]
+    return text.strip(), [
+        *grid,
+        [{"text": f"{emoji.WEB} همه‌ی سفارش‌ها در سایت", "url": _site("order-list")}],
+        [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:home"}],
+    ]
 
 
 def _order(order: Order) -> tuple[str, Buttons]:
@@ -125,24 +129,24 @@ def _order(order: Order) -> tuple[str, Buttons]:
     contact = support.details()
     text = render_to_string(
         "telegram/panel_order.html",
-        {
-            **summary,
-            "support": contact,
-            "emoji": _emoji_of(order),
-            "order_url": _site("order-detail", order.order_number),
-        },
+        {**summary, "support": contact, "emoji": _emoji_of(order), "e": emoji},
     )
-    copy = {
-        "text": f"{emoji.COPY} کپی شماره‌ی سفارش",
-        "copy_text": {"text": str(order.order_number)},
-    }
-    buttons: Buttons = [[copy]]
+    copy = {"text": f"{emoji.COPY} کپی شماره", "copy_text": {"text": str(order.order_number)}}
+    page = {"text": f"{emoji.WEB} صفحه‌ی سفارش", "url": _site("order-detail", order.order_number)}
+    buttons: Buttons = [[copy, page]]
     card = summary["card"]
     # Support is offered where the order page offers it, except on an unpaid order, which is
-    # paid through support: a bot may not offer a way to pay.
+    # paid through support: a bot may not offer a way to pay. Where it is offered, it is the
+    # customer's next move, so it is the screen's one coloured button.
     if card["contact"] and card["state"] != "unpaid":
         buttons.append(
-            [{"text": f"{emoji.SUPPORT} پیام به پشتیبانی", "url": contact["telegram_url"]}]
+            [
+                {
+                    "text": f"{emoji.SUPPORT} پیام به پشتیبانی",
+                    "url": contact["telegram_url"],
+                    "style": "primary",
+                }
+            ]
         )
     back = {"text": f"{emoji.BACK} بازگشت", "callback_data": f"p:l:{_list_of(order)}"}
     return text.strip(), [*buttons, [back]]

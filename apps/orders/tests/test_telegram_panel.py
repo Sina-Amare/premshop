@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import timedelta
+from urllib.parse import urlencode
 
 import pytest
 from django.conf import settings as django_settings
@@ -10,8 +11,10 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.telegram import mask_email
+from apps.accounts.tests.test_telegram_link import framed
 from apps.core import support
 from apps.core.formatting import to_persian_digits
+from apps.core.templatetags.fa import jalali
 from apps.orders import services as orders
 from apps.orders import status as order_status
 from apps.core import telegram_emoji as emoji
@@ -29,7 +32,20 @@ pytestmark = pytest.mark.django_db
 
 S = OrderItem.Status
 LISTS = ["l:unpaid", "l:current", "l:delivered", "l:cancelled"]
-SUPPORT = {"text": f"{emoji.SUPPORT} پیام به پشتیبانی", "url": support.details()["telegram_url"]}
+SUPPORT = {
+    "text": f"{emoji.SUPPORT} پیام به پشتیبانی",
+    "url": support.details()["telegram_url"],
+    "style": "primary",
+}
+BACK_HOME = [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:home"}]
+
+
+def share_url(site):
+    return "https://t.me/share/url?" + urlencode({"url": site + reverse("home")})
+
+
+def all_orders(site):
+    return [{"text": f"{emoji.WEB} همه‌ی سفارش‌ها در سایت", "url": site + reverse("order-list")}]
 
 
 def placed(user, plan):
@@ -61,7 +77,8 @@ def test_home_is_a_grid_counting_each_kind_of_order(buyer, plan, operator, setti
     placed(buyer, plan)
     placed(User.objects.create_user("stranger@example.test"), plan)
     text, buttons = telegram_panel.render(buyer, "home")
-    assert mask_email(buyer.email) in text
+    assert f"{emoji.ACCOUNT} حساب کاربری: {mask_email(buyer.email)}" in text
+    framed(text, buttons)
     site = settings.SITE_URL
     assert buttons == [
         [
@@ -72,11 +89,13 @@ def test_home_is_a_grid_counting_each_kind_of_order(buyer, plan, operator, setti
             {"text": f"{emoji.DELIVERED} تحویل‌شده ۰", "callback_data": "p:l:delivered"},
             {"text": f"{emoji.CLOSED} لغوشده ۰", "callback_data": "p:l:cancelled"},
         ],
-        [{"text": f"{emoji.BUY} خرید از سایت", "url": site + reverse("home")}],
+        # Buying is the home's one main action, so it alone is coloured.
+        [{"text": f"{emoji.BUY} خرید از سایت", "url": site + reverse("home"), "style": "primary"}],
         [
             {"text": f"{emoji.ACCOUNT} حساب کاربری", "url": site + reverse("account")},
             {"text": f"{emoji.SUPPORT} پشتیبانی", "url": "https://t.me/premshop_support"},
         ],
+        [{"text": f"{emoji.SHARE} معرفی PremShop", "url": share_url(site)}],
     ]
 
 
@@ -146,15 +165,26 @@ def test_every_order_shows_in_its_list_alone_and_is_counted_there(buyer, plan, o
     assert [b["text"][-1] for row in grid for b in row] == ["۱", "۱", "۱", "۱"]
 
 
-def test_a_list_shows_the_customers_own_recent_orders(buyer, plan, operator):
+def test_a_list_shows_the_customers_own_recent_orders(buyer, plan, operator, settings):
     stranger = paid(placed(User.objects.create_user("other@example.test"), plan), operator)
     mine = [paid(placed(buyer, plan), operator) for _ in range(telegram_panel.RECENT + 1)]
     text, buttons = telegram_panel.render(buyer, "l:current")
+    framed(text, buttons)
     expected = [str(order.order_number) for order in reversed(mine[1:])]
     assert shown_orders(buttons) == expected
     assert f"سفارش {to_persian_digits(stranger.order_number)}" not in text
-    assert "در حال آماده‌سازی" in text
-    assert buttons[-1] == [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:home"}]
+    assert buttons[-2:] == [all_orders(settings.SITE_URL), BACK_HOME]
+
+
+def test_a_list_card_labels_its_product_status_and_date(buyer, plan, operator):
+    order = paid(placed(buyer, plan), operator)
+    text, _ = telegram_panel.render(buyer, "l:current")
+    card = re.search(r"<blockquote>(.+?)</blockquote>", text, re.S).group(1).split("\n")
+    assert card[1:] == [
+        f"{emoji.PRODUCT} محصول: سرویس نمونه",
+        f"{emoji.STATUS} وضعیت: در حال آماده‌سازی",
+        f"{emoji.DATE} {jalali(order.created_at)}",
+    ]
 
 
 def test_each_order_carries_its_products_emoji(buyer, plan):
@@ -194,17 +224,21 @@ def test_an_unknown_product_takes_the_plain_box(name):
 def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, settings):
     order = placed(buyer, plan)
     text, buttons = telegram_panel.render(buyer, f"o:{order.order_number}")
+    framed(text, buttons)
     assert f"<b>سفارش {to_persian_digits(order.order_number)}</b>" in text
-    assert "در انتظار پرداخت" in text and "مهلت پرداخت: " in text
-    assert "سرویس نمونه، یک ماهه" in text
-    assert "مبلغ: ۲۰۰,۰۰۰ تومان" in text
-    assert settings.SITE_URL + reverse("order-detail", args=[order.order_number]) in text
+    state = re.search(r"<blockquote>(.+?)</blockquote>", text, re.S).group(1)
+    assert state.startswith(f"{emoji.STATUS} وضعیت: در انتظار پرداخت\n")
+    assert f"\n{emoji.DEADLINE} مهلت پرداخت: " in state
+    assert f"\n{emoji.PRODUCT} محصول: سرویس نمونه، یک ماهه\n" in text
+    assert f"\n{emoji.AMOUNT} مبلغ: ۲۰۰,۰۰۰ تومان\n" in text
+    assert f"\n{emoji.DATE} تاریخ ثبت: {jalali(order.created_at)}، ساعت " in text
     assert buttons == [
         [
+            {"text": f"{emoji.COPY} کپی شماره", "copy_text": {"text": str(order.order_number)}},
             {
-                "text": f"{emoji.COPY} کپی شماره‌ی سفارش",
-                "copy_text": {"text": str(order.order_number)},
-            }
+                "text": f"{emoji.WEB} صفحه‌ی سفارش",
+                "url": settings.SITE_URL + reverse("order-detail", args=[order.order_number]),
+            },
         ],
         [{"text": f"{emoji.BACK} بازگشت", "callback_data": "p:l:unpaid"}],
     ]
@@ -277,7 +311,8 @@ def test_the_order_screen_offers_support_where_the_order_page_does(
         return found
 
     monkeypatch.setattr(telegram_panel, "customer_summary", forced)
-    _, buttons = telegram_panel.render(buyer, f"o:{order.order_number}")
+    text, buttons = telegram_panel.render(buyer, f"o:{order.order_number}")
+    framed(text, buttons)
     assert ([SUPPORT] in buttons) is offered
     assert buttons[-1][0]["callback_data"].startswith("p:l:")
 
@@ -336,6 +371,7 @@ def test_no_screen_carries_input_or_a_way_to_pay(buyer, plan, settings):
         settings.SITE_URL + reverse("order-list"),
         settings.SITE_URL + reverse("order-detail", args=[order.order_number]),
         "https://t.me/premshop_support",
+        share_url(settings.SITE_URL),
     }
     for screen in screens(order):
         text, buttons = telegram_panel.render(buyer, screen)
@@ -376,6 +412,18 @@ def test_no_panel_line_or_button_opens_with_a_latin_letter(buyer, plan):
             assert not letters or not letters[0].isascii(), line
 
 
-def test_an_empty_list_says_so(buyer):
+def test_an_empty_list_says_so(buyer, settings):
     text, buttons = telegram_panel.render(buyer, "l:current")
-    assert order_status.TABS["current"][1] in text and targets(buttons) == ["p:home"]
+    assert order_status.TABS["current"][1] in text
+    assert buttons == [all_orders(settings.SITE_URL), BACK_HOME]
+
+
+def test_every_panel_screen_keeps_the_frame(buyer, plan, operator):
+    delivered, item = queued(buyer, plan, operator)
+    deliver(item, operator, note=NOTE)
+    owed, owed_item = queued(buyer, plan, operator)
+    cancel(owed_item, operator)
+    unpaid = placed(buyer, plan)
+    for order in (delivered, owed, unpaid):
+        for screen in screens(order):
+            framed(*telegram_panel.render(buyer, screen))
