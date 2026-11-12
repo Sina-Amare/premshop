@@ -105,6 +105,16 @@ def test_going_back_is_refused_while_an_account_has_no_email(back_to_the_latest)
         migrate(BEFORE)
 
 
+@pytest.mark.django_db(transaction=True)
+def test_going_back_is_refused_while_two_accounts_share_an_email(back_to_the_latest):
+    users = migrate(AFTER).get_model("accounts", "User").objects
+    users.create(phone="09120000005", email="shared@example.test", password=UNUSABLE)
+    users.create(phone="09120000006", email="Shared@Example.test", password=UNUSABLE)
+
+    with pytest.raises(RuntimeError, match="share an email"):
+        migrate(BEFORE)
+
+
 def test_moving_an_account_to_a_new_number_signs_out_the_old_one(admin_client, client):
     customer = User.objects.create_user(phone="09121112233", is_verified=True)
     client.force_login(customer, backend=CODE_SIGN_IN)
