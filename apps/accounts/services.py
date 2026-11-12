@@ -58,7 +58,7 @@ class CodeNotSent(Exception):
         self.message = format_html(
             _CODE_NOT_SENT, format_html('<bdi class="latin">{}</bdi>', handle)
         )
-        self.text = _CODE_NOT_SENT.format(f"⁦{handle}⁩")
+        self.text = _CODE_NOT_SENT.format(f"\u2066{handle}\u2069")
         super().__init__(self.message)
 
 
