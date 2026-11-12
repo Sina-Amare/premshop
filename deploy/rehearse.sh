@@ -79,6 +79,9 @@ EMAIL_HOST_PASSWORD=$(secret)
 DEFAULT_FROM_EMAIL=support@premshop.ir
 FIELD_ENCRYPTION_KEY=$(key)
 ADMIN_PATH=rehearsal-panel/
+# A made-up key: SMS.ir refuses it, so no message can leave either.
+SMS_IR_API_KEY=$(secret)
+SMS_IR_LINE_NUMBER=500000000000000
 POSTGRES_PASSWORD=$(secret)
 REDIS_PASSWORD=$(secret)
 EOF
