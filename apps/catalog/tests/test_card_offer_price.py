@@ -66,7 +66,7 @@ def test_the_offer_line_prices_the_discounted_plan_beside_its_struck_original(
         assert "۱۹۰,۰۰۰" not in "".join(STRUCK.findall(card))
 
 
-def test_a_discounted_cheapest_plan_prints_its_price_once(client, db):
+def test_a_discounted_cheapest_plan_prints_its_price_once_beside_its_struck_original(client, db):
     make_product(
         {"sale_price": 190000, "promo_price": 150000, **in_two_days()}, {"sale_price": 490000}
     )
@@ -75,9 +75,16 @@ def test_a_discounted_cheapest_plan_prints_its_price_once(client, db):
     for card in cards:
         # A <template> holds the line that follows the expiry, not what is shown.
         shown = re.sub(r"<template\b.*?</template>", "", card, flags=re.S)
-        assert shown.count("۱۵۰,۰۰۰") == 1
-        assert "<del" not in shown and "۱۹۰,۰۰۰" not in shown
+        assert shown.count("۱۵۰,۰۰۰") == 1 and shown.count("۱۹۰,۰۰۰") == 1
+        # A promotional price shows its original, struck (design-language, Promotions).
+        struck = STRUCK.findall(STARTING.search(shown).group())
+        assert len(struck) == 1 and "۱۹۰,۰۰۰" in struck[0]
         assert "با ۲۱٪ تخفیف" in PROMOTION.search(shown).group()
+
+
+def test_an_undiscounted_starting_price_strikes_nothing(client, quarter_on_offer):
+    card = CARD.findall(client.get(reverse("category", args=["ai"])).content.decode())[0]
+    assert "<del" not in STARTING.search(card).group()
 
 
 def test_an_offer_knows_when_an_expiry_hands_it_the_starting_line(db):
@@ -146,12 +153,15 @@ def test_the_offer_line_drops_its_figures_once_the_starting_line_names_its_plan(
         deal = card.locator(".pcard__promotion:visible .pcard__deal")
         assert "۳۳۰,۰۰۰" in deal.text_content(), "positive control"
         assert card.locator(".pcard__from bdi").text_content() == "۱ ماهه"
+        assert "۳۹۰,۰۰۰" in card.locator(".pcard__price .price__was").text_content()
 
         page.clock.fast_forward("01:30:00")
 
         assert card.locator(".pcard__from bdi").text_content() == "۳ ماهه"
         assert card.locator(".pcard__price .price__num").text_content() == "۳۳۰,۰۰۰"
         assert deal.text_content().strip() == "۳ ماهه با ۲۶٪ تخفیف"
-        assert card.locator(".price__was").count() == 0
+        # The struck original moves with the starting line; the offer line carries none.
+        assert "۴۵۰,۰۰۰" in card.locator(".pcard__price .price__was").text_content()
+        assert card.locator(".pcard__deal .price__was").count() == 0
     finally:
         context.close()

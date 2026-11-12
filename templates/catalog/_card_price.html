@@ -1,5 +1,5 @@
 {% load fa %}
 <div class="pcard__price-state">
   <span class="pcard__from"><bdi>{{ step.plan.title }}</bdi></span>
-  <span class="pcard__price">{% if product.available_plans|length > 1 and step.price %}<span class="pcard__pre">از</span>{% endif %}<span class="price">{% if step.price %}<span class="price__num">{{ step.price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="price__num">رایگان</span>{% endif %}</span></span>
+  <span class="pcard__price">{% if product.available_plans|length > 1 and step.price %}<span class="pcard__pre">از</span>{% endif %}<span class="price">{% if step.price < step.plan.sale_price %}<del class="price__was"><span class="sr-only">قیمت قبلی </span>{{ step.plan.sale_price|toman_plain }}</del><span class="sr-only price__now">قیمت با تخفیف </span>{% endif %}{% if step.price %}<span class="price__num">{{ step.price|toman_plain }}</span><span class="price__cur">تومان</span>{% else %}<span class="price__num">رایگان</span>{% endif %}</span></span>
 </div>

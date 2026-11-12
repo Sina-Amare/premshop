@@ -7,7 +7,8 @@
   button.hidden = false;
   button.addEventListener('click', async function () {
     try {
-      await navigator.clipboard.writeText(identifier.textContent.trim());
+      // The order number travels with the identifier, so one paste tells support both.
+      await navigator.clipboard.writeText(button.dataset.copyText);
       status.textContent = 'کپی شد';
     } catch (_) {
       var selection = window.getSelection();
