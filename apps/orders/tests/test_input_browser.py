@@ -100,9 +100,7 @@ def test_operator_input_cycle_and_customer_handoff(
         )
         customer = reverse("order-detail", args=[order.order_number])
         page.goto(live_server.url + customer)
-        prompt = (
-            "اطلاعات فعال‌سازی، شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید."
-        )
+        prompt = "اطلاعات فعال‌سازی، شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید."
         shot("customer", customer, prompt)
         assert page.locator("html").get_attribute("dir") == "rtl"
         assert "expected_event_id" not in page.content()
