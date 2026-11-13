@@ -26,6 +26,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
+from apps.core import ratelimit
 from apps.orders import services
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_paid_cancellation import cancel, paid_order
@@ -56,7 +57,6 @@ VISITOR = {
     "search, a hit": "/search/?q=chatgpt",
     "search, a miss": "/search/?q=netflix",
     "faq": "/faq/",
-    "sign-in": "/login/password/",
     "code request": "/login/code/",
     "404": "/no-such-page/",
 }
@@ -142,7 +142,9 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
     # The delivery below encrypts its details, so the test brings its own key.
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     settings.FIELD_ENCRYPTION_KEY_FALLBACKS = []
-    customer = User.objects.create_user("customer@example.test", is_verified=True)
+    customer = User.objects.create_user(
+        "customer@example.test", phone="09121230001", is_verified=True
+    )
     operator = User.objects.create_superuser("operator@example.test")
     # The order pages carry every tone: the customer's move, work in hand, done and closed.
     plan = shop.plans.get()
@@ -181,8 +183,10 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
                     record(name, width, scan(context, url))
                 if user is None:
                     page = context.new_page()
+                    # One code per number every two minutes: each width asks again.
+                    ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, customer.phone)
                     page.goto(f"{live_server.url}/login/code/")
-                    page.fill("main input[name=email]", customer.email)
+                    page.fill("main input[name=phone]", customer.phone)
                     page.click("main button[type=submit]")
                     page.wait_for_url("**/login/code/verify/")
                     record("code entry", width, axe(page))
@@ -364,9 +368,8 @@ def test_no_focus_ring_is_cut_off_by_its_container(browser, live_server, shop):
 @pytest.mark.parametrize(
     "name",
     [
-        "otp_code",
+        "sms_budget",
         "item_delivered",
-        "signin_alert",
         "telegram_changed",
         "purchase_confirmation",
         "payment_confirmed",

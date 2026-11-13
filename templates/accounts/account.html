@@ -19,26 +19,16 @@
 </section>
 {% endif %}
 <div class="card acct__card">
-  <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><bdi class="latin">{{ request.user.email }}</bdi></span></div>
+  {% if request.user.phone %}<div class="fact"><span class="fact__k">شماره‌ی موبایل</span><span class="fact__lead"></span><span class="fact__v"><bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi></span></div>{% endif %}
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
 </div>
 
 {# The field carries its own label; a heading above it says the same word twice. #}
 <form method="post" class="acct__form acct__form--spaced" novalidate>
   {% csrf_token %}
-  {% include "accounts/_field.html" with field=profile_form.phone %}
+  {% include "accounts/_field.html" with field=profile_form.email %}
   <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
 </form>
-
-{% if not request.user.has_usable_password %}
-  <div class="acct__next">
-    <div>
-      <h2 class="acct__next-t">رمز عبور</h2>
-      <p class="small flush">با رمز عبور، برای ورود لازم نیست منتظر کد بمانید.</p>
-    </div>
-    <a class="btn btn--secondary" href="{% url 'account-password' %}">ثبت رمز عبور</a>
-  </div>
-{% endif %}
 
 {% if telegram %}
 <h2 class="acct__h2" id="telegram">تلگرام</h2>

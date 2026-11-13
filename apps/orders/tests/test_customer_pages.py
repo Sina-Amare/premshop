@@ -470,3 +470,30 @@ def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
     assert details["telegram"] in body and details["email"] in body
     # A link off this page would carry the bad address as a Referer or a body.
     assert "t.me" not in body and "mailto:" not in body
+
+
+@pytest.mark.parametrize(
+    ("email", "telegram_id", "promised"),
+    [("", None, False), ("buyer@example.test", None, True), ("", 4242, True)],
+)
+def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
+    client, plan, email, telegram_id, promised
+):
+    from apps.payments.services import record_manual_payment
+
+    plan.input_type, plan.max_quantity = "none", 1
+    plan.save()
+    customer = User.objects.create_user(email, phone="09121112244", telegram_id=telegram_id)
+    order = services.place_order(user=customer, lines=[OrderLine(plan, 1, None)])
+    record_manual_payment(
+        order_id=order.pk,
+        actor=User.objects.create_superuser("operator@example.test"),
+        amount=order.total_amount,
+        bank_ref="BANKREF-5512",
+    )
+    client.force_login(customer)
+
+    page = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+    assert ("پس از تحویل به شما خبر می‌دهیم." in page) is promised
+    assert ("ایمیلتان را وارد کنید" in page) is not promised

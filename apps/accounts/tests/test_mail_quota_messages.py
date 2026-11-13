@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 )
 def test_account_feedback_distinguishes_refused_mail_from_success(level, css, role):
     markup = render_to_string(
-        "accounts/password_recovery.html",
+        "accounts/_account_base.html",
         {
             "messages": [Message(level, "ارسال ایمیل فعلاً به سقف مجاز رسیده است.")],
             "csrf_token": "fixture",

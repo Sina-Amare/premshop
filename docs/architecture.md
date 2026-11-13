@@ -54,14 +54,14 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 
 | App | Owns |
 |---|---|
-| `core` | Shared infrastructure: the encrypted field, email sending and mail accounting, the rate limiter, Persian formatting filters, the restricted Markdown renderer, support details, middleware, error pages, the health check and the panel's admin site. |
-| `accounts` | The `User` model, sign-in by code or password, password recovery and change, and the account page. |
+| `core` | Shared infrastructure: the encrypted field, email sending and mail accounting, SMS sending, the rate limiter, Persian formatting filters, the restricted Markdown renderer, support details, middleware, error pages, the health check and the panel's admin site. |
+| `accounts` | The `User` model with the mobile number as identity, sign-in by SMS code, the panel's password sign-in, and the account page. |
 | `catalog` | Categories, products, plans, page sections and questions; the price function, search, the publishing rule, the storefront pages, SEO and the catalogue editor in the panel. |
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
 | `orders` | Orders, items, their history, discount codes and redemptions: placement, cancellation and expiry, the customer order pages, public tracking, the invoice, the staff reveal of customer input, and the operator's delivery of account details. |
 | `payments` | Checkout, payment/refund records, operator-only manual confirmation and recording completed refund transfers through the order editor, and daily reconciliation. The gateway is not built yet. |
-| `notifications` | Purchase confirmations and order updates through a durable outbox, by email and, for a customer who linked Telegram, by Telegram too. |
+| `notifications` | Purchase confirmations and order updates through a durable outbox, by email when the order has an address and, for a customer who linked Telegram, by Telegram too. |
 
 Two rules keep the graph honest:
 
@@ -128,13 +128,12 @@ Every storefront page has a tested query budget: six queries on the home page, f
 
 ### Sign-in
 
-`/login/` is one flow for signing in and registering, by a six-digit code sent by email or by password ([ADR-0024](decisions/0024-auth-implementation.md)).
+`/login/` is one flow for signing in and registering, with a mobile number and a six-digit code sent by SMS through SMS.ir (`core.sms`, [ADR-0031](decisions/0031-sign-in-by-phone.md)). The number is the account's identity; email is an optional address for order mail. Each account has one way in: a customer signs in by code and has no password, and staff sign in only at the panel, with a password. A right code for a staff account gets the wrong-code answer, and the panel admits only a session its own password sign-in opened, so a code session stays out even on an account made staff later.
 
 - **Codes** are stored hashed in Redis for ten minutes, with their deadline beside them. Each guess increments an attempt counter before the code is compared, and the code is spent by the one delete that removes it, so two requests carrying the right code cannot both sign in.
-- **Rate limits** apply per email and per IP address on every sign-in endpoint. The panel's sign-in draws on the same budgets, so an address has one budget wherever it is guessed at. Accepted code emails also have a daily budget.
+- **Rate limits** apply per number and per IP address: one code per number every two minutes, five an hour and ten accepted a day, and per network ten an hour and twenty accepted a day. The panel's sign-in draws on the same attempt budgets, so an account has one budget wherever it is guessed at.
+- **The shop's day of SMS** holds 300 accepted sends, because every message is paid for: the operator is emailed at the 100th, and past the ceiling no code goes out until the window turns.
 - **Redis failure** turns into a Persian 503 page. Sign-in never fails open, because that would allow unlimited guesses at a six-digit code.
-- **A code sign-in on an account that has a password** sends a sign-in alert email. A failure to send it is logged and never undoes the sign-in.
-- **Password recovery** sends a fresh code bound to its purpose and session. Changing a password rotates the session and signs out every other one.
 
 Signing in rotates the session and merges the visitor's guest cart into the account's (`cart.signals`, on `user_logged_in`), so every sign-in path gets the merge without asking for it.
 
@@ -159,7 +158,7 @@ Signing in rotates the session and merges the visitor's guest cart into the acco
 
 | Path | Page |
 |---|---|
-| `/account/` | Profile, password and the current order |
+| `/account/` | Profile and the current order |
 | `/account/orders/` | The customer's orders in four groups, by the state each order leads with, 20 per page |
 | `/account/orders/<number>/` | One order: what was bought, its status and history, the saved terms |
 | `/account/orders/<number>/cancel/` | Cancelling an unpaid order (a confirmed POST) |
@@ -206,11 +205,8 @@ Every message is three templates under `templates/email/` (`<name>.subject.txt`,
 
 | Message | Sent when |
 |---|---|
-| `otp_code` | A sign-in code is requested |
-| `password_reset` | A recovery code is requested |
-| `signin_alert` | An account with a password signs in by code |
-| `password_changed` | A password is changed |
 | `purchase_confirmation` | An order is placed (unpaid at that point, and the message says so) |
+| `sms_budget` | The day's 100th sign-in SMS is accepted; to the shop's support address |
 | `payment_confirmed` | A payment is verified; once per payment, for the whole order |
 | `input_requested` | An item starts waiting for activation details |
 | `delivery_completed` | An item is delivered or a replacement is delivered |
@@ -227,7 +223,7 @@ Every message is three templates under `templates/email/` (`<name>.subject.txt`,
 **Order updates.** Explicit service calls register `core.events.emit` callbacks after commit. Each callback freezes an allowlisted message in the same outbox, keyed by template, payment/history occurrence, customer and email channel. Callback failures log IDs and exception classes, never free text, and cannot undo the committed action or stop another callback. Historical events are not replayed. Delivery links open the signed-in order detail; customer credential reveal and magic links remain planned. Purchase confirmations retry every failure; other messages stop at once only when every recipient is refused with a 5xx, and take the same ladder for every other failure, including the account's own login, sender and DATA rejections. All share the durable quota cooldown and the security-mail reserve. The accepted commit-to-enqueue crash gap applies to updates, not purchase-confirmation discovery.
 
 **Telegram.**
-- **Linking.** The account page's «اتصال تلگرام» issues a random, single-use ten-minute token. Only the account's newest token counts. The page offers it as a `t.me` link to the shop's bot, plus a `/start` line to send by hand. While it waits, the page asks every two seconds whether the link went through and shows it without a reload. The bot shows the masked email and links only when its confirm button is pressed; spending the token is the cache delete that succeeds. The link and an unlink each email the account holder, and a Telegram linked elsewhere moves, telling its old account by email. A confirmed link offers a button to its settings and opens the panel beneath. Starting in the bot answers an unlinked Telegram with what the bot is for, the three steps of linking and a button to the account page, and opens a linked one's panel: the bot never sends a link that links on click, which a scammer could pass to a victim. Groups and channels link nothing.
+- **Linking.** The account page's «اتصال تلگرام» issues a random, single-use ten-minute token. Only the account's newest token counts. The page offers it as a `t.me` link to the shop's bot, plus a `/start` line to send by hand. While it waits, the page asks every two seconds whether the link went through and shows it without a reload. The bot shows the account's half-hidden number and links only when its confirm button is pressed; spending the token is the cache delete that succeeds. The link and an unlink each email the account holder when the account has an email, and a Telegram linked elsewhere moves, telling its old account the same way. A confirmed link offers a button to its settings and opens the panel beneath. Starting in the bot answers an unlinked Telegram with what the bot is for, the three steps of linking and a button to the account page, and opens a linked one's panel: the bot never sends a link that links on click, which a scammer could pass to a victim. Groups and channels link nothing.
 - **Screens.** Every bot message opens with its emoji and a bold title, labels its fields with an emoji each, keeps an order's state in a quote and carries its links as buttons, never in the text. A row holds two buttons at most, and a screen at most one coloured button: blue for its main action, green only on the link's confirm button, red never. The emoji live in `core.telegram_emoji`, the one file the repository's emoji check allows.
 - **The panel.** A linked customer's `/start`, or anything they type, opens one panel message: a grid of four lists, the site's order groups «در انتظار پرداخت», «در جریان», «تحویل‌شده» and «لغوشده», each button counting its orders, then buttons to the shop (the home's main action), the account page and the support account, and one that shares the shop through Telegram's share sheet. Each order sits in exactly one list, the group of the state it leads with, as the site's order list files it. A list shows its five latest orders, each in its own quote with its products, status and date and on a button marked with its product's emoji, under a button to the site's order list; each opens in the same message with its amount, its next step as the order page words it, buttons that copy its number and open its page, and a button to the support account, its main action, wherever the order page offers support except on an unpaid order, and returns to its list. Presses edit that one message, each before it is answered, so the new screen shows after one round trip to Telegram rather than two; a new panel deletes the old one (or, past Telegram's 48 hours for deleting, removes its buttons), and the customer's own command is deleted; notices are never touched. Every press looks up the account linked to the presser again, and an order shows only when it is theirs (`orders.telegram_panel`, registered with the bot as the orders app starts, since accounts may not import orders). Every line opens with a Persian label, since Telegram sets a line's direction from its first letter. Presses and messages share a limit of 60 a minute per Telegram account, and a press is carried out even when Telegram refuses a late answer to it. The panel carries no credential, input or way to pay: Telegram requires its Stars for goods sold inside a bot, so paying stays on the site. The bot lists `/start` in its command menu once a day.
 - **Receiving.** The worker long-polls the Bot API without a break, since Telegram cannot call a server inside Iran or one with no public address. Each worker thread keeps one HTTPS connection open, through the system's proxy when one is set, because through a VPN or the relay a new one costs most of a second. A connection outage logs one ERROR, then WARNINGs until it recovers.

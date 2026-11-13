@@ -1,15 +1,15 @@
 """Fixed-window rate limiting over the cache.
 
 Every auth endpoint here is limited twice — once per identity and once per IP —
-because either alone has an obvious hole. A per-email limit lets an attacker
-spray a thousand different addresses from one machine; a per-IP limit lets a
+because either alone has an obvious hole. A per-number limit lets an attacker
+spray a thousand different numbers from one machine; a per-IP limit lets a
 botnet hammer one account. The pair is the point.
 
 Fixed window rather than a sliding log: a sliding window needs a stored list of
 timestamps per key, and at this shop's volume the extra precision buys nothing.
 The known cost is a burst at a window boundary — up to 2x the limit across two
-adjacent windows — which for "3 login codes per 15 minutes" is 6 codes in a
-worst-case minute. Acceptable; a sliding window is the upgrade if it ever isn't.
+adjacent windows — which for "5 codes an hour" is 10 codes in a worst-case
+minute. Acceptable; a sliding window is the upgrade if it ever isn't.
 """
 
 from __future__ import annotations
@@ -30,14 +30,19 @@ class Limit:
     seconds: int
 
 
-# Owner-approved 2026-09-04. Tight enough to protect the relay quota (SMTP2GO
-# free tier may queue daily excess and rejects monthly excess), loose enough that a customer who mistypes
-# twice is not locked out of the shop they just paid at.
-OTP_REQUESTS_PER_EMAIL = Limit("otpreq:email", times=3, seconds=15 * 60)
+# Owner-approved 2026-11-12 for codes by SMS, each of which is paid for: per
+# number one code each two minutes, five an hour and ten accepted a day; per
+# network ten an hour and twenty accepted a day.
+OTP_REQUESTS_PER_PHONE_COOLDOWN = Limit("otpreq:phone:cooldown", times=1, seconds=2 * 60)
+OTP_REQUESTS_PER_PHONE = Limit("otpreq:phone", times=5, seconds=60 * 60)
+OTP_REQUESTS_PER_PHONE_DAILY = Limit("otpreq:phone:daily", times=10, seconds=24 * 60 * 60)
 OTP_REQUESTS_PER_IP = Limit("otpreq:ip", times=10, seconds=60 * 60)
-OTP_REQUESTS_PER_EMAIL_DAILY = Limit("otpreq:email:daily", times=10, seconds=24 * 60 * 60)
 OTP_REQUESTS_PER_IP_DAILY = Limit("otpreq:ip:daily", times=20, seconds=24 * 60 * 60)
-LOGIN_ATTEMPTS_PER_EMAIL = Limit("login:email", times=10, seconds=15 * 60)
+# The shop's own day of SMS: the operator hears once at SMS_ALERT_AT, and past
+# the ceiling no code goes out, so a spray of numbers cannot drain the balance.
+SMS_DAILY_BUDGET = Limit("sms:daily", times=300, seconds=24 * 60 * 60)
+SMS_ALERT_AT = 100
+LOGIN_ATTEMPTS_PER_PHONE = Limit("login:phone", times=10, seconds=15 * 60)
 LOGIN_ATTEMPTS_PER_IP = Limit("login:ip", times=30, seconds=60 * 60)
 # Catalog search: a person searching does not exceed this; a scraper does.
 SEARCH_PER_IP = Limit("search:ip", times=30, seconds=60)
@@ -45,7 +50,7 @@ SEARCH_PER_IP = Limit("search:ip", times=30, seconds=60)
 # phone's pace, so it spends a budget of its own and leaves the one above alone.
 SEARCH_SUGGEST_PER_IP = Limit("search-suggest:ip", times=120, seconds=60)
 # Every Telegram link change emails the account, and that mail draws on the reserve kept
-# for sign-in codes: without a bound, one scripted account could spend it for everyone.
+# for security mail: without a bound, one scripted account could spend it for everyone.
 TELEGRAM_CHANGES_PER_ACCOUNT = Limit("telegram:account", times=5, seconds=24 * 60 * 60)
 TELEGRAM_CONFIRMS_PER_TELEGRAM = Limit("telegram:confirm", times=5, seconds=24 * 60 * 60)
 # Each press of the bot's panel reads the database and makes two Telegram calls.
@@ -76,7 +81,13 @@ def _key(limit: Limit, subject: str) -> str:
 
 
 def hit(limit: Limit, subject: str) -> bool:
-    """Count one event. Returns False when the budget is already spent.
+    """Count one event. Returns False when the budget is already spent."""
+    return count(limit, subject) <= limit.times
+
+
+def count(limit: Limit, subject: str) -> int:
+    """Count one event and return its number in the window. INCR hands out each
+    number once, so exactly one event of a window is, say, the 100th.
 
     cache.add() sets the key only if absent, which is what creates the window and
     its expiry atomically. incr() then raises ValueError if the key expired
@@ -89,15 +100,15 @@ def hit(limit: Limit, subject: str) -> bool:
     """
     key = _key(limit, subject)
     if cache.add(key, 1, timeout=limit.seconds):
-        return True
+        return 1
     try:
-        count = cache.incr(key)
+        number = cache.incr(key)
     except ValueError:
         cache.set(key, 1, timeout=limit.seconds)
-        return True
-    if count == 1:
+        return 1
+    if number == 1:
         cache.touch(key, limit.seconds)
-    return count <= limit.times
+    return int(number)
 
 
 def remaining(limit: Limit, subject: str) -> int:

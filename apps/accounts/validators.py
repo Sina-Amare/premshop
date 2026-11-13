@@ -1,10 +1,10 @@
-"""Django's password validators, saying the same thing in this shop's words.
+"""What a customer types, in one form: digits, the mobile number, and Django's
+password validators in this shop's words.
 
 Django ships Persian translations of its validator messages, but they say
-«گذرواژه» where every screen here says «رمز عبور». The hint under the field, the
-error beside it and the confirmation above it have to use one word for the
-thing, or the page reads as two systems bolted together. The rules themselves
-are Django's, untouched — only the sentence a customer sees changes.
+«گذرواژه» where every screen here says «رمز عبور». The rules themselves are
+Django's, untouched; only the sentence changes. Staff are the only accounts with
+a password, and they meet these on the panel's password page.
 """
 
 from __future__ import annotations
@@ -16,8 +16,18 @@ from typing import Any
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
-from apps.accounts.otp import normalize_digits
 from apps.core.formatting import to_persian_digits
+
+PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def normalize_digits(value: str) -> str:
+    """Persian ۰-۹ (and Arabic-Indic ٠-٩) to ASCII.
+
+    A customer who copies a code or a number as they were shown it, in Persian
+    digits, would otherwise be told, correctly and uselessly, that it is wrong.
+    """
+    return (value or "").strip().translate(PERSIAN_TO_ASCII_DIGITS)
 
 
 def normalize_mobile_phone(value: str) -> str:
@@ -32,6 +42,15 @@ def normalize_mobile_phone(value: str) -> str:
     if not mobile:
         raise ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
     return "0" + mobile.group(1)
+
+
+def phone_search_term(term: str) -> str:
+    """A panel search, with a number pasted in any spelling turned into the stored one;
+    any other text unchanged."""
+    try:
+        return normalize_mobile_phone(term) or term
+    except ValidationError:
+        return term
 
 
 class MinimumLengthValidator(password_validation.MinimumLengthValidator):
@@ -71,7 +90,9 @@ class UserAttributeSimilarityValidator(password_validation.UserAttributeSimilari
         try:
             super().validate(password, user)
         except ValidationError as exc:
-            raise ValidationError("رمز عبور خیلی شبیه ایمیل شماست.", code=exc.code) from None
+            raise ValidationError(
+                "رمز عبور خیلی شبیه شماره‌ی موبایل یا ایمیل شماست.", code=exc.code
+            ) from None
 
     def get_help_text(self) -> str:
-        return "رمز عبور نباید شبیه ایمیل شما باشد."
+        return "رمز عبور نباید شبیه شماره‌ی موبایل یا ایمیل شما باشد."

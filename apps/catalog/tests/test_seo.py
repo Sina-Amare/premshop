@@ -96,9 +96,7 @@ def test_absolute_addresses_come_from_site_url_whatever_host_was_asked(
     assert "attacker.example" not in body
 
 
-@pytest.mark.parametrize(
-    "path", ["/search/?q=claude", "/login/password/", "/login/code/", "/no-such-page/"]
-)
+@pytest.mark.parametrize("path", ["/search/?q=claude", "/login/code/", "/no-such-page/"])
 def test_a_page_that_is_not_indexed_names_no_canonical_address(client, shop, path):
     body = client.get(path).content.decode()
 
@@ -111,8 +109,7 @@ ALL_PAGES = {
     **INDEXED,
     "search": lambda shop: reverse("search") + "?q=claude",
     "search miss": lambda shop: reverse("search") + "?q=xbox",
-    "sign-in": lambda shop: reverse("login-password"),
-    "code request": lambda shop: reverse("login-code"),
+    "sign-in": lambda shop: reverse("login-code"),
     "404": lambda shop: "/no-such-page/",
 }
 
@@ -255,7 +252,7 @@ def test_a_product_without_generated_artwork_uses_the_store_card(client, shop):
 
 
 @pytest.mark.parametrize(
-    "path", ["/cart/", "/login/password/", "/search/?q=claude", "/missing-schema-page/"]
+    "path", ["/cart/", "/login/code/", "/search/?q=claude", "/missing-schema-page/"]
 )
 def test_private_or_nonindexed_pages_have_no_structured_data(client, shop, path):
     assert structured(client.get(path).content.decode()) == []

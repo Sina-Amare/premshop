@@ -8,7 +8,7 @@ from apps.catalog.models import Category, Plan, Product
 
 @pytest.fixture
 def buyer():
-    return User.objects.create_user("buyer@example.test", "CartPassword!2026")
+    return User.objects.create_user("buyer@example.test", "CartPassword!2026", phone="09126660001")
 
 
 @pytest.fixture

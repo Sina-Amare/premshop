@@ -14,7 +14,6 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import User
-from apps.accounts.tests.test_auth import PASSWORD
 
 pytestmark = pytest.mark.django_db
 
@@ -24,30 +23,18 @@ ID = re.compile(r'\sid="([^"]+)"')
 
 def pages(client) -> dict[str, str]:
     """Each form valid and invalid, as a customer meets it."""
-    login, code, account, password = (
-        reverse(name) for name in ("login-password", "login-code", "account", "account-password")
-    )
+    code, account = reverse("login-code"), reverse("account")
     seen = {
-        "sign-in": client.get(login),
-        "sign-in, empty": client.post(login, {"email": "", "password": ""}),
         "code request": client.get(code),
         "code request, bad address": client.post(code, {"email": "nope"}),
     }
     client.post(code, {"email": "refs@example.test"})
     seen["code entry, too short"] = client.post(reverse("login-code-verify"), {"code": "12"})
 
-    customer = User.objects.create_user("customer@example.test", PASSWORD, is_verified=True)
+    customer = User.objects.create_user("customer@example.test", is_verified=True)
     client.force_login(customer)
     seen["account"] = client.get(account)
     seen["account, bad phone"] = client.post(account, {"phone": "abc"})
-    seen["password"] = client.get(password)
-    seen["password, every error"] = client.post(
-        password, {"old_password": "nope", "new_password1": "Ab1!", "new_password2": "Ab1"}
-    )
-    client.force_login(User.objects.create_user("codeonly@example.test"))
-    seen["first password, too short"] = client.post(
-        password, {"new_password1": "Ab1!", "new_password2": "Ab1!"}
-    )
     return {name: response.content.decode() for name, response in seen.items()}
 
 

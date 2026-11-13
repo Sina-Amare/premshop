@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.accounts.telegram import mask_email
+from apps.accounts.telegram import account_label
 from apps.core import support
 from apps.core import telegram_emoji as emoji
 from apps.core.formatting import to_persian_digits
@@ -63,7 +63,7 @@ def render(user: User, screen: str) -> tuple[str, Buttons]:
 
 def _home(user: User) -> tuple[str, Buttons]:
     text = render_to_string(
-        "telegram/panel_home.html", {"email": mask_email(user.email), "e": emoji}
+        "telegram/panel_home.html", {"account": account_label(user), "e": emoji}
     )
     counts = dict.fromkeys(order_status.TABS, 0)
     for order in customer_orders(user):

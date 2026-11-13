@@ -113,7 +113,9 @@ def test_no_template_leaks_an_unrendered_placeholder(name):
 def test_the_message_is_multipart_with_both_halves():
     """HTML-only mail scores worse with spam filters and is unreadable to some clients."""
     sent = send_templated_email(
-        "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]
+        "telegram_changed",
+        to=["customer@example.test"],
+        context=EMAIL_PREVIEWS["telegram_changed"],
     )
 
     assert sent == 1
@@ -125,26 +127,11 @@ def test_the_message_is_multipart_with_both_halves():
     assert "<!doctype html>" in html.lower()
 
 
-def test_the_code_reaches_both_halves_in_persian_digits():
-    """A customer reading either part must see the same code they have to type."""
-    _, text, html = render_email("otp_code", EMAIL_PREVIEWS["otp_code"])
-
-    assert "۴۱۸۳۰۵" in text
-    assert "۴۱۸۳۰۵" in html
-    assert "418305" not in text
-
-
-@pytest.mark.parametrize("name", ["otp_code", "password_reset"])
-def test_code_mail_warns_against_sharing_without_an_inbox_access_claim(name):
-    _, text, html = render_email(name, EMAIL_PREVIEWS[name])
-    for body in (text, html):
-        assert "این کد را به کسی ندهید." in body
-        assert "بدون دسترسی به ایمیل" not in body
-
-
 def test_replies_go_to_the_support_mailbox():
     send_templated_email(
-        "otp_code", to=["customer@example.test"], context=EMAIL_PREVIEWS["otp_code"]
+        "telegram_changed",
+        to=["customer@example.test"],
+        context=EMAIL_PREVIEWS["telegram_changed"],
     )
 
     assert mail.outbox[0].reply_to == [settings.SUPPORT_EMAIL]
@@ -153,9 +140,9 @@ def test_replies_go_to_the_support_mailbox():
 def test_a_newline_in_the_context_cannot_inject_a_header():
     """The classic header-injection vector: everything after a raw newline in a
     header is parsed as a new header. The subject is normalised before it can."""
-    poisoned = {**EMAIL_PREVIEWS["otp_code"], "code": "111111\nBcc: attacker@example.test"}
+    poisoned = {**EMAIL_PREVIEWS["sms_budget"], "sent": "100\nBcc: attacker@example.test"}
 
-    subject, _, _ = render_email("otp_code", poisoned)
+    subject, _, _ = render_email("sms_budget", poisoned)
 
     assert "\n" not in subject
     assert "\r" not in subject
@@ -236,12 +223,12 @@ def test_every_font_stack_names_platform_faces_after_vazirmatn(name):
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
-def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
+def test_tracking_is_zero_everywhere(name):
     """Arabic is cursive: tracking breaks the joins, so letter-spacing is banned.
 
-    Persian digits ۰-۹ never join, so the rule's reason does not reach them and the
-    OTP code carries 3px. That is the only exception, and this pins it — a stray
-    letter-spacing on Persian prose is invisible in review and wrong on screen.
+    The emailed code's spaced digits were the one exception, and codes go by SMS
+    now. A stray letter-spacing on Persian prose is invisible in review and wrong
+    on screen.
     """
     import re
 
@@ -249,9 +236,7 @@ def test_tracking_is_zero_everywhere_except_the_isolated_digits(name):
     spaced = re.findall(r'letter-spacing:\s*([^;"\']+)', html)
 
     for value in spaced:
-        assert value.strip() in {"0", "3px"}, f"unexpected tracking on Persian text: {value}"
-    if name == "otp_code":
-        assert "3px" in spaced, "the code lost its tracking"
+        assert value.strip() == "0", f"unexpected tracking on Persian text: {value}"
 
 
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
@@ -302,7 +287,7 @@ def test_the_delivery_link_lifetime_matches_the_adr():
         assert "۷۲" in part
 
 
-@pytest.mark.parametrize("name", ["signin_alert", "password_changed"])
+@pytest.mark.parametrize("name", ["telegram_changed"])
 def test_security_notice_names_support_instead_of_denying_site_signin(name):
     from django.utils.html import strip_tags
 

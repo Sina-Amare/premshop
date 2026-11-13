@@ -25,11 +25,11 @@ def quota(settings):
     settings.EMAIL_QUOTA_STARTING_USAGE = 0
 
 
-def send(name="otp_code"):
+def send(name="telegram_changed"):
     return send_templated_email(name, to=["buyer@example.test"], context=EMAIL_PREVIEWS[name])
 
 
-@pytest.mark.parametrize("name", ["otp_code", "password_reset", "signin_alert", "password_changed"])
+@pytest.mark.parametrize("name", ["telegram_changed", "sms_budget"])
 def test_security_mail_can_spend_the_reserve(name, settings):
     settings.EMAIL_QUOTA_STARTING_USAGE = 999
     assert send(name) == 1
@@ -62,11 +62,11 @@ def test_only_counted_attempts_spend_daily_capacity():
     assert send() == 1
 
 
-def test_recovery_rollback_keeps_the_accepted_attempt():
+def test_a_rollback_keeps_the_accepted_attempt():
     from apps.core.models import MailAttempt
 
     with pytest.raises(ValueError), transaction.atomic():
-        assert send("password_reset") == 1
+        assert send("telegram_changed") == 1
         assert MailAttempt.objects.get().status == "accepted"
         raise ValueError("rollback")
     assert MailAttempt.objects.get().status == "accepted"
@@ -92,7 +92,7 @@ def test_transport_failures_survive_the_callers_rollback(monkeypatch, error, sta
 
     monkeypatch.setattr(EmailBackend, "send_messages", fail)
     with pytest.raises(type(error)), transaction.atomic():
-        send("password_reset")
+        send("telegram_changed")
     assert MailAttempt.objects.get().status == status
 
 
@@ -211,7 +211,7 @@ def test_daily_reserve_and_exact_24_hour_expiry():
         )
         with pytest.raises(MailQuotaExceeded):
             send("item_delivered")
-        assert send("signin_alert") == 1
+        assert send("telegram_changed") == 1
     with time_machine.travel(at + timedelta(hours=24), tick=False):
         assert send("item_delivered") == 1
 
@@ -236,7 +236,9 @@ def test_multiple_recipients_use_multiple_units(settings):
     settings.EMAIL_QUOTA_STARTING_USAGE = 999
     with pytest.raises(MailQuotaExceeded):
         send_templated_email(
-            "otp_code", to=["a@example.test", "b@example.test"], context=EMAIL_PREVIEWS["otp_code"]
+            "telegram_changed",
+            to=["a@example.test", "b@example.test"],
+            context=EMAIL_PREVIEWS["telegram_changed"],
         )
     assert list(MailAttempt.objects.values_list("status", flat=True)) == ["blocked", "blocked"]
     assert not mail.outbox
@@ -265,9 +267,9 @@ def test_another_send_can_finish_while_the_first_transport_waits(monkeypatch, se
     with ThreadPoolExecutor(max_workers=1) as executor:
         pending = executor.submit(
             send_templated_email,
-            "otp_code",
+            "telegram_changed",
             to=["first@example.test"],
-            context=EMAIL_PREVIEWS["otp_code"],
+            context=EMAIL_PREVIEWS["telegram_changed"],
         )
         try:
             assert entered.wait(5)
@@ -278,40 +280,6 @@ def test_another_send_can_finish_while_the_first_transport_waits(monkeypatch, se
         finally:
             release.set()
         assert pending.result(timeout=5) == 1
-
-
-@pytest.mark.parametrize("json", [False, True])
-def test_code_request_returns_temporary_unavailability_at_a_known_limit(client, settings, json):
-    from apps.accounts.views import PENDING_EMAIL_KEY
-
-    settings.EMAIL_QUOTA_STARTING_USAGE = 1000
-    response = client.post(
-        reverse("login-code"),
-        {"email": "buyer@example.test"},
-        **({"HTTP_ACCEPT": "application/json"} if json else {}),
-    )
-    assert response.status_code == 503
-    assert PENDING_EMAIL_KEY not in client.session
-    assert not mail.outbox
-
-
-def test_recovery_failure_is_logged_despite_the_real_session_transaction(
-    client, django_user_model, monkeypatch
-):
-    from django.core.mail.backends.locmem import EmailBackend
-
-    from apps.core.models import MailAttempt
-
-    user = django_user_model.objects.create_user("recovery@example.test", "owner-password")
-    client.force_login(user)
-
-    def fail(*args, **kwargs):
-        raise SMTPServerDisconnected("uncertain")
-
-    monkeypatch.setattr(EmailBackend, "send_messages", fail)
-    response = client.post(reverse("account-password-recovery"), {"action": "request"})
-    assert response.status_code == 503
-    assert MailAttempt.objects.get().status == "uncertain"
 
 
 def test_missing_quota_configuration_still_records_security_mail(settings):
@@ -343,37 +311,3 @@ def test_panel_list_does_not_expose_attempts_to_customers_or_unprivileged_staff(
     user.save(update_fields=["is_staff"])
     assert client.get(url).status_code == 403
     assert client.post(url, {"recipient": "buyer@example.test"}).status_code == 403
-
-
-def test_resend_and_recovery_report_a_known_quota_limit(client, django_user_model, settings):
-    from apps.accounts.views import PENDING_EMAIL_KEY
-
-    settings.EMAIL_QUOTA_STARTING_USAGE = 1000
-    session = client.session
-    session[PENDING_EMAIL_KEY] = "buyer@example.test"
-    session.save()
-    response = client.post(reverse("login-code-resend"), HTTP_ACCEPT="application/json")
-    assert response.status_code == 503
-    assert response.json()["ok"] is False
-    user = django_user_model.objects.create_user("recovery@example.test", "owner-password")
-    client.force_login(user)
-    response = client.post(reverse("account-password-recovery"), {"action": "request"})
-    assert response.status_code == 503
-    assert "کد جدید را به ایمیلتان فرستادیم" not in response.content.decode()
-    assert not mail.outbox
-
-
-def test_an_exhausted_security_notice_cannot_undo_code_signin(client, django_user_model, settings):
-    import re
-
-    from apps.accounts.otp import PERSIAN_TO_ASCII_DIGITS
-
-    user = django_user_model.objects.create_user("signin@example.test", "owner-password")
-    settings.EMAIL_QUOTA_STARTING_USAGE = 999
-    assert client.post(reverse("login-code"), {"email": user.email}).status_code == 302
-    code = re.search(
-        r"\b[0-9]{6}\b", mail.outbox[0].body.translate(PERSIAN_TO_ASCII_DIGITS)
-    ).group()
-    assert client.post(reverse("login-code-verify"), {"code": code}).status_code == 302
-    assert client.session["_auth_user_id"] == str(user.pk)
-    assert len(mail.outbox) == 1

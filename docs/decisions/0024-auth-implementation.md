@@ -51,3 +51,17 @@ python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(rate
 ```
 
 No captcha or separate unknown-address allowance is introduced until the mail log demonstrates abuse. The trusted-proxy correction is a launch prerequisite: without it, all customers behind the proxy share one IP's twenty. SMTP2GO may queue daily excess and rejects monthly excess, as ADR-0022's 2026-11-02 amendment records; the application guard refuses before that behavior is needed.
+
+**Amendment — 2026-11-12: no customer passwords.** The fresh-code password recovery of 2026-10-29, the password change page and the `password_reset`, `password_changed` and `signin_alert` emails are removed, because customers sign in by code only (ADR-0012, 2026-11-12). `authenticate_password` stays for the panel's sign-in, with its timing protection and the attempt budgets it shares with code checks. The protected mail reserve now covers sign-in codes and Telegram link notices. With no password to fall back on, the targeted lockout accepted in the 2026-11-03 amendment now reaches every customer, at sign-in and at checkout; the limit of ten stands.
+
+**Amendment — 2026-11-12: codes by SMS.** Codes go to a mobile number by SMS ([ADR-0031](0031-sign-in-by-phone.md)); their handling here is unchanged: hashed, ten minutes, five guesses, single use, stored after the send is accepted. The limits are per number (one code every two minutes, five an hour, ten accepted a day) beside the per-network pair, and a shop-wide day of 300 accepted sends. To clear a number's daily budget on the server:
+
+```sh
+python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, '09123456789')"
+```
+
+The shop's day of SMS begins at its first send; the operator hears at the 100th, and a failed alert is logged as an error rather than sent again. Once the cause of a spent day is found, codes resume before the day ends with:
+
+```sh
+python manage.py shell -c "from apps.core import ratelimit; ratelimit.reset(ratelimit.SMS_DAILY_BUDGET, 'shop')"
+```

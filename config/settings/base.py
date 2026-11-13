@@ -277,6 +277,25 @@ if TELEGRAM_BOT_TOKEN and not TELEGRAM_BOT_USERNAME:
     # Without it every link the account page opens points at nobody.
     raise ImproperlyConfigured("TELEGRAM_BOT_TOKEN needs TELEGRAM_BOT_USERNAME. See .env.example.")
 
+# Sign-in codes by SMS (ADR-0031). "fake" keeps each message in memory for tests and
+# sends nothing; a value that is neither would otherwise send nothing without a word.
+SMS_BACKEND = env("SMS_BACKEND", "smsir")
+if SMS_BACKEND not in ("smsir", "fake"):
+    raise ImproperlyConfigured("SMS_BACKEND must be smsir or fake. See .env.example.")
+SMS_IR_API_KEY = env("SMS_IR_API_KEY")
+SMS_IR_TEMPLATE_ID = env("SMS_IR_TEMPLATE_ID")
+SMS_IR_LINE_NUMBER = env("SMS_IR_LINE_NUMBER")
+if SMS_IR_API_KEY and not (SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER):
+    # With neither, every code would be refused by SMS.ir after the customer asked.
+    raise ImproperlyConfigured(
+        "SMS_IR_API_KEY needs SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
+    )
+if not all(value.isdecimal() for value in (SMS_IR_TEMPLATE_ID, SMS_IR_LINE_NUMBER) if value):
+    # SMS.ir takes both as numbers; a typo would be a crash on every code request.
+    raise ImproperlyConfigured(
+        "SMS_IR_TEMPLATE_ID and SMS_IR_LINE_NUMBER are numbers. See .env.example."
+    )
+
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP
 # EHLO name. Left alone it stamps the machine's own hostname into every customer's
 # inbox, and its own source warns the lookup "can take a couple of seconds" — it runs
@@ -288,6 +307,12 @@ DNS_NAME._fqdn = env("EMAIL_HELO_NAME", "premshop.ir")
 # model only while the database has no tables; afterwards it is a hand-rebuilt
 # schema on a live system. accounts.0001 is migration one of the whole history.
 AUTH_USER_MODEL = "accounts.User"
+# Django's own backend first, which the panel's password sign-in and force_login use;
+# the second only names the sessions a sign-in code opened, so the panel can refuse them.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "apps.accounts.backends.CodeSignInBackend",
+]
 
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
 FIELD_ENCRYPTION_KEY_FALLBACKS = env_list("FIELD_ENCRYPTION_KEY_FALLBACKS")
@@ -299,7 +324,11 @@ LOGOUT_REDIRECT_URL = "/"
 # Django's rules, with the error sentences in this shop's words — its own Persian
 # says «گذرواژه» where every screen here says «رمز عبور» (apps/accounts/validators.py).
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "apps.accounts.validators.UserAttributeSimilarityValidator"},
+    {
+        # The username is the phone now, which Django's default list does not name.
+        "NAME": "apps.accounts.validators.UserAttributeSimilarityValidator",
+        "OPTIONS": {"user_attributes": ("phone", "email")},
+    },
     {"NAME": "apps.accounts.validators.MinimumLengthValidator"},
     {"NAME": "apps.accounts.validators.CommonPasswordValidator"},
     {"NAME": "apps.accounts.validators.NumericPasswordValidator"},

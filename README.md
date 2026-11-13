@@ -10,7 +10,7 @@ An online shop for digital subscriptions and accounts for Iranian customers (pre
 
 - **Storefront** in Persian, right to left: a home page, categories, product pages built from structured facts, and search that understands Arabic-keyboard spellings, half-spaces, Persian digits and near misses.
 - **Prices computed on the server** through one function, including timed promotions with countdowns, and discount codes validated under row locks.
-- **Sign-in** by an emailed six-digit code or a password, in one flow for signing in and registering, rate-limited per address and per IP.
+- **Sign-in** with a mobile number and a six-digit code sent by SMS, in one flow for signing in and registering, rate-limited per number, per IP and per day; staff sign in at the panel with a password.
 - **A persistent cart** for visitors and customers alike, merged into the account at sign-in and available on every device.
 - **Atomic checkout:** stock is claimed, the discount recorded and the purchase terms frozen in one transaction, and a repeated submission returns the same order.
 - **Customer order pages**, a public tracking link and a downloadable invoice.

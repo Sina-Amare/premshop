@@ -75,7 +75,7 @@ def customer_pages(buyer, plan) -> dict[str, str]:
         "category": visitor.get(reverse("category", args=[plan.product.category.slug])),
         "product": visitor.get(reverse("product", args=[plan.product.slug])),
         "search": visitor.get(reverse("search"), {"q": plan.product.name}),
-        "sign-in": visitor.get(reverse("login-password")),
+        "sign-in": visitor.get(reverse("login-code")),
     }
     CartItem.objects.create(cart=Cart.objects.create(user=buyer), plan=plan)
     customer = Client()

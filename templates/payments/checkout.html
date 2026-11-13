@@ -11,26 +11,21 @@
     <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید. سبد خریدتان پاک نمی‌شود.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
-      <section class="checkout-box checkout-login" data-checkout-login data-login-method="{{ login_method }}" data-code-url="{% url 'login-code' %}" data-password-url="{% url 'login-password' %}">
+      <section class="checkout-box checkout-login" data-checkout-login>
         <div class="checkout-login__body">
         <h2>برای ثبت سفارش وارد شوید</h2>
-        <nav class="checkout-login__methods" aria-label="روش ورود">
-          <a href="{% url 'checkout' %}?method=code" data-login-method="code"{% if login_method == 'code' %} aria-current="page"{% endif %}>ورود با کد ایمیل</a>
-          <a href="{% url 'checkout' %}?method=password" data-login-method="password"{% if login_method == 'password' %} aria-current="page"{% endif %}>ورود با رمز عبور</a>
-        </nav>
         <p role="status" data-login-status hidden></p>
-        <form method="post" action="{% if login_method == 'password' %}{% url 'login-password' %}{% else %}{% url 'login-code' %}{% endif %}" data-inline-email novalidate>
+        <form method="post" action="{% url 'login-code' %}" data-inline-phone novalidate>
           {% csrf_token %}<input type="hidden" name="next" value="{% url 'checkout' %}">
-          {% include 'accounts/_field.html' with field=email_form.email %}
-          <div data-login-password{% if login_method != 'password' %} hidden{% endif %}>{% include 'accounts/_field.html' with field=password_form.password %}</div>
-          <button class="btn btn--primary" type="submit" data-login-submit>{% if login_method == 'password' %}ورود{% else %}دریافت کد ورود{% endif %}</button>
+          {% include 'accounts/_field.html' with field=phone_form.phone %}
+          <button class="btn btn--primary" type="submit">دریافت کد ورود</button>
         </form>
         <form method="post" action="{% url 'login-code-verify' %}" data-inline-code novalidate hidden>
           {% csrf_token %}{% include 'accounts/_field.html' with field=code_form.code %}
           <button class="btn btn--primary" type="submit">تأیید کد و ادامه</button>
         </form>
         <form method="post" action="{% url 'login-code-resend' %}" data-inline-resend hidden>{% csrf_token %}<button class="btn btn--ghost" type="submit">ارسال دوباره‌ی کد</button></form>
-        <button class="btn btn--ghost" type="button" data-inline-edit hidden>ویرایش ایمیل</button>
+        <button class="btn btn--ghost" type="button" data-inline-edit hidden>تغییر شماره</button>
         </div>
       </section>
       <aside class="cart-summary checkout-preview" data-checkout-cart aria-label="سبد خرید">
@@ -79,7 +74,7 @@
         {% if form.input_fields %}<section class="checkout-box"><h2>اطلاعات فعال‌سازی</h2><p>رمز و کدهای ورود اکانتتان را اینجا وارد نکنید.</p>
           {% for line, field in form.input_fields %}<div class="checkout-input"><div class="checkout-input__head"><div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.plan.product %}</div><p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p></div>{% include 'accounts/_field.html' %}</div>{% endfor %}
         </section>{% endif %}
-        <section class="checkout-box"><h2>اطلاعات تماس</h2><p>سفارش با حساب کاربری <bdi dir="ltr">{{ request.user.email }}</bdi> ثبت می‌شود.</p>{% include 'accounts/_field.html' with field=form.phone %}</section>
+        <section class="checkout-box"><h2>اطلاعات تماس</h2>{% if request.user.phone %}<p>سفارش با شماره‌ی <bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi> ثبت می‌شود.</p>{% endif %}{% include 'accounts/_field.html' with field=form.email %}</section>
         {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا خطای بالا برطرف نشود، سفارش ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
       </div>
       {% if purchase %}<aside class="cart-summary" aria-label="خلاصه‌ی سفارش">

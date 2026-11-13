@@ -223,7 +223,6 @@ def rendered_pages(client) -> dict[str, str]:
             "search hit": "/search/?q=chatgpt",
             "search miss": "/search/?q=xbox",
             "404": "/no-such-page/",
-            "sign-in": "/login/password/",
             "code request": "/login/code/",
             "cart empty": "/cart/",
         }.items()
@@ -237,18 +236,15 @@ def rendered_pages(client) -> dict[str, str]:
     customer = Client()
     customer.force_login(User.objects.create_user("customer@example.test", is_verified=True))
     pages["account"] = customer.get(reverse("account")).content.decode()
-    pages["account password"] = customer.get(reverse("account-password")).content.decode()
     request = RequestFactory().get("/")
     request.user = AnonymousUser()
     pages["403"] = permission_denied(request, PermissionDenied()).content.decode()
     pages["403 csrf"] = (
-        Client(enforce_csrf_checks=True).post(reverse("login-password"), {}).content.decode()
+        Client(enforce_csrf_checks=True).post(reverse("login-code"), {}).content.decode()
     )
     pages["500"] = server_error(request).content.decode()
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
-        pages["503"] = client.post(
-            reverse("login-code"), {"email": "x@example.test"}
-        ).content.decode()
+        pages["503"] = client.post(reverse("login-code"), {"phone": "09125550013"}).content.decode()
     for _ in range(ratelimit.SEARCH_PER_IP.times):
         client.get("/search/?q=a")
     pages["search, rate-limited"] = client.get("/search/?q=a").content.decode()
@@ -257,7 +253,7 @@ def rendered_pages(client) -> dict[str, str]:
 
 def test_every_storefront_page_speaks_written_persian(client, shop):
     pages = rendered_pages(client)
-    assert len(pages) == 20
+    assert len(pages) == 18
 
     bad = {}
     for name, body in pages.items():
@@ -285,13 +281,7 @@ def test_every_email_speaks_written_persian_in_both_halves():
         )
         if found:
             bad[name] = found
-    assert {
-        "otp_code",
-        "signin_alert",
-        "item_delivered",
-        "password_reset",
-        "password_changed",
-    } <= set(EMAIL_PREVIEWS)
+    assert {"item_delivered", "telegram_changed", "sms_budget"} <= set(EMAIL_PREVIEWS)
     assert not bad
 
 

@@ -6,10 +6,10 @@
 
 {% block auth_intro %}
   <p class="small auth-sent">
-    کد ۶ رقمی را به <bdi class="latin">{{ email }}</bdi> فرستادیم.
+    کد ۶ رقمی را با پیامک به <bdi dir="ltr">{{ phone }}</bdi> فرستادیم.
   </p>
   <p class="small auth-change">
-    ایمیل اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر ایمیل</a>
+    شماره اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر شماره</a>
   </p>
 {% endblock %}
 
@@ -24,7 +24,7 @@ the resend form is sent by fetch too, so the countdown restarts in place.
 
 The countdown starts from the seconds the server says the code has left, so a
 reload does not restart it. The resend cooldown does restart on a reload; it is
-a courtesy, and the server's limit on codes per address is the defence.
+a courtesy, and the server's limit on codes per number is the defence.
 {% endcomment %}
 <form method="post" novalidate id="code-form"
       data-expires-in="{{ expires_in }}"
@@ -61,7 +61,7 @@ a courtesy, and the server's limit on codes per address is the defence.
 
 <form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="resend-form">
   {% csrf_token %}
-  <span class="small" id="resend-hint">کد نرسید؟ پوشه‌ی اسپم را هم ببینید.</span>
+  <span class="small" id="resend-hint">کد نرسید؟ شماره‌ی بالا را بررسی کنید.</span>
   <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
 </form>
 {% endblock %}

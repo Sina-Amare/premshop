@@ -7,6 +7,7 @@ from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan, Product
 from apps.cms.models import Page
+from apps.core import sms
 from apps.orders.models import DiscountCode, Order
 from apps.payments.services import quote_checkout
 
@@ -107,11 +108,11 @@ def test_checkout_shows_persian_warranty_labels_and_preserves_snapshot_code(
     assert response.context["quote"].purchase.lines[0].snapshot["warranty"] == code
 
 
-def test_inline_code_request_preserves_safe_next_and_returns_json(client, mailoutbox):
+def test_inline_code_request_preserves_safe_next_and_returns_json(client):
     response = client.post(
         reverse("login-code"),
         {
-            "email": "buyer@example.test",
+            "phone": "09123334455",
             "next": "/checkout/",
         },
         HTTP_ACCEPT="application/json",
@@ -119,8 +120,8 @@ def test_inline_code_request_preserves_safe_next_and_returns_json(client, mailou
     assert response.status_code == 200 and response.json()["ok"] is True
     assert response.json()["expires_in"] > 0
     assert client.session["accounts.pending_next"] == reverse("checkout")
-    assert len(mailoutbox) == 1
-    bad = client.post(reverse("login-code"), {"email": "wrong"}, HTTP_ACCEPT="application/json")
+    assert len(sms.outbox) == 1
+    bad = client.post(reverse("login-code"), {"phone": "wrong"}, HTTP_ACCEPT="application/json")
     assert bad.status_code == 400 and bad.json()["ok"] is False
     verify = client.post(
         reverse("login-code-verify"), {"code": "000000"}, HTTP_ACCEPT="application/json"
@@ -225,7 +226,7 @@ def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buye
     assert cart.items.exists() and not Order.objects.exists()
 
 
-def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer, plan, cart):
+def test_input_errors_identify_only_the_invalid_product_and_email(client, buyer, plan, cart):
     Plan.objects.filter(pk=plan.pk).update(
         input_type="email", requires_customer_input=True, max_quantity=1
     )
@@ -246,7 +247,7 @@ def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer,
             "action": "checkout",
             "quote": accepted.token,
             "checkout_id": uuid.uuid4(),
-            "phone": "0912",
+            "email": "not-an-address",
             f"customer_input_{plan.pk}": "valid@example.test",
             f"customer_input_{other.pk}": "invalid-private-input",
         },
@@ -258,7 +259,7 @@ def test_input_errors_identify_only_the_invalid_product_and_phone(client, buyer,
     assert not valid.errors and 'aria-invalid="true"' not in str(valid)
     assert invalid.errors and 'aria-invalid="true"' in str(invalid)
     assert f"{invalid.auto_id}_error" in str(invalid)
-    assert form["phone"].errors and 'aria-invalid="true"' in str(form["phone"])
+    assert form["email"].errors and 'aria-invalid="true"' in str(form["email"])
     assert valid.value() == "valid@example.test" and "activation_consent" not in form.fields
     assert "invalid-private-input" not in str(invalid.errors)
     assert not Order.objects.exists() and cart.items.count() == 2
@@ -285,15 +286,16 @@ def test_discount_actions_say_apply_or_remove_and_show_the_result(client, buyer,
 
 
 def test_correct_code_for_deactivated_account_preserves_guest_cart_and_does_not_sign_in(
-    client, buyer, plan, cart, monkeypatch, mailoutbox
+    client, buyer, plan, cart, monkeypatch
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
+    User.objects.filter(pk=buyer.pk).update(phone="09123334466")
     client.post(reverse("cart-add"), {"plan": plan.pk})
     guest = Cart.objects.get(user__isnull=True)
     response = client.post(
         reverse("login-code"),
         {
-            "email": buyer.email,
+            "phone": "09123334466",
             "next": reverse("checkout"),
         },
         HTTP_ACCEPT="application/json",
@@ -308,7 +310,7 @@ def test_correct_code_for_deactivated_account_preserves_guest_cart_and_does_not_
         assert "_auth_user_id" not in client.session
     assert Cart.objects.filter(pk=guest.pk, user__isnull=True).exists()
     assert guest.items.get().quantity == cart.items.get().quantity == 1
-    assert User.objects.count() == 1 and len(mailoutbox) == 1
+    assert User.objects.count() == 1 and len(sms.outbox) == 1
 
 
 def test_invalid_discount_keeps_activation_fields_visible_without_an_accepted_quote(

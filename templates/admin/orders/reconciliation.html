@@ -20,7 +20,7 @@
   <header><h2 id="reconciliation-payments">{% translate "پرداخت‌های تأییدشده" %}</h2></header>
   {% for row in payments %}{% with payment=row.payment %}<article class="saved-purchase">
     <h3><a href="{% url 'admin:orders_order_change' payment.order_id %}">{% translate "سفارش" %} {{ payment.order.order_number|fa_digits }}</a>، {{ payment.amount|toman }}</h3>
-    <p>{{ payment.verified_at|jalali }}، {{ payment.verified_at|date:'H:i:s'|fa_digits }}، <bdi>{{ payment.matched_by.email }}</bdi></p>
+    <p>{{ payment.verified_at|jalali }}، {{ payment.verified_at|date:'H:i:s'|fa_digits }}، <bdi>{{ payment.matched_by }}</bdi></p>
     <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
     {% include "admin/orders/reference_warning.html" with duplicates=row.duplicates only %}
   </article>{% endwith %}{% empty %}<p>{% translate "پرداختی در این روز تأیید نشده است." %}</p>{% endfor %}
@@ -32,9 +32,9 @@
     <h3><a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "سفارش" %} {{ refund.order_item.order.order_number|fa_digits }}</a>، <a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "آیتم" %} {{ item_numbers|item_place:refund.order_item_id|fa_digits }}</a>، {{ refund.amount|toman }}</h3>
     {% if row.owed_today %}<p><span class="order-status" data-tone="attention">{% translate "بدهی جدید در این روز" %}</span></p>{% endif %}
     {% if row.sent_today %}<p><span class="order-status" data-tone="done">{% translate "واریز در این روز" %}</span></p>{% endif %}
-    <p>{% translate "زمان ثبت بدهی" %}: {{ refund.created_at|jalali }}، {{ refund.created_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.created_by.email }}</bdi></p>
+    <p>{% translate "زمان ثبت بدهی" %}: {{ refund.created_at|jalali }}، {{ refund.created_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.created_by }}</bdi></p>
     {% if refund.executed_at %}
-    <p>{% translate "زمان واریز" %}: {{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by.email }}</bdi></p>
+    <p>{% translate "زمان واریز" %}: {{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by }}</bdi></p>
     <p>{{ refund.get_destination_kind_display }}، <bdi dir="ltr">{{ refund.destination_last4 }}</bdi>، <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
     {% endif %}
     {% include "admin/orders/reference_warning.html" with duplicates=row.duplicates only %}

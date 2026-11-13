@@ -42,7 +42,7 @@ def enqueue_event(
     *,
     item_id: int | None = None,
     due_at: datetime | None = None,
-) -> Notification:
+) -> Notification | None:
     if (
         template_name not in Notification.Template.values
         or template_name == "purchase_confirmation"
@@ -87,17 +87,21 @@ def enqueue_event(
     )
     recipient = order["placement_email"] or order["user__email"]
     subject, text, html = render_email(template_name, context)
-    row, _ = Notification.objects.get_or_create(
-        dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:email",
-        defaults={
-            "order_id": order_id,
-            "template_name": template_name,
-            "recipient": recipient,
-            "subject": subject,
-            "text_body": text,
-            "html_body": html,
-        },
-    )
+    # A customer who signed in by phone and gave no email hears through Telegram, or
+    # from the order page.
+    row = None
+    if recipient:
+        row, _ = Notification.objects.get_or_create(
+            dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:email",
+            defaults={
+                "order_id": order_id,
+                "template_name": template_name,
+                "recipient": recipient,
+                "subject": subject,
+                "text_body": text,
+                "html_body": html,
+            },
+        )
     # After the email row, so a Telegram problem can never cost the email.
     if settings.TELEGRAM_BOT_TOKEN and order["user__telegram_id"]:
         Notification.objects.get_or_create(

@@ -20,7 +20,7 @@
     <article class="saved-purchase">
       <p>{{ payment.get_method_display }}، <span class="order-status" data-tone="{{ payment|payment_tone }}">{{ payment.get_status_display }}</span>، {{ payment.amount|toman }}</p>
       <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
-      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by.email }}</bdi>{% if payment.verified_at %}، {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
+      <p>{% translate "ثبت‌کننده" %}: <bdi dir="ltr">{{ payment.matched_by }}</bdi>{% if payment.verified_at %}، {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:"H:i"|fa_digits }}{% endif %}</p>
     </article>
   {% endfor %}
   {% if can_record_payment %}<a class="order-input-action" href="{% url 'admin:orders_order_record_manual_payment' original.pk %}">{% translate "ثبت پرداخت خارج از درگاه" %}</a>{% endif %}
@@ -32,7 +32,7 @@
   {% for refund in refund_history %}<article class="saved-purchase">
     <p>{% translate "آیتم" %} {{ item_numbers|item_place:refund.order_item_id|fa_digits }}، {{ refund.amount|toman }}، <span class="order-status" data-tone="closed">{{ refund.get_status_display }}</span></p>
     {% if refund.executed_at %}
-    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by.email }}</bdi></p>
+    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by }}</bdi></p>
     <p>{{ refund.get_destination_kind_display }}، <bdi dir="ltr">{{ refund.destination_last4 }}</bdi>، <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
     {% endif %}
   </article>{% endfor %}
@@ -64,7 +64,7 @@
     {% for row in input_access_log %}
       <li>
         <div class="order-timeline__head"><strong><bdi>{{ row.item_name|default_if_none:"" }}</bdi>، <bdi>{{ row.item_plan|default_if_none:"" }}</bdi></strong><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|jalali }}، {{ row.created_at|date:"H:i"|fa_digits }}</time></div>
-        <p class="order-timeline__meta">{% translate "آیتم" %} {{ item_numbers|item_place:row.order_item_id|fa_digits }}، {{ row.get_target_display }}، <bdi dir="ltr">{{ row.user.email }}</bdi></p>
+        <p class="order-timeline__meta">{% translate "آیتم" %} {{ item_numbers|item_place:row.order_item_id|fa_digits }}، {{ row.get_target_display }}، <bdi dir="ltr">{{ row.user }}</bdi></p>
       </li>
     {% empty %}
       <li>{% translate "هنوز اطلاعاتی نمایش داده نشده." %}</li>

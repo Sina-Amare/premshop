@@ -29,6 +29,7 @@ from apps.accounts.models import User
 from apps.core import ratelimit, support, telegram
 from apps.core import telegram_emoji as emoji
 from apps.core.email import send_templated_email
+from apps.core.formatting import mask_phone
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ COMMANDS_KEY = "telegram:commands"
 # Every screen opens with its emoji and a bold title, and its links are buttons.
 CONFIRM = (
     f"{emoji.LINK} <b>اتصال تلگرام به PremShop</b>\n"
-    f"{emoji.ACCOUNT} حساب کاربری: <code>{{email}}</code>\n"
+    f"{emoji.ACCOUNT} حساب کاربری: <code>{{account}}</code>\n"
     "اتصال این تلگرام به حساب کاربری بالا را تأیید کنید."
 )
 CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
@@ -142,8 +143,12 @@ def link_owner(token: str) -> User | None:
     return User.objects.filter(pk=user_id, is_active=True).first()
 
 
-def mask_email(email: str) -> str:
-    local, _, domain = email.partition("@")
+def account_label(user: User) -> str:
+    """How the bot names an account: its number half hidden, isolated left to right so
+    the bullets cannot flip its halves; an account with no number, by its email."""
+    if user.phone:
+        return f"\u2066{mask_phone(user.phone)}\u2069"
+    local, _, domain = user.email.partition("@")
     return f"{local[:1]}•••@{domain}"
 
 
@@ -195,6 +200,10 @@ def unlink(user: User) -> None:
 
 
 def _notify(user: User, state: str, handle: str) -> None:
+    # The chat itself confirms the change; the mail is a second word to the address,
+    # when the account has one.
+    if not user.email:
+        return
     try:
         send_templated_email(
             "telegram_changed",
@@ -240,7 +249,7 @@ def _messaged(message: dict[str, Any]) -> None:
         # The bot's one green button: the customer's own yes.
         button = {"text": CONFIRM_BUTTON, "callback_data": f"link:{token}", "style": "success"}
         telegram.send_message(
-            chat_id, CONFIRM.format(email=escape(mask_email(user.email))), buttons=[[button]]
+            chat_id, CONFIRM.format(account=escape(account_label(user))), buttons=[[button]]
         )
     elif command == "/start" and token:
         text, buttons = _expired()

@@ -119,3 +119,18 @@ def test_admin_order_list_query_count_is_the_same_for_five_orders_and_fifteen(
 
     assert len(response.context["cl"].result_list) == 15
     assert many == few
+
+
+@pytest.mark.parametrize("typed", ["+98 912 111 2233", "۰۹۱۲۱۱۱۲۲۳۳"])
+def test_the_panel_finds_a_customer_and_their_orders_by_any_spelling_of_the_number(
+    client, plan, typed
+):
+    customer = User.objects.create_user(phone="09121112233")
+    order = place_order(user=customer, lines=[OrderLine(plan, 1, None)])
+    client.force_login(User.objects.create_superuser("operator@example.test"))
+
+    orders = client.get(reverse("admin:orders_order_changelist"), {"q": typed, "tab": "all"})
+    customers = client.get(reverse("admin:accounts_user_changelist"), {"q": typed})
+
+    assert order in orders.context["cl"].result_list
+    assert customer in customers.context["cl"].result_list

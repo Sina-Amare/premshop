@@ -171,7 +171,6 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     yield "cart", client.get(reverse("cart"))
     yield "checkout", client.get(reverse("checkout"))
     yield "account", client.get(reverse("account"))
-    yield "account password", client.get(reverse("account-password"))
     orderer = User.objects.create_user("orderer@example.test")
     order = place_order(user=orderer, lines=[OrderLine(plans[1], 1)])
     client.force_login(orderer)
@@ -180,7 +179,7 @@ def visits(client: Any, shelf: Any) -> Iterator[tuple[str, Any]]:
     client.logout()
     yield "tracking", client.get(reverse("order-tracking", args=[order.tracking_token]))
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
-        yield "503", client.post(reverse("login-code"), {"email": "someone@example.test"})
+        yield "503", client.post(reverse("login-code"), {"phone": "09125550012"})
 
 
 def test_no_storefront_page_carries_inline_code(client, shelf):

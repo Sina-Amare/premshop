@@ -29,7 +29,7 @@ def quota(settings):
     settings.EMAIL_QUOTA_STARTING_USAGE = 0
 
 
-def send(name="otp_code"):
+def send(name="telegram_changed"):
     return send_templated_email(name, to=["buyer@example.test"], context=EMAIL_PREVIEWS[name])
 
 

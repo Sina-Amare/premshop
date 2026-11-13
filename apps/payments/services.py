@@ -20,7 +20,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.debug import sensitive_variables
 
 from apps.accounts.models import User
-from apps.accounts.validators import normalize_mobile_phone
+from apps.accounts.otp import normalize_email
 from apps.cart.models import Cart, CartItem
 from apps.catalog.inputs import normalize_customer_input
 from apps.orders.models import Order, OrderItem
@@ -322,7 +322,7 @@ def checkout(
     quote: str,
     checkout_id: uuid.UUID,
     customer_inputs: Mapping[str, str | None],
-    phone: str = "",
+    email: str = "",
     discount_code: str | None = None,
 ) -> Order:
     account = _account(user, lock=True)
@@ -342,12 +342,14 @@ def checkout(
         str(plan_id): normalize_customer_input(kind, customer_inputs.get(str(plan_id)))
         for plan_id, kind in payload["inputs"]
     }
-    phone = normalize_mobile_phone(phone)
+    if not isinstance(email, str):
+        raise ValidationError("این ایمیل درست نیست.")
+    email = normalize_email(email)
     submission = _json(
         {
             "quote": payload,
             "inputs": inputs,
-            "phone": phone,
+            "email": email,
         }
     )
     digests = [
@@ -379,7 +381,7 @@ def checkout(
         lines=[
             OrderLine(item.plan, item.quantity, inputs.get(str(item.plan_id))) for item in items
         ],
-        phone=phone,
+        email=email,
         discount_code=payload["code"],
         checkout_id=checkout_id,
         submission_digest=digest,

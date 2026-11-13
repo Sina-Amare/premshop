@@ -38,6 +38,7 @@ RUN SECRET_KEY=collectstatic ALLOWED_HOSTS=localhost SITE_URL=https://localhost 
     DATABASE_URL=postgres://collectstatic@localhost/collectstatic \
     EMAIL_HOST_USER=collectstatic EMAIL_HOST_PASSWORD=collectstatic ADMIN_PATH=collectstatic/ \
     FIELD_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+    SMS_IR_API_KEY=collectstatic SMS_IR_LINE_NUMBER=0 \
     python manage.py collectstatic --noinput --verbosity 0 --ignore input.css
 USER premshop
 ARG GIT_COMMIT=""

@@ -4,20 +4,14 @@
 {% block auth_title %}ورود با کد{% endblock %}
 
 {% block auth_intro %}
-  <p class="small auth-intro">ایمیلتان را وارد کنید تا کد ورود را برایتان بفرستیم. حساب کاربری ندارید؟ با همین ایمیل برایتان می‌سازیم.</p>
+  <p class="small auth-intro">شماره‌ی موبایلتان را وارد کنید تا کد ورود را با پیامک بفرستیم. حساب کاربری ندارید؟ با همین شماره برایتان می‌سازیم.</p>
 {% endblock %}
 
 {% block auth_body %}
   <form method="post" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
-    {% include "accounts/_field.html" with field=form.email %}
+    {% include "accounts/_field.html" with field=form.phone %}
     <button type="submit" class="btn btn--primary btn--block" data-busy="در حال ارسال…">دریافت کد ورود</button>
   </form>
-{% endblock %}
-
-{% block auth_after %}
-  <p class="micro auth-aside">
-    رمز عبور دارید؟ <a href="{% url 'login-password' %}?next={{ next|urlencode }}">ورود با رمز عبور</a>
-  </p>
 {% endblock %}

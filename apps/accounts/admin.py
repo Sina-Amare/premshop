@@ -1,18 +1,19 @@
-"""Customers in the admin: look one up, see whether the email is verified, deactivate.
+"""Customers in the admin: look one up by number, correct a number, deactivate.
 
-Read-mostly by design. Passwords are never shown or set here — an OTP-only
-account stays OTP-only until the customer sets one — and the operator panel
-proper (S7) is where account actions belong. This exists so the customer list is
-not invisible until then.
+Read-mostly by design. Passwords are never shown or set here: a customer has
+none, and staff change theirs on the panel's own password page. A customer's
+number changes here, through support, because it is the account's way in.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -21,8 +22,9 @@ from unfold.forms import AuthenticationForm
 
 from apps.accounts import services
 from apps.accounts.models import User
-from apps.accounts.otp import normalize_email
+from apps.accounts.validators import normalize_mobile_phone, phone_search_term
 from apps.core import ratelimit
+from apps.core.admin_site import PASSWORD_BACKEND
 from apps.core.formatting import format_jalali, to_persian_digits
 
 
@@ -35,12 +37,18 @@ class PanelLoginForm(AuthenticationForm):
     The panel is where every price on the shop is changed, and its sign-in was
     the one without a limit. These are the shop's two budgets under the same
     keys, so an account has one budget wherever it is guessed at: ten tries per
-    address in fifteen minutes and thirty per IP in an hour. The window opens
-    with the first attempt and no later guess moves it (ratelimit.hit).
+    number in fifteen minutes and thirty per IP in an hour. The window opens
+    with the first attempt and no later guess moves it (ratelimit.hit). Staff
+    sign in by phone, the account's username.
     """
 
     def clean(self) -> dict[str, Any]:
-        username = normalize_email(self.cleaned_data.get("username", ""))
+        typed = self.cleaned_data.get("username", "")
+        try:
+            username = normalize_mobile_phone(typed) or typed
+        except ValidationError:
+            # Not a number: it matches nobody, and still costs one hash and one try.
+            username = typed
         self.cleaned_data["username"] = username
         if username and (password := self.cleaned_data.get("password")):
             try:
@@ -49,32 +57,48 @@ class PanelLoginForm(AuthenticationForm):
                 raise ValidationError(error.message, code="rate_limited") from None
             if self.user_cache is None:
                 raise self.get_invalid_login_error()
+            # The password backend, never the code's: the panel lets this session in.
+            self.user_cache.backend = PASSWORD_BACKEND
             self.confirm_login_allowed(self.user_cache)
         # Only a sign-in that passed. A post with no password skips the check
         # and returns cleanly too; clearing on it would undo the limit.
         if self.get_user() is not None:
-            ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, username)
+            ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, username)
         return self.cleaned_data
 
 
 admin.site.login_form = PanelLoginForm
 
 
+class UserForm(forms.ModelForm):
+    def clean_phone(self) -> str | None:
+        # One normal form, as the database insists; blank is no number at all.
+        return normalize_mobile_phone(self.cleaned_data.get("phone") or "") or None
+
+
 @admin.register(User)
 class UserAdmin(ModelAdmin):
-    list_display = ["email", "is_verified", "phone", "joined", "is_active", "is_staff"]
+    form = UserForm
+    list_display = ["phone", "email", "is_verified", "joined", "is_active", "is_staff"]
     list_filter = ["is_verified", "is_active", "is_staff"]
-    search_fields = ["email", "phone"]
+    search_fields = ["phone", "email"]
     ordering = ["-date_joined"]
     readonly_fields = ["email", "joined", "last_seen", "is_verified"]
     fieldsets = (
-        (_("حساب کاربری"), {"fields": ("email", "is_verified", "phone")}),
+        (_("حساب کاربری"), {"fields": ("phone", "is_verified", "email")}),
         (_("دسترسی"), {"fields": ("is_active", "is_staff")}),
         (_("تاریخ‌ها"), {"fields": ("joined", "last_seen")}),
     )
 
     def save_model(self, request: HttpRequest, obj: User, form: Any, change: bool) -> None:
         changed = set(form.changed_data) & {"phone", "is_active", "is_staff"}
+        if "phone" in changed and not obj.has_usable_password():
+            # Support moving a customer to a new number, after a lost SIM: a fresh
+            # unusable mark changes the session hash, so whoever holds the old
+            # number is signed out, and the new number is proven by its first code.
+            obj.set_unusable_password()
+            obj.is_verified = False
+            changed |= {"password", "is_verified"}
         if changed:
             obj.save(update_fields=changed)
 
@@ -90,6 +114,11 @@ class UserAdmin(ModelAdmin):
             return "—"
         when = timezone.localtime(obj.last_login)
         return f"{format_jalali(when)}، {to_persian_digits(when.strftime('%H:%M'))}"
+
+    def get_search_results(
+        self, request: HttpRequest, queryset: QuerySet[User], search_term: str
+    ) -> tuple[QuerySet[User], bool]:
+        return super().get_search_results(request, queryset, phone_search_term(search_term))
 
     def has_add_permission(self, request: HttpRequest, obj: User | None = None) -> bool:
         # Accounts are created by the customer's first code, never by hand:

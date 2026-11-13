@@ -8,7 +8,7 @@
   <div class="delivery-columns">
     <section aria-labelledby="delivery-customer-title">
       <h3 id="delivery-customer-title">{% translate "مشتری" %}</h3>
-      <p><bdi dir="ltr" class="order-customer">{{ order.user.email }}</bdi></p>
+      <p><bdi dir="ltr" class="order-customer">{{ order.user }}</bdi></p>
       {% if item.product_snapshot.requires_customer_input %}<form method="post" action="{% url 'admin:orders_order_reveal_customer_input' order.pk item.pk %}">{% csrf_token %}<button type="submit" class="order-input-action" data-customer-input-reveal>{% translate "نمایش اطلاعات" %}</button></form>{% endif %}
       {% if mode == "deliver" %}<form method="post" action="{% url 'admin:orders_order_input_action' order.pk item.pk 'request' %}">{% csrf_token %}<button type="submit" name="expected_event_id" value="{{ event_id }}" class="order-input-action">{% translate "ثبت درخواست اطلاعات" %}</button></form>{% endif %}
     </section>

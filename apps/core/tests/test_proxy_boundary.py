@@ -61,7 +61,7 @@ def test_forged_headers_do_not_lift_the_per_ip_code_limit(client, settings, trus
             "HTTP_X_REAL_IP": VISITOR if trust else f"192.0.2.{n}",
         }
         return client.post(
-            reverse("login-code"), {"email": f"c{n}@example.test"}, REMOTE_ADDR=NGINX, **forged
+            reverse("login-code"), {"phone": f"0912000{n:04d}"}, REMOTE_ADDR=NGINX, **forged
         )
 
     for n in range(limit.times):

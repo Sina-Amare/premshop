@@ -43,7 +43,7 @@ def test_a_cache_outage_renders_a_persian_page_not_a_traceback(client):
     """Reintroduce the bug and watch the guard fire — a guard that has never gone
     red is a guard nobody has tested."""
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
-        response = client.post(reverse("login-code"), {"email": "someone@example.test"})
+        response = client.post(reverse("login-code"), {"phone": "09125550010"})
 
     assert response.status_code == 503
     body = response.content.decode()
@@ -54,7 +54,7 @@ def test_a_cache_outage_renders_a_persian_page_not_a_traceback(client):
 
 def test_the_outage_page_offers_a_way_back(client):
     with mock.patch("apps.core.ratelimit.cache.add", side_effect=RedisConnectionError("refused")):
-        body = client.post(reverse("login-code"), {"email": "x@example.test"}).content.decode()
+        body = client.post(reverse("login-code"), {"phone": "09125550011"}).content.decode()
 
     assert reverse("login-code") in body, "a dead end is not an error page"
 
@@ -76,8 +76,8 @@ def test_the_csrf_token_differs_on_every_render(client):
     """
     pattern = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 
-    first = pattern.search(client.get(reverse("login-password")).content.decode())
-    second = pattern.search(client.get(reverse("login-password")).content.decode())
+    first = pattern.search(client.get(reverse("login-code")).content.decode())
+    second = pattern.search(client.get(reverse("login-code")).content.decode())
 
     assert first and second, "no CSRF token rendered — the premise changed"
     assert first.group(1) != second.group(1), "CSRF masking is off; see ADR-0026"

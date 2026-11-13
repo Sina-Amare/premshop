@@ -5,6 +5,10 @@ service, and render. Everything that decides *what may happen* lives here, so th
 rules are in one place and testable without an HTTP request. That is the service
 layer pattern, and the reason for it is that auth rules leak otherwise — one
 forgotten rate-limit call in one view is the whole defence gone.
+
+One way in per account (ADR-0031): a customer signs in with a mobile number and a
+code sent by SMS and has no password, and staff sign in only with the panel's
+password, because a staff session opens the panel.
 """
 
 from __future__ import annotations
@@ -13,20 +17,18 @@ import logging
 import secrets
 
 from django.conf import settings
-from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, update_session_auth_hash
 from django.contrib.auth import login as django_login
 from django.contrib.auth.hashers import check_password, make_password
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.accounts import otp
+from apps.accounts.backends import CODE_SIGN_IN
 from apps.accounts.models import User
-from apps.core import ratelimit, support
+from apps.accounts.validators import normalize_mobile_phone
+from apps.core import ratelimit, sms, support
 from apps.core.email import send_templated_email
 from apps.core.sessions import login_session
 
@@ -46,52 +48,53 @@ class RateLimited(Exception):
 
 
 _CODE_NOT_SENT = (
-    "{} فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
+    "کد ورود فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید یا در تلگرام به پشتیبانی پیام بدهید: {}"
 )
+_CODES_PAUSED = "فرستادن کد ورود فعلاً متوقف است. در تلگرام به پشتیبانی پیام بدهید: {}"
 
 
 class CodeNotSent(Exception):
-    """The relay failed or accepted nothing. Answered on the page, as a refused
-    send is; no daily unit is spent, since only accepted sends count."""
+    """SMS.ir refused or did not answer, or the shop's day of SMS is spent. Answered
+    on the page, as a refused send is; no daily unit is spent, since only accepted
+    sends count."""
 
-    def __init__(self, purpose: str = "login") -> None:
-        # The recovery page's code is not a sign-in code.
-        code = "کد بازیابی" if purpose == "password_reset" else "کد ورود"
+    def __init__(self, sentence: str = _CODE_NOT_SENT) -> None:
         handle = support.details()["telegram"]
         # The Latin handle must be isolated left-to-right, or its @ is drawn at
         # the wrong end. A page gets <bdi>; a script sets `text` as text, so it
         # carries the two Unicode marks <bdi> stands for.
-        self.message = format_html(
-            _CODE_NOT_SENT, code, format_html('<bdi class="latin">{}</bdi>', handle)
-        )
-        self.text = _CODE_NOT_SENT.format(code, f"\u2066{handle}\u2069")
+        self.message = format_html(sentence, format_html('<bdi class="latin">{}</bdi>', handle))
+        self.text = sentence.format(f"\u2066{handle}\u2069")
         super().__init__(self.message)
 
 
 # One message per budget, each with its wait. A budget per IP never blames the
 # visitor: a mobile carrier puts many customers behind one address.
+CODE_COOLDOWN = (
+    "برای این شماره کمتر از دو دقیقه پیش کد خواسته شده است. دو دقیقه دیگر دوباره امتحان کنید."
+)
 TOO_MANY_CODES = (
-    "برای این ایمیل چند بار پشت سر هم کد خواسته شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+    "برای این شماره چند بار پشت سر هم کد خواسته شده است. یک ساعت دیگر دوباره امتحان کنید."
 )
 TOO_MANY_CODES_FROM_NETWORK = "از این شبکه زیاد کد خواسته شده است. یک ساعت دیگر دوباره امتحان کنید."
 TOO_MANY_CODES_DAILY = (
-    "درخواست کد برای این ایمیل به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید."
+    "درخواست کد برای این شماره به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید."
 )
 TOO_MANY_CODES_FROM_NETWORK_DAILY = (
     "درخواست کد از این شبکه به سقف روزانه رسیده است. ۲۴ ساعت دیگر دوباره امتحان کنید."
 )
 TOO_MANY_ATTEMPTS = (
-    "برای این ایمیل چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+    "برای این شماره چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
 )
 TOO_MANY_FROM_NETWORK = "از این شبکه زیاد تلاش شده است. یک ساعت دیگر دوباره امتحان کنید."
 
 
-def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
+def password_attempt_refusal(request: HttpRequest, phone: str) -> str | None:
     """Count a password attempt; the message to show when a budget is spent.
 
-    The storefront's sign-in and the panel's share these budgets under the same
-    keys, so an account has one budget wherever it is guessed at."""
-    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
+    The panel's password and the shop's code checks share these budgets under the
+    same keys, so an account has one budget wherever it is guessed at."""
+    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, phone):
         return TOO_MANY_ATTEMPTS
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
         return TOO_MANY_FROM_NETWORK
@@ -99,11 +102,11 @@ def password_attempt_refusal(request: HttpRequest, email: str) -> str | None:
 
 
 @transaction.atomic
-def authenticate_password(request: HttpRequest, email: str, password: str) -> User | None:
-    email = otp.normalize_email(email)
-    if refusal := password_attempt_refusal(request, email):
+def authenticate_password(request: HttpRequest, phone: str, password: str) -> User | None:
+    """The panel's sign-in: staff are the only accounts with a password."""
+    if refusal := password_attempt_refusal(request, phone):
         raise RateLimited(refusal)
-    user = User.objects.select_for_update(no_key=True).filter(email__iexact=email).first()
+    user = User.objects.select_for_update(no_key=True).filter(phone=phone).first()
     if user is not None and user.is_active:
         authenticated = user.check_password(password)
     else:
@@ -114,230 +117,129 @@ def authenticate_password(request: HttpRequest, email: str, password: str) -> Us
     return user
 
 
-def login_with_password(request: HttpRequest, email: str, password: str) -> User | None:
-    with login_session(request):
-        user = authenticate_password(request, email, password)
-        if user is None:
-            return None
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, otp.normalize_email(email))
-    return user
-
-
-def _code_request_budget(request: HttpRequest, email: str) -> None:
+def _code_request_budget(request: HttpRequest, phone: str) -> None:
+    """Check every budget before spending any; a longer refusal is named first."""
     ip = ratelimit.client_ip(request)
-    for limit, subject, message in (
-        (ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email, TOO_MANY_CODES_DAILY),
-        (ratelimit.OTP_REQUESTS_PER_IP_DAILY, ip, TOO_MANY_CODES_FROM_NETWORK_DAILY),
-        (ratelimit.OTP_REQUESTS_PER_EMAIL, email, TOO_MANY_CODES),
+    if not ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop"):
+        raise CodeNotSent(_CODES_PAUSED)
+    short = (
+        (ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, phone, CODE_COOLDOWN),
+        (ratelimit.OTP_REQUESTS_PER_PHONE, phone, TOO_MANY_CODES),
         (ratelimit.OTP_REQUESTS_PER_IP, ip, TOO_MANY_CODES_FROM_NETWORK),
+    )
+    for limit, subject, message in (
+        (ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone, TOO_MANY_CODES_DAILY),
+        (ratelimit.OTP_REQUESTS_PER_IP_DAILY, ip, TOO_MANY_CODES_FROM_NETWORK_DAILY),
+        *short,
     ):
         if not ratelimit.remaining(limit, subject):
             raise RateLimited(message)
-    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL, email):
-        raise RateLimited(TOO_MANY_CODES)
-    if not ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP, ratelimit.client_ip(request)):
-        raise RateLimited(TOO_MANY_CODES_FROM_NETWORK)
+    for limit, subject, message in short:
+        if not ratelimit.hit(limit, subject):
+            raise RateLimited(message)
 
 
-def _send_code(email: str, *, purpose: str = "login", binding: str = "") -> otp.Issued:
-    """Mail a code, or raise CodeNotSent. Logged as the sign-in alert is: the
-    error's type and SMTP status, never its text, which can quote the address."""
+def _send_code(phone: str) -> otp.Issued:
+    """Text a code, or raise CodeNotSent. Logged by SMS.ir's statuses, never by the
+    number or the code."""
     try:
-        return otp.send_login_code(email, purpose=purpose, binding=binding)
-    except OSError as error:  # smtplib's errors are OSError, as are socket's
-        status = getattr(error, "smtp_code", None)
+        return otp.send_login_code(phone)
+    except sms.SmsNotSent as error:
         logger.error(
-            "code email not sent: %s%s",
-            type(error).__name__,
-            f" (SMTP {status})" if isinstance(status, int) else "",
+            "code SMS not sent: HTTP %s, SMS.ir status %s",
+            error.status or "none",
+            "none" if error.provider_status is None else error.provider_status,
         )
-        raise CodeNotSent(purpose) from None
+        raise CodeNotSent from None
 
 
-def _code_sent(request: HttpRequest, email: str) -> None:
+def _code_sent(request: HttpRequest, phone: str) -> None:
     # shortcut: preflight can race; short windows bound concurrent daily overshoot.
-    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_EMAIL_DAILY, email)
+    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone)
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP_DAILY, ratelimit.client_ip(request))
+    # One send of each window is the 100th, so the operator hears once a window,
+    # however many sends cross the mark at once.
+    if ratelimit.count(ratelimit.SMS_DAILY_BUDGET, "shop") == ratelimit.SMS_ALERT_AT:
+        _alert_operator(ratelimit.SMS_ALERT_AT)
 
 
-def request_login_code(request: HttpRequest, email: str) -> otp.Issued:
-    """Mail a login code, or raise RateLimited.
+def _alert_operator(sent: int) -> None:
+    """The operator hears, at the shop's support address, that a day's SMS ran high."""
+    try:
+        send_templated_email(
+            "sms_budget",
+            to=[settings.SUPPORT_EMAIL],
+            context={
+                "sent": sent,
+                "ceiling": ratelimit.SMS_DAILY_BUDGET.times,
+                "at": timezone.now(),
+            },
+        )
+    except Exception as error:  # noqa: BLE001 — an alert cannot undo a code already sent
+        logger.error("SMS budget alert not sent: %s", type(error).__name__)
 
-    A code goes to any valid address, known or not. Two reasons, and they point
+
+def request_login_code(request: HttpRequest, phone: str) -> otp.Issued:
+    """Text a sign-in code, or raise RateLimited or CodeNotSent.
+
+    A code goes to any valid number, known or not. Two reasons, and they point
     the same way:
 
-    - ADR-0012 makes one flow do both jobs: an unknown address gets a code, and
-      verifying it CREATES the account. Registration and login are the same three
-      clicks, which matters for a customer base that migrated from a Telegram chat
-      and has no patience for a signup form.
-    - It removes the user-enumeration oracle for free. If unknown addresses were
+    - One flow does both jobs: an unknown number gets a code, and verifying it
+      CREATES the account. Registration and sign-in are the same three steps,
+      which matters for a customer base that migrated from a Telegram chat and has
+      no patience for a signup form.
+    - It removes the user-enumeration oracle for free. If unknown numbers were
       silently dropped, the response time alone would tell an attacker who shops
       here — and for a shop selling other people's subscriptions, the customer
       list is itself sensitive.
 
-    Short request windows bound bursts; daily budgets count accepted sends only.
+    A staff number gets a code too, for the same reason; the code just cannot sign
+    it in. Short request windows bound bursts; daily budgets count accepted sends
+    only.
     """
-    email = otp.normalize_email(email)
-    _code_request_budget(request, email)
+    phone = normalize_mobile_phone(phone)
+    _code_request_budget(request, phone)
 
-    issued = _send_code(email)
-    _code_sent(request, email)
+    issued = _send_code(phone)
+    _code_sent(request, phone)
     return issued
 
 
-def _recovery_user(request: HttpRequest) -> User:
-    user_id = request.user.pk
-    if user_id is None:
-        raise PermissionDenied
-    user = User.objects.select_for_update(no_key=True).filter(pk=user_id, is_active=True).first()
-    if (
-        user is None
-        or request.session.get(SESSION_KEY) != str(user.pk)
-        or request.session.get(HASH_SESSION_KEY) != user.get_session_auth_hash()
-    ):
-        raise PermissionDenied
-    return user
+def complete_code_login(request: HttpRequest, phone: str, code: str) -> User | None:
+    """Verify a code and sign the customer in. Returns None on a wrong code.
 
-
-def _recovery_binding(request: HttpRequest, user: User) -> str:
-    return f"{request.session.session_key}:{user.get_session_auth_hash()}"
-
-
-def request_password_recovery(request: HttpRequest) -> otp.Issued:
-    with login_session(request):
-        user = _recovery_user(request)
-        _code_request_budget(request, user.email)
-        issued = _send_code(
-            user.email, purpose="password_reset", binding=_recovery_binding(request, user)
-        )
-        _code_sent(request, user.email)
-        return issued
-
-
-def complete_password_recovery(request: HttpRequest, *, code: str, password: str) -> User | None:
-    with login_session(request):
-        user = _recovery_user(request)
-        validate_password(password, user)
-        if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email):
-            raise RateLimited(TOO_MANY_ATTEMPTS)
-        if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ratelimit.client_ip(request)):
-            raise RateLimited(TOO_MANY_FROM_NETWORK)
-        if not otp.verify(
-            user.email, code, purpose="password_reset", binding=_recovery_binding(request, user)
-        ):
-            return None
-        _replace_password(request, user, password)
-        ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, user.email)
-    return user
-
-
-def change_password(request: HttpRequest, *, password: str, old_password: str = "") -> User:
-    with login_session(request):
-        user = _recovery_user(request)
-        if user.has_usable_password() and not user.check_password(old_password):
-            raise ValidationError("رمز عبور فعلی اشتباه است.")
-        validate_password(password, user)
-        _replace_password(request, user, password)
-    return user
-
-
-def _replace_password(request: HttpRequest, user: User, password: str) -> None:
-    user.set_password(password)
-    user.save(update_fields=["password"])
-    update_session_auth_hash(request, user)
-    request.session.save()
-    transaction.on_commit(lambda: _send_password_notice(user))
-
-
-def _send_password_notice(user: User) -> None:
-    try:
-        send_templated_email(
-            "password_changed", to=[user.email], context={"changed_at": timezone.now()}
-        )
-    except Exception as error:  # noqa: BLE001 — notification cannot undo the password change
-        status = getattr(error, "smtp_code", None)
-        logger.error(
-            "password change notice not sent for user %s: %s%s",
-            user.pk,
-            type(error).__name__,
-            f" (SMTP {status})" if isinstance(status, int) else "",
-        )
-
-
-def complete_code_login(request: HttpRequest, email: str, code: str) -> User | None:
-    """Verify a code and sign the user in. Returns None on a wrong code."""
-    email = otp.normalize_email(email)
+    A right code for a staff account gets the same None: a staff session opens the
+    operator panel, which only the panel's password may open, so a stolen or
+    recycled SIM is not the panel's key.
+    """
+    phone = normalize_mobile_phone(phone)
     ip = ratelimit.client_ip(request)
 
-    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email):
+    if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, phone):
         raise RateLimited(TOO_MANY_ATTEMPTS)
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ip):
         raise RateLimited(TOO_MANY_FROM_NETWORK)
 
-    if not otp.verify(email, code):
+    if not otp.verify(phone, code):
         return None
 
-    user = otp.user_for(email)
+    user = otp.user_for(phone)
     if user is None:
-        # First correct code for this address: the account is created here, and
-        # is_verified is true from birth because the code proved the mailbox.
-        user = User.objects.create_user(email=email, password=None, is_verified=True)
-    elif not user.is_active:
+        # First correct code for this number: the account is created here, and
+        # is_verified is true from birth because the code proved the number.
+        user = User.objects.create_user(phone=phone, is_verified=True)
+    elif not user.is_active or user.is_staff:
         return None
-
-    had_password = user.has_usable_password()
 
     # django_login cycles the session key, which is the whole defence against
     # session fixation — an attacker who planted a known session id in the
     # browser before login cannot reuse it after.
     with login_session(request):
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        django_login(request, user, backend=CODE_SIGN_IN)
 
-    # Receiving the code proves the address works, which is the only claim email
-    # verification ever makes. Hence no separate "click to verify" mail (ADR-0012).
+    # Receiving the code proves the number works. Hence no separate "verify" step.
     user.mark_verified()
 
-    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_EMAIL, email)
-
-    if had_password:
-        _send_signin_alert(user)
+    ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, phone)
     return user
-
-
-def _send_signin_alert(user: User) -> None:
-    """C14. Only for accounts that HAVE a password: an OTP-only account has no
-    second factor for this notice to protect, so it would be noise on every login.
-
-    A failure here must not fail the login. The customer is already authenticated,
-    holding a session and a spent code; refusing that because a notification
-    bounced would turn a mail problem into a lockout. So a failure is logged, never
-    raised — and never swallowed silently either.
-
-    How the log line is shaped is the whole point, and a test holds it there:
-    - ERROR, not WARNING. Error tracking turns ERROR records into issues and
-      keeps anything lower only as a breadcrumb, so a warning would be silent.
-    - No traceback and no exception text. SMTP errors quote the recipient — a
-      "recipients refused" error is a dict keyed by the address, and relays echo
-      it in their replies — and a traceback's local variables hold `to=[email]`.
-      The account id, the error's type and the SMTP status number are enough to
-      act on; the relay's own log has the rest (ADR-0008).
-    """
-    try:
-        send_templated_email(
-            "signin_alert",
-            to=[user.email],
-            context={
-                "signed_in_at": timezone.now(),
-                # SITE_URL and not the Host header, which the client chooses.
-                "password_url": settings.SITE_URL + reverse("account-password"),
-            },
-        )
-    except Exception as error:  # noqa: BLE001 — any mail failure; the login already happened
-        status = getattr(error, "smtp_code", None)
-        logger.error(
-            "sign-in alert not sent for user %s: %s%s",
-            user.pk,
-            type(error).__name__,
-            f" (SMTP {status})" if isinstance(status, int) else "",
-        )

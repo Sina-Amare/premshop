@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from apps.accounts.forms import CodeForm, EmailForm, PasswordLoginForm
+from apps.accounts.forms import CodeForm, PhoneForm
 from apps.cart.services import cart_summary, get_cart
 from apps.orders.services import UnpaidOrderExists
 from apps.payments import services
@@ -44,17 +44,15 @@ def _page(
         "checkout_id": uuid.uuid4(),
         "quote": quote.token if quote else "",
         "discount_code": discount_code,
-        "phone": request.POST.get("phone", "")[:32],
+        "email": request.POST.get(
+            "email", request.user.email if request.user.is_authenticated else ""
+        )[:254],
     }
     if purchase:
         for line in purchase.lines:
             key = f"customer_input_{line.plan.pk}"
             initial[key] = request.POST.get(key, "")[:2000]
     form = CheckoutForm(initial=initial, purchase=purchase)
-    login_method = "password" if request.GET.get("method") == "password" else "code"
-    password_form = PasswordLoginForm()
-    if login_method != "password":
-        password_form.fields["password"].widget.attrs["disabled"] = True
     if request.method == "POST" and request.POST.get("action") == "checkout" and error:
         submitted = CheckoutForm(request.POST, purchase=purchase)
         submitted.is_valid()
@@ -73,10 +71,8 @@ def _page(
             "error": error,
             "form": form,
             "cart": cart_summary(get_cart(request)),
-            "email_form": EmailForm(),
+            "phone_form": PhoneForm(),
             "code_form": CodeForm(),
-            "password_form": password_form,
-            "login_method": login_method,
         },
         status=status,
     )
@@ -116,7 +112,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
             user=user,
             quote=form.cleaned_data["quote"],
             checkout_id=form.cleaned_data["checkout_id"],
-            phone=form.cleaned_data["phone"],
+            email=form.cleaned_data["email"],
             customer_inputs={
                 key.removeprefix("customer_input_"): request.POST.get(key, "")
                 for key in request.POST

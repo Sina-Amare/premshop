@@ -101,3 +101,20 @@ def test_only_verified_payments_and_executed_refunds_have_bank_activity(buyer, p
     assert len(report["payments"]) == 1
     assert report["owed_total"] == 200000 and report["sent_total"] == 0
     assert reference_matches("pending-ref", -1) == {}
+
+
+def test_the_payment_pages_name_a_staff_member_who_has_only_a_number(client, buyer, plan):
+    from django.urls import reverse
+
+    from apps.accounts.models import User
+
+    staff = User.objects.create_superuser(phone="09125550001")
+    order, _ = paid_order(buyer, staff, [OrderLine(plan, 1)])
+    # Another viewer, so the panel's header does not show the recorder's number.
+    client.force_login(User.objects.create_superuser("viewer@example.test"))
+
+    for url in (
+        reverse("admin:orders_order_change", args=[order.pk]),
+        reverse("admin:orders_order_reconciliation"),
+    ):
+        assert "09125550001" in client.get(url).content.decode(), url
