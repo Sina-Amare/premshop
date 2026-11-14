@@ -200,7 +200,11 @@ def test_telegram_resend_keeps_sms_enabled_and_never_announces_delivery(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill(PHONE)
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page).to_have_url(live_server.url + reverse("login-code-verify"))
+        # The countdown starts when the page's script runs; jumping the clock before
+        # that leaves the full wait ahead and the resend button disabled.
+        expect(page.locator("#resend")).to_be_disabled()
         page.clock.fast_forward(121000)
+        expect(page.locator("#resend")).to_be_enabled()
         page.route(
             "**/login/code/resend/",
             lambda route: route.fulfill(
