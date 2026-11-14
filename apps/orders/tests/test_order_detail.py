@@ -423,7 +423,7 @@ def test_the_page_the_list_the_account_card_and_the_bot_lead_with_the_same_state
     account = client.get(reverse("account")).content.decode()
     assert label in account.split('id="current-order-title"', 1)[1].split("</section>", 1)[0]
     screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
-    assert f"وضعیت: {label}" in screen
+    assert f"وضعیت</th><td><b>{label}</b>" in screen
 
 
 def test_order_detail_keeps_purchase_and_quiet_records_in_reading_order(

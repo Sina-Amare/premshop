@@ -35,6 +35,7 @@ def telegram(settings, monkeypatch):
     fake = SimpleNamespace(sent=[], error=None)
 
     def send_message(chat_id, text, **kwargs):
+        assert kwargs.get("rich") is True, "a notice goes as a rich message"
         fake.sent.append((chat_id, text, kwargs.get("buttons")))
         if fake.error:
             raise fake.error
@@ -74,9 +75,9 @@ def test_a_linked_customer_gets_an_email_row_and_a_telegram_row(
     assert (row.chat_id, row.recipient, row.subject, row.html_body) == (555, "", "", "")
     # The product's emoji and a bold title, the state in a quote, the facts as label and value;
     # the order's page is a button the send adds (test_a_telegram_row_is_sent).
-    assert row.text_body.startswith(f"{emoji.OTHER_PRODUCT} <b>{email.subject}</b>\n")
-    assert f"\n<blockquote>{emoji.STATUS} وضعیت: " in row.text_body
-    assert f"\n{emoji.AMOUNT} مبلغ: " in row.text_body and "تومان" in row.text_body
+    assert row.text_body.startswith(f"<h2>{emoji.OTHER_PRODUCT} {email.subject}</h2>\n")
+    assert f"<tr><th>{emoji.STATUS} وضعیت</th><td><b>" in row.text_body
+    assert f"<tr><th>{emoji.AMOUNT} مبلغ</th><td>" in row.text_body and "تومان" in row.text_body
     framed(row.text_body)
     assert "PRIVATE-BANK" not in row.text_body
 
@@ -105,7 +106,7 @@ def test_the_telegram_text_is_escaped(buyer, plan, telegram, monkeypatch):
     monkeypatch.setattr(services, "render_email", lambda name, context: ("<b>&", "t", "<p>h</p>"))
     services.enqueue_event("payment_confirmed", 54, placed(buyer, plan).pk)
     assert Notification.objects.get(channel="telegram").text_body.startswith(
-        f"{emoji.OTHER_PRODUCT} <b>&lt;b&gt;&amp;</b>\n"
+        f"<h2>{emoji.OTHER_PRODUCT} &lt;b&gt;&amp;</h2>\n"
     )
 
 
@@ -118,9 +119,9 @@ def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, pl
     due = timezone.now() + timedelta(days=2)
     services.enqueue_event("supply_delayed", 60, order.pk, item_id=item.pk, due_at=due)
     text = Notification.objects.get(channel="telegram").text_body
-    assert text.startswith(f"{emoji.PRODUCTS['netflix']} <b>")
-    assert f"\n{emoji.PRODUCT} محصول: {item.product_snapshot['name']}، " in text
-    assert f"\n{emoji.DEADLINE} زمان تحویل جدید: تا " in text
+    assert text.startswith(f"<h2>{emoji.PRODUCTS['netflix']} ")
+    assert f"<tr><th>{emoji.PRODUCT} محصول</th><td>{item.product_snapshot['name']}، " in text
+    assert f"<tr><th>{emoji.DEADLINE} زمان تحویل جدید</th><td>تا " in text
 
 
 @pytest.mark.parametrize(
@@ -143,7 +144,9 @@ def test_catalogue_text_is_escaped_in_the_notice(buyer, plan, telegram):
     order = placed(buyer, plan)
     due = timezone.now() + timedelta(days=1)
     services.enqueue_event("supply_delayed", 64, order.pk, item_id=order.items.get().pk, due_at=due)
-    assert "محصول: &lt;b&gt;&amp;، " in Notification.objects.get(channel="telegram").text_body
+    assert (
+        "محصول</th><td>&lt;b&gt;&amp;، " in Notification.objects.get(channel="telegram").text_body
+    )
 
 
 def test_an_update_starts_a_send_at_once(buyer, plan, telegram):

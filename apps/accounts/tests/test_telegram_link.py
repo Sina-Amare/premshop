@@ -22,23 +22,41 @@ from apps.core import telegram_emoji as emoji
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+# The rich message tags the bot writes. Telegram refuses a message with any other tag, or
+# with one left open, and the customer's press would draw nothing.
+RICH_TAGS = {"h2", "h4", "p", "b", "code", "table", "tr", "th", "td", "blockquote", "footer"}
+
+
 def framed(text, buttons=(), *, success=False):
-    """The frame of every bot screen: a bold title behind its emoji, links only as buttons,
-    two buttons to a row at most, and at most one coloured button, never red."""
-    title = text.split("\n", 1)[0]
-    assert re.fullmatch(r"[^\w<]+ <b>[^<]+</b>", title), title
-    assert "<a " not in text
+    """The frame of every bot screen: a rich message that opens with its emoji and title as a
+    heading, in tags Telegram accepts, each closed; links only as buttons, two buttons to a
+    row at most, and at most one coloured button, never red."""
+    assert re.match(r"<h2>[^\w<]+ [^<]+</h2>", text), text[:80]
+    opened = []
+    for closing, tag in re.findall(r"<(/?)(\w+)[^>]*>", text):
+        assert tag in RICH_TAGS, tag
+        if closing:
+            assert opened and opened.pop() == tag, tag
+        else:
+            opened.append(tag)
+    assert not opened, opened
     assert all(len(row) <= 2 for row in buttons)
     styles = [button["style"] for row in buttons for button in row if "style" in button]
     assert len(styles) <= 1 and set(styles) <= ({"success"} if success else {"primary"}), styles
 
 
+def body(payload):
+    """A sent or edited screen's text: a rich message's HTML, which every screen is."""
+    assert payload["rich_message"]["is_rtl"] is True
+    return payload["rich_message"]["html"]
+
+
 def shown(calls):
     """Every screen the bot drew: (text, buttons) of each message sent or edited."""
     return [
-        (payload["text"], payload.get("reply_markup", {}).get("inline_keyboard", []))
+        (body(payload), payload.get("reply_markup", {}).get("inline_keyboard", []))
         for method, payload in calls
-        if method in ("sendMessage", "editMessageText")
+        if method in ("sendRichMessage", "editMessageText")
     ]
 
 
@@ -106,11 +124,11 @@ def test_start_shows_the_masked_email_and_keeps_the_token(bot, user):
     token = links.start_link(user)
     links.handle_update(start(f"/start {token}"))
     method, payload = bot[-1]
-    assert method == "sendMessage" and payload["chat_id"] == 555
-    assert f"{emoji.ACCOUNT} حساب کاربری: <code>b•••@example.test</code>" in payload["text"]
-    assert user.email not in payload["text"]
+    assert method == "sendRichMessage" and payload["chat_id"] == 555
+    assert f"<b>{emoji.ACCOUNT} حساب کاربری:</b> <code>b•••@example.test</code>" in body(payload)
+    assert user.email not in body(payload)
     # The one green button in the bot: the customer's own yes.
-    framed(payload["text"], payload["reply_markup"]["inline_keyboard"], success=True)
+    framed(body(payload), payload["reply_markup"]["inline_keyboard"], success=True)
     assert payload["reply_markup"]["inline_keyboard"] == [
         [
             {
@@ -136,7 +154,7 @@ def test_a_confirmed_link_offers_its_settings_and_opens_the_panel_beneath(bot, u
         ]
     ]
     # The panel is a message of its own below, so the next press edits the panel, not this.
-    assert [method for method, _ in bot][-1] == "sendMessage"
+    assert [method for method, _ in bot][-1] == "sendRichMessage"
     assert panel_buttons[0][0]["callback_data"] == "p:l:unpaid"
     assert cache.get("telegram-panel:555") == 99
 
@@ -151,7 +169,7 @@ def test_confirm_links_once_and_emails_the_holder(bot, user):
     assert [method for method, _ in bot] == [
         "editMessageText",
         "answerCallbackQuery",
-        "sendMessage",
+        "sendRichMessage",
     ]
     assert len(mail.outbox) == 1 and mail.outbox[0].to == [user.email]
     assert "@buyer_tg" in mail.outbox[0].body and token not in mail.outbox[0].body
@@ -198,8 +216,8 @@ def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):
     token = links.start_link(user)
     bot.clear()
     links.handle_update(press(f"link:{token}"))
-    assert "برای امروز" in dict(bot)["editMessageText"]["text"]
-    framed(dict(bot)["editMessageText"]["text"])
+    assert "برای امروز" in body(dict(bot)["editMessageText"])
+    framed(body(dict(bot)["editMessageText"]))
     assert links.link_owner(token) == user
 
 
@@ -209,8 +227,8 @@ def test_a_second_press_after_linking_says_it_is_already_linked(bot, user):
     bot.clear()
     links.handle_update(press(f"link:{token}"))
     edited = dict(bot)["editMessageText"]
-    assert "وصل است" in edited["text"]
-    framed(edited["text"])
+    assert "وصل است" in body(edited)
+    framed(body(edited))
 
 
 def test_an_expired_or_made_up_token_links_nothing(bot, user, settings):
@@ -269,13 +287,13 @@ def test_a_telegram_linked_elsewhere_moves_and_its_old_account_is_told(bot, user
 def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, text):
     links.handle_update(start(text))
     method, payload = bot[-1]
-    assert method == "sendMessage"
+    assert method == "sendRichMessage"
     buttons = payload["reply_markup"]["inline_keyboard"]
-    framed(payload["text"], buttons)
+    framed(body(payload), buttons)
     # What the bot is for, then the three steps of linking, each named by its button's label.
-    assert "اتصال در سه قدم" in payload["text"]
+    assert "اتصال در سه قدم" in body(payload)
     for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
-        assert label in payload["text"]
+        assert label in body(payload)
     assert buttons == [
         [account_button(f"{emoji.LINK} اتصال حساب", settings)],
         [
@@ -519,6 +537,15 @@ def test_start_isolates_the_half_hidden_number_left_to_right(bot, user):
     User.objects.filter(pk=user.pk).update(phone="09123456789")
     user.refresh_from_db()
     links.handle_update(start(f"/start {links.start_link(user)}"))
-    text = bot[-1][1]["text"]
+    text = body(bot[-1][1])
     assert "\N{LEFT-TO-RIGHT ISOLATE}۰۹۱۲•••۶۷۸۹\N{POP DIRECTIONAL ISOLATE}" in text
     assert "09123456789" not in text
+
+
+def test_start_names_no_account_that_has_neither_number_nor_email(bot, user):
+    token = links.start_link(user)
+    User.objects.filter(pk=user.pk).update(phone=None, email="")
+    links.handle_update(start(f"/start {token}"))
+    payload = bot[-1][1]
+    framed(body(payload), payload["reply_markup"]["inline_keyboard"], success=True)
+    assert "<code>" not in body(payload) and "•••" not in body(payload)

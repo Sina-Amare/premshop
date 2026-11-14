@@ -105,7 +105,11 @@ def call(method: str, payload: dict[str, Any], *, timeout: float = 5) -> Any:
         raise TelegramError(None) from None
 
 
-def _text(text: str) -> dict[str, Any]:
+def _text(text: str, rich: bool) -> dict[str, Any]:
+    if rich:
+        # A rich message (Bot API 10.1) has headings, tables and paragraphs. Right to left,
+        # a line or a cell that opens with a Latin name keeps its Persian in order.
+        return {"rich_message": {"html": text, "is_rtl": True}}
     return {"text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}}
 
 
@@ -114,18 +118,26 @@ def send_message(
     text: str,
     *,
     buttons: list[list[dict[str, str]]] | None = None,
+    rich: bool = False,
 ) -> Any:
-    """`text` is Telegram HTML: the caller escapes every value it puts in."""
-    payload = {"chat_id": chat_id, **_text(text)}
+    """`text` is Telegram HTML, or with `rich` a rich message's HTML: the caller escapes
+    every value it puts in."""
+    payload = {"chat_id": chat_id, **_text(text, rich)}
     if buttons:
         payload["reply_markup"] = {"inline_keyboard": buttons}
-    return call("sendMessage", payload)
+    return call("sendRichMessage" if rich else "sendMessage", payload)
 
 
 def edit_message(
-    chat_id: int, message_id: int, text: str, *, buttons: list[list[dict[str, Any]]] | None = None
+    chat_id: int,
+    message_id: int,
+    text: str,
+    *,
+    buttons: list[list[dict[str, Any]]] | None = None,
+    rich: bool = False,
 ) -> Any:
-    payload = {"chat_id": chat_id, "message_id": message_id, **_text(text)}
+    """Either kind of message may be edited into the other."""
+    payload = {"chat_id": chat_id, "message_id": message_id, **_text(text, rich)}
     if buttons:
         payload["reply_markup"] = {"inline_keyboard": buttons}
     return call("editMessageText", payload)

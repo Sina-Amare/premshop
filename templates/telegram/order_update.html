@@ -1,7 +1,9 @@
-{% load fa order_tones %}{{ icon }} <b>{{ subject }}</b>{% if pill_state %}
-<blockquote>{{ e.STATUS }} وضعیت: {{ pill_state|state_label }}</blockquote>{% endif %}{% if product_name %}
-{{ e.PRODUCT }} محصول: {{ product_name }}، {{ plan_title }}{% elif products %}
-{{ e.PRODUCT }} {% if products|length > 1 %}محصولات{% else %}محصول{% endif %}: {{ products|join:" و " }}{% endif %}{% if template_name == "payment_confirmed" or template_name == "item_refunded" or template_name == "item_cancelled" and amount %}
-{{ e.AMOUNT }} مبلغ: {{ amount|toman_plain }} تومان{% elif template_name == "item_cancelled" and products %}
-{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% elif template_name == "supply_delayed" and due_at %}
-{{ e.DEADLINE }} زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}{% endif %}
+{% load fa order_tones %}<h2>{{ icon }} {{ subject }}</h2>
+<table bordered>{% if pill_state %}
+<tr><th>{{ e.STATUS }} وضعیت</th><td><b>{{ pill_state|state_label }}</b></td></tr>{% endif %}{% if product_name %}
+<tr><th>{{ e.PRODUCT }} محصول</th><td>{{ product_name }}، {{ plan_title }}</td></tr>{% elif products %}
+<tr><th>{{ e.PRODUCT }} {% if products|length > 1 %}محصولات{% else %}محصول{% endif %}</th><td>{{ products|join:" و " }}</td></tr>{% endif %}{% if template_name == "payment_confirmed" or template_name == "item_refunded" or template_name == "item_cancelled" and amount %}
+<tr><th>{{ e.AMOUNT }} مبلغ</th><td>{{ amount|toman_plain }} تومان</td></tr>{% elif template_name == "supply_delayed" and due_at %}
+<tr><th>{{ e.DEADLINE }} زمان تحویل جدید</th><td>تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</td></tr>{% endif %}
+</table>{% if template_name == "item_cancelled" and products and not amount %}
+<blockquote><p>{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}</p></blockquote>{% endif %}
