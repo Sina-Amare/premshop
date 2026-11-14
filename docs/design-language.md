@@ -157,6 +157,19 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
+### Written in Persian
+
+The owner's strict rule, 2026-11-14: a line is thought and written in Persian, starting from its situation (who reads it, what just happened, what they do next) and said the way a Persian speaker would say it to that reader. It is never an English sentence carried over word by word, however correct: «درخواست کد ثبت شد» is "request submitted", «بررسی کنید» is "check", «در اختیار کسی نگذارید» is "do not share", and each is rewritten from the situation, not polished.
+
+### Lines the owner rewrote
+
+The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced.
+
+| Rejected | The owner's line | What changed |
+|---|---|---|
+| «برای دریافت کد در تلگرام، باید قبلاً آن را از صفحه‌ی حساب کاربری وصل کرده باشید.» | «برای دریافت کد در تلگرام باید از قبل آن را از صفحه‌ی حساب کاربری به حساب تلگرامتان متصل کرده باشید.» | One sentence names what connects to what; «وصل کرده باشید» alone left it open. |
+| «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. |
+
 ### Building a line
 
 The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت، پشتیبانی، تحویل و گزارش هر سفارش را هم در تلگرام پیگیری کنید.»
@@ -165,7 +178,7 @@ The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت�
 - **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
 - **Whole sentences a person would say,** never clipped fragments: «پرداختتان نیمه‌کاره مانده؟», not «پرداخت نیمه‌کاره؟».
 - **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
-- **Short sentences, one idea each.** A chain of «که» clauses becomes two sentences.
+- **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). A second message, or a chain of «که» clauses, becomes a second sentence.
 
 ### Register
 
@@ -175,7 +188,7 @@ The owner set the split on 2026-11-10: conversational Persian belongs to the FAQ
 |---|---|
 | The FAQ: questions as buyers ask them, and the answers | Polite conversational Persian: «می‌تونید», «رو», «می‌شه», «تومن» |
 | Pages, product content, cart and checkout, account and order pages, emails, bot messages, error pages | Standard written Persian, natural and polite: «می‌توانید», «را», «می‌شود» |
-| Buttons, navigation, field labels | Short and neutral; a button is a verb that names what happens |
+| Buttons, navigation, field labels | Short and neutral; a button is a verbal noun that names what happens: «دریافت کد ورود», «ثبت سفارش», never «ـید» |
 | The operator panel | Standard written Persian; labels are noun phrases |
 | SEO text, articles, legal pages | Standard written Persian, without bureaucratic verbs |
 
@@ -191,7 +204,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 - **A Persian line never opens with a Latin word:** Telegram, plain-text email and many editors set a line's direction from its first letter. «سرویس Netflix …», not «Netflix …».
 - **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional is never how money is promised.
 - **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each promise beside its condition, and `apps/catalog/tests/test_promises.py` checks every public product. A warranty, refund or replacement belongs to the product whose verified terms support it.
-- **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbs that name what happens. Explanation belongs in the FAQ and the product's questions.
+- **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbal nouns that name what happens. Explanation belongs in the FAQ and the product's questions.
 - **Say a limit the way a person would:** «از این گزینه تا ۳ اشتراک می‌توانید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
 - **Numbers, not adjectives:** «تا ۱۲ ساعت», never «سریع» or «در کمترین زمان ممکن», and no superlative a number could replace («بهترین», «سریع‌ترین»).
 - **Product and tool names stay in English** wherever a customer reads them. Persian spellings appear only in search aliases and page titles, because shoppers search with them.
@@ -211,6 +224,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 |---|---|---|
 | The customer's account at PremShop | «حساب کاربری» («ورود به حساب», «خروج از حساب») | «حساب» for this and a service account alike |
 | An account with a service (ChatGPT, Netflix) | «اکانت» | «حساب», «ایمیل حساب OpenAI» |
+| The customer's own Telegram, where the bot writes | «حساب تلگرام» («حساب تلگرامتان») | «اکانت تلگرام» |
 | The login details a customer receives | «اطلاعات ورود اکانت» | «اطلاعات حساب», which is also the account page's name |
 | Delivery onto the customer's own account | «فعال‌سازی روی اکانت شخصی»; in a sentence, «روی اکانت خودتان فعال می‌شود» | «روی اکانت شخصی شما», «روی حساب خودتون», «روی ایمیل شما» |
 | A ready account for one person | «اکانت آماده‌ی اختصاصی» | «اختصاصی» for an upgrade of the customer's own account |

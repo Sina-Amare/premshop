@@ -59,6 +59,10 @@ BANNED = [
     (r"پیدا نشد", "«پیدا نکردیم»"),
     (r"(?<=\w)هٔ|(?<=\w)ۀ", "ezafe with «ه‌ی»"),
     (r"بررسی‌نشده‌اند", "finite verb with a space: «بررسی نشده‌اند»"),
+    # The brand has one spelling, and «do not share» carried over word for word
+    # reads as a bank form (docs/design-language.md, Written in Persian).
+    (r"پریم[‌ ]?شاپ|پرم ?شاپ", "«پرم‌شاپ», with a half-space"),
+    (r"در اختیار (?:کسی|دیگران) (?:نگذارید|قرار ندهید)", "«به کسی ندهید»"),
     # ZWNJ, the mistake that makes Persian look machine-set.
     (r"(?<![\w‌])می [اآبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", "a half-space: «می‌…»"),
 ]
@@ -307,11 +311,15 @@ def test_quantities_are_written_in_persian_digits():
         ("رمز عبور تازه", "تازه"),
         ("رنگ تازه‌ای", "تازه‌ای"),
         ("در این هفته بررسی‌نشده‌اند.", "finite verb spacing"),
+        ("کد ورود پریمشاپ", "brand misspelled"),
+        ("کد به ربات پرم شاپ رسید.", "brand without its half-space"),
+        ("این کد را در اختیار کسی نگذارید.", "translated «do not share»"),
     ],
 )
 def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
     """Without these the suite cannot tell clean Persian from a blind regex.
-    Every line is a form that really appears in Django's or WordPress's fa."""
+    Every line is a form that really appeared, in Django's or WordPress's fa
+    or in a draft of this shop's own copy."""
     assert any(re.search(p, text) for p, _ in BANNED), why
 
 
@@ -326,6 +334,8 @@ def test_the_lint_catches_what_it_is_meant_to_catch(text, why):
         "بین ۱ تا ۷۲ ساعت.",
         "این ادعاها بررسی نشده‌اند.",
         "بررسی‌نشده",
+        "کد ورود به پرم‌شاپ: ۴۸۲۱۹۳",
+        "این کد را به کسی ندهید.",
     ],
 )
 def test_the_lint_leaves_good_persian_alone(text):
