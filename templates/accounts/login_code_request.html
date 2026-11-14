@@ -4,7 +4,7 @@
 {% block auth_title %}ورود با کد{% endblock %}
 
 {% block auth_intro %}
-  <p class="small auth-intro">شماره‌ی موبایلتان را وارد کنید تا کد ورود را با پیامک بفرستیم. حساب کاربری ندارید؟ با همین شماره برایتان می‌سازیم.</p>
+  <p class="small auth-intro">برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید.</p>
 {% endblock %}
 
 {% block auth_body %}
@@ -12,6 +12,7 @@
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     {% include "accounts/_field.html" with field=form.phone %}
+    {% include "accounts/_code_channel.html" with field=form.channel %}
     <button type="submit" class="btn btn--primary btn--block" data-busy="در حال ارسال…">دریافت کد ورود</button>
   </form>
 {% endblock %}

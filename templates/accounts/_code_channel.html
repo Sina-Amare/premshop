@@ -1,0 +1,6 @@
+<fieldset class="field auth-channel" aria-describedby="{{ field.auto_id }}_help">
+  <legend class="field__label">{{ field.label }}</legend>
+  <div class="auth-channel__choices">{% for option in field %}<label>{{ option.tag }} {{ option.choice_label }}</label>{% endfor %}</div>
+  <p class="small auth-intro" id="{{ field.auto_id }}_help">برای دریافت کد در تلگرام باید از قبل آن را از صفحه‌ی حساب کاربری به حساب تلگرامتان متصل کرده باشید.</p>
+  {% for error in field.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}
+</fieldset>

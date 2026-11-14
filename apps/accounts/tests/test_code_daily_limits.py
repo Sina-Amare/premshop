@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from apps.accounts import otp, services
 from apps.accounts.models import User
+from apps.accounts.tests.test_phone_sign_in import sms_code
 from apps.core import ratelimit, sms
 
 pytestmark = pytest.mark.django_db
@@ -68,9 +69,9 @@ def test_the_daily_budget_is_per_number_not_reset_on_login_and_expires(client, r
             if index:
                 clock.shift(13 * 60)
             spelling = "+98 912 444 5566" if index % 2 else PHONE
-            issued = services.request_login_code(rf.post("/"), spelling)
+            services.request_login_code(rf.post("/"), spelling)
         assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, PHONE) == 0
-        assert services.complete_code_login(rf_request(client, rf), PHONE, issued.code) is not None
+        assert services.complete_code_login(rf_request(client, rf), PHONE, sms_code()) is not None
         with pytest.raises(services.RateLimited, match="سقف روزانه"):
             services.request_login_code(rf.post("/"), PHONE)
         clock.shift(86400 - 9 * 13 * 60)
@@ -98,7 +99,7 @@ def test_twenty_daily_ip_sends_across_numbers_then_expiry(rf):
 
 
 def test_daily_overshoot_after_acceptance_does_not_refuse_the_sent_code(rf, monkeypatch):
-    original = otp.send_login_code
+    original = otp.prepare_login_code
 
     def concurrent(*args, **kwargs):
         for limit, subject in budgets()[:2]:
@@ -106,6 +107,7 @@ def test_daily_overshoot_after_acceptance_does_not_refuse_the_sent_code(rf, monk
                 ratelimit.hit(limit, subject)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(otp, "send_login_code", concurrent)
-    assert services.request_login_code(rf.post("/"), PHONE).code
+    monkeypatch.setattr(otp, "prepare_login_code", concurrent)
+    assert services.request_login_code(rf.post("/"), PHONE).channel == "sms"
     assert len(sms.outbox) == 1
+    assert otp.verify(PHONE, sms_code())

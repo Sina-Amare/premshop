@@ -4,10 +4,10 @@ import time
 from django.conf import settings
 from django.core.cache import cache
 from huey import crontab
-from huey.contrib.djhuey import HUEY, db_periodic_task
+from huey.contrib.djhuey import HUEY, db_periodic_task, db_task
 from huey.exceptions import TaskLockedException
 
-from apps.accounts import telegram
+from apps.accounts import otp, telegram, telegram_codes
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,18 @@ STARTED_KEY = "telegram:poll-started"
 # A poll window is about 55 s, plus at most one call's timeout, so a lock still held
 # three minutes after its poll began has no poll behind it.
 STUCK_SECONDS = 180
+
+
+@db_task()
+def send_telegram_code(
+    phone: str, request_id: str, expires_at: int, generation: otp.TelegramLink | None
+) -> None:
+    telegram_codes.deliver_code(phone, request_id, expires_at, generation)
+
+
+@db_task()
+def delete_login_message(chat_id: int, message_id: int) -> None:
+    telegram_codes.delete_message(chat_id, message_id)
 
 
 @db_periodic_task(crontab(minute="*"))
