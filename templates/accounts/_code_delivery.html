@@ -1,0 +1,2 @@
+<p class="small auth-sent" id="delivery-sms"{% if channel == "telegram" %} hidden{% endif %}>کد ۶ رقمی را با پیامک{% if phone %} به <bdi dir="ltr">{{ phone }}</bdi>{% endif %} فرستادیم.</p>
+<p class="small auth-sent" id="delivery-telegram"{% if channel != "telegram" %} hidden{% endif %}>اگر حساب تلگرامتان به حساب کاربری متصل باشد، کد ورود را در <a href="{{ telegram_bot_url }}">ربات پرم‌شاپ</a> می‌بینید.</p>

@@ -15,16 +15,20 @@ from __future__ import annotations
 
 import logging
 import secrets
+import time
+from dataclasses import dataclass
+from functools import partial
 
 from django.conf import settings
 from django.contrib.auth import login as django_login
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.html import format_html
 
-from apps.accounts import otp
+from apps.accounts import otp, telegram_codes
 from apps.accounts.backends import CODE_SIGN_IN
 from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
@@ -33,6 +37,12 @@ from apps.core.email import send_templated_email
 from apps.core.sessions import login_session
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class CodeRequest:
+    expires_at: int
+    channel: str
 
 # Unknown and inactive accounts must cost the same hash work as a live account.
 _DUMMY_HASH = make_password(secrets.token_urlsafe(16))
@@ -143,7 +153,11 @@ def _send_code(phone: str) -> otp.Issued:
     """Text a code, or raise CodeNotSent. Logged by SMS.ir's statuses, never by the
     number or the code."""
     try:
-        return otp.send_login_code(phone)
+        with transaction.atomic():
+            User.objects.select_for_update(no_key=True).filter(phone=phone).first()
+            issued = otp.send_login_code(phone)
+            cache.delete(telegram_codes.pending_key(phone))
+            return issued
     except sms.SmsNotSent as error:
         logger.error(
             "code SMS not sent: HTTP %s, SMS.ir status %s",
@@ -179,7 +193,7 @@ def _alert_operator(sent: int) -> None:
         logger.error("SMS budget alert not sent: %s", type(error).__name__)
 
 
-def request_login_code(request: HttpRequest, phone: str) -> otp.Issued:
+def request_login_code(request: HttpRequest, phone: str, *, channel: str = "sms") -> CodeRequest:
     """Text a sign-in code, or raise RateLimited or CodeNotSent.
 
     A code goes to any valid number, known or not. Two reasons, and they point
@@ -199,11 +213,48 @@ def request_login_code(request: HttpRequest, phone: str) -> otp.Issued:
     only.
     """
     phone = normalize_mobile_phone(phone)
+    if channel == "telegram":
+        return _request_telegram_code(request, phone)
+    if channel != "sms":
+        raise ValueError("Unknown code channel")
     _code_request_budget(request, phone)
 
     issued = _send_code(phone)
     _code_sent(request, phone)
-    return issued
+    return CodeRequest(expires_at=issued.expires_at, channel="sms")
+
+
+def _request_telegram_code(request: HttpRequest, phone: str) -> CodeRequest:
+    from apps.accounts.tasks import send_telegram_code
+
+    budgets = (
+        (ratelimit.TELEGRAM_CODE_COOLDOWN, phone, CODE_COOLDOWN),
+        (ratelimit.TELEGRAM_CODES_PER_PHONE, phone, TOO_MANY_CODES),
+        (ratelimit.TELEGRAM_CODES_PER_IP, ratelimit.client_ip(request), TOO_MANY_CODES_FROM_NETWORK),
+    )
+    for limit, subject, message in budgets:
+        if not ratelimit.remaining(limit, subject):
+            raise RateLimited(message)
+    for limit, subject, message in budgets:
+        if not ratelimit.hit(limit, subject):
+            raise RateLimited(message)
+    request_id = secrets.token_urlsafe(16)
+    expires_at = int(time.time()) + otp.CODE_TTL_SECONDS
+    key = telegram_codes.pending_key(phone)
+    with transaction.atomic():
+        user = User.objects.select_for_update(no_key=True).filter(phone=phone).first()
+        previous = cache.get(key)
+        cache.set(key, request_id, timeout=otp.CODE_TTL_SECONDS)
+        try:
+            send_telegram_code(phone, request_id, expires_at, telegram_codes.link_generation(user))
+        except Exception as error:  # noqa: BLE001 - queue details can contain credentials
+            if previous:
+                cache.set(key, previous, timeout=otp.CODE_TTL_SECONDS)
+            else:
+                cache.delete(key)
+            logger.error("Telegram code not queued: %s", type(error).__name__)
+            raise CodeNotSent from None
+    return CodeRequest(expires_at=expires_at, channel="telegram")
 
 
 def complete_code_login(request: HttpRequest, phone: str, code: str) -> User | None:
@@ -221,25 +272,29 @@ def complete_code_login(request: HttpRequest, phone: str, code: str) -> User | N
     if not ratelimit.hit(ratelimit.LOGIN_ATTEMPTS_PER_IP, ip):
         raise RateLimited(TOO_MANY_FROM_NETWORK)
 
-    if not otp.verify(phone, code):
-        return None
-
-    user = otp.user_for(phone)
-    if user is None:
-        # First correct code for this number: the account is created here, and
-        # is_verified is true from birth because the code proved the number.
-        user = User.objects.create_user(phone=phone, is_verified=True)
-    elif not user.is_active or user.is_staff:
-        return None
-
-    # django_login cycles the session key, which is the whole defence against
-    # session fixation — an attacker who planted a known session id in the
-    # browser before login cannot reuse it after.
     with login_session(request):
+        user = User.objects.select_for_update(no_key=True).filter(phone=phone).first()
+        record = otp.consume(phone, code, telegram_link=telegram_codes.link_generation(user))
+        if record is None:
+            return None
+        if user is None:
+            user = User.objects.create_user(phone=phone, is_verified=True)
+        elif not user.is_active or user.is_staff:
+            return None
         django_login(request, user, backend=CODE_SIGN_IN)
-
-    # Receiving the code proves the number works. Hence no separate "verify" step.
-    user.mark_verified()
+        user.mark_verified()
+        cache.delete(telegram_codes.pending_key(phone))
+        if message := record.get("telegram_message"):
+            transaction.on_commit(partial(_queue_code_deletion, *message))
 
     ratelimit.reset(ratelimit.LOGIN_ATTEMPTS_PER_PHONE, phone)
     return user
+
+
+def _queue_code_deletion(chat_id: int, message_id: int) -> None:
+    from apps.accounts.tasks import delete_login_message
+
+    try:
+        delete_login_message(chat_id, message_id)
+    except Exception as error:  # noqa: BLE001 - cleanup cannot undo sign-in
+        logger.error("Telegram code deletion not queued: %s", type(error).__name__)

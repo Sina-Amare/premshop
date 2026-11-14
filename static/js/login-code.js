@@ -13,6 +13,7 @@
   var resendForm = document.getElementById('resend-form');
   var resendButton = document.getElementById('resend');
   var resendHint = document.getElementById('resend-hint');
+  var smsForm = document.getElementById('sms-form');
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
   var toAscii = function (s) {
@@ -198,13 +199,15 @@
   tick();
   setInterval(tick, 1000);
 
-  resendForm.addEventListener('submit', function (e) {
+  [resendForm, smsForm].forEach(function (sendForm) {
+  sendForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (resendPending || resendButton.disabled) return;
+    if (resendPending || (sendForm === resendForm && resendButton.disabled)) return;
     resendPending = true;
+    smsForm.querySelector('button').disabled = true;
     tick();
-    fetch(resendForm.action, {
-      method: 'POST', body: new FormData(resendForm), credentials: 'same-origin',
+    fetch(sendForm.action, {
+      method: 'POST', body: new FormData(sendForm), credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     }).then(function (r) { return r.json(); }).then(function (data) {
       if (data.ok) {
@@ -218,7 +221,10 @@
         clear();
         cells.forEach(function (c) { c.disabled = false; });
         cells[0].focus();
-        resendHint.textContent = 'کد جدید را فرستادیم.';
+        document.getElementById('delivery-sms').hidden = data.channel === 'telegram';
+        document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
+        smsForm.hidden = data.channel !== 'telegram';
+        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید را فرستادیم.';
         status.textContent = 'کد جدید را فرستادیم.';
       } else {
         showError(data.error);
@@ -230,7 +236,9 @@
       showError('کد فرستاده نشد. دوباره تلاش کنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       resendPending = false;
+      smsForm.querySelector('button').disabled = false;
       tick();
     });
+  });
   });
 })();

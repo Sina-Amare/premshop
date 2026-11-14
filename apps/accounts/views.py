@@ -17,7 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts import services, telegram
-from apps.accounts.forms import CodeForm, PhoneForm, ProfileForm
+from apps.accounts.forms import ChannelForm, CodeForm, PhoneForm, ProfileForm
 from apps.accounts.models import User
 from apps.core import ratelimit
 from apps.core.formatting import mask_phone
@@ -29,6 +29,7 @@ from apps.orders.selectors import current_order, customer_summary
 PENDING_PHONE_KEY = "accounts.pending_phone"
 PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 PENDING_NEXT_KEY = "accounts.pending_next"
+PENDING_CHANNEL_KEY = "accounts.pending_channel"
 # The link token the account page is waiting on, kept server-side rather than in a URL.
 TELEGRAM_LINK_KEY = "accounts.telegram_link"
 
@@ -80,7 +81,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         phone = form.cleaned_data["phone"]
         try:
-            issued = services.request_login_code(request, phone)
+            issued = services.request_login_code(request, phone, channel=form.cleaned_data["channel"])
         except services.CodeNotSent as exc:
             if _wants_json(request):
                 return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
@@ -92,6 +93,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
         else:
             request.session[PENDING_PHONE_KEY] = phone
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
+            request.session[PENDING_CHANNEL_KEY] = issued.channel
             # The code flow spans three requests, so the destination rides the
             # session with the number rather than the URL. It is validated
             # here, on the way in, and never re-read from the request after.
@@ -102,6 +104,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
                         "ok": True,
                         "expires_in": _seconds_left(issued.expires_at),
                         "cooldown": RESEND_COOLDOWN_SECONDS,
+                        "channel": issued.channel,
                     }
                 )
             return redirect("login-code-verify")
@@ -138,6 +141,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
             if user is not None:
                 request.session.pop(PENDING_PHONE_KEY, None)
                 request.session.pop(PENDING_EXPIRES_KEY, None)
+                request.session.pop(PENDING_CHANNEL_KEY, None)
                 destination = request.session.pop(PENDING_NEXT_KEY, None) or reverse("account")
                 if _wants_json(request):
                     return JsonResponse({"ok": True, "next": destination})
@@ -162,6 +166,8 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
             "expires_in": _seconds_left(request.session.get(PENDING_EXPIRES_KEY, 0)),
             "resend_cooldown": RESEND_COOLDOWN_SECONDS,
             "next": request.session.get(PENDING_NEXT_KEY) or reverse("account"),
+            "channel": request.session.get(PENDING_CHANNEL_KEY, "sms"),
+            "telegram_bot_url": f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}",
         },
     )
 
@@ -201,8 +207,16 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
             return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         messages.error(request, PAGE_EXPIRED)
         return redirect("login-code")
+    channel_form = ChannelForm({
+        "channel": request.POST.get("channel", request.session.get(PENDING_CHANNEL_KEY, "sms"))
+    })
+    if not channel_form.is_valid():
+        if _wants_json(request):
+            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
+        messages.error(request, PAGE_EXPIRED)
+        return redirect("login-code-verify")
     try:
-        issued = services.request_login_code(request, phone)
+        issued = services.request_login_code(request, phone, channel=channel_form.cleaned_data["channel"])
     except services.CodeNotSent as exc:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
@@ -214,14 +228,17 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         messages.error(request, exc.message)
         return redirect("login-code-verify")
     request.session[PENDING_EXPIRES_KEY] = issued.expires_at
+    request.session[PENDING_CHANNEL_KEY] = issued.channel
     if not _wants_json(request):
-        messages.success(request, CODE_RESENT)
+        if issued.channel == "sms":
+            messages.success(request, CODE_RESENT)
         return redirect("login-code-verify")
     return JsonResponse(
         {
             "ok": True,
             "expires_in": _seconds_left(issued.expires_at),
             "cooldown": RESEND_COOLDOWN_SECONDS,
+            "channel": issued.channel,
         }
     )
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 import secrets
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -28,6 +29,7 @@ __all__ = ["PERSIAN_TO_ASCII_DIGITS", "normalize_digits"]
 CODE_LENGTH = 6
 CODE_TTL_SECONDS = 10 * 60  # Owner ruling 2026-09-04; contract C12 updated to match.
 MAX_ATTEMPTS = 5
+TelegramLink = tuple[int, int | None, str | None]
 
 
 @dataclass(frozen=True)
@@ -70,22 +72,39 @@ def _new_code() -> str:
     return f"{secrets.randbelow(10**CODE_LENGTH):0{CODE_LENGTH}d}"
 
 
-def _store(subject: str, code: str) -> Issued:
+def _store(
+    subject: str,
+    code: str,
+    *,
+    expires_at: int | None = None,
+    telegram_link: TelegramLink | None = None,
+    telegram_message: tuple[int, int] | None = None,
+) -> Issued:
     """Make `code` the one live code for this subject, from now."""
-    expires_at = int(time.time()) + CODE_TTL_SECONDS
+    expires_at = expires_at or int(time.time()) + CODE_TTL_SECONDS
+    remaining = expires_at - int(time.time())
     # The deadline travels WITH the code. Django's cache API cannot read an entry's
     # remaining lifetime back, on Redis included, so the attempt counter takes its
     # lifetime from here rather than guessing it.
     issuance = secrets.token_urlsafe(16)
-    record = {"digest": _digest(code), "expires_at": expires_at}
-    cache.set(_record_key(subject, issuance), record, timeout=CODE_TTL_SECONDS)
+    record = {
+        "digest": _digest(code), "expires_at": expires_at,
+        "telegram_link": telegram_link, "telegram_message": telegram_message,
+    }
+    cache.set(_record_key(subject, issuance), record, timeout=remaining)
     # Written last, and the only key verify starts from: two stores at once leave
     # one live code, and the other record expires unread.
-    cache.set(_key(subject), issuance, timeout=CODE_TTL_SECONDS)
+    cache.set(_key(subject), issuance, timeout=remaining)
     return Issued(code=code, ttl_minutes=CODE_TTL_SECONDS // 60, expires_at=expires_at)
 
 
 def verify(phone: str, code: str) -> bool:
+    return consume(phone, code) is not None
+
+
+def consume(
+    phone: str, code: str, *, telegram_link: TelegramLink | None = None
+) -> dict[str, Any] | None:
     """Check a code and consume it. A correct code is single-use.
 
     Every attempt is counted before it is compared, and the wrong guess that
@@ -98,26 +117,29 @@ def verify(phone: str, code: str) -> bool:
     key = _key(phone)
     issuance = cache.get(key)
     if not isinstance(issuance, str):
-        return False
+        return None
     record_key = _record_key(phone, issuance)
     record = cache.get(record_key)
     if not record:
-        return False
+        return None
 
     # A record without a deadline predates it being stored; treat it as expired
     # (fail closed) rather than guess — the customer simply asks for a new code.
     remaining = record.get("expires_at", 0) - int(time.time())
     if remaining <= 0:
-        return False
+        return None
 
     attempt = _count_attempt(phone, issuance, remaining)
     if attempt > MAX_ATTEMPTS or cache.get(key) != issuance:
-        return False
+        return None
+
+    if record.get("telegram_link") is not None and record["telegram_link"] != telegram_link:
+        return None
 
     matches = constant_time_compare(record["digest"], _digest(normalize_digits(code)))
     if not matches and attempt == MAX_ATTEMPTS:
         cache.delete(record_key)
-    return bool(matches and cache.delete(record_key))
+    return record if matches and cache.delete(record_key) else None
 
 
 def _count_attempt(phone: str, issuance: str, ttl: int) -> int:

@@ -18,13 +18,16 @@
         <form method="post" action="{% url 'login-code' %}" data-inline-phone novalidate>
           {% csrf_token %}<input type="hidden" name="next" value="{% url 'checkout' %}">
           {% include 'accounts/_field.html' with field=phone_form.phone %}
+          {% include 'accounts/_code_channel.html' with field=phone_form.channel %}
           <button class="btn btn--primary" type="submit">دریافت کد ورود</button>
         </form>
+        <div data-code-delivery hidden>{% include 'accounts/_code_delivery.html' %}</div>
         <form method="post" action="{% url 'login-code-verify' %}" data-inline-code novalidate hidden>
           {% csrf_token %}{% include 'accounts/_field.html' with field=code_form.code %}
           <button class="btn btn--primary" type="submit">تأیید کد و ادامه</button>
         </form>
         <form method="post" action="{% url 'login-code-resend' %}" data-inline-resend hidden>{% csrf_token %}<button class="btn btn--ghost" type="submit">ارسال دوباره‌ی کد</button></form>
+        <form method="post" action="{% url 'login-code-resend' %}" id="sms-form" data-inline-sms hidden>{% csrf_token %}<input type="hidden" name="channel" value="sms"><button class="btn btn--ghost" type="submit">دریافت کد با پیامک</button></form>
         <button class="btn btn--ghost" type="button" data-inline-edit hidden>تغییر شماره</button>
         </div>
       </section>

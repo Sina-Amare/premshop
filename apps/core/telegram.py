@@ -110,12 +110,15 @@ def _text(text: str) -> dict[str, Any]:
 
 
 def send_message(
-    chat_id: int, text: str, *, buttons: list[list[dict[str, str]]] | None = None
+    chat_id: int, text: str, *, buttons: list[list[dict[str, str]]] | None = None,
+    protect_content: bool = False,
 ) -> Any:
     """`text` is Telegram HTML: the caller escapes every value it puts in."""
     payload = {"chat_id": chat_id, **_text(text)}
     if buttons:
         payload["reply_markup"] = {"inline_keyboard": buttons}
+    if protect_content:
+        payload["protect_content"] = True
     return call("sendMessage", payload)
 
 
