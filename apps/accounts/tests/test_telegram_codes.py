@@ -151,12 +151,15 @@ def test_plain_resend_keeps_telegram_and_never_claims_delivery(client, queued):
     assert "کد جدید را فرستادیم." not in response.content.decode()
 
 
-def test_worker_protects_the_message_and_stores_only_the_hash(client, linked, queued, sent):
+def test_worker_sends_a_copyable_code_and_stores_only_the_hash(client, linked, queued, sent):
     ask(client)
     deliver(queued[0])
     code = code_from(sent)
-    assert sent[0][0] == linked.telegram_id and sent[0][2]["protect_content"] is True
-    assert sent[0][1] == f"کد ورود به پرم‌شاپ: {code}\nاین کد را به کسی ندهید."
+    # Monospace is what Telegram copies with one tap; protected content would block it.
+    assert sent[0][0] == linked.telegram_id and "protect_content" not in sent[0][2]
+    assert sent[0][1] == (
+        f"<b>کد ورود به پرم‌شاپ:</b> <code>{code}</code>\nاین کد را به کسی ندهید."
+    )
     issuance = cache.get(otp._key(PHONE))
     record = cache.get(otp._record_key(PHONE, issuance))
     assert record["digest"] == otp._digest(code) and "code" not in record

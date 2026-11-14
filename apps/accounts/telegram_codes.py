@@ -72,7 +72,6 @@ def deliver_code(
         message = telegram.send_message(
             chat_id,
             render_to_string("telegram/login_code.txt", {"code": code}).strip(),
-            protect_content=True,
         )
     except telegram.TelegramError as error:
         logger.error("Telegram code not sent: HTTP %s", error.status or "network")
