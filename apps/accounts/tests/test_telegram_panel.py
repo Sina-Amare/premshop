@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts import telegram as links
 from apps.accounts.models import User
-from apps.accounts.tests.test_telegram_link import TOKEN, framed, press, shown, start
+from apps.accounts.tests.test_telegram_link import TOKEN, body, framed, press, shown, start
 from apps.core import ratelimit
 from apps.core import telegram as telegram_api
 
@@ -44,7 +44,7 @@ def methods(bot):
 def test_start_from_a_linked_telegram_opens_the_panel_and_clears_the_command(bot, linked):
     links.handle_update(start("/start"))
     (send, sent), (delete, deleted) = bot.calls
-    assert send == "sendMessage" and "اتصال حساب در سایت" not in sent["text"]
+    assert send == "sendRichMessage" and "اتصال حساب در سایت" not in body(sent)
     assert sent["reply_markup"]["inline_keyboard"][0][0]["callback_data"] == "p:l:unpaid"
     # The customer's own command goes too: the chat keeps the panel and the notices.
     assert (delete, deleted) == ("deleteMessage", {"chat_id": 555, "message_id": 10})
@@ -52,7 +52,7 @@ def test_start_from_a_linked_telegram_opens_the_panel_and_clears_the_command(bot
 
 def test_typed_text_opens_the_panel_and_is_left_alone(bot, linked):
     links.handle_update(start("سلام، سفارشم کی می‌رسد؟"))
-    assert methods(bot) == ["sendMessage"]
+    assert methods(bot) == ["sendRichMessage"]
 
 
 def test_a_new_panel_retires_the_old_one(bot, linked):
@@ -77,7 +77,7 @@ def test_a_press_redraws_the_panel_then_answers(bot, linked):
     links.handle_update(press("p:l:current"))
     (edit, edited), (answer, _) = bot.calls
     assert (edit, answer) == ("editMessageText", "answerCallbackQuery")
-    assert edited["message_id"] == 11 and "در جریان" in edited["text"]
+    assert edited["message_id"] == 11 and "در جریان" in body(edited)
     assert edited["reply_markup"]["inline_keyboard"][-1][0]["callback_data"] == "p:home"
 
 
@@ -156,7 +156,7 @@ def test_a_late_answer_still_links_and_says_so(bot):
     token = links.start_link(user)
     bot.failing.add("answerCallbackQuery")
     links.handle_update(press(f"link:{token}"))
-    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendMessage"]
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendRichMessage"]
     assert User.objects.get(pk=user.pk).telegram_id == 555
 
 
@@ -167,7 +167,7 @@ def test_a_refused_redraw_after_a_link_still_opens_the_panel(bot):
     bot.failing.add("editMessageText")
     with pytest.raises(telegram_api.TelegramError):
         links.handle_update(press(f"link:{token}"))
-    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendMessage"]
+    assert methods(bot) == ["editMessageText", "answerCallbackQuery", "sendRichMessage"]
     assert User.objects.get(pk=user.pk).telegram_id == 555
 
 

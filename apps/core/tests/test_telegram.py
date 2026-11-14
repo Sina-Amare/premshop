@@ -80,6 +80,27 @@ def test_a_message_goes_out_as_escaped_html_without_a_preview(api):
     }
 
 
+def test_a_rich_message_is_laid_out_right_to_left_and_edits_either_kind(api):
+    rows = [[{"text": "x", "callback_data": "p:home"}]]
+    telegram.send_message(42, "<h2>t</h2>", buttons=rows, rich=True)
+    telegram.edit_message(42, 7, "<p>u</p>", rich=True)
+    sent = [(path.rsplit("/", 1)[1], data) for _, path, data, _ in api.requests]
+    assert sent == [
+        (
+            "sendRichMessage",
+            {
+                "chat_id": 42,
+                "rich_message": {"html": "<h2>t</h2>", "is_rtl": True},
+                "reply_markup": {"inline_keyboard": rows},
+            },
+        ),
+        (
+            "editMessageText",
+            {"chat_id": 42, "message_id": 7, "rich_message": {"html": "<p>u</p>", "is_rtl": True}},
+        ),
+    ]
+
+
 @pytest.mark.parametrize(
     ("outcome", "status", "retry_after"),
     [

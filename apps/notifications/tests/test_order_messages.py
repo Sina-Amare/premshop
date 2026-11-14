@@ -253,7 +253,10 @@ def test_each_notice_names_its_state_in_words_and_colour(buyer, plan, operator, 
         label, tone = order_status.STATES[state]
         found = rows(template).filter(order=order)
         email, bot = found.get(channel="email"), found.get(channel="telegram")
-        assert f"وضعیت: {label}" in email.text_body and f"وضعیت: {label}" in bot.text_body
+        assert (
+            f"وضعیت: {label}" in email.text_body
+            and f"وضعیت</th><td><b>{label}</b>" in bot.text_body
+        )
         background, color, border = order_status.EMAIL_TONES[tone]
         assert label in email.html_body
         assert f"background:{background}" in email.html_body

@@ -15,7 +15,7 @@ from apps.accounts.tests.test_telegram_link import framed
 from apps.core import support
 from apps.core import telegram_emoji as emoji
 from apps.core.formatting import to_persian_digits
-from apps.core.templatetags.fa import jalali
+from apps.core.templatetags.fa import jalali, jalali_numeric
 from apps.orders import services as orders
 from apps.orders import status as order_status
 from apps.orders import telegram_panel
@@ -77,7 +77,7 @@ def test_home_is_a_grid_counting_each_kind_of_order(buyer, plan, operator, setti
     placed(buyer, plan)
     placed(User.objects.create_user("stranger@example.test"), plan)
     text, buttons = telegram_panel.render(buyer, "home")
-    assert f"{emoji.ACCOUNT} حساب کاربری: {account_label(buyer)}" in text
+    assert f"<b>{emoji.ACCOUNT} حساب کاربری:</b> {account_label(buyer)}" in text
     framed(text, buttons)
     site = settings.SITE_URL
     assert buttons == [
@@ -176,14 +176,15 @@ def test_a_list_shows_the_customers_own_recent_orders(buyer, plan, operator, set
     assert buttons[-2:] == [all_orders(settings.SITE_URL), BACK_HOME]
 
 
-def test_a_list_card_labels_its_product_status_and_date(buyer, plan, operator):
+def test_a_list_row_shows_the_order_its_product_status_and_date(buyer, plan, operator):
     order = paid(placed(buyer, plan), operator)
     text, _ = telegram_panel.render(buyer, "l:current")
-    card = re.search(r"<blockquote>(.+?)</blockquote>", text, re.S).group(1).split("\n")
-    assert card[1:] == [
-        f"{emoji.PRODUCT} محصول: سرویس نمونه",
-        f"{emoji.STATUS} وضعیت: در حال آماده‌سازی",
-        f"{emoji.DATE} {jalali(order.created_at)}",
+    _header, row = re.findall(r"<tr>(.+?)</tr>", text)
+    assert re.findall(r"<td>(.*?)</td>", row) == [
+        f"{emoji.OTHER_PRODUCT} {to_persian_digits(order.order_number)}",
+        "سرویس نمونه",
+        "در حال آماده‌سازی",
+        jalali_numeric(order.created_at),
     ]
 
 
@@ -194,9 +195,9 @@ def test_each_order_carries_its_products_emoji(buyer, plan):
     text, buttons = telegram_panel.render(buyer, "l:unpaid")
     number = to_persian_digits(order.order_number)
     assert buttons[0][0]["text"] == f"{emoji.PRODUCTS['chatgpt']} سفارش {number}"
-    assert f"{emoji.PRODUCTS['chatgpt']} <b>سفارش {number}</b>" in text
+    assert f"<td>{emoji.PRODUCTS['chatgpt']} {number}</td>" in text
     text, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
-    assert f"{emoji.PRODUCTS['chatgpt']} <b>سفارش {number}</b>" in text
+    assert f"<h2>{emoji.PRODUCTS['chatgpt']} سفارش {number}</h2>" in text
 
 
 @pytest.mark.parametrize(
@@ -225,13 +226,13 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
     order = placed(buyer, plan)
     text, buttons = telegram_panel.render(buyer, f"o:{order.order_number}")
     framed(text, buttons)
-    assert f"<b>سفارش {to_persian_digits(order.order_number)}</b>" in text
-    state = re.search(r"<blockquote>(.+?)</blockquote>", text, re.S).group(1)
-    assert state.startswith(f"{emoji.STATUS} وضعیت: در انتظار پرداخت\n")
-    assert f"\n{emoji.DEADLINE} مهلت پرداخت: " in state
-    assert f"\n{emoji.PRODUCT} محصول: سرویس نمونه، یک ماهه\n" in text
-    assert f"\n{emoji.AMOUNT} مبلغ: ۲۰۰,۰۰۰ تومان\n" in text
-    assert f"\n{emoji.DATE} تاریخ ثبت: {jalali(order.created_at)}، ساعت " in text
+    assert f"سفارش {to_persian_digits(order.order_number)}</h2>" in text
+    rows = dict(re.findall(r"<tr><th>(.+?)</th><td>(.+?)</td></tr>", text))
+    assert rows[f"{emoji.STATUS} وضعیت"] == "<b>در انتظار پرداخت</b>"
+    assert f"{emoji.DEADLINE} مهلت پرداخت" in rows
+    assert rows[f"{emoji.PRODUCT} محصول"] == "سرویس نمونه، یک ماهه"
+    assert rows[f"{emoji.AMOUNT} مبلغ"] == "۲۰۰,۰۰۰ تومان"
+    assert rows[f"{emoji.DATE} تاریخ ثبت"].startswith(f"{jalali(order.created_at)}، ساعت ")
     assert buttons == [
         [
             {"text": f"{emoji.COPY} کپی شماره", "copy_text": {"text": str(order.order_number)}},
@@ -398,16 +399,16 @@ def test_catalogue_text_is_escaped_in_every_screen(buyer, plan):
         assert "&lt;b&gt;&amp;" in text and "<b>&" not in text
 
 
-def test_no_panel_line_or_button_opens_with_a_latin_letter(buyer, plan):
-    # Telegram sets each line's direction from its first letter: a line opening with «Poe»
-    # turns left to right and scrambles its Persian (design-language, Voice).
+def test_no_panel_button_opens_with_a_latin_letter(buyer, plan):
+    # Telegram sets a button's direction from its first letter: a label opening with «Poe»
+    # turns left to right and scrambles its Persian (design-language, Voice). The screens
+    # are rich messages laid out right to left as a whole (core.telegram).
     plan.product.name = "Poe"
     plan.product.save(update_fields=["name"])
     order = placed(buyer, plan)
     for screen in screens(order):
-        text, buttons = telegram_panel.render(buyer, screen)
-        lines = re.sub(r"<[^>]+>", "", text).splitlines()
-        for line in lines + [b["text"] for row in buttons for b in row]:
+        _, buttons = telegram_panel.render(buyer, screen)
+        for line in [b["text"] for row in buttons for b in row]:
             letters = [char for char in line if char.isalpha()]
             assert not letters or not letters[0].isascii(), line
 
@@ -434,3 +435,12 @@ def test_home_isolates_the_half_hidden_number_left_to_right(buyer):
     buyer.refresh_from_db()
     text, _ = telegram_panel.render(buyer, "home")
     assert "\N{LEFT-TO-RIGHT ISOLATE}۰۹۱۲•••۶۷۸۹\N{POP DIRECTIONAL ISOLATE}" in text
+
+
+def test_home_names_no_account_that_has_neither_number_nor_email(buyer):
+    # Its number moved to another account: «•••@» must not stand in for a name it lacks.
+    User.objects.filter(pk=buyer.pk).update(phone=None, email="")
+    buyer.refresh_from_db()
+    text, buttons = telegram_panel.render(buyer, "home")
+    framed(text, buttons)
+    assert "•••" not in text and emoji.ACCOUNT not in text

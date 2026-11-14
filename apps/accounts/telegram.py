@@ -38,18 +38,20 @@ OFFSET_KEY = "telegram:update-offset"
 DOWN_KEY = "telegram:poll-down"
 COMMANDS_KEY = "telegram:commands"
 
-# Every screen opens with its emoji and a bold title, and its links are buttons.
+# Every screen is a rich message that opens with its emoji and title as a heading, and its
+# links are buttons.
 CONFIRM = (
-    f"{emoji.LINK} <b>اتصال تلگرام به PremShop</b>\n"
-    f"{emoji.ACCOUNT} حساب کاربری: <code>{{account}}</code>\n"
-    "اتصال این تلگرام به حساب کاربری بالا را تأیید کنید."
+    f"<h2>{emoji.LINK} اتصال تلگرام به PremShop</h2>"
+    "{account}"
+    "<p>اتصال این تلگرام به حساب کاربری بالا را تأیید کنید.</p>"
 )
+ACCOUNT_LINE = f"<p><b>{emoji.ACCOUNT} حساب کاربری:</b> <code>{{label}}</code></p>"
 CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
 LINKED = (
-    f"{emoji.CONFIRM} <b>تلگرام شما به حساب PremShop وصل شد.</b>\n"
-    "خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد."
+    f"<h2>{emoji.CONFIRM} تلگرام شما به حساب PremShop وصل شد</h2>"
+    "<p>خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.</p>"
 )
-ALREADY = f"{emoji.CONFIRM} <b>این تلگرام به حساب PremShop شما وصل است.</b>"
+ALREADY = f"<h2>{emoji.CONFIRM} این تلگرام به حساب PremShop شما وصل است</h2>"
 SLOW = "کمی صبر کنید و دوباره بزنید."
 COMMAND = "پنل سفارش‌ها"
 
@@ -71,16 +73,17 @@ def _screen(user: User, name: str) -> Screen:
     return _panel(user, name)
 
 
-LIMITED = f"{emoji.LIMITED} <b>سقف اتصال این تلگرام برای امروز پر شده است.</b>"
-EXPIRED = f"{emoji.EXPIRED} <b>این پیوند دیگر معتبر نیست.</b>"
+LIMITED = f"<h2>{emoji.LIMITED} سقف اتصال این تلگرام برای امروز پر شده است</h2>"
+EXPIRED = f"<h2>{emoji.EXPIRED} این پیوند دیگر معتبر نیست</h2>"
+# The steps are paragraphs: a rich message numbers a list in Latin digits.
 POINTER = (
-    f"{emoji.BOT} <b>ربات اطلاع‌رسانی سفارش‌های PremShop</b>\n"
-    "با اتصال حساب کاربری، خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا هم می‌رسد.\n\n"
-    "<b>اتصال در سه قدم</b>\n"
-    "۱. در سایت وارد حساب کاربری شوید.\n"
-    "۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.\n"
-    "۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.\n\n"
-    "پیام‌های این گفت‌وگو خوانده نمی‌شوند؛ برای پرسش «پشتیبانی» را بزنید."
+    f"<h2>{emoji.BOT} ربات اطلاع‌رسانی سفارش‌های PremShop</h2>"
+    "<p>با اتصال حساب کاربری، خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا هم می‌رسد.</p>"
+    "<h4>اتصال در سه قدم</h4>"
+    "<p>۱. در سایت وارد حساب کاربری شوید.</p>"
+    "<p>۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.</p>"
+    "<p>۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
+    "<footer>پیام‌های این گفت‌وگو خوانده نمی‌شوند؛ برای پرسش «پشتیبانی» را بزنید.</footer>"
 )
 
 
@@ -145,11 +148,19 @@ def link_owner(token: str) -> User | None:
 
 def account_label(user: User) -> str:
     """How the bot names an account: its number half hidden, isolated left to right so
-    the bullets cannot flip its halves; an account with no number, by its email."""
+    the bullets cannot flip its halves; an account with no number, by its email; one with
+    neither (its number moved to another account), by nothing."""
     if user.phone:
         return f"\u2066{mask_phone(user.phone)}\u2069"
+    if not user.email:
+        return ""
     local, _, domain = user.email.partition("@")
     return f"{local[:1]}•••@{domain}"
+
+
+def _account_line(user: User) -> str:
+    label = account_label(user)
+    return ACCOUNT_LINE.format(label=escape(label)) if label else ""
 
 
 def confirm_link(token: str, sender: dict[str, Any]) -> User | None:
@@ -249,11 +260,14 @@ def _messaged(message: dict[str, Any]) -> None:
         # The bot's one green button: the customer's own yes.
         button = {"text": CONFIRM_BUTTON, "callback_data": f"link:{token}", "style": "success"}
         telegram.send_message(
-            chat_id, CONFIRM.format(account=escape(account_label(user))), buttons=[[button]]
+            chat_id,
+            CONFIRM.format(account=_account_line(user)),
+            buttons=[[button]],
+            rich=True,
         )
     elif command == "/start" and token:
         text, buttons = _expired()
-        telegram.send_message(chat_id, text, buttons=buttons)
+        telegram.send_message(chat_id, text, buttons=buttons, rich=True)
     elif (linked := User.objects.filter(telegram_id=chat_id, is_active=True).first()) is not None:
         # Messages spend the presses' budget: a panel costs queries and Telegram calls, and
         # a scripted /start loop would keep the one poll loop from other customers.
@@ -266,7 +280,7 @@ def _messaged(message: dict[str, Any]) -> None:
                 telegram.delete_message(chat_id, int(message["message_id"]))
     else:
         text, buttons = _pointer()
-        telegram.send_message(chat_id, text, buttons=buttons)
+        telegram.send_message(chat_id, text, buttons=buttons, rich=True)
 
 
 def _show(callback: dict[str, Any], chat_id: int, message_id: int, screen: Screen) -> None:
@@ -278,7 +292,7 @@ def _show(callback: dict[str, Any], chat_id: int, message_id: int, screen: Scree
     """
     text, buttons = screen
     try:
-        telegram.edit_message(chat_id, message_id, text, buttons=buttons)
+        telegram.edit_message(chat_id, message_id, text, buttons=buttons, rich=True)
     finally:
         _answer(callback["id"])
 
@@ -328,7 +342,7 @@ def _panel_key(chat_id: int) -> str:
 
 def _open_panel(chat_id: int, user: User) -> None:
     text, buttons = _screen(user, "home")
-    sent = telegram.send_message(chat_id, text, buttons=buttons)
+    sent = telegram.send_message(chat_id, text, buttons=buttons, rich=True)
     previous = cache.get(_panel_key(chat_id))
     cache.set(_panel_key(chat_id), sent["message_id"], timeout=None)
     if previous:

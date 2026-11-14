@@ -348,7 +348,9 @@ def send_due_telegram() -> int:
                 row.last_error_class = "binding_changed"
             else:
                 try:
-                    telegram.send_message(current, row.text_body, buttons=_order_button(row.order))
+                    telegram.send_message(
+                        current, row.text_body, buttons=_order_button(row.order), rich=True
+                    )
                 except telegram.TelegramError as error:
                     row.last_error_class = f"TelegramError {error.status or 'network'}"
                     # 400 and 403 are about this chat or message (bot blocked, chat gone);
