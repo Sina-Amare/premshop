@@ -55,7 +55,7 @@ core  →  accounts, catalog, cms  →  cart, orders  →  payments  →  notifi
 | App | Owns |
 |---|---|
 | `core` | Shared infrastructure: the encrypted field, email sending and mail accounting, SMS sending, the rate limiter, Persian formatting filters, the restricted Markdown renderer, support details, middleware, error pages, the health check and the panel's admin site. |
-| `accounts` | The `User` model with the mobile number as identity, sign-in by SMS code, the panel's password sign-in, and the account page. |
+| `accounts` | The `User` model with the mobile number as identity, sign-in by SMS or linked Telegram code, the panel's password sign-in, and the account page. |
 | `catalog` | Categories, products, plans, page sections and questions; the price function, search, the publishing rule, the storefront pages, SEO and the catalogue editor in the panel. |
 | `cms` | Five legal and information pages, with drafts and staff previews ([ADR-0030](decisions/0030-legal-page-drafts.md)). |
 | `cart` | Persistent guest and account carts, the merge at sign-in and the guest-cart purge. |
@@ -128,11 +128,12 @@ Every storefront page has a tested query budget: six queries on the home page, f
 
 ### Sign-in
 
-`/login/` is one flow for signing in and registering, with a mobile number and a six-digit code sent by SMS through SMS.ir (`core.sms`, [ADR-0031](decisions/0031-sign-in-by-phone.md)). The number is the account's identity; email is an optional address for order mail. Each account has one way in: a customer signs in by code and has no password, and staff sign in only at the panel, with a password. A right code for a staff account gets the wrong-code answer, and the panel admits only a session its own password sign-in opened, so a code session stays out even on an account made staff later.
+`/login/` is one flow for signing in and registering, with a mobile number and a six-digit code sent by SMS through SMS.ir (`core.sms`), or through a previously linked Telegram account (`accounts.telegram_codes`, [ADR-0031](decisions/0031-sign-in-by-phone.md)). SMS is the default and the registration route. Telegram requests get a conditional acknowledgement for every number and are delivered by the worker without exposing link eligibility. The number is the account's identity; email is an optional address for order mail. A customer signs in by code and has no password, and staff sign in only at the panel, with a password. A right code for a staff account gets the wrong-code answer, and the panel admits only a session its own password sign-in opened, so a code session stays out even on an account made staff later.
 
 - **Codes** are stored hashed in Redis for ten minutes, with their deadline beside them. Each guess increments an attempt counter before the code is compared, and the code is spent by the one delete that removes it, so two requests carrying the right code cannot both sign in.
-- **Rate limits** apply per number and per IP address: one code per number every two minutes, five an hour and ten accepted a day, and per network ten an hour and twenty accepted a day. The panel's sign-in draws on the same attempt budgets, so an account has one budget wherever it is guessed at.
-- **The shop's day of SMS** holds 300 accepted sends, because every message is paid for: the operator is emailed at the 100th, and past the ceiling no code goes out until the window turns.
+- **Rate limits** on SMS apply per number and per IP address: one request per number every two minutes, five an hour and ten accepted sends a day, and per network ten requests an hour and twenty accepted sends a day. Telegram has separate two-minute/five-per-hour number limits and ten requests per network/hour, with no daily allowance. Its request never blocks the immediate SMS switch. The panel and both code channels share verification-attempt budgets.
+- **The shop's day of SMS** holds 300 accepted sends, because every message is paid for: the operator is emailed at the 100th, and past the ceiling no SMS code goes out until the window turns. Linked customers can still choose Telegram.
+- **Telegram delivery** preserves the previous live code until the provider accepts a replacement. A request and its captured link generation must still match before activation and verification. Successful sign-in queues deletion of the consumed message; neither sending nor deletion calls Telegram inside that sign-in request. Failure cannot undo a completed login.
 - **Redis failure** turns into a Persian 503 page. Sign-in never fails open, because that would allow unlimited guesses at a six-digit code.
 
 Signing in rotates the session and merges the visitor's guest cart into the account's (`cart.signals`, on `user_logged_in`), so every sign-in path gets the merge without asking for it.
@@ -268,7 +269,7 @@ The following are designed and bound by decisions, but not implemented:
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
 | The customer's view of delivered details and the single-use delivery link | [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
 | The reminders and timeout for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
-| Operator alerts, sign-in codes over Telegram and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md), [ADR-0012](decisions/0012-auth-email-otp.md) |
+| Operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md) |
 | The order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
 | An HTTP API | [ADR-0004](decisions/0004-no-drf-in-phase-1.md) |
 

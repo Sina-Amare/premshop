@@ -16,6 +16,7 @@ import pytest
 from django.core.cache import cache
 
 from apps.accounts import otp
+from apps.accounts.tests.test_phone_sign_in import send_code
 from apps.core import sms
 
 EMAIL = "race@example.test"
@@ -176,7 +177,7 @@ def test_two_accepted_sends_at_once_leave_one_working_code(monkeypatch):
         return 1
 
     monkeypatch.setattr("apps.core.email.send_templated_email", accepted)
-    first, second = at_once(lambda: otp.send_login_code(EMAIL), lambda: otp.send_login_code(EMAIL))
+    first, second = at_once(lambda: send_code(EMAIL), lambda: send_code(EMAIL))
 
     assert not otp.verify(EMAIL, previous.code), "a send that was accepted left the old code"
     # Tried in turn: had both worked, the second would still work after the first.
@@ -202,7 +203,7 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
 
     def resend_that_fails() -> None:
         try:
-            otp.send_login_code(EMAIL)
+            send_code(EMAIL)
         except sms.SmsNotSent as error:
             failures.append(error)
 
@@ -211,7 +212,7 @@ def test_a_send_that_fails_after_another_was_accepted_leaves_the_mailed_code(mon
     failing.start()
     assert began.wait(timeout=5)
     while_mailing = cache.get(otp._key(EMAIL))
-    mailed = otp.send_login_code(EMAIL)
+    mailed = send_code(EMAIL)
     accepted_done.set()
     failing.join(timeout=10)
 

@@ -32,6 +32,11 @@ def sms_code() -> str:
     return found.group()
 
 
+def send_code(subject: str) -> otp.Issued:
+    """Text a code and make it live, without the service's account lock or limits."""
+    return otp._store(subject, otp.prepare_login_code(subject))
+
+
 def ask(client, phone: str = PHONE, **extra):
     return client.post(reverse("login-code"), {"phone": phone}, **extra)
 
@@ -214,7 +219,7 @@ def test_past_the_days_ceiling_no_code_is_sent(rf):
 
 
 def test_a_code_lives_ten_minutes_and_burns_after_five_wrong_guesses():
-    issued = otp.send_login_code(PHONE)
+    issued = send_code(PHONE)
     wrong = f"{(int(issued.code) + 1) % 10**6:06d}"
 
     for _ in range(otp.MAX_ATTEMPTS):

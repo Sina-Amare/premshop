@@ -9,8 +9,21 @@ from apps.accounts.models import User
 from apps.accounts.validators import normalize_mobile_phone
 
 
-class PhoneForm(forms.Form):
-    """The sign-in's one field. An Iranian mobile number only, in the eleven-digit
+class ChannelForm(forms.Form):
+    channel = forms.ChoiceField(
+        label="روش دریافت کد",
+        choices=[("sms", "پیامک"), ("telegram", "تلگرام")],
+        initial="sms",
+        required=False,
+        widget=forms.RadioSelect,
+    )
+
+    def clean_channel(self) -> str:
+        return str(self.cleaned_data["channel"] or "sms")
+
+
+class PhoneForm(ChannelForm):
+    """An Iranian mobile number only, in the eleven-digit
     09 form: Persian or Arabic digits, +98 or 0098, spaces, dashes and brackets are
     accepted on the way in and never kept."""
 

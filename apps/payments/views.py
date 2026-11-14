@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import ValidationError
@@ -72,6 +73,7 @@ def _page(
             "form": form,
             "cart": cart_summary(get_cart(request)),
             "phone_form": PhoneForm(),
+            "telegram_bot_url": f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}",
             "code_form": CodeForm(),
         },
         status=status,

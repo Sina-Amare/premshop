@@ -42,6 +42,9 @@ OTP_REQUESTS_PER_IP_DAILY = Limit("otpreq:ip:daily", times=20, seconds=24 * 60 *
 # the ceiling no code goes out, so a spray of numbers cannot drain the balance.
 SMS_DAILY_BUDGET = Limit("sms:daily", times=300, seconds=24 * 60 * 60)
 SMS_ALERT_AT = 100
+TELEGRAM_CODE_COOLDOWN = Limit("tgcode:phone:cooldown", times=1, seconds=2 * 60)
+TELEGRAM_CODES_PER_PHONE = Limit("tgcode:phone", times=5, seconds=60 * 60)
+TELEGRAM_CODES_PER_IP = Limit("tgcode:ip", times=10, seconds=60 * 60)
 LOGIN_ATTEMPTS_PER_PHONE = Limit("login:phone", times=10, seconds=15 * 60)
 LOGIN_ATTEMPTS_PER_IP = Limit("login:ip", times=30, seconds=60 * 60)
 # Catalog search: a person searching does not exceed this; a scraper does.

@@ -491,14 +491,14 @@ def test_a_failed_resend_keeps_the_code_already_on_the_phone(client, user, monke
 def test_a_failed_send_neither_refills_nor_spends_the_guesses_left(user, monkeypatch, wrong_after):
     """A failed send that gave the inbox code a fresh count would make each
     failed send five more guesses at six digits."""
-    inbox = otp.send_login_code(user.phone).code
+    inbox = services._send_code(user.phone).code
     wrong = f"{(int(inbox) + 1) % 10**otp.CODE_LENGTH:0{otp.CODE_LENGTH}d}"
     for _ in range(otp.MAX_ATTEMPTS - 1):
         assert not otp.verify(user.phone, wrong)
     with monkeypatch.context() as failing:
         failing.setattr(sms, "send_code", disconnect)
-        with pytest.raises(sms.SmsNotSent):
-            otp.send_login_code(user.phone)
+        with pytest.raises(services.CodeNotSent):
+            services._send_code(user.phone)
 
     for _ in range(wrong_after):
         assert not otp.verify(user.phone, wrong)
@@ -512,12 +512,12 @@ def test_a_failed_send_neither_refills_nor_spends_the_guesses_left(user, monkeyp
 def test_a_failed_send_does_not_move_the_inbox_codes_deadline(user, monkeypatch, late):
     """Nor may it buy the code time: the deadline is the one it was sent with."""
     with time_machine.travel(START, tick=False) as clock:
-        inbox = otp.send_login_code(user.phone).code
+        inbox = services._send_code(user.phone).code
         clock.shift(otp.CODE_TTL_SECONDS - 60)
         with monkeypatch.context() as failing:
             failing.setattr(sms, "send_code", disconnect)
-            with pytest.raises(sms.SmsNotSent):
-                otp.send_login_code(user.phone)
+            with pytest.raises(services.CodeNotSent):
+                services._send_code(user.phone)
         clock.shift(61 if late else 59)
 
         assert otp.verify(user.phone, inbox) is not late

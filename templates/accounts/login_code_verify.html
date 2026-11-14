@@ -5,9 +5,7 @@
 {% block auth_title %}کد ورود را وارد کنید{% endblock %}
 
 {% block auth_intro %}
-  <p class="small auth-sent">
-    کد ۶ رقمی را با پیامک به <bdi dir="ltr">{{ phone }}</bdi> فرستادیم.
-  </p>
+  {% include "accounts/_code_delivery.html" %}
   <p class="small auth-change">
     شماره اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر شماره</a>
   </p>
@@ -63,6 +61,10 @@ a courtesy, and the server's limit on codes per number is the defence.
   {% csrf_token %}
   <span class="small" id="resend-hint">کد نرسید؟ شماره‌ی بالا را بررسی کنید.</span>
   <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
+</form>
+<form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="sms-form"{% if channel != "telegram" %} hidden{% endif %}>
+  {% csrf_token %}<input type="hidden" name="channel" value="sms">
+  <button type="submit" class="btn btn--ghost">دریافت کد با پیامک</button>
 </form>
 {% endblock %}
 

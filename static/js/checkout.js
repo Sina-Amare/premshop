@@ -7,6 +7,8 @@
   const phone = root.querySelector('[data-inline-phone]');
   const code = root.querySelector('[data-inline-code]');
   const resend = root.querySelector('[data-inline-resend]');
+  const sms = root.querySelector('[data-inline-sms]');
+  const delivery = root.querySelector('[data-code-delivery]');
   const status = root.querySelector('[data-login-status]');
   const edit = root.querySelector('[data-inline-edit]');
   let resendAt = 0;
@@ -15,6 +17,8 @@
     phone.hidden = false;
     code.hidden = true;
     resend.hidden = true;
+    sms.hidden = true;
+    delivery.hidden = true;
     edit.hidden = true;
     code.reset();
     status.hidden = true;
@@ -33,7 +37,7 @@
     tick();
     timer = setInterval(tick, 1000);
   }
-  for (const form of [phone, code, resend]) {
+  for (const form of [phone, code, resend, sms]) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
@@ -62,8 +66,13 @@
         code.hidden = false;
         resend.hidden = false;
         edit.hidden = false;
-        status.textContent = 'کد ورود را با پیامک فرستادیم. آن را در کادر زیر وارد کنید.';
+        status.hidden = true;
+        delivery.hidden = false;
+        delivery.querySelector('#delivery-sms').hidden = data.channel === 'telegram';
+        delivery.querySelector('#delivery-telegram').hidden = data.channel !== 'telegram';
+        sms.hidden = data.channel !== 'telegram';
         cooldown(data.cooldown || 120);
+        code.reset();
         code.querySelector('input[name=code]').focus();
       } catch {
         status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';
