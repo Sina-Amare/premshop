@@ -1,4 +1,4 @@
-"""One-time sign-in codes, sent by SMS to a mobile number.
+"""One-time sign-in codes, sent by SMS or an existing Telegram link.
 
 Codes live in the cache with a TTL, not in a table: an expired code should
 evaporate rather than accumulate as dead rows for someone to sweep, and there is
@@ -21,7 +21,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils.crypto import constant_time_compare, salted_hmac
 
-from apps.accounts.models import User
 from apps.accounts.validators import PERSIAN_TO_ASCII_DIGITS, normalize_digits
 
 __all__ = ["PERSIAN_TO_ASCII_DIGITS", "normalize_digits"]
@@ -88,8 +87,10 @@ def _store(
     # lifetime from here rather than guessing it.
     issuance = secrets.token_urlsafe(16)
     record = {
-        "digest": _digest(code), "expires_at": expires_at,
-        "telegram_link": telegram_link, "telegram_message": telegram_message,
+        "digest": _digest(code),
+        "expires_at": expires_at,
+        "telegram_link": telegram_link,
+        "telegram_message": telegram_message,
     }
     cache.set(_record_key(subject, issuance), record, timeout=remaining)
     # Written last, and the only key verify starts from: two stores at once leave
@@ -171,18 +172,19 @@ def send_login_code(phone: str) -> Issued:
     replaced the one already on the phone. A failed send changes nothing, so that
     code keeps its own deadline and its own count of wrong guesses.
     """
+    # Two accepted at once: the later store wins, not always the newer message. One code stays live.
+    return _store(phone, prepare_login_code(phone))
+
+
+def prepare_login_code(phone: str) -> str:
+    """Send before taking the account lock; only activation needs that lock."""
     from apps.core import sms
 
     code = _new_code()
     sms.send_code(phone, code)
-    # Two accepted at once: the later store wins, not always the newer message. One code stays live.
-    return _store(phone, code)
+    return code
 
 
 def normalize_email(email: str) -> str:
     """One spelling of an address everywhere: lowercase, trimmed."""
     return (email or "").strip().lower()
-
-
-def user_for(phone: str) -> User | None:
-    return User.objects.filter(phone=phone).first()

@@ -81,7 +81,9 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         phone = form.cleaned_data["phone"]
         try:
-            issued = services.request_login_code(request, phone, channel=form.cleaned_data["channel"])
+            issued = services.request_login_code(
+                request, phone, channel=form.cleaned_data["channel"]
+            )
         except services.CodeNotSent as exc:
             if _wants_json(request):
                 return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)
@@ -207,16 +209,18 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
             return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         messages.error(request, PAGE_EXPIRED)
         return redirect("login-code")
-    channel_form = ChannelForm({
-        "channel": request.POST.get("channel", request.session.get(PENDING_CHANNEL_KEY, "sms"))
-    })
+    channel_form = ChannelForm(
+        {"channel": request.POST.get("channel", request.session.get(PENDING_CHANNEL_KEY, "sms"))}
+    )
     if not channel_form.is_valid():
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
         messages.error(request, PAGE_EXPIRED)
         return redirect("login-code-verify")
     try:
-        issued = services.request_login_code(request, phone, channel=channel_form.cleaned_data["channel"])
+        issued = services.request_login_code(
+            request, phone, channel=channel_form.cleaned_data["channel"]
+        )
     except services.CodeNotSent as exc:
         if _wants_json(request):
             return JsonResponse({"ok": False, "error": _as_text(exc)}, status=503)

@@ -199,8 +199,8 @@
   tick();
   setInterval(tick, 1000);
 
-  [resendForm, smsForm].forEach(function (sendForm) {
-  sendForm.addEventListener('submit', function (e) {
+  function resendCode(e) {
+    var sendForm = e.currentTarget;
     e.preventDefault();
     if (resendPending || (sendForm === resendForm && resendButton.disabled)) return;
     resendPending = true;
@@ -225,12 +225,14 @@
         document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
         smsForm.hidden = data.channel !== 'telegram';
         resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید را فرستادیم.';
-        status.textContent = 'کد جدید را فرستادیم.';
+        status.textContent = data.channel === 'telegram'
+          ? document.getElementById('delivery-telegram').textContent : 'کد جدید را فرستادیم.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       }
       resendPending = false;
+      smsForm.querySelector('button').disabled = false;
       tick();
     }).catch(function () {
       showError('کد فرستاده نشد. دوباره تلاش کنید.');
@@ -239,6 +241,7 @@
       smsForm.querySelector('button').disabled = false;
       tick();
     });
-  });
-  });
+  }
+  resendForm.addEventListener('submit', resendCode);
+  smsForm.addEventListener('submit', resendCode);
 })();

@@ -110,7 +110,10 @@ def _text(text: str) -> dict[str, Any]:
 
 
 def send_message(
-    chat_id: int, text: str, *, buttons: list[list[dict[str, str]]] | None = None,
+    chat_id: int,
+    text: str,
+    *,
+    buttons: list[list[dict[str, str]]] | None = None,
     protect_content: bool = False,
 ) -> Any:
     """`text` is Telegram HTML: the caller escapes every value it puts in."""

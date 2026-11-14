@@ -11,8 +11,11 @@ from apps.accounts.validators import normalize_mobile_phone
 
 class ChannelForm(forms.Form):
     channel = forms.ChoiceField(
-        label="روش دریافت کد", choices=[("sms", "پیامک"), ("telegram", "تلگرام")],
-        initial="sms", required=False, widget=forms.RadioSelect,
+        label="روش دریافت کد",
+        choices=[("sms", "پیامک"), ("telegram", "تلگرام")],
+        initial="sms",
+        required=False,
+        widget=forms.RadioSelect,
     )
 
     def clean_channel(self) -> str:

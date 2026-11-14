@@ -72,6 +72,7 @@
         delivery.querySelector('#delivery-telegram').hidden = data.channel !== 'telegram';
         sms.hidden = data.channel !== 'telegram';
         cooldown(data.cooldown || 120);
+        code.reset();
         code.querySelector('input[name=code]').focus();
       } catch {
         status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';

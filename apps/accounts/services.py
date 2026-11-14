@@ -7,8 +7,8 @@ layer pattern, and the reason for it is that auth rules leak otherwise — one
 forgotten rate-limit call in one view is the whole defence gone.
 
 One way in per account (ADR-0031): a customer signs in with a mobile number and a
-code sent by SMS and has no password, and staff sign in only with the panel's
-password, because a staff session opens the panel.
+code sent by SMS or a linked Telegram and has no password. Staff sign in only
+with the panel's password, because a staff session opens the panel.
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 class CodeRequest:
     expires_at: int
     channel: str
+
 
 # Unknown and inactive accounts must cost the same hash work as a live account.
 _DUMMY_HASH = make_password(secrets.token_urlsafe(16))
@@ -153,9 +154,10 @@ def _send_code(phone: str) -> otp.Issued:
     """Text a code, or raise CodeNotSent. Logged by SMS.ir's statuses, never by the
     number or the code."""
     try:
+        code = otp.prepare_login_code(phone)
         with transaction.atomic():
             User.objects.select_for_update(no_key=True).filter(phone=phone).first()
-            issued = otp.send_login_code(phone)
+            issued = otp._store(phone, code)
             cache.delete(telegram_codes.pending_key(phone))
             return issued
     except sms.SmsNotSent as error:
@@ -194,23 +196,9 @@ def _alert_operator(sent: int) -> None:
 
 
 def request_login_code(request: HttpRequest, phone: str, *, channel: str = "sms") -> CodeRequest:
-    """Text a sign-in code, or raise RateLimited or CodeNotSent.
-
-    A code goes to any valid number, known or not. Two reasons, and they point
-    the same way:
-
-    - One flow does both jobs: an unknown number gets a code, and verifying it
-      CREATES the account. Registration and sign-in are the same three steps,
-      which matters for a customer base that migrated from a Telegram chat and has
-      no patience for a signup form.
-    - It removes the user-enumeration oracle for free. If unknown numbers were
-      silently dropped, the response time alone would tell an attacker who shops
-      here — and for a shop selling other people's subscriptions, the customer
-      list is itself sensitive.
-
-    A staff number gets a code too, for the same reason; the code just cannot sign
-    it in. Short request windows bound bursts; daily budgets count accepted sends
-    only.
+    """SMS goes to every valid number; its first correct code creates the account.
+    Telegram always queues an acknowledgement, with eligibility checked off-request.
+    Neither response identifies a customer. Staff cannot sign in with either code.
     """
     phone = normalize_mobile_phone(phone)
     if channel == "telegram":
@@ -230,7 +218,11 @@ def _request_telegram_code(request: HttpRequest, phone: str) -> CodeRequest:
     budgets = (
         (ratelimit.TELEGRAM_CODE_COOLDOWN, phone, CODE_COOLDOWN),
         (ratelimit.TELEGRAM_CODES_PER_PHONE, phone, TOO_MANY_CODES),
-        (ratelimit.TELEGRAM_CODES_PER_IP, ratelimit.client_ip(request), TOO_MANY_CODES_FROM_NETWORK),
+        (
+            ratelimit.TELEGRAM_CODES_PER_IP,
+            ratelimit.client_ip(request),
+            TOO_MANY_CODES_FROM_NETWORK,
+        ),
     )
     for limit, subject, message in budgets:
         if not ratelimit.remaining(limit, subject):

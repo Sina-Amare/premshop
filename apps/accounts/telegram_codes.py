@@ -24,31 +24,47 @@ def link_generation(user: User | None) -> otp.TelegramLink | None:
     if user is None:
         return None
     return (
-        user.pk, user.telegram_id,
+        user.pk,
+        user.telegram_id,
         user.telegram_linked_at.isoformat() if user.telegram_linked_at else None,
     )
 
 
 def _current(
-    user: User | None, phone: str, request_id: str, expires_at: int,
+    user: User | None,
+    phone: str,
+    request_id: str,
+    expires_at: int,
     generation: otp.TelegramLink | None,
 ) -> bool:
     return bool(
-        user and user.is_active and not user.is_staff and user.telegram_id
-        and user.telegram_linked_at and link_generation(user) == generation
-        and expires_at > int(time.time()) and cache.get(pending_key(phone)) == request_id
+        user
+        and user.is_active
+        and not user.is_staff
+        and user.telegram_id
+        and user.telegram_linked_at
+        and link_generation(user) == generation
+        and expires_at > int(time.time())
+        and cache.get(pending_key(phone)) == request_id
     )
 
 
 def deliver_code(
-    phone: str, request_id: str, expires_at: int, generation: otp.TelegramLink | None,
+    phone: str,
+    request_id: str,
+    expires_at: int,
+    generation: otp.TelegramLink | None,
 ) -> None:
     remaining = expires_at - int(time.time())
     if remaining <= 0 or not cache.add(f"otp-dispatch:{request_id}", True, timeout=remaining):
         return
     with transaction.atomic():
         user = User.objects.select_for_update(no_key=True).filter(phone=phone).first()
-        if user is None or user.telegram_id is None or not _current(user, phone, request_id, expires_at, generation):
+        if (
+            user is None
+            or user.telegram_id is None
+            or not _current(user, phone, request_id, expires_at, generation)
+        ):
             return
         chat_id = user.telegram_id
     code = otp._new_code()
@@ -65,7 +81,10 @@ def deliver_code(
         user = User.objects.select_for_update(no_key=True).filter(phone=phone).first()
         if _current(user, phone, request_id, expires_at, generation):
             otp._store(
-                phone, code, expires_at=expires_at, telegram_link=generation,
+                phone,
+                code,
+                expires_at=expires_at,
+                telegram_link=generation,
                 telegram_message=(chat_id, int(message["message_id"])),
             )
 

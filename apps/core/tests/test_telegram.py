@@ -80,6 +80,11 @@ def test_a_message_goes_out_as_escaped_html_without_a_preview(api):
     }
 
 
+def test_a_code_message_is_protected_in_the_bot_api_request(api):
+    telegram.send_message(42, "کد ورود", protect_content=True)
+    assert api.requests[0][2]["protect_content"] is True
+
+
 @pytest.mark.parametrize(
     ("outcome", "status", "retry_after"),
     [
