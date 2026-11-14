@@ -163,21 +163,13 @@ def _count_attempt(phone: str, issuance: str, ttl: int) -> int:
     return count
 
 
-def send_login_code(phone: str) -> Issued:
-    """Text a new code, then make it the live one. Raises SmsNotSent if SMS.ir
-    refuses — never silently.
-
-    Stored only once the send is accepted. Stored before, a send that then failed
-    left the customer a countdown running for a code that never arrived, and
-    replaced the one already on the phone. A failed send changes nothing, so that
-    code keeps its own deadline and its own count of wrong guesses.
-    """
-    # Two accepted at once: the later store wins, not always the newer message. One code stays live.
-    return _store(phone, prepare_login_code(phone))
-
-
 def prepare_login_code(phone: str) -> str:
-    """Send before taking the account lock; only activation needs that lock."""
+    """Text a new code and return it; raises SmsNotSent if SMS.ir refuses.
+
+    The caller stores it only once the send is accepted, so a failed send leaves
+    the live code with its own deadline and its own count of wrong guesses. Sent
+    before taking the account lock; only activation needs that lock.
+    """
     from apps.core import sms
 
     code = _new_code()

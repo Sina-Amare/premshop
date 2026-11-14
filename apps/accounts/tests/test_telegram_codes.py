@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.accounts import otp, tasks
 from apps.accounts.models import User
+from apps.accounts.tests.test_phone_sign_in import send_code
 from apps.core import ratelimit, sms
 from apps.core import telegram as api
 
@@ -165,7 +166,7 @@ def test_worker_protects_the_message_and_stores_only_the_hash(client, linked, qu
 def test_queueing_alone_and_a_failed_send_preserve_the_live_sms(
     client, linked, queued, monkeypatch
 ):
-    issued = otp.send_login_code(PHONE)
+    issued = send_code(PHONE)
     ask(client)
     monkeypatch.setattr(
         api, "send_message", lambda *a, **kw: (_ for _ in ()).throw(api.TelegramError(403))
