@@ -73,6 +73,11 @@ def test_both_entry_points_offer_sms_by_default_and_telegram(client):
         assert "روش دریافت کد" in body
 
 
+def test_sign_in_page_says_the_number_also_makes_the_account(client):
+    body = client.get(reverse("login-code")).content.decode()
+    assert "برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید." in body
+
+
 @pytest.mark.parametrize("state", ["unknown", "unlinked", "linked", "inactive", "staff"])
 def test_all_numbers_get_the_same_acknowledgement_and_a_queued_job(client, queued, sent, state):
     if state != "unknown":
