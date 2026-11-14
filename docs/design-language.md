@@ -169,7 +169,6 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 |---|---|---|
 | «برای دریافت کد در تلگرام، باید قبلاً آن را از صفحه‌ی حساب کاربری وصل کرده باشید.» | «برای دریافت کد در تلگرام باید از قبل آن را از صفحه‌ی حساب کاربری به حساب تلگرامتان متصل کرده باشید.» | One sentence names what connects to what; «وصل کرده باشید» alone left it open. |
 | «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. |
-| «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.» | «اگر حساب تلگرامتان به حساب کاربری متصل باشد، کد ورود را در ربات پرم‌شاپ می‌بینید.», with «ربات پرم‌شاپ» linking straight to the bot | The same truthful condition works for every number without revealing whether it has a linked account. |
 | «این کد را در اختیار کسی نگذارید.» | «این کد را به کسی ندهید.» | The warning reads as Persian rather than an English sentence carried over. |
 
 ### Building a line
