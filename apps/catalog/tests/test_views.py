@@ -437,9 +437,9 @@ def test_home_groups_products_under_their_department(client, category, product):
     assert shelf_headings(body) == ["هوش مصنوعی", "گیفت کارت"], "one per department, in order"
     catalog = body.split('id="products"', 1)[1].split("</main>", 1)[0]
     assert re.findall(r"<p>([۰-۹]+) محصول</p>", catalog) == ["۱", "۱"]
-    # Each department shows all its products, so none links out to its own page.
+    # Each department's banner is one link to its own page, whether or not every card is shown.
+    assert re.findall(r'class="v-dept-more" href="(/c/[^"]+/)"', catalog) == ["/c/ai/", "/c/gift/"]
     assert re.findall(r'class="v-view-all" href="/c/[^"]+/"', body) == []
-    assert 'href="/c/gift/"' in body
 
 
 def test_every_product_on_the_home_page_lands_in_a_group(client, category, product):
@@ -489,21 +489,29 @@ def test_product_page_suggests_other_products(client, category, product):
     suggested = body.split("محصولات دیگر", 1)[1].split("</section>", 1)[0]
 
     assert f'href="/p/{sibling.slug}/"' in suggested
-    assert f'href="/p/{elsewhere.slug}/"' in suggested, "a thin department is topped up"
+    assert f'href="/p/{elsewhere.slug}/"' in suggested, "any department, not only this one"
     assert f'href="/p/{product.slug}/"' not in suggested, "never suggest the page you are on"
 
 
-def test_suggestions_put_the_same_department_first(client, category, product):
-    """Ranked, not shuffled: the department the visitor is already in, then a
-    live discount, then the rest. Nothing here knows the visitor — there are
-    no orders yet to learn from — so the page must not imply that it does."""
+def test_suggestions_are_a_shuffle_of_the_whole_shop(client, category, product):
+    """Any department, in a new order each visit; never the page itself or a
+    draft. Nothing here knows the visitor, so the page must not imply it does."""
     gifts = Category.objects.create(name="گیفت کارت", slug="gift")
-    make_product(gifts, "discounted-gift", promo_price=Decimal("100000"))
-    sibling = make_product(category, "copilot")
+    others = {make_product(category, f"s{i}").slug for i in range(3)}
+    others |= {make_product(gifts, f"g{i}").slug for i in range(3)}
+    make_product(gifts, "hidden")
+    Product.objects.filter(slug="hidden").update(status=Product.Status.DRAFT)
 
-    response = client.get(reverse("product", args=[product.slug]))
+    firsts, seen = set(), set()
+    for _ in range(25):
+        response = client.get(reverse("product", args=[product.slug]))
+        slugs = [p.slug for p in response.context["related"]]
+        assert len(slugs) == 4 and set(slugs) <= others, slugs
+        firsts.add(slugs[0])
+        seen |= set(slugs)
 
-    assert response.context["related"][0].pk == sibling.pk
+    assert len(firsts) > 1, "the order changes between visits"
+    assert seen == others, "every other product gets its turn"
     assert "پیشنهاد" not in response.content.decode(), "no claim of personalisation"
 
 
@@ -516,27 +524,6 @@ def test_suggestions_are_capped_and_cost_a_fixed_number_of_queries(client, categ
 
     assert len(response.context["related"]) == 4
     assert len(queries) <= PRODUCT_PAGE_QUERY_BUDGET, [q["sql"][:80] for q in queries]
-
-
-def test_the_places_a_department_leaves_go_to_a_discount_and_then_to_the_newest(
-    client, category, product
-):
-    """Topping up a thin department took whichever products sorted first by
-    name, so a discount elsewhere lost its place to an older product called «a…»."""
-    for i in range(3):
-        make_product(category, f"sibling-{i}")
-    gifts = Category.objects.create(name="گیفت کارت", slug="gift")
-    make_product(gifts, "a-plain")
-    make_product(gifts, "z-discounted", promo_price=Decimal("100000"))
-
-    related = client.get(reverse("product", args=[product.slug])).context["related"]
-    assert [p.slug for p in related][3] == "z-discounted"
-
-    Product.objects.filter(slug="z-discounted").update(status=Product.Status.DRAFT)
-    make_product(gifts, "z-newest")
-
-    related = client.get(reverse("product", args=[product.slug])).context["related"]
-    assert [p.slug for p in related][3] == "z-newest"
 
 
 # --- When a product arrives ------------------------------------------------
@@ -808,7 +795,7 @@ def test_an_empty_query_does_not_spend_the_search_budget(client, category, produ
     assert spent.status_code == 200, "a real query after many empty ones still works"
 
 
-def test_every_product_shows_and_a_department_links_out_only_when_the_cap_hid_some(
+def test_every_product_shows_and_the_department_banner_always_links_out(
     client, category, product, monkeypatch
 ):
     sibling = make_product(category, "copilot")
@@ -816,6 +803,6 @@ def test_every_product_shows_and_a_department_links_out_only_when_the_cap_hid_so
     body = client.get(reverse("home")).content.decode()
     catalog = body.split('id="products"', 1)[1].split("v-faq-band", 1)[0]
     assert f'href="/p/{product.slug}/"' in catalog and f'href="/p/{sibling.slug}/"' in catalog
-    assert "data-rail" not in catalog and link not in catalog
+    assert "data-rail" not in catalog and catalog.count(link) == 1
     monkeypatch.setattr("apps.catalog.views.HOME_PRODUCT_CAP", 1)
-    assert link in client.get(reverse("home")).content.decode()
+    assert client.get(reverse("home")).content.decode().count(link) == 1

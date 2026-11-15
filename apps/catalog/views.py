@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from decimal import Decimal
 from itertools import zip_longest
 
@@ -64,7 +65,7 @@ def home(request: HttpRequest) -> HttpResponse:
     index = list(
         Product.objects.public()
         .order_by("created_at", "id")
-        .only("name", "slug", "image", "category_id", "created_at")
+        .only("name", "slug", "image", "brand_colour", "category_id", "created_at")
     )
     shelf = [
         item
@@ -220,30 +221,19 @@ RELATED_COUNT = 4
 
 
 def _related_to(product: Product) -> list[Product]:
-    """What to show someone at the bottom of a product page.
+    """What to show someone at the bottom of a product page: a shuffle of the rest of the shop.
 
-    Ranked, not random: same department first, then anything with a live
-    discount, then the newest. There is no "customers also bought" here and
-    there will not be until there are customers — no order table exists yet,
-    so any claim about what is popular would be invented. These three signals
-    are all true today, which is the whole bar.
+    Other things a visitor might like, from any department and in a new order on
+    each visit, so a second look shows something new. The heading claims nothing
+    about the visitor: there are no orders yet to learn tastes from.
 
-    Two queries however many products. The candidates used to be cut to the
-    first four by name before this ranking ever saw them, so a discount in
-    another department lost its place to whatever sorted first.
-    shortcut: ranks every public product in Python, right for a few dozen; at a
-    few hundred, move the department and discount tests into the query.
+    Two queries however many products.
+    shortcut: samples every public product in Python, right for a few dozen; at a
+    few hundred, sample ids in the query instead.
     """
-
-    def rank(other: Product) -> tuple[bool, bool, float]:
-        plan = other.cheapest_plan
-        return (
-            other.category_id != product.category_id,
-            not (plan and plan.promotion_is_active),
-            -other.created_at.timestamp(),
-        )
-
-    return sorted(_for_cards().exclude(pk=product.pk), key=rank)[:RELATED_COUNT]
+    others = list(_for_cards().exclude(pk=product.pk))
+    # Display order only; nothing secret rides on it.
+    return random.sample(others, min(RELATED_COUNT, len(others)))  # noqa: S311
 
 
 def faq(request: HttpRequest) -> HttpResponse:
