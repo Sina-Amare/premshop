@@ -56,9 +56,20 @@ class Migration(migrations.Migration):
             CREATE FUNCTION payments_refund_needs_creator() RETURNS trigger
             LANGUAGE plpgsql AS $$
             BEGIN
-                IF NEW.created_by_id IS NULL AND (
-                    SELECT cancel_reason FROM orders_orderitem WHERE id = NEW.order_item_id
-                ) IS DISTINCT FROM 'input_timeout' THEN
+                -- The item's latest history row must be the system's own cancellation: an
+                -- operator's 21-day cancellation has the same reason and a person behind it.
+                IF NEW.created_by_id IS NULL AND NOT EXISTS (
+                    SELECT 1 FROM orders_orderitem item
+                    WHERE item.id = NEW.order_item_id
+                      AND item.cancel_reason = 'input_timeout'
+                      AND (
+                          SELECT event.to_status = 'CANCELLED' AND event.actor = 'system'
+                                 AND event.actor_user_id IS NULL
+                          FROM orders_orderitemevent event
+                          WHERE event.order_item_id = item.id
+                          ORDER BY event.id DESC LIMIT 1
+                      )
+                ) THEN
                     RAISE EXCEPTION 'A refund without a person is only the 21-day cancellation''s'
                         USING ERRCODE = '23514';
                 END IF;

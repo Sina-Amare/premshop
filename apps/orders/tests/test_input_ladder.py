@@ -16,7 +16,7 @@ from apps.notifications.models import Notification
 from apps.orders import services
 from apps.orders.admin import queue_overview
 from apps.orders.clock import TEHRAN
-from apps.orders.models import OrderItem
+from apps.orders.models import OrderItem, OrderItemEvent
 from apps.orders.tests.test_delivery import queued
 from apps.orders.tests.test_input_clock import act, purchase
 from apps.orders.tests.test_input_clock import operator as operator
@@ -266,20 +266,41 @@ def test_two_sweeps_at_once_cancel_once(buyer, plan, operator, monkeypatch):
 # Who owes a refund
 
 
-def _cancelled_by_hand(buyer, plan, operator, reason):
+def _cancelled_by_hand(buyer, plan, operator, reason, by=None):
+    """A cancelled item, with its history row by `by`, or by the system when None."""
     _, item = queued(buyer, plan, operator)
     OrderItem.objects.filter(pk=item.pk).update(status="CANCELLED", cancel_reason=reason)
+    OrderItemEvent.objects.create(
+        order_item=item,
+        from_status="QUEUED",
+        to_status="CANCELLED",
+        actor="system" if by is None else "operator",
+        actor_user=by,
+    )
     return item
 
 
-def test_only_a_missing_details_cancellation_may_owe_a_refund_without_a_person(
-    buyer, plan, operator
+@pytest.mark.parametrize(
+    "reason,by_operator,allowed",
+    [
+        ("supply_failure", False, False),
+        ("input_timeout", True, False),  # the operator's own 21-day cancellation
+        ("input_timeout", False, True),
+    ],
+)
+def test_only_the_systems_21_day_cancellation_may_owe_a_refund_without_a_person(
+    buyer, plan, operator, reason, by_operator, allowed
 ):
-    item = _cancelled_by_hand(buyer, plan, operator, "supply_failure")
-    with pytest.raises(DatabaseError, match="without a person"), transaction.atomic():
+    item = _cancelled_by_hand(buyer, plan, operator, reason, operator if by_operator else None)
+
+    def owe():
         Refund.objects.create(order_item=item, amount=Decimal("1000"), created_by=None)
-    OrderItem.objects.filter(pk=item.pk).update(cancel_reason="input_timeout")
-    Refund.objects.create(order_item=item, amount=Decimal("1000"), created_by=None)
+
+    if allowed:
+        owe()
+    else:
+        with pytest.raises(DatabaseError, match="without a person"), transaction.atomic():
+            owe()
 
 
 def test_a_system_refund_keeps_its_attribution_and_is_paid_by_a_person(buyer, plan, operator):
