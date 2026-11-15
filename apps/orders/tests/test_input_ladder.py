@@ -121,9 +121,9 @@ def test_the_21st_tehran_day_cancels_with_an_owed_refund_and_claims_no_transfer(
     item = waiting(buyer, plan, operator)
     run(tehran(2026, 11, 23, 10))
     assert run(tehran(2026, 11, 29, 21, 59)) == 0
-    assert run(tehran(2026, 11, 30, 10)) == 1
+    assert run(tehran(2026, 11, 30, 21)) == 1
     events = item.events.count()
-    assert run(tehran(2026, 11, 30, 11)) == 0
+    assert run(tehran(2026, 11, 30, 21, 30)) == 0
     assert item.events.count() == events
     item.refresh_from_db()
     assert (item.status, item.cancel_reason) == ("CANCELLED", "input_timeout")
@@ -145,6 +145,21 @@ def test_the_21st_tehran_day_cancels_with_an_owed_refund_and_claims_no_transfer(
     assert "این پیام تأیید واریز نیست" in notice.text_body
 
 
+@pytest.mark.parametrize("hour,minute", [(10, 0), (20, 59)])
+def test_the_21st_day_leaves_its_support_hours_to_record_late_details(
+    buyer, plan, operator, hour, minute
+):
+    # Details sent to support late on the last day are recorded by hand the next morning.
+    item = waiting(buyer, plan, operator)
+    assert run(tehran(2026, 11, 30, hour, minute)) == 0
+    item.refresh_from_db()
+    assert item.status == "AWAITING_INPUT"
+    assert notices(item, "input_final_warning") == []  # no notice names a day already past
+    assert run(tehran(2026, 11, 30, 21)) == 1
+    item.refresh_from_db()
+    assert item.status == "CANCELLED"
+
+
 def test_a_later_request_starts_a_new_ladder_that_a_paused_deadline_does_not_stop(
     buyer, plan, operator
 ):
@@ -161,11 +176,11 @@ def test_a_later_request_starts_a_new_ladder_that_a_paused_deadline_does_not_sto
     assert run(tehran(2026, 11, 22, 11, 59)) == 0
     assert run(tehran(2026, 11, 22, 12)) == 1
     assert len(notices(item, "input_reminder")) == 2
-    assert run(tehran(2026, 11, 30, 10)) == 0  # the first episode's 21st day
+    assert run(tehran(2026, 11, 30, 21)) == 0  # the first episode's 21st day
     item.refresh_from_db()
     assert item.status == "AWAITING_INPUT"
     assert run(tehran(2026, 12, 10, 10)) == 1  # the second episode's final warning
-    assert run(tehran(2026, 12, 11, 10)) == 1
+    assert run(tehran(2026, 12, 11, 21)) == 1
     item.refresh_from_db()
     assert (item.status, item.cancel_reason) == ("CANCELLED", "input_timeout")
 
@@ -176,7 +191,7 @@ def test_a_selection_from_an_older_episode_does_nothing(buyer, plan, operator):
         act(services.receive_input, item, operator)
     with time_machine.travel(tehran(2026, 11, 13, 12), tick=False):
         act(services.request_input, item, operator)
-    with time_machine.travel(tehran(2026, 11, 30, 10), tick=False):
+    with time_machine.travel(tehran(2026, 11, 30, 21), tick=False):
         assert (
             services.advance_input_ladder(
                 item_id=item.pk, requested_at=REQUESTED, now=timezone.now()
@@ -210,7 +225,7 @@ def test_details_received_during_the_sweep_win_over_the_cancellation(
     item = waiting(buyer, plan, operator)
     entered, release = _hold(monkeypatch)
     pids = Queue()
-    with time_machine.travel(tehran(2026, 11, 30, 10), tick=False):
+    with time_machine.travel(tehran(2026, 11, 30, 21), tick=False):
         with ThreadPoolExecutor(max_workers=2) as pool:
             receipt = pool.submit(
                 in_connection, pids, lambda: act(services.receive_input, item, operator)
@@ -232,7 +247,7 @@ def test_two_sweeps_at_once_cancel_once(buyer, plan, operator, monkeypatch):
     item = waiting(buyer, plan, operator)
     entered, release = _hold(monkeypatch)
     pids = Queue()
-    with time_machine.travel(tehran(2026, 11, 30, 10), tick=False):
+    with time_machine.travel(tehran(2026, 11, 30, 21), tick=False):
         with ThreadPoolExecutor(max_workers=2) as pool:
             leader = pool.submit(in_connection, pids, services.run_input_ladder)
             holder = pids.get(timeout=10)

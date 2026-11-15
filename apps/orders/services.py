@@ -30,7 +30,7 @@ from apps.catalog.inputs import normalize_customer_input
 from apps.catalog.models import Plan, Product, ProductSection
 from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
-from apps.core import events
+from apps.core import events, support
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
 from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window
 from apps.orders.models import (
@@ -1387,6 +1387,7 @@ def resume_input(*, order_id: int, item_id: int, actor: User, expected_event_id:
 INPUT_REMINDER_AFTER = timedelta(hours=48)
 INPUT_ESCALATION_DAYS = 7
 INPUT_WARNING_DAYS = 14
+INPUT_TIMEOUT_HOUR = support.CLOSES - 1
 INPUT_TIMEOUT_NOTE = "اطلاعات فعال‌سازی تا ۲۱ روز پس از درخواست نرسید."
 
 
@@ -1421,6 +1422,13 @@ def advance_input_ladder(*, item_id: int, requested_at: datetime, now: datetime)
         return ""
     today = timezone.localdate(now)
     if today >= input_timeout_day(requested_at):
+        # Details sent late on the last day are recorded by hand during the 21st day's
+        # support hours, so that day cancels only from its last support hour.
+        if (
+            today == input_timeout_day(requested_at)
+            and timezone.localtime(now).hour < INPUT_TIMEOUT_HOUR
+        ):
+            return ""
         reason = OrderItem.CancelReason.INPUT_TIMEOUT
         _cancel_paid(item, None, plans, reason, INPUT_TIMEOUT_NOTE, today)
         return "item_cancelled"
