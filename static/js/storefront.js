@@ -158,3 +158,101 @@
   }
   sync();
 })();
+
+// Sorting a department, and switching or paging the order list, change one part of the page,
+// so that part changes in place: the page keeps its scroll, and sorted cards glide to their new
+// places. Anything unexpected falls back to the ordinary page load, which still works alone.
+(() => {
+  if (!window.fetch || !window.DOMParser || !history.pushState) return;
+  const LINKS = '.v-dept-page .sort__link, .acct__main .order-tabs a[href], .acct__main .order-actions a[href]';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const cardKey = card => card.querySelector('.pcard__link')?.getAttribute('href');
+
+  // A department's sort holds the very same cards, so they are moved, never rebuilt: each keeps
+  // its offer clock and its options button working.
+  const sortCards = next => {
+    const grid = document.querySelector('.v-dept-page .grid');
+    const sort = document.querySelector('.v-dept-page .sort');
+    const nextGrid = next.querySelector('.v-dept-page .grid');
+    const nextSort = next.querySelector('.v-dept-page .sort');
+    if (!grid || !sort || !nextGrid || !nextSort) return null;
+    const cards = new Map([...grid.querySelectorAll(':scope > .pcard')].map(card => [cardKey(card), card]));
+    const order = [...nextGrid.querySelectorAll(':scope > .pcard')].map(cardKey);
+    if (order.length !== cards.size || !order.every(key => cards.has(key))) return null;
+    const moving = [...cards.values()];
+    return {
+      name: () => moving.forEach((card, i) => { card.style.viewTransitionName = `sorted-card-${i}`; }),
+      apply: () => {
+        const end = grid.querySelector(':scope > .v-request');
+        order.forEach(key => grid.insertBefore(cards.get(key), end));
+        sort.replaceWith(document.importNode(nextSort, true));
+      },
+      clear: () => moving.forEach(card => { card.style.viewTransitionName = ''; }),
+    };
+  };
+
+  // The order list shows another set of orders: everything under the banner is replaced, and
+  // its clocks are registered like a fresh page's.
+  const swapOrders = next => {
+    const hero = document.querySelector('.acct__main > .acct-hero');
+    const nextHero = next.querySelector('.acct__main > .acct-hero');
+    if (!hero || !nextHero) return null;
+    return {
+      name: () => {},
+      apply: () => {
+        while (hero.nextSibling) hero.nextSibling.remove();
+        const part = document.createDocumentFragment();
+        for (let node = nextHero.nextSibling; node; node = node.nextSibling) part.append(document.importNode(node, true));
+        hero.parentElement.append(part);
+        document.dispatchEvent(new Event('prices:updated'));
+      },
+      clear: () => {},
+    };
+  };
+
+  let pending = 0;
+  let shown = location.search;
+  const go = async (url, push, href) => {
+    const ticket = ++pending;
+    try {
+      const response = await fetch(url, {headers: {Accept: 'text/html'}, credentials: 'same-origin'});
+      if (!response.ok || new URL(response.url).pathname !== location.pathname) throw new Error('elsewhere');
+      const next = new DOMParser().parseFromString(await response.text(), 'text/html');
+      if (ticket !== pending) return;
+      const change = sortCards(next) || swapOrders(next);
+      if (!change) throw new Error('unknown');
+      const apply = () => {
+        change.apply();
+        if (push) history.pushState({inPlace: true}, '', url);
+        shown = location.search;
+        document.title = next.title;
+      };
+      if (document.startViewTransition && !reduced.matches) {
+        change.name();
+        const transition = document.startViewTransition(apply);
+        // A transition never holds the page: one still running after a second is cut short.
+        const guard = setTimeout(() => transition.skipTransition(), 1000);
+        transition.ready.catch(() => {});
+        transition.finished.catch(() => {}).finally(() => { clearTimeout(guard); change.clear(); });
+        await transition.updateCallbackDone;
+      } else apply();
+      // Keyboard focus stays on the choice just made, now that its link was redrawn.
+      if (href) [...document.querySelectorAll(LINKS)].find(link => link.getAttribute('href') === href)?.focus({preventScroll: true});
+    } catch {
+      location.assign(url);
+    }
+  };
+
+  document.addEventListener('click', event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest(LINKS);
+    if (!link || link.target || new URL(link.href).pathname !== location.pathname) return;
+    event.preventDefault();
+    go(link.href, true, link.getAttribute('href'));
+  });
+  // Back and forward between these states change them in place too; a change of the #part alone is not one.
+  addEventListener('popstate', () => {
+    if (location.search === shown || !document.querySelector('.v-dept-page .grid, .acct__main > .acct-hero')) return;
+    go(location.href, false, null);
+  });
+})();
