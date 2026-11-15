@@ -206,6 +206,11 @@ class OrderItem(models.Model):
         WARRANTY_REFUND = "warranty_refund", _("بازپرداخت گارانتی")
         OPERATOR = "operator", _("پشتیبانی لغو کرد")
 
+    class InputNotice(models.IntegerChoices):
+        NONE = 0, _("بدون یادآوری")
+        REMINDER = 1, _("یادآوری")
+        FINAL = 2, _("آخرین یادآوری")
+
     order = models.ForeignKey(
         Order, on_delete=models.PROTECT, related_name="items", verbose_name=_("سفارش")
     )
@@ -233,6 +238,10 @@ class OrderItem(models.Model):
     )
     sla_paused_at = models.DateTimeField(
         _("زمان توقف مهلت تحویل"), null=True, blank=True, editable=False
+    )
+    # The last notice of the input-timeout ladder in the current waiting episode (ADR-0009).
+    input_notice = models.PositiveSmallIntegerField(
+        _("یادآوری اطلاعات"), choices=InputNotice.choices, default=0, editable=False
     )
     cancel_reason = models.CharField(  # noqa: DJ001 - no reason until cancellation
         _("دلیل لغو"), max_length=32, choices=CancelReason.choices, null=True, blank=True
@@ -302,6 +311,9 @@ class OrderItem(models.Model):
             models.CheckConstraint(
                 condition=~Q(status__in=["CANCELLED", "REFUNDED"]) | Q(cancel_reason__isnull=False),
                 name="order_item_cancel_has_reason",
+            ),
+            models.CheckConstraint(
+                condition=Q(input_notice__in=[0, 1, 2]), name="order_item_input_notice_valid"
             ),
         ]
 

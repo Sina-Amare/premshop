@@ -9,6 +9,8 @@ class Notification(models.Model):
         PURCHASE = "purchase_confirmation", _("تأییدیه‌ی خرید")
         PAYMENT = "payment_confirmed", _("تأیید پرداخت")
         INPUT = "input_requested", _("درخواست اطلاعات")
+        INPUT_REMINDER = "input_reminder", _("یادآوری اطلاعات")
+        INPUT_FINAL = "input_final_warning", _("آخرین یادآوری اطلاعات")
         DELIVERY = "delivery_completed", _("تحویل محصول")
         REJECTION = "replacement_rejected", _("رد درخواست تعویض")
         DELAY = "supply_delayed", _("تغییر مهلت تحویل")
@@ -74,6 +76,8 @@ class Notification(models.Model):
                         "purchase_confirmation",
                         "payment_confirmed",
                         "input_requested",
+                        "input_reminder",
+                        "input_final_warning",
                         "delivery_completed",
                         "replacement_rejected",
                         "supply_delayed",

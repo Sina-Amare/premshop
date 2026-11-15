@@ -95,9 +95,12 @@ class Refund(models.Model):
     status = models.CharField(
         _("وضعیت"), max_length=10, choices=Status.choices, default=Status.OWED
     )
+    # Empty only for the system's 21-day cancellation (ADR-0009), which a trigger enforces.
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="+",
         verbose_name=_("ثبت‌کننده"),
     )

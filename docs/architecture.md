@@ -194,6 +194,7 @@ One Huey consumer runs these, scheduled in UTC:
 | `core.tasks.clean_expired_sessions` | daily 03:10 | Removes expired sessions |
 | `core.tasks.clean_mail_attempts` | daily 03:15 | Deletes mail-attempt rows older than 90 days |
 | `orders.tasks.clean_credential_access_logs` | daily 03:20 | Deletes access-log rows older than 365 days |
+| `orders.tasks.climb_input_ladder` | hourly, acting only from 10:00 to 22:00 in Tehran | Takes each item still waiting for the customer's details one step along the input-timeout ladder, each in its own transaction ([Missing details](order-lifecycle.md#missing-details-the-input-timeout-ladder)) |
 | `orders.tasks.clean_delivered_details` | daily 03:25 | Deletes delivered details and customer input past their retention deadline ([Retention](order-lifecycle.md#retention)), each item in its own transaction |
 
 - The queue name is derived from the database's host, port and name, never its credentials, so each database has its own consumer. Huey runs asynchronously in development too; tests use in-memory storage and run tasks explicitly.
@@ -268,7 +269,6 @@ The following are designed and bound by decisions, but not implemented:
 |---|---|
 | Payment through the gateway: server-side verification, amount check, idempotent confirmation, lost-callback inquiry, refunds | [ADR-0019](decisions/0019-payment-gateway.md), [ADR-0013](decisions/0013-payment-provider-interface-deferred.md), [ADR-0005](decisions/0005-money-in-toman.md) |
 | The customer's view of delivered details and the single-use delivery link | [ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md), [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md) |
-| The reminders and timeout for missing customer input | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
 | Operator alerts and the remaining customer messages | [ADR-0010](decisions/0010-event-log-and-notification-outbox.md) |
 | The order dashboard | [ADR-0002](decisions/0002-module-boundaries-and-service-layer.md) |
 | An HTTP API | [ADR-0004](decisions/0004-no-drf-in-phase-1.md) |

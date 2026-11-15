@@ -65,7 +65,7 @@ stateDiagram-v2
 | A5 | `QUEUED` → `DELIVERED` | The operator delivers | operator | Yes |
 | A6 | `QUEUED` → `CANCELLED` | A supply failure; the refund it owes is recorded | operator | Yes |
 | A7 | `AWAITING_INPUT` → `QUEUED` | The customer supplies the information | customer, operator | Yes; operator controls, owner-authorized services |
-| A8 | `AWAITING_INPUT` → `CANCELLED` | A supply failure, or details still missing 21 Tehran calendar days after the request | operator | Yes, by hand; the reminders that would lead there are not built |
+| A8 | `AWAITING_INPUT` → `CANCELLED` | A supply failure, or details still missing 21 Tehran calendar days after the request | operator, or the system on the 21st day | Yes |
 | A9 | `DELIVERED` → `REPLACEMENT_REQUESTED` | A warranty claim | customer, operator | Yes, the operator's |
 | A10a | `REPLACEMENT_REQUESTED` → `DELIVERED` | A replacement is delivered | operator | Yes |
 | A10b | `REPLACEMENT_REQUESTED` → `DELIVERED` | The claim is rejected, with a note | operator | Yes |
@@ -158,7 +158,20 @@ The gateway request, callback verification and the lost-callback inquiry are not
 
 Telegram items leave `input_received_at` null at checkout even when an email or username was collected. Handoff records `input_requested_at` and makes the request available on the owner's order page through the existing support destination; it does not send a message. First receipt computes the deadline once. A later request retains the deadline and sets `sla_paused_at`; resume adds exactly the elapsed pause, clears that marker and preserves the original first receipt. It neither snaps the shifted deadline nor reapplies the original cap. The database refuses a pause marker without a deadline.
 
-The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the 48-hour reminder, seven-day flag, 14-day warning and 21-calendar-day input timeout; receipt ends the episode and a distinct later request starts another. These automated steps remain unbuilt; the cancellation at 21 days is the operator's ([paid cancellation](#paid-cancellation-and-refunds)), and it must be demonstrated before affected paid orders are accepted. Holidays never stop this ladder ([ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)).
+The expected history event identifies the waiting episode. Immediate repeats return the completed result without another event or clock change; stale actions cannot affect a newer episode. Repeated requests keep the existing request time. That time anchors the input-timeout ladder below; receipt ends the episode and a distinct later request starts another.
+
+### Missing details: the input-timeout ladder
+
+[ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md)'s ladder counts from the episode's `input_requested_at`, and nothing pauses it: not a paused deadline, and not a holiday.
+
+| When | What happens |
+|---|---|
+| 48 hours after the request | The customer gets a reminder (`input_reminder`) naming the last day to send |
+| More than 7 days (7 × 24 hours) after the request | The operator panel's home counts the order under «بیش از ۷ روز منتظر اطلاعات», and the waiting item's row shows its automatic cancellation date in the overdue tone |
+| From the 14th Tehran calendar day | The customer gets the final reminder (`input_final_warning`), naming the same last day |
+| From 21:00 on the 21st Tehran calendar day | The system cancels the item for `input_timeout` through the shared paid-cancellation code: an owed `Refund` with no `created_by`, the unit back in stock, the discount use released when it applies, a history row by the system and the cancellation notice, which names the reason and says no transfer has been made |
+
+The last day to send is the 20th day after the request's Tehran date. `orders.tasks.climb_input_ladder` runs `run_input_ladder` hourly; it acts only from 10:00 to 22:00 in Tehran, so no notice arrives at night and the operator is at hand when an item is cancelled. On the 21st day it cancels only from the last support hour: details a customer sent late on the last day are recorded by the operator that day, and no notice goes out on it, since both would name a day already past. For each waiting item it calls `advance_input_ladder`, which locks the buyer, the order, the verified payment, the plan, the discount code and the item, in the shared lock order, then checks again that the item is still waiting in the episode the sweep selected: a receipt, a newer request or another sweep that got there first leaves nothing to do. `OrderItem.input_notice` records the last notice of the current episode, so each notice goes once, a new request starts again from none, and a sweep that runs late sends only the notice now due. Notices change no status and write no history row, so an operator's open page stays valid; each is keyed by the episode's request event in the outbox. One failing item is logged with its id and exception class and does not stop the others. The job never records or claims a transfer: the refund is executed by an operator as any other.
 
 ## Operator queue
 
@@ -260,6 +273,7 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |
 | Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
+| The input-timeout ladder: notices, their once-per-episode rule, support hours, the operator's flag, the 21st-day cancellation, races and the refund's attribution | `apps/orders/tests/test_input_ladder.py` |
 | Paid cancellation: reasons by status, warranty and 21-day boundaries, amounts, discount shares and their release, stock, repeats, permissions and the panel form | `apps/orders/tests/test_paid_cancellation.py`, `test_paid_cancellation_admin.py`, `test_paid_cancellation_browser.py` |
 | The refund ledger's database guards | `apps/payments/tests/test_refund_guards.py` |
 | Manual refund execution: selection, exact amount, facts, times, rollback, repeats and races | `apps/payments/tests/test_refund_execution.py`, `test_refund_concurrency.py` |
