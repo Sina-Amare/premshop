@@ -233,7 +233,7 @@ def _related_to(product: Product) -> list[Product]:
     """
     others = list(_for_cards().exclude(pk=product.pk))
     # Display order only; nothing secret rides on it.
-    return random.sample(others, min(RELATED_COUNT, len(others)))  # noqa: S311
+    return random.sample(others, min(RELATED_COUNT, len(others)))  # noqa: S311  # nosec B311
 
 
 def faq(request: HttpRequest) -> HttpResponse:

@@ -1478,3 +1478,34 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 .nebula__hub .v-mark{width:34px;height:34px}
 @keyframes hub-ring{from{transform:scale(1);opacity:.6}to{transform:scale(1.22);opacity:0}}
 .v-service-cloud.is-orbital .v-effect{opacity:.9}
+
+/* Every pill a person taps is at least 44px tall. */
+.cart-remove,.cart-summary .cart-back,.checkout-box .cart-back,.buybox__note a,.sort__link{min-height:44px}
+@media(max-width:760px){.cart-hero .cart-back{width:44px;min-height:44px}.sort__link{min-height:44px}}
+/* Labels on tinted tiles and panels keep AA contrast. */
+.acct-panel--me .fact__k,.pdp__facts .fact__k,#resend-hint{color:var(--v-text)}
+#resend-form.otp__resend{background:#fff}
+/* The account pill adds no height to the header row. */
+.v-account{padding-block:0}
+/* The cart toast stays compact: the way to the cart sits beside the product, not under it. */
+.cart-toast{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head head" "msg cta"}
+.cart-toast__head{grid-area:head;padding:5px 6px 5px 14px}
+.cart-toast__head button{width:34px;height:34px}
+.cart-toast__message{grid-area:msg;min-width:0;padding:10px 14px}
+.cart-toast--art .cart-toast__art{width:44px;height:44px;border-radius:13px}
+.cart-toast__art img{width:28px;height:28px}
+.cart-toast>a{grid-area:cta;align-self:center;min-height:44px;margin:0 14px 0 14px;padding:0 14px;font-size:13px}
+@media(max-width:719px){.cart-toast__message{padding:10px 12px}.cart-toast>a{margin:0 12px 0 12px;padding:0 12px;font-size:12px}}
+
+/* The toast's total keeps a row of its own on one line, and the whole toast stays under 140px. */
+.cart-toast{grid-template-areas:"head head" "msg cta" "total total"}
+.cart-toast__head{padding-block:4px}
+.cart-toast__head button{width:32px;height:32px}
+.cart-toast__message{padding-block:8px}
+.cart-toast>[data-toast-total]{grid-area:total;padding:0 14px 10px;font-size:13px;line-height:1.7;color:var(--v-text);white-space:nowrap}
+/* The header's department tabs keep the row at its height. */
+.v-desktop-cats a[data-dept]{padding-block:12px}
+.cart-toast__head{padding-block:3px}
+.cart-toast__message{padding-block:6px}
+.cart-toast>[data-toast-total]{padding-bottom:8px}
+@media(max-width:719px){.cart-toast>a{width:44px;min-height:44px;padding:0;justify-content:center;gap:0;font-size:0;border-radius:50%}.cart-toast>a>.v-icon{width:18px;height:18px}}
