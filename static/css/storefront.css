@@ -1185,7 +1185,7 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 /* Cart toast: a green confirmation strip, the product as its app tile, and one clear way to the cart. */
 .cart-toast{grid-template-columns:minmax(0,1fr);gap:0;padding:0;overflow:hidden;border:1px solid var(--v-line);border-radius:18px;background:#fff;box-shadow:0 26px 54px -26px rgb(32 37 46/.5)}
 .cart-toast:not([hidden]){animation:toast-in 260ms cubic-bezier(.2,.8,.3,1)}
-@keyframes toast-in{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes toast-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .cart-toast__head{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;border-bottom:1px solid #c7eedc;background:#e9f9f2}
 .cart-toast__head>.v-icon{box-sizing:border-box;flex:none;width:26px;height:26px;margin:0;padding:5px;border-radius:50%;background:#12b886;color:#fff}
 .cart-toast__head strong{flex:1;min-width:0;font-size:14px;font-weight:700;line-height:1.6;color:#0f5e44}
