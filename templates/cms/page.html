@@ -11,7 +11,7 @@
 <div class="wrap page">
   <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span aria-current="page">{{ page.title }}</span></nav>
   <article class="legal-page">
-    <header class="page-head"><h1 class="page-head__title">{{ page.title }}</h1></header>
+    <header class="page-head v-page-hero v-page-hero--light"><h1 class="page-head__title">{{ page.title }}</h1></header>
     {% if page.body %}<div class="legal-page__body">{{ page.body|markdown:"23" }}</div>{% elif preview %}<p class="prose">متن این صفحه هنوز نوشته نشده است.</p>{% endif %}
     {% if page.slug == "contact" %}
     <section class="legal-page__support" aria-labelledby="contact-support">

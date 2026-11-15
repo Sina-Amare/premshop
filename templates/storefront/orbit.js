@@ -11,13 +11,30 @@
   const digits = new Intl.NumberFormat('fa-IR');
   let start = 0, size = 6, group = [], points = [], orbital = false;
   let visible = false, hovered = false, phase = -Math.PI / 2, frame = 0, last = 0;
+  // The services' sketches circle the hub on a ring of their own, inside the logos' orbit
+  // and turning the other way: the only band no logo or name ever passes through.
+  const sketchLayer = scene.querySelector('.v-service-effects');
+  const sketches = sketchLayer ? [...sketchLayer.querySelectorAll('[data-service-effect]')] : [];
+  const sketchHome = sketches.map(g => g.getAttribute('transform'));
+  const sketchView = sketchLayer?.getAttribute('viewBox');
+  const moon = {rx: 92, ry: 70, scale: .75};
+  let sketchCentres = [], hub = {x: 0, y: 0};
+  const paintSketches = () => sketchCentres.forEach((c, i) => {
+    const a = -phase * 2 + i * Math.PI * 2 / sketches.length;
+    const x = hub.x + Math.cos(a) * moon.rx - c.x * moon.scale;
+    const y = hub.y + Math.sin(a) * moon.ry - c.y * moon.scale;
+    sketches[i].setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${moon.scale})`);
+  });
   const positions = angle => points.map((point, i) => {
     const theta = angle + i * Math.PI * 2 / group.length;
     return {x: point.cx + Math.cos(theta) * point.rx, y: point.cy + Math.sin(theta) * point.ry, w:point.w, h:point.h};
   });
-  const paint = () => positions(phase).forEach((p, i) => {
-    group[i].style.transform = `translate(${p.x}px, ${p.y}px)`;
-  });
+  const paint = () => {
+    positions(phase).forEach((p, i) => {
+      group[i].style.transform = `translate(${p.x}px, ${p.y}px)`;
+    });
+    paintSketches();
+  };
   const tick = time => {
     if (last) phase += (time - last) * Math.PI * 2 / 240000;
     last = time;
@@ -66,6 +83,13 @@
     const maxW = Math.max(0, ...points.map(p => p.w));
     const maxH = Math.max(0, ...points.map(p => p.h));
     points.forEach(p => Object.assign(p, {cx:(width-p.w)/2, cy:(height-p.h)/2, rx:(width-maxW)/2-12, ry:(height-maxH)/2-12}));
+    // The drawn track runs through the logos' own centres, so line and logos never disagree.
+    const mark = group[0]?.querySelector('.v-service-mark');
+    const shift = mark ? mark.offsetTop + mark.offsetHeight/2 - group[0].offsetHeight/2 : 0;
+    track.style.setProperty('--orbit-rx', `${Math.max(0, (width-maxW)/2-12)}px`);
+    track.style.setProperty('--orbit-ry', `${Math.max(0, (height-maxH)/2-12)}px`);
+    track.style.setProperty('--orbit-shift', `${shift}px`);
+    hub = {x: width / 2, y: height / 2 + shift};
     // A complete ellipse must keep the padded rectangles apart at every angle.
     if (orbital) for (let i = 0; i < points.length; i++) {
       for (let j = i + 1; j < points.length; j++) {
@@ -78,6 +102,16 @@
     }
     scene.classList.toggle('is-orbital', orbital);
     scene.dataset.orbitMode = orbital ? 'orbit' : 'still';
+    if (sketchLayer && orbital) {
+      // One unit per pixel, so the ring is laid out in the same measure as the logos.
+      sketchLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      sketches.forEach(g => g.removeAttribute('transform'));
+      sketchCentres = sketches.map(g => {const b = g.getBBox(); return {x: b.x + b.width / 2, y: b.y + b.height / 2};});
+    } else if (sketchLayer) {
+      sketchCentres = [];
+      sketchLayer.setAttribute('viewBox', sketchView);
+      sketches.forEach((g, i) => g.setAttribute('transform', sketchHome[i]));
+    }
     if (orbital) paint();
     update();
   };

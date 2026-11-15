@@ -212,6 +212,51 @@
       }
     }
   });
+  // The product's mark is tossed from the pressed button into the header's cart, which bounces as it lands.
+  // A visitor who asked for less motion, or a cart scrolled out of sight, gets the toast alone.
+  const fly = (data, from) => new Promise(resolve => {
+    const cart = document.querySelector('.v-cart');
+    const end = cart?.getBoundingClientRect();
+    const start = from?.getBoundingClientRect();
+    if (!end?.width || !start?.width || end.bottom < 0 || !document.body.animate
+      || matchMedia('(prefers-reduced-motion: reduce)').matches) return resolve();
+    const size = 56;
+    const mark = Object.assign(document.createElement('span'), {className: 'cart-flight'});
+    const body = Object.assign(document.createElement('span'), {className: 'cart-flight__body'});
+    mark.setAttribute('aria-hidden', 'true');
+    if (data.image) body.append(Object.assign(document.createElement('img'), {src: data.image, alt: ''}));
+    else body.textContent = document.querySelector('.pdp__head .tile--mono')?.textContent.trim().slice(0, 1) || '';
+    mark.append(body);
+    const x0 = start.left + start.width / 2 - size / 2;
+    const y0 = start.top + start.height / 2 - size / 2;
+    const dx = end.left + end.width / 2 - size / 2 - x0;
+    const dy = end.top + end.height / 2 - size / 2 - y0;
+    Object.assign(mark.style, {left: x0 + 'px', top: y0 + 'px'});
+    document.body.append(mark);
+    const time = 780;
+    // The top of the arc stays inside the window, however far below the cart the button sits.
+    const apex = Math.max(Math.min(0, dy) - 70, 8 - y0);
+    // Across at an even pace while it rises above the cart and drops in: two motions make the arc.
+    mark.animate([{transform: 'translateX(0)'}, {transform: `translateX(${dx}px)`}], {duration: time, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards'});
+    const flight = body.animate([
+      {transform: 'translateY(0) scale(1) rotate(0)', easing: 'cubic-bezier(.2,.8,.4,1)'},
+      {transform: `translateY(${apex}px) scale(1.12) rotate(-12deg)`, offset: .45, easing: 'cubic-bezier(.6,0,.85,.4)'},
+      {transform: `translateY(${dy}px) scale(.3) rotate(10deg)`},
+    ], {duration: time, fill: 'forwards'});
+    // Decoration only: it settles once, and a paused timeline (a hidden tab) never holds the add back.
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      mark.remove();
+      resolve();
+      try {
+        cart.animate([{transform: 'scale(1)'}, {transform: 'scale(1.3)'}, {transform: 'scale(.92)'}, {transform: 'scale(1)'}], {duration: 420, easing: 'ease-out'});
+      } catch { /* the bounce is optional */ }
+    };
+    flight.onfinish = flight.oncancel = done;
+    setTimeout(done, time + 400);
+  });
   if (form && window.fetch) form.addEventListener('submit', async event => {
     event.preventDefault();
     if (form.dataset.pending === 'true') return;
@@ -229,6 +274,8 @@
       const response = await fetch(form.action, {method: 'POST', body, headers: {Accept: 'application/json'}});
       const data = await response.json();
       if (response.ok) {
+        // The item is already in the cart; a failed animation must not report otherwise.
+        await fly(data, event.submitter || button).catch(() => {});
         await sync(data);
         show(data);
       } else fail(data.message || 'صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');

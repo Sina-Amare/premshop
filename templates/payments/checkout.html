@@ -4,7 +4,7 @@
 {% block content %}
 <div class="wrap cart-page checkout-page">
   <nav class="crumbs" aria-label="مسیر"><a href="{% url 'cart' %}">سبد خرید</a><span class="crumbs__sep">/</span><span>ثبت سفارش</span></nav>
-  <header class="cart-heading"><h1>ثبت سفارش</h1></header>
+  <header class="cart-heading cart-hero"><span class="cart-hero__icon">{% include 'storefront/icon.html' with name='check' %}</span><h1>ثبت سفارش</h1>{% include 'payments/_hero_art.html' %}</header>
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
   {% if existing %}

@@ -13,7 +13,7 @@
   <div class="wrap"><span class="badge badge--key">پیش‌نویس</span> این صفحه منتشر نشده است و فقط کارکنان فروشگاه آن را می‌بینند. <a href="{% url 'admin:catalog_product_change' product.pk %}">ویرایش در پنل</a></div>
 </div>
 {% endif %}
-<div class="wrap page">
+<div class="wrap page v-dept-page" data-dept="{{ product.category.slug }}" style="--brand: {{ product.card_colour }}">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><a href="{% url 'category' product.category.slug %}">{{ product.category.name }}</a><span class="crumbs__sep">/</span><span><bdi>{{ product.name }}</bdi></span></nav>
 
 <div class="pdp">
@@ -153,7 +153,7 @@
       {% endif %}
       {% if before_buying_shown %}<p class="micro buybox__note"><a href="#before-buying">گارانتی و شرایط خرید</a></p>{% endif %}
     </div>
-    <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پشتیبانی در تلگرام</a><br>{{ support.hours }}</p>
+    <p class="micro buybox__help"><a href="{{ support.telegram_url }}" rel="noopener"><span class="buybox__help-icon">{% include 'storefront/icon.html' with name='telegram' %}</span><span><b>پشتیبانی در تلگرام</b><small>{{ support.hours }}</small></span></a></p>
   </aside>
   {% include "catalog/_buy_bar.html" %}
 </div>
@@ -167,12 +167,10 @@
   yet to learn from, so «پیشنهاد ویژه‌ی شما» would be a lie told in a
   friendly voice.
   {% endcomment %}
-  <div class="section__head">
-    <h2 class="section__title">محصولات دیگر</h2>
-    <a class="shelf__all" href="{% url 'category' product.category.slug %}">
-      همه‌ی محصولات {{ product.category.name }}
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
-    </a>
+  <div class="v-dept-head v-dept-banner v-more-banner">
+    <div class="v-category-heading"><span class="v-category-icon">{% include 'storefront/icon.html' with name='grid' %}</span><div><h2>محصولات دیگر</h2></div></div>
+    <span class="v-dept-art"><span class="v-shuffle" aria-hidden="true">{% for other in related|slice:":4" %}<span class="v-shuffle__card">{% if other.image %}<img src="{{ other.image.url }}" alt="" width="34" height="34" loading="lazy" decoding="async">{% else %}<b>{{ other.name|slice:":1" }}</b>{% endif %}</span>{% endfor %}</span></span>
+    <a class="v-dept-more" href="{% url 'home' %}#products">همه‌ی محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
   </div>
   <div class="v-related" data-rail aria-label="محصولات دیگر">
     {% include 'storefront/controls.html' %}

@@ -135,6 +135,9 @@ def test_empty_checkout_and_expired_telegram_code(browser, live_server, width, q
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page).to_have_url(live_server.url + reverse("login-code-verify"))
         expect(page.get_by_role("heading", name="کد ورود را وارد کنید", exact=True)).to_be_visible()
+        # The countdown starts when the page's script runs, which then holds the resend
+        # back; jumping the clock before that leaves the full ten minutes ahead.
+        expect(page.locator("#resend")).to_be_disabled()
         page.clock.fast_forward(601000)
         expect(page.locator("#code-clock")).to_have_text("کد منقضی شد")
         expect(page.locator(".otp__cell").first).to_be_disabled()

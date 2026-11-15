@@ -84,14 +84,17 @@ def assert_asks_support(row: str) -> None:
     assert text_of(link.group(2)) == ASK
 
 
-def test_the_home_category_list_ends_with_the_request_row(client, shop):
+def test_the_home_catalogue_ends_with_the_request_card(client, shop):
+    """Asked where a visitor has seen every product and not found theirs: after the
+    last department, before the questions."""
     body = client.get(reverse("home")).content.decode()
 
     (row,) = request_rows(body)
     assert_asks_support(row)
-    listing = body[body.index('class="v-category-links"') :]
-    listing = listing[: listing.index("</section>")]
-    assert listing.rindex('href="/c/') < listing.index('class="v-request"'), "not the last row"
+    catalogue = body[body.index('id="products"') :]
+    assert 'href="/p/' in catalogue[: catalogue.index('class="v-request"')], "before the products"
+    assert catalogue.index('class="v-request"') < catalogue.index("v-faq-band"), "not before FAQ"
+    assert 'class="v-request"' not in body[: body.index('id="products"')], "still at the top"
 
 
 def test_a_category_grid_ends_with_the_request_row(client, shop):

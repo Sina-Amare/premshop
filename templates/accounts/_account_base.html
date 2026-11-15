@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load fa %}
+{% extends "base.html" %}{% load fa static %}
 
 {% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
 
@@ -11,19 +11,30 @@
       {# One unbroken token; it gets the whole row and an ellipsis. #}
       <span class="acct__email"><bdi dir="ltr">{% if request.user.phone %}{{ request.user.phone|fa_digits }}{% else %}{{ request.user.email }}{% endif %}</bdi></span>
     </div>
-    <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>اطلاعات حساب</a>
-    <a href="{% url 'order-list' %}"{% if section == "orders" %} aria-current="page"{% endif %}>سفارش‌ها</a>
-    <form method="post" action="{% url 'logout' %}" class="acct__out">
+    <a href="{% url 'account' %}"{% if section == "profile" %} aria-current="page"{% endif %}>{% include 'storefront/icon.html' with name='user' %}اطلاعات حساب</a>
+    <a href="{% url 'order-list' %}"{% if section == "orders" %} aria-current="page"{% endif %}>{% include 'storefront/icon.html' with name='cart' %}سفارش‌ها</a>
+    <form method="post" action="{% url 'logout' %}" class="acct__out" data-logout>
       {% csrf_token %}
       <button type="submit" class="btn btn--ghost">خروج از حساب</button>
     </form>
+    {# Leaving asks once; without a script the button above signs out directly. #}
+    <dialog class="acct-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-text">
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <span class="acct-dialog__icon">{% include 'storefront/icon.html' with name='user' %}</span>
+        <h2 id="logout-title">از حساب کاربری خارج می‌شوید؟</h2>
+        <p id="logout-text">بعد از خروج، برای دیدن سفارش‌هایتان باید دوباره با کد وارد شوید.</p>
+        <div class="acct-dialog__actions"><button type="submit" class="btn btn--primary acct-dialog__go">بله، خروج از حساب</button><button type="button" class="btn btn--secondary" data-dialog-close autofocus>انصراف</button></div>
+      </form>
+    </dialog>
+    <script src="{% static 'js/account.js' %}" defer></script>
   </nav>
 
   <div class="acct__main">
     {% for message in messages %}
       {% if message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
     {% endfor %}
-    <h1 class="acct__title">{% block heading %}{% endblock %}</h1>
+    <div class="acct-hero"><span class="acct-hero__icon">{% if section == "orders" %}{% include 'storefront/icon.html' with name='cart' %}{% else %}{% include 'storefront/icon.html' with name='user' %}{% endif %}</span><h1 class="acct__title">{% block heading %}{% endblock %}</h1>{% include 'accounts/_hero_art.html' %}</div>
     {% block section %}{% endblock %}
   </div>
 </div>

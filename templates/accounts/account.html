@@ -18,6 +18,7 @@
   <a class="btn btn--secondary" href="{% url 'order-detail' current_order.order.order_number %}">مشاهده‌ی سفارش</a>
 </section>
 {% endif %}
+<section class="acct-panel acct-panel--me">
 <div class="card acct__card">
   {% if request.user.phone %}<div class="fact"><span class="fact__k">شماره‌ی موبایل</span><span class="fact__lead"></span><span class="fact__v"><bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi></span></div>{% endif %}
   <div class="fact"><span class="fact__k">تاریخ عضویت</span><span class="fact__lead"></span><span class="fact__v">{{ request.user.date_joined|jalali }}</span></div>
@@ -29,9 +30,12 @@
   {% include "accounts/_field.html" with field=profile_form.email %}
   <button type="submit" class="btn btn--primary" data-busy="در حال ذخیره…">ذخیره</button>
 </form>
+</section>
+<div class="acct-panels">
 
 {% if telegram %}
-<h2 class="acct__h2" id="telegram">تلگرام</h2>
+<section class="acct-panel" aria-labelledby="telegram">
+<h2 class="acct__h2" id="telegram">{% include 'storefront/icon.html' with name='telegram' %}تلگرام</h2>
 {% if telegram.linked %}
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">وصل به</span><span class="fact__lead"></span><span class="fact__v">{% if telegram.username %}<bdi class="latin">@{{ telegram.username }}</bdi>{% else %}تلگرام شما{% endif %}</span></div>
@@ -62,13 +66,17 @@
   </form>
 </div>
 {% endif %}
+</section>
 {% endif %}
 
-<h2 class="acct__h2">پشتیبانی</h2>
+<section class="acct-panel" aria-labelledby="support-title">
+<h2 class="acct__h2" id="support-title">{% include 'storefront/icon.html' with name='chat' %}پشتیبانی</h2>
 <div class="card acct__card">
   <div class="fact"><span class="fact__k">تلگرام</span><span class="fact__lead"></span><span class="fact__v"><a href="{{ support.telegram_url }}" rel="noopener"><bdi class="latin">{{ support.telegram }}</bdi></a></span></div>
   <div class="fact"><span class="fact__k">ایمیل</span><span class="fact__lead"></span><span class="fact__v"><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></span></div>
   <div class="fact"><span class="fact__k">پاسخ‌گویی</span><span class="fact__lead"></span><span class="fact__v">{{ support.hours }}</span></div>
 </div>
 <p class="small acct__hint"><a href="{% url 'faq' %}">سؤال‌های پرتکرار</a></p>
+</section>
+</div>
 {% endblock %}

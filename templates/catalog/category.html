@@ -6,10 +6,12 @@
 {% block meta_robots %}{% if snapshot %}<meta name="robots" content="noindex">{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
 {% if snapshot %}{% include 'admin/catalog/preview_extras.html' %}{% endif %}
-<div class="wrap page">
+<div class="wrap page v-dept-page" data-dept="{{ category.slug }}">
 <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>{{ category.name }}</span></nav>
 
-<header data-preview-target="category" class="page-head">
+<header data-preview-target="category" class="page-head v-dept-hero">
+  <div class="v-dept-hero__text">
+  <span class="v-category-icon">{% include 'storefront/category-icon.html' with slug=category.slug %}</span>
   <h1 data-preview-field="name" class="page-head__title">{{ category.name }}</h1>
   {% comment %}Through the restricted renderer, never as markup: whoever can edit a
   category must not be able to put a script on a page customers pay on. It sits
@@ -25,6 +27,9 @@
   about fifteen products.
   {% endcomment %}
   {% if products %}<p class="small page-head__intro">{{ products|length|fa_digits }} محصول</p>{% endif %}
+  </div>
+  <span class="v-dept-art">{% include 'storefront/dept-art.html' with slug=category.slug %}</span>
+</header>
   {% comment %}Plain links, so it works without a script. The default is the bare address;
   the others add a parameter that the canonical link leaves out. One product has
   nothing to be ordered against.{% endcomment %}
@@ -34,15 +39,14 @@
     <a class="sort__link" href="{{ here }}?sort=cheap"{% if chosen == 'cheap' %} aria-current="true"{% endif %}>ارزان‌ترین</a>
     <a class="sort__link" href="{{ here }}?sort=expensive"{% if chosen == 'expensive' %} aria-current="true"{% endif %}>گران‌ترین</a>
   </div>{% endwith %}{% endif %}
-</header>
 
 {% if products %}
   {# Each card's name is an h3; without this the outline jumps from the h1. #}
   <h2 class="sr-only">محصولات {{ category.name }}</h2>
   <div class="grid">
     {% for product in products %}{% include "catalog/_card.html" with product=product first=forloop.first in_category=True %}{% endfor %}
+    {% include "catalog/_request_product.html" %}
   </div>
-  {% include "catalog/_request_product.html" %}
 {% else %}
   <div class="card empty">
     <p class="prose flush">در این دسته فعلاً محصولی نیست.</p>

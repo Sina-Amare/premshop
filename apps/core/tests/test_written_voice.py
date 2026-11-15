@@ -70,9 +70,13 @@ EMOJI = re.compile("[\\U0001f000-\\U0001faff\\u2705\\u274c\\u2728\\u2049\\u2757]
 SELF = Path(__file__).resolve()
 
 # The owner chose emoji for the Telegram bot, whose buttons hold text only
-# (design-language, «Decided by the owner», 2026-11-11). They live in this one
-# file, which is still held to every other rule here; the site stays without them.
-BOT_EMOJI = (ROOT / "apps/core/telegram_emoji.py").resolve()
+# (2026-11-11), and for the home page's offers band (2026-11-14); see
+# design-language, «Decided by the owner». Each lives in its one file, still held
+# to every other rule here; the rest of the site stays without them.
+EMOJI_FILES = (
+    (ROOT / "apps/core/telegram_emoji.py").resolve(),
+    (ROOT / "templates/storefront/offer-art.html").resolve(),
+)
 
 
 def tracked_files() -> list[Path]:
@@ -111,10 +115,12 @@ def test_the_file_list_is_not_empty():
     assert SELF.exists() and SELF not in files, "it excludes itself, and only itself"
 
 
-def test_the_bot_file_is_the_one_place_emoji_may_live():
+def test_the_emoji_files_are_the_only_places_emoji_may_live():
     """An exemption whose file moved or emptied would excuse nothing and hide that."""
-    assert BOT_EMOJI in [path.resolve() for path in tracked_files()]
-    assert EMOJI.search(BOT_EMOJI.read_text(encoding="utf-8"))
+    tracked = [path.resolve() for path in tracked_files()]
+    for path in EMOJI_FILES:
+        assert path in tracked, path
+        assert EMOJI.search(path.read_text(encoding="utf-8")), path
 
 
 def test_no_tracked_file_carries_a_machine_register_marker():
@@ -122,7 +128,7 @@ def test_no_tracked_file_carries_a_machine_register_marker():
     for path in tracked_files():
         try:
             text = path.read_text(encoding="utf-8")
-            found = offences(text, emoji_allowed=path.resolve() == BOT_EMOJI)
+            found = offences(text, emoji_allowed=path.resolve() in EMOJI_FILES)
         except UnicodeDecodeError:
             # Every scanned suffix is text, so this is damage, such as a Persian file
             # rewritten as UTF-16 by an editor or a shell; skipping it hid the damage.
