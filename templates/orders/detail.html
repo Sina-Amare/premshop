@@ -13,7 +13,7 @@
 <p data-support-instructions>پرداخت آنلاین هنوز فعال نیست. برای پرداخت {{ card.total|price_html }}، {% if support_identifier %}شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %}شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>
 {% elif state == 'awaiting_input' %}
 <h2 id="order-next-title">اطلاعات فعال‌سازی <bdi>{{ products }}</bdi> لازم است</h2>
-<div data-input-request><p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>
+<div data-input-request>{% if has_site_input %}<p>اطلاعات فعال‌سازی را در فرم زیر وارد کنید.</p>{% else %}<p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
 {% if card.hours %}<p>پس از رسیدن اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
 {% elif state == 'refund_owed' %}
 <h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
@@ -56,6 +56,17 @@
 <a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
 {% endif %}
 {% endwith %}
+{% if input_requests %}<div id="order-input" aria-label="اطلاعات فعال‌سازی">
+{% for row in input_requests %}<div class="order-input-item" data-input-item="{{ row.item.pk }}">
+<h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
+{% if row.last_day %}<p id="input-deadline-{{ row.item.pk }}" data-input-deadline>آخرین روز ارسال: {{ row.last_day|jalali }}</p>{% endif %}
+{% if row.can_submit %}<form method="post" action="{% url 'order-input-submit' order.order_number row.item.pk %}">
+{% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ row.item.latest_event_id }}">
+<div class="field"><label class="field__label" for="customer-input-{{ row.item.pk }}">{{ row.item.product_snapshot.customer_input_label }}</label>
+<input class="field__input" id="customer-input-{{ row.item.pk }}" name="customer_input" type="{% if row.item.product_snapshot.input_type == 'email' %}email{% else %}text{% endif %}" maxlength="{% if row.item.product_snapshot.input_type == 'email' %}254{% else %}150{% endif %}" dir="auto" autocomplete="off" spellcheck="false" required{% if row.last_day %} aria-describedby="input-deadline-{{ row.item.pk }}"{% endif %}></div>
+<button type="submit" class="btn btn--primary">ثبت اطلاعات</button>
+</form>{% elif has_site_input or card.state != 'awaiting_input' %}<p>اطلاعات این محصول را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
+</div>{% endfor %}</div>{% endif %}
 {% if card.contact %}{% if card.state == 'delivered' and not card.rejected_at %}<details class="order-contact-more"><summary>مشکلی هست؟</summary>
 {% include "orders/_support_contact.html" %}</details>{% else %}{% include "orders/_support_contact.html" %}{% endif %}{% endif %}
 </section>

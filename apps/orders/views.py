@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +19,7 @@ from apps.catalog.models import Product
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders import status as order_status
-from apps.orders.models import OrderSupportIdentifier
+from apps.orders.models import OrderItem, OrderSupportIdentifier
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
@@ -27,7 +27,13 @@ from apps.orders.selectors import (
     order_for_tracking,
     order_lead,
 )
-from apps.orders.services import cancel_unpaid_order, replace_support_token
+from apps.orders.services import (
+    can_submit_customer_input,
+    cancel_unpaid_order,
+    input_last_day,
+    replace_support_token,
+    submit_customer_input,
+)
 
 ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
@@ -102,6 +108,17 @@ def _render_detail(
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
     except ImproperlyConfigured:
         support_identifier = None
+    input_requests = [
+        {
+            "item": item,
+            "can_submit": can_submit_customer_input(item),
+            "last_day": (
+                input_last_day(item.input_requested_at) if item.input_requested_at else None
+            ),
+        }
+        for item in summary["order"].items.all()
+        if item.status == OrderItem.Status.AWAITING_INPUT
+    ]
     response = render(
         request,
         "orders/detail.html",
@@ -110,6 +127,8 @@ def _render_detail(
             "timeline": customer_timeline(summary["order"]),
             "section": "orders",
             "error": error,
+            "input_requests": input_requests,
+            "has_site_input": any(row["can_submit"] for row in input_requests),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
             # Order news goes by email or Telegram; with neither, this page is the news.
@@ -124,6 +143,37 @@ def _render_detail(
     response["Content-Encoding"] = "identity"
     response["Referrer-Policy"] = "same-origin"
     return response
+
+
+@sensitive_post_parameters("customer_input")
+@never_cache
+@login_required
+@require_POST
+def provide_input(request: HttpRequest, order_number: int, item_id: int) -> HttpResponse:
+    summary = _owned_summary(request, order_number)
+    order = summary["order"]
+    if not any(item.pk == item_id for item in order.items.all()):
+        raise Http404
+    try:
+        expected = int(request.POST.get("expected_event_id", ""))
+    except ValueError:
+        expected = 0
+    try:
+        submit_customer_input(
+            order_id=order.pk,
+            item_id=item_id,
+            actor=cast(User, request.user),
+            expected_event_id=expected,
+            customer_input=request.POST.get("customer_input", ""),
+        )
+    except ValidationError as invalid:
+        return _render_detail(
+            request,
+            _owned_summary(request, order_number),
+            error=" ".join(invalid.messages),
+            status=400,
+        )
+    return redirect("order-detail", order_number=order.order_number)
 
 
 @sensitive_post_parameters("expected_support_token")

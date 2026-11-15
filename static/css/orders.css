@@ -73,6 +73,11 @@ details.order-card>p{margin-block:12px 16px}
 .order-next [data-input-request] .small{margin-block-start:8px;color:var(--v-text);font-size:13px}
 .order-next [data-input-request] .btn{margin-block-start:16px}
 .order-next>a:not(.btn){margin-block-start:8px}
+.order-input-item{margin-block-start:16px}
+.order-input-item+.order-input-item{padding-block-start:16px;border-block-start:1px solid var(--color-line)}
+.order-input-item h3{margin:0;font:600 15px/1.9 var(--font-head)}
+.order-input-item p{margin-block:4px 12px;font-size:14px}
+.order-input-item .field__input{max-inline-size:100%}
 .order-support-label{margin-block:16px 6px;color:var(--v-text);font-size:13px}
 #order-help .order-support-contacts{margin-block-start:12px}
 #order-help .order-support-replace{margin-block-start:12px;padding-block-start:4px;border-block-start:1px solid var(--v-line)}

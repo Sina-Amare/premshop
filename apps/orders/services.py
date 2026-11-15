@@ -1326,10 +1326,16 @@ def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id
 
 @transaction.atomic
 def _receive_input(
-    *, order_id: int, item_id: int, actor: User, expected_event_id: int, first: bool
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    expected_event_id: int,
+    first: bool,
+    customer_input: str | None = None,
 ) -> OrderItem:
     item, account = _input_item(
-        order_id=order_id, item_id=item_id, actor=actor, operator_only=False
+        order_id=order_id, item_id=item_id, actor=actor, operator_only=customer_input is None
     )
     if _input_replay(
         item, expected_event_id, OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED
@@ -1341,6 +1347,14 @@ def _receive_input(
         or (item.due_at is None) != first
     ):
         raise ValidationError(gettext_lazy("این محصول منتظر دریافت اطلاعات نیست."))
+    fields = ["status", "due_at", "input_received_at", "sla_paused_at"]
+    if customer_input is not None:
+        if not can_submit_customer_input(item):
+            raise ValidationError(gettext_lazy("این محصول منتظر دریافت اطلاعات نیست."))
+        item.customer_input = normalize_customer_input(
+            item.product_snapshot["input_type"], customer_input
+        )
+        fields.append("customer_input")
     at = timezone.now()
     if first:
         item.input_received_at = at
@@ -1353,12 +1367,37 @@ def _receive_input(
     else:
         if item.sla_paused_at is None or item.due_at is None:
             raise ValidationError(gettext_lazy("مهلت تحویل این محصول متوقف نشده است."))
-        item.due_at += at - item.sla_paused_at
+        item.due_at = in_support_window(item.due_at + (at - item.sla_paused_at))
     item.sla_paused_at = None
     item.status = OrderItem.Status.QUEUED
-    item.save(update_fields=["status", "due_at", "input_received_at", "sla_paused_at"])
+    item.save(update_fields=fields)
     _input_event(item, account, OrderItem.Status.AWAITING_INPUT)
     return item
+
+
+def can_submit_customer_input(item: OrderItem) -> bool:
+    return bool(
+        item.status == OrderItem.Status.AWAITING_INPUT
+        and item.paid_at is not None
+        and item.due_at is not None
+        and item.sla_paused_at is not None
+        and item.product_snapshot.get("telegram_required") is False
+        and item.product_snapshot.get("requires_customer_input") is True
+        and item.product_snapshot.get("input_type") in ("email", "username")
+    )
+
+
+def submit_customer_input(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, customer_input: str
+) -> OrderItem:
+    return _receive_input(
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        expected_event_id=expected_event_id,
+        first=False,
+        customer_input=customer_input,
+    )
 
 
 def receive_input(*, order_id: int, item_id: int, actor: User, expected_event_id: int) -> OrderItem:
@@ -1396,7 +1435,7 @@ def input_escalation_cutoff(now: datetime) -> datetime:
     return now - timedelta(days=INPUT_ESCALATION_DAYS)
 
 
-def _input_last_day(requested_at: datetime) -> datetime:
+def input_last_day(requested_at: datetime) -> datetime:
     # The notices name the last whole day to send; cancellation starts the day after.
     return datetime.combine(input_timeout_day(requested_at), time.min, TEHRAN) - timedelta(
         minutes=1
@@ -1446,7 +1485,7 @@ def advance_input_ladder(*, item_id: int, requested_at: datetime, now: datetime)
     ).latest("pk")
     # Keyed by the episode's request, so each notice reaches the customer once an episode.
     events.emit(
-        template, request.pk, item.order_id, item_id=item.pk, due_at=_input_last_day(requested_at)
+        template, request.pk, item.order_id, item_id=item.pk, due_at=input_last_day(requested_at)
     )
     return template
 

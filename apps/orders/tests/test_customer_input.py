@@ -296,6 +296,7 @@ def test_last_day_is_information_and_late_input_can_still_win(client, buyer, pla
     client.force_login(buyer)
     at = MONDAY + timedelta(days=21, hours=10)
     with time_machine.travel(at, tick=False):
+        client.force_login(buyer)
         response = client.post(
             input_url(order, item), {"customer_input": NEW, "expected_event_id": event_id(item)}
         )
