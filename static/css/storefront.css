@@ -1526,3 +1526,7 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
   .v-header:not(.v-header--compact) .v-navline .v-support>span{display:none}
   .v-header:not(.v-header--compact) .v-navline .v-support>.v-icon{width:21px;height:21px}
 }
+
+/* In-place changes (storefront.js): sorted cards glide to their new places, and what else changed fades quickly. */
+::view-transition-group(*){animation-duration:350ms;animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+::view-transition-old(root),::view-transition-new(root){animation-duration:200ms}
