@@ -243,11 +243,19 @@
       {transform: `translateY(${apex}px) scale(1.12) rotate(-12deg)`, offset: .45, easing: 'cubic-bezier(.6,0,.85,.4)'},
       {transform: `translateY(${dy}px) scale(.3) rotate(10deg)`},
     ], {duration: time, fill: 'forwards'});
-    flight.onfinish = flight.oncancel = () => {
+    // Decoration only: it settles once, and a paused timeline (a hidden tab) never holds the add back.
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
       mark.remove();
-      cart.animate([{transform: 'scale(1)'}, {transform: 'scale(1.3)'}, {transform: 'scale(.92)'}, {transform: 'scale(1)'}], {duration: 420, easing: 'ease-out'});
       resolve();
+      try {
+        cart.animate([{transform: 'scale(1)'}, {transform: 'scale(1.3)'}, {transform: 'scale(.92)'}, {transform: 'scale(1)'}], {duration: 420, easing: 'ease-out'});
+      } catch { /* the bounce is optional */ }
     };
+    flight.onfinish = flight.oncancel = done;
+    setTimeout(done, time + 400);
   });
   if (form && window.fetch) form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -266,7 +274,8 @@
       const response = await fetch(form.action, {method: 'POST', body, headers: {Accept: 'application/json'}});
       const data = await response.json();
       if (response.ok) {
-        await fly(data, event.submitter || button);
+        // The item is already in the cart; a failed animation must not report otherwise.
+        await fly(data, event.submitter || button).catch(() => {});
         await sync(data);
         show(data);
       } else fail(data.message || 'صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');
