@@ -1509,3 +1509,20 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 .cart-toast__message{padding-block:6px}
 .cart-toast>[data-toast-total]{padding-bottom:8px}
 @media(max-width:719px){.cart-toast>a{width:44px;min-height:44px;padding:0;justify-content:center;gap:0;font-size:0;border-radius:50%}.cart-toast>a>.v-icon{width:18px;height:18px}}
+
+/* The phone header is two rows: the department menu and support join the search row as two round buttons. The short row that returns on the way up is unchanged. */
+@media(max-width:760px){
+  :root{--hdr-h:128px}
+  .v-header:not(.v-header--compact) .v-header__main{min-height:0}
+  .v-header:not(.v-header--compact) .v-search{width:auto;margin-inline-end:100px}
+  .v-header:not(.v-header--compact) .v-navline{position:absolute;inset-inline-end:18px;bottom:14px;border:0;background:none}
+  .v-header:not(.v-header--compact) .v-navline__inner{display:flex;gap:8px;width:auto;margin:0;padding:0}
+  .v-header:not(.v-header--compact) .v-mobile-cats summary{box-sizing:border-box;justify-content:center;width:44px;height:44px;padding:0;border:1px solid var(--v-line);border-radius:13px;background:#fff;font-size:0;color:var(--v-ink)}
+  .v-header:not(.v-header--compact) .v-mobile-cats summary>.v-icon:first-child{width:20px;height:20px}
+  .v-header:not(.v-header--compact) .v-mobile-cats summary>.v-icon:last-child{display:none}
+  .v-header:not(.v-header--compact) .v-mobile-cats[open] summary{border-color:var(--v-accent);background:var(--v-mint);color:var(--v-accent)}
+  .v-header:not(.v-header--compact) .v-mobile-cats nav{right:auto;left:0}
+  .v-header:not(.v-header--compact) .v-navline .v-support{box-sizing:border-box;display:grid;place-items:center;width:44px;height:44px;min-height:44px;margin:0;padding:0;border-radius:13px;background:var(--v-mint);color:var(--v-accent)}
+  .v-header:not(.v-header--compact) .v-navline .v-support>span{display:none}
+  .v-header:not(.v-header--compact) .v-navline .v-support>.v-icon{width:21px;height:21px}
+}

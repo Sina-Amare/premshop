@@ -535,7 +535,7 @@ def test_the_returning_phone_header_is_one_short_row_and_shifts_nothing(
         page.evaluate("document.body.style.minHeight = '4000px'")
         header = page.locator(".v-header")
         full = header.bounding_box()["height"]
-        assert full > 150, "the full header is the baseline"
+        assert full > 120, "the full two-row header is the baseline"
         page.mouse.wheel(0, 1200)
         page.wait_for_timeout(300)
         page.evaluate(
