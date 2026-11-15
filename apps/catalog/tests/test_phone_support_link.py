@@ -27,6 +27,7 @@ SHELVES = [
 ]
 PAGES = ["/", "/c/ai/", "/search/?q=spotify", "/cart/", "/p/spotify/"]
 AWAY = re.compile(r"\bv-header--away\b")
+COMPACT = re.compile(r"\bv-header--compact\b")
 
 
 @pytest.fixture
@@ -78,7 +79,7 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         box = link.bounding_box()
         assert box["width"] >= 44 and box["height"] >= 44, box
         # The 44px target fits the row, so the header keeps the height every offset reads.
-        assert 170 <= header_height(page) < 171, header_height(page)
+        assert 128 <= header_height(page) < 129, header_height(page)
         shoot(page, url, tmp_path / f"{path.strip('/').split('/')[0] or 'home'}-390.png")
 
         # The header steps aside reading down and returns as one short row on the way up;
@@ -87,6 +88,9 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         page.mouse.wheel(0, 1000)
         expect(page.locator(".v-header")).to_have_class(AWAY)
         expect(link).not_to_be_in_viewport()
+        # The header takes its short shape only once it is out of sight; reading back up
+        # before then brings the full header back, which is not what this checks.
+        expect(page.locator(".v-header")).to_have_class(COMPACT)
         page.mouse.wheel(0, -200)
         expect(page.locator(".v-header")).not_to_have_class(AWAY)
         expect(link).not_to_be_in_viewport()
@@ -153,7 +157,7 @@ def test_on_a_small_phone_nothing_in_the_row_wraps_or_overflows(browser, live_se
             return {wrapped, outside, wide: document.documentElement.scrollWidth > innerWidth};
         }""")
         assert found == {"wrapped": [], "outside": [], "wide": False}, found
-        assert 170 <= header_height(page) < 171, header_height(page)
+        assert 128 <= header_height(page) < 129, header_height(page)
     finally:
         page.close()
 

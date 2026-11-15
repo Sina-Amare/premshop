@@ -306,7 +306,7 @@ def test_escape_and_a_click_outside_close_the_list(browser, live_server, shelf, 
 
         field.press("ArrowDown")
         expect(listbox).to_be_visible()
-        page.locator(".v-hero__eyebrow").click()
+        page.locator(".v-hero__proof").click()  # plain text below the list
         expect(listbox).to_be_hidden()
         expect(field).to_have_attribute("aria-expanded", "false")
     finally:
@@ -397,7 +397,7 @@ def test_closing_inside_the_pause_keeps_the_list_closed(browser, live_server, sh
         expect(listbox).to_be_visible()
         field.press_sequentially("i")
         if leave == "tap":
-            page.locator(".v-hero__eyebrow").click()
+            page.locator(".v-hero__proof").click()  # plain text below the list
         else:
             field.press(leave)
         page.wait_for_timeout(500)
