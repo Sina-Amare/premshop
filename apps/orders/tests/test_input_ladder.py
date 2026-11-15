@@ -357,3 +357,15 @@ def test_the_cancellation_date_label_follows_the_panel_language(buyer, plan, ope
     page = client.get(reverse("admin:orders_order_changelist") + "?tab=waiting")
     assert "Automatic cancellation:" in page.content.decode()
     assert "لغو خودکار" not in page.content.decode()
+
+
+def test_a_request_after_midnight_counts_from_its_tehran_date(buyer, plan, operator):
+    # 01:00 on 10 November in Tehran is still 9 November in UTC.
+    _, item = purchase(buyer, plan, operator, at=tehran(2026, 11, 10, 1))
+    run(tehran(2026, 11, 23, 21, 59))
+    assert notices(item, "input_final_warning") == []
+    assert run(tehran(2026, 11, 24, 10)) == 1
+    [warning] = notices(item, "input_final_warning")
+    assert CANCEL_DAY in warning.text_body  # the last day to send is 30 November
+    assert run(tehran(2026, 11, 30, 21, 30)) == 0
+    assert run(tehran(2026, 12, 1, 21)) == 1
