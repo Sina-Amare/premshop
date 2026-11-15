@@ -4,8 +4,10 @@
 {% block content %}
 <div class="wrap cart-page" data-cart-revision="{{ cart_revision }}">
   <nav class="crumbs" aria-label="مسیر"><a href="{% url 'home' %}">خانه</a><span class="crumbs__sep">/</span><span>سبد خرید</span></nav>
-  <header class="cart-heading">
+  <header class="cart-heading cart-hero">
+    <span class="cart-hero__icon">{% include 'storefront/icon.html' with name='cart' %}</span>
     <h1>سبد خرید{% if cart.lines %}<span class="cart-heading__count">{{ cart.lines|length|fa_digits }} محصول</span>{% endif %}</h1>
+    {% include 'cart/_hero_art.html' %}
     {% if cart.lines %}<a href="{% url 'home' %}#products" class="cart-back">{% include 'storefront/icon.html' with name='arrow' %}<span>بازگشت به محصولات</span></a>{% endif %}
   </header>
   {% if error %}<p class="cart-notice cart-notice--error" role="alert">{{ error }}</p>{% endif %}
