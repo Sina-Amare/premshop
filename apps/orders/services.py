@@ -10,7 +10,7 @@ import uuid
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from ipaddress import ip_address
 from typing import Any, cast
@@ -18,7 +18,7 @@ from typing import Any, cast
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import EmailValidator
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, OuterRef, Q, Sum, TextField
+from django.db.models import Exists, F, OuterRef, Q, QuerySet, Sum, TextField
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
@@ -32,7 +32,7 @@ from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
 from apps.core import events
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
-from apps.orders.clock import delivery_deadline, in_support_window
+from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window
 from apps.orders.models import (
     SUPPORT_ALPHABET,
     CredentialAccessLog,
@@ -345,6 +345,11 @@ PAID_CANCELLATIONS: dict[str, tuple[str, ...]] = {
 INPUT_TIMEOUT_DAYS = 21
 
 
+def input_timeout_day(requested_at: datetime) -> date:
+    """The Tehran day from which a waiting episode ends in cancellation (ADR-0009)."""
+    return timezone.localdate(requested_at) + timedelta(days=INPUT_TIMEOUT_DAYS)
+
+
 def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> Decimal:
     """What cancelling this paid item for this reason owes; the page and the service share it.
 
@@ -355,8 +360,7 @@ def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> De
         raise ValidationError(gettext_lazy("این محصول با این دلیل لغو نمی‌شود."))
     today = today or timezone.localdate()
     if reason == OrderItem.CancelReason.INPUT_TIMEOUT and (
-        item.input_requested_at is None
-        or today < timezone.localdate(item.input_requested_at) + timedelta(days=INPUT_TIMEOUT_DAYS)
+        item.input_requested_at is None or today < input_timeout_day(item.input_requested_at)
     ):
         raise ValidationError(gettext_lazy("هنوز ۲۱ روز از درخواست اطلاعات نگذشته است."))
     if reason != OrderItem.CancelReason.WARRANTY_REFUND:
@@ -392,24 +396,13 @@ def cancel_paid_item(
     """A6, A8 and A11: the cancellation, the refund it owes and the code's return, together."""
     note = _event_note(note)
     plans: dict[int, Plan] = {}
-
-    def lock_money(order: Order) -> None:
-        # Payment, plan and code sit between order and item in the shared lock order.
-        Payment.objects.select_for_update().filter(
-            order=order, status=Payment.Status.VERIFIED
-        ).first()
-        plan_ids = list(order.items.filter(pk=item_id).values_list("plan_id", flat=True))
-        plans.update(_plans(plan_ids, lock=True))
-        if order.discount_code_id is not None:
-            DiscountCode.objects.select_for_update().filter(pk=order.discount_code_id).first()
-
     item, account = _input_item(
         order_id=order_id,
         item_id=item_id,
         actor=actor,
         operator_only=True,
         perms=["payments.add_refund"],
-        then=lock_money,
+        then=lambda order: _lock_money(order, item_id, plans),
     )
     latest = item.events.latest("pk")
     _expect_page(
@@ -420,7 +413,29 @@ def cancel_paid_item(
         (latest.from_status or "", OrderItem.Status.CANCELLED),
         gettext_lazy("این لغو قبلاً ثبت شده و این فرم دوباره ثبت نشد."),
     )
-    amount = refund_amount(item, reason)
+    return _cancel_paid(item, account, plans, reason, note)
+
+
+def _lock_money(order: Order, item_id: int, plans: dict[int, Plan]) -> None:
+    # Payment, plan and code sit between order and item in the shared lock order.
+    Payment.objects.select_for_update().filter(order=order, status=Payment.Status.VERIFIED).first()
+    plan_ids = list(order.items.filter(pk=item_id).values_list("plan_id", flat=True))
+    plans.update(_plans(plan_ids, lock=True))
+    if order.discount_code_id is not None:
+        DiscountCode.objects.select_for_update().filter(pk=order.discount_code_id).first()
+
+
+def _cancel_paid(
+    item: OrderItem,
+    account: User | None,
+    plans: dict[int, Plan],
+    reason: str,
+    note: str,
+    today: date | None = None,
+) -> OrderItem:
+    """The locked half of a paid cancellation; no account means the system's 21-day end."""
+    order_id = item.order_id
+    amount = refund_amount(item, reason, today)
     paid = (
         Payment.objects.filter(order_id=order_id, status=Payment.Status.VERIFIED)
         .values_list("amount", flat=True)
@@ -1241,6 +1256,12 @@ def _input_item(
     orders = Order.objects.filter(pk=order_id)
     if not account.is_staff:
         orders = orders.filter(user_id=account.pk)
+    return _locked_item(orders, item_id, then), account
+
+
+def _locked_item(
+    orders: QuerySet[Order], item_id: int, then: Callable[[Order], None] | None = None
+) -> OrderItem:
     owner_id = orders.values_list("user_id", flat=True).first()
     if owner_id is None:
         raise PermissionDenied
@@ -1251,7 +1272,7 @@ def _input_item(
     item = order.items.select_for_update().defer("customer_input").filter(pk=item_id).first()
     if item is None:
         raise PermissionDenied
-    return item, account
+    return item
 
 
 def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: str) -> bool:
@@ -1266,13 +1287,17 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
 
 
 def _input_event(
-    item: OrderItem, account: User, before: str, note: str = "", *, notification: str = ""
+    item: OrderItem, account: User | None, before: str, note: str = "", *, notification: str = ""
 ) -> OrderItemEvent:
+    if account is None:
+        actor = OrderItemEvent.Actor.SYSTEM
+    else:
+        actor = OrderItemEvent.Actor.OPERATOR if account.is_staff else OrderItemEvent.Actor.CUSTOMER
     event = OrderItemEvent.objects.create(
         order_item=item,
         from_status=before,
         to_status=item.status,
-        actor=OrderItemEvent.Actor.OPERATOR if account.is_staff else OrderItemEvent.Actor.CUSTOMER,
+        actor=actor,
         actor_user=account,
         note=note,
     )
@@ -1293,7 +1318,8 @@ def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id
     item.input_requested_at = timezone.now()
     item.sla_paused_at = item.input_requested_at if item.due_at is not None else None
     item.status = OrderItem.Status.AWAITING_INPUT
-    item.save(update_fields=["status", "input_requested_at", "sla_paused_at"])
+    item.input_notice = OrderItem.InputNotice.NONE  # a new episode starts its ladder again
+    item.save(update_fields=["status", "input_requested_at", "sla_paused_at", "input_notice"])
     _input_event(item, account, OrderItem.Status.QUEUED, notification="input_requested")
     return item
 
@@ -1353,6 +1379,96 @@ def resume_input(*, order_id: int, item_id: int, actor: User, expected_event_id:
         expected_event_id=expected_event_id,
         first=False,
     )
+
+
+# ADR-0009's input-timeout ladder, counted from the waiting episode's request and paused by
+# nothing: a reminder after 48 hours, the operator's flag from the 7th Tehran day, a final
+# warning from the 14th and the system's cancellation from the 21st.
+INPUT_REMINDER_AFTER = timedelta(hours=48)
+INPUT_ESCALATION_DAYS = 7
+INPUT_WARNING_DAYS = 14
+INPUT_TIMEOUT_NOTE = "اطلاعات فعال‌سازی تا ۲۱ روز پس از درخواست نرسید."
+
+
+def input_escalation_cutoff(now: datetime) -> datetime:
+    """A waiting episode requested before this moment has reached its 7th Tehran day."""
+    midnight = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight - timedelta(days=INPUT_ESCALATION_DAYS - 1)
+
+
+def _input_last_day(requested_at: datetime) -> datetime:
+    # The notices name the last whole day to send; cancellation starts the day after.
+    return datetime.combine(input_timeout_day(requested_at), time.min, TEHRAN) - timedelta(
+        minutes=1
+    )
+
+
+@transaction.atomic
+def advance_input_ladder(*, item_id: int, requested_at: datetime, now: datetime) -> str:
+    """Takes a waiting item one step: the notice now due, or the 21-day cancellation.
+
+    The sweep chose the item from an unlocked read. Under the locks, a receipt, a newer
+    request or another sweep may already have won, and then nothing happens.
+    """
+    plans: dict[int, Plan] = {}
+    order_id = OrderItem.objects.filter(pk=item_id).values_list("order_id", flat=True).first()
+    if order_id is None:
+        return ""
+    item = _locked_item(
+        Order.objects.filter(pk=order_id), item_id, lambda order: _lock_money(order, item_id, plans)
+    )
+    if item.status != OrderItem.Status.AWAITING_INPUT or item.input_requested_at != requested_at:
+        return ""
+    today = timezone.localdate(now)
+    if today >= input_timeout_day(requested_at):
+        reason = OrderItem.CancelReason.INPUT_TIMEOUT
+        _cancel_paid(item, None, plans, reason, INPUT_TIMEOUT_NOTE, today)
+        return "item_cancelled"
+    if today >= timezone.localdate(requested_at) + timedelta(days=INPUT_WARNING_DAYS):
+        notice, template = OrderItem.InputNotice.FINAL, "input_final_warning"
+    elif now >= requested_at + INPUT_REMINDER_AFTER:
+        notice, template = OrderItem.InputNotice.REMINDER, "input_reminder"
+    else:
+        return ""
+    if item.input_notice >= notice:
+        return ""
+    item.input_notice = notice
+    item.save(update_fields=["input_notice"])
+    request = item.events.filter(
+        from_status=OrderItem.Status.QUEUED, to_status=OrderItem.Status.AWAITING_INPUT
+    ).latest("pk")
+    # Keyed by the episode's request, so each notice reaches the customer once an episode.
+    events.emit(
+        template, request.pk, item.order_id, item_id=item.pk, due_at=_input_last_day(requested_at)
+    )
+    return template
+
+
+def run_input_ladder() -> int:
+    """The hourly sweep. It acts only while support is open, so no notice arrives at night
+    and the operator is at hand when an item is cancelled."""
+    now = timezone.now()
+    if in_support_window(now) != now:
+        return 0
+    waiting = (
+        OrderItem.objects.filter(
+            status=OrderItem.Status.AWAITING_INPUT,
+            input_requested_at__lte=now - INPUT_REMINDER_AFTER,
+        )
+        .order_by("input_requested_at", "pk")
+        .values_list("pk", "input_requested_at")
+    )
+    stepped = 0
+    for item_id, requested_at in waiting:
+        try:
+            stepped += bool(
+                advance_input_ladder(
+                    item_id=item_id, requested_at=cast(datetime, requested_at), now=now
+                )
+            )
+        except Exception as error:  # one item must not stop every later item's ladder
+            logger.error("Input ladder needs review for item %s: %s", item_id, type(error).__name__)
+    return stepped
 
 
 def _release(

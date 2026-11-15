@@ -192,6 +192,8 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
         }
         for name, state in (
             ("input_requested", "awaiting_input"),
+            ("input_reminder", "awaiting_input"),
+            ("input_final_warning", "awaiting_input"),
             ("delivery_completed", "delivered"),
             ("replacement_rejected", "delivered"),
             ("supply_delayed", "queued"),

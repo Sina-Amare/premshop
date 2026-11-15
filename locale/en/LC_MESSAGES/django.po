@@ -2056,3 +2056,21 @@ msgstr "Page last refreshed"
 
 msgid "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. پردازش پس‌زمینه‌ی سرور را بررسی کنید."
 msgstr "The automatic check has not run for over 3 minutes. Check the server's background worker."
+
+msgid "بدون یادآوری"
+msgstr "No reminder"
+
+msgid "یادآوری"
+msgstr "Reminder"
+
+msgid "آخرین یادآوری"
+msgstr "Final reminder"
+
+msgid "یادآوری اطلاعات"
+msgstr "Information reminder"
+
+msgid "آخرین یادآوری اطلاعات"
+msgstr "Final information reminder"
+
+msgid "بیش از ۷ روز منتظر اطلاعات"
+msgstr "Awaiting information for over 7 days"

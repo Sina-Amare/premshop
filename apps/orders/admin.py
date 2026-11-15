@@ -57,6 +57,8 @@ from apps.orders.services import (
     delay_supply,
     deliver_item,
     delivery_content,
+    input_escalation_cutoff,
+    input_timeout_day,
     match_support_token,
     open_claim,
     receive_input,
@@ -104,6 +106,13 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
     items = OrderItem.objects.filter(order_id=OuterRef("pk"))
     flags = {
         "late": Exists(items.filter(status=OrderItem.Status.QUEUED, due_at__lte=timezone.now())),
+        # ADR-0009's seven-day rung: the operator follows up before the final warning.
+        "stale": Exists(
+            items.filter(
+                status=OrderItem.Status.AWAITING_INPUT,
+                input_requested_at__lt=input_escalation_cutoff(timezone.now()),
+            )
+        ),
         **{name: Exists(items.filter(status=state)) for name, state in _QUEUE_STATES.items()},
         "refunds": _owes_refund(),
     }
@@ -113,6 +122,7 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
     queue = reverse("admin:orders_order_changelist")
     tiles = [
         ("late", _("دیر شده"), "problem", f"{queue}?tab=queued"),
+        ("stale", _("بیش از ۷ روز منتظر اطلاعات"), "problem", f"{queue}?tab=waiting"),
         ("queued", _("در صف انجام"), "progress", f"{queue}?tab=queued"),
         ("claims", _("درخواست تعویض"), "progress", f"{queue}?tab=claims"),
         ("waiting", _("منتظر اطلاعات مشتری"), "attention", f"{queue}?tab=waiting"),
@@ -926,9 +936,14 @@ class OrderAdmin(ModelAdmin):
     @admin.display(description=_("محصول و مهلت"))
     def queue_work(self, obj: Order) -> str:
         at = timezone.now()
+        stale_before = input_escalation_cutoff(at)
         rows = []
         for item in obj.items.all():
             kind, text, since = "neutral", "", None
+            cancel_on, stale = None, False
+            if item.status == OrderItem.Status.AWAITING_INPUT and item.input_requested_at:
+                cancel_on = input_timeout_day(item.input_requested_at)
+                stale = item.input_requested_at < stale_before
             if item.status == OrderItem.Status.AWAITING_INPUT and item.sla_paused_at is None:
                 text, since = str(_("در انتظار از")), item.input_requested_at
             else:
@@ -962,7 +977,17 @@ class OrderAdmin(ModelAdmin):
             refund = getattr(item, "refund", None)
             state = order_status.item_state(item, refund, obj.unpaid_expires_at, at)
             tone = order_status.panel_tone(item, state)
-            rows.append({"item": item, "kind": kind, "text": text, "since": since, "tone": tone})
+            rows.append(
+                {
+                    "item": item,
+                    "kind": kind,
+                    "text": text,
+                    "since": since,
+                    "tone": tone,
+                    "cancel_on": cancel_on,
+                    "stale": stale,
+                }
+            )
         every = getattr(obj, "every_item", None)
         return render_to_string(
             "admin/orders/queue_items.html",

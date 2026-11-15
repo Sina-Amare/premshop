@@ -6,12 +6,18 @@ from huey import crontab
 from huey.contrib.djhuey import db_periodic_task
 
 from apps.orders.models import CredentialAccessLog, Order, OrderItem, UnpaidExpirySweep
-from apps.orders.services import delete_expired_details, expire_unpaid_orders
+from apps.orders.services import delete_expired_details, expire_unpaid_orders, run_input_ladder
 
 
 @db_periodic_task(crontab(hour="3", minute="25"))
 def clean_delivered_details() -> int:
     return delete_expired_details()
+
+
+# Hourly; the sweep itself waits for support hours.
+@db_periodic_task(crontab(minute="7"))
+def climb_input_ladder() -> int:
+    return run_input_ladder()
 
 
 @db_periodic_task(crontab(hour="3", minute="20"))

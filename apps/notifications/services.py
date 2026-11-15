@@ -67,7 +67,11 @@ def enqueue_event(
     items = [rows.get(pk=item_id)] if item_id is not None else list(rows)
     if item_id is not None:
         facts = items[0].product_snapshot
-        context.update(product_name=facts["name"], plan_title=facts["plan_title"])
+        context.update(
+            product_name=facts["name"],
+            plan_title=facts["plan_title"],
+            cancel_reason=items[0].cancel_reason,
+        )
     elif template_name == "item_cancelled":
         # An unpaid order's cancellation: no payment, so no refund line, and every product.
         context["products"] = list(dict.fromkeys(one.product_snapshot["name"] for one in items))
