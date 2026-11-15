@@ -1,2 +1,2 @@
-{# The last row of a list: a service the shop does not stock yet is a question for support, not a dead end. #}
-<div class="v-request"><p>سرویسی که می‌خواهید در فهرست نیست؟</p><a class="v-hero__help" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}درخواستش را در تلگرام بفرستید</a></div>
+{# Where a list of products ends, a service the shop does not stock yet is a question for support, not a dead end: an empty slot in a grid, a wide card under the home catalogue. #}
+<div class="v-request"><span class="v-request__mark" aria-hidden="true">+</span><p>سرویسی که می‌خواهید در فهرست نیست؟</p><a class="v-hero__help" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}درخواستش را در تلگرام بفرستید</a></div>

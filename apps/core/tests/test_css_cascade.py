@@ -18,6 +18,33 @@ CLASS = re.compile(r"\.(-?[_a-zA-Z][\w-]*)")
 OPAQUE = ("@keyframes", "@font-face", "@theme", "@property", "@-webkit-keyframes")
 
 OVERRIDDEN_ON_PURPOSE = """
+acct__avatar
+acct__card
+acct__email
+acct__h2
+acct__main
+acct__next
+acct__title
+acct__who
+btn--secondary
+fact__lead
+otp__resend
+answers
+badge--neutral
+fact
+fact__k
+fact__v
+pdp__buy
+pdp__facts
+pdp__h2
+pdp__head
+pdp__lead
+pdp__section
+qa__a
+qa__item
+qa__q
+tile--lg
+tile--mono
 acct
 acct__form--spaced
 acct__hint

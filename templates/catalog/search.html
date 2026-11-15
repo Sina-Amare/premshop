@@ -24,7 +24,7 @@ The limit is per address, and one mobile carrier can put many customers
 behind one, so the message reports what happened and accuses nobody.
 {% endcomment %}
 {% if limited %}
-  <header class="page-head">
+  <header class="page-head v-page-hero v-page-hero--light"><span class="v-page-hero__mark" aria-hidden="true">{% include 'storefront/icon.html' with name='search' %}</span>
     <h1 class="page-head__title">جستجو</h1>
   </header>
   <div class="card empty">
@@ -33,7 +33,7 @@ behind one, so the message reports what happened and accuses nobody.
   </div>
 
 {% elif query and not results %}
-  <header class="page-head">
+  <header class="page-head v-page-hero v-page-hero--light"><span class="v-page-hero__mark" aria-hidden="true">{% include 'storefront/icon.html' with name='search' %}</span>
     <h1 class="page-head__title">محصولی پیدا نکردیم</h1>
     <p class="small page-head__intro">جستجوی شما: <bdi class="v-query">{{ query }}</bdi></p>
     <div class="v-search-recovery"><p>دنبال سرویس دیگری هستید؟ در تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
@@ -52,7 +52,7 @@ behind one, so the message reports what happened and accuses nobody.
   {% endif %}
 
 {% else %}
-  <header class="page-head">
+  <header class="page-head v-page-hero v-page-hero--light"><span class="v-page-hero__mark" aria-hidden="true">{% include 'storefront/icon.html' with name='search' %}</span>
     {% if query %}
       <h1 class="page-head__title">نتایج جستجو: <bdi class="v-query">{{ query }}</bdi></h1>
       <p class="small page-head__intro">{{ results|length|fa_digits }} محصول</p>
