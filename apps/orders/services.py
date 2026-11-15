@@ -1382,7 +1382,7 @@ def resume_input(*, order_id: int, item_id: int, actor: User, expected_event_id:
 
 
 # ADR-0009's input-timeout ladder, counted from the waiting episode's request and paused by
-# nothing: a reminder after 48 hours, the operator's flag from the 7th Tehran day, a final
+# nothing: a reminder after 48 hours, the operator's flag after seven days, a final
 # warning from the 14th and the system's cancellation from the 21st.
 INPUT_REMINDER_AFTER = timedelta(hours=48)
 INPUT_ESCALATION_DAYS = 7
@@ -1392,9 +1392,8 @@ INPUT_TIMEOUT_NOTE = "اطلاعات فعال‌سازی تا ۲۱ روز پس �
 
 
 def input_escalation_cutoff(now: datetime) -> datetime:
-    """A waiting episode requested before this moment has reached its 7th Tehran day."""
-    midnight = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0)
-    return midnight - timedelta(days=INPUT_ESCALATION_DAYS - 1)
+    """A waiting episode requested before this moment has waited more than seven days."""
+    return now - timedelta(days=INPUT_ESCALATION_DAYS)
 
 
 def _input_last_day(requested_at: datetime) -> datetime:

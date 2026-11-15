@@ -167,7 +167,7 @@ The expected history event identifies the waiting episode. Immediate repeats ret
 | When | What happens |
 |---|---|
 | 48 hours after the request | The customer gets a reminder (`input_reminder`) naming the last day to send |
-| From the 7th Tehran calendar day | The operator panel's home counts the order under «بیش از ۷ روز منتظر اطلاعات», and the waiting item's row shows its automatic cancellation date in the overdue tone |
+| More than 7 days (7 × 24 hours) after the request | The operator panel's home counts the order under «بیش از ۷ روز منتظر اطلاعات», and the waiting item's row shows its automatic cancellation date in the overdue tone |
 | From the 14th Tehran calendar day | The customer gets the final reminder (`input_final_warning`), naming the same last day |
 | From 21:00 on the 21st Tehran calendar day | The system cancels the item for `input_timeout` through the shared paid-cancellation code: an owed `Refund` with no `created_by`, the unit back in stock, the discount use released when it applies, a history row by the system and the cancellation notice, which names the reason and says no transfer has been made |
 

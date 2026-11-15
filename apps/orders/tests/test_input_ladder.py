@@ -325,15 +325,17 @@ def test_a_system_refund_keeps_its_attribution_and_is_paid_by_a_person(buyer, pl
 # The operator's flag
 
 
-def test_the_panel_flags_a_wait_from_its_seventh_tehran_day(buyer, plan, operator, client):
+def test_the_panel_flags_a_wait_of_more_than_seven_days(buyer, plan, operator, client):
     waiting(buyer, plan, operator)
 
     def stale():
         return next(tile for tile in queue_overview(operator) if tile["label"] == STALE)
 
-    with time_machine.travel(tehran(2026, 11, 15, 23, 59), tick=False):
-        assert (stale()["count"], stale()["tone"]) == (0, "closed")
-    with time_machine.travel(tehran(2026, 11, 16, 0, 0), tick=False):
+    # The tile says «بیش از ۷ روز», so the 7th calendar day alone is not enough.
+    for moment in (tehran(2026, 11, 16, 0, 0), REQUESTED + timedelta(days=7)):
+        with time_machine.travel(moment, tick=False):
+            assert (stale()["count"], stale()["tone"]) == (0, "closed")
+    with time_machine.travel(REQUESTED + timedelta(days=7, minutes=1), tick=False):
         assert (stale()["count"], stale()["tone"]) == (1, "problem")
         assert stale()["url"].endswith("?tab=waiting")
         client.force_login(operator)
