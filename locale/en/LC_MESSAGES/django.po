@@ -2074,3 +2074,6 @@ msgstr "Final information reminder"
 
 msgid "بیش از ۷ روز منتظر اطلاعات"
 msgstr "Awaiting information for over 7 days"
+
+msgid "لغو خودکار"
+msgstr "Automatic cancellation"

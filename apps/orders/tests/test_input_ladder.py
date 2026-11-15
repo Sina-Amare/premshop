@@ -348,3 +348,12 @@ def test_the_sweep_is_a_periodic_task():
 
     with time_machine.travel(tehran(2026, 11, 30, 3), tick=False):
         assert climb_input_ladder.call_local() == 0
+
+
+def test_the_cancellation_date_label_follows_the_panel_language(buyer, plan, operator, client):
+    waiting(buyer, plan, operator)
+    client.force_login(operator)
+    client.post(reverse("set_language"), {"language": "en", "next": "/admin/"})
+    page = client.get(reverse("admin:orders_order_changelist") + "?tab=waiting")
+    assert "Automatic cancellation:" in page.content.decode()
+    assert "لغو خودکار" not in page.content.decode()
