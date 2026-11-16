@@ -29,6 +29,7 @@ from apps.catalog.models import Category, Plan, Product
 from apps.core import ratelimit
 from apps.orders import services
 from apps.orders.tests.test_delivery import deliver
+from apps.orders.tests.test_input_clock import act, pay
 from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
@@ -65,6 +66,7 @@ CUSTOMER = {
     "orders": "/account/orders/",
     "order, unpaid": "/account/orders/{unpaid}/",
     "order, delivered and refund owed": "/account/orders/{mixed}/",
+    "order, details asked again": "/account/orders/{asked}/",
     "invoice": "/account/orders/{unpaid}/invoice/",
     "tracking": "/track/{token}/",
 }
@@ -155,10 +157,21 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
     _, items = paid_order(customer, operator, [services.OrderLine(plan, 2)])
     deliver(items[0], operator, expires_at=timezone.localdate() + timedelta(days=30))
     cancel(items[1], operator)
+    # The customer's form: an email plan whose details the operator asked for again.
+    plan.input_type, plan.max_quantity = Plan.InputType.EMAIL, 1
+    plan.save()
+    asked = services.place_order(
+        user=customer, lines=[services.OrderLine(plan, 1, "target@example.test")]
+    )
+    pay(asked, operator)
+    act(services.request_input, asked.items.get(), operator)
+    plan.input_type = Plan.InputType.NONE
+    plan.save()
     unpaid = services.place_order(user=customer, lines=[services.OrderLine(plan, 1)])
     numbers = {
         "pk": shop.pk,
         "unpaid": unpaid.order_number,
+        "asked": asked.order_number,
         "mixed": items[0].order.order_number,
         "token": items[0].order.tracking_token,
     }
