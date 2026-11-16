@@ -12,7 +12,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.management import call_command
-from django.db import connection
+from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
 from django.urls import reverse
@@ -24,8 +24,11 @@ from apps.core.fields import EncryptedTextField
 from apps.orders import models, services
 from apps.orders.tests.test_delivery import LINE, NOTE, VALUE, deliver, queued, staff_with
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_lifecycle_concurrency import in_connection
+from apps.orders.tests.test_lifecycle_concurrency import in_connection, wait_for_lock
+from apps.orders.tests.test_paid_cancellation import cancel
 from apps.orders.tests.test_replacement import claim, replace
+from apps.payments.models import Refund
+from apps.payments.tests.test_refund_execution import execute
 
 pytestmark = pytest.mark.django_db(transaction=True)
 SESSION = "buyer-session-one"
@@ -109,10 +112,13 @@ def test_frozen_email_proof_reveals_current_delivery_and_logs_before_decrypting(
 def test_customer_state_gate_does_not_change_staff_reveal(buyer, plan, operator, status):
     order, item = delivered(buyer, plan, operator)
     verified(order, buyer)
-    changes = {"status": status}
     if status in ("CANCELLED", "REFUNDED"):
-        changes["cancel_reason"] = "warranty_refund"
-    models.OrderItem.objects.filter(pk=item.pk).update(**changes)
+        claim(item, operator)
+        cancel(item, operator, "warranty_refund")
+        if status == "REFUNDED":
+            execute(order, list(Refund.objects.filter(order_item=item)), operator)
+    else:
+        models.OrderItem.objects.filter(pk=item.pk).update(status=status)
     if status in ("DELIVERED", "REPLACEMENT_REQUESTED"):
         assert reveal(order, item, buyer).lines == (LINE,)
     else:
@@ -186,6 +192,63 @@ def test_concurrent_confirmation_consumes_once(buyer, plan, operator):
     assert sorted(outcomes) == [False, True]
 
 
+def test_resend_replaces_code_without_disclosing_it_or_activating_a_failed_send(
+    buyer, plan, operator
+):
+    order, _ = delivered(buyer, plan, operator)
+    now = timezone.now()
+    with (
+        time_machine.travel(now, tick=False),
+        patch("apps.accounts.otp._new_code", return_value="123456"),
+    ):
+        first = request_code(order, buyer)
+    with time_machine.travel(now + timedelta(seconds=61), tick=False):
+        with patch("apps.accounts.otp._new_code", return_value="654321"):
+            second = request_code(order, buyer)
+        assert not confirm(order, buyer, first)
+        from apps.accounts import otp
+
+        subject = proof()._subject(order, SESSION)
+        issuance = cache.get(otp._key(subject))
+        record = cache.get(otp._record_key(subject, issuance))
+        assert record["digest"] == otp._digest(second)
+        assert all(value != second for value in record.values())
+    with time_machine.travel(now + timedelta(seconds=122), tick=False):
+        with patch("apps.orders.proof.send_templated_email", return_value=0):
+            with pytest.raises(ValidationError):
+                request_code(order, buyer)
+        assert confirm(order, buyer, second)
+
+
+def test_cache_failure_during_confirmation_cannot_grant_proof(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    code = request_code(order, buyer)
+    with patch("apps.orders.proof.cache.set", side_effect=RuntimeError("cache failed")):
+        with pytest.raises(RuntimeError):
+            confirm(order, buyer, code)
+    with pytest.raises(PermissionDenied):
+        reveal(order, item, buyer)
+    assert not confirm(order, buyer, code)
+
+
+def test_a_reveal_waiting_for_replacement_reads_only_the_committed_new_set(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    verified(order, buyer)
+    claim(item, operator)
+    pids = Queue()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with transaction.atomic():
+            User.objects.select_for_update(no_key=True).get(pk=buyer.pk)
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_backend_pid()")
+                holder = cursor.fetchone()[0]
+            future = pool.submit(in_connection, pids, lambda: reveal(order, item, buyer))
+            wait_for_lock(pids.get(timeout=5), holder)
+            replace(item, operator)
+        assert VALUE not in future.result(timeout=10).lines[0].value
+    assert models.CredentialAccessLog.objects.count() == 1
+
+
 def test_request_budgets_cover_account_order_and_ip(buyer, plan, operator):
     order, _ = delivered(buyer, plan, operator)
     second = services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
@@ -233,10 +296,12 @@ def test_newest_set_only_and_deleted_unreadable_states(buyer, plan, operator, se
     content = reveal(order, item, buyer)
     assert VALUE not in content.lines[0].value and content.note == "new note"
     before = models.CredentialAccessLog.objects.count()
+    original_key = settings.FIELD_ENCRYPTION_KEY
     settings.FIELD_ENCRYPTION_KEY = ""
     with pytest.raises(ImproperlyConfigured):
         reveal(order, item, buyer)
     assert models.CredentialAccessLog.objects.count() == before
+    settings.FIELD_ENCRYPTION_KEY = original_key
     models.Delivery.objects.filter(order_item=item).delete()
     assert reveal(order, item, buyer) is None
 
@@ -339,10 +404,43 @@ def test_recovery_challenge_authorizes_one_order_address_then_requires_its_email
     assert row.email == "recovered@example.test" and row.created_at is not None
     with pytest.raises(PermissionDenied):
         reveal(order, item, buyer)
-    verified(order, buyer)
-    assert mailoutbox[-1].to == ["recovered@example.test"]
+    with time_machine.travel(timezone.now() + timedelta(seconds=61), tick=False):
+        verified(order, buyer)
+        assert mailoutbox[-1].to == ["recovered@example.test"]
     assert reveal(order, item, buyer).lines == (LINE,)
     assert "delivery_code" in email_log.PROTECTED
+
+
+def test_blank_email_recovery_invalidates_an_unconfirmed_code_and_needs_email_confirmation(
+    buyer, plan, operator
+):
+    order, item = delivered(buyer, plan, operator)
+    old_code = request_code(order, buyer)
+    link_before_order(buyer, order)
+    recovery_code = start_recovery(order, operator)
+    assert finish_recovery(order, operator, recovery_code)
+    assert not confirm(order, buyer, old_code)
+    models.Order.objects.filter(pk=order.pk).update(placement_email="")
+    with pytest.raises(PermissionDenied):
+        reveal(order, item, buyer)
+    with time_machine.travel(timezone.now() + timedelta(seconds=61), tick=False):
+        verified(order, buyer)
+        assert reveal(order, item, buyer).lines == (LINE,)
+
+
+def test_concurrent_recovery_appends_one_audit_row(buyer, plan, operator):
+    order, _ = delivered(buyer, plan, operator)
+    link_before_order(buyer, order)
+    code = start_recovery(order, operator)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(
+            pool.map(
+                lambda _: in_connection(Queue(), lambda: finish_recovery(order, operator, code)),
+                range(2),
+            )
+        )
+    assert sorted(outcomes) == [False, True]
+    assert models.OrderEmailRecovery.objects.count() == 1
 
 
 @pytest.mark.parametrize("changed", ["absent", "new", "unlink", "relink", "operator", "email"])
@@ -410,17 +508,20 @@ def test_recovery_rechecks_link_after_transport_and_command_never_prints_code(
         with pytest.raises(ValidationError):
             proof().start_recovery(order_id=order.pk, actor=operator, email="new@example.test")
     link_before_order(buyer, order)
-    code = start_recovery(order, operator)
-    out = StringIO()
-    with patch("apps.orders.management.commands.recover_order_email.getpass", return_value=code):
-        call_command(
-            "recover_order_email",
-            order.order_number,
-            operator_id=operator.pk,
-            email="recovered@example.test",
-            confirm=True,
-            stdout=out,
-        )
+    with time_machine.travel(timezone.now() + timedelta(seconds=61), tick=False):
+        code = start_recovery(order, operator)
+        out = StringIO()
+        with patch(
+            "apps.orders.management.commands.recover_order_email.getpass", return_value=code
+        ):
+            call_command(
+                "recover_order_email",
+                order.order_number,
+                operator_id=operator.pk,
+                email="recovered@example.test",
+                confirm=True,
+                stdout=out,
+            )
     assert code not in out.getvalue() and code not in capsys.readouterr().out
     assert models.OrderEmailRecovery.objects.count() == 1
 

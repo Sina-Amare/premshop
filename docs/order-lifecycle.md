@@ -260,6 +260,23 @@ The purchase confirmation is found by polling committed orders, not by an event,
 
 No message carries a credential value or customer input ([ADR-0008](decisions/0008-content-free-messages-and-magic-link.md)). A customer who linked Telegram also receives each customer message there, as its subject in bold, the item's facts and a link to the order. Single-use delivery links, timed input handling and gateway-failure notices remain planned separately.
 
+## Customer delivery access
+
+The owned order page lists only field titles and fixed masks, without loading encrypted values or notes. Revealing a current set requires independent email proof as specified in ADR-0031's 2026-11-16 amendment. The proof permits only that order, buyer and current session for ten minutes. Every reveal is a POST, writes a `customer` access row before decryption, and bypasses caching and compression. The newest set and its note are returned; older generations remain inaccessible. Missing or unreadable data has its own state.
+
+Customers can reveal only items in `DELIVERED` or `REPLACEMENT_REQUESTED`. A cancelled or refunded item is unavailable even when its encrypted sets still exist until the retention deadline. Staff reveal permissions and retention are unchanged.
+
+### Recovering an inaccessible order email
+
+Run commands in the web application's environment, with its database and cache. No code is accepted on the command line or printed to the terminal:
+
+```powershell
+python manage.py recover_order_email 1042 --operator-id 1 --email recovered@example.com
+python manage.py recover_order_email 1042 --operator-id 1 --email recovered@example.com --confirm
+```
+
+The first command sends a challenge through the shop's bot to the unchanged Telegram link established before purchase. The customer reads it back; the second command prompts for it without echoing. A successful confirmation appends the recovery audit row and invalidates older order-email proof. The customer then requests and confirms an email code through the owned order page. A missing/newer/changed link or an expired, replayed or guessed-out challenge refuses recovery. No purchase snapshot, account identity or payment changes.
+
 ## Tests
 
 | Behaviour | Tests |
@@ -273,6 +290,7 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |
 | Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
+| Independent order-email proof, customer status gate, bot recovery, source backfill/reversal and HTTPS browser journeys | `apps/orders/tests/test_customer_delivery.py`, `test_customer_delivery_browser.py` |
 | The input-timeout ladder: notices, their once-per-episode rule, support hours, the operator's flag, the 21st-day cancellation, races and the refund's attribution | `apps/orders/tests/test_input_ladder.py` |
 | Paid cancellation: reasons by status, warranty and 21-day boundaries, amounts, discount shares and their release, stock, repeats, permissions and the panel form | `apps/orders/tests/test_paid_cancellation.py`, `test_paid_cancellation_admin.py`, `test_paid_cancellation_browser.py` |
 | The refund ledger's database guards | `apps/payments/tests/test_refund_guards.py` |

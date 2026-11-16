@@ -35,6 +35,7 @@ erDiagram
   Plan ||--o{ OrderItem : "sold as"
   Order ||--|{ OrderItem : contains
   Order ||--o{ Payment : receives
+  Order ||--o{ OrderEmailRecovery : "reveal email recovery"
   User |o--o{ Payment : records
   OrderItem ||--o{ OrderItemEvent : history
   OrderItem ||--o{ CredentialAccessLog : reveals
@@ -49,7 +50,7 @@ erDiagram
   Order ||--o{ Notification : "confirmed by"
 ```
 
-Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEvent` and `CredentialAccessLog`. Standalone tables: `cms.Page`, `core.MailAttempt`, and two single-row status tables, `orders.UnpaidExpirySweep` and `notifications.ConfirmationSweep`.
+Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEvent`, `CredentialAccessLog` and `OrderEmailRecovery`. Standalone tables: `cms.Page`, `core.MailAttempt`, and two single-row status tables, `orders.UnpaidExpirySweep` and `notifications.ConfirmationSweep`.
 
 ## 2. Tables by app
 
@@ -182,7 +183,9 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 **DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when an unpaid order is cancelled, or once every paid item the code covered has been cancelled without ever being delivered, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
 
-**CredentialAccessLog** is one row per staff reveal of an item's customer input or delivered details: the item, the staff user, the address, the time and the `target` (`customer_input` or `delivery`), never the value. Rows from before delivery existed were labelled `customer_input`. Rows are deleted after 365 days.
+**CredentialAccessLog** is one row per successful reveal of an item's customer input or delivered details: the item, authenticated user, address, time, `target` (`customer_input` or `delivery`) and `source` (`panel` or `customer`), never the value. Existing rows were backfilled as `panel`. The reveal writes its row before decrypting and commits before returning; failed decryption rolls it back. Rows are deleted after 365 days.
+
+**OrderEmailRecovery** appends one row per operator-authorized recovery of an order's delivery email: order, email, operator, Telegram id/link timestamp and creation time. Its user/order keys use PROTECT. It does not edit `placement_email` or the account's contact address. The latest row's id is the trusted-email generation; it invalidates earlier order-email codes and session proofs. Recovery requires a single-use bot challenge to the unchanged pre-order Telegram link; it still requires confirmation of an email code afterwards (ADR-0031, 2026-11-16). Only hashes of codes and session bindings live in the cache, for ten minutes.
 
 **UnpaidExpirySweep** is a single row: when the unpaid-order sweep last succeeded, how many orders it processed and the backlog it saw.
 

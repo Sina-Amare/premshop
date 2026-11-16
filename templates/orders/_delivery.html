@@ -1,0 +1,26 @@
+{% if delivery_rows %}
+<section class="card order-card" id="order-delivery" aria-labelledby="order-delivery-title">
+<h2 id="order-delivery-title">اطلاعات تحویل</h2>
+{% for row in delivery_rows %}
+<div class="order-input-item" data-delivery-item="{{ row.item.pk }}">
+<h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
+{% if not row.available %}<p data-delivery-unavailable>اطلاعات تحویل این محصول دیگر نمایش داده نمی‌شود.</p>
+{% elif not row.delivery %}<p data-delivery-deleted>اطلاعات تحویل این محصول حذف شده است.</p>
+{% else %}
+<dl class="order-totals" data-delivery-masked>{% for field in row.delivery.fields.all %}<div><dt><bdi>{{ field.title }}</bdi></dt><dd aria-label="پنهان">••••••</dd></div>{% endfor %}</dl>
+{% if delivery_confirmed %}<form method="post" action="{% url 'order-delivery-reveal' order.order_number row.item.pk %}">{% csrf_token %}<button class="btn btn--primary" type="submit">نمایش اطلاعات تحویل</button></form>{% endif %}
+{% endif %}
+</div>
+{% endfor %}
+{% if delivery_ready and not delivery_confirmed %}
+{% if delivery_email %}
+<p>برای دیدن اطلاعات تحویل، ابتدا ایمیل این سفارش را تأیید کنید: <bdi dir="ltr">{{ delivery_email }}</bdi></p>
+<form method="post" action="{% url 'order-delivery-code' order.order_number %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">فرستادن کد به ایمیل</button></form>
+<form method="post" action="{% url 'order-delivery-confirm' order.order_number %}">{% csrf_token %}
+<div class="field"><label class="field__label" for="delivery-code">کد نمایش اطلاعات</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>
+<button type="submit" class="btn btn--primary">تأیید کد</button></form>
+{% endif %}
+<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است. برای دیدن اطلاعات تحویل،{% endif %} <a href="{{ support.telegram_url }}" rel="noopener noreferrer">به پشتیبانی پیام بدهید</a>.</p>
+{% endif %}
+</section>
+{% endif %}

@@ -92,8 +92,10 @@ def test_service_commits_before_returning_and_never_copies_the_value(input_order
         "user",
         "ip",
         "target",
+        "source",
         "created_at",
     }
+    assert models.CredentialAccessLog.objects.get().source == "panel"
 
 
 def test_service_refuses_nested_transactions(input_order, operator):

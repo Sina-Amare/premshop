@@ -2077,3 +2077,6 @@ msgstr "Awaiting information for over 7 days"
 
 msgid "لغو خودکار"
 msgstr "Automatic cancellation"
+
+msgid "پنل"
+msgstr "Panel"

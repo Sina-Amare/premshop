@@ -59,6 +59,12 @@ class OrderPagePrivacy:
                 response["Referrer-Policy"] = "no-referrer"
             response["X-Frame-Options"] = "DENY"
             response["X-Content-Type-Options"] = "nosniff"
+            if "/delivery/" in request.path:
+                response["Content-Encoding"] = "identity"
+                # A code error has another form; no-referrer makes its next POST's Origin null.
+                response["Referrer-Policy"] = (
+                    "no-referrer" if "/items/" in request.path else "same-origin"
+                )
         return response
 
 
