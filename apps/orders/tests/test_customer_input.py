@@ -162,6 +162,24 @@ def test_a_page_opened_before_the_operator_resumed_cannot_report_its_input_saved
     assert item.customer_input == OLD and item.events.count() == 4
 
 
+def test_a_staff_buyer_is_a_customer_on_the_form_and_an_operator_in_the_panel(plan, operator):
+    _, item = waiting(operator, plan, operator)
+    request = event_id(item)
+    act(services.resume_input, item, operator, expected_event_id=request)
+    with pytest.raises(ValidationError):
+        submit(item, operator, expected_event_id=request)
+    item.refresh_from_db()
+    assert item.customer_input == OLD and item.events.count() == 4
+    act(services.request_input, item, operator)
+    request = event_id(item)
+    submit(item, operator, expected_event_id=request)
+    submit(item, operator, "different@example.test", expected_event_id=request)
+    item.refresh_from_db()
+    event = item.events.latest("pk")
+    assert (event.actor, event.actor_user_id) == ("customer", operator.pk)
+    assert item.customer_input == NEW and item.events.count() == 6
+
+
 def test_event_failure_rolls_back_the_accepted_identifier_too(buyer, plan, operator):
     _, item = waiting(buyer, plan, operator)
     before = OrderItem.objects.filter(pk=item.pk).values().get()

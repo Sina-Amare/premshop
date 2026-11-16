@@ -1287,10 +1287,18 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
 
 
 def _input_event(
-    item: OrderItem, account: User | None, before: str, note: str = "", *, notification: str = ""
+    item: OrderItem,
+    account: User | None,
+    before: str,
+    note: str = "",
+    *,
+    notification: str = "",
+    customer: bool = False,
 ) -> OrderItemEvent:
     if account is None:
         actor = OrderItemEvent.Actor.SYSTEM
+    elif customer:  # the website form, even when its buyer is staff
+        actor = OrderItemEvent.Actor.CUSTOMER
     else:
         actor = OrderItemEvent.Actor.OPERATOR if account.is_staff else OrderItemEvent.Actor.CUSTOMER
     event = OrderItemEvent.objects.create(
@@ -1341,7 +1349,11 @@ def _receive_input(
         item, expected_event_id, OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED
     ):
         # Only the customer's own repeat; after the operator's receipt their input went nowhere.
-        if customer_input is not None and item.events.latest("pk").actor_user_id != account.pk:
+        receipt = item.events.latest("pk")
+        if customer_input is not None and (receipt.actor, receipt.actor_user_id) != (
+            OrderItemEvent.Actor.CUSTOMER,
+            account.pk,
+        ):
             raise ValidationError(
                 gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
             )
@@ -1376,7 +1388,9 @@ def _receive_input(
     item.sla_paused_at = None
     item.status = OrderItem.Status.QUEUED
     item.save(update_fields=fields)
-    _input_event(item, account, OrderItem.Status.AWAITING_INPUT)
+    _input_event(
+        item, account, OrderItem.Status.AWAITING_INPUT, customer=customer_input is not None
+    )
     return item
 
 
