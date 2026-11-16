@@ -165,9 +165,11 @@ def test_no_key_page_has_a_serious_accessibility_violation(browser, live_server,
     )
     pay(asked, operator)
     act(services.request_input, asked.items.get(), operator)
-    plan.input_type = Plan.InputType.NONE
+    plan.input_type, plan.max_quantity = Plan.InputType.NONE, 2
     plan.save()
     unpaid = services.place_order(user=customer, lines=[services.OrderLine(plan, 1)])
+    # The product page is scanned with its quantity row.
+    assert 'id="qty-row"' in Client().get("/p/chatgpt-plus/").content.decode()
     numbers = {
         "pk": shop.pk,
         "unpaid": unpaid.order_number,
