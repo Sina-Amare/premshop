@@ -3,8 +3,9 @@ from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Prefetch
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,8 +19,9 @@ from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.orders import proof
 from apps.orders import status as order_status
-from apps.orders.models import OrderItem, OrderSupportIdentifier
+from apps.orders.models import Delivery, DeliveryField, OrderItem, OrderSupportIdentifier
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
@@ -32,6 +34,7 @@ from apps.orders.services import (
     cancel_unpaid_order,
     input_last_day,
     replace_support_token,
+    reveal_delivery,
     submit_customer_input,
 )
 
@@ -124,6 +127,7 @@ def _render_detail(
         "orders/detail.html",
         {
             **summary,
+            **_delivery_context(request, summary["order"]),
             "timeline": customer_timeline(summary["order"]),
             "section": "orders",
             "error": error,
@@ -142,6 +146,113 @@ def _render_detail(
     )
     response["Content-Encoding"] = "identity"
     response["Referrer-Policy"] = "same-origin"
+    return response
+
+
+def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
+    sets = {
+        delivery.order_item_id: delivery
+        for delivery in Delivery.objects.filter(order_item__order=order)
+        .order_by("order_item_id", "-pk")
+        .distinct("order_item_id")
+        .defer("note")
+        .prefetch_related(
+            Prefetch(
+                "fields", queryset=DeliveryField.objects.only("delivery_id", "position", "title")
+            )
+        )
+    }
+    rows = [
+        {
+            "item": item,
+            "delivery": sets.get(item.pk),
+            "available": item.status
+            in (OrderItem.Status.DELIVERED, OrderItem.Status.REPLACEMENT_REQUESTED),
+        }
+        for item in order.items.all()
+        if item.delivered_at
+    ]
+    email, _ = proof.email_for(order) if rows else ("", 0)
+    return {
+        "delivery_rows": rows,
+        "delivery_ready": any(row["available"] and row["delivery"] for row in rows),
+        "delivery_email": (email[:1] + "•••@" + email.partition("@")[2]) if email else "",
+        "delivery_confirmed": (
+            proof.is_confirmed(order=order, session_key=request.session.session_key or "")
+            if rows
+            else False
+        ),
+    }
+
+
+@sensitive_post_parameters("code")
+@never_cache
+@login_required
+@require_POST
+def delivery_code(
+    request: HttpRequest, order_number: int, *, confirm: bool = False
+) -> HttpResponse:
+    summary = _owned_summary(request, order_number)
+    arguments = {
+        "order_id": summary["order"].pk,
+        "actor": cast(User, request.user),
+        "session_key": request.session.session_key or "",
+    }
+    try:
+        if confirm:
+            if not proof.confirm_code(**arguments, code=request.POST.get("code", "")):
+                raise ValidationError("کد درست نیست یا مهلتش گذشته است.")
+        else:
+            proof.request_code(**arguments, ip=ratelimit.client_ip(request))
+            messages.success(request, "کد به ایمیل این سفارش فرستاده شد.")
+    except ValidationError as invalid:
+        return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
+    return redirect("order-detail", order_number=order_number)
+
+
+@never_cache
+@login_required
+@require_POST
+def delivery_reveal(request: HttpRequest, order_number: int, item_id: int) -> HttpResponse:
+    summary = _owned_summary(request, order_number)
+    item = next((row for row in summary["order"].items.all() if row.pk == item_id), None)
+    if item is None:
+        raise Http404
+    state = "unavailable"
+    try:
+        content = reveal_delivery(
+            order_id=summary["order"].pk,
+            item_id=item_id,
+            actor=cast(User, request.user),
+            ip=ratelimit.client_ip(request),
+            customer_session=request.session.session_key or "",
+        )
+    except PermissionDenied:
+        # The page was opened while the proof held; the owner only needs a new code.
+        messages.error(request, proof.LAPSED)
+        return redirect("order-detail", order_number=order_number)
+    except ImproperlyConfigured:
+        content, state = None, "unreadable"
+    else:
+        item.refresh_from_db(fields=["status"])
+        if content is None and item.status in (
+            OrderItem.Status.DELIVERED,
+            OrderItem.Status.REPLACEMENT_REQUESTED,
+        ):
+            state = "deleted"
+    response = render(
+        request,
+        "orders/delivery.html",
+        {
+            "order": summary["order"],
+            "item": item,
+            "content": content,
+            "state": state,
+            "section": "orders",
+        },
+    )
+    response["Content-Encoding"] = "identity"
+    response["Referrer-Policy"] = "no-referrer"
     return response
 
 

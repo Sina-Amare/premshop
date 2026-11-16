@@ -333,6 +333,10 @@ class OrderItem(models.Model):
 
 
 class CredentialAccessLog(models.Model):
+    class Source(models.TextChoices):
+        PANEL = "panel", _("پنل")
+        CUSTOMER = "customer", _("مشتری")
+
     class Target(models.TextChoices):
         CUSTOMER_INPUT = "customer_input", _("اطلاعات مشتری")
         DELIVERY = "delivery", _("اطلاعات تحویل")
@@ -341,6 +345,7 @@ class CredentialAccessLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     ip = models.GenericIPAddressField(null=True)
     target = models.CharField(max_length=16, choices=Target.choices)
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.PANEL)
     created_at = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
 
     class Meta:
@@ -349,11 +354,27 @@ class CredentialAccessLog(models.Model):
             models.CheckConstraint(
                 condition=Q(target__in=["customer_input", "delivery"]),
                 name="credential_access_target_valid",
-            )
+            ),
+            models.CheckConstraint(
+                condition=Q(source__in=["panel", "customer"]),
+                name="credential_access_source_valid",
+            ),
         ]
 
     def __str__(self) -> str:
         return f"{self.order_item_id} / {self.user_id} / {self.created_at.isoformat()}"
+
+
+class OrderEmailRecovery(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.PROTECT)
+    email = models.EmailField()
+    operator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    telegram_id = models.BigIntegerField()
+    telegram_linked_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    def __str__(self) -> str:
+        return f"{self.order_id} / {self.operator_id} / {self.created_at.isoformat()}"
 
 
 class OrderItemEvent(models.Model):

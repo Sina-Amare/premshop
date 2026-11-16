@@ -189,15 +189,16 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
 
 
 @pytest.mark.parametrize("state,pill,badge,fragment,contact", CASES)
-def test_page_headings_are_the_card_titles_and_nothing_else(
+def test_page_headings_match_status_delivery_and_purchase_sections(
     client, buyer, plan, operator, state, pill, badge, fragment, contact
 ):
     order = order_for_state(buyer, plan, operator, state)
     body = page(client, buyer, order)
     assert headings(body, 1) == [f"سفارش {to_persian_digits(order.order_number)}"]
     titles = headings(body, 2)
-    assert len(titles) == 2 and fragment in titles[0]
-    assert titles[1] == "محصولات و مبلغ سفارش"
+    assert fragment in titles[0]
+    delivery = ["اطلاعات تحویل"] if any(item.delivered_at for item in order.items.all()) else []
+    assert titles[1:] == [*delivery, "محصولات و مبلغ سفارش"]
 
 
 def test_a_cancelled_unpaid_order_says_no_payment_was_recorded_and_offers_no_support(

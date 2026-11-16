@@ -107,12 +107,16 @@ def _may_reveal(actor: User) -> None:
         raise PermissionDenied
 
 
-def _log_reveal(item_id: int, actor: User, ip: str | None, target: str) -> None:
+def _log_reveal(
+    item_id: int, actor: User, ip: str | None, target: str, source: str = "panel"
+) -> None:
     try:
         address = str(ip_address(ip)) if ip else None
     except ValueError:
         address = None
-    CredentialAccessLog.objects.create(order_item_id=item_id, user=actor, ip=address, target=target)
+    CredentialAccessLog.objects.create(
+        order_item_id=item_id, user=actor, ip=address, target=target, source=source
+    )
 
 
 def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
@@ -657,12 +661,30 @@ def _write_set(item: OrderItem, account: User, before: str, content: DeliveryCon
 
 
 def reveal_delivery(
-    *, order_id: int, item_id: int, actor: User, ip: str | None
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    ip: str | None,
+    customer_session: str | None = None,
 ) -> DeliveryContent | None:
     """The current set, decrypted only after its access row is written; None before delivery."""
     with transaction.atomic(durable=True):
-        _may_reveal(actor)
-        item = OrderItem.objects.only("pk", "expires_at").get(pk=item_id, order_id=order_id)
+        if customer_session is None:
+            _may_reveal(actor)
+            item = _locked_item(Order.objects.filter(pk=order_id), item_id)
+        else:
+            from apps.orders import proof
+
+            order, _ = proof.locked_order(order_id, actor)
+            if not proof.is_confirmed(order=order, session_key=customer_session):
+                raise PermissionDenied
+            item = _locked_item(Order.objects.filter(pk=order.pk, user_id=actor.pk), item_id)
+            if item.status not in (
+                OrderItem.Status.DELIVERED,
+                OrderItem.Status.REPLACEMENT_REQUESTED,
+            ):
+                return None
         current = (
             Delivery.objects.filter(order_item_id=item.pk)
             .order_by("-pk")
@@ -671,7 +693,13 @@ def reveal_delivery(
         )
         if current is None:
             return None
-        _log_reveal(item.pk, actor, ip, CredentialAccessLog.Target.DELIVERY)
+        _log_reveal(
+            item.pk,
+            actor,
+            ip,
+            CredentialAccessLog.Target.DELIVERY,
+            "customer" if customer_session is not None else "panel",
+        )
         delivery = Delivery.objects.get(pk=current)
         content = DeliveryContent(
             tuple(DeliveryLine(row.title, row.value) for row in delivery.fields.all()),

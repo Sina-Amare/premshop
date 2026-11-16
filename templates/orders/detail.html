@@ -70,6 +70,7 @@
 {% if card.contact %}{% if card.state == 'delivered' and not card.rejected_at %}<details class="order-contact-more"><summary>مشکلی هست؟</summary>
 {% include "orders/_support_contact.html" %}</details>{% else %}{% include "orders/_support_contact.html" %}{% endif %}{% endif %}
 </section>
+{% include "orders/_delivery.html" %}
 <section class="card order-card" id="order-purchase" aria-labelledby="order-purchase-title">
 <h2 id="order-purchase-title">محصولات و مبلغ سفارش</h2>
 {% include "orders/_groups.html" %}

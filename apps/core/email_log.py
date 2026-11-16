@@ -14,7 +14,7 @@ from django.utils.crypto import salted_hmac
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
-PROTECTED = {"telegram_changed", "sms_budget"}
+PROTECTED = {"telegram_changed", "sms_budget", "delivery_code"}
 COUNTED = ["in_flight", "accepted", "uncertain"]
 
 

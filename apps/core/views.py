@@ -140,6 +140,7 @@ def styleguide(request: HttpRequest) -> HttpResponse:
 # or "123" hides exactly the problems worth catching — long product names wrapping,
 # Persian digits in a Latin-shaped order number, a price that outgrows its column.
 EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
+    "delivery_code": {"code": "539271", "order_number": 14050217},
     "purchase_confirmation": {
         "order_number": 14050217,
         "created_at": datetime(2026, 11, 3, 11, 2, tzinfo=UTC),
