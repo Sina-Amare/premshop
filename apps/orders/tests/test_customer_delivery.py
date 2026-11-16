@@ -320,7 +320,8 @@ def test_order_gets_mask_without_loading_encrypted_fields_and_post_requires_proo
     assert VALUE not in response.content.decode() and NOTE not in response.content.decode()
     assert "data-delivery-masked" in response.content.decode()
     request_url, confirm_url, reveal_url = urls(order, item)
-    assert client.post(reveal_url).status_code == 403
+    unproved = client.post(reveal_url)
+    assert unproved.status_code == 302 and VALUE not in unproved.content.decode()
     assert client.post(request_url).status_code == 302
     code = code_from_mail()
     assert client.post(confirm_url, {"code": code}).status_code == 302
@@ -544,3 +545,18 @@ def test_source_migration_backfills_existing_rows_and_reverses(buyer, plan, oper
             assert cursor.fetchone()[0] == 1
     finally:
         MigrationExecutor(connection).migrate(newest)
+
+
+def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    client = Client()
+    client.force_login(buyer)
+    now = timezone.now()
+    with time_machine.travel(now, tick=False):
+        verified(order, buyer, client.session.session_key)
+    with time_machine.travel(now + timedelta(seconds=601), tick=False):
+        response = client.post(urls(order, item)[2], follow=True)
+    assert response.redirect_chain == [(reverse("order-detail", args=[order.order_number]), 302)]
+    body = response.content.decode()
+    assert "تأیید ایمیل فقط تا ۱۰ دقیقه معتبر است." in body and urls(order, item)[0] in body
+    assert VALUE not in body and not models.CredentialAccessLog.objects.exists()

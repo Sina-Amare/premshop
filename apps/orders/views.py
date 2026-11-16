@@ -3,7 +3,7 @@ from typing import Any, cast
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 from django.http import Http404, HttpRequest, HttpResponse
@@ -227,6 +227,10 @@ def delivery_reveal(request: HttpRequest, order_number: int, item_id: int) -> Ht
             ip=ratelimit.client_ip(request),
             customer_session=request.session.session_key or "",
         )
+    except PermissionDenied:
+        # The page was opened while the proof held; the owner only needs a new code.
+        messages.error(request, proof.LAPSED)
+        return redirect("order-detail", order_number=order_number)
     except ImproperlyConfigured:
         content, state = None, "unreadable"
     else:
