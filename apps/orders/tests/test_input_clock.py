@@ -218,15 +218,40 @@ def test_receipt_checks_stored_actor_and_ownership(buyer, plan, operator, kind):
     assert item.events.count() == 3
 
 
-def test_owner_receipt_service_can_be_reused_without_allowing_requests(buyer, plan, operator):
+@pytest.mark.parametrize("operation", ["receive", "resume"])
+def test_customer_cannot_claim_receipt_without_submitting_input(buyer, plan, operator, operation):
     _, item = purchase(buyer, plan, operator)
-    with time_machine.travel(WEDNESDAY, tick=False):
-        act(services.receive_input, item, buyer)
-    event = item.events.latest("pk")
-    assert event.actor == "customer" and event.actor_user_id == buyer.pk
+    if operation == "resume":
+        act(services.receive_input, item, operator)
+        act(services.request_input, item, operator)
+    before = item.events.count()
+    with pytest.raises(PermissionDenied):
+        act(getattr(services, f"{operation}_input"), item, buyer)
+    assert item.events.count() == before
     with pytest.raises(PermissionDenied):
         act(services.request_input, item, buyer)
     with pytest.raises(PermissionDenied):
         services.request_input(
             order_id=0, item_id=item.pk, actor=operator, expected_event_id=event_id(item)
         )
+
+
+@pytest.mark.parametrize("hour,minute,next_day", [(2, 0, False), (21, 30, True)])
+def test_operator_resume_moves_an_overnight_deadline_to_support_opening(
+    buyer, plan, operator, hour, minute, next_day
+):
+    _, item = purchase(buyer, plan, operator, telegram=False)
+    with time_machine.travel(MONDAY + timedelta(hours=4), tick=False):
+        act(services.request_input, item, operator)
+    resumed = (MONDAY + timedelta(days=1)).replace(hour=hour, minute=minute)
+    with time_machine.travel(resumed, tick=False):
+        act(services.resume_input, item, operator)
+        act(
+            services.resume_input,
+            item,
+            operator,
+            expected_event_id=item.events.order_by("pk")[2].pk,
+        )
+    item.refresh_from_db()
+    expected = resumed.replace(hour=10, minute=0) + timedelta(days=int(next_day))
+    assert item.due_at == expected

@@ -188,8 +188,32 @@ def test_invoice_is_standalone_owner_only_and_has_no_private_values(client, buye
     )
 
 
+def shows_number(number: int, text: str) -> bool:
+    # A point only exempts it inside a decimal, the way icon path data writes numbers.
+    return bool(re.search(rf"(?<![\d.]){number}(?!\.?\d)", text))
+
+
+@pytest.mark.parametrize(
+    "text,shown",
+    [
+        ("<p>Order 1067.</p>", True),
+        ('<a href="/files/order-1067.pdf">', True),
+        ("/account/orders/1067/", True),
+        ('<path d="M211.851067,545"/>', False),
+        ("1067.5", False),
+        ("0.1067", False),
+        ("10670", False),
+    ],
+)
+def test_a_number_counts_only_when_no_other_number_continues_it(text, shown):
+    assert shows_number(1067, text) is shown
+
+
 def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buyer, plan):
     order = purchase(buyer, plan)
+    # 1067 also sits inside the icon sprite's path data ("211.851067").
+    type(order).objects.filter(pk=order.pk).update(order_number=1067)
+    order.refresh_from_db()
     order.items.update(customer_input="PRIVATE-INPUT")
     OrderItemEvent.objects.create(
         order_item=order.items.first(),
@@ -209,7 +233,6 @@ def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buy
         plan.title,
         "PRIVATE-INPUT",
         "PRIVATE-NOTE",
-        str(order.order_number),
         to_persian_digits(order.order_number),
         "200000",
         format_toman(200000),
@@ -218,6 +241,7 @@ def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buy
         "@premshop_support",
     ):
         assert forbidden not in body
+    assert not shows_number(order.order_number, body)
     assert set(response.context["tracking"][0]) == {
         "name",
         "pill",
