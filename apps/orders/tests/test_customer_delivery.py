@@ -560,3 +560,15 @@ def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, 
     body = response.content.decode()
     assert "تأیید ایمیل فقط تا ۱۰ دقیقه معتبر است." in body and urls(order, item)[0] in body
     assert VALUE not in body and not models.CredentialAccessLog.objects.exists()
+
+
+def test_the_panel_history_says_whether_the_buyer_or_staff_revealed(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    verified(order, buyer)
+    reveal(order, item, buyer)
+    services.reveal_delivery(order_id=order.pk, item_id=item.pk, actor=operator, ip=None)
+    client = Client()
+    client.force_login(operator)
+    response = client.get(reverse("admin:orders_order_change", args=[order.pk]))
+    history = response.content.decode().split('id="input-access-history"')[1]
+    assert "مشتری" in history and "پنل" in history
