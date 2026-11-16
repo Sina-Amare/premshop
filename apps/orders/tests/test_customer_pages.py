@@ -190,6 +190,9 @@ def test_invoice_is_standalone_owner_only_and_has_no_private_values(client, buye
 
 def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buyer, plan):
     order = purchase(buyer, plan)
+    # 1067 also sits inside the icon sprite's path data ("211.851067").
+    type(order).objects.filter(pk=order.pk).update(order_number=1067)
+    order.refresh_from_db()
     order.items.update(customer_input="PRIVATE-INPUT")
     OrderItemEvent.objects.create(
         order_item=order.items.first(),
@@ -209,7 +212,6 @@ def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buy
         plan.title,
         "PRIVATE-INPUT",
         "PRIVATE-NOTE",
-        str(order.order_number),
         to_persian_digits(order.order_number),
         "200000",
         format_toman(200000),
@@ -218,6 +220,7 @@ def test_tracking_is_an_allowlist_of_frozen_names_statuses_and_times(client, buy
         "@premshop_support",
     ):
         assert forbidden not in body
+    assert not re.search(rf"(?<![\d.]){order.order_number}(?![\d.])", body)
     assert set(response.context["tracking"][0]) == {
         "name",
         "pill",
