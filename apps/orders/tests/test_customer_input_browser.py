@@ -13,7 +13,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-@pytest.mark.parametrize("state", ["empty", "invalid", "stale", "long", "telegram"])
+@pytest.mark.parametrize("state", ["empty", "invalid", "stale", "long", "telegram", "mixed"])
 def test_customer_input_states_keep_keyboard_access_and_private_responses(
     browser, live_server, buyer, plan, operator, width, state, tmp_path
 ):
@@ -24,15 +24,32 @@ def test_customer_input_states_keep_keyboard_access_and_private_responses(
     if state == "long":
         plan.product.name = "محصول نمونه با نام بلند برای نمایش اطلاعات فعال‌سازی در سفارش"
         plan.product.save()
-    order, item = (
-        purchase(buyer, plan, operator) if state == "telegram" else waiting(buyer, plan, operator)
-    )
+    if state == "mixed":
+        from apps.orders.tests.test_input_clock import pay
+        from apps.orders.tests.test_order_detail import second_plan
+
+        plan.input_type, plan.max_quantity = "email", 1
+        plan.save()
+        order = services.place_order(
+            user=buyer,
+            lines=[services.OrderLine(plan, 1, OLD), services.OrderLine(second_plan(), 1)],
+        )
+        pay(order, operator)
+        item = order.items.get(plan=plan)
+        act(services.request_input, item, operator)
+    else:
+        order, item = (
+            purchase(buyer, plan, operator)
+            if state == "telegram"
+            else waiting(buyer, plan, operator)
+        )
     context = context_for(browser, live_server, buyer, width)
     page = context.new_page()
     url = live_server.url + reverse("order-detail", args=[order.order_number])
     try:
         page.goto(url)
         expect(page).to_have_url(url)
+        expect(page.locator("html")).to_have_attribute("dir", "rtl")
         assert page.locator(f'[data-input-item="{item.pk}"]').count() == 1
         expect(page.locator(f'[data-input-item="{item.pk}"]')).to_be_visible()
         assert OLD not in page.content()
@@ -54,11 +71,12 @@ def test_customer_input_states_keep_keyboard_access_and_private_responses(
                 expect(page.get_by_role("alert")).to_be_visible()
             else:
                 field.focus()
-                page.keyboard.type(NEW)
                 page.keyboard.press("Tab")
                 expect(page.locator("[data-input-item] button")).to_be_focused()
         capture(page, f"input-{state}", width, Path(tmp_path))
         if state == "empty":
+            field.fill(NEW)
+            page.keyboard.press("Tab")
             with page.expect_navigation() as navigation:
                 page.keyboard.press("Enter")
             response = navigation.value
