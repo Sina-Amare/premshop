@@ -21,6 +21,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.core import email_log
 from apps.core.fields import EncryptedTextField
+from apps.core.formatting import to_persian_digits
 from apps.orders import models, services
 from apps.orders.tests.test_delivery import LINE, NOTE, VALUE, deliver, queued, staff_with
 from apps.orders.tests.test_input_clock import operator as operator
@@ -572,3 +573,10 @@ def test_the_panel_history_says_whether_the_buyer_or_staff_revealed(buyer, plan,
     response = client.get(reverse("admin:orders_order_change", args=[order.pk]))
     history = response.content.decode().split('id="input-access-history"')[1]
     assert "مشتری" in history and "پنل" in history
+
+
+def test_the_code_email_names_its_order(buyer, plan, operator, mailoutbox):
+    order, _ = delivered(buyer, plan, operator)
+    request_code(order, buyer)
+    number = to_persian_digits(order.order_number)
+    assert number in mailoutbox[-1].subject and number in mailoutbox[-1].body

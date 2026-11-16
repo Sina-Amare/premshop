@@ -77,7 +77,11 @@ def request_code(*, order_id: int, actor: User, session_key: str, ip: str) -> No
         _budget(order, actor, "delivery-code", ip)
     code = otp._new_code()
     try:
-        sent = send_templated_email("delivery_code", to=[email], context={"code": code})
+        sent = send_templated_email(
+            "delivery_code",
+            to=[email],
+            context={"code": code, "order_number": order.order_number},
+        )
     except Exception:  # noqa: BLE001 — transport errors can include a recipient or message
         raise ValidationError(UNSENT) from None
     if not sent:
