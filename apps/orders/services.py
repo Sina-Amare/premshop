@@ -1340,6 +1340,11 @@ def _receive_input(
     if _input_replay(
         item, expected_event_id, OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED
     ):
+        # Only the customer's own repeat; after the operator's receipt their input went nowhere.
+        if customer_input is not None and item.events.latest("pk").actor_user_id != account.pk:
+            raise ValidationError(
+                gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+            )
         return item
     if (
         item.status != OrderItem.Status.AWAITING_INPUT

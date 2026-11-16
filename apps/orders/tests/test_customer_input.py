@@ -147,6 +147,21 @@ def test_one_submission_per_episode_ignores_repeats_and_rejects_an_old_episode(
     assert item.customer_input == "second@example.test" and item.events.count() == 6
 
 
+def test_a_page_opened_before_the_operator_resumed_cannot_report_its_input_saved(
+    client, buyer, plan, operator
+):
+    order, item = waiting(buyer, plan, operator)
+    request = event_id(item)
+    act(services.resume_input, item, operator, expected_event_id=request)
+    client.force_login(buyer)
+    response = client.post(
+        input_url(order, item), {"customer_input": NEW, "expected_event_id": request}
+    )
+    item.refresh_from_db()
+    assert response.status_code == 400 and b'role="alert"' in response.content
+    assert item.customer_input == OLD and item.events.count() == 4
+
+
 def test_event_failure_rolls_back_the_accepted_identifier_too(buyer, plan, operator):
     _, item = waiting(buyer, plan, operator)
     before = OrderItem.objects.filter(pk=item.pk).values().get()
