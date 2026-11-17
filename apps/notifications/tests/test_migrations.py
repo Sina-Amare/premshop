@@ -107,3 +107,27 @@ def test_message_migration_preserves_existing_rows_and_reverses(buyer):
         assert list(OldNotification.objects.order_by("pk").values()) == saved
     finally:
         MigrationExecutor(connection).migrate(leaves)
+
+
+def test_claim_alert_migration_reverses_with_an_alert_row(buyer):
+    from apps.notifications.models import Notification
+    from apps.orders.models import Order
+
+    executor = MigrationExecutor(connection)
+    leaves = executor.loader.graph.leaf_nodes()
+    before = [("notifications", "0004_input_ladder")]
+    order = Order.objects.create(user=buyer, subtotal=1, total_amount=1)
+    Notification.objects.create(
+        order=order,
+        dedupe_key="customer_claim:1:operator:email",
+        template_name="customer_claim",
+        recipient="operator@example.test",
+    )
+    try:
+        executor.migrate(before)
+        OldNotification = executor.loader.project_state(before).apps.get_model(
+            "notifications", "Notification"
+        )
+        assert not OldNotification.objects.filter(template_name="customer_claim").exists()
+    finally:
+        MigrationExecutor(connection).migrate(leaves)
