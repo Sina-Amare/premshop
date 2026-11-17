@@ -30,6 +30,7 @@ from apps.orders.models import (
     OrderSupportIdentifier,
 )
 from apps.orders.selectors import (
+    claim_answer,
     customer_orders,
     customer_summary,
     customer_timeline,
@@ -203,14 +204,7 @@ def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
             OrderItemEvent.ClaimReason(item.claim_reason).label if item.claim_reason else ""
         )
         outcome = (
-            "open"
-            if item.status == OrderItem.Status.REPLACEMENT_REQUESTED
-            else (
-                ("replaced" if item.moved_with_delivery else "rejected")
-                if item.moved_from == OrderItem.Status.REPLACEMENT_REQUESTED
-                and item.status == OrderItem.Status.DELIVERED
-                else ""
-            )
+            "open" if item.status == OrderItem.Status.REPLACEMENT_REQUESTED else claim_answer(item)
         )
         row["claim_pill"] = order_status.claim_pill(outcome) if outcome else None
     email, _ = proof.email_for(order) if rows else ("", 0)

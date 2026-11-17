@@ -324,3 +324,19 @@ def test_claim_reason_constraint_refuses_invalid_metadata(buyer, plan, operator)
                     **changes,
                 }
             )
+
+
+def test_a_replaced_claim_never_reads_as_rejected_after_retention_deletes_its_sets(
+    client, buyer, plan, operator
+):
+    order, item = delivered(buyer, plan, operator)
+    submit(item, buyer)
+    replace(item, operator)
+    client.force_login(buyer)
+    page = f"/account/orders/{order.order_number}/"
+    assert 'data-state="claim_replaced"' in client.get(page).content.decode()
+    assert services.delete_expired_details(today=timezone.localdate() + timedelta(days=90)) == 1
+    assert not Delivery.objects.filter(order_item=item).exists()
+    body = client.get(page).content.decode()
+    # The claim pill and the top card; the timeline's wording predates this step (INBOX).
+    assert 'data-state="claim_rejected"' not in body and "درخواست تعویض در" not in body

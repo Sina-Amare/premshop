@@ -116,7 +116,8 @@ def customer_orders(user: User) -> QuerySet[Order]:
                 ),
             )
             .annotate(
-                moved_with_delivery=Exists(Delivery.objects.filter(event_id=OuterRef("moved_by")))
+                moved_with_delivery=Exists(Delivery.objects.filter(event_id=OuterRef("moved_by"))),
+                kept_sets=Exists(Delivery.objects.filter(order_item_id=OuterRef("pk"))),
             )
             .order_by("pk"),
         ),
@@ -353,7 +354,7 @@ def _card_facts(
             (
                 moved
                 for item in items
-                if _rejected(item) and (moved := getattr(item, "moved_at", None))
+                if claim_answer(item) == "rejected" and (moved := getattr(item, "moved_at", None))
             ),
             default=None,
         ),
@@ -361,13 +362,14 @@ def _card_facts(
     }
 
 
-def _rejected(item: OrderItem) -> bool:
-    """A replacement request answered with no: back to delivered with nothing delivered."""
-    return (
-        item.status == S.DELIVERED
-        and getattr(item, "moved_from", None) == S.REPLACEMENT_REQUESTED
-        and not getattr(item, "moved_with_delivery", True)
-    )
+def claim_answer(item: OrderItem) -> str:
+    """How the last replacement request was answered: a new set means replaced, none means
+    rejected. Retention deletes every set, after which the answer is no longer known."""
+    if item.status != S.DELIVERED or getattr(item, "moved_from", None) != S.REPLACEMENT_REQUESTED:
+        return ""
+    if getattr(item, "moved_with_delivery", False):
+        return "replaced"
+    return "rejected" if getattr(item, "kept_sets", True) else ""
 
 
 def _hours_after_details(item: OrderItem) -> int | None:
