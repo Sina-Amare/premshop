@@ -1,0 +1,9 @@
+{% load fa %}درخواست تعویض مشتری
+شماره‌ی سفارش: {{ order_number|fa_digits }}
+محصول: {{ product_name }}
+دلیل درخواست: {{ reason }}
+زمان ثبت: {{ at|jalali }}، ساعت {{ at|date:"H:i"|fa_digits }}
+مشاهده‌ی سفارش در پنل:
+{{ panel_url }}
+
+پشتیبانی: {{ support.email }}

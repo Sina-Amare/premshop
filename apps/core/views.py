@@ -140,6 +140,13 @@ def styleguide(request: HttpRequest) -> HttpResponse:
 # or "123" hides exactly the problems worth catching — long product names wrapping,
 # Persian digits in a Latin-shaped order number, a price that outgrows its column.
 EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
+    "customer_claim": {
+        "reason": "اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.",
+        "order_number": 14050217,
+        "product_name": "اشتراک نمونه Example Pro",
+        "at": datetime(2026, 11, 17, 11, 2, tzinfo=UTC),
+        "panel_url": "https://premshop.ir/admin/orders/order/17/change/",
+    },
     "delivery_code": {"code": "539271", "order_number": 14050217},
     "purchase_confirmation": {
         "order_number": 14050217,

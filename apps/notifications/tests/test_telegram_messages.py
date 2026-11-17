@@ -125,7 +125,8 @@ def test_an_item_update_names_the_product_and_a_delay_its_new_deadline(buyer, pl
 
 
 @pytest.mark.parametrize(
-    "template_name", sorted(set(Notification.Template.values) - {"purchase_confirmation"})
+    "template_name",
+    sorted(set(Notification.Template.values) - {"purchase_confirmation", "customer_claim"}),
 )
 def test_every_notice_keeps_the_frame(buyer, plan, telegram, template_name):
     linked(buyer)

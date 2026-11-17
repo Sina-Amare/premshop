@@ -379,7 +379,7 @@ def test_quota_cooldown_covers_both_message_kinds_without_spending_attempts(buye
     assert set(Notification.objects.values_list("next_attempt_at", flat=True)) == {wait}
 
 
-def test_every_message_projects_only_safe_facts(buyer, plan, operator):
+def test_every_message_projects_only_safe_facts(buyer, plan, operator, settings):
     order, item = queued(buyer, plan, operator)
     snapshot = dict(item.product_snapshot)
     snapshot["usage_notes"] = "SECRET-PRODUCT-NOTE"
@@ -387,6 +387,16 @@ def test_every_message_projects_only_safe_facts(buyer, plan, operator):
         customer_input="SECRET-INPUT", product_snapshot=snapshot
     )
     for index, template in enumerate(Notification.Template.values):
+        if template == "customer_claim":
+            from apps.orders.tests.test_customer_claim import delivered, submit
+
+            settings.OPERATOR_ALERT_EMAIL = "operator@example.test"
+            claim_order, claim_item = delivered(buyer, plan, operator)
+            submit(claim_item, buyer)
+            row = rows("customer_claim").get(order=claim_order)
+            parts = row.subject + row.text_body + row.html_body
+            assert "SECRET-INPUT" not in parts and "SECRET-PRODUCT-NOTE" not in parts
+            continue
         if template == "purchase_confirmation":
             continue
         row = services.enqueue_event(

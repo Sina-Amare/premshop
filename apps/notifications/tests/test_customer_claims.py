@@ -30,7 +30,13 @@ def rows():
 
 
 def test_committed_claim_alert_has_only_allowed_metadata(buyer, plan, operator, settings):
+    from apps.orders.models import OrderItem
+
     order, item = delivered(buyer, plan, operator)
+    OrderItem.objects.filter(pk=item.pk).update(customer_input="PRIVATE-INPUT")
+    delivery = item.deliveries.latest("pk")
+    delivery.note = NOTE
+    delivery.save(update_fields=["note"])
     with transaction.atomic():
         submit(item, buyer)
         assert not rows().exists()

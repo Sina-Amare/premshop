@@ -268,6 +268,7 @@ SERVER_EMAIL = env("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 # The address customers are told to write to, and the Reply-To on every message.
 # Separate from DEFAULT_FROM_EMAIL, which carries a display name and may change.
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", "premshop.support@gmail.com")
+OPERATOR_ALERT_EMAIL = env("OPERATOR_ALERT_EMAIL").strip()
 
 # The shop's Telegram bot: customers link it from the account page and receive order
 # notices there. A blank token switches Telegram off entirely.

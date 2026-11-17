@@ -1,0 +1,10 @@
+{% extends "email/base.html" %}{% load fa %}
+{% block title %}درخواست تعویض مشتری{% endblock %}
+{% block content %}
+<h1 style="font-size:21px;line-height:1.6;">درخواست تعویض مشتری</h1>
+<p>شماره‌ی سفارش: {{ order_number|fa_digits }}</p>
+<p>محصول: <bdi>{{ product_name }}</bdi></p>
+<p>دلیل درخواست: {{ reason }}</p>
+<p>زمان ثبت: {{ at|jalali }}، ساعت {{ at|date:"H:i"|fa_digits }}</p>
+<p><a href="{{ panel_url }}" style="color:#2459D3;">مشاهده‌ی سفارش در پنل</a></p>
+{% endblock %}

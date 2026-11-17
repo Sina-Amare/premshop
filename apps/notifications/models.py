@@ -16,6 +16,7 @@ class Notification(models.Model):
         DELAY = "supply_delayed", _("تغییر مهلت تحویل")
         CANCELLATION = "item_cancelled", _("لغو محصول")
         REFUND = "item_refunded", _("واریز بازپرداخت")
+        CLAIM = "customer_claim", _("درخواست تعویض مشتری")
 
     class Status(models.TextChoices):
         PENDING = "pending", _("در انتظار")
@@ -83,6 +84,7 @@ class Notification(models.Model):
                         "supply_delayed",
                         "item_cancelled",
                         "item_refunded",
+                        "customer_claim",
                     ]
                 ),
                 name="notification_template_valid",
