@@ -726,10 +726,9 @@ class OrderAdmin(ModelAdmin):
                     error = " ".join(failure.messages)
                 else:
                     return redirect("admin:orders_order_change", order_id)
-        claim_note = (
+        claim_event = (
             item.events.filter(to_status=OrderItem.Status.REPLACEMENT_REQUESTED)
             .order_by("-pk")
-            .values_list("note", flat=True)
             .first()
             if mode == "replace"
             else None
@@ -773,7 +772,12 @@ class OrderAdmin(ModelAdmin):
                 "bank_ref": bank_ref,
                 "can_deliver": can_deliver,
                 "mode": mode,
-                "claim_note": claim_note,
+                "claim_note": (
+                    (claim_event.get_claim_reason_display() or claim_event.note)
+                    if claim_event
+                    else ""
+                ),
+                "claim_actor": claim_event.get_actor_display() if claim_event else "",
                 "cancel_options": cancel_options,
                 "cancel_refusal": cancel_refusal,
             },
@@ -1083,7 +1087,7 @@ class OrderAdmin(ModelAdmin):
                         if event.from_status
                         else _("ثبت سفارش")
                     ),
-                    event.note,
+                    event.get_claim_reason_display() or event.note,
                 )
                 for event in events
             ),

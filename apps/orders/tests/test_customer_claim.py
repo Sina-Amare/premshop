@@ -290,3 +290,37 @@ def test_refund_policy_ignores_new_frozen_deadline_and_ab_claims(buyer, plan, op
     )
     item.refresh_from_db()
     assert item.status == "DELIVERED"
+
+
+def test_refunds_still_use_replacement_expiry_until_remedies_change(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator, warranty="full_period", days=10)
+    first = item.delivered_at
+    submit(item, buyer, C)
+    replace(item, operator, expires_at=timezone.localdate(first) + timedelta(days=40))
+    with time_machine.travel(first + timedelta(days=20), tick=False):
+        claim(item, operator)
+        item.refresh_from_db()
+        assert item.warranty_ends_on < timezone.localdate()
+        amount = services.refund_amount(item, "warranty_refund")
+        assert amount == (item.paid_amount * 21 * 2 + 41) // 82
+
+
+def test_claim_reason_constraint_refuses_invalid_metadata(buyer, plan, operator):
+    from django.db import IntegrityError, transaction
+
+    _, item = delivered(buyer, plan, operator)
+    for changes in (
+        {"claim_reason": "arbitrary"},
+        {"claim_reason": A, "actor": "operator"},
+        {"claim_reason": A, "note": "PRIVATE-PROSE"},
+    ):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            OrderItemEvent.objects.create(
+                **{
+                    "order_item": item,
+                    "from_status": "DELIVERED",
+                    "to_status": "REPLACEMENT_REQUESTED",
+                    "actor": "customer",
+                    **changes,
+                }
+            )

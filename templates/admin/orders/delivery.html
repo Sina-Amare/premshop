@@ -43,6 +43,7 @@
     </form>
   {% elif mode == "replace" %}
     <p class="delivery-claim">{% translate "دلیل درخواست تعویض" %}: {{ claim_note }}</p>
+    <p>{{ claim_actor }}</p>
   {% endif %}
   {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "خطاهای فرم را درست کنید." %}</p>{% endif %}</div>{% endif %}
   {% if preview %}

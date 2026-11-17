@@ -87,6 +87,7 @@ def customer_orders(user: User) -> QuerySet[Order]:
                 "cancel_reason",
                 "delivered_at",
                 "expires_at",
+                "warranty_ends_on",
                 "plan",
                 "plan__product",
                 "plan__product__name",
@@ -101,6 +102,13 @@ def customer_orders(user: User) -> QuerySet[Order]:
                 moved_from=Subquery(_LAST_MOVE.values("from_status")[:1]),
                 moved_at=Subquery(_LAST_MOVE.values("created_at")[:1]),
                 moved_by=Subquery(_LAST_MOVE.values("pk")[:1]),
+                claim_reason=Subquery(
+                    OrderItemEvent.objects.filter(
+                        order_item_id=OuterRef("pk"), to_status=S.REPLACEMENT_REQUESTED
+                    )
+                    .order_by("-pk")
+                    .values("claim_reason")[:1]
+                ),
                 latest_event_id=Subquery(
                     OrderItemEvent.objects.filter(order_item_id=OuterRef("pk"))
                     .order_by("-pk")

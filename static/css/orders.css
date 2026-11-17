@@ -116,3 +116,7 @@ details.order-card>p{margin-block:12px 16px}
 .order-tabs__count{min-inline-size:24px;padding:0 6px;font-size:13px;font-weight:500;line-height:22px;text-align:center;color:var(--v-text);background:var(--color-fill-subtle);border-radius:var(--radius-sm)}
 /* Four groups on a phone: two even rows rather than a ragged wrap. */
 @media(max-width:760px){.order-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.order-tabs a{justify-content:space-between}}
+ .order-claim { margin-block-start: 1rem; }
+ .order-claim fieldset { border: 0; padding: 0; margin-block: 1rem; }
+ .order-claim-choice { display: flex; align-items: baseline; gap: .5rem; margin-block: .75rem; }
+ .order-claim-choice input { flex-shrink: 0; }

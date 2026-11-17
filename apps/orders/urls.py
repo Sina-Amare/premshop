@@ -6,6 +6,11 @@ urlpatterns = [
     path("account/orders/", views.order_list, name="order-list"),
     path("account/orders/<int:order_number>/", views.detail, name="order-detail"),
     path(
+        "account/orders/<int:order_number>/items/<int:item_id>/claim/",
+        views.file_claim,
+        name="order-claim",
+    ),
+    path(
         "account/orders/<int:order_number>/delivery/code/",
         views.delivery_code,
         name="order-delivery-code",

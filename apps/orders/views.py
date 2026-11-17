@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from typing import Any, cast
 
 from django.contrib import messages
@@ -21,7 +22,13 @@ from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders import proof
 from apps.orders import status as order_status
-from apps.orders.models import Delivery, DeliveryField, OrderItem, OrderSupportIdentifier
+from apps.orders.models import (
+    Delivery,
+    DeliveryField,
+    OrderItem,
+    OrderItemEvent,
+    OrderSupportIdentifier,
+)
 from apps.orders.selectors import (
     customer_orders,
     customer_summary,
@@ -30,9 +37,11 @@ from apps.orders.selectors import (
     order_lead,
 )
 from apps.orders.services import (
+    available_claim_reasons,
     can_submit_customer_input,
     cancel_unpaid_order,
     input_last_day,
+    open_customer_claim,
     replace_support_token,
     reveal_delivery,
     submit_customer_input,
@@ -172,6 +181,38 @@ def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
         for item in order.items.all()
         if item.delivered_at
     ]
+    for row in rows:
+        item, delivery = row["item"], row["delivery"]
+        available = available_claim_reasons(
+            item, current_delivery_at=delivery.created_at if delivery else None
+        )
+        row["claim_choices"] = [
+            (value, OrderItemEvent.ClaimReason(value).label) for value in available
+        ]
+        row["claim_deadline"] = (
+            delivery.created_at + timedelta(hours=48)
+            if delivery and any(value != OrderItemEvent.ClaimReason.STOPPED for value in available)
+            else None
+        )
+        row["warranty_end"] = (
+            order_status.warranty_last_day(item)
+            if OrderItemEvent.ClaimReason.STOPPED in available
+            else None
+        )
+        row["claim_reason"] = (
+            OrderItemEvent.ClaimReason(item.claim_reason).label if item.claim_reason else ""
+        )
+        outcome = (
+            "open"
+            if item.status == OrderItem.Status.REPLACEMENT_REQUESTED
+            else (
+                ("replaced" if item.moved_with_delivery else "rejected")
+                if item.moved_from == OrderItem.Status.REPLACEMENT_REQUESTED
+                and item.status == OrderItem.Status.DELIVERED
+                else ""
+            )
+        )
+        row["claim_pill"] = order_status.claim_pill(outcome) if outcome else None
     email, _ = proof.email_for(order) if rows else ("", 0)
     return {
         "delivery_rows": rows,
@@ -285,6 +326,36 @@ def provide_input(request: HttpRequest, order_number: int, item_id: int) -> Http
             status=400,
         )
     return redirect("order-detail", order_number=order.order_number)
+
+
+@sensitive_post_parameters()
+@never_cache
+@login_required
+@require_POST
+def file_claim(request: HttpRequest, order_number: int, item_id: int) -> HttpResponse:
+    summary = _owned_summary(request, order_number)
+    if not any(item.pk == item_id for item in summary["order"].items.all()):
+        raise Http404
+    try:
+        expected = int(request.POST.get("expected_event_id", ""))
+    except ValueError:
+        expected = 0
+    try:
+        open_customer_claim(
+            order_id=summary["order"].pk,
+            item_id=item_id,
+            actor=cast(User, request.user),
+            expected_event_id=expected,
+            reason=request.POST.get("reason", ""),
+        )
+    except ValidationError as invalid:
+        return _render_detail(
+            request,
+            _owned_summary(request, order_number),
+            error=" ".join(invalid.messages),
+            status=400,
+        )
+    return redirect("order-detail", order_number=order_number)
 
 
 @sensitive_post_parameters("expected_support_token")

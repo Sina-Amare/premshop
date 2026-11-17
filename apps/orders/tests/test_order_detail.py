@@ -185,7 +185,10 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
     assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
     # A pill is read, never followed.
     assert not re.search(r'<a [^>]*class="badge', body)
-    assert 'name="customer_input"' not in body and "expected_event_id" not in body
+    assert 'name="customer_input"' not in body
+    for form in re.findall(r"<form\b.*?</form>", body, re.S):
+        if "expected_event_id" in form:
+            assert re.search(r'action="/account/orders/\d+/items/\d+/claim/"', form)
 
 
 @pytest.mark.parametrize("state,pill,badge,fragment,contact", CASES)
@@ -281,7 +284,10 @@ def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer
 
 def test_a_delivered_item_past_its_warranty_offers_no_support(client, buyer, plan, operator):
     order = order_for_state(buyer, plan, operator, "delivered")
-    order.items.update(delivered_at=timezone.now() - timedelta(days=10))
+    first = timezone.now() - timedelta(days=10)
+    order.items.update(
+        delivered_at=first, warranty_ends_on=timezone.localdate(first) + timedelta(days=7)
+    )
     card = card_of(page(client, buyer, order))
     assert "مشکلی هست؟" not in card and "data-support-contact" not in card
     assert 'id="support-identifier"' in page(client, buyer, order)

@@ -1,0 +1,14 @@
+{% load fa %}
+<div class="order-claim" data-claim-item="{{ row.item.pk }}">
+{% if row.claim_pill %}<p><span class="badge badge--{{ row.claim_pill.badge }}" data-state="{{ row.claim_pill.state }}">{% include "storefront/icon.html" with name=row.claim_pill.icon %}{{ row.claim_pill.label }}</span></p>{% endif %}
+{% if row.claim_reason %}<p data-claim-reason>{{ row.claim_reason }}</p>{% endif %}
+{% if row.claim_choices %}<details><summary>ثبت درخواست تعویض</summary>
+{% if row.claim_deadline %}<p>مهلت گزارش مشکل تحویل: {{ row.claim_deadline|jalali }}، ساعت {{ row.claim_deadline|date:"H:i"|fa_digits }}</p>{% endif %}
+{% if row.warranty_end %}<p>مهلت گزارش قطع اشتراک: {{ row.warranty_end|jalali }}</p>{% endif %}
+<form method="post" action="{% url 'order-claim' order.order_number row.item.pk %}">
+{% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ row.item.latest_event_id }}">
+<fieldset><legend>مشکل این محصول چیست؟</legend>
+{% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required> {{ label }}</label>{% endfor %}
+</fieldset><button class="btn btn--secondary" type="submit">ثبت درخواست تعویض</button>
+</form></details>{% elif row.item.status == "DELIVERED" %}<p>مهلت ثبت درخواست تعویض برای این محصول تمام شده است.</p>{% endif %}
+</div>
