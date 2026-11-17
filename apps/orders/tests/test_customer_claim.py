@@ -338,5 +338,25 @@ def test_a_replaced_claim_never_reads_as_rejected_after_retention_deletes_its_se
     assert services.delete_expired_details(today=timezone.localdate() + timedelta(days=90)) == 1
     assert not Delivery.objects.filter(order_item=item).exists()
     body = client.get(page).content.decode()
-    # The claim pill and the top card; the timeline's wording predates this step (INBOX).
-    assert 'data-state="claim_rejected"' not in body and "درخواست تعویض در" not in body
+    assert "رد شد" not in body and 'data-state="claim_rejected"' not in body
+
+
+def test_both_histories_name_each_answer_until_retention_and_then_neither(buyer, plan, operator):
+    from apps.orders import selectors
+
+    order, item = delivered(buyer, plan, operator)
+    submit(item, buyer)
+    reject(item, operator)
+    submit(item, buyer)
+    replace(item, operator)
+
+    def histories():
+        customer = [row["status"] for row in selectors.customer_timeline(order)]
+        (tracked,) = selectors.order_for_tracking(order.tracking_token)
+        return customer, [row["status"] for row in tracked["timeline"]]
+
+    for words in histories():
+        assert "درخواست تعویض رد شد" in words and "تعویض انجام شد" in words
+    services.delete_expired_details(today=timezone.localdate() + timedelta(days=90))
+    for words in histories():
+        assert "درخواست تعویض رد شد" not in words and "تعویض انجام شد" not in words

@@ -7,7 +7,18 @@ from decimal import Decimal
 from math import ceil
 from typing import Any
 
-from django.db.models import Exists, F, OuterRef, Prefetch, Q, QuerySet, Subquery
+from django.db.models import (
+    Case,
+    Exists,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -398,12 +409,24 @@ def _money(order: Order, refunds: dict[int, Refund | None]) -> dict[str, Any]:
     }
 
 
-def _history(**where: Any) -> Iterable[tuple[int, str, str | None, str, datetime, bool]]:
+def _history(**where: Any) -> Iterable[tuple[int, str, str | None, str, datetime, str]]:
     return (
         OrderItemEvent.objects.filter(**where)
         # A deletion or a repeated request is not news; a moved delivery time is.
         .exclude(Q(from_status=F("to_status")) & ~Q(to_status=S.QUEUED))
-        .annotate(delivered=Exists(Delivery.objects.filter(event_id=OuterRef("pk"))))
+        # How a replacement request was answered, known only while retention keeps the sets.
+        .annotate(
+            answer=Case(
+                When(
+                    Exists(Delivery.objects.filter(event_id=OuterRef("pk"))), then=Value("replaced")
+                ),
+                When(
+                    Exists(Delivery.objects.filter(order_item_id=OuterRef("order_item_id"))),
+                    then=Value("rejected"),
+                ),
+                default=Value(""),
+            )
+        )
         .order_by("created_at", "pk")
         .values_list(
             "order_item_id",
@@ -411,24 +434,24 @@ def _history(**where: Any) -> Iterable[tuple[int, str, str | None, str, datetime
             "from_status",
             "to_status",
             "created_at",
-            "delivered",
+            "answer",
         )
     )
 
 
-def _words(before: str | None, after: str, delivered: bool) -> str:
+def _words(before: str | None, after: str, answer: str) -> str:
     if before == S.REPLACEMENT_REQUESTED and after == S.DELIVERED:
-        return "تعویض انجام شد" if delivered else "درخواست تعویض رد شد"
+        return {"replaced": "تعویض انجام شد", "rejected": "درخواست تعویض رد شد"}.get(answer, "")
     return _MOVES.get((before, after)) or _ARRIVALS[after]
 
 
 def customer_timeline(order: Order) -> list[dict[str, Any]]:
     result = []
     seen = set()
-    for _, name, before, after, at, delivered in _history(order_item__order=order):
-        words = _words(before, after, delivered)
+    for _, name, before, after, at, answer in _history(order_item__order=order):
+        words = _words(before, after, answer)
         key = (name, words, at.replace(microsecond=0))
-        if key not in seen:
+        if words and key not in seen:
             seen.add(key)
             result.append({"name": name, "status": words, "at": at})
     return result
@@ -456,11 +479,11 @@ def order_for_tracking(token: str) -> list[dict[str, Any]] | None:
             order_status.tracking_state(row["status"], row["cancel_reason"] or "")
         )
     seen = set()
-    for item_id, _, before, after, at, delivered in _history(order_item__order_id=order_id):
+    for item_id, _, before, after, at, answer in _history(order_item__order_id=order_id):
         name = names[item_id]
-        words = _words(before, after, delivered)
+        words = _words(before, after, answer)
         key = (name, words, at.replace(second=0, microsecond=0))
-        if key not in seen:
+        if words and key not in seen:
             seen.add(key)
             groups[name]["timeline"].append({"status": words, "at": at})
     tracked = []
