@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta
 from queue import Queue
 from threading import Event
 from unittest.mock import patch
@@ -14,13 +14,16 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.orders import services
+from apps.orders.clock import TEHRAN
 from apps.orders.models import Delivery, OrderItem, OrderItemEvent
 from apps.orders.tests.test_customer_delivery import reveal, verified
-from apps.orders.tests.test_delivery import VALUE, deliver, queued
+from apps.orders.tests.test_delivery import VALUE, deliver, delivery_url, queued
 from apps.orders.tests.test_input_clock import event_id
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_lifecycle_concurrency import in_connection, wait_for_lock
-from apps.orders.tests.test_replacement import claim, reject, replace
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order
+from apps.orders.tests.test_replacement import claim, item_action_url, reject, replace
+from apps.payments.models import Refund
 
 pytestmark = pytest.mark.django_db(transaction=True)
 A, B, C = "details_failed", "subscription_mismatch", "stopped_early"
@@ -275,34 +278,111 @@ def test_two_customer_tabs_serialize_to_one_claim(buyer, plan, operator, monkeyp
     assert item.events.filter(to_status="REPLACEMENT_REQUESTED").count() == 1
 
 
-def test_refund_policy_ignores_new_frozen_deadline_and_ab_claims(buyer, plan, operator):
-    from apps.orders.tests.test_paid_cancellation import cancel
+@pytest.mark.parametrize("reason", [A, B])
+def test_a_first_delivery_claim_refunds_the_discounted_amount(buyer, plan, operator, reason):
+    plan.product.warranty = "none"
+    plan.product.save(update_fields=["warranty"])
+    services.DiscountCode.objects.create(code="SAVE", kind="fixed", value=17000)
+    _, (item,) = paid_order(buyer, operator, [services.OrderLine(plan, 1)], "SAVE")
+    deliver(item, operator, expires_at=timezone.localdate() + timedelta(days=30))
+    submit(item, buyer, reason)
+    with pytest.raises(ValidationError):
+        cancel(item, operator)
+    cancel(item, operator, "warranty_refund")
+    assert item.discount_share == 17000
+    assert Refund.objects.get(order_item=item).amount == item.paid_amount
 
-    _, item = delivered(buyer, plan, operator, warranty="none")
-    submit(item, buyer)
-    assert services.PAID_CANCELLATIONS["supply_failure"] == ("QUEUED", "AWAITING_INPUT")
-    for reason in ("supply_failure", "warranty_refund"):
-        with pytest.raises(ValidationError):
-            cancel(item, operator, reason)
-    reject(item, operator)
-    OrderItem.objects.filter(pk=item.pk).update(
-        warranty_ends_on=timezone.localdate() - timedelta(days=2)
+
+def file_in_panel(client, item, reason, note="گزارش مشتری در تلگرام"):
+    return client.post(
+        item_action_url(item, "claim"),
+        {"expected_event_id": event_id(item), "reason": reason, "note": note},
     )
-    item.refresh_from_db()
-    assert item.status == "DELIVERED"
 
 
-def test_refunds_still_use_replacement_expiry_until_remedies_change(buyer, plan, operator):
-    _, item = delivered(buyer, plan, operator, warranty="full_period", days=10)
-    first = item.delivered_at
-    submit(item, buyer, C)
-    replace(item, operator, expires_at=timezone.localdate(first) + timedelta(days=40))
-    with time_machine.travel(first + timedelta(days=20), tick=False):
-        claim(item, operator)
+@pytest.mark.parametrize("channel", ["website", "panel"])
+def test_a_no_warranty_item_that_never_worked_refunds_in_full(
+    client, buyer, plan, operator, channel
+):
+    order, item = delivered(buyer, plan, operator, warranty="none", days=None)
+    client.force_login(buyer if channel == "website" else operator)
+    for round_number in range(3):
+        if channel == "website":
+            response = client.post(
+                url(order, item), {"expected_event_id": event_id(item), "reason": A}
+            )
+            assert response.status_code == 302
+        else:
+            assert file_in_panel(client, item, A).status_code == 302
+        event = item.events.latest("pk")
+        assert event.claim_reason == A
+        assert event.actor == ("customer" if channel == "website" else "operator")
+        if round_number < 2:
+            replace(item, operator)
+    cancel(item, operator, "warranty_refund")
+    assert Refund.objects.get(order_item=item).amount == item.paid_amount
+
+
+@pytest.mark.parametrize(("warranty", "operator_hour"), [("none", 49), ("days_7", 96)])
+def test_operator_can_file_an_undated_item_after_the_website_window(
+    client, buyer, plan, operator, warranty, operator_hour
+):
+    order, item = delivered(buyer, plan, operator, warranty=warranty, days=None)
+    current = item.deliveries.latest("pk").created_at
+    if operator_hour == 49:
+        with time_machine.travel(current + timedelta(hours=47), tick=False):
+            assert services.available_claim_reasons(item) == [A]
+    with time_machine.travel(current + timedelta(hours=operator_hour), tick=False):
+        client.force_login(buyer)
+        assert (
+            f'value="{A}"'
+            not in client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+        )
+        client.force_login(operator)
+        page = client.get(delivery_url(item)).content.decode()
+        assert f'value="{A}"' in page and f'value="{B}"' not in page and f'value="{C}"' not in page
+        for invalid in ("", B, C, "forged"):
+            assert file_in_panel(client, item, invalid).status_code == 400
+        assert (
+            file_in_panel(client, item, A, "زمان گزارش مشتری در تلگرام ثبت شد.").status_code == 302
+        )
+        event = item.events.latest("pk")
+        assert event.actor == "operator" and event.claim_reason == A and event.note
+        preview = client.get(delivery_url(item))
+        assert [option[2] for option in preview.context["cancel_options"]] == [item.paid_amount]
+        cancel(item, operator, "warranty_refund")
+    assert Refund.objects.get(order_item=item).amount == item.paid_amount
+
+
+@pytest.mark.parametrize("extends", [True, False])
+def test_refund_for_a_late_failed_replacement_uses_the_original_claim_and_expiry(
+    client, buyer, plan, operator, extends
+):
+    first = datetime(2026, 11, 3, 9, tzinfo=TEHRAN)
+    plan.sale_price = 300000
+    plan.save(update_fields=["sale_price"])
+    with time_machine.travel(first, tick=False):
+        _, item = delivered(buyer, plan, operator, days=29)
+    original_end = first.date() + timedelta(days=29)
+    with time_machine.travel(first + timedelta(days=3), tick=False):
+        submit(item, buyer, C)
+    late = first + timedelta(days=10)
+    expiry = original_end + timedelta(days=30) if extends else late.date() + timedelta(days=2)
+    with time_machine.travel(late, tick=False):
+        replace(item, operator, expires_at=expiry)
+    with time_machine.travel(late + timedelta(hours=12), tick=False):
+        submit(item, buyer, A)
         item.refresh_from_db()
+        assert item.first_expires_on == original_end and item.expires_at == expiry
         assert item.warranty_ends_on < timezone.localdate()
-        amount = services.refund_amount(item, "warranty_refund")
-        assert amount == (item.paid_amount * 21 * 2 + 41) // 82
+        client.force_login(operator)
+        preview = client.get(delivery_url(item))
+        assert [option[2] for option in preview.context["cancel_options"]] == [270000]
+        expected = event_id(item)
+        cancel(item, operator, "warranty_refund", expected_event_id=expected)
+        with pytest.raises(ValidationError):
+            cancel(item, operator, "warranty_refund", expected_event_id=expected)
+    assert list(Refund.objects.filter(order_item=item).values_list("amount", flat=True)) == [270000]
 
 
 def test_claim_reason_constraint_refuses_invalid_metadata(buyer, plan, operator):
@@ -311,7 +391,8 @@ def test_claim_reason_constraint_refuses_invalid_metadata(buyer, plan, operator)
     _, item = delivered(buyer, plan, operator)
     for changes in (
         {"claim_reason": "arbitrary"},
-        {"claim_reason": A, "actor": "operator"},
+        {"claim_reason": A, "actor": "system"},
+        {"claim_reason": A, "actor": "operator", "to_status": "DELIVERED"},
         {"claim_reason": A, "note": "PRIVATE-PROSE"},
     ):
         with pytest.raises(IntegrityError), transaction.atomic():
