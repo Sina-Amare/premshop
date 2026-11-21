@@ -2101,3 +2101,15 @@ msgstr "Warranty deadline at first delivery"
 
 msgid "یکی از دلیل‌ها را انتخاب کنید."
 msgstr "Choose one of the reasons."
+
+msgid "انتخاب دلیل"
+msgstr "Choose a reason"
+
+msgid "بازگشت وجه پس از درخواست تعویض"
+msgstr "Refund after replacement claim"
+
+msgid "پایان اشتراک در تحویل اول"
+msgstr "Subscription end at first delivery"
+
+msgid "یادداشت"
+msgstr "Note"

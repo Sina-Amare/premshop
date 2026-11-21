@@ -38,7 +38,14 @@ def delivered(buyer, plan, operator, **changes):
 
 
 def claim(item, actor, **changes):
-    return act(services.open_claim, item, actor, note=changes.pop("note", CLAIM), **changes)
+    return act(
+        services.open_claim,
+        item,
+        actor,
+        note=changes.pop("note", CLAIM),
+        reason=changes.pop("reason", "details_failed"),
+        **changes,
+    )
 
 
 def reject(item, actor, **changes):
@@ -209,6 +216,7 @@ def test_refused_claims_change_nothing(buyer, plan, operator, case):
                 actor=actor,
                 expected_event_id=event_id(item),
                 note=CLAIM,
+                reason="details_failed",
             )
         else:
             claim(item, actor, **changes)
@@ -428,7 +436,8 @@ def test_operator_opens_a_claim_and_replaces_through_the_panel(client, buyer, pl
     page = client.get(delivery_url(item)).content.decode()
     assert f'action="{item_action_url(item, "claim")}"' in page
     response = client.post(
-        item_action_url(item, "claim"), {"expected_event_id": event_id(item), "note": CLAIM}
+        item_action_url(item, "claim"),
+        {"expected_event_id": event_id(item), "note": CLAIM, "reason": "details_failed"},
     )
     assert response.status_code == 302 and response["Location"] == delivery_url(item)
     page = client.get(delivery_url(item)).content.decode()
@@ -478,7 +487,7 @@ def test_operator_records_a_supply_delay_through_the_panel(client, buyer, plan, 
 @pytest.mark.parametrize(
     ("action", "data"),
     [
-        ("claim", {"note": ""}),
+        ("claim", {"note": "", "reason": "details_failed"}),
         ("delay", {"note": DELAY, "hours": "یک"}),
         ("unknown", {"note": CLAIM}),
     ],

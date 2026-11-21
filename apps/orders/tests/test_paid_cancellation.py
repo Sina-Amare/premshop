@@ -17,7 +17,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Plan, Product
 from apps.orders import services
 from apps.orders.clock import TEHRAN
-from apps.orders.models import DiscountCode, DiscountRedemption
+from apps.orders.models import DiscountCode, DiscountRedemption, OrderItem
 from apps.orders.services import OrderLine
 from apps.orders.tests.test_delivery import BANK_REF, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
@@ -44,6 +44,17 @@ def cancel(item, actor, reason="supply_failure", **changes):
         reason=reason,
         note=changes.pop("note", REASON),
         **changes,
+    )
+
+
+def legacy_claim(item, operator):
+    OrderItem.objects.filter(pk=item.pk).update(status=OrderItem.Status.REPLACEMENT_REQUESTED)
+    item.events.create(
+        from_status=OrderItem.Status.DELIVERED,
+        to_status=OrderItem.Status.REPLACEMENT_REQUESTED,
+        actor="operator",
+        actor_user=operator,
+        note=REASON,
     )
 
 
@@ -243,7 +254,7 @@ def test_a_warranty_refund_needs_a_claim_opened_inside_the_warranty(
         _, item = queued(buyer, plan, operator)
         deliver(item, operator, expires_at=date(2026, 12, 3) if warranty == "full_period" else None)
     with tehran(*claimed_on):
-        claim(item, operator)
+        legacy_claim(item, operator)
         if allowed:
             cancel(item, operator, "warranty_refund")
         else:
@@ -259,7 +270,7 @@ def test_a_seven_day_claim_after_the_subscription_ended_is_refused(buyer, plan, 
         _, item = queued(buyer, plan, operator)
         deliver(item, operator, expires_at=date(2026, 11, 5))
     with tehran(2026, 11, 6):
-        claim(item, operator)
+        legacy_claim(item, operator)
         with pytest.raises(ValidationError, match="خارج از مدت گارانتی"):
             cancel(item, operator, "warranty_refund")
 
@@ -274,7 +285,7 @@ def test_a_warranty_refund_pays_for_the_unused_days(buyer, plan, operator):
         _, items = paid_order(buyer, operator, [OrderLine(plan, 3)], "SAVE")
         deliver(items[1], operator, expires_at=date(2026, 12, 21))
     with tehran(2026, 12, 2):
-        claim(items[1], operator)
+        claim(items[1], operator, reason="stopped_early")
     with tehran(2026, 12, 9):
         cancel(items[1], operator, "warranty_refund")
     assert items[1].discount_share == 3333
@@ -293,7 +304,7 @@ def test_a_claim_on_the_delivery_day_or_without_an_end_date_refunds_in_full(
         _, item = queued(buyer, plan, operator)
         deliver(item, operator, expires_at=expires_at)
     with tehran(*claimed_on):
-        claim(item, operator)
+        legacy_claim(item, operator)
         cancel(item, operator, "warranty_refund")
     assert Refund.objects.get().amount == 200000
 

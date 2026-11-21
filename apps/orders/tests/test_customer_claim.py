@@ -15,7 +15,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.orders import services
 from apps.orders.clock import TEHRAN
-from apps.orders.models import Delivery, OrderItem, OrderItemEvent
+from apps.orders.models import Delivery, OrderItemEvent
 from apps.orders.tests.test_customer_delivery import reveal, verified
 from apps.orders.tests.test_delivery import VALUE, deliver, delivery_url, queued
 from apps.orders.tests.test_input_clock import event_id
@@ -392,6 +392,8 @@ def test_claim_reason_constraint_refuses_invalid_metadata(buyer, plan, operator)
     for changes in (
         {"claim_reason": "arbitrary"},
         {"claim_reason": A, "actor": "system"},
+        {"claim_reason": A, "from_status": None},
+        {"claim_reason": A, "actor": "operator"},
         {"claim_reason": A, "actor": "operator", "to_status": "DELIVERED"},
         {"claim_reason": A, "note": "PRIVATE-PROSE"},
     ):
@@ -441,3 +443,16 @@ def test_both_histories_name_each_answer_until_retention_and_then_neither(buyer,
     services.delete_expired_details(today=timezone.localdate() + timedelta(days=90))
     for words in histories():
         assert "درخواست تعویض رد شد" not in words and "تعویض انجام شد" not in words
+
+
+def test_refund_chain_survives_a_rejection_and_delivery_retention(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator, warranty="none", days=None)
+    submit(item, buyer)
+    replace(item, operator)
+    submit(item, buyer)
+    reject(item, operator)
+    assert services.delete_expired_details(today=timezone.localdate() + timedelta(days=90)) == 1
+    assert not Delivery.objects.filter(order_item=item).exists()
+    claim(item, operator)
+    cancel(item, operator, "warranty_refund")
+    assert Refund.objects.get(order_item=item).amount == item.paid_amount

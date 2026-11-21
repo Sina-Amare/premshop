@@ -61,6 +61,7 @@ from apps.orders.services import (
     input_timeout_day,
     match_support_token,
     open_claim,
+    operator_claim_reasons,
     receive_input,
     refund_amount,
     reject_claim,
@@ -588,7 +589,7 @@ class OrderAdmin(ModelAdmin):
                     changes["hours"] = int(to_latin_digits(request.POST.get("hours", "")).strip())
                 except ValueError:
                     raise ValidationError(_("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید.")) from None
-            if action == "cancel":
+            if action in ("claim", "cancel"):
                 changes["reason"] = request.POST.get("reason", "")
             service(
                 order_id=order_id,
@@ -746,7 +747,12 @@ class OrderAdmin(ModelAdmin):
                 except ValidationError as refusal:
                     cancel_refusal = cancel_refusal or " ".join(refusal.messages)
                 else:
-                    cancel_options.append((reason, OrderItem.CancelReason(reason).label, amount))
+                    label = (
+                        _("بازگشت وجه پس از درخواست تعویض")
+                        if reason == OrderItem.CancelReason.WARRANTY_REFUND
+                        else OrderItem.CancelReason(reason).label
+                    )
+                    cancel_options.append((reason, label, amount))
         bank_ref = None
         if request.user.has_perm("payments.view_payment"):
             bank_ref = (
@@ -772,11 +778,16 @@ class OrderAdmin(ModelAdmin):
                 "bank_ref": bank_ref,
                 "can_deliver": can_deliver,
                 "mode": mode,
-                "claim_note": (
-                    (claim_event.get_claim_reason_display() or claim_event.note)
-                    if claim_event
-                    else ""
+                "claim_choices": (
+                    [
+                        (reason, OrderItemEvent.ClaimReason(reason).label)
+                        for reason in operator_claim_reasons(item)
+                    ]
+                    if mode == "claim"
+                    else []
                 ),
+                "claim_reason": claim_event.get_claim_reason_display() if claim_event else "",
+                "claim_note": claim_event.note if claim_event else "",
                 "claim_actor": claim_event.get_actor_display() if claim_event else "",
                 "cancel_options": cancel_options,
                 "cancel_refusal": cancel_refusal,
@@ -1087,7 +1098,7 @@ class OrderAdmin(ModelAdmin):
                         if event.from_status
                         else _("ثبت سفارش")
                     ),
-                    event.get_claim_reason_display() or event.note,
+                    " · ".join(filter(None, (event.get_claim_reason_display(), event.note))),
                 )
                 for event in events
             ),
