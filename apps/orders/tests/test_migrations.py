@@ -325,3 +325,46 @@ def test_original_expiry_backfill_and_operator_audit_survive_rollback(buyer, pla
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_original_expiry_backfill_stops_for_an_item_replaced_before_the_warranty_freeze(
+    buyer, plan
+):
+    from django.db.migrations.recorder import MigrationRecorder
+
+    previous = ("orders", "0023_freeze_warranty_deadlines")
+    freeze = MigrationRecorder.Migration.objects.filter(app="orders", name=previous[1])
+    applied = freeze.get().applied
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        old = executor.loader.project_state([previous]).apps
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=200000, total_amount=200000
+        )
+        replacement_end = timezone.localdate() + timedelta(days=60)
+        # Retention had deleted the sets 0023 counted, so it froze the replacement's expiry.
+        item = old.get_model("orders", "OrderItem").objects.create(
+            order=order,
+            plan_id=plan.pk,
+            price_snapshot=200000,
+            cost_snapshot=100000,
+            status="DELIVERED",
+            delivered_at=timezone.now(),
+            expires_at=replacement_end,
+            warranty_ends_on=replacement_end,
+            product_snapshot={"warranty": "full_period"},
+        )
+        old.get_model("orders", "OrderItemEvent").objects.create(
+            order_item_id=item.pk,
+            from_status="REPLACEMENT_REQUESTED",
+            to_status="DELIVERED",
+            actor="operator",
+        )
+        freeze.update(applied=timezone.now() + timedelta(minutes=1))
+        with pytest.raises(RuntimeError, match=f"Original subscription end.*{item.pk}"):
+            MigrationExecutor(connection).migrate([("orders", "0024_claim_refunds")])
+    finally:
+        freeze.update(applied=applied)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

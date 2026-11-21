@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db import migrations, models
+from django.db.migrations.recorder import MigrationRecorder
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
@@ -27,6 +28,14 @@ def original_ends(apps, schema_editor):
         to_status="DELIVERED",
         note="",
     )
+    # 0023 stopped on replaced items it could count; one replaced before it ran had lost its sets
+    # to retention, so the date 0023 froze is the replacement's expiry.
+    frozen_at = (
+        MigrationRecorder(schema_editor.connection)
+        .migration_qs.filter(app="orders", name="0023_freeze_warranty_deadlines")
+        .values_list("applied", flat=True)
+        .get()
+    )
     rows = (
         items.filter(delivered_at__isnull=False)
         .only(
@@ -37,7 +46,10 @@ def original_ends(apps, schema_editor):
             "product_snapshot",
             "delivered_at",
         )
-        .annotate(replaced=Exists(replaced))
+        .annotate(
+            replaced=Exists(replaced),
+            replaced_before_freeze=Exists(replaced.filter(created_at__lt=frozen_at)),
+        )
     )
     unknown = []
     for item in rows.iterator():
@@ -46,10 +58,14 @@ def original_ends(apps, schema_editor):
             continue
         warranty_end = item.warranty_ends_on
         warranty = item.product_snapshot.get("warranty")
-        if warranty_end is not None and (
-            warranty == "full_period"
-            or warranty == "days_7"
-            and warranty_end < timezone.localdate(item.delivered_at) + timedelta(days=7)
+        if (
+            warranty_end is not None
+            and not item.replaced_before_freeze
+            and (
+                warranty == "full_period"
+                or warranty == "days_7"
+                and warranty_end < timezone.localdate(item.delivered_at) + timedelta(days=7)
+            )
         ):
             yield item, warranty_end
         else:
