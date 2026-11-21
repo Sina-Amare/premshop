@@ -219,3 +219,9 @@ def test_claim_refund_copy_reverses_on_a_published_page_and_preserves_edits():
     Page.objects.filter(pk=page.pk).update(body=custom)
     run_migration(migration.restore)
     assert Page.objects.get(pk=page.pk).body == custom
+
+
+def test_the_full_refund_for_a_product_that_never_worked_names_its_reporting_window():
+    body = Page.objects.get(slug="refunds").body
+    assert "مهلت گزارش این مشکل ۴۸ ساعت پس از هر تحویل یا تعویض است." in body
+    assert "اگر محصول در تحویل اول تاریخ پایان نداشته باشد" in body
