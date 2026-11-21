@@ -32,6 +32,7 @@ from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
 from apps.core import events, support
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
+from apps.orders import status as order_status
 from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window
 from apps.orders.models import (
     SUPPORT_ALPHABET,
@@ -203,7 +204,10 @@ def deliver_item(
         raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
-    item.save(update_fields=["status", "delivered_at", "expires_at", "actual_cost"])
+    item.warranty_ends_on = order_status.warranty_last_day(item)
+    item.save(
+        update_fields=["status", "delivered_at", "expires_at", "actual_cost", "warranty_ends_on"]
+    )
     return _write_set(item, account, OrderItem.Status.QUEUED, content)
 
 
@@ -268,6 +272,61 @@ def open_claim(
     item.status = OrderItem.Status.REPLACEMENT_REQUESTED
     item.save(update_fields=["status"])
     _input_event(item, account, OrderItem.Status.DELIVERED, note)
+    return item
+
+
+def available_claim_reasons(
+    item: OrderItem, *, current_delivery_at: datetime | None = None, now: datetime | None = None
+) -> list[str]:
+    if item.status != OrderItem.Status.DELIVERED:
+        return []
+    now = now or timezone.now()
+    current_delivery_at = (
+        current_delivery_at
+        or item.deliveries.order_by("-pk").values_list("created_at", flat=True).first()
+    )
+    reasons: list[str] = []
+    if current_delivery_at and now < current_delivery_at + timedelta(hours=48):
+        reasons.append(OrderItemEvent.ClaimReason.DETAILS)
+        if item.expires_at is not None:
+            reasons.append(OrderItemEvent.ClaimReason.SUBSCRIPTION)
+    end = order_status.warranty_last_day(item)
+    if item.expires_at is not None and end is not None and timezone.localdate(now) <= end:
+        reasons.append(OrderItemEvent.ClaimReason.STOPPED)
+    return reasons
+
+
+@transaction.atomic
+def open_customer_claim(
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, reason: str
+) -> OrderItem:
+    account = User.objects.filter(pk=actor.pk, is_active=True).first()
+    if account is None:
+        raise PermissionDenied
+    item = _locked_item(Order.objects.filter(pk=order_id, user_id=account.pk), item_id)
+    if _input_replay(
+        item, expected_event_id, OrderItem.Status.DELIVERED, OrderItem.Status.REPLACEMENT_REQUESTED
+    ):
+        latest = item.events.latest("pk")
+        if latest.actor == OrderItemEvent.Actor.CUSTOMER and latest.actor_user_id == account.pk:
+            return item
+        raise ValidationError(
+            gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+        )
+    if reason not in OrderItemEvent.ClaimReason.values:
+        raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
+    if reason not in available_claim_reasons(item):
+        raise ValidationError(gettext_lazy("مهلت ثبت درخواست با این دلیل تمام شده است."))
+    item.status = OrderItem.Status.REPLACEMENT_REQUESTED
+    item.save(update_fields=["status"])
+    _input_event(
+        item,
+        account,
+        OrderItem.Status.DELIVERED,
+        customer=True,
+        claim_reason=reason,
+        notification="customer_claim",
+    )
     return item
 
 
@@ -1322,6 +1381,7 @@ def _input_event(
     *,
     notification: str = "",
     customer: bool = False,
+    claim_reason: str = "",
 ) -> OrderItemEvent:
     if account is None:
         actor = OrderItemEvent.Actor.SYSTEM
@@ -1336,6 +1396,7 @@ def _input_event(
         actor=actor,
         actor_user=account,
         note=note,
+        claim_reason=claim_reason,
     )
     if notification:
         events.emit(notification, event.pk, item.order_id, item_id=item.pk, due_at=item.due_at)

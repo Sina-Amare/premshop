@@ -5,7 +5,8 @@ from typing import Any
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import CharField, Exists, OuterRef, Value
+from django.db.models.functions import Cast, Concat
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +20,7 @@ from apps.core.email_log import MailQuotaExceeded
 from apps.core.richtext import absolute_markdown_links
 from apps.notifications.models import ConfirmationSweep, Notification
 from apps.orders import status as order_status
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order, OrderItem, OrderItemEvent
 
 logger = logging.getLogger(__name__)
 _DELAYS = (60, 300, 900, 3600, 21600)
@@ -48,6 +49,8 @@ def enqueue_event(
         or template_name == "purchase_confirmation"
     ):
         raise ValueError("Unknown order notification")
+    if template_name == "customer_claim":
+        return _enqueue_customer_claim(occurrence_id, order_id, item_id)
     order = Order.objects.values(
         "user_id",
         "user__email",
@@ -136,6 +139,93 @@ def enqueue_event(
     except Exception as error:  # noqa: BLE001 - both rows are saved; the minute run sends them
         logger.warning("send now not queued for order %s: %s", order_id, type(error).__name__)
     return row
+
+
+def _enqueue_customer_claim(
+    event_id: int, order_id: int, item_id: int | None
+) -> Notification | None:
+    if not settings.OPERATOR_ALERT_EMAIL.strip():
+        logger.warning(
+            "Customer claim alert disabled: OPERATOR_ALERT_EMAIL is blank; event=%s", event_id
+        )
+        return None
+    facts = (
+        OrderItemEvent.objects.filter(
+            pk=event_id,
+            order_item_id=item_id,
+            order_item__order_id=order_id,
+            actor=OrderItemEvent.Actor.CUSTOMER,
+            from_status=OrderItem.Status.DELIVERED,
+            to_status=OrderItem.Status.REPLACEMENT_REQUESTED,
+            claim_reason__in=OrderItemEvent.ClaimReason.values,
+        )
+        .values(
+            "claim_reason",
+            "created_at",
+            "order_item__product_snapshot__name",
+            "order_item__order__order_number",
+        )
+        .first()
+    )
+    if facts is None:
+        return None
+    context = {
+        "reason": OrderItemEvent.ClaimReason(facts["claim_reason"]).label,
+        "order_number": facts["order_item__order__order_number"],
+        "product_name": facts["order_item__product_snapshot__name"],
+        "at": facts["created_at"],
+        "panel_url": settings.SITE_URL.rstrip("/")
+        + reverse("admin:orders_order_change", args=[order_id]),
+    }
+    subject, text, html = render_email("customer_claim", context)
+    row, _ = Notification.objects.get_or_create(
+        dedupe_key=f"customer_claim:{event_id}:operator:email",
+        defaults={
+            "order_id": order_id,
+            "template_name": "customer_claim",
+            "recipient": settings.OPERATOR_ALERT_EMAIL.strip(),
+            "subject": subject,
+            "text_body": text,
+            "html_body": html,
+        },
+    )
+    from apps.notifications.tasks import send_order_notifications
+
+    try:
+        send_order_notifications()
+    except Exception as error:  # noqa: BLE001 - the minute run retries the saved alert
+        logger.warning("Claim sender not queued event=%s error=%s", event_id, type(error).__name__)
+    return row
+
+
+def discover_customer_claims() -> int:
+    if not settings.OPERATOR_ALERT_EMAIL.strip():
+        return 0
+    existing = Notification.objects.filter(
+        dedupe_key=Concat(
+            Value("customer_claim:"), Cast(OuterRef("pk"), CharField()), Value(":operator:email")
+        )
+    )
+    claims = (
+        OrderItemEvent.objects.filter(
+            actor="customer",
+            to_status="REPLACEMENT_REQUESTED",
+            claim_reason__in=OrderItemEvent.ClaimReason.values,
+        )
+        .filter(~Exists(existing))
+        .order_by("pk")
+    )
+    created = 0
+    for event_id, order_id, item_id in claims.values_list(
+        "pk", "order_item__order_id", "order_item_id"
+    ).iterator():
+        try:
+            created += _enqueue_customer_claim(event_id, order_id, item_id) is not None
+        except Exception as error:  # noqa: BLE001 - one claim must not hold back the rest
+            logger.error(
+                "Claim alert discovery failed event=%s error=%s", event_id, type(error).__name__
+            )
+    return created
 
 
 def confirmation_context(order: Order) -> dict[str, Any]:

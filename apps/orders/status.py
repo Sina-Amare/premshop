@@ -136,8 +136,9 @@ def pill(state: str) -> dict[str, Any]:
 
 
 def warranty_last_day(item: OrderItem) -> date | None:
-    """The last day a replacement claim is accepted: `services.refund_amount` holds the same
-    rule, and a test keeps the two equal."""
+    """The purchased claim deadline, kept when a replacement changes subscription dates."""
+    if item.warranty_ends_on is not None:
+        return item.warranty_ends_on
     if item.delivered_at is None:
         return None
     delivered = timezone.localdate(item.delivered_at)
@@ -148,6 +149,15 @@ def warranty_last_day(item: OrderItem) -> date | None:
     if warranty == Product.Warranty.FULL_PERIOD:
         return item.expires_at
     return None
+
+
+def claim_pill(state: str) -> dict[str, Any]:
+    base, label = {
+        "open": ("replacement", STATES["replacement"][0]),
+        "rejected": ("refunded", "درخواست تعویض رد شد"),
+        "replaced": ("delivered", "محصول تعویض شد"),
+    }[state]
+    return {**pill(base), "state": f"claim_{state}", "label": label}
 
 
 # What the operator does next, in the order the work is taken: the operator's own moves

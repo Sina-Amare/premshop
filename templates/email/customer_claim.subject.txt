@@ -1,0 +1,1 @@
+{% load fa %}درخواست تعویض مشتری، سفارش {{ order_number|fa_digits }}

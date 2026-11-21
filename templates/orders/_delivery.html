@@ -10,6 +10,7 @@
 <dl class="order-totals" data-delivery-masked>{% for field in row.delivery.fields.all %}<div><dt><bdi>{{ field.title }}</bdi></dt><dd aria-label="پنهان">••••••</dd></div>{% endfor %}</dl>
 {% if delivery_confirmed %}<form method="post" action="{% url 'order-delivery-reveal' order.order_number row.item.pk %}">{% csrf_token %}<button class="btn btn--primary" type="submit">نمایش اطلاعات تحویل</button></form>{% endif %}
 {% endif %}
+{% include "orders/_claim.html" %}
 </div>
 {% endfor %}
 {% if delivery_ready and not delivery_confirmed %}

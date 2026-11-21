@@ -58,6 +58,7 @@ Settings come from the environment (`config/settings/{base,dev,prod}.py`), with 
 | `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_KEY_FALLBACKS` | The key for encrypted columns, and retired keys that must stay readable |
 | `EMAIL_*`, `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `SUPPORT_EMAIL` | The SMTP relay and the shop's addresses |
 | `EMAIL_QUOTA_RESET_DATE`, `EMAIL_QUOTA_STARTING_USAGE` | Align mail accounting with the provider's billing period |
+| `OPERATOR_ALERT_EMAIL` | Recipient of customer claim alerts; blank sends none and logs a warning. Configuring it lets the worker discover unsent claims |
 | `SMS_BACKEND`, `SMS_IR_API_KEY`, `SMS_IR_TEMPLATE_ID`, `SMS_IR_LINE_NUMBER` | Sign-in codes by SMS through SMS.ir. `fake` sends nothing and is what the tests use; a key needs the approved template's id or the account's sending line |
 | `DEMO_CATALOG` | Marks the catalogue as sample data. Always off in production |
 | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | Error reporting |

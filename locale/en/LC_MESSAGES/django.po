@@ -2080,3 +2080,24 @@ msgstr "Automatic cancellation"
 
 msgid "پنل"
 msgstr "Panel"
+
+msgid "اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست."
+msgstr "The delivered account login details or code are incorrect."
+
+msgid "اشتراک فعال نیست یا نوع آن با سفارش فرق دارد."
+msgstr "The subscription is inactive or differs from the ordered subscription."
+
+msgid "اشتراک کار می‌کرد، اما پیش از پایان گارانتی قطع شده است."
+msgstr "The subscription worked, then stopped before its warranty ended."
+
+msgid "درخواست تعویض مشتری"
+msgstr "Customer replacement claim"
+
+msgid "مهلت ثبت درخواست با این دلیل تمام شده است."
+msgstr "The claim window for this reason has ended."
+
+msgid "پایان گارانتی زمان تحویل"
+msgstr "Warranty deadline at first delivery"
+
+msgid "یکی از دلیل‌ها را انتخاب کنید."
+msgstr "Choose one of the reasons."

@@ -162,9 +162,12 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `cancel_reason` | Required once an item is cancelled or refunded |
 | `delivered_at` | When the account details were first delivered; required while `DELIVERED` or `REPLACEMENT_REQUESTED` (`order_item_delivery_recorded`) |
 | `expires_at` | The subscription's last day, entered at delivery and at each replacement; null for a plan with no end, and required when the warranty runs to the end of the period |
+| `warranty_ends_on` | Claim deadline frozen at first delivery from the purchased warranty and original subscription end; replacement leaves it unchanged. Null without warranty. Refund calculations and retention retain their existing rules |
 | `actual_cost` | What supplying the item really cost, entered at delivery and prefilled from `cost_snapshot`, then raised by each replacement's extra cost; never negative |
 
 **OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE. A row whose status before and after are the same records an annotation: a moved deadline or a retention deletion.
+
+Customer claim events also hold `claim_reason`: `details_failed`, `subscription_mismatch` or `stopped_early`. A database constraint limits a nonempty reason to a customer DELIVERED → REPLACEMENT_REQUESTED event without a prose note. Staff claims retain their operator note and actor.
 
 **Delivery** is one set of account details for an item, tied one to one to the history row that delivered it, with an optional encrypted note to the customer. **DeliveryField** is one line of a set: a title, an encrypted value and a position, unique within the set. A replacement adds a set and never edits an earlier one; the latest set is current. Every set and its note are deleted at the item's retention deadline ([Retention](order-lifecycle.md#retention)). Only `orders.services.reveal_delivery` reads the values, after writing its access row ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
@@ -205,6 +208,8 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 
 `channel` is `email` or `telegram`. For a customer with a linked Telegram, each update also gets a `telegram` row under the same key ending in `:telegram`. That row has no recipient, subject or HTML body: `chat_id` freezes the chat linked when the row was queued, and `text_body` holds the message: the subject in bold, the item's facts as label and value, and a link to the order. `notification_channel_recipient` requires a `chat_id` on Telegram rows and forbids one on email rows. The purchase confirmation stays email-only.
 
+`customer_claim` is operator email only: `customer_claim:{event_id}:operator:email` deduplicates callback and minute-sweep discovery. It freezes `OPERATOR_ALERT_EMAIL` and only the reason, order number, purchased product name, time and panel link. Blank configuration warns and creates no alert row; configuring it later enables discovery of unsent claims. Staff claims are excluded.
+
 **ConfirmationSweep** is a single row holding `quota_wait_until`, the pause every sender shares after a quota refusal.
 
 ### core
@@ -244,7 +249,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | Payment | `payment_amount_positive`, `payment_method_valid`, `payment_status_valid`, `payment_manual_has_reference`, `payment_verification_has_time` |
 | Refund | `refund_amount_positive`, `refund_execution_complete` |
 | OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_discount_share_within_price`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason`, `order_item_pause_requires_deadline` |
-| OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid` |
+| OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid`, `order_event_claim_reason_valid` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
 | Notification | `notification_template_valid`, `notification_status_valid`, `notification_attempts_bounded`, `notification_channel_recipient` |

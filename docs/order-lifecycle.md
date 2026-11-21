@@ -195,9 +195,13 @@ A queued item's delivery page also records a supply delay: `delay_supply` adds 1
 
 ### Warranty claims
 
-A delivered item's row links to the same page, which then opens a claim: `open_claim` (A9) needs a note, which stays in the history, so the page asks for no password in it. The page of an open claim shows that note and offers two exits. `replace_delivery` (A10a) takes the delivery form with an extra supply cost in place of the actual cost; it writes a new set, keeps every earlier one, adds the extra cost to `actual_cost`, sets `expires_at` and leaves `delivered_at` at the first delivery. `reject_claim` (A10b) needs a note and stores no set. Only `deliver_item` serves a `QUEUED` item and only `replace_delivery` serves a claim, so `DELIVERED` → `DELIVERED` has no entry point. Each service refuses a stale page and names a repeated submission from the same page, as delivery does; `replace_delivery` and `reject_claim` tell each other apart by whether the latest history row has a set. A customer's own claim and the claim and replacement messages are not built; a claim that cannot be replaced ends in a [paid cancellation](#paid-cancellation-and-refunds).
+A delivered item's row links to the same page, which then opens a claim: `open_claim` (A9) needs a note, which stays in the history, so the page asks for no password in it. The page of an open claim shows that note and offers two exits. `replace_delivery` (A10a) takes the delivery form with an extra supply cost in place of the actual cost; it writes a new set, keeps every earlier one, adds the extra cost to `actual_cost`, sets `expires_at` and leaves `delivered_at` at the first delivery. `reject_claim` (A10b) needs a note and stores no set. Only `deliver_item` serves a `QUEUED` item and only `replace_delivery` serves a claim, so `DELIVERED` → `DELIVERED` has no entry point. Each service refuses a stale page and names a repeated submission from the same page, as delivery does; `replace_delivery` and `reject_claim` tell each other apart by whether the latest history row has a set. A claim that cannot be replaced follows the existing [paid cancellation](#paid-cancellation-and-refunds).
 
 A product whose warranty runs to the end of the period cannot be delivered or replaced without the subscription's last day, because its retention deadline depends on it.
+
+The buyer files through `open_customer_claim`, with the expected event and a fixed reason, never prose. It locks the active owning account, order and item; staff using this customer route must own the order and are recorded as customers. Reason A reports incorrect delivered details/code; B reports inactive/wrong subscription; both last 48 hours from the current delivery. An item without a subscription end offers A only. C reports service stopping during the purchased warranty: `warranty_ends_on` is frozen at first delivery and replacement cannot extend it. The form offers only eligible reasons, and the service checks them again under locks. Repeats from the same customer/page keep the first claim, while pages older than its rejection or replacement are refused. A fresh page can file again inside the windows.
+
+The claim and its reason-bearing customer event commit together. Operator rejection and replacement use their existing services and delivery generations. Claim badges share the five order tones. Customer reveal still requires order-email proof and exposes only the current generation. Every committed customer claim queues an operator email after commit; the minute sweep recovers a missed callback. Refund and retention rules below are unchanged; the frozen claim deadline is not yet the refund-coverage deadline.
 
 ### Retention
 
@@ -252,7 +256,7 @@ The purchase confirmation is found by polling committed orders, not by an event,
 | `input_requested` | A4 | The customer, with the order's input instructions |
 | `delivery_completed` | A5, A10a | The customer, with the signed-in order link |
 | `supply_delayed` | Supply-delay extension | The customer, with the frozen new deadline |
-| `item.replacement_requested` (planned) | A customer's replacement request | The operator |
+| `customer_claim` | A customer's replacement request | The operator, email only |
 | `replacement_rejected` | A10b | The customer; operator notes are excluded |
 | `item_cancelled` | A3, A6, A8, A11 | The customer, once per cancelled unpaid order or per cancelled paid item; a refund is owed, not claimed sent |
 | `item_refunded` | A12 | The customer after a transfer is recorded |

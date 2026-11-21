@@ -248,6 +248,7 @@ class OrderItem(models.Model):
     )
     delivered_at = models.DateTimeField(_("زمان تحویل"), null=True, blank=True, editable=False)
     expires_at = models.DateField(_("پایان اشتراک"), null=True, blank=True, editable=False)
+    warranty_ends_on = models.DateField(_("پایان گارانتی زمان تحویل"), null=True, editable=False)
     actual_cost = MoneyField(
         verbose_name=_("قیمت تأمین واقعی"), null=True, blank=True, editable=False
     )
@@ -378,6 +379,11 @@ class OrderEmailRecovery(models.Model):
 
 
 class OrderItemEvent(models.Model):
+    class ClaimReason(models.TextChoices):
+        DETAILS = "details_failed", _("اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.")
+        SUBSCRIPTION = "subscription_mismatch", _("اشتراک فعال نیست یا نوع آن با سفارش فرق دارد.")
+        STOPPED = "stopped_early", _("اشتراک کار می‌کرد، اما پیش از پایان گارانتی قطع شده است.")
+
     class Actor(models.TextChoices):
         OPERATOR = "operator", _("پشتیبانی")
         CUSTOMER = "customer", _("مشتری")
@@ -391,6 +397,9 @@ class OrderItemEvent(models.Model):
     actor = models.CharField(max_length=12, choices=Actor.choices)
     actor_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True)
     note = models.TextField(blank=True, default="")
+    claim_reason = models.CharField(
+        max_length=32, choices=ClaimReason.choices, blank=True, default=""
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -399,6 +408,19 @@ class OrderItemEvent(models.Model):
             models.CheckConstraint(
                 condition=Q(actor__in=["operator", "customer", "system"]),
                 name="order_event_actor_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(claim_reason="")
+                | (
+                    Q(claim_reason__in=["details_failed", "subscription_mismatch", "stopped_early"])
+                    & Q(
+                        from_status="DELIVERED",
+                        to_status="REPLACEMENT_REQUESTED",
+                        actor="customer",
+                        note="",
+                    )
+                ),
+                name="order_event_claim_reason_valid",
             ),
             models.CheckConstraint(
                 condition=Q(from_status__isnull=True) | Q(from_status__in=OrderItem.Status.values),
