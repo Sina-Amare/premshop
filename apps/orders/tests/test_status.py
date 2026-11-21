@@ -11,8 +11,7 @@ from apps.orders import services, status
 from apps.orders.models import OrderItem
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_paid_cancellation import paid_order
-from apps.orders.tests.test_replacement import claim
+from apps.orders.tests.test_paid_cancellation import legacy_claim, paid_order
 from apps.payments.models import Refund
 
 S = OrderItem.Status
@@ -142,7 +141,7 @@ def test_the_warranty_last_day_is_the_last_day_refund_amount_accepts(
         day = last + timedelta(days=offset)
         noon = timezone.make_aware(datetime.combine(day, time(12)))
         with time_machine.travel(noon, tick=False):
-            claim(item, operator)
+            legacy_claim(item, operator)
         item.refresh_from_db()
         if accepted:
             assert services.refund_amount(item, "warranty_refund", today=day) >= Decimal(0)

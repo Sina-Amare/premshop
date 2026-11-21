@@ -5,6 +5,7 @@ import time_machine
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Product
@@ -66,8 +67,8 @@ def test_a_waiting_item_offers_missing_details_only_from_day_21(buyer, plan, ope
 
 def test_a_claim_offers_its_unused_day_refund_inside_the_warranty_only(buyer, plan, operator):
     Product.objects.filter(pk=plan.product_id).update(warranty="none")
-    _, item = delivered(buyer, plan, operator)
-    claim(item, operator)
+    _, item = delivered(buyer, plan, operator, expires_at=timezone.localdate() + timedelta(days=30))
+    claim(item, operator, reason="stopped_early")
     body = signed_in(operator).get(delivery_url(item)).content.decode()
     assert cancel_url(item) not in body and offered(body) == []
     assert "خارج از مدت گارانتی" in body

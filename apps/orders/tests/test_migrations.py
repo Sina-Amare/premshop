@@ -236,3 +236,135 @@ def test_orders_migrations_reverse_and_reapply_without_touching_catalog(plan):
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_original_expiry_backfill_and_operator_audit_survive_rollback(buyer, plan):
+    from django.db import IntegrityError, transaction
+
+    previous = ("orders", "0023_freeze_warranty_deadlines")
+    current = ("orders", "0024_claim_refunds")
+
+    def move(target):
+        executor = MigrationExecutor(connection)
+        executor.migrate([target])
+        return executor.loader.project_state([target]).apps
+
+    try:
+        old = move(previous)
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=400000, total_amount=400000
+        )
+        Item, History = old.get_model("orders", "OrderItem"), old.get_model(
+            "orders", "OrderItemEvent"
+        )
+        now = timezone.now()
+        original = timezone.localdate(now) + timedelta(days=30)
+        later = original + timedelta(days=30)
+        one, replaced = [
+            Item.objects.create(
+                order=order,
+                plan_id=plan.pk,
+                price_snapshot=200000,
+                cost_snapshot=100000,
+                status="DELIVERED",
+                delivered_at=now,
+                expires_at=expiry,
+                warranty_ends_on=original,
+                product_snapshot={"warranty": "full_period"},
+            )
+            for expiry in (original, later)
+        ]
+        History.objects.create(
+            order_item_id=replaced.pk,
+            from_status="REPLACEMENT_REQUESTED",
+            to_status="DELIVERED",
+            actor="operator",
+        )
+        Item.objects.filter(pk=replaced.pk).update(
+            product_snapshot={"warranty": "days_7"},
+            warranty_ends_on=timezone.localdate(now) + timedelta(days=7),
+        )
+        with pytest.raises(RuntimeError, match=f"Original subscription end.*{replaced.pk}"):
+            move(current)
+        Item.objects.filter(pk=replaced.pk).update(
+            product_snapshot={"warranty": "full_period"}, warranty_ends_on=original
+        )
+        new = move(current)
+        Item, History = new.get_model("orders", "OrderItem"), new.get_model(
+            "orders", "OrderItemEvent"
+        )
+        assert list(Item.objects.order_by("pk").values_list("first_expires_on", flat=True)) == [
+            original,
+            original,
+        ]
+        fields = {
+            "order_item_id": one.pk,
+            "from_status": "DELIVERED",
+            "to_status": "REPLACEMENT_REQUESTED",
+            "actor": "operator",
+            "claim_reason": "details_failed",
+            "note": "Reported to support",
+        }
+        event_id = History.objects.create(**fields).pk
+        old = move(previous)
+        History = old.get_model("orders", "OrderItemEvent")
+        assert History.objects.filter(pk=event_id, claim_reason="details_failed").exists()
+        with pytest.raises(IntegrityError), transaction.atomic():
+            History.objects.create(**fields)
+        with pytest.raises(IntegrityError), transaction.atomic():
+            History.objects.filter(pk=event_id).update(note="Edited history")
+        new = move(current)
+        assert (
+            new.get_model("orders", "OrderItem").objects.get(pk=replaced.pk).first_expires_on
+            == original
+        )
+        assert (
+            new.get_model("orders", "OrderItemEvent").objects.get(pk=event_id).note
+            == fields["note"]
+        )
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_original_expiry_backfill_stops_for_an_item_replaced_before_the_warranty_freeze(
+    buyer, plan
+):
+    from django.db.migrations.recorder import MigrationRecorder
+
+    previous = ("orders", "0023_freeze_warranty_deadlines")
+    freeze = MigrationRecorder.Migration.objects.filter(app="orders", name=previous[1])
+    applied = freeze.get().applied
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate([previous])
+        old = executor.loader.project_state([previous]).apps
+        order = old.get_model("orders", "Order").objects.create(
+            user_id=buyer.pk, subtotal=200000, total_amount=200000
+        )
+        replacement_end = timezone.localdate() + timedelta(days=60)
+        # Retention had deleted the sets 0023 counted, so it froze the replacement's expiry.
+        item = old.get_model("orders", "OrderItem").objects.create(
+            order=order,
+            plan_id=plan.pk,
+            price_snapshot=200000,
+            cost_snapshot=100000,
+            status="DELIVERED",
+            delivered_at=timezone.now(),
+            expires_at=replacement_end,
+            warranty_ends_on=replacement_end,
+            product_snapshot={"warranty": "full_period"},
+        )
+        old.get_model("orders", "OrderItemEvent").objects.create(
+            order_item_id=item.pk,
+            from_status="REPLACEMENT_REQUESTED",
+            to_status="DELIVERED",
+            actor="operator",
+        )
+        freeze.update(applied=timezone.now() + timedelta(minutes=1))
+        with pytest.raises(RuntimeError, match=f"Original subscription end.*{item.pk}"):
+            MigrationExecutor(connection).migrate([("orders", "0024_claim_refunds")])
+    finally:
+        freeze.update(applied=applied)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

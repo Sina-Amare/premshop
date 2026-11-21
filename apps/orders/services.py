@@ -204,9 +204,17 @@ def deliver_item(
         raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
+    item.first_expires_on = content.expires_at
     item.warranty_ends_on = order_status.warranty_last_day(item)
     item.save(
-        update_fields=["status", "delivered_at", "expires_at", "actual_cost", "warranty_ends_on"]
+        update_fields=[
+            "status",
+            "delivered_at",
+            "expires_at",
+            "first_expires_on",
+            "actual_cost",
+            "warranty_ends_on",
+        ]
     )
     return _write_set(item, account, OrderItem.Status.QUEUED, content)
 
@@ -255,9 +263,9 @@ def replace_delivery(
 
 @transaction.atomic
 def open_claim(
-    *, order_id: int, item_id: int, actor: User, expected_event_id: int, note: str
+    *, order_id: int, item_id: int, actor: User, expected_event_id: int, note: str, reason: str
 ) -> OrderItem:
-    """A9, opened by the operator; a customer's own claim is S9's."""
+    """A9, recorded by the operator after a customer reports a problem."""
     item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
     note = _event_note(note)
     _expect_page(
@@ -269,10 +277,18 @@ def open_claim(
     )
     if item.status != OrderItem.Status.DELIVERED:
         raise ValidationError(gettext_lazy("درخواست تعویض فقط برای محصول تحویل‌شده ثبت می‌شود."))
+    if reason not in operator_claim_reasons(item):
+        raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
     item.status = OrderItem.Status.REPLACEMENT_REQUESTED
     item.save(update_fields=["status"])
-    _input_event(item, account, OrderItem.Status.DELIVERED, note)
+    _input_event(item, account, OrderItem.Status.DELIVERED, note, claim_reason=reason)
     return item
+
+
+def operator_claim_reasons(item: OrderItem) -> list[str]:
+    if item.expires_at is None:
+        return [OrderItemEvent.ClaimReason.DETAILS]
+    return OrderItemEvent.ClaimReason.values
 
 
 def available_claim_reasons(
@@ -413,11 +429,44 @@ def input_timeout_day(requested_at: datetime) -> date:
     return timezone.localdate(requested_at) + timedelta(days=INPUT_TIMEOUT_DAYS)
 
 
+def _refund_claim(item: OrderItem) -> tuple[OrderItemEvent, bool]:
+    """Find the originating claim and whether the first delivery's failure was never fixed."""
+    claims = item.events.filter(
+        from_status=OrderItem.Status.DELIVERED, to_status=OrderItem.Status.REPLACEMENT_REQUESTED
+    ).only("claim_reason", "created_at")
+    claim = claims.order_by("-pk").first()
+    # The replacement event has no note. A rejection requires one, even after purge.
+    deliveries = item.events.filter(
+        from_status__in=(OrderItem.Status.QUEUED, OrderItem.Status.REPLACEMENT_REQUESTED),
+        to_status=OrderItem.Status.DELIVERED,
+        note="",
+    )
+    while claim is not None:
+        if claim.claim_reason not in (
+            OrderItemEvent.ClaimReason.DETAILS,
+            OrderItemEvent.ClaimReason.SUBSCRIPTION,
+        ):
+            return claim, False
+        delivery = (
+            deliveries.filter(pk__lt=claim.pk)
+            .order_by("-pk")
+            .values_list("pk", "from_status")
+            .first()
+        )
+        if delivery is None:
+            break
+        delivery_id, before = delivery
+        if before == OrderItem.Status.QUEUED:
+            return claim, True
+        claim = claims.filter(pk__lt=delivery_id).order_by("-pk").first()
+    raise ValidationError(NO_OPEN_CLAIM)
+
+
 def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> Decimal:
     """What cancelling this paid item for this reason owes; the page and the service share it.
 
-    Undelivered, the item's paid amount. A warranty refund only for a claim opened inside the
-    warranty, paying for the days from the claim to the subscription's last day.
+    A first-delivery failure that was never fixed owes the paid amount. Ordinary warranty
+    refunds use the original subscription dates and the claim that led to the remedy.
     """
     if item.paid_at is None or item.status not in PAID_CANCELLATIONS.get(reason, ()):
         raise ValidationError(gettext_lazy("این محصول با این دلیل لغو نمی‌شود."))
@@ -428,25 +477,23 @@ def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> De
         raise ValidationError(gettext_lazy("هنوز ۲۱ روز از درخواست اطلاعات نگذشته است."))
     if reason != OrderItem.CancelReason.WARRANTY_REFUND:
         return item.paid_amount
+    claim, never_worked = _refund_claim(item)
+    if never_worked:
+        return item.paid_amount
     delivered = timezone.localdate(cast(datetime, item.delivered_at))
-    claimed = timezone.localdate(
-        item.events.filter(to_status=OrderItem.Status.REPLACEMENT_REQUESTED).latest("pk").created_at
-    )
-    warranty_end = {
-        Product.Warranty.DAYS_7: delivered + timedelta(days=7),
-        Product.Warranty.FULL_PERIOD: item.expires_at,
-    }.get(item.product_snapshot.get("warranty"))
+    claimed = timezone.localdate(claim.created_at)
+    warranty_end, expiry = item.warranty_ends_on, item.first_expires_on
     if (
         warranty_end is None
-        or claimed > warranty_end
-        or (item.expires_at is not None and claimed > item.expires_at)
+        or not delivered <= claimed <= warranty_end
+        or (expiry is not None and claimed > expiry)
     ):
         raise ValidationError(
             gettext_lazy("درخواست تعویض خارج از مدت گارانتی ثبت شده است؛ آن را رد کنید.")
         )
-    if item.expires_at is None:
+    if expiry is None:
         return item.paid_amount
-    days = (item.expires_at - delivered).days + 1
+    days = (expiry - delivered).days + 1
     unused = days - (claimed - delivered).days
     # Whole toman, half up, like a percentage discount.
     return (item.paid_amount * unused * 2 + days) // (days * 2)

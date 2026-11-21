@@ -43,6 +43,10 @@ def review_migration():
     return import_module("apps.cms.migrations.0008_refund_amounts")
 
 
+def claim_refund_migration():
+    return import_module("apps.cms.migrations.0009_claim_refund_policy")
+
+
 def run_migration(function):
     with connection.schema_editor(atomic=False) as editor:
         function(apps, editor)
@@ -60,7 +64,7 @@ def content():
 
 
 def test_all_five_review_drafts_have_descriptions_and_match_the_migration():
-    migration = review_migration()
+    migration = claim_refund_migration()
     assert content() == migration.DRAFTS
     assert len(migration.DRAFTS) == 5
     for page in Page.objects.all():
@@ -74,6 +78,7 @@ def test_all_five_review_drafts_have_descriptions_and_match_the_migration():
 
 def test_review_drafts_can_be_reversed_and_reapplied_without_duplicate_or_repeated_writes():
     migration = review_migration()
+    run_migration(claim_refund_migration().restore)
     run_migration(migration.restore)
     assert content() == migration.PREVIOUS
     run_migration(migration.revise)
@@ -97,6 +102,7 @@ def test_review_migration_preserves_every_edited_field_and_the_rest_of_its_page(
     direction, field, value
 ):
     migration = review_migration()
+    run_migration(claim_refund_migration().restore)
     if direction == "revise":
         run_migration(migration.restore)
     for page in Page.objects.all():
@@ -111,6 +117,7 @@ def test_review_migration_preserves_every_edited_field_and_the_rest_of_its_page(
 
 def test_rollback_preserves_a_published_page_even_if_its_content_matches_the_seed():
     migration = review_migration()
+    run_migration(claim_refund_migration().restore)
     Page.objects.filter(slug="refunds").update(is_published=True)
     run_migration(migration.restore)
     page = Page.objects.get(slug="refunds")
@@ -189,3 +196,32 @@ def test_reapplying_initial_content_preserves_edits():
         seed(apps, editor)
     page.refresh_from_db()
     assert page.body == "متنی که صاحب فروشگاه ویرایش کرده است."
+
+
+def test_claim_refund_copy_reverses_on_a_published_page_and_preserves_edits():
+    migration = claim_refund_migration()
+    page = Page.objects.get(slug="refunds")
+    changed = {
+        "body": page.body + "\n\nمتن تکمیلی فروشگاه.",
+        "description": "توضیح انتخابی فروشگاه.",
+        "is_published": True,
+    }
+    Page.objects.filter(pk=page.pk).update(**changed)
+    run_migration(migration.restore)
+    page.refresh_from_db()
+    assert page.body == migration.PREVIOUS["refunds"]["body"] + "\n\nمتن تکمیلی فروشگاه."
+    assert page.is_published and page.description == changed["description"]
+    run_migration(migration.revise)
+    page.refresh_from_db()
+    assert page.body == changed["body"]
+    assert "تا پایان اشتراک اولیه" in page.body and "از تحویل اول درست کار نکرده باشد" in page.body
+    custom = page.body.replace(migration.NEW[1], "قانون اختصاصی فروشگاه.")
+    Page.objects.filter(pk=page.pk).update(body=custom)
+    run_migration(migration.restore)
+    assert Page.objects.get(pk=page.pk).body == custom
+
+
+def test_the_full_refund_for_a_product_that_never_worked_names_its_reporting_window():
+    body = Page.objects.get(slug="refunds").body
+    assert "مهلت گزارش این مشکل ۴۸ ساعت پس از هر تحویل یا تعویض است." in body
+    assert "اگر محصول در تحویل اول تاریخ پایان نداشته باشد" in body

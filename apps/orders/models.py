@@ -248,6 +248,7 @@ class OrderItem(models.Model):
     )
     delivered_at = models.DateTimeField(_("زمان تحویل"), null=True, blank=True, editable=False)
     expires_at = models.DateField(_("پایان اشتراک"), null=True, blank=True, editable=False)
+    first_expires_on = models.DateField(_("پایان اشتراک در تحویل اول"), null=True, editable=False)
     warranty_ends_on = models.DateField(_("پایان گارانتی زمان تحویل"), null=True, editable=False)
     actual_cost = MoneyField(
         verbose_name=_("قیمت تأمین واقعی"), null=True, blank=True, editable=False
@@ -414,11 +415,11 @@ class OrderItemEvent(models.Model):
                 | (
                     Q(claim_reason__in=["details_failed", "subscription_mismatch", "stopped_early"])
                     & Q(
+                        from_status__isnull=False,
                         from_status="DELIVERED",
                         to_status="REPLACEMENT_REQUESTED",
-                        actor="customer",
-                        note="",
                     )
+                    & (Q(actor="customer", note="") | (Q(actor="operator") & ~Q(note="")))
                 ),
                 name="order_event_claim_reason_valid",
             ),
