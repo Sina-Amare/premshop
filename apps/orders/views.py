@@ -22,12 +22,15 @@ from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders import proof
 from apps.orders import status as order_status
+from apps.orders.forms import ReviewForm
 from apps.orders.models import (
     Delivery,
     DeliveryField,
+    Order,
     OrderItem,
     OrderItemEvent,
     OrderSupportIdentifier,
+    Review,
 )
 from apps.orders.selectors import (
     claim_answer,
@@ -115,7 +118,12 @@ def detail(request: HttpRequest, order_number: int) -> HttpResponse:
 
 
 def _render_detail(
-    request: HttpRequest, summary: dict[str, Any], *, error: str = "", status: int = 200
+    request: HttpRequest,
+    summary: dict[str, Any],
+    *,
+    error: str = "",
+    status: int = 200,
+    review_error: tuple[int, str] | None = None,
 ) -> HttpResponse:
     try:
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
@@ -142,6 +150,7 @@ def _render_detail(
             "section": "orders",
             "error": error,
             "input_requests": input_requests,
+            "review_items": _review_items(summary["order"], review_error),
             "has_site_input": any(row["can_submit"] for row in input_requests),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
@@ -157,6 +166,23 @@ def _render_detail(
     response["Content-Encoding"] = "identity"
     response["Referrer-Policy"] = "same-origin"
     return response
+
+
+def _review_items(order: Order, error: tuple[int, str] | None) -> list[dict[str, Any]]:
+    items = [item for item in order.items.all() if item.delivered_at is not None]
+    statuses = dict(
+        Review.objects.filter(order_item_id__in=[item.pk for item in items]).values_list(
+            "order_item_id", "status"
+        )
+    )
+    return [
+        {
+            "item": item,
+            "status": statuses.get(item.pk),
+            "error": error[1] if error and error[0] == item.pk else "",
+        }
+        for item in items
+    ]
 
 
 def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
@@ -289,6 +315,43 @@ def delivery_reveal(request: HttpRequest, order_number: int, item_id: int) -> Ht
     response["Content-Encoding"] = "identity"
     response["Referrer-Policy"] = "no-referrer"
     return response
+
+
+@sensitive_post_parameters("review_text")
+@never_cache
+@login_required
+@require_POST
+def submit_review(request: HttpRequest, order_number: int, item_id: int) -> HttpResponse:
+    get_object_or_404(
+        OrderItem.objects.only("id"),
+        pk=item_id,
+        order__order_number=order_number,
+        order__user=request.user,
+        delivered_at__isnull=False,
+    )
+    form = ReviewForm(request.POST)
+    if not form.is_valid():
+        return _render_detail(
+            request,
+            _owned_summary(request, order_number),
+            status=400,
+            review_error=(
+                item_id,
+                " ".join(str(error) for errors in form.errors.values() for error in errors),
+            ),
+        )
+    _, created = Review.objects.get_or_create(
+        order_item_id=item_id,
+        defaults={"rating": form.cleaned_data["rating"], "text": form.cleaned_data["review_text"]},
+    )
+    if not created:
+        return _render_detail(
+            request,
+            _owned_summary(request, order_number),
+            status=409,
+            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید."),
+        )
+    return redirect(reverse("order-detail", args=[order_number]) + "#order-reviews")
 
 
 @sensitive_post_parameters("customer_input")

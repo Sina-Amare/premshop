@@ -1,0 +1,17 @@
+{% load fa %}
+<section class="pdp__section product-reviews" id="product-reviews" aria-labelledby="product-reviews-title">
+  <h2 class="pdp__h2" id="product-reviews-title">نظر خریداران</h2>
+  {% if product_reviews %}
+  <p class="product-reviews__score"><bdi dir="rtl">{{ review_average|fa_digits }} از ۵ · {{ product_reviews|length|fa_digits }} نظر</bdi></p>
+  <ul>
+    {% for review in product_reviews %}
+    <li>
+      <p>خریدار · <bdi dir="rtl">{{ review.rating|fa_digits }} از ۵</bdi></p>
+      {% if review.text %}<p class="product-reviews__text" dir="auto">{{ review.text }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>هنوز نظری منتشر نشده است.</p>
+  {% endif %}
+</section>

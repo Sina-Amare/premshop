@@ -1,0 +1,39 @@
+{% load fa %}
+{% if review_items %}
+<section id="order-reviews" aria-labelledby="order-reviews-title">
+  <h3 id="order-reviews-title">نظر شما</h3>
+  {% for row in review_items %}
+  {% with item=row.item %}
+  <div class="order-review">
+    <h4>{% if review_items|length > 1 %}{{ forloop.counter|fa_digits }} · {% endif %}<bdi>{{ item.product_snapshot.name }}</bdi>، <bdi>{{ item.product_snapshot.plan_title }}</bdi></h4>
+    {% if row.error %}<p class="form-error" role="alert">{{ row.error }}</p>{% endif %}
+    {% if row.status == 'pending' %}
+    <p>اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.</p>
+    {% elif row.status == 'hidden' %}
+    <p>نظرتان در صفحه‌ی محصول نمایش داده نمی‌شود.</p>
+    {% elif row.status == 'published' %}
+    <p>منتشرشده</p>
+    {% else %}
+    <form method="post" action="{% url 'order-review' order.order_number item.pk %}#order-reviews">
+      {% csrf_token %}
+      <div class="field">
+        <label class="field__label" for="review-rating-{{ item.pk }}">امتیاز</label>
+        <select class="field__input" id="review-rating-{{ item.pk }}" name="rating" required>
+          <option value=""></option>
+          <option value="1">۱</option><option value="2">۲</option><option value="3">۳</option>
+          <option value="4">۴</option><option value="5">۵</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field__label" for="review-text-{{ item.pk }}">نظر (اختیاری)</label>
+        <textarea class="field__input" id="review-text-{{ item.pk }}" name="review_text" rows="3" maxlength="1000" dir="auto" aria-describedby="review-hint-{{ item.pk }}"></textarea>
+        <p class="field__hint" id="review-hint-{{ item.pk }}">ایمیل، شماره‌ی موبایل یا رمز ورود را در متن نظر ننویسید.</p>
+      </div>
+      <button class="btn btn--secondary" type="submit">ثبت نظر</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endwith %}
+  {% endfor %}
+</section>
+{% endif %}

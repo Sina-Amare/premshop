@@ -41,6 +41,7 @@ erDiagram
   OrderItem ||--o{ CredentialAccessLog : reveals
   OrderItem ||--o{ Delivery : "delivered as"
   OrderItem ||--o| Refund : "refunded by"
+  OrderItem ||--o| Review : "reviewed by"
   OrderItemEvent ||--o| Delivery : records
   Delivery ||--|{ DeliveryField : lines
   DiscountCode |o--o{ Order : discounts
@@ -191,6 +192,12 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 **OrderEmailRecovery** appends one row per operator-authorized recovery of an order's delivery email: order, email, operator, Telegram id/link timestamp and creation time. Its user/order keys use PROTECT. It does not edit `placement_email` or the account's contact address. The latest row's id is the trusted-email generation; it invalidates earlier order-email codes and session proofs. Recovery requires a single-use bot challenge to the unchanged pre-order Telegram link; it still requires confirmation of an email code afterwards (ADR-0031, 2026-11-16). Only hashes of codes and session bindings live in the cache, for ten minutes.
 
 **UnpaidExpirySweep** is a single row: when the unpaid-order sweep last succeeded, how many orders it processed and the backlog it saw.
+
+#### reviews
+
+**Review** belongs to one order item. Only its buyer can submit it after a recorded delivery. The item is unique, the integer rating is 1–5, and plain text is optional with a 1,000-character limit. The server rejects contact identifiers at submission. A plan with an order item cannot change products through the catalogue editor, so the review follows the purchased plan's product.
+
+The buyer submits a pending review. The public product view reads only published rows and renders their rating and escaped text with a generic buyer label. The list, count and average come from the same rows. Pending and hidden rows stay private. Operator moderation will add the publication actions.
 
 ### payments
 

@@ -26,6 +26,11 @@ urlpatterns = [
         views.delivery_reveal,
         name="order-delivery-reveal",
     ),
+    path(
+        "account/orders/<int:order_number>/items/<int:item_id>/review/",
+        views.submit_review,
+        name="order-review",
+    ),
     path("account/orders/<int:order_number>/cancel/", views.cancel, name="order-cancel"),
     path(
         "account/orders/<int:order_number>/items/<int:item_id>/input/",

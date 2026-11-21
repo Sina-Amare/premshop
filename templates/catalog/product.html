@@ -60,6 +60,7 @@
     {% if snapshot %}<div data-preview-target="sections">{% endif %}
     {% for section in sections %}{% if section.kind != "before_buying" %}{% with "catalog/sections/"|add:section.kind|add:".html" as partial %}{% include partial %}{% endwith %}{% endif %}{% endfor %}
 
+    {% if show_reviews %}{% include 'catalog/_reviews.html' %}{% endif %}
     {% if before_buying_shown or snapshot %}{% include "catalog/sections/before_buying.html" with section=before_buying %}{% endif %}
     {% if snapshot %}</div>{% endif %}
 

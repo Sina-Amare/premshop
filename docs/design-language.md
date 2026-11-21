@@ -176,6 +176,10 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. |
 | «این کد را در اختیار کسی نگذارید.» | «این کد را به کسی ندهید.» | The warning reads as Persian rather than an English sentence carried over. |
 | «اطلاعات ورود اکانت یا کد تحویل‌شده کار نمی‌کند.» | «اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.» | Use «تحویل‌داده‌شده», not «تحویل‌شده»; use «درست نیست», not «کار نمی‌کند». The reason names incorrect delivery details. |
+| «نظر می‌تواند تا ۱۰۰۰ نویسه باشد.» | «تا ۱۰۰۰ کاراکتر می‌توانید بنویسید.» | The character limit uses the site's ordinary word and addresses the buyer. |
+| «۴ از ۵، بر اساس ۱ نظر» | «۴ از ۵ · ۱ نظر» | The rating and count are enough. |
+| «خریدار تأییدشده» | «خریدار» | The ability to submit already comes from a purchase. |
+| «نظرتان در انتظار بررسی است.» | «اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.» | The buyer knows what can happen next. Publication depends on approval. |
 
 ### Building a line
 

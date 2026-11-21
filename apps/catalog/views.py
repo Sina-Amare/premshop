@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import random
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from itertools import zip_longest
 
-from django.db.models import Count, Prefetch, Q
+from django.contrib.postgres.expressions import ArraySubquery
+from django.db.models import Count, OuterRef, Prefetch, Q
+from django.db.models.functions import JSONObject
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -19,6 +21,7 @@ from apps.catalog.pricing import effective_price
 from apps.catalog.search import without_filler
 from apps.catalog.seo import breadcrumb_schema, product_breadcrumb, product_metadata, website_schema
 from apps.core import ratelimit
+from apps.orders.models import Review
 
 SEARCH_RESULT_CAP = 50
 SUGGESTION_CAP = 5
@@ -152,16 +155,34 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     shown = _for_cards(Product.objects.filter(slug=slug)).prefetch_related(
         "specs", "sections", "questions"
     )
-    obj = next(shown.public_pages(), None)
+    published_reviews = (
+        Review.objects.filter(
+            order_item__plan__product_id=OuterRef("pk"), status=Review.Status.PUBLISHED
+        )
+        .order_by("-pk")
+        .values(row=JSONObject(rating="rating", text="text"))
+    )
+    obj = next(
+        shown.annotate(published_reviews=ArraySubquery(published_reviews)).public_pages(), None
+    )
     if obj is None and may_preview:
         obj = shown.filter(status=Product.Status.DRAFT).first()
     if obj is None:
         raise Http404
+    reviews = getattr(obj, "published_reviews", None)
+    average = ""
+    if reviews:
+        mean = Decimal(sum(row["rating"] for row in reviews)) / len(reviews)
+        average = format(mean.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP), "f")
+        average = average.removesuffix(".0").replace(".", "٫")
     response = render(
         request,
         "catalog/product.html",
         {
             **product_context(obj, related=_related_to(obj)),
+            "show_reviews": reviews is not None,
+            "product_reviews": reviews,
+            "review_average": average,
             "structured_data": (
                 product_breadcrumb(obj) if obj.status != Product.Status.DRAFT else None
             ),
