@@ -280,6 +280,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The headline without a full stop, under the range as department pills** (2026-11-15), as described under Components; on a wide screen the header's departments stay quiet tabs so the pills are not repeated.
 - **«محصولات دیگر» is a shuffle of the whole shop** (2026-11-14), not ranked by department.
 - **Signing out asks for confirmation** (2026-11-15).
+- **Buyers' reviews sit above the product's questions** (2026-11-22), after its specs: the page says what the product is, then what buyers said, then answers what is left.
 
 ## Checklist
 

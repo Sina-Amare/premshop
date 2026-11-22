@@ -144,6 +144,7 @@ def test_public_reviews_use_only_published_rows_and_escape_plain_text(
     client, buyer, plan, operator
 ):
     order, item = delivered(buyer, plan, operator)
+    plan.product.specs.create(title="نوع اکانت", value="اختصاصی")
     url = plan.product.get_absolute_url()
     assert "هنوز نظری منتشر نشده است." in client.get(url).content.decode()
     review = reviews().objects.create(
@@ -151,6 +152,9 @@ def test_public_reviews_use_only_published_rows_and_escape_plain_text(
     )
     first = client.get(url).content.decode()
     assert "۴ از ۵ · ۱ نظر" in first
+    # The owner's order: what the product is, then what buyers said, then the questions.
+    assert first.index(">مشخصات</h2>") < first.index('id="product-reviews"')
+    assert first.index('id="product-reviews"') < first.index('id="questions-title"')
     assert "خریدار" in first
     assert "&lt;script&gt;window.review = 1&lt;/script&gt;" in first
     assert "<script>window.review" not in first
