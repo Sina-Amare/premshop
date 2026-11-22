@@ -5,7 +5,8 @@ from unicodedata import normalize
 from django import forms
 from django.core.exceptions import ValidationError
 
-_CONTACT = re.compile(r"@|\d(?:[\W_]*\d){6}")
+# A mobile number has at least ten digits; a price or a date written with separators has fewer.
+_CONTACT = re.compile(r"@|\d(?:[\W_]*\d){9}")
 _RATING_ERROR = "امتیازی از ۱ تا ۵ انتخاب کنید."
 
 

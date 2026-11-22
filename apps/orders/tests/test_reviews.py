@@ -102,6 +102,18 @@ def test_contact_and_overlong_input_are_never_stored_or_echoed(client, buyer, pl
     assert not reviews().objects.exists()
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["با ۱٬۲۹۰٬۰۰۰ تومان ارزشش را داشت.", "از ۱۴۰۴/۰۸/۳۰ بدون مشکل کار می‌کند."],
+    ids=["price", "date"],
+)
+def test_prices_and_dates_are_not_taken_for_a_phone_number(client, buyer, plan, operator, text):
+    order, item = delivered(buyer, plan, operator)
+    client.force_login(buyer)
+    assert client.post(review_path(order, item), {"rating": 5, "review_text": text}).status_code == 302
+    assert reviews().objects.get(order_item=item).text == text
+
+
 @pytest.mark.django_db(transaction=True)
 def test_two_posts_create_one_review(buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
