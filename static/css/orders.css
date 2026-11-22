@@ -78,6 +78,39 @@ details.order-card>p{margin-block:12px 16px}
 .order-input-item h3{margin:0;font:600 15px/1.9 var(--font-head)}
 .order-input-item p{margin-block:4px 12px;font-size:14px}
 .order-input-item .field__input{max-inline-size:100%}
+/* A review card wears its product's colour, as the product page does, so the stars read the same in both places. */
+.order-reviews{scroll-margin-block-start:120px}
+.order-reviews>h2{margin-block:0 16px}
+.order-review{padding:18px 20px 20px;border:1px solid color-mix(in oklab,var(--brand,var(--v-accent)) 18%,var(--v-line));border-radius:16px;background:linear-gradient(color-mix(in oklab,var(--brand,var(--v-accent)) 6%,white),#fff 60%)}
+.order-review+.order-review{margin-block-start:12px}
+.order-review h3{display:flex;align-items:center;gap:10px;margin:0 0 14px;font:600 15px/1.9 var(--font-head)}
+.order-review h3::before{content:"";flex:none;inline-size:5px;block-size:20px;border-radius:3px;background:var(--brand,var(--v-accent))}
+.order-review__state{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.order-review>p{margin:10px 0 0;font-size:14px;line-height:1.9;color:var(--v-text)}
+.order-review>p.order-review__text{color:var(--v-ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.order-review>a{display:inline-flex;align-items:center;min-block-size:44px;margin-block-start:4px;font-size:14px;font-weight:500}
+.order-review .form-error{margin-block:0 12px}
+.order-review__form{display:grid;gap:16px;max-inline-size:36rem}
+.order-review__form .field{margin:0}
+.order-review__form .field__input{max-inline-size:100%}
+.order-review textarea{resize:vertical;min-block-size:6.5rem}
+.order-review__form .btn{justify-self:start}
+.rate{margin:0;padding:0;border:0;min-inline-size:0}
+.rate legend{padding:0;margin-block-end:4px}
+.rate__stars{display:flex;margin-inline-start:-6px}
+.rate__input{position:absolute;inline-size:1px;block-size:1px;margin:0;opacity:0}
+.rate__stars label{display:grid;place-items:center;inline-size:50px;block-size:50px;border-radius:12px;color:#d6dbe2;cursor:pointer;transition:color 120ms,transform 120ms}
+.rate__stars svg{inline-size:36px;block-size:36px}
+.rate__stars label:has(~.rate__input:checked),.rate__input:checked+label{color:var(--brand,var(--v-accent))}
+.rate__input:focus-visible+label{outline:2px solid var(--v-accent);outline-offset:-2px}
+@media(hover:hover){
+  .rate .rate__stars:hover label{color:color-mix(in oklab,var(--brand,var(--v-accent)) 80%,white)}
+  .rate .rate__stars:hover label:hover~label{color:#d6dbe2}
+  .rate__stars label:hover{transform:scale(1.1)}
+}
+@media(prefers-reduced-motion:reduce){.rate__stars label{transition:none}.rate__stars label:hover{transform:none}}
+html[data-motion=off] .rate__stars label{transition:none}
+@media(max-width:760px){.order-review{padding:16px}.rate__stars label{inline-size:46px;block-size:46px}.rate__stars svg{inline-size:32px;block-size:32px}}
 .order-support-label{margin-block:16px 6px;color:var(--v-text);font-size:13px}
 #order-help .order-support-contacts{margin-block-start:12px}
 #order-help .order-support-replace{margin-block-start:12px;padding-block-start:4px;border-block-start:1px solid var(--v-line)}

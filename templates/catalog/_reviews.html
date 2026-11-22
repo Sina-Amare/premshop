@@ -1,0 +1,36 @@
+{% load fa %}
+<section class="pdp__section reviews" id="product-reviews" aria-labelledby="product-reviews-title">
+  <h2 class="pdp__h2" id="product-reviews-title">نظر خریداران</h2>
+  {% if product_reviews %}
+  <div class="reviews__summary">
+    <div class="reviews__score" data-review-summary>
+      <p class="reviews__average"><span class="reviews__number">{{ review_average|fa_digits }}</span> از ۵</p>
+      {% include "catalog/_stars.html" with clip=review_clip %}
+      <p class="reviews__count">{{ product_reviews|length|fa_digits }} نظر</p>
+    </div>
+    <ul class="reviews__bars">
+      {% for bar in review_bars %}
+      <li><span class="sr-only">{{ bar.stars|fa_digits }} ستاره: {{ bar.count|fa_digits }} نظر</span><span class="reviews__stars" aria-hidden="true">{{ bar.stars|fa_digits }}<svg><use href="#i-star"></use></svg></span><progress class="reviews__track" value="{{ bar.count }}" max="{{ product_reviews|length }}" aria-hidden="true"></progress><span class="reviews__n" aria-hidden="true">{{ bar.count|fa_digits }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <ol class="reviews__list">
+    {% for review in product_reviews %}
+    <li class="review">
+      <div class="review__head">
+        {% include "catalog/_stars.html" with rating=review.rating %}
+        <time class="review__date" datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|jalali }}</time>
+      </div>
+      {% if review.text %}<p class="review__text" dir="auto">{{ review.text }}</p>{% endif %}
+      <p class="review__who"><span class="review__buyer">{% include 'storefront/icon.html' with name='check' %}خریدار</span>{% if review.plan %}<bdi>{{ review.plan }}</bdi>{% endif %}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <div class="reviews__empty">
+    {% include "catalog/_stars.html" with rating=0 %}
+    <p class="reviews__empty-title">هنوز نظری منتشر نشده است.</p>
+    <p>اگر این محصول را خریده‌اید، پس از تحویل می‌توانید از صفحه‌ی سفارش نظرتان را بنویسید.</p>
+  </div>
+  {% endif %}
+</section>

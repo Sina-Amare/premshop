@@ -334,6 +334,33 @@ class OrderItem(models.Model):
         )
 
 
+class Review(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", _("در انتظار بررسی")
+        PUBLISHED = "published", _("منتشرشده")
+        HIDDEN = "hidden", _("پنهان‌شده")
+
+    order_item = models.OneToOneField(OrderItem, on_delete=models.CASCADE)
+    rating = models.PositiveSmallIntegerField()
+    text = models.CharField(max_length=1000, blank=True)
+    status = models.CharField(max_length=9, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(rating__range=(1, 5)), name="review_rating_one_to_five"
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["pending", "published", "hidden"]),
+                name="review_status_valid",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.order_item_id}: {self.rating}/5"
+
+
 class CredentialAccessLog(models.Model):
     class Source(models.TextChoices):
         PANEL = "panel", _("پنل")

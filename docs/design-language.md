@@ -176,6 +176,10 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. |
 | «این کد را در اختیار کسی نگذارید.» | «این کد را به کسی ندهید.» | The warning reads as Persian rather than an English sentence carried over. |
 | «اطلاعات ورود اکانت یا کد تحویل‌شده کار نمی‌کند.» | «اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.» | Use «تحویل‌داده‌شده», not «تحویل‌شده»; use «درست نیست», not «کار نمی‌کند». The reason names incorrect delivery details. |
+| «نظر می‌تواند تا ۱۰۰۰ نویسه باشد.» | «تا ۱۰۰۰ کاراکتر می‌توانید بنویسید.» | The character limit uses the site's ordinary word and addresses the buyer. |
+| «۴ از ۵، بر اساس ۱ نظر» | «۴ از ۵ · ۱ نظر» | The rating and count are enough. |
+| «خریدار تأییدشده» | «خریدار» | The ability to submit already comes from a purchase. |
+| «نظرتان در انتظار بررسی است.» | «اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.» | The buyer knows what can happen next. Publication depends on approval. |
 
 ### Building a line
 
@@ -276,6 +280,7 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 - **The headline without a full stop, under the range as department pills** (2026-11-15), as described under Components; on a wide screen the header's departments stay quiet tabs so the pills are not repeated.
 - **«محصولات دیگر» is a shuffle of the whole shop** (2026-11-14), not ranked by department.
 - **Signing out asks for confirmation** (2026-11-15).
+- **Buyers' reviews sit above the product's questions** (2026-11-22), after its specs: the page says what the product is, then what buyers said, then answers what is left.
 
 ## Checklist
 

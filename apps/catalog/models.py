@@ -1127,6 +1127,14 @@ class Plan(ChecksNameTheirField, PageRow):
         super().clean()
         check_no_typed_discount(self, "title")
         errors = {}
+        if (
+            self.pk
+            and self.product_id
+            and Plan.objects.filter(pk=self.pk, orderitem__isnull=False)
+            .exclude(product_id=self.product_id)
+            .exists()
+        ):
+            errors["product"] = _("پس از ثبت سفارش، محصول این پلن را نمی‌توانید عوض کنید.")
         if self.input_type != self.InputType.UNREVIEWED:
             self.requires_customer_input = self.input_type in (
                 self.InputType.EMAIL,

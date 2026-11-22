@@ -2113,3 +2113,12 @@ msgstr "Subscription end at first delivery"
 
 msgid "یادداشت"
 msgstr "Note"
+
+msgid "در انتظار بررسی"
+msgstr "Awaiting review"
+
+msgid "پنهان‌شده"
+msgstr "Hidden"
+
+msgid "پس از ثبت سفارش، محصول این پلن را نمی‌توانید عوض کنید."
+msgstr "You cannot change this plan's product after an order has been placed."

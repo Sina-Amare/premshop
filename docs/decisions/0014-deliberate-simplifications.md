@@ -36,3 +36,6 @@ No page filters the catalog. The `region` column was dropped in catalog 0003; a 
 
 
 **Amendment — 2026-11-04: the fuzzy threshold is 0.45.** At 0.4 a short word matched a product on its first two letters («پرده», «گیاه» and «پوست» returned unrelated products); every near-miss spelling tried still scored at least 0.5. The 0.4 above describes the earlier filter.
+
+
+**Amendment — 2026-11-21: purchase-backed reviews in phase 1.** A recorded delivery permits its buyer to leave one rating and optional text per item. The product page counts published reviews and shows their average from the first one. Submissions start pending for manual moderation. The form rejects contact identifiers and the public label identifies a buyer without publishing account details. Helpfulness voting, automatic credential scanning, seeded reviews and rating structured data stay out of scope.

@@ -840,6 +840,46 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 .pdp__section .faq>div:first-child{padding-top:0}
 .pdp__section .faq>div:last-child{padding-bottom:0;border-bottom:0}
 .pdp__section .faq dt{margin:0;font-weight:700}
+/* Reviews: the score panel wears the product's colour like the facts above it; the reviews under it stay quiet. */
+.stars{display:inline-flex;flex:none;vertical-align:middle;color:#d6dbe2}
+.stars svg{flex:none;inline-size:18px;block-size:18px}
+.stars .stars__on{color:var(--brand,var(--v-accent))}
+svg.stars--big{inline-size:150px;block-size:30px}
+.pdp__rating{gap:6px;border-color:transparent;background:rgb(255 255 255/.82);color:var(--v-ink);font-weight:600;transition:background 140ms}
+.pdp__rating:hover{background:#fff}
+.pdp__rating svg{inline-size:15px;block-size:15px;color:var(--brand,var(--v-accent))}
+.reviews__summary{display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;gap:28px}
+.reviews__score{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 16px 20px;border:1px solid color-mix(in oklab,var(--brand,var(--v-accent)) 20%,white);border-radius:16px;background:color-mix(in oklab,var(--brand,var(--v-accent)) 7%,white);text-align:center}
+.reviews__average{margin:0;font-size:15px;color:var(--v-text)}
+.reviews__number{margin-inline-end:4px;font:700 46px/1.15 var(--font-head);color:var(--v-ink)}
+.reviews__count{margin:2px 0 0;font-size:13px;color:var(--v-text)}
+.reviews__bars{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.reviews__bars li{display:grid;grid-template-columns:40px minmax(0,1fr) 32px;align-items:center;gap:12px}
+.reviews__stars{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:600;color:var(--v-ink)}
+.reviews__stars svg{inline-size:14px;block-size:14px;color:var(--brand,var(--v-accent))}
+.reviews__track{display:block;inline-size:100%;block-size:8px;border:0;border-radius:999px;background:var(--v-soft);box-shadow:inset 0 0 0 1px var(--v-line);overflow:hidden;appearance:none;-webkit-appearance:none}
+.reviews__track::-webkit-progress-bar{border-radius:999px;background:var(--v-soft)}
+.reviews__track::-webkit-progress-value{border-radius:999px;background:var(--brand,var(--v-accent))}
+.reviews__track::-moz-progress-bar{border-radius:999px;background:var(--brand,var(--v-accent))}
+.reviews__n{font-size:13px;color:var(--v-text);text-align:end}
+.reviews__list{margin:22px 0 0;padding:0;list-style:none}
+.review{padding-block:20px;border-block-start:1px solid var(--v-line)}
+.review:last-child{padding-block-end:0}
+.review__head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.review__date{font-size:13px;color:var(--v-text)}
+.review__text{margin:10px 0 0;font-size:15px;line-height:2;color:var(--v-ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.review__who{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:12px 0 0;font-size:13px;color:var(--v-text)}
+.review__buyer{display:inline-flex;align-items:center;gap:4px;padding:2px 10px 2px 8px;border-radius:999px;background:color-mix(in oklab,var(--brand,var(--v-accent)) 10%,white);color:color-mix(in oklab,var(--brand,var(--v-accent)) 72%,var(--v-ink));font-weight:600}
+.review__buyer .v-icon{width:14px;height:14px;stroke-width:2.2}
+.reviews__empty{display:grid;justify-items:center;gap:4px;padding-block:8px 2px;text-align:center}
+.reviews__empty .stars svg{inline-size:30px;block-size:30px}
+.reviews__empty-title{margin:10px 0 0;font:600 17px/1.8 var(--font-head);color:var(--v-ink)}
+.reviews__empty p:last-child{margin:0;max-inline-size:32rem;font-size:14px;line-height:1.9;color:var(--v-text)}
+@media(max-width:760px){
+  .reviews__summary{grid-template-columns:1fr;gap:18px}
+  .reviews__number{font-size:40px}
+  .review__text{font-size:14px}
+}
 .pdp__buy .buybox{border-radius:20px;box-shadow:inset 0 5px 0 var(--brand,var(--v-accent)),0 26px 50px -30px color-mix(in oklab,var(--brand,var(--v-accent)) 60%,transparent)}
 @media(max-width:760px){
   .pdp__head{gap:16px;padding:20px 18px;border-radius:18px}
