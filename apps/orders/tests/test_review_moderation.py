@@ -127,6 +127,8 @@ def test_queue_filters_status_and_renders_read_only_escaped_reviews(client, buye
     assert "<script>bad()</script>" not in detail
     assert 'name="rating"' not in detail
     assert 'name="text"' not in detail
+    # A middle dot between two Persian numbers reads as a zero: «۱ از ۵ · ۱ آذر».
+    assert " · <time" not in detail
     assert client.post(path, {"rating": 5, "text": "edited"}).status_code == 405
     assert client.post(panel_url("add"), {"rating": 5, "text": "fake"}).status_code == 403
     row.refresh_from_db()
