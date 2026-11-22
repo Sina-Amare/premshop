@@ -1,15 +1,18 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.core.formatting import to_persian_digits
 from apps.orders import services
-from apps.orders.models import Order
+from apps.orders.models import Order, OrderItem
 from apps.orders.tests.test_customer_browser import capture, context_for
 from apps.orders.tests.test_input_clock import operator as operator
-from apps.orders.tests.test_order_detail import CASES, order_for_state, second_plan
+from apps.orders.tests.test_order_detail import CASES, order_for_state, pause, second_plan
+from apps.orders.tests.test_paid_cancellation import paid_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
@@ -149,5 +152,44 @@ def test_a_discounted_order_in_two_categories_shows_its_subtotal_and_names(
         )
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         capture(page, "order-discounted", width, tmp_path)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("width", [320, 390, 1440])
+def test_a_purchase_deadline_fits_beside_a_long_price(
+    browser, live_server, buyer, plan, operator, width, tmp_path
+):
+    plan.sale_price = Decimal("1234567890")
+    plan.save(update_fields=["sale_price"])
+    order, items = paid_order(buyer, operator, [services.OrderLine(plan, 2)])
+    now = timezone.now()
+    pause(items[0], due=now + timedelta(hours=1), at=now)
+    OrderItem.objects.filter(pk=items[1].pk).update(due_at=now + timedelta(hours=2))
+
+    context = context_for(browser, live_server, buyer, width)
+    try:
+        page = context.new_page()
+        url = live_server.url + reverse("order-detail", args=[order.order_number])
+        page.goto(url)
+        expect(page).to_have_url(url)
+        expect(page.locator("#order-next")).to_be_visible()
+        clock = page.locator("#order-purchase .order-line__time")
+        expect(clock).to_have_count(1)
+        page.evaluate("document.fonts.ready")
+        fits_column, lines = clock.evaluate("""clock => {
+                const column = clock.closest('.order-line__facts').getBoundingClientRect();
+                const text = document.createRange();
+                text.selectNodeContents(clock);
+                const rects = Array.from(text.getClientRects());
+                const fits = rects.every(rect =>
+                    rect.left >= column.left - 1 && rect.right <= column.right + 1
+                );
+                return [fits, new Set(rects.map(rect => rect.top)).size];
+            }""")
+        assert fits_column
+        if width >= 390:
+            assert lines == 1
+        capture(page, "purchase-deadline", width, tmp_path)
     finally:
         context.close()
