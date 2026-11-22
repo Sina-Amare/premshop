@@ -116,6 +116,17 @@ def test_a_queued_item_past_its_delivery_time_reads_as_late():
     assert status.item_state(item, None, now, now) == "queued"
 
 
+@pytest.mark.parametrize("minutes", [-1, 60])
+def test_a_paused_queued_item_never_reads_as_late(minutes):
+    now = timezone.now()
+    due = now + timedelta(minutes=minutes)
+    item = OrderItem(status=S.QUEUED, due_at=due, sla_paused_at=now - timedelta(hours=1))
+    assert status.item_state(item, None, now, now) == "queued"
+    assert status.running_deadline(item) is None
+    item.sla_paused_at = None
+    assert status.running_deadline(item) == due
+
+
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize(
     "warranty, span",
