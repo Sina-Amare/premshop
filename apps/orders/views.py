@@ -123,7 +123,7 @@ def _render_detail(
     *,
     error: str = "",
     status: int = 200,
-    review_error: tuple[int, str] | None = None,
+    review_error: tuple[int, str, Any] | None = None,
 ) -> HttpResponse:
     try:
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
@@ -168,7 +168,7 @@ def _render_detail(
     return response
 
 
-def _review_items(order: Order, error: tuple[int, str] | None) -> list[dict[str, Any]]:
+def _review_items(order: Order, error: tuple[int, str, Any] | None) -> list[dict[str, Any]]:
     items = [item for item in order.items.all() if item.delivered_at is not None]
     statuses = dict(
         Review.objects.filter(order_item_id__in=[item.pk for item in items]).values_list(
@@ -180,6 +180,7 @@ def _review_items(order: Order, error: tuple[int, str] | None) -> list[dict[str,
             "item": item,
             "status": statuses.get(item.pk),
             "error": error[1] if error and error[0] == item.pk else "",
+            "submitted": error[2] if error and error[0] == item.pk else {},
         }
         for item in items
     ]
@@ -338,6 +339,7 @@ def submit_review(request: HttpRequest, order_number: int, item_id: int) -> Http
             review_error=(
                 item_id,
                 " ".join(str(error) for errors in form.errors.values() for error in errors),
+                request.POST,
             ),
         )
     _, created = Review.objects.get_or_create(
@@ -349,7 +351,7 @@ def submit_review(request: HttpRequest, order_number: int, item_id: int) -> Http
             request,
             _owned_summary(request, order_number),
             status=409,
-            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید."),
+            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید.", {}),
         )
     return redirect(reverse("order-detail", args=[order_number]) + "#order-reviews")
 

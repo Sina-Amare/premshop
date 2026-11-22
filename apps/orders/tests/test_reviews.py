@@ -90,14 +90,18 @@ def test_rejects_invalid_ratings(client, buyer, plan, operator, rating):
     ],
     ids=["email", "fullwidth", "persian", "arabic", "country-code", "joiners", "too-long"],
 )
-def test_contact_and_overlong_input_are_never_stored_or_echoed(client, buyer, plan, operator, text):
+def test_contact_and_overlong_input_are_never_stored_or_shown_publicly(
+    client, buyer, plan, operator, text
+):
     buyer.phone = "09123456789"
     buyer.save(update_fields=["phone"])
     order, item = delivered(buyer, plan, operator)
     client.force_login(buyer)
     answer = client.post(review_path(order, item), {"rating": 1, "review_text": text})
     assert answer.status_code == 400
-    assert text not in answer.content.decode()
+    # Only back to its author, in the box they edit it in, so a long review is not lost.
+    page = answer.content.decode()
+    assert page.count(text) == 1 and f">{text}</textarea>" in page
     assert text not in client.get(plan.product.get_absolute_url()).content.decode()
     assert not reviews().objects.exists()
 

@@ -26,7 +26,7 @@
       </div>
       <div class="field">
         <label class="field__label" for="review-text-{{ item.pk }}">نظر (اختیاری)</label>
-        <textarea class="field__input" id="review-text-{{ item.pk }}" name="review_text" rows="3" maxlength="1000" dir="auto" aria-describedby="review-hint-{{ item.pk }}"></textarea>
+        <textarea class="field__input" id="review-text-{{ item.pk }}" name="review_text" rows="3" maxlength="1000" dir="auto" aria-describedby="review-hint-{{ item.pk }}">{{ row.submitted.review_text }}</textarea>
         <p class="field__hint" id="review-hint-{{ item.pk }}">ایمیل، شماره‌ی موبایل یا رمز ورود را در متن نظر ننویسید.</p>
       </div>
       <button class="btn btn--secondary" type="submit">ثبت نظر</button>
