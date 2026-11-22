@@ -344,6 +344,7 @@ class Review(models.Model):
     rating = models.PositiveSmallIntegerField()
     text = models.CharField(max_length=1000, blank=True)
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
         constraints = [

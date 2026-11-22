@@ -170,15 +170,14 @@ def _render_detail(
 
 def _review_items(order: Order, error: tuple[int, str, Any] | None) -> list[dict[str, Any]]:
     items = [item for item in order.items.all() if item.delivered_at is not None]
-    statuses = dict(
-        Review.objects.filter(order_item_id__in=[item.pk for item in items]).values_list(
-            "order_item_id", "status"
-        )
-    )
+    reviews = {
+        review.order_item_id: review
+        for review in Review.objects.filter(order_item_id__in=[item.pk for item in items])
+    }
     return [
         {
             "item": item,
-            "status": statuses.get(item.pk),
+            "review": reviews.get(item.pk),
             "error": error[1] if error and error[0] == item.pk else "",
             "submitted": error[2] if error and error[0] == item.pk else {},
         }

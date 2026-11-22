@@ -795,9 +795,6 @@
   .pdp__facts .fact { padding-block: var(--spacing-3); }
   .pdp__facts .fact + .fact { border-block-start: 1px solid var(--color-line); }
   .pdp__section { margin-block-start: var(--spacing-7); }
-  .product-reviews__score { font-weight: 600; }
-  .product-reviews li { border-block-start: 1px solid var(--color-line); padding-block: 12px; }
-  .product-reviews__text { margin-block-start: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .pdp__h2 { font-family: var(--font-head); font-size: 20px; font-weight: 600; line-height: 1.45;
              margin: 0 0 var(--spacing-4); }
   .spec th, .spec td { padding: 10px 0 8px; border-block-end: 1px solid var(--color-line);

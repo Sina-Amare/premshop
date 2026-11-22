@@ -20,8 +20,9 @@ pytestmark = pytest.mark.django_db
 
 # Each budget is the page's real count. A loose one passes the bug it exists
 # for: at 15, a query per plan on the product page still fit.
-# Includes one bounded query for published legal-page links (zero or five pages).
-PRODUCT_PAGE_QUERY_BUDGET = 9
+# Includes one bounded query for published legal-page links (zero or five pages),
+# and one for the product's published reviews, however many there are.
+PRODUCT_PAGE_QUERY_BUDGET = 10
 CATEGORY_PAGE_QUERY_BUDGET = 5
 HOME_PAGE_QUERY_BUDGET = 6
 

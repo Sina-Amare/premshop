@@ -6,9 +6,7 @@ import random
 from decimal import ROUND_HALF_UP, Decimal
 from itertools import zip_longest
 
-from django.contrib.postgres.expressions import ArraySubquery
-from django.db.models import Count, OuterRef, Prefetch, Q
-from django.db.models.functions import JSONObject
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -155,34 +153,42 @@ def product(request: HttpRequest, slug: str) -> HttpResponse:
     shown = _for_cards(Product.objects.filter(slug=slug)).prefetch_related(
         "specs", "sections", "questions"
     )
-    published_reviews = (
-        Review.objects.filter(
-            order_item__plan__product_id=OuterRef("pk"), status=Review.Status.PUBLISHED
-        )
-        .order_by("-pk")
-        .values(row=JSONObject(rating="rating", text="text"))
-    )
-    obj = next(
-        shown.annotate(published_reviews=ArraySubquery(published_reviews)).public_pages(), None
-    )
+    obj = next(shown.public_pages(), None)
+    public = obj is not None
     if obj is None and may_preview:
         obj = shown.filter(status=Product.Status.DRAFT).first()
     if obj is None:
         raise Http404
-    reviews = getattr(obj, "published_reviews", None)
-    average = ""
+    rows = (
+        Review.objects.filter(order_item__plan__product=obj, status=Review.Status.PUBLISHED)
+        .order_by("-created_at", "-pk")
+        .values_list("rating", "text", "created_at", "order_item__product_snapshot__plan_title")
+    )
+    reviews = [
+        {"rating": rating, "text": text, "created_at": at, "plan": plan}
+        for rating, text, at, plan in (rows if public else [])
+    ]
+    average, clip, bars = "", (0.0, 0.0), []
     if reviews:
         mean = Decimal(sum(row["rating"] for row in reviews)) / len(reviews)
+        # Five 24-wide stars lit from the right, the reading side.
+        clip = (round(float(120 - mean * 24), 1), round(float(mean * 24), 1))
         average = format(mean.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP), "f")
         average = average.removesuffix(".0").replace(".", "٫")
+        bars = [
+            {"stars": stars, "count": sum(row["rating"] == stars for row in reviews)}
+            for stars in range(5, 0, -1)
+        ]
     response = render(
         request,
         "catalog/product.html",
         {
             **product_context(obj, related=_related_to(obj)),
-            "show_reviews": reviews is not None,
+            "show_reviews": public,
             "product_reviews": reviews,
             "review_average": average,
+            "review_clip": clip,
+            "review_bars": bars,
             "structured_data": (
                 product_breadcrumb(obj) if obj.status != Product.Status.DRAFT else None
             ),

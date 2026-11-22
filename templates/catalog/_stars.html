@@ -1,0 +1,6 @@
+{% comment %}
+Five stars. With `rating`, that many whole stars are lit and `rating` is said in words. With
+`clip` (the x and width of the lit part, in a 120-wide row of five 24-wide stars, lit from the
+reading side), the average is drawn exactly and the number printed beside it says it. Widths are
+attributes, never style, so the storefront keeps no inline style but its brand colour.
+{% endcomment %}{% load fa %}{% if clip %}<svg class="stars stars--big" viewBox="0 0 120 24" aria-hidden="true"><defs><clipPath id="stars-average"><rect x="{{ clip.0 }}" width="{{ clip.1 }}" height="24"/></clipPath></defs><g>{% for _ in "12345" %}<use href="#i-star" x="{% widthratio forloop.counter0 1 24 %}" width="24" height="24"/>{% endfor %}</g><g class="stars__on" clip-path="url(#stars-average)">{% for _ in "12345" %}<use href="#i-star" x="{% widthratio forloop.counter0 1 24 %}" width="24" height="24"/>{% endfor %}</g></svg>{% else %}<span class="stars"{% if rating %} role="img" aria-label="{{ rating|fa_digits }} از ۵"{% else %} aria-hidden="true"{% endif %}>{% for _ in "12345" %}<svg aria-hidden="true"{% if forloop.counter <= rating %} class="stars__on"{% endif %}><use href="#i-star"></use></svg>{% endfor %}</span>{% endif %}

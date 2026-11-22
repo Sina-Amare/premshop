@@ -200,8 +200,9 @@ def test_page_headings_match_status_delivery_and_purchase_sections(
     assert headings(body, 1) == [f"سفارش {to_persian_digits(order.order_number)}"]
     titles = headings(body, 2)
     assert fragment in titles[0]
-    delivery = ["اطلاعات تحویل"] if any(item.delivered_at for item in order.items.all()) else []
-    assert titles[1:] == [*delivery, "محصولات و مبلغ سفارش"]
+    delivered = any(item.delivered_at for item in order.items.all())
+    delivery, review = (["اطلاعات تحویل"], ["نظر شما"]) if delivered else ([], [])
+    assert titles[1:] == [*delivery, "محصولات و مبلغ سفارش", *review]
 
 
 def test_a_cancelled_unpaid_order_says_no_payment_was_recorded_and_offers_no_support(
