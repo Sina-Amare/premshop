@@ -129,6 +129,8 @@ def test_queue_filters_status_and_renders_read_only_escaped_reviews(client, buye
     assert 'name="text"' not in detail
     # A middle dot between two Persian numbers reads as a zero: «۱ از ۵ · ۱ آذر».
     assert " · <time" not in detail
+    # Hiding cannot be undone, so it looks like the panel's other final actions.
+    assert '<button data-danger type="submit" name="decision" value="hide"' in detail
     assert client.post(path, {"rating": 5, "text": "edited"}).status_code == 405
     assert client.post(panel_url("add"), {"rating": 5, "text": "fake"}).status_code == 403
     row.refresh_from_db()
