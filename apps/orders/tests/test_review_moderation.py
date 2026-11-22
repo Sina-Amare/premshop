@@ -101,6 +101,8 @@ def test_home_links_only_the_pending_count_and_disappears_at_zero(client, buyer,
         f'<a href="{panel_url()}" data-tone="attention"><span>{HOME_LABEL}</span><strong>۲</strong>'
         in body
     )
+    # One more tile of the order work, never a band above a late order.
+    assert body.index('id="panel-work-title"') < body.index(HOME_LABEL)
     client.post(panel_url("moderate", pending), PUBLISH)
     client.post(panel_url("moderate", second), HIDE)
     assert HOME_LABEL not in client.get(home).content.decode()

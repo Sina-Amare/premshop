@@ -15,11 +15,6 @@ catalogue and what needs the operator there; the recent actions stay beside it.
 {% block content %}
 <div class="flex flex-col lg:flex-row gap-6">
     <div class="panel-dashboard grow">
-        {% if pending_review_count %}
-            <div class="panel-work"><div class="panel-stats">
-                <a href="{% url 'admin:orders_review_changelist' %}" data-tone="attention"><span>{% translate "نظرهای در انتظار بررسی" %}</span><strong>{{ pending_review_count|fa_digits }}</strong></a>
-            </div></div>
-        {% endif %}
         <section class="panel-work" aria-labelledby="panel-work-title">
             <h2 id="panel-work-title">{% translate "کار سفارش‌ها" %}</h2>
             <div class="panel-stats">{% for tile in work %}<a href="{{ tile.url }}" data-tone="{{ tile.tone }}"><span>{{ tile.label }}</span><strong>{{ tile.count|fa_digits }}</strong></a>{% endfor %}</div>
