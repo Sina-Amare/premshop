@@ -6,10 +6,13 @@ from datetime import timedelta
 from typing import Any
 
 from django.http import HttpRequest
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.catalog.models import Plan, Product
 from apps.orders.admin import queue_overview
+from apps.orders.models import Review
 
 # Long enough to notice on a day off, short enough not to list every running offer.
 ENDING_SOON = timedelta(hours=48)
@@ -21,6 +24,19 @@ def dashboard_callback(request: HttpRequest, context: dict[str, Any]) -> dict[st
     soon = timezone.now() + ENDING_SOON
     on_sale = [plan for plan in plans if plan.promotion_is_active]
     context["work"] = queue_overview(request.user)
+    if request.user.has_perm("orders.view_review"):
+        pending = Review.objects.filter(status=Review.Status.PENDING).count()
+        # Last of the work tiles: a review can wait, a late order cannot. Unlike the
+        # order tiles, an empty queue shows nothing.
+        if pending:
+            context["work"].append(
+                {
+                    "label": _("نظرهای در انتظار بررسی"),
+                    "count": pending,
+                    "tone": "attention",
+                    "url": reverse("admin:orders_review_changelist"),
+                }
+            )
     context["attention"] = {
         "published": public.count(),
         "on_sale": len(on_sale),

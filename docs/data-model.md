@@ -197,7 +197,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 **Review** belongs to one order item. Only its buyer can submit it after a recorded delivery. The item is unique, the integer rating is 1–5, plain text is optional with a 1,000-character limit, and the row records when it was written. The server rejects contact identifiers at submission. A plan with an order item cannot change products through the catalogue editor, so the review follows the purchased plan's product.
 
-The buyer submits a pending review. The public product view reads only published rows and renders their rating, date, escaped text and the purchased plan's title with a generic buyer label. The list, count and average come from the same rows. Pending and hidden rows stay private. Operator moderation will add the publication actions.
+The buyer submits a pending review. The public product view reads only published rows and renders their rating, date, escaped text and the purchased plan's title with a generic buyer label. The list, count and average come from the same rows. Pending and hidden rows stay private. Staff with review permissions can publish a pending review or hide a pending or published one for a fixed reason. Hiding is terminal. The review state and its Django admin history entry commit together. History records the actor, decision and hide reason without copying the review text.
 
 ### payments
 

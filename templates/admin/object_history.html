@@ -8,7 +8,7 @@ plural string Django's Persian leaves empty, so it read «۳ entries».
 
 {% block content %}
     {% if action_list %}
-        <div tabindex="0" role="region" aria-label="{% translate "تاریخچه‌ی تغییرات" %}" class="panel-history-scroll border border-base-200 mb-3 overflow-auto scrollbar-default w-full rounded-default shadow-xs dark:border-base-800">
+        <div tabindex="0" role="region" aria-label="{% translate "تاریخچه‌ی تغییرات" %}" class="panel-history-scroll{% if review_history %} review-history{% endif %} border border-base-200 mb-3 overflow-auto scrollbar-default w-full rounded-default shadow-xs dark:border-base-800">
             <table class="panel-history border-spacing-none border-separate w-full">
                 <thead class="text-important whitespace-nowrap">
                     <tr class="*:font-semibold *:px-3 *:py-2">
@@ -38,7 +38,7 @@ plural string Django's Persian leaves empty, so it read «۳ entries».
                             </td>
 
                             <td>
-                                {{ action.get_change_message }}
+                                {% if review_history %}{% translate action.get_change_message %}{% else %}{{ action.get_change_message }}{% endif %}
                             </td>
                         </tr>
                     {% endfor %}

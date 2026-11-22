@@ -217,3 +217,17 @@ html body .selector .list-footer-display{display:none}html body .selector .selec
 
 .order-expiry{margin-block-end:24px;padding:14px 16px;border:1px solid var(--panel-problem-line);border-radius:8px;background:var(--panel-problem-bg);color:var(--panel-problem-text)}.order-expiry p{margin:2px 0}
 .order-purchase{align-items:flex-start}.order-input-action[data-danger],button[data-danger]{color:var(--panel-problem-text);border-color:var(--panel-problem-line)}html body kbd{direction:ltr}
+
+.review-queue{display:grid;gap:8px;margin-block:0 16px;padding:0;list-style:none}
+.review-queue li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 16px;padding:8px 16px;border:1px solid var(--panel-line);border-radius:6px;background:var(--panel-surface)}
+.review-queue li>a{display:flex;align-items:center;min-block-size:44px;color:var(--panel-accent);overflow-wrap:anywhere}
+.review-queue li>time{grid-column:1/-1;color:var(--panel-text);font-size:13px}
+.review-detail{max-inline-size:760px}
+.review-copy{margin-block:16px;line-height:1.9;overflow-wrap:anywhere;white-space:pre-wrap}
+.review-actions,.review-actions form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.review-actions{padding-block:12px;border-block-start:1px solid var(--panel-line)}
+.review-actions select{min-block-size:44px;max-inline-size:100%;color:var(--panel-ink);background:var(--panel-surface);border:1px solid var(--panel-line);border-radius:6px;padding-inline:8px}
+@media(max-width:600px){
+  .review-history .panel-history{table-layout:fixed;inline-size:100%}
+  .review-history .panel-history td{white-space:normal;overflow-wrap:anywhere;padding-block:8px;padding-inline:10px}
+}

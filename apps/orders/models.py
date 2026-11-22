@@ -347,6 +347,8 @@ class Review(models.Model):
     created_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
+        verbose_name = _("نظر")
+        verbose_name_plural = _("بررسی نظرها")
         constraints = [
             models.CheckConstraint(
                 condition=Q(rating__range=(1, 5)), name="review_rating_one_to_five"
@@ -358,7 +360,7 @@ class Review(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.order_item_id}: {self.rating}/5"
+        return to_persian_digits(self.pk)
 
 
 class CredentialAccessLog(models.Model):
