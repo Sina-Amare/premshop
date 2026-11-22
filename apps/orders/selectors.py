@@ -171,15 +171,16 @@ def current_order(user: User) -> Order | None:
 
 
 def grouped_items(
-    items: Iterable[OrderItem], states: dict[int, str] | None = None
+    items: Iterable[OrderItem], states: dict[int, str] | None = None, by_deadline: bool = False
 ) -> list[dict[str, Any]]:
     """Lines by category. With `states`, each line also carries the customer's facts:
-    its pill, refund, delivery time, delivery and subscription dates and warranty."""
+    its pill, refund, delivery time, delivery and subscription dates and warranty.
+    `by_deadline` is for a list that prints each queued line's delivery time."""
     categories: dict[tuple[Any, str], dict[str, Any]] = {}
     for item in items:
         facts = item.product_snapshot
         state = states.get(item.pk) if states is not None else None
-        key = _line_key(item) if states is not None else None
+        key = _line_key(item, by_deadline and state == "queued") if states is not None else None
         category = (facts.get("category_id"), facts.get("category_name") or "محصولات سفارش")
         group = categories.setdefault(category, {"name": category[1], "lines": []})
         line = next(
@@ -230,11 +231,14 @@ def _day(moment: datetime | None) -> date | None:
     return timezone.localdate(moment) if moment else None
 
 
-def _line_key(item: OrderItem) -> tuple[Any, ...]:
-    """Units merge into one line only when every fact the line prints is the same."""
+def _line_key(item: OrderItem, deadline: bool = False) -> tuple[Any, ...]:
+    """Units merge into one line only when every fact the line prints is the same; with
+    `deadline`, that includes the delivery time, which prints to the minute."""
     refund = getattr(item, "refund", None)
     sent = refund.executed_at if refund is not None else None
-    return (_day(item.delivered_at), item.expires_at, item.cancel_reason, _day(sent))
+    due = order_status.running_deadline(item) if deadline else None
+    shown = due.replace(second=0, microsecond=0) if due else None
+    return (_day(item.delivered_at), item.expires_at, item.cancel_reason, _day(sent), shown)
 
 
 def _add_customer_facts(line: dict[str, Any], item: OrderItem) -> None:
@@ -245,8 +249,9 @@ def _add_customer_facts(line: dict[str, Any], item: OrderItem) -> None:
             line["refunded_at"] is None or refund.executed_at > line["refunded_at"]
         ):
             line["refunded_at"] = refund.executed_at
-    if item.due_at and (line["due_at"] is None or item.due_at > line["due_at"]):
-        line["due_at"] = item.due_at
+    due = order_status.running_deadline(item)
+    if due and (line["due_at"] is None or due > line["due_at"]):
+        line["due_at"] = due
     line["delivered_at"] = line["delivered_at"] or item.delivered_at
     line["expires_at"] = line["expires_at"] or item.expires_at
     line["warranty_end"] = line["warranty_end"] or order_status.warranty_last_day(item)
@@ -264,14 +269,18 @@ def customer_summary(order: Order) -> dict[str, Any]:
     statuses = {item.status for item in items}
     groups = grouped_items(items, states)
     card = _card(order, lead, [item for item in items if states[item.pk] == lead], refunds)
+    # Each line prints its own dates when the card's one date cannot speak for all.
+    line_facts = len(set(states.values())) > 1 or not card["uniform"]
     return {
         "order": order,
         "status": order_status.pill(lead)["label"],
         "lead": order_status.pill(lead),
         "mixed_status": len(set(states.values())) > 1,
-        # Each line prints its own dates when the card's one date cannot speak for all.
-        "line_facts": len(set(states.values())) > 1 or not card["uniform"],
+        "line_facts": line_facts,
         "groups": groups,
+        # Only the purchase section prints a queued line's delivery time, so only its lines
+        # split units by it; every other list keeps one row per product.
+        "purchase_groups": grouped_items(items, states, by_deadline=True) if line_facts else groups,
         # One refund line's amount is already the card's heading and a totals row.
         "refund_lines": sum(
             line["state"] in ("refund_owed", "refunded")
@@ -334,7 +343,10 @@ def _card_facts(
     }
     sent = [row.executed_at for row in rows if row.executed_at]
     sent_days = {_day(moment) for moment in sent}
-    dues = [item.due_at for item in items if item.due_at]
+    # A paused clock has no date to promise, so the card promises none for its products;
+    # each running clock keeps its own date on its line.
+    held = any(item.status == S.QUEUED and item.sla_paused_at is not None for item in items)
+    dues = [due for item in items if (due := order_status.running_deadline(item))]
     hours = [found for item in items if (found := _hours_after_details(item)) is not None]
     today = timezone.localdate()
     return {
@@ -344,8 +356,8 @@ def _card_facts(
         ],
         "paid": any(item.paid_at for item in items),
         # The promise covers every item; a delay counts from the first time missed.
-        "due_at": (min if lead == "late" else max)(dues, default=None),
-        "hours": max(hours, default=None),
+        "due_at": None if held else (min if lead == "late" else max)(dues, default=None),
+        "hours": None if held else max(hours, default=None),
         "delivered_at": items[0].delivered_at,
         "expires_at": items[0].expires_at,
         "warranty_end": ends[0],
@@ -369,7 +381,7 @@ def _card_facts(
             ),
             default=None,
         ),
-        "uniform": len(dates) == 1 and len(sent_days) <= 1,
+        "uniform": len(dates) == 1 and len(sent_days) <= 1 and not held,
     }
 
 

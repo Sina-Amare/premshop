@@ -1,8 +1,8 @@
 import re
 from datetime import timedelta
-from math import ceil
 from decimal import Decimal
 from html import unescape
+from math import ceil
 
 import pytest
 import time_machine
