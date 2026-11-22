@@ -184,8 +184,12 @@ def test_before_buying_puts_the_operators_text_after_the_facts_once(client, prod
     )
     assert body.count('id="before-buying"') == 1
     assert headings(body).count("پیش از خرید") == 1
-    # Fixed below the other sections whatever its sort order.
-    assert headings(body.split("</main>", 1)[0])[-2:] == ["پیش از خرید", "سؤال‌های پرتکرار"]
+    # Fixed below the other sections whatever its sort order; buyers' reviews follow it.
+    assert headings(body.split("</main>", 1)[0])[-3:] == [
+        "پیش از خرید",
+        "نظر خریداران",
+        "سؤال‌های پرتکرار",
+    ]
 
 
 @pytest.mark.parametrize("notes", ["موضوعیت ندارد", "موضوعيت ندارد.", " موضوعیت  ندارد "])
