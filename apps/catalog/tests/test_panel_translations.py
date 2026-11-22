@@ -31,6 +31,7 @@ PANEL_CODE = [
     "apps/catalog/admin.py",
     "apps/catalog/admin_preview.py",
     "apps/catalog/placements.py",
+    "apps/catalog/dashboard.py",
     "apps/accounts/admin.py",
     "apps/cms/apps.py",
     "apps/cms/models.py",
