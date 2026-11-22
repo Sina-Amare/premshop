@@ -46,8 +46,10 @@ from apps.orders.models import (
     OrderItem,
     OrderItemEvent,
     OrderSupportIdentifier,
+    Review,
     UnpaidExpirySweep,
 )
+from apps.orders.review_admin import ReviewAdmin
 from apps.orders.selectors import grouped_items, item_numbers
 from apps.orders.services import (
     DELIVERY_LINES,
@@ -72,6 +74,8 @@ from apps.orders.services import (
     reveal_delivery,
 )
 from apps.payments.models import Refund
+
+admin.site.register(Review, ReviewAdmin)
 
 # Which product and plan an item row is about, read from the purchase record in
 # the same query. An annotation, so no OrderItem is built and the encrypted

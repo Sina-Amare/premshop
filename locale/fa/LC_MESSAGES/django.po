@@ -779,3 +779,12 @@ msgid "Ensure this value has at most %(limit_value)d character (it has %(show_va
 msgid_plural "Ensure this value has at most %(limit_value)d characters (it has %(show_value)d)."
 msgstr[0] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
 msgstr[1] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
+
+msgid "Review published."
+msgstr "نظر منتشر شد."
+
+msgid "Review hidden for abuse or spam."
+msgstr "نظر به‌دلیل توهین یا هرزنامه پنهان شد."
+
+msgid "Review hidden for personal information or a sign-in secret."
+msgstr "نظر به‌دلیل اطلاعات شخصی یا رمز ورود پنهان شد."

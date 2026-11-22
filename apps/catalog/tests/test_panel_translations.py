@@ -41,6 +41,8 @@ PANEL_CODE = [
     "apps/orders/apps.py",
     "apps/orders/models.py",
     "apps/orders/admin.py",
+    "apps/orders/review_admin.py",
+    "apps/orders/review_moderation.py",
     "apps/orders/services.py",
     "apps/payments/models.py",
     "apps/payments/admin.py",

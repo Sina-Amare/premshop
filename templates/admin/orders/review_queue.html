@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+{% load fa i18n %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<nav class="order-queue-tabs" aria-label="{{ title }}">
+  {% for value, label in statuses %}<a href="?status={{ value }}"{% if value == status %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>
+{% if page.object_list %}
+  <ul class="review-queue">
+    {% for review in page %}
+      <li>
+        <a href="{% url 'admin:orders_review_change' review.pk %}"><bdi>{{ review.order_item.plan.product.name }}</bdi></a>
+        <span>{{ review.rating|fa_digits }} {% translate "از" %} ۵</span>
+        <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|jalali }}</time>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="order-queue-empty">{% translate "نظری در این فهرست نیست." %}</p>
+{% endif %}
+{% if page.has_other_pages %}
+  <nav class="order-queue-tabs" aria-label="{% translate "صفحه‌های بررسی نظرها" %}">
+    {% if page.has_previous %}<a href="?status={{ status }}&amp;page={{ page.previous_page_number }}">{% translate "Previous" %}</a>{% endif %}
+    <span>{{ page.number|fa_digits }} {% translate "از" %} {{ page.paginator.num_pages|fa_digits }}</span>
+    {% if page.has_next %}<a href="?status={{ status }}&amp;page={{ page.next_page_number }}">{% translate "Next" %}</a>{% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

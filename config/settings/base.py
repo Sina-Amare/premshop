@@ -422,6 +422,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:orders_order_changelist"),
                     },
                     {
+                        "title": _("بررسی نظرها"),
+                        "icon": "rate_review",
+                        "link": reverse_lazy("admin:orders_review_changelist"),
+                        "permission": lambda request: request.user.has_perm("orders.view_review"),
+                    },
+                    {
                         "title": _("تطبیق روزانه"),
                         "icon": "account_balance",
                         "link": reverse_lazy("admin:orders_order_reconciliation"),

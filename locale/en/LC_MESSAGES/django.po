@@ -2122,3 +2122,45 @@ msgstr "Hidden"
 
 msgid "پس از ثبت سفارش، محصول این پلن را نمی‌توانید عوض کنید."
 msgstr "You cannot change this plan's product after an order has been placed."
+
+msgid "نظر"
+msgstr "Review"
+
+msgid "بررسی نظرها"
+msgstr "Review moderation"
+
+msgid "توهین یا هرزنامه"
+msgstr "Abuse or spam"
+
+msgid "اطلاعات شخصی یا رمز ورود"
+msgstr "Personal information or sign-in secret"
+
+msgid "انتشار نظر"
+msgstr "Publish review"
+
+msgid "پنهان‌کردن نظر"
+msgstr "Hide review"
+
+msgid "نظرهای در انتظار بررسی"
+msgstr "Reviews awaiting moderation"
+
+msgid "نظری در این فهرست نیست."
+msgstr "There are no reviews in this list."
+
+msgid "صفحه‌های بررسی نظرها"
+msgstr "Review queue pages"
+
+msgid "دلیل پنهان‌کردن نظر"
+msgstr "Reason for hiding"
+
+msgid "درخواست بررسی نظر معتبر نیست."
+msgstr "This moderation request is invalid."
+
+msgid "وضعیت این نظر عوض شده است."
+msgstr "This review's status has changed."
+
+msgid "نظر منتشر شد."
+msgstr "Review published."
+
+msgid "نظر پنهان شد."
+msgstr "Review hidden."

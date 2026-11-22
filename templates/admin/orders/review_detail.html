@@ -1,0 +1,35 @@
+{% extends "admin/base_site.html" %}
+{% load fa i18n %}
+{% block extrahead %}{{ block.super }}{% include "admin/orders/no_script.html" %}{% endblock %}
+{% block content %}
+<section class="order-history review-detail" aria-labelledby="review-product">
+  <header>
+    <h2 id="review-product"><bdi>{{ review.order_item.plan.product.name }}</bdi></h2>
+    <p>{{ review.rating|fa_digits }} {% translate "از" %} ۵ · <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|jalali }}</time></p>
+    <p class="panel-pill" data-tone="{% if review.status == 'pending' %}attention{% elif review.status == 'published' %}done{% else %}closed{% endif %}">{{ review.get_status_display }}</p>
+  </header>
+  {% if review.text %}<p class="review-copy" dir="auto">{{ review.text }}</p>{% endif %}
+  {% if can_moderate and review.status != "hidden" %}
+    <div class="review-actions">
+      {% if review.status == 'pending' %}
+        <form method="post" action="{% url 'admin:orders_review_moderate' review.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="expected_status" value="{{ review.status }}">
+          <button type="submit" name="decision" value="publish" class="order-input-action">{% translate "انتشار نظر" %}</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'admin:orders_review_moderate' review.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="expected_status" value="{{ review.status }}">
+        <label for="review-hide-reason">{% translate "دلیل پنهان‌کردن نظر" %}</label>
+        <select id="review-hide-reason" name="reason" required>
+          <option value="">—</option>
+          {% for value, label in hide_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" name="decision" value="hide" class="order-input-action">{% translate "پنهان‌کردن نظر" %}</button>
+      </form>
+    </div>
+  {% endif %}
+  <a class="order-input-action" href="{% url 'admin:orders_review_history' review.pk %}">{% translate "تاریخچه‌ی تغییرات" %}</a>
+</section>
+{% endblock %}
