@@ -5,6 +5,7 @@
 {% for row in review_items %}{% with item=row.item review=row.review %}
 <article class="order-review" style="--brand: {{ item.plan.product.card_colour }}" aria-labelledby="order-review-{{ item.pk }}">
 <h3 id="order-review-{{ item.pk }}"><bdi>{{ item.product_snapshot.name }}</bdi>، <bdi>{{ item.product_snapshot.plan_title }}</bdi></h3>
+{% if row.error %}<p class="form-error" role="alert">{{ row.error }}</p>{% endif %}
 {% if review %}
 <div class="order-review__state">
 {% if review.status == "published" %}<span class="badge badge--ok">{% include 'storefront/icon.html' with name='check' %}{{ review.get_status_display }}</span>{% elif review.status == "pending" %}<span class="badge badge--progress">{% include 'storefront/icon.html' with name='progress' %}{{ review.get_status_display }}</span>{% else %}<span class="badge badge--neutral">{% include 'storefront/icon.html' with name='info' %}{{ review.get_status_display }}</span>{% endif %}
@@ -15,7 +16,6 @@
 {% elif review.status == "hidden" %}<p>نظرتان در صفحه‌ی محصول نمایش داده نمی‌شود.</p>
 {% elif item.plan.product.is_public %}<a href="{% url 'product' item.plan.product.slug %}#product-reviews">دیدن در صفحه‌ی محصول</a>{% endif %}
 {% else %}
-{% if row.error %}<p class="form-error" role="alert">{{ row.error }}</p>{% endif %}
 <form class="order-review__form" method="post" action="{% url 'order-review' order.order_number item.pk %}#order-reviews">{% csrf_token %}
 <fieldset class="rate">
 <legend class="field__label">امتیاز</legend>

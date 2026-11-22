@@ -38,7 +38,9 @@ def test_owner_reviews_a_previously_delivered_item_once(client, buyer, plan, ope
     assert path in client.get(detail).content.decode()
     assert client.get(path).status_code == 405
     assert client.post(path, {"rating": 4}).status_code == 302
-    assert client.post(path, {"rating": 1}).status_code == 409
+    again = client.post(path, {"rating": 1})
+    assert again.status_code == 409
+    assert "برای این خرید قبلاً نظر داده‌اید." in again.content.decode()
     review = reviews().objects.get(order_item=item)
     assert (review.rating, review.text, review.status) == (4, "", "pending")
     pending = client.get(detail)
