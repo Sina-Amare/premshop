@@ -428,6 +428,14 @@ UNFOLD = {
                         "permission": lambda request: request.user.has_perm("orders.view_review"),
                     },
                     {
+                        "title": _("تعطیلی"),
+                        "icon": "pause_circle",
+                        "link": reverse_lazy("admin:orders_order_holiday"),
+                        "permission": lambda request: request.user.has_perm(
+                            "orders.change_holiday"
+                        ),
+                    },
+                    {
                         "title": _("تطبیق روزانه"),
                         "icon": "account_balance",
                         "link": reverse_lazy("admin:orders_order_reconciliation"),

@@ -10,11 +10,17 @@ from typing import Any, cast
 
 import jdatetime
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, QuerySet
 from django.db.models.fields.json import KeyTextTransform
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseNotAllowed,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import path, reverse
@@ -37,11 +43,13 @@ from apps.core.formatting import (
     to_persian_digits,
 )
 from apps.core.ratelimit import client_ip
+from apps.orders import holiday
 from apps.orders import status as order_status
 from apps.orders.models import (
     CredentialAccessLog,
     DiscountCode,
     DiscountRedemption,
+    Holiday,
     Order,
     OrderItem,
     OrderItemEvent,
@@ -99,6 +107,15 @@ def _moment(at: Any) -> str:
     return f"{format_jalali(local)}، {to_persian_digits(local.strftime('%H:%M'))}"
 
 
+def _stopped_time(item: OrderItem) -> str:
+    """What was left, or how late it was, when the clock stopped; frozen until it restarts."""
+    if item.due_at is None or item.sla_paused_at is None:
+        return ""
+    seconds = (item.due_at - item.sla_paused_at).total_seconds()
+    label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
+    return f"{format_countdown(abs(int(seconds)))} {label}"
+
+
 def _owes_refund() -> Exists:
     return Exists(
         Refund.objects.filter(order_item__order_id=OuterRef("pk"), status=Refund.Status.OWED)
@@ -110,7 +127,14 @@ def queue_overview(user: Any) -> list[dict[str, Any]]:
     A count of nothing reads grey, so colour marks only work that exists."""
     items = OrderItem.objects.filter(order_id=OuterRef("pk"))
     flags = {
-        "late": Exists(items.filter(status=OrderItem.Status.QUEUED, due_at__lte=timezone.now())),
+        # A stopped clock is not late: its time comes back when the holiday ends.
+        "late": Exists(
+            items.filter(
+                status=OrderItem.Status.QUEUED,
+                due_at__lte=timezone.now(),
+                sla_paused_at__isnull=True,
+            )
+        ),
         # ADR-0009's seven-day rung: the operator follows up before the final warning.
         "stale": Exists(
             items.filter(
@@ -177,6 +201,9 @@ def _next_step(
     """The one line above an order's items: every item counts, whatever the tab shows."""
     states, owed = [], Decimal(0)
     for item in items:
+        # A holiday's stopped item asks nothing until it ends, so it never hides work that waits.
+        if item.status == OrderItem.Status.QUEUED and item.sla_paused_at is not None:
+            continue
         refund = getattr(item, "refund", None)
         state = order_status.item_state(item, refund, unpaid_until, at)
         states.append(state)
@@ -473,7 +500,79 @@ class OrderAdmin(ModelAdmin):
                 self.admin_site.admin_view(self.item_action_view),
                 name="orders_order_item_action",
             ),
+            path(
+                "holiday/",
+                self.admin_site.admin_view(self.holiday_view),
+                name="orders_order_holiday",
+            ),
         ] + super().get_urls()
+
+    def holiday_view(self, request: HttpRequest) -> HttpResponse:
+        """State, what pressing would do, a confirm step, then the record of past holidays."""
+        holiday.operator(cast(User, request.user))
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+        opened = holiday.current()
+        latest = Holiday.objects.order_by("-pk").values_list("pk", flat=True).first()
+        token = opened.pk if opened is not None else latest
+        confirming, error = "", ""
+        if request.method == "POST":
+            action, step = request.POST.get("action"), request.POST.get("step")
+            raw = to_latin_digits(request.POST.get("expected", "")).strip()
+            expected = int(raw) if raw.isdigit() else None
+            if action not in ("start", "end") or step not in ("review", "confirm"):
+                return HttpResponseBadRequest()
+            try:
+                if action != ("end" if opened is not None else "start") or expected != token:
+                    raise ValidationError(holiday.STALE)
+                if step == "confirm":
+                    if action == "start":
+                        holiday.start(actor=cast(User, request.user), expected_latest=expected)
+                        done = _("تعطیلی شروع شد و مهلت‌های تحویل متوقف است.")
+                    else:
+                        holiday.end(
+                            actor=cast(User, request.user), expected_open=cast(int, expected)
+                        )
+                        done = _("تعطیلی تمام شد و مهلت‌ها به اندازه‌ی توقف عقب رفت.")
+                    self.message_user(request, done, messages.SUCCESS)
+                    return redirect("admin:orders_order_holiday")
+                confirming = action
+            except ValidationError as failure:
+                error = " ".join(failure.messages)
+        now = timezone.now()
+        facts = holiday.summary(now)
+        past = [
+            {
+                "holiday": row,
+                "length": format_countdown(
+                    int((cast(datetime, row.ended_at) - row.started_at).total_seconds())
+                ),
+            }
+            for row in Holiday.objects.filter(ended_at__isnull=False).select_related(
+                "started_by", "ended_by"
+            )[:10]
+        ]
+        response = render(
+            request,
+            "admin/orders/holiday.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.opts,
+                "title": _("تعطیلی"),
+                "facts": facts,
+                "elapsed": (
+                    format_countdown(int(facts["elapsed"].total_seconds()))
+                    if facts["opened"]
+                    else ""
+                ),
+                "token": "" if token is None else token,
+                "confirming": confirming,
+                "error": error,
+                "past": past,
+            },
+            status=400 if error else 200,
+        )
+        return _private(response, referrer="same-origin")
 
     @method_decorator(sensitive_post_parameters("support_token"))
     def support_match_view(self, request: HttpRequest, order_id: int) -> HttpResponse:
@@ -683,8 +782,10 @@ class OrderAdmin(ModelAdmin):
         event_id = item.events.order_by("-pk").values_list("pk", flat=True).first()
         # deliver (A5), claim (A9) and replace (A10a) are separate services; the page
         # only chooses which one this item's status allows.
+        # The rule deliver_item keeps: a stopped clock is a holiday's, and may still be delivered.
+        on_holiday = item.sla_paused_at is not None and holiday.current() is not None
         mode = {
-            OrderItem.Status.QUEUED: None if item.sla_paused_at else "deliver",
+            OrderItem.Status.QUEUED: "deliver" if not item.sla_paused_at or on_holiday else None,
             OrderItem.Status.DELIVERED: "claim",
             OrderItem.Status.REPLACEMENT_REQUESTED: "replace",
         }.get(cast(OrderItem.Status, item.status))
@@ -710,6 +811,9 @@ class OrderAdmin(ModelAdmin):
             content = form.cleaned_data["content"]
             if step == "preview" and not can_deliver:
                 error = str(_("این محصول آماده‌ی تحویل نیست."))
+            elif step == "preview" and form.cleaned_data["expected_event_id"] != event_id:
+                # A preview of a page the item has moved past would only be refused at confirm.
+                error = str(_("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
             elif step == "preview":
                 preview = content
             elif step == "confirm":
@@ -782,6 +886,7 @@ class OrderAdmin(ModelAdmin):
                 "bank_ref": bank_ref,
                 "can_deliver": can_deliver,
                 "mode": mode,
+                "paused_left": _stopped_time(item) if item.sla_paused_at else "",
                 "claim_choices": (
                     [
                         (reason, OrderItemEvent.ClaimReason(reason).label)
@@ -939,6 +1044,28 @@ class OrderAdmin(ModelAdmin):
                 )
                 if tab == "unpaid":
                     queryset = queryset.order_by("unpaid_expires_at", "pk")
+                elif tab == "queued":
+                    # Running clocks lead; a holiday's stopped ones follow, by their own deadlines.
+                    items = items.order_by(
+                        F("sla_paused_at").asc(nulls_first=True),
+                        F("due_at").asc(nulls_last=True),
+                        "pk",
+                    )
+                    queued_now = Q(items__status=state)
+                    queryset = queryset.annotate(
+                        running_first=Min(
+                            "items__due_at",
+                            filter=queued_now & Q(items__sla_paused_at__isnull=True),
+                        ),
+                        paused_first=Min(
+                            "items__due_at",
+                            filter=queued_now & Q(items__sla_paused_at__isnull=False),
+                        ),
+                    ).order_by(
+                        F("running_first").asc(nulls_last=True),
+                        F("paused_first").asc(nulls_last=True),
+                        "pk",
+                    )
                 else:
                     field = _QUEUE_ORDER[tab]
                     items = items.order_by(F(field).asc(nulls_last=True), "pk")
@@ -978,10 +1105,10 @@ class OrderAdmin(ModelAdmin):
                 }:
                     deadline = None
                 if deadline is not None:
-                    paused = (
-                        item.sla_paused_at is not None
-                        and item.status == OrderItem.Status.AWAITING_INPUT
-                    )
+                    paused = item.sla_paused_at is not None and item.status in {
+                        OrderItem.Status.QUEUED,
+                        OrderItem.Status.AWAITING_INPUT,
+                    }
                     reference = at
                     if paused and item.sla_paused_at is not None:
                         reference = item.sla_paused_at
@@ -989,7 +1116,9 @@ class OrderAdmin(ModelAdmin):
                     kind = "paused" if paused else ("overdue" if seconds <= 0 else "remaining")
                     label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
                     text = f"{format_countdown(abs(int(seconds)))} {label}"
-                    if paused:
+                    if paused and item.status == OrderItem.Status.QUEUED:
+                        text = str(_("متوقف در تعطیلی")) + "، " + text
+                    elif paused:
                         text = str(_("متوقف")) + "، " + text
                 elif item.status == OrderItem.Status.QUEUED:
                     text = str(_("مهلت ثبت نشده است"))

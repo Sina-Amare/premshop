@@ -2164,3 +2164,120 @@ msgstr "Review published."
 
 msgid "نظر پنهان شد."
 msgstr "Review hidden."
+
+msgid "تعطیلی"
+msgstr "Holiday"
+
+msgid "تعطیلی‌ها"
+msgstr "Holidays"
+
+msgid "شروع"
+msgstr "Started"
+
+msgid "شروع‌کننده"
+msgstr "Started by"
+
+msgid "پایان"
+msgstr "Ended"
+
+msgid "پایان‌دهنده"
+msgstr "Ended by"
+
+msgid "در تعطیلی"
+msgstr "On holiday"
+
+msgid "تحویل هر روز"
+msgstr "Delivering every day"
+
+msgid "در تعطیلی، مهلت تحویل محصول‌های در صف متوقف می‌شود و با پایان آن، به اندازه‌ی توقف عقب می‌رود. مهلت فرستادن اطلاعات مشتری متوقف نمی‌شود."
+msgstr "During a holiday, the delivery deadlines of queued items stop, and when it ends each moves later by the time it stood still. The wait for customer details does not stop."
+
+msgid "مهلت تحویل محصول‌های در صف متوقف است و با پایان تعطیلی، به اندازه‌ی توقف عقب می‌رود."
+msgstr "Queued items' delivery deadlines are stopped, and when the holiday ends each moves later by the time it stood still."
+
+msgid "مدت تا این لحظه"
+msgstr "So far"
+
+msgid "مهلت‌های متوقف"
+msgstr "Stopped deadlines"
+
+msgid "%(items)s محصول در %(orders)s سفارش"
+msgstr "%(items)s items in %(orders)s orders"
+
+msgid "پرداخت‌های جدید"
+msgstr "New payments"
+
+msgid "با مهلت متوقف وارد صف می‌شوند"
+msgstr "Join the queue with a stopped deadline"
+
+msgid "زودترین مهلت جدید (تخمین)"
+msgstr "Earliest new deadline (estimate)"
+
+msgid "محصول‌های در صف"
+msgstr "Queued items"
+
+msgid "زودترین مهلت"
+msgstr "Earliest deadline"
+
+msgid "%(items)s محصول، بدون توقف"
+msgstr "%(items)s items, not stopped"
+
+msgid "از همین لحظه، مهلت %(items)s محصول در صف و هر پرداخت جدید متوقف می‌شود."
+msgstr "From now on, the deadlines of %(items)s queued items and of every new payment stop."
+
+msgid "مهلت %(items)s محصول به اندازه‌ی توقف عقب می‌رود."
+msgstr "The deadlines of %(items)s items move later by the time they stood still."
+
+msgid "تأیید و شروع تعطیلی"
+msgstr "Confirm and start the holiday"
+
+msgid "تأیید و پایان تعطیلی"
+msgstr "Confirm and end the holiday"
+
+msgid "انصراف"
+msgstr "Cancel"
+
+msgid "شروع تعطیلی"
+msgstr "Start a holiday"
+
+msgid "پایان تعطیلی"
+msgstr "End the holiday"
+
+msgid "تعطیلی‌های گذشته"
+msgstr "Past holidays"
+
+msgid "پیش از این تعطیلی، تعطیلی دیگری ثبت نشده است."
+msgstr "No holiday was recorded before this one."
+
+msgid "هنوز تعطیلی‌ای ثبت نشده است."
+msgstr "No holiday has been recorded yet."
+
+msgid "تعطیلی شروع شد و مهلت‌های تحویل متوقف است."
+msgstr "The holiday has started and delivery deadlines are stopped."
+
+msgid "تعطیلی تمام شد و مهلت‌ها به اندازه‌ی توقف عقب رفت."
+msgstr "The holiday has ended and deadlines moved later by the time they stood still."
+
+msgid "تعطیلی از قبل شروع شده است."
+msgstr "A holiday has already started."
+
+msgid "الان تعطیلی‌ای در جریان نیست."
+msgstr "No holiday is running now."
+
+msgid "وضعیت تعطیلی تغییر کرده است؛ صفحه را دوباره باز کنید."
+msgstr "The holiday has changed since this page opened; open it again."
+
+msgid "مهلت‌های تحویل از %(day)s، ساعت %(hour)s متوقف است."
+msgstr "Delivery deadlines have been stopped since %(day)s, %(hour)s."
+
+msgid "مدیریت تعطیلی"
+msgstr "Manage the holiday"
+
+msgid "متوقف در تعطیلی"
+msgstr "Stopped for the holiday"
+
+msgid "هنگام توقف"
+msgstr "as it stopped,"
+
+msgid "ثبت تأخیر در تعطیلی لازم نیست، چون با پایان تعطیلی مهلت به اندازه‌ی توقف عقب می‌رود."
+msgstr "No delay needs recording during a holiday: when it ends, the deadline moves later by the time it stood still."

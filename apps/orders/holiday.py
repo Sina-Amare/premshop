@@ -10,9 +10,11 @@ begins, none starts stopped just after it ends, and no two paths wait on each ot
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
+from django.db.models import Min
 from django.utils import timezone
 from django.utils.translation import gettext_lazy
 
@@ -24,11 +26,15 @@ from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 # A fixed key no other advisory lock in the project uses ("HOLI" in ASCII).
 _LOCK_KEY = 0x484F4C49
 PAUSE_NOTE = "شروع تعطیلی · مهلت تحویل متوقف شد"
-_STALE = gettext_lazy("این صفحه پیش از آخرین تغییر تعطیلی باز شده است؛ دوباره بازش کنید.")
+STALE = gettext_lazy("وضعیت تعطیلی تغییر کرده است؛ صفحه را دوباره باز کنید.")
 
 
 def lock(*, exclusive: bool = False) -> None:
-    sql = "SELECT pg_advisory_xact_lock(%s)" if exclusive else "SELECT pg_advisory_xact_lock_shared(%s)"
+    sql = (
+        "SELECT pg_advisory_xact_lock(%s)"
+        if exclusive
+        else "SELECT pg_advisory_xact_lock_shared(%s)"
+    )
     with connection.cursor() as cursor:
         cursor.execute(sql, [_LOCK_KEY])
 
@@ -41,6 +47,41 @@ def hold(item: OrderItem, started: datetime, opened: Holiday | None) -> None:
     """Stops a clock starting at `started` while `opened` is open. The caller holds `lock`."""
     if opened is not None and item.due_at is not None and item.sla_paused_at is None:
         item.sla_paused_at = max(started, opened.started_at)
+
+
+def summary(now: datetime) -> dict[str, Any]:
+    """What the holiday page states: what starting would stop, or what ending would move.
+    Ending's figures are an estimate for `now`; the end recomputes them at its own moment."""
+    opened = current()
+    if opened is None:
+        running = OrderItem.objects.filter(
+            status=OrderItem.Status.QUEUED, due_at__isnull=False, sla_paused_at__isnull=True
+        )
+        return {
+            "opened": None,
+            "item_count": running.count(),
+            "order_count": running.values("order_id").distinct().count(),
+            "earliest": running.aggregate(earliest=Min("due_at"))["earliest"],
+            "waiting": OrderItem.objects.filter(status=OrderItem.Status.AWAITING_INPUT).count(),
+        }
+    paused = list(
+        OrderItem.objects.filter(
+            status=OrderItem.Status.QUEUED, sla_paused_at__isnull=False
+        ).values_list("order_id", "due_at", "sla_paused_at")
+    )
+    return {
+        "opened": opened,
+        "elapsed": now - opened.started_at,
+        "item_count": len(paused),
+        "order_count": len({order_id for order_id, *_ in paused}),
+        "earliest": min(
+            (
+                resumed_deadline(cast(datetime, due), cast(datetime, stopped), now)
+                for _, due, stopped in paused
+            ),
+            default=None,
+        ),
+    }
 
 
 def operator(actor: User) -> User:
@@ -63,9 +104,9 @@ def start(*, actor: User, expected_latest: int | None) -> Holiday:
     lock(exclusive=True)
     latest = Holiday.objects.order_by("-pk").first()
     if latest is not None and latest.ended_at is None:
-        raise ValidationError(gettext_lazy("تعطیلی از پیش شروع شده است."))
+        raise ValidationError(gettext_lazy("تعطیلی از قبل شروع شده است."))
     if (latest.pk if latest is not None else None) != expected_latest:
-        raise ValidationError(_STALE)
+        raise ValidationError(STALE)
     opened = Holiday.objects.create(started_by=account, started_at=timezone.now())
     # Only item rows, never a buyer or an order: payments hold those while they wait for `lock`.
     items = list(
@@ -90,8 +131,9 @@ def end(*, actor: User, expected_open: int) -> Holiday:
     if opened is None:
         raise ValidationError(gettext_lazy("الان تعطیلی‌ای در جریان نیست."))
     if opened.pk != expected_open:
-        raise ValidationError(_STALE)
-    opened.ended_at, opened.ended_by = timezone.now(), account
+        raise ValidationError(STALE)
+    ended = timezone.now()
+    opened.ended_at, opened.ended_by = ended, account
     opened.save(update_fields=["ended_at", "ended_by"])
     items = list(
         OrderItem.objects.select_for_update()
@@ -99,11 +141,16 @@ def end(*, actor: User, expected_open: int) -> Holiday:
         .filter(status=OrderItem.Status.QUEUED, sla_paused_at__isnull=False)
         .order_by("pk")
     )
+    lines = []
     for item in items:
-        item.due_at = resumed_deadline(item.due_at, item.sla_paused_at, opened.ended_at)
-        item.sla_paused_at = None
+        # order_item_pause_requires_deadline: a stopped clock always has a deadline.
+        due = resumed_deadline(
+            cast(datetime, item.due_at), cast(datetime, item.sla_paused_at), ended
+        )
+        item.due_at, item.sla_paused_at = due, None
+        lines.append((item.pk, f"پایان تعطیلی · مهلت جدید: {_when(due)}"))
     OrderItem.objects.bulk_update(items, ["due_at", "sla_paused_at"])
-    _record([(item.pk, f"پایان تعطیلی · مهلت جدید: {_when(item.due_at)}") for item in items], opened)
+    _record(lines, opened)
     return opened
 
 
