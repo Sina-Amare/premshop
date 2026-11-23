@@ -19,10 +19,12 @@ from apps.core.formatting import to_persian_digits
 from apps.orders.models import Order, OrderEmailRecovery
 
 TTL = 600
-UNSENT = "کد فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید."
-LIMITED = "زیاد کد خواسته‌اید. کمی بعد دوباره امتحان کنید."
-LAPSED = "تأیید ایمیل فقط تا ۱۰ دقیقه معتبر است. برای دیدن اطلاعات تحویل، دوباره کد بگیرید."
-RECOVERY_UNAVAILABLE = "بازیابی فقط با تلگرامی ممکن است که پیش از خرید به حساب وصل بوده است."
+UNSENT = (
+    "در حال حاضر امکان فرستادن کد وجود ندارد و چند دقیقه‌ی دیگر می‌توانید دوباره درخواست کد بدهید."
+)
+LIMITED = "در مدت کوتاهی چند بار کد درخواست شده است و برای حفاظت از اطلاعات این سفارش، کمی بعد می‌توانید دوباره درخواست کد بدهید."
+LAPSED = "اعتبار ۱۰ دقیقه‌ای تأیید ایمیل شما به پایان رسیده است و برای دیدن دوباره‌ی اطلاعات تحویل، باید کد جدیدی برای ایمیلتان دریافت کنید."
+RECOVERY_UNAVAILABLE = "تغییر ایمیل این سفارش فقط زمانی ممکن است که حساب تلگرام مشتری پیش از ثبت سفارش به حساب کاربری او متصل شده باشد و این شرط برای این سفارش برقرار نیست."
 
 
 def locked_order(order_id: int, actor: User, *, operator: bool = False) -> tuple[Order, User]:
@@ -49,7 +51,9 @@ def email_for(order: Order) -> tuple[str, int]:
 def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
     if not session_key or not email:
-        raise ValidationError("برای دیدن اطلاعات تحویل، به پشتیبانی پیام بدهید.")
+        raise ValidationError(
+            "برای این سفارش ایمیلی ثبت نشده است که کد به آن فرستاده شود و برای دیدن اطلاعات تحویل، به پشتیبانی پیام بدهید."
+        )
     binding = salted_hmac(
         "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"
     ).hexdigest()
@@ -137,8 +141,8 @@ def start_recovery(*, order_id: int, actor: User, email: str) -> None:
     text = format_html(
         "کد تغییر ایمیل سفارش {}: <code>{}</code>\n"
         "ایمیل جدید: <code>{}</code>\n"
-        "اگر این تغییر را از پشتیبانی خواسته‌اید، کد را برایش بخوانید.\n"
-        "کد تا ۱۰ دقیقه معتبر است؛ کد ورود به سایت را برای پشتیبانی نفرستید.",
+        "اگر خودتان از پشتیبانی خواسته‌اید ایمیل این سفارش عوض شود، این کد را که تا ۱۰ دقیقه معتبر است برای پشتیبانی بخوانید.\n"
+        "کد ورود به سایت را به هیچ‌کس، حتی پشتیبانی، ندهید.",
         to_persian_digits(order.order_number),
         code,
         email,

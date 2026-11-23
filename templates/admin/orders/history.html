@@ -2,7 +2,7 @@
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
-  <p>{% translate "درخواست را در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را اینجا وارد نکنید." %}</p>
+  <p>{% translate "اطلاعات فعال‌سازی را در تلگرام با مشتری هماهنگ کنید و رمز یا کد ورود اکانت او را در این صفحه وارد نکنید." %}</p>
   {% for control in input_controls %}
     <article class="saved-purchase">
       <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>، <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
@@ -41,7 +41,7 @@
 {% endif %}
 <section class="order-history" aria-labelledby="order-support-title">
   <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
-  <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند." %}</p>
+  <p>{% translate "شناسه‌ی پشتیبانی‌ای را که مشتری فرستاده است وارد کنید، چون مالکیت سفارش را همین شناسه ثابت می‌کند و تصویر فاکتور برای این کار کافی نیست." %}</p>
   <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
   <input id="support-token" name="support_token" form="order-support-match" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
   </div><button type="submit" form="order-support-match" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>
@@ -67,7 +67,7 @@
         <p class="order-timeline__meta">{% translate "آیتم" %} {{ item_numbers|item_place:row.order_item_id|fa_digits }}، {{ row.get_target_display }}، {{ row.get_source_display }}، <bdi dir="ltr">{{ row.user }}</bdi></p>
       </li>
     {% empty %}
-      <li>{% translate "هنوز اطلاعاتی نمایش داده نشده." %}</li>
+      <li>{% translate "اطلاعات این سفارش تا امروز برای هیچ‌کس نمایش داده نشده است." %}</li>
     {% endfor %}
   </ol>
 </section>

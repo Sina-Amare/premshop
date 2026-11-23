@@ -355,7 +355,9 @@ class DeliveryForm(forms.Form):
         label=_("پایان اشتراک"),
         required=False,
         max_length=10,
-        help_text=_("به تاریخ شمسی مثل ۱۴۰۵/۰۹/۱۵، و خالی برای اشتراک بی‌پایان."),
+        help_text=_(
+            "تاریخ شمسی را مانند ۱۴۰۵/۰۹/۱۵ وارد کنید و برای اشتراکی که تاریخ پایان ندارد، این کادر را خالی بگذارید."
+        ),
         widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric", "autocomplete": "off"}),
     )
     actual_cost = forms.DecimalField(
@@ -406,7 +408,9 @@ class DeliveryForm(forms.Form):
                 raise ValueError
             return cast(date, jdatetime.date(*map(int, found.groups())).togregorian())
         except ValueError:
-            raise ValidationError(_("تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید.")) from None
+            raise ValidationError(
+                _("تاریخ پایان اشتراک را به شمسی و به شکل ۱۴۰۵/۰۹/۱۵ بنویسید.")
+            ) from None
 
     def clean(self) -> dict[str, Any]:
         data = self.cleaned_data
@@ -532,10 +536,14 @@ class OrderAdmin(ModelAdmin):
                 if step == "confirm":
                     if action == "start":
                         holiday.start(actor=cast(User, request.user), expected_latest=token)
-                        done = _("تعطیلی شروع شد.")
+                        done = _(
+                            "تعطیلی شروع شد و مهلت تحویل محصول‌های در صف و سفارش‌هایی که از این پس پرداخت می‌شوند، تا پایان تعطیلی نمی‌گذرد."
+                        )
                     else:
                         holiday.end(actor=cast(User, request.user), expected_open=cast(int, token))
-                        done = _("تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید.")
+                        done = _(
+                            "تعطیلی تمام شد و مهلت تحویل محصول‌های متوقف‌شده به اندازه‌ی مدت تعطیلی عقب افتاد و مهلت‌های جدید را در صف سفارش‌ها می‌بینید."
+                        )
                     self.message_user(request, done, messages.SUCCESS)
                     return redirect("admin:orders_order_holiday")
                 confirming = action
@@ -631,7 +639,9 @@ class OrderAdmin(ModelAdmin):
                 expected = int(request.POST.get("expected_event_id", ""))
             except ValueError:
                 raise ValidationError(
-                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                    _(
+                        "وضعیت این محصول پس از باز شدن این صفحه تغییر کرده است و برای دیدن وضعیت فعلی آن، صفحه را دوباره باز کنید."
+                    )
                 ) from None
             service(
                 order_id=order_id,
@@ -687,13 +697,17 @@ class OrderAdmin(ModelAdmin):
                 expected = int(request.POST.get("expected_event_id", ""))
             except ValueError:
                 raise ValidationError(
-                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                    _(
+                        "وضعیت این محصول پس از باز شدن این صفحه تغییر کرده است و برای دیدن وضعیت فعلی آن، صفحه را دوباره باز کنید."
+                    )
                 ) from None
             if action == "delay":
                 try:
                     changes["hours"] = int(to_latin_digits(request.POST.get("hours", "")).strip())
                 except ValueError:
-                    raise ValidationError(_("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید.")) from None
+                    raise ValidationError(
+                        _("تأخیر تأمین را به ساعت و با عددی کامل از ۱ تا ۷۲ بنویسید.")
+                    ) from None
             if action in ("claim", "cancel"):
                 changes["reason"] = request.POST.get("reason", "")
             service(
@@ -811,10 +825,18 @@ class OrderAdmin(ModelAdmin):
         if request.method == "POST" and form.is_valid():
             content = form.cleaned_data["content"]
             if step == "preview" and not can_deliver:
-                error = str(_("این محصول آماده‌ی تحویل نیست."))
+                error = str(
+                    _(
+                        "چون این محصول در حال حاضر در صف انجام نیست، امکان ثبت تحویل برای آن وجود ندارد و برای دیدن وضعیت فعلی آن، صفحه‌ی سفارش را دوباره باز کنید."
+                    )
+                )
             elif step == "preview" and form.cleaned_data["expected_event_id"] != event_id:
                 # A preview of a page the item has moved past would only be refused at confirm.
-                error = str(_("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+                error = str(
+                    _(
+                        "وضعیت این محصول پس از باز شدن این صفحه تغییر کرده است و برای دیدن وضعیت فعلی آن، صفحه را دوباره باز کنید."
+                    )
+                )
             elif step == "preview":
                 preview = content
             elif step == "confirm":
@@ -1246,11 +1268,11 @@ class DiscountForm(forms.ModelForm):
         self.fields["value"].label = _("میزان تخفیف")
         self.fields["scope"].label = _("روی کدام محصولات")
         self.fields["value"].help_text = _(
-            "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
+            "برای تخفیف درصدی، عدد درصد و برای تخفیف با مبلغ ثابت، مبلغ را به تومان وارد کنید."
         )
         for name in ("max_uses", "per_user_limit"):
             self.fields[name].help_text = _(
-                "خالی یعنی بدون محدودیت. استفاده‌های لغوشده حساب نمی‌شوند."
+                "برای استفاده‌ی بدون محدودیت، این کادر را خالی بگذارید و استفاده‌ی سفارش‌های لغوشده در این شمارش حساب نمی‌شود."
             )
 
     def clean_code(self) -> str:
@@ -1263,12 +1285,22 @@ class DiscountForm(forms.ModelForm):
                 self.add_error(name, _("عددی بزرگ‌تر از صفر وارد کنید."))
         minimum = cleaned.get("min_order_amount")
         if minimum is not None and minimum < 0:
-            self.add_error("min_order_amount", _("صفر یا عددی بزرگ‌تر وارد کنید."))
+            self.add_error(
+                "min_order_amount",
+                _("حداقل مبلغ سفارش نمی‌تواند منفی باشد و لازم است صفر یا عددی بزرگ‌تر وارد کنید."),
+            )
         start, end = cleaned.get("valid_from"), cleaned.get("valid_until")
         if start and end and start >= end:
-            self.add_error("valid_until", _("پایان اعتبار باید پس از شروع آن باشد."))
+            self.add_error(
+                "valid_until", _("زمان پایان اعتبار کد تخفیف باید پس از زمان شروع اعتبار آن باشد.")
+            )
         if cleaned.get("scope") == DiscountCode.Scope.SELECTED and not cleaned.get("products"):
-            self.add_error("products", _("حداقل یک محصول برای این کد تخفیف انتخاب کنید."))
+            self.add_error(
+                "products",
+                _(
+                    "چون این کد تخفیف فقط برای محصولات انتخاب‌شده است، دست‌کم یک محصول برای آن انتخاب کنید."
+                ),
+            )
         return cleaned
 
 

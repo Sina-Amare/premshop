@@ -9,7 +9,7 @@
 {% if expiry_stale %}<section class="order-expiry" data-tone="problem" aria-label="{% translate 'بررسی مهلت پرداخت' %}">
   <p>{% translate "آخرین بررسی مهلت پرداخت" %}: {% if expiry_state %}{{ expiry_state.last_success_at|jalali }}، {% translate "ساعت" %} {{ expiry_state.last_success_at|time:"H:i"|fa_digits }}{% else %}{% translate "هنوز اجرا نشده است" %}{% endif %}</p>
   <p>{% translate "سفارش‌های گذشته از مهلت پرداخت" %}: {{ expiry_backlog|fa_digits }}</p>
-  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. پردازش پس‌زمینه‌ی سرور را بررسی کنید." %}</p>{% endif %}
+  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار مهلت پرداخت بیش از ۳ دقیقه است که اجرا نشده و تا پردازش پس‌زمینه‌ی سرور دوباره اجرا نشود، سفارش‌هایی که مهلت پرداختشان تمام شده است لغو نمی‌شوند و موجودی و کد تخفیفشان آزاد نمی‌شود." %}</p>{% endif %}
 </section>{% endif %}
 {{ block.super }}
 {% endblock %}

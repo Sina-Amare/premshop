@@ -31,7 +31,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="{{ confirming }}">
       <input type="hidden" name="expected" value="{{ token }}">
-      <p id="holiday-confirm-title">{% if confirming == "start" %}{% blocktranslate with items=facts.item_count|fa_digits %}از همین حالا مهلت {{ items }} محصول در صف نمی‌گذرد و مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود.{% endblocktranslate %}{% else %}{% blocktranslate with items=facts.item_count|fa_digits %}از همین حالا مهلت {{ items }} محصول در صف دوباره می‌گذرد.{% endblocktranslate %}{% endif %}</p>
+      <p id="holiday-confirm-title">{% if confirming == "start" %}{% blocktranslate with items=facts.item_count|fa_digits %}از همین حالا مهلت {{ items }} محصول در صف نمی‌گذرد و مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود.{% endblocktranslate %}{% else %}{% blocktranslate with items=facts.item_count|fa_digits %}با پایان تعطیلی، مهلت تحویل {{ items }} محصول متوقف‌شده به اندازه‌ی مدت تعطیلی عقب می‌افتد و از همین لحظه دوباره می‌گذرد.{% endblocktranslate %}{% endif %}</p>
       <div class="holiday-actions">
         <button type="submit" name="step" value="confirm" class="order-input-action holiday-primary">{% if confirming == "start" %}{% translate "تأیید و شروع تعطیلی" %}{% else %}{% translate "تأیید و پایان تعطیلی" %}{% endif %}</button>
         <a class="order-input-action" href="{% url 'admin:orders_order_holiday' %}">{% translate "انصراف" %}</a>
@@ -59,9 +59,9 @@
       {% endwith %}{% endfor %}
     </ol>
   {% elif facts.opened %}
-    <p>{% translate "این اولین تعطیلی است." %}</p>
+    <p>{% translate "این اولین تعطیلی فروشگاه است و تعطیلی تمام‌شده‌ای پیش از آن ثبت نشده است." %}</p>
   {% else %}
-    <p>{% translate "هنوز تعطیلی‌ای ثبت نشده است." %}</p>
+    <p>{% translate "تا امروز هیچ تعطیلی‌ای برای فروشگاه ثبت نشده است." %}</p>
   {% endif %}
 </section>
 {% endblock %}

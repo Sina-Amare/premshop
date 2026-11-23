@@ -4,8 +4,8 @@
 <section class="order-history" aria-labelledby="support-match-title">
   <h1 id="support-match-title">{{ title }}</h1>
   <p>{% translate "شماره‌ی سفارش" %}: {{ order.order_number|fa_digits }}</p>
-  <p role="status">{% if matched is None %}{% translate "بررسی شناسه در دسترس نیست؛ دوباره تلاش کنید." %}{% elif matched %}{% translate "شناسه با این سفارش مطابقت دارد." %}{% else %}{% translate "شناسه با این سفارش مطابقت ندارد." %}{% endif %}</p>
-  <p>{% translate "این بررسی فقط برای تطبیق درخواست پشتیبانی است." %}</p>
+  <p role="status">{% if matched is None %}{% translate "در حال حاضر امکان بررسی شناسه وجود ندارد و چند لحظه‌ی دیگر می‌توانید دوباره آن را امتحان کنید." %}{% elif matched %}{% translate "شناسه‌ای که وارد کردید با شناسه‌ی پشتیبانی این سفارش مطابقت دارد." %}{% else %}{% translate "شناسه‌ای که وارد کردید با شناسه‌ی پشتیبانی این سفارش مطابقت ندارد و پیش از هر کمکی، باید شناسه‌ی درست را از مشتری بخواهید." %}{% endif %}</p>
+  <p>{% translate "این بررسی فقط نشان می‌دهد درخواست پشتیبانی از طرف صاحب همین سفارش است و چیزی را در سفارش تغییر نمی‌دهد." %}</p>
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>
 {% endblock %}

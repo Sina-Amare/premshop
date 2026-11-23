@@ -9,7 +9,7 @@
     <p>{{ item.product_snapshot.customer_input_label }}</p>
     <p class="order-customer" data-revealed-input><bdi dir="ltr">{{ input_value }}</bdi></p>
   {% else %}
-    <p>{% translate "اطلاعاتی برای نمایش وجود ندارد." %}</p>
+    <p>{% translate "مشتری برای این محصول اطلاعاتی وارد نکرده است یا اطلاعات او طبق مهلت نگهداری حذف شده است." %}</p>
   {% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>

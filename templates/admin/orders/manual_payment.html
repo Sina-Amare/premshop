@@ -5,10 +5,10 @@
 <section class="order-history" aria-labelledby="manual-payment-title">
   <header><h2 id="manual-payment-title">{{ title }} · {% translate "سفارش" %} {{ order.order_number|fa_digits }}</h2></header>
   {% if refund_transfer %}
-  <p>{% translate "فقط واریزی را ثبت کنید که در بانک انجام شده است. این فرم پولی جابه‌جا نمی‌کند؛ پس از ثبت نمی‌توانید مشخصات واریز را تغییر دهید." %}</p>
+  <p>{% translate "این فرم پولی جابه‌جا نمی‌کند و فقط واریزی را ثبت می‌کند که در بانک انجام شده است و پس از ثبت، امکان تغییر مشخصات واریز وجود ندارد." %}</p>
   {% else %}
   <p>{% translate "مبلغ نهایی سفارش" %}: {{ order.total_amount|toman }}</p>
-  <p>{% translate "ابتدا واریز را در حساب بانکی بررسی کنید؛ تصویر رسید برای تأیید پرداخت کافی نیست." %}</p>
+  <p>{% translate "پیش از ثبت، واریز را در گردش حساب بانکی پیدا کنید، چون تصویر رسیدی که مشتری می‌فرستد برای تأیید پرداخت کافی نیست." %}</p>
   {% endif %}
   {% if not refund_transfer or has_refunds or form.is_bound %}
   <form method="post" class="order-payment-form" novalidate>
@@ -20,7 +20,7 @@
     {% endfor %}
     <button type="submit" class="order-input-action">{{ title }}</button>
   </form>
-  {% else %}<p>{% translate "بازپرداختی در انتظار واریز نیست." %}</p>{% endif %}
+  {% else %}<p>{% translate "برای این سفارش هیچ بازپرداختی در انتظار واریز نیست." %}</p>{% endif %}
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>
 {% endblock %}

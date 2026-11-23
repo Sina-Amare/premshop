@@ -124,6 +124,10 @@ class ReviewAdmin(ModelAdmin):
         except ValidationError as exc:
             self.message_user(request, exc.messages[0], level=messages.ERROR)
         else:
-            message = _("نظر منتشر شد.") if decision == "publish" else _("نظر پنهان شد.")
+            message = (
+                _("نظر منتشر شد و از این پس در صفحه‌ی محصول دیده می‌شود.")
+                if decision == "publish"
+                else _("نظر پنهان شد و دیگر در صفحه‌ی محصول دیده نمی‌شود.")
+            )
             self.message_user(request, str(message), level=messages.SUCCESS)
         return redirect("admin:orders_review_change", review_id)

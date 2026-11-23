@@ -63,7 +63,9 @@ class PaymentOrderAdmin(OrderAdmin):
         ) and reference_matches(reference, order_id, orders=self.viewable_orders(request)):
             self.message_user(
                 request,
-                _("این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است؛ آن را با بانک تطبیق دهید."),
+                _(
+                    "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است و پیش از ادامه، آن را با گردش حساب بانک تطبیق دهید تا یک واریز دو بار ثبت نشود."
+                ),
                 messages.WARNING,
             )
 
@@ -89,7 +91,12 @@ class PaymentOrderAdmin(OrderAdmin):
             except ValidationError as error:
                 form.add_error(None, error)
             else:
-                self.message_user(request, _("پرداخت ثبت شد."))
+                self.message_user(
+                    request,
+                    _(
+                        "پرداخت سفارش ثبت و تأیید شد و تأیید پرداخت از طریق ایمیل یا تلگرام به مشتری اعلام می‌شود."
+                    ),
+                )
                 self.warn_reference(request, form.cleaned_data["bank_ref"], order.pk)
                 return redirect("admin:orders_order_change", order.pk)
         return render(
@@ -153,7 +160,12 @@ class PaymentOrderAdmin(OrderAdmin):
             except ValidationError as error:
                 form.add_error(None, error)
             else:
-                self.message_user(request, _("واریز بازپرداخت ثبت شد."))
+                self.message_user(
+                    request,
+                    _(
+                        "واریز بازپرداخت ثبت شد و بازگشت وجه از طریق ایمیل یا تلگرام به مشتری اعلام می‌شود."
+                    ),
+                )
                 self.warn_reference(request, form.cleaned_data["bank_ref"], order.pk)
                 return redirect("admin:orders_order_change", order.pk)
         return render(

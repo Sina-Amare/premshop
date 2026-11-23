@@ -61,12 +61,16 @@ def _payment_order(order_id: int) -> Order:
 
 def _received_amount(amount: Decimal, expected: Decimal) -> None:
     if not isinstance(amount, Decimal) or not amount.is_finite() or amount != expected:
-        raise ValidationError(_("مبلغ دریافتی باید دقیقاً برابر مبلغ نهایی سفارش باشد."))
+        raise ValidationError(
+            _("پرداخت ثبت نشد، چون مبلغ دریافتی با مبلغ نهایی سفارش دقیقاً برابر نیست.")
+        )
 
 
 def _bank_reference(bank_ref: str) -> str:
     if not isinstance(bank_ref, str) or not bank_ref.strip() or len(bank_ref) > 64:
-        raise ValidationError(_("شماره‌ی پیگیری بانک را وارد کنید؛ حداکثر ۶۴ نویسه."))
+        raise ValidationError(
+            _("شماره‌ی پیگیری بانک را از رسید واریز، با حداکثر ۶۴ کاراکتر، وارد کنید.")
+        )
     return bank_ref.strip()
 
 
@@ -80,10 +84,18 @@ def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_r
     verified = order.payments.select_for_update().filter(status=Payment.Status.VERIFIED).first()
     if verified is not None:
         if verified.method != Payment.Method.MANUAL or verified.bank_ref != bank_ref:
-            raise ValidationError(_("پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."))
+            raise ValidationError(
+                _(
+                    "پرداخت این سفارش قبلاً با شماره‌ی پیگیری یا روش پرداخت دیگری ثبت و تأیید شده است و به همین دلیل پرداخت دوباره‌ای برای آن ثبت نشد."
+                )
+            )
         return confirm_payment(payment_id=verified.pk, actor=account)
     if not can_pay_order(order):
-        raise ValidationError(_("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
+        raise ValidationError(
+            _(
+                "پرداخت این سفارش ثبت نشد، چون سفارش لغو شده، مهلت پرداخت آن تمام شده یا پرداخت دیگری برای آن در جریان است."
+            )
+        )
     payment = Payment.objects.create(
         order=order,
         method=Payment.Method.MANUAL,
@@ -103,7 +115,11 @@ def confirm_payment(*, payment_id: int, actor: User) -> Payment:
     if payment.status == Payment.Status.VERIFIED:
         return payment
     if payment.method != Payment.Method.MANUAL or payment.status != Payment.Status.CREATED:
-        raise ValidationError(_("این پرداخت از مسیر ثبت پرداخت خارج از درگاه تأیید نمی‌شود."))
+        raise ValidationError(
+            _(
+                "این پرداخت از درگاه یا با وضعیتی دیگر ثبت شده است و امکان تأیید آن از بخش ثبت پرداخت خارج از درگاه وجود ندارد."
+            )
+        )
     _bank_reference(payment.bank_ref)
     if payment.matched_by_id != account.pk:
         raise PermissionDenied
@@ -135,7 +151,7 @@ def execute_refunds(
         or any(type(pk) is not int or pk <= 0 for pk in refund_ids)
         or len(set(refund_ids)) != len(refund_ids)
     ):
-        raise ValidationError(_("بازپرداخت‌های این واریز را انتخاب کنید."))
+        raise ValidationError(_("بازپرداخت‌هایی را که این واریز پوشش می‌دهد از فهرست انتخاب کنید."))
     bank_ref = _bank_reference(bank_ref)
     if isinstance(destination_last4, str):
         destination_last4 = destination_last4.translate(
@@ -146,16 +162,24 @@ def execute_refunds(
         or not isinstance(destination_last4, str)
         or not re.fullmatch(r"[0-9]{4}", destination_last4)
     ):
-        raise ValidationError(_("نوع مقصد و چهار رقم آخر آن را درست وارد کنید."))
+        raise ValidationError(
+            _("نوع مقصد واریز را انتخاب و چهار رقم آخر کارت یا شبا را با عدد وارد کنید.")
+        )
     if (
         not isinstance(executed_at, datetime)
         or timezone.is_naive(executed_at)
         or executed_at > timezone.now()
     ):
-        raise ValidationError(_("زمان واریز باید معتبر و حداکثر همین لحظه باشد."))
+        raise ValidationError(
+            _("زمان واریز را از رسید بانک وارد کنید و این زمان نمی‌تواند بعد از همین لحظه باشد.")
+        )
     order = _payment_order(order_id)
     if not order.payments.select_for_update().filter(status=Payment.Status.VERIFIED).exists():
-        raise ValidationError(_("این سفارش پرداخت تأییدشده ندارد."))
+        raise ValidationError(
+            _(
+                "برای این سفارش هیچ پرداخت تأییدشده‌ای ثبت نشده است و به همین دلیل واریز بازپرداختی هم برای آن ثبت نمی‌شود."
+            )
+        )
     item_ids = Refund.objects.filter(pk__in=refund_ids, order_item__order=order).values(
         "order_item_id"
     )
@@ -172,13 +196,21 @@ def execute_refunds(
         .order_by("pk")
     )
     if len(refunds) != len(refund_ids):
-        raise ValidationError(_("بازپرداخت انتخاب‌شده متعلق به این سفارش نیست."))
+        raise ValidationError(
+            _(
+                "یکی از بازپرداخت‌های انتخاب‌شده به این سفارش تعلق ندارد و برای انتخاب دوباره‌ی بازپرداخت‌ها، صفحه را دوباره باز کنید."
+            )
+        )
     if any(refund.status != Refund.Status.OWED for refund in refunds):
         raise ValidationError(
-            _("واریز یکی از این بازپرداخت‌ها قبلاً ثبت شده است؛ هیچ واریز جدیدی ثبت نشد.")
+            _(
+                "واریز یکی از بازپرداخت‌های انتخاب‌شده قبلاً ثبت شده است و به همین دلیل هیچ واریز جدیدی ثبت نشد."
+            )
         )
     if any(items[refund.order_item_id].status != OrderItem.Status.CANCELLED for refund in refunds):
-        raise ValidationError(_("وضعیت یکی از محصولات برای ثبت بازپرداخت مناسب نیست."))
+        raise ValidationError(
+            _("واریز ثبت نشد، چون یکی از محصولات این بازپرداخت‌ها دیگر در وضعیت لغوشده نیست.")
+        )
     if (
         not isinstance(amount, Decimal)
         or not amount.is_finite()
@@ -187,11 +219,15 @@ def execute_refunds(
         or amount != sum(refund.amount for refund in refunds)
     ):
         raise ValidationError(
-            _("مبلغ واریز باید دقیقاً برابر مجموع بازپرداخت‌های انتخاب‌شده باشد.")
+            _("واریز ثبت نشد، چون مبلغ واریز با جمع بازپرداخت‌های انتخاب‌شده دقیقاً برابر نیست.")
         )
     # The bank-time field displays seconds, not the database's fractional seconds.
     if executed_at < max(refund.created_at for refund in refunds).replace(microsecond=0):
-        raise ValidationError(_("زمان واریز نمی‌تواند پیش از ثبت بدهی بازپرداخت باشد."))
+        raise ValidationError(
+            _(
+                "زمان واریز نمی‌تواند پیش از زمان ثبت این بازپرداخت باشد و لازم است زمان را از رسید بانک دوباره وارد کنید."
+            )
+        )
     for refund in refunds:
         refund.status = Refund.Status.EXECUTED
         refund.destination_kind, refund.destination_last4 = destination_kind, destination_last4
@@ -234,7 +270,7 @@ def _cart_digest(cart: Cart, items: list[CartItem]) -> str:
 
 def _changed() -> ValidationError:
     return ValidationError(
-        "سبد خرید، قیمت یا شرایط خرید تغییر کرده است. تغییرات را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
+        "سبد خرید، قیمت یا شرایط خرید پس از باز شدن این صفحه تغییر کرده است و اگر با مبلغ و شرایط جدیدی که در همین صفحه آمده است موافقید، دوباره «ثبت سفارش» را بزنید.",
         code="quote_changed",
     )
 
@@ -254,7 +290,9 @@ def quote_checkout(*, user: User, discount_code: str = "") -> CheckoutQuote:
     cart = Cart.objects.filter(user=account).first()
     items = list(cart.items.select_related("plan").order_by("pk")) if cart else []
     if cart is None or not items:
-        raise ValidationError("سبد خرید شما خالی است.")
+        raise ValidationError(
+            "سبد خرید شما خالی است و برای ثبت سفارش، اول محصولی به آن اضافه کنید."
+        )
     purchase = quote_order(
         user=account,
         lines=[OrderLine(item.plan, item.quantity) for item in items],
@@ -305,7 +343,9 @@ def _payload(token: str, user: User) -> dict[str, Any]:
             raise signing.BadSignature
         return payload
     except signing.BadSignature, ValueError, TypeError:
-        raise ValidationError("صفحه را دوباره باز کنید و اطلاعات سفارش را بررسی کنید.") from None
+        raise ValidationError(
+            "اطلاعات این صفحه دیگر معتبر نیست و برای دیدن مبلغ و شرایط به‌روز و ثبت سفارش، صفحه را دوباره باز کنید."
+        ) from None
 
 
 def _check_quote_age(token: str) -> None:
@@ -313,7 +353,7 @@ def _check_quote_age(token: str) -> None:
         signing.loads(token, salt=QUOTE_SALT, max_age=QUOTE_AGE)
     except signing.SignatureExpired:
         raise ValidationError(
-            "قیمت و موجودی را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
+            "از باز شدن این صفحه مدتی گذشته است و اگر با قیمت و موجودی به‌روزی که در همین صفحه آمده است موافقید، دوباره «ثبت سفارش» را بزنید.",
             code="quote_changed",
         ) from None
 
@@ -337,16 +377,22 @@ def checkout(
     ):
         raise _changed()
     if not isinstance(checkout_id, uuid.UUID) or not isinstance(customer_inputs, Mapping):
-        raise ValidationError("اطلاعات ثبت سفارش درست نیست.")
+        raise ValidationError(
+            "اطلاعات این سفارش کامل یا معتبر نیست و برای ثبت سفارش، لازم است صفحه را دوباره باز کنید."
+        )
     allowed = {str(line[0]) for line in payload["inputs"]}
     if set(customer_inputs) - allowed:
-        raise ValidationError("اطلاعات ثبت سفارش درست نیست.")
+        raise ValidationError(
+            "اطلاعات این سفارش کامل یا معتبر نیست و برای ثبت سفارش، لازم است صفحه را دوباره باز کنید."
+        )
     inputs = {
         str(plan_id): normalize_customer_input(kind, customer_inputs.get(str(plan_id)))
         for plan_id, kind in payload["inputs"]
     }
     if not isinstance(email, str):
-        raise ValidationError("این ایمیل درست نیست.")
+        raise ValidationError(
+            "ایمیلی که وارد کرده‌اید درست نیست و لازم است نشانی کامل ایمیل خود را با دقت دوباره بنویسید."
+        )
     email = normalize_email(email)
     submission = _json(
         {

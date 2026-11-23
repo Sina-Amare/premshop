@@ -9,7 +9,7 @@
     <button type="submit" class="order-input-action">{% translate "نمایش روز" %}</button>
   </form>
   {% if not form.errors %}
-  <p>{% translate "روز از نیمه‌شب تهران تا نیمه‌شب بعدی است. بدهی جدید با پول واریزشده جمع نمی‌شود." %}</p>
+  <p>{% translate "هر روز از نیمه‌شب تا نیمه‌شب بعدی به وقت تهران حساب می‌شود و بدهی جدید بازپرداخت با مبلغ واریزشده جمع زده نمی‌شود." %}</p>
   <dl>
     <dt>{% translate "پرداخت‌های تأییدشده" %}</dt><dd>{{ payment_total|toman_plain }} {% translate "تومان" %}</dd>
     <dt>{% translate "بدهی جدید بازپرداخت" %}</dt><dd>{{ owed_total|toman_plain }} {% translate "تومان" %}</dd>
@@ -27,7 +27,7 @@
 </section>
 <section class="order-history" aria-labelledby="reconciliation-refunds">
   <header><h2 id="reconciliation-refunds">{% translate "بازپرداخت‌ها" %}</h2></header>
-  <p>{% translate "هر ردیف سهم یک آیتم است؛ یک واریز می‌تواند چند آیتم را پوشش دهد." %}</p>
+  <p>{% translate "هر ردیف سهم یک آیتم از بازپرداخت را نشان می‌دهد و یک واریز می‌تواند چند آیتم را با هم پوشش دهد." %}</p>
   {% for row in refunds %}{% with refund=row.refund %}<article class="saved-purchase">
     <h3><a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "سفارش" %} {{ refund.order_item.order.order_number|fa_digits }}</a>، <a href="{% url 'admin:orders_order_change' refund.order_item.order_id %}">{% translate "آیتم" %} {{ item_numbers|item_place:refund.order_item_id|fa_digits }}</a>، {{ refund.amount|toman }}</h3>
     {% if row.owed_today %}<p><span class="order-status" data-tone="attention">{% translate "بدهی جدید در این روز" %}</span></p>{% endif %}

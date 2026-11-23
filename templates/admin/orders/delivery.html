@@ -26,7 +26,7 @@
       {% if item.plan.product.delivery_template %}<p class="delivery-template">{{ item.plan.product.delivery_template }}</p>{% endif %}
       {% if mode == "deliver" and item.sla_paused_at %}
         <p class="delivery-paused"><span class="panel-pill" data-tone="progress" data-icon="pause">{% translate "در تعطیلی" %}</span> <span>{% blocktranslate with left=paused_left %}مهلت تحویل: {{ left }}، تا پایان تعطیلی نمی‌گذرد{% endblocktranslate %}</span></p>
-        <p class="delivery-help">{% translate "تا پایان تعطیلی نمی‌توانید تأخیر تأمین ثبت کنید." %}</p>
+        <p class="delivery-help">{% translate "چون مهلت تحویل این محصول در تعطیلی متوقف است، تا پایان تعطیلی امکان ثبت تأخیر تأمین برای آن وجود ندارد." %}</p>
       {% elif mode == "deliver" and item.due_at %}
         <p>{% translate "مهلت تحویل" %}: {{ item.due_at|jalali }}، {{ item.due_at|date:"H:i"|fa_digits }}</p>
         <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'delay' %}" class="order-payment-form" autocomplete="off">
@@ -42,7 +42,7 @@
     <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'claim' %}" class="order-payment-form delivery-form" autocomplete="off">
       {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
       <div><label for="claim-reason">{% translate "دلیل درخواست تعویض" %}</label><select id="claim-reason" name="reason" required><option value="">{% translate "انتخاب دلیل" %}</option>{% for reason, label in claim_choices %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
-      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "رمز یا اطلاعات ورود را اینجا ننویسید؛ این یادداشت در سابقه‌ی سفارش می‌ماند." %}</p></div>
+      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "رمز یا اطلاعات ورود را در این یادداشت ننویسید، چون یادداشت در سابقه‌ی سفارش می‌ماند." %}</p></div>
       <button type="submit" class="order-input-action">{% translate "ثبت درخواست تعویض" %}</button>
     </form>
   {% elif mode == "replace" %}
@@ -50,7 +50,7 @@
     {% if claim_reason and claim_note %}<p>{{ claim_note }}</p>{% endif %}
     <p>{{ claim_actor }}</p>
   {% endif %}
-  {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "خطاهای فرم را درست کنید." %}</p>{% endif %}</div>{% endif %}
+  {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "فرم ذخیره نشد و برای ذخیره‌ی آن، خطاهایی را که کنار هر کادر آمده است درست کنید." %}</p>{% endif %}</div>{% endif %}
   {% if preview %}
     {% include "admin/orders/_delivery_card.html" with content=preview only %}
     <p>{% if mode == "replace" %}{% translate "هزینه‌ی تأمین اضافه" %}{% else %}{% translate "قیمت تأمین واقعی" %}{% endif %}: {{ form.cleaned_data.actual_cost|toman }}</p>
@@ -66,7 +66,7 @@
       {{ form.expected_event_id }}
       <fieldset class="delivery-lines">
         <legend>{% translate "اطلاعات تحویل" %}</legend>
-        <p class="delivery-help">{% translate "سطرهای خالی نادیده گرفته می‌شوند." %}</p>
+        <p class="delivery-help">{% translate "سطرهایی را که لازم ندارید خالی بگذارید، چون سطرهای خالی در اطلاعات تحویل ذخیره نمی‌شوند." %}</p>
         {% for title, value in form.lines %}
           <div class="delivery-line">
             <div><label for="{{ title.id_for_label }}">{{ title.label }}</label>{{ title }}{{ title.errors }}</div>
@@ -98,7 +98,7 @@
       {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
       <div><label for="cancel-reason">{% translate "دلیل لغو" %}</label><select id="cancel-reason" name="reason">{% for reason, label, amount in cancel_options %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
       <p>{% translate "مبلغ بازپرداخت" %}: {{ cancel_options.0.2|toman }}</p>
-      <div><label for="cancel-note">{% translate "توضیح لغو" %}</label><textarea id="cancel-note" name="note" rows="2" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این توضیح در سابقه‌ی سفارش می‌ماند." %}</p></div>
+      <div><label for="cancel-note">{% translate "توضیح لغو" %}</label><textarea id="cancel-note" name="note" rows="2" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این توضیح در سابقه‌ی سفارش می‌ماند و برای مشتری فرستاده نمی‌شود." %}</p></div>
       <button data-danger type="submit" class="order-input-action">{% translate "لغو و ثبت بازپرداخت" %}</button>
     </form>
   {% elif cancel_refusal %}
