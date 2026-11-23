@@ -199,6 +199,18 @@ def test_running_deadlines_lead_the_queued_tab_and_paused_ones_follow(client, ow
     assert list(response.context["cl"].result_list) == [running, mixed, paused_early, paused_late]
 
 
+def test_stopped_rows_within_one_order_follow_their_deadlines(client, owner, buyer, plan):
+    now = timezone.now()
+    begin(owner)
+    order = make_order(buyer, plan, quantity=2, due_at=now + timedelta(hours=8), sla_paused_at=now)
+    later_due, earlier_due = order.items.order_by("pk")
+    OrderItem.objects.filter(pk=earlier_due.pk).update(
+        due_at=now + timedelta(hours=3), sla_paused_at=now + timedelta(hours=1)
+    )
+    row = client.get(queue()).context["cl"].result_list[0]
+    assert list(row.items.all()) == [earlier_due, later_due]
+
+
 # The delivery page
 
 

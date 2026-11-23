@@ -12,7 +12,7 @@ import jdatetime
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
-from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, QuerySet
+from django.db.models import Case, Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, QuerySet, When
 from django.db.models.fields.json import KeyTextTransform
 from django.http import (
     Http404,
@@ -1050,7 +1050,7 @@ class OrderAdmin(ModelAdmin):
                 elif tab == "queued":
                     # Running clocks lead; a holiday's stopped ones follow, by their own deadlines.
                     items = items.order_by(
-                        F("sla_paused_at").asc(nulls_first=True),
+                        Case(When(sla_paused_at__isnull=True, then=0), default=1),
                         F("due_at").asc(nulls_last=True),
                         "pk",
                     )
