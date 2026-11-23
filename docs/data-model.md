@@ -43,6 +43,7 @@ erDiagram
   OrderItem ||--o| Refund : "refunded by"
   OrderItem ||--o| Review : "reviewed by"
   OrderItemEvent ||--o| Delivery : records
+  Holiday |o--o{ OrderItemEvent : "pauses and resumes"
   Delivery ||--|{ DeliveryField : lines
   DiscountCode |o--o{ Order : discounts
   DiscountCode }o--o{ Product : "scoped to"
@@ -170,6 +171,10 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 
 Customer claim events also hold `claim_reason`: `details_failed`, `subscription_mismatch` or `stopped_early`. A database constraint limits a nonempty reason to a customer DELIVERED → REPLACEMENT_REQUESTED event without a prose note. Staff claims retain their operator note and actor.
 
+A holiday's own pause and resume rows also hold `holiday`, the holiday that wrote them; the customer's history leaves them out.
+
+**Holiday** is one stretch of days the owner does not deliver: who started it and when, and who ended it and when. While one is open, no delivery clock runs ([Holiday](order-lifecycle.md#holiday)). The open row is the setting, and `holiday_one_open` admits one, with NULLs counted as equal.
+
 **Delivery** is one set of account details for an item, tied one to one to the history row that delivered it, with an optional encrypted note to the customer. **DeliveryField** is one line of a set: a title, an encrypted value and a position, unique within the set. A replacement adds a set and never edits an earlier one; the latest set is current. Every set and its note are deleted at the item's retention deadline ([Retention](order-lifecycle.md#retention)). Only `orders.services.reveal_delivery` reads the values, after writing its access row ([ADR-0007](decisions/0007-credential-encryption-key-escrow-retention.md)).
 
 **DiscountCode** is a code a customer types at checkout ([ADR-0020](decisions/0020-discount-codes.md)).
@@ -257,6 +262,7 @@ The conditional unique constraint `payment_one_verified_per_order` independently
 | Refund | `refund_amount_positive`, `refund_execution_complete` |
 | OrderItem | `order_item_status_valid`, `order_item_prices_not_negative`, `order_item_discount_share_within_price`, `order_item_cancel_reason_valid`, `order_item_cancel_has_reason`, `order_item_pause_requires_deadline` |
 | OrderItemEvent | `order_event_actor_valid`, `order_event_from_status_valid`, `order_event_to_status_valid`, `order_event_claim_reason_valid` |
+| Holiday | `holiday_one_open`, `holiday_end_recorded_together`, `holiday_ends_after_it_starts` |
 | DiscountCode | `discount_code_format`, `discount_kind_valid`, `discount_scope_valid`, `discount_value_positive`, `discount_max_uses_positive`, `discount_user_limit_positive`, `discount_minimum_not_negative`, `discount_window_valid` |
 | DiscountRedemption | `discount_redemption_not_negative` |
 | Notification | `notification_template_valid`, `notification_status_valid`, `notification_attempts_bounded`, `notification_channel_recipient` |
@@ -269,7 +275,7 @@ The catalogue's constraints carry a Persian message, shown in the panel under th
 
 | Relation | On delete | Why |
 |---|---|---|
-| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, every key on `Payment`, `Refund`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
+| `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, `OrderItemEvent.holiday`, `Holiday.started_by`, `Holiday.ended_by`, every key on `Payment`, `Refund`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
 | `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
 | `Product.category` | PROTECT | No orphan products |
 | `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart`; `DeliveryField.delivery` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
@@ -310,5 +316,5 @@ Each simplification and the condition that would reverse it are in [ADR-0014](de
 
 | Table | Purpose | Decisions |
 |---|---|---|
-| `core.SiteSetting` | One row of operator settings: the payment clocks, support hours and holiday mode | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
+| `core.SiteSetting` | One row of operator settings: the payment clocks and support hours | [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md), [ADR-0019](decisions/0019-payment-gateway.md) |
 | The delivery link on `OrderItem` | The single-use delivery link | [ADR-0008](decisions/0008-content-free-messages-and-magic-link.md), [ADR-0009](decisions/0009-sla-clock-and-input-timeout-ladder.md) |
