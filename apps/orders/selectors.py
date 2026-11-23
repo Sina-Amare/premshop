@@ -426,8 +426,9 @@ def _money(order: Order, refunds: dict[int, Refund | None]) -> dict[str, Any]:
 
 def _history(**where: Any) -> Iterable[tuple[int, str, str | None, str, datetime, str]]:
     return (
-        OrderItemEvent.objects.filter(**where)
-        # A deletion or a repeated request is not news; a moved delivery time is.
+        OrderItemEvent.objects.filter(holiday__isnull=True, **where)
+        # A deletion or a repeated request is not news; a moved delivery time is. A holiday's
+        # own lines are not either: the page shows its pause and the new time.
         .exclude(Q(from_status=F("to_status")) & ~Q(to_status=S.QUEUED))
         # How a replacement request was answered, known only while retention keeps the sets.
         .annotate(
