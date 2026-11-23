@@ -23,8 +23,8 @@
         <div class="cart-line__facts">
           {% if line.plan %}<h2><a href="{{ line.plan.product.get_absolute_url }}"><bdi>{{ line.plan.product.name }}</bdi></a></h2><p class="cart-line__details"><span class="cart-line__plan"><bdi>{{ line.plan.title }}</bdi></span>{% if line.plan.product.delivery_type %}، <span>{{ line.plan.product.get_delivery_type_display }}</span>{% endif %}</p><p class="cart-line__delivery">{% include 'storefront/icon.html' with name='clock' %}{{ line.plan.product.delivery_sentence }}</p>
           {% else %}<h2>محصول ناموجود</h2>{% endif %}
-          {% if line.unavailable %}<p class="cart-line__stock">ناموجود</p><p class="cart-line__warning">برای ادامه‌ی خرید، این مورد را حذف کنید.</p><a class="cart-line__restock" href="{{ support.telegram_url }}" rel="noopener">از پشتیبانی بپرسید چه زمانی دوباره موجود می‌شود.</a>
-          {% elif line.quantity_invalid %}<p class="cart-line__warning">تعداد را کم کنید.</p>
+          {% if line.unavailable %}<p class="cart-line__stock">ناموجود</p><p class="cart-line__warning">برای ادامه‌ی خرید، این محصول ناموجود را از سبد خرید حذف کنید.</p><a class="cart-line__restock" href="{{ support.telegram_url }}" rel="noopener">از پشتیبانی بپرسید چه زمانی دوباره موجود می‌شود.</a>
+          {% elif line.quantity_invalid %}<p class="cart-line__warning">تعداد این محصول از موجودی یا سقف خرید هر سفارش بیشتر است و برای ادامه باید آن را کم کنید.</p>
           {% else %}{% include 'cart/_unit_price.html' %}
           {% endif %}
         </div>
@@ -43,7 +43,7 @@
             </div>
           </form>
           <p class="cart-quantity-limit" id="quantity-limit-{{ line.plan_id }}">سقف خرید این گزینه در هر سفارش {{ line.max_quantity|fa_digits }} است.</p>
-          <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است.</p>
+          <p class="cart-quantity-draft" data-cart-draft hidden>تعداد جدید هنوز ثبت نشده است و برای ثبت آن، دکمه‌ی «ثبت تعداد» را بزنید.</p>
           {% endif %}
           <form method="post" action="{% url 'cart-remove' %}" class="cart-remove-form">{% csrf_token %}<input type="hidden" name="plan" value="{{ line.plan_id }}"><button type="submit" class="cart-remove" aria-label="حذف {% if line.plan %}{{ line.plan.product.name }}، {{ line.plan.title }}{% else %}محصول ناموجود{% endif %}">{% include 'storefront/icon.html' with name='trash' %}<span>حذف</span></button></form>
         </div>
@@ -54,9 +54,9 @@
     <aside class="cart-summary" aria-label="جمع سبد خرید">
       <h2>خلاصه‌ی سبد</h2>
       {% include 'cart/_saving.html' %}
-      {% if not cart.ready %}<p class="cart-summary__blocked">برای ادامه، محصولات ناموجود را حذف کنید یا تعداد را کم کنید.</p>{% endif %}
+      {% if not cart.ready %}<p class="cart-summary__blocked">برای ادامه و ثبت سفارش، محصولات ناموجود را از سبد خرید حذف کنید یا تعداد محصولاتی را که از موجودی یا سقف خرید بیشتر است کم کنید.</p>{% endif %}
       <div class="cart-cta{% if cart.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات آماده‌ی خرید{% endif %}</div>
-      <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="اول محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div></div>
+      <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="جمع سبد خرید پس از اصلاح محصولات ناموجود نمایش داده می‌شود">—</span>{% endif %}</div></div>
       {% if cart.ready %}<a class="btn btn--primary" href="{% url 'checkout' %}">ادامه و ثبت سفارش</a>{% else %}<button class="btn btn--primary" type="button" disabled>ادامه و ثبت سفارش</button>{% endif %}</div>
       <div class="cart-summary__help">{% if cart.delivery_promise %}<p>{% include 'storefront/icon.html' with name='clock' %}<span>{{ cart.delivery_promise }}</span></p>{% else %}{% for promise in promises %}<p>{% include 'storefront/icon.html' with name='clock' %}<span>{{ promise.text }}</span></p>{% endfor %}{% endif %}<a class="cart-summary__support" href="{{ support.telegram_url }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}<span><span class="cart-summary__support-name">پشتیبانی در تلگرام</span>: {{ support.hours }}</span></a></div>
     </aside>
@@ -65,7 +65,7 @@
   <div class="cart-empty">
     <span class="cart-empty__icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 22h34l3 32H12l3-32Z"/><path d="M23 25V17a9 9 0 0 1 18 0v8"/><path d="M25 36h14"/></svg></span>
     <h2>سبد خرید شما خالی است</h2>
-    <p>برای شروع، یک محصول انتخاب کنید.</p>
+    <p>برای شروع خرید، محصول موردنظرتان را از فهرست محصولات انتخاب کنید و به سبد خرید اضافه کنید.</p>
     <a class="btn btn--primary" href="{% url 'home' %}#products">دیدن محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
     {% if not user.is_authenticated %}<p class="cart-empty__signin">اگر قبلاً در حساب کاربری خود محصولی به سبد خرید افزوده‌اید، بعد از <a href="{% url 'login-code' %}?next={{ request.path|urlencode }}">ورود به حساب</a> آن را همین‌جا می‌بینید.</p>{% endif %}
   </div>

@@ -15,13 +15,13 @@
 {% endfor %}
 {% if delivery_ready and not delivery_confirmed %}
 {% if delivery_email %}
-<p>برای دیدن اطلاعات تحویل، ابتدا ایمیل این سفارش را تأیید کنید: <bdi dir="ltr">{{ delivery_email }}</bdi></p>
+<p>برای دیدن اطلاعات تحویل، ابتدا باید ایمیل این سفارش را با کدی که به آن فرستاده می‌شود تأیید کنید: <bdi dir="ltr">{{ delivery_email }}</bdi></p>
 <form method="post" action="{% url 'order-delivery-code' order.order_number %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">فرستادن کد به ایمیل</button></form>
 <form method="post" action="{% url 'order-delivery-confirm' order.order_number %}">{% csrf_token %}
 <div class="field"><label class="field__label" for="delivery-code">کد نمایش اطلاعات</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>
 <button type="submit" class="btn btn--primary">تأیید کد</button></form>
 {% endif %}
-<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است. برای دیدن اطلاعات تحویل،{% endif %} <a href="{{ support.telegram_url }}" rel="noopener noreferrer">به پشتیبانی پیام بدهید</a>.</p>
+<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است و برای دیدن اطلاعات تحویل باید{% endif %} <a href="{{ support.telegram_url }}" rel="noopener noreferrer">به پشتیبانی پیام بدهید</a>.</p>
 {% endif %}
 </section>
 {% endif %}

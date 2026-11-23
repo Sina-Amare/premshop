@@ -13,7 +13,7 @@
 </div>
 {% if review.text and review.status != "hidden" %}<p class="order-review__text" dir="auto">{{ review.text }}</p>{% endif %}
 {% if review.status == "pending" %}<p>اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.</p>
-{% elif review.status == "hidden" %}<p>نظرتان در صفحه‌ی محصول نمایش داده نمی‌شود.</p>
+{% elif review.status == "hidden" %}<p>نظر شما بررسی شد و در صفحه‌ی محصول نمایش داده نمی‌شود.</p>
 {% elif item.plan.product.is_public %}<a href="{% url 'product' item.plan.product.slug %}#product-reviews">دیدن در صفحه‌ی محصول</a>{% endif %}
 {% else %}
 <form class="order-review__form" method="post" action="{% url 'order-review' order.order_number item.pk %}#order-reviews">{% csrf_token %}

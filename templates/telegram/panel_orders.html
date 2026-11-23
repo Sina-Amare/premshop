@@ -1,5 +1,5 @@
 {% load fa %}<h2>{{ icon }} {{ label }}</h2>
-{% if rows %}<p>برای جزئیات هر سفارش، شماره‌ی آن را بزنید.</p>
+{% if rows %}<p>برای دیدن جزئیات هر سفارش، دکمه‌ی شماره‌ی همان سفارش را بزنید.</p>
 <table bordered striped>
 <tr><th>سفارش</th><th>محصول</th><th>وضعیت</th><th>تاریخ</th></tr>
 {% for row in rows %}<tr><td>{{ row.emoji }} {{ row.order.order_number|fa_digits }}</td><td>{{ row.names|join:" و " }}</td><td>{{ row.status }}</td><td>{{ row.order.created_at|jalali_numeric }}</td></tr>

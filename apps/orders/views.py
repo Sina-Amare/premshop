@@ -54,7 +54,7 @@ from apps.orders.services import (
 ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
-INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
+INVOICE_NOTICE = "پرداخت این سفارش هنوز تأیید نشده است و این فاکتور تا پیش از تأیید پرداخت، رسید پرداخت به شمار نمی‌آید."
 
 
 @never_cache
@@ -262,10 +262,16 @@ def delivery_code(
     try:
         if confirm:
             if not proof.confirm_code(**arguments, code=request.POST.get("code", "")):
-                raise ValidationError("کد درست نیست یا مهلتش گذشته است.")
+                raise ValidationError(
+                    "کدی که وارد کردید درست نیست یا اعتبار آن به پایان رسیده است و می‌توانید آن را دوباره وارد کنید یا کد جدیدی برای ایمیل این سفارش درخواست کنید."
+                )
         else:
             proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد به ایمیل این سفارش فرستاده شد.")
+            messages.success(
+                request,
+                "کد نمایش اطلاعات تحویل به ایمیل این سفارش فرستاده شد و پس از وارد کردن آن در کادر زیر، "
+                "اطلاعات تحویل را می‌بینید.",
+            )
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     return redirect("order-detail", order_number=order_number)
@@ -350,7 +356,11 @@ def submit_review(request: HttpRequest, order_number: int, item_id: int) -> Http
             request,
             _owned_summary(request, order_number),
             status=409,
-            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید.", {}),
+            review_error=(
+                item_id,
+                "شما قبلاً برای این خرید نظر ثبت کرده‌اید و برای هر خرید فقط یک نظر می‌توانید بنویسید.",
+                {},
+            ),
         )
     return redirect(reverse("order-detail", args=[order_number]) + "#order-reviews")
 
@@ -425,7 +435,10 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
     order = summary["order"]
     if request.POST.get("confirm") != "yes":
         return _render_detail(
-            request, summary, error="ساخت شناسه‌ی جدید را تأیید کنید.", status=400
+            request,
+            summary,
+            error="برای ساخت شناسه‌ی پشتیبانی جدید، دکمه‌ی «ساخت شناسه‌ی جدید» را بزنید.",
+            status=400,
         )
     try:
         replace_support_token(
@@ -436,8 +449,17 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     except ImproperlyConfigured, OrderSupportIdentifier.DoesNotExist:
-        return _render_detail(request, summary, error="شناسه‌ی پشتیبانی در دسترس نیست.", status=503)
-    messages.success(request, "شناسه‌ی پشتیبانی جایگزین شد.")
+        return _render_detail(
+            request,
+            summary,
+            error=(
+                "در حال حاضر امکان ساخت شناسه‌ی پشتیبانی وجود ندارد و می‌توانید کمی بعد دوباره امتحان کنید یا شماره‌ی سفارش را در تلگرام برای پشتیبانی بفرستید."
+            ),
+            status=503,
+        )
+    messages.success(
+        request, "شناسه‌ی پشتیبانی جدید ساخته شد و شناسه‌ی قبلی از همین لحظه باطل است."
+    )
     return redirect("order-detail", order_number=order.order_number)
 
 
@@ -447,7 +469,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
 def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
-    error = "برای لغو سفارش، دکمه‌ی «بله، لغو سفارش» را بزنید."
+    error = "سفارش لغو نشد، چون لغو سفارش فقط با زدن دکمه‌ی «بله، لغو سفارش» انجام می‌شود."
     if request.POST.get("confirm") == "yes":
         try:
             cancel_unpaid_order(order_id=order.pk, actor=cast(User, request.user))

@@ -57,7 +57,7 @@
     });
   }
   function fail(message) {
-    showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
+    showError(message || 'کد ورودی که وارد کردید درست نیست و می‌توانید آن را دوباره وارد کنید یا کد جدیدی درخواست کنید.');
     row.fail(function () {
       tick();
       row.disable(expired);
@@ -88,7 +88,7 @@
       var m = Math.floor(left / 60), s = left % 60;
       clock.textContent = toFa(m) + ':' + toFa(s < 10 ? '0' + s : s) + ' مانده';
       clock.hidden = false;
-      if (left <= 60 && !warned) { warned = true; status.textContent = 'یک دقیقه از اعتبار کد مانده است.'; }
+      if (left <= 60 && !warned) { warned = true; status.textContent = 'فقط یک دقیقه از اعتبار کد ورود باقی مانده است و پس از آن باید کد جدیدی درخواست کنید.'; }
       if (expired) { expired = false; row.disable(false); }
     } else if (!expired) {
       expired = true;
@@ -99,7 +99,7 @@
       row.disable(true);
       showError('');
       resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
-      status.textContent = 'کد منقضی شد. برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      status.textContent = 'اعتبار کد ورود به پایان رسیده است و برای دریافت کد جدید، دکمه‌ی «ارسال دوباره» را بزنید.';
       resendButton.classList.replace('btn--ghost', 'btn--primary');
     }
     var wait = cooldownUntil - now;
@@ -145,9 +145,9 @@
         document.getElementById('delivery-sms').hidden = data.channel === 'telegram';
         document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
         smsForm.hidden = data.channel !== 'telegram';
-        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید را فرستادیم.';
+        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد ورود جدید با پیامک فرستاده شد و کد قبلی دیگر اعتبار ندارد.';
         status.textContent = data.channel === 'telegram'
-          ? document.getElementById('delivery-telegram').textContent : 'کد جدید را فرستادیم.';
+          ? document.getElementById('delivery-telegram').textContent : 'کد ورود جدید با پیامک فرستاده شد و کد قبلی دیگر اعتبار ندارد.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;
@@ -156,7 +156,7 @@
       smsForm.querySelector('button').disabled = false;
       tick();
     }).catch(function () {
-      showError('کد فرستاده نشد. دوباره تلاش کنید.');
+      showError('کد ورود جدید فرستاده نشد و می‌توانید چند لحظه‌ی دیگر دوباره دکمه‌ی «ارسال دوباره» را بزنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       resendPending = false;
       smsForm.querySelector('button').disabled = false;

@@ -50,14 +50,14 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
 
     form = LineForm(request.POST)
     if not form.is_valid():
-        return error("تعداد را با عدد وارد کنید و دوباره امتحان کنید.")
+        return error("تعدادی که وارد کردید درست نیست و باید آن را فقط با رقم وارد کنید.")
     kwargs = {"plan_id": form.cleaned_data["plan"]}
     if operation is not services.remove_from_cart:
         quantity = form.cleaned_data["quantity"]
         if quantity is None and operation is services.add_to_cart:
             quantity = 1
         if quantity is None:
-            return error("تعداد را وارد کنید.")
+            return error("برای تغییر تعداد، عدد موردنظرتان را در کادر تعداد وارد کنید.")
         if operation is services.set_quantity:
             quantity += form.cleaned_data["step"] or 0
         kwargs["quantity"] = quantity

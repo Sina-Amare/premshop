@@ -28,15 +28,14 @@ behind one, so the message reports what happened and accuses nobody.
     <h1 class="page-head__title">جستجو</h1>
   </header>
   <div class="card empty">
-    <p class="prose flush">الان تعداد جستجوها زیاد است.</p>
-    <p class="small flush">یک دقیقه بعد دوباره جستجو کنید.</p>
+    <p class="prose flush">تعداد جستجوها در این لحظه زیاد است و می‌توانید یک دقیقه‌ی دیگر دوباره جستجو کنید.</p>
   </div>
 
 {% elif query and not results %}
   <header class="page-head v-page-hero v-page-hero--light"><span class="v-page-hero__mark" aria-hidden="true">{% include 'storefront/icon.html' with name='search' %}</span>
     <h1 class="page-head__title">محصولی پیدا نکردیم</h1>
     <p class="small page-head__intro">جستجوی شما: <bdi class="v-query">{{ query }}</bdi></p>
-    <div class="v-search-recovery"><p>دنبال سرویس دیگری هستید؟ در تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
+    <div class="v-search-recovery"><p>اگر دنبال سرویسی هستید که در فهرست نیست، نام آن را در تلگرام برای ما بفرستید.</p><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
     {% if everything %}<p class="small page-head__intro">این محصولات را هم ببینید:</p>{% endif %}
   </header>
   {% if everything %}

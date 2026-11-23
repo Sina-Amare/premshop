@@ -94,7 +94,11 @@ def checkout(request: HttpRequest) -> HttpResponse:
         if action == "remove_discount":
             code = ""
         if action == "apply_discount" and not code.strip():
-            return _page(request, error="کد تخفیف را وارد کنید.", status=400)
+            return _page(
+                request,
+                error="برای اعمال تخفیف، ابتدا کد تخفیف را در کادر آن وارد کنید.",
+                status=400,
+            )
         try:
             services.prepare_checkout(user=user)
         except ValidationError as exc:
@@ -106,7 +110,8 @@ def checkout(request: HttpRequest) -> HttpResponse:
         return _page(
             request,
             discount_code=code,
-            error=error or "اطلاعات ثبت سفارش درست نیست. صفحه را دوباره باز کنید.",
+            error=error
+            or "اطلاعات این صفحه برای ثبت سفارش کامل نیست و با باز کردن دوباره‌ی صفحه می‌توانید سفارش را ثبت کنید.",
             status=400,
         )
     try:
@@ -132,5 +137,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
             status=409 if getattr(exc, "code", None) == "quote_changed" else 400,
         )
     # The order's own card says how to pay; the greeting only confirms it was placed.
-    messages.success(request, "سفارشتان ثبت شد.")
+    messages.success(
+        request, "سفارش شما با موفقیت ثبت شد و روش پرداخت آن را در همین صفحه می‌بینید."
+    )
     return redirect("order-detail", order_number=order.order_number)

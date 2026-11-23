@@ -7,7 +7,7 @@
 <h2><bdi>{{ item.product_snapshot.name }}</bdi>، <bdi>{{ item.product_snapshot.plan_title }}</bdi></h2>
 {% if content %}<dl class="order-totals delivery-values">{% for line in content.lines %}<div><dt><bdi>{{ line.title }}</bdi></dt><dd><bdi dir="ltr">{{ line.value }}</bdi></dd></div>{% endfor %}</dl>
 {% if content.note %}<div class="prose" data-delivery-note>{{ content.note|markdown:"4" }}</div>{% endif %}
-{% elif state == 'unreadable' %}<p data-delivery-unreadable>اطلاعات تحویل فعلاً باز نمی‌شود. به پشتیبانی خبر بدهید.</p>
+{% elif state == 'unreadable' %}<p data-delivery-unreadable>اطلاعات تحویل در حال حاضر باز نمی‌شود و برای پیگیری آن، شماره‌ی سفارش را در تلگرام برای پشتیبانی بفرستید.</p>
 {% elif state == 'deleted' %}<p data-delivery-deleted>اطلاعات تحویل این محصول حذف شده است.</p>
 {% else %}<p data-delivery-unavailable>اطلاعات تحویل این محصول دیگر نمایش داده نمی‌شود.</p>{% endif %}
 <a class="btn btn--secondary" href="{% url 'order-detail' order.order_number %}">بازگشت به سفارش</a>

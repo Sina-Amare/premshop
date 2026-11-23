@@ -189,10 +189,10 @@
     try {
       const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
       const data = await response.json();
-      if (!response.ok) message = data.message || 'سبد خریدتان را بررسی کنید و دوباره امتحان کنید.';
-      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. برای دیدن سبد خرید به‌روز، صفحه را دوباره باز کنید.';
+      if (!response.ok) message = data.message || 'تغییر شما در سبد خرید ثبت نشد و برای ثبت آن، صفحه را دوباره باز کنید و تغییر را روی سبد خرید به‌روز انجام دهید.';
+      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر شما در سبد خرید ثبت شد، ولی برای دیدن سبد خرید به‌روز باید صفحه را دوباره باز کنید.';
     } catch {
-      message = 'مشخص نیست تغییر ثبت شد یا نه. سبد خریدتان را بررسی کنید.';
+      message = 'پاسخی از سایت دریافت نشد و معلوم نیست تغییر شما در سبد خرید ثبت شده است یا نه، بنابراین صفحه را دوباره باز کنید تا وضعیت سبد خرید را ببینید.';
     } finally {
       cartPending = false;
       cartPage.removeAttribute('aria-busy');
@@ -278,9 +278,9 @@
         await fly(data, event.submitter || button).catch(() => {});
         await sync(data);
         show(data);
-      } else fail(data.message || 'صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');
+      } else fail(data.message || 'این محصول به سبد خرید اضافه نشد و می‌توانید صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');
     } catch {
-      fail('مشخص نیست اضافه شد یا نه. سبد خریدتان را بررسی کنید.');
+      fail('پاسخی از سایت دریافت نشد و معلوم نیست این محصول به سبد خرید اضافه شده است یا نه، بنابراین پیش از افزودن دوباره، سبد خریدتان را ببینید.');
     } finally {
       form.dataset.pending = 'false';
       form.removeAttribute('aria-busy');

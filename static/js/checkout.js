@@ -68,7 +68,7 @@
         if (!response.headers.get('Content-Type')?.includes('application/json')) throw new Error();
         const data = await response.json();
         if (!data.ok) {
-          status.textContent = data.error || 'مشکلی پیش آمد. دوباره امتحان کنید.';
+          status.textContent = data.error || 'درخواست شما در حال حاضر انجام نشد و می‌توانید چند لحظه‌ی دیگر دوباره امتحان کنید یا از صفحه‌ی ورود وارد حساب کاربری شوید.';
           if (form === code) cells().fail(() => { row.disable(false); row.focus(); });
           return;
         }
@@ -95,7 +95,7 @@
         cells().clear();
         cells().focus();
       } catch {
-        status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';
+        status.textContent = 'پاسخی از سایت دریافت نشد و می‌توانید دوباره امتحان کنید یا از صفحه‌ی ورود وارد حساب کاربری شوید و ثبت سفارش را ادامه دهید.';
         if (form === code) cells().fail(() => { row.disable(false); row.focus(); });
       } finally {
         form.removeAttribute('aria-busy');

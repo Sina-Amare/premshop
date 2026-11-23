@@ -31,7 +31,9 @@ class PhoneForm(ChannelForm):
         label="شماره‌ی موبایل",
         # Room for what normalize_mobile_phone strips.
         max_length=32,
-        error_messages={"required": "شماره‌ی موبایل را وارد کنید."},
+        error_messages={
+            "required": "برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید."
+        },
         widget=forms.TextInput(
             attrs={
                 "class": "field__input",
@@ -46,14 +48,16 @@ class PhoneForm(ChannelForm):
     def clean_phone(self) -> str:
         phone = normalize_mobile_phone(self.cleaned_data["phone"])
         if not phone:
-            raise forms.ValidationError("شماره‌ی موبایل را وارد کنید.")
+            raise forms.ValidationError(
+                "برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید."
+            )
         return phone
 
 
 class CodeForm(forms.Form):
     code = forms.CharField(
         label="کد ورود",
-        error_messages={"required": "کد را وارد کنید."},
+        error_messages={"required": "کد ورود ۶ رقمی‌ای را که برایتان فرستاده شده است وارد کنید."},
         widget=forms.TextInput(
             attrs={
                 "class": "field__input field__input--code",
@@ -75,7 +79,9 @@ class CodeForm(forms.Form):
         """
         value = otp.normalize_digits(self.cleaned_data["code"])
         if not (value.isdigit() and len(value) == otp.CODE_LENGTH):
-            raise forms.ValidationError("کد باید ۶ رقم باشد.")
+            raise forms.ValidationError(
+                "کد ورود ۶ رقم دارد و برای ورود باید هر ۶ رقم آن را وارد کنید."
+            )
         return value
 
 
@@ -91,7 +97,9 @@ class ProfileForm(forms.ModelForm):
         required=False,
         max_length=254,
         help_text="رسید و خبرهای سفارش را به این ایمیل می‌فرستیم.",
-        error_messages={"invalid": "این ایمیل درست نیست."},
+        error_messages={
+            "invalid": "نشانی ایمیلی که وارد کردید درست نیست و باید آن را کامل و بدون فاصله دوباره وارد کنید."
+        },
         widget=forms.EmailInput(
             attrs={
                 "class": "field__input",

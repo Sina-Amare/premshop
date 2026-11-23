@@ -3,7 +3,7 @@
 {% if line.delivery %}<p>{% translate "روش تحویل" %}: {{ line.delivery }}</p>{% endif %}
 {% if line.facts.delivery_note %}<p>{{ line.facts.delivery_note }}</p>{% elif line.facts.delivery_hours %}<p>{% blocktranslate with hours=line.facts.delivery_hours|fa_digits %}تحویل تا {{ hours }} ساعت پس از تأیید پرداخت{% endblocktranslate %}</p>{% endif %}
 {% if line.warranty %}<p>{% translate "گارانتی" %}: {{ line.warranty }}</p>{% endif %}
-{% if line.facts.telegram_required %}<p>{% translate "برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید." %}</p>{% endif %}
+{% if line.facts.telegram_required %}<p>{% translate "فعال‌سازی این محصول پس از پرداخت، با هماهنگی پشتیبانی در تلگرام انجام می‌شود." %}</p>{% endif %}
 {% if line.facts.specs %}<dl>{% for spec in line.facts.specs %}<div><dt>{{ spec.title }}</dt><dd>{{ spec.value }}</dd></div>{% endfor %}</dl>{% endif %}
 {% if line.facts.usage_notes %}<h4>{% translate "نکات استفاده" %}</h4><div class="rich rich__scroll" tabindex="0">{{ line.facts.usage_notes|markdown:"" }}</div>{% endif %}
 {% if line.facts.refund_note %}<h4>{% translate "شرایط لغو و بازگشت وجه" %}</h4><div class="rich rich__scroll" tabindex="0">{{ line.facts.refund_note|markdown:"" }}</div>{% endif %}

@@ -2,4 +2,4 @@
 <div class="order-support-label">شناسه‌ی پشتیبانی</div>
 <div class="order-actions"><bdi dir="ltr" id="support-identifier" class="order-support-identifier">{{ support_identifier.grouped_token }}</bdi><button type="button" class="btn btn--secondary" data-copy-support data-copy-text="سفارش {{ order.order_number|fa_digits }}، شناسه‌ی پشتیبانی {{ support_identifier.grouped_token }}" hidden>کپی شماره‌ی سفارش و شناسه</button></div>
 <p aria-live="polite" aria-atomic="true" data-copy-status></p>
-{% else %}<p role="status">شناسه‌ی پشتیبانی در دسترس نیست.</p>{% endif %}
+{% else %}<p role="status">شناسه‌ی پشتیبانی در حال حاضر نمایش داده نمی‌شود و برای پیگیری این سفارش، شماره‌ی سفارش را برای پشتیبانی بفرستید.</p>{% endif %}

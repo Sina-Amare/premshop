@@ -37,11 +37,11 @@ TELEGRAM_LINK_KEY = "accounts.telegram_link"
 # code per number every two minutes, so the button waits as long.
 RESEND_COOLDOWN_SECONDS = 120
 
-WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
-CODE_RESENT = "کد جدید را فرستادیم."
+WRONG_CODE = "کد ورودی که وارد کردید درست نیست یا اعتبار آن به پایان رسیده است و می‌توانید آن را دوباره وارد کنید یا کد جدیدی درخواست کنید."
+CODE_RESENT = "کد ورود جدید با پیامک فرستاده شد و کد قبلی دیگر اعتبار ندارد."
 # Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر کار نمی‌کند. دوباره شماره‌ی موبایلتان را وارد کنید."
+PAGE_EXPIRED = "صفحه‌ی وارد کردن کد ورود دیگر اعتبار ندارد و برای دریافت کد جدید باید شماره‌ی موبایلتان را دوباره وارد کنید."
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -269,8 +269,14 @@ def account(request: HttpRequest) -> HttpResponse:
     form = ProfileForm(request.POST or None, instance=user)
     if request.method == "POST" and form.is_valid():
         form.save(commit=False).save(update_fields=["email"])
-        saved = "ذخیره شد" if user.email else "حذف شد"
-        messages.success(request, f"ایمیل {saved}.")
+        messages.success(
+            request,
+            (
+                "ایمیل شما ذخیره شد و رسید خرید و خبرهای سفارش‌های بعدی به همین ایمیل فرستاده می‌شود."
+                if user.email
+                else "ایمیل شما از حساب کاربری حذف شد."
+            ),
+        )
         return redirect(reverse("account"))
     current = current_order(user)
     return render(
@@ -324,11 +330,22 @@ def account_telegram(request: HttpRequest) -> HttpResponse:
     # Unlink is never limited: it is what the link alert tells a customer to do, and only a
     # linked account can send its email, each link already bounded below and in the bot.
     if action == "link" and not ratelimit.hit(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)):
-        messages.error(request, "سقف تغییر اتصال تلگرام برای امروز پر شده است.")
+        messages.error(
+            request,
+            (
+                "اتصال حساب تلگرام در ۲۴ ساعت گذشته به سقف مجاز تغییر رسیده است و می‌توانید چند ساعت دیگر دوباره آن را متصل کنید."
+            ),
+        )
     elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
     elif action == "unlink":
         telegram.unlink(user)
         request.session.pop(TELEGRAM_LINK_KEY, None)
-        messages.success(request, "اتصال تلگرام قطع شد.")
+        messages.success(
+            request,
+            (
+                "اتصال حساب تلگرام از حساب کاربری شما قطع شد و از این پس کد ورود و خبرهای سفارش "
+                "به تلگرام فرستاده نمی‌شود."
+            ),
+        )
     return redirect(reverse("account") + "#telegram")

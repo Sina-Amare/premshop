@@ -28,7 +28,7 @@
       selection.removeAllRanges();
       selection.addRange(range);
       status.classList.remove('sr-only');
-      status.textContent = 'کپی انجام نشد؛ شناسه را انتخاب و کپی کنید.';
+      status.textContent = 'کپی خودکار انجام نشد و می‌توانید شناسه‌ی پشتیبانی را خودتان انتخاب و کپی کنید.';
     }
   });
 }());

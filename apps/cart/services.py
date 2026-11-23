@@ -52,7 +52,9 @@ def _locked_cart(request: HttpRequest, *, create: bool) -> Cart | None:
             .filter(session_key=request.session.session_key, expire_date__gt=timezone.now())
             .exists()
         ):
-            raise ValidationError("صفحه را دوباره باز کنید و سبد خریدتان را بررسی کنید.")
+            raise ValidationError(
+                "اعتبار سبد خرید شما بدون ورود به حساب کاربری به پایان رسیده است و برای ادامه باید صفحه را دوباره باز کنید و محصولات موردنظرتان را دوباره به سبد خرید اضافه کنید."
+            )
         lookup = {"session_key": request.session.session_key, "user_id": None}
     carts = Cart.objects.select_for_update()
     if create:
@@ -75,16 +77,23 @@ def _available_plan(plan_id: int) -> Plan:
         pk=plan_id, is_available=True, product__in=Product.objects.public()
     ).first()
     if plan is None:
-        raise ValidationError("این محصول فعلاً موجود نیست.")
+        raise ValidationError(
+            "گزینه‌ی انتخاب‌شده در حال حاضر موجود نیست و فعلاً امکان خرید آن وجود ندارد."
+        )
     return plan
 
 
 def _validate_quantity(plan: Plan, quantity: int) -> None:
     limit = 1 if plan.requires_customer_input else plan.max_quantity
     if type(quantity) is not int or quantity < 1:
-        raise ValidationError("باید حداقل ۱ تا انتخاب کنید.")
+        raise ValidationError(
+            "تعداد هر محصول در سبد خرید باید دست‌کم ۱ باشد و برای حذف محصول، دکمه‌ی «حذف» کنار آن را بزنید."
+        )
     if quantity > limit:
-        raise ValidationError(f"سقف خرید این گزینه در هر سفارش {to_persian_digits(limit)} است.")
+        raise ValidationError(
+            f"سقف خرید این گزینه در هر سفارش {to_persian_digits(limit)} است و اگر به تعداد بیشتری نیاز دارید، "
+            "بقیه را در سفارش بعدی بخرید."
+        )
 
 
 def _capacity(plan: Plan) -> int:
@@ -100,8 +109,13 @@ def _check_stock(plan: Plan, quantity: int) -> None:
     available = _capacity(plan)
     if quantity > available:
         if not available:
-            raise ValidationError("این محصول فعلاً موجود نیست.")
-        raise ValidationError(f"از این گزینه فقط {to_persian_digits(available)} تا موجود است.")
+            raise ValidationError(
+                "گزینه‌ی انتخاب‌شده در حال حاضر موجود نیست و فعلاً امکان خرید آن وجود ندارد."
+            )
+        raise ValidationError(
+            f"از این گزینه در حال حاضر فقط {to_persian_digits(available)} مورد موجود است و می‌توانید "
+            "حداکثر همین تعداد را انتخاب کنید."
+        )
 
 
 @transaction.atomic
@@ -140,7 +154,9 @@ def set_quantity(request: HttpRequest, *, plan_id: int, quantity: int) -> None:
             item.save(update_fields=["quantity"])
             _touch(request, cart)
             return
-    raise ValidationError("این مورد دیگر در سبد خرید نیست.")
+    raise ValidationError(
+        "این محصول دیگر در سبد خرید شما نیست و با باز کردن دوباره‌ی صفحه، سبد خرید به‌روز را می‌بینید."
+    )
 
 
 @transaction.atomic

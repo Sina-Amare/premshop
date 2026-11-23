@@ -10,5 +10,5 @@
 <fieldset><legend>مشکل این محصول چیست؟</legend>
 {% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required> {{ label }}</label>{% endfor %}
 </fieldset><button class="btn btn--secondary" type="submit">ثبت درخواست تعویض</button>
-</form></details>{% elif row.item.status == "DELIVERED" %}<p>مهلت ثبت درخواست تعویض برای این محصول تمام شده است.</p>{% endif %}
+</form></details>{% elif row.item.status == "DELIVERED" %}<p>مهلت ثبت درخواست تعویض برای این محصول تمام شده است و اگر با آن مشکلی دارید، به پشتیبانی پیام بدهید.</p>{% endif %}
 </div>
