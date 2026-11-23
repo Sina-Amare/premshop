@@ -3,9 +3,6 @@
 // what the page does without it.
 (function () {
   var form = document.getElementById('code-form');
-  var hidden = form.querySelector('input[name="code"]');
-  var cellsBox = document.getElementById('code-cells');
-  var cells = Array.prototype.slice.call(cellsBox.querySelectorAll('.otp__cell'));
   var errorBox = document.getElementById('code-error');
   var clock = document.getElementById('code-clock');
   var status = document.getElementById('code-status');
@@ -16,101 +13,30 @@
   var smsForm = document.getElementById('sms-form');
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
-  var toAscii = function (s) {
-    return (s || '').replace(/[۰-۹]/g, function (d) { return String(FA.indexOf(d)); })
-                    .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
-  };
   var toFa = function (n) { return String(n).replace(/\d/g, function (d) { return FA[+d]; }); };
 
-  // --- Enhance: hide the plain input, show the cells. Without JS none of this runs.
-  hidden.hidden = true;
-  hidden.setAttribute('tabindex', '-1');
-  cellsBox.hidden = false;
-  cellsBox.removeAttribute('aria-hidden');
-  submitButton.hidden = true;               // the sixth digit submits
-  cells[0].focus();
-
+  // --- Enhance: the shared cells over the plain field. Without JS none of this runs.
   var busy = false;
   var expired = false;
   var warned = false;
+  var row = window.codeCells(form, {
+    onInput: function () { showError(''); },
+    onComplete: function () { submit(); }
+  });
+  var cells = row.cells;
+  submitButton.hidden = true;               // the sixth digit submits
+  row.focus();
 
-  function value() { return cells.map(function (c) { return c.value; }).join(''); }
-  function sync() { hidden.value = value(); }
-  function clear() {
-    cells.forEach(function (c) { c.value = ''; c.classList.remove('is-filled', 'is-ok', 'is-error'); });
-    sync();
-  }
-  function setState(cls) {
-    cells.forEach(function (c) { c.classList.remove('is-ok', 'is-error'); if (cls) c.classList.add(cls); });
-  }
-  // Someone who asked for less motion gets none: the CSS already zeroes every
-  // transition, and these timers would otherwise hold the page still for no
-  // reason the viewer can see.
-  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var STEP = still ? 0 : 70;    // between one cell turning green and the next
-  var HOLD = still ? 0 : 260;   // the finished row, held, before the page moves
-  function confirmCells(done) {
-    // Checked one digit at a time, left to right, the way a person reads them
-    // back. The row finishing is the signal that the code was accepted.
-    cells.forEach(function (c, i) {
-      c.classList.remove('is-error');
-      setTimeout(function () { c.classList.add('is-ok'); }, i * STEP);
-    });
-    setTimeout(done, (cells.length - 1) * STEP + HOLD);
-  }
   function showError(text) {
     errorBox.textContent = text;
     errorBox.hidden = !text;
   }
-  function fill(digits, from) {
-    from = from || 0;
-    for (var i = 0; i < digits.length && from + i < cells.length; i++) {
-      cells[from + i].value = digits[i];
-      cells[from + i].classList.add('is-filled');
-    }
-    sync();
-    var next = Math.min(from + digits.length, cells.length - 1);
-    cells[next].focus();
-    if (value().length === cells.length) submit();
-  }
-
-  cells.forEach(function (cell, i) {
-    cell.addEventListener('input', function () {
-      var digits = toAscii(cell.value).replace(/\D/g, '');
-      cell.value = '';
-      if (!digits) { cell.classList.remove('is-filled'); sync(); return; }
-      showError('');
-      setState(null);
-      fill(digits, i);                         // handles a single key and an autofill burst alike
-    });
-    cell.addEventListener('keydown', function (e) {
-      if (e.key === 'Backspace' && !cell.value && i > 0) {
-        cells[i - 1].value = '';
-        cells[i - 1].classList.remove('is-filled');
-        cells[i - 1].focus();
-        sync();
-        e.preventDefault();
-      } else if (e.key === 'ArrowLeft' && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
-      else if (e.key === 'ArrowRight' && i < cells.length - 1) { cells[i + 1].focus(); e.preventDefault(); }
-    });
-    cell.addEventListener('focus', function () { cell.select(); });
-    cell.addEventListener('paste', function (e) {
-      // Gmail → copy → paste is the main path. Take the digits, wherever the
-      // cursor happened to be, and always start from the first cell.
-      var text = (e.clipboardData || window.clipboardData).getData('text');
-      var digits = toAscii(text).replace(/\D/g, '').slice(0, cells.length);
-      if (digits) { e.preventDefault(); showError(''); setState(null); clear(); fill(digits, 0); }
-    });
-  });
 
   // --- Submit by fetch so the cells can answer before the page changes.
   function submit() {
     if (busy || expired) return;
     busy = true;
-    sync();
-    // Drop the text selection before disabling: a disabled input still paints
-    // its last selection, and it would sit under the green flash.
-    cells.forEach(function (c) { try { c.setSelectionRange(0, 0); } catch (e) {} c.blur(); c.disabled = true; });
+    row.lock();
     var body = new FormData(form);
     fetch(form.action || location.href, {
       method: 'POST', body: body, credentials: 'same-origin',
@@ -120,7 +46,7 @@
       return isJson ? r.json() : Promise.reject(new Error('non-json'));
     }).then(function (data) {
       if (data.ok) {
-        confirmCells(function () { location.href = data.next; });
+        row.confirm(function () { location.href = data.next; });
         return;
       }
       fail(data.error);
@@ -131,18 +57,13 @@
     });
   }
   function fail(message) {
-    // Wrong is one event, not six: the whole row turns at once and shakes once.
-    setState('is-error');
     showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
-    cellsBox.classList.add('is-shaking');
-    setTimeout(function () {
-      cellsBox.classList.remove('is-shaking');
+    row.fail(function () {
       tick();
-      cells.forEach(function (c) { c.disabled = expired; });
-      clear();
+      row.disable(expired);
       (expired ? resendButton : cells[0]).focus();
       busy = false;
-    }, still ? 0 : 380);
+    });
   }
   form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
 
@@ -168,14 +89,14 @@
       clock.textContent = toFa(m) + ':' + toFa(s < 10 ? '0' + s : s) + ' مانده';
       clock.hidden = false;
       if (left <= 60 && !warned) { warned = true; status.textContent = 'یک دقیقه از اعتبار کد مانده است.'; }
-      if (expired) { expired = false; cells.forEach(function (c) { c.disabled = false; }); }
+      if (expired) { expired = false; row.disable(false); }
     } else if (!expired) {
       expired = true;
       justExpired = true;
       clock.textContent = 'کد منقضی شد';
       clock.hidden = false;
       clock.classList.replace('badge--time', 'badge--neutral');   // the clock has stopped
-      cells.forEach(function (c) { c.disabled = true; });
+      row.disable(true);
       showError('');
       resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
       status.textContent = 'کد منقضی شد. برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
@@ -218,9 +139,9 @@
         clock.classList.replace('badge--neutral', 'badge--time');
         resendButton.classList.replace('btn--primary', 'btn--ghost');
         showError('');
-        clear();
-        cells.forEach(function (c) { c.disabled = false; });
-        cells[0].focus();
+        row.clear();
+        row.disable(false);
+        row.focus();
         document.getElementById('delivery-sms').hidden = data.channel === 'telegram';
         document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
         smsForm.hidden = data.channel !== 'telegram';

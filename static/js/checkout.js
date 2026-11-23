@@ -13,6 +13,18 @@
   const edit = root.querySelector('[data-inline-edit]');
   let resendAt = 0;
   let timer;
+  // The code page's six cells, laid over this form's code field once it shows.
+  let row;
+  const cells = () => {
+    if (!row) {
+      row = window.codeCells(code, {
+        onInput: () => { status.hidden = true; },
+        onComplete: () => code.requestSubmit(),
+      });
+      code.querySelector('[data-code-submit]').hidden = true;
+    }
+    return row;
+  };
   edit.addEventListener('click', () => {
     phone.hidden = false;
     code.hidden = true;
@@ -21,6 +33,7 @@
     delivery.hidden = true;
     edit.hidden = true;
     code.reset();
+    if (row) row.clear();
     status.hidden = true;
     phone.querySelector('input[name=phone]').focus();
   });
@@ -46,6 +59,7 @@
       form.setAttribute('aria-busy', 'true');
       status.hidden = false;
       status.textContent = 'در حال بررسی…';
+      if (form === code) cells().lock();
       try {
         const response = await fetch(form.action, {
           method: 'POST', body: new FormData(form),
@@ -55,10 +69,15 @@
         const data = await response.json();
         if (!data.ok) {
           status.textContent = data.error || 'مشکلی پیش آمد. دوباره امتحان کنید.';
+          if (form === code) cells().fail(() => { row.disable(false); row.focus(); });
           return;
         }
-        if (form === code || data.next) {
-          // Reload after session rotation to obtain the merged cart, CSRF token and quote.
+        // Reload after session rotation to obtain the merged cart, CSRF token and quote.
+        if (form === code) {
+          cells().confirm(() => window.location.assign(window.location.pathname));
+          return;
+        }
+        if (data.next) {
           window.location.assign(window.location.pathname);
           return;
         }
@@ -73,9 +92,11 @@
         sms.hidden = data.channel !== 'telegram';
         cooldown(data.cooldown || 120);
         code.reset();
-        code.querySelector('input[name=code]').focus();
+        cells().clear();
+        cells().focus();
       } catch {
         status.textContent = 'پاسخی نگرفتیم. دوباره امتحان کنید یا از صفحه‌ی ورود وارد شوید.';
+        if (form === code) cells().fail(() => { row.disable(false); row.focus(); });
       } finally {
         form.removeAttribute('aria-busy');
         if (form !== resend || Date.now() >= resendAt) button.disabled = false;

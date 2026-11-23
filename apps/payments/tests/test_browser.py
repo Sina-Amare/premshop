@@ -186,8 +186,11 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
             page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230002")
             page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
             expect(page.locator("[data-inline-code]")).to_be_visible()
-            page.get_by_role("button", name="تأیید کد و ادامه").click()
-            expect(page.locator("[data-login-status]")).to_contain_text("کد را وارد کنید")
+            # Six cells, the plain field and its button hidden; the sixth digit sends the code.
+            expect(page.locator(".otp__cell")).to_have_count(6)
+            assert not page.get_by_role("button", name="تأیید کد و ادامه").is_visible()
+            page.keyboard.type("000000")
+            expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
             expect(page.locator(".field__error")).to_contain_text("۱۱ رقم")
@@ -217,11 +220,11 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230003")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page.locator("[data-inline-code]")).to_be_visible()
-        page.get_by_label("کد ورود", exact=True).fill("000000")
-        page.get_by_role("button", name="تأیید کد و ادامه").click()
+        page.keyboard.type("000000")
         expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
-        page.get_by_label("کد ورود", exact=True).fill("۱۲۳۴۵۶")
-        page.get_by_role("button", name="تأیید کد و ادامه").click()
+        page.wait_for_function("() => document.querySelector('.otp__cell').value === ''")
+        expect(page.locator(".otp__cell").first).to_be_focused()
+        page.keyboard.type("۱۲۳۴۵۶")
         expect(page.locator("#checkout-form")).to_be_visible()
         assert cart.items.get().quantity == 2
         cookies = {row["name"]: row["value"] for row in context.cookies()}
