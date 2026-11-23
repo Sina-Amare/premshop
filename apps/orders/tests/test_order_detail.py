@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 from decimal import Decimal
 from html import unescape
+from math import ceil
 
 import pytest
 import time_machine
@@ -31,6 +32,7 @@ CASES = [
     ("overdue", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
     ("late", "تأخیر در تحویل", "danger", "گذشت", True),
+    ("paused", "در حال آماده‌سازی", "progress", "در حال آماده‌سازی است", False),
     ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
     ("delivered", "تحویل‌شده", "ok", "تحویل شد", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
@@ -73,6 +75,9 @@ def order_for_state(buyer, plan, operator, state):
         OrderItem.objects.filter(pk=items[0].pk).update(
             due_at=timezone.now() - timedelta(minutes=5)
         )
+    elif state == "paused":
+        now = timezone.now()
+        pause(items[0], due=now - timedelta(minutes=5), at=now - timedelta(hours=1))
     elif state in ("delivered", "claimed", "rejected"):
         deliver(items[0], operator)
         if state in ("claimed", "rejected"):
@@ -84,6 +89,22 @@ def order_for_state(buyer, plan, operator, state):
         if state == "refunded":
             execute(order, list(Refund.objects.filter(order_item__order=order)), operator)
     return order
+
+
+def pause(item, *, due, at):
+    """A queued item whose running delivery clock stopped at `at`, frozen on `due`."""
+    assert OrderItem.objects.get(pk=item.pk).due_at is not None
+    OrderItem.objects.filter(pk=item.pk).update(due_at=due, sla_paused_at=at)
+
+
+def when(moment):
+    """A deadline as the order page prints it."""
+    local = timezone.localtime(moment)
+    return f"{format_jalali(local)}، ساعت {to_persian_digits(local.strftime('%H:%M'))}"
+
+
+def purchase_of(body):
+    return body.split('id="order-purchase"', 1)[1].split('class="order-records"', 1)[0]
 
 
 def page(client, buyer, order):
@@ -273,6 +294,115 @@ def test_a_queued_item_past_its_delivery_time_reads_as_late_and_points_to_suppor
     assert "گذشت" in card and support.details()["telegram_url"] in card
 
 
+def test_a_paused_item_reads_in_preparation_on_every_surface(client, buyer, plan, operator):
+    order = order_for_state(buyer, plan, operator, "paused")
+    ready, late = "در حال آماده‌سازی", "تأخیر در تحویل"
+    card = card_of(page(client, buyer, order))
+    badge = re.search(r'<span class="badge[^"]*"[^>]*>(.*?)</span>', card, re.S)
+    assert badge and text(badge[1]) == ready and late not in card
+    listed = client.get(reverse("order-list")).content.decode()
+    header = re.search(r'<header class="order-heading">(.*?)</header>', listed, re.S)
+    assert header and ready in text(header[1]) and late not in listed
+    account = client.get(reverse("account")).content.decode()
+    current = account.split('id="current-order-title"', 1)[1].split("</section>", 1)[0]
+    assert ready in current and late not in current
+    screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
+    assert f"وضعیت</th><td><b>{ready}</b>" in screen and "زمان تحویل گذشته است" not in screen
+    invoice = client.get(reverse("order-invoice", args=[order.order_number]))
+    assert invoice.context["invoice_data"]["status"] == ready
+
+
+@pytest.mark.parametrize("minutes", [-5, 90])
+def test_a_paused_item_shows_no_frozen_date_apology_or_hours(
+    client, buyer, plan, operator, minutes
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        order, items = paid_order(buyer, operator, [services.OrderLine(plan, 1)])
+        frozen = now + timedelta(minutes=minutes)
+        pause(items[0], due=frozen, at=now - timedelta(hours=1))
+        card = text(card_of(page(client, buyer, order)))
+    for false in ("گذشت", "تحویل می‌دهیم", "پس از تأیید پرداخت", when(frozen)):
+        assert false not in card, false
+    assert "سرویس نمونه در حال آماده‌سازی است" in card
+    assert support.details()["telegram_url"] not in card_of(page(client, buyer, order))
+
+
+def test_a_paused_unit_and_running_units_of_one_plan_each_keep_their_own_line(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        order, items = paid_order(buyer, operator, [services.OrderLine(plan, 3)])
+        frozen, second, third = (now + timedelta(hours=hours) for hours in (10, 20, 30))
+        pause(items[0], due=frozen, at=now - timedelta(hours=1))
+        OrderItem.objects.filter(pk=items[1].pk).update(due_at=second)
+        OrderItem.objects.filter(pk=items[2].pk).update(due_at=third)
+        body = page(client, buyer, order)
+        listed = client.get(reverse("order-list")).content.decode()
+        screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
+        invoice = client.get(reverse("order-invoice", args=[order.order_number]))
+    card = text(card_of(body))
+    assert "تحویل می‌دهیم" not in card and "در حال آماده‌سازی است" in card
+    purchase = text(purchase_of(body))
+    assert purchase_of(body).count('class="order-line__facts"') == 3
+    assert purchase.count("تحویل تا") == 2
+    assert when(second) in purchase and when(third) in purchase and when(frozen) not in purchase
+    # Where no line prints a date, the three units stay one row.
+    assert listed.count('class="order-line__facts"') == 1 and "تعداد: ۳" in listed
+    assert screen.count("محصول</th>") == 1 and "۳ عدد" in screen
+    lines = invoice.context["invoice_data"]["lines"]
+    assert len(lines) == 1 and lines[0]["quantity"] == "۳"
+    assert body.count('class="order-terms__item"') == 1
+
+
+def test_an_input_wait_beside_paused_and_running_units_keeps_its_hours_and_their_dates(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        lines = [services.OrderLine(plan, 2), services.OrderLine(second_plan(), 1)]
+        order, items = paid_order(buyer, operator, lines)
+        held, running = [item for item in items if item.plan_id == plan.pk]
+        waiting = next(item for item in items if item.plan_id != plan.pk)
+        act(services.request_input, waiting, operator)
+        waiting.refresh_from_db()
+        assert waiting.sla_paused_at is not None and waiting.due_at is not None
+        frozen, due = now + timedelta(hours=30), now + timedelta(hours=20)
+        pause(held, due=frozen, at=now - timedelta(hours=1))
+        OrderItem.objects.filter(pk=running.pk).update(due_at=due)
+        body = page(client, buyer, order)
+    left = ceil((waiting.due_at - waiting.sla_paused_at).total_seconds() / 3600)
+    card = text(card_of(body))
+    assert "اطلاعات فعال‌سازی سرویس دوم لازم است" in card
+    assert f"پس از رسیدن اطلاعات، تا {to_persian_digits(max(1, left))} ساعت" in card
+    purchase = purchase_of(body)
+    rows = [
+        text(row)
+        for row in re.findall(r'class="order-line__facts">(.*?)</div>', purchase, re.S)
+        if "سرویس نمونه" in row
+    ]
+    assert len(rows) == 2, rows
+    assert purchase.count("تحویل تا") == 1
+    assert when(due) in text(purchase) and when(frozen) not in text(purchase)
+
+
+def test_a_late_item_beside_a_paused_one_apologises_only_for_its_own_time(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        items = two_products(buyer, plan, operator)
+        overdue, frozen = now - timedelta(minutes=5), now - timedelta(hours=3)
+        OrderItem.objects.filter(pk=items[0].pk).update(due_at=overdue)
+        pause(items[1], due=frozen, at=now - timedelta(hours=4))
+        card = card_of(page(client, buyer, items[0].order))
+    said = text(card)
+    assert '<span class="badge badge--danger"' in card and "تأخیر در تحویل" in said
+    assert f"قرار بود سرویس نمونه تا {when(overdue)} تحویل شود" in said
+    assert "سرویس دوم" not in said and when(frozen) not in said
+
+
 def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer, plan, operator):
     order = order_for_state(buyer, plan, operator, "delivered")
     end = timezone.localdate() + timedelta(days=30)
@@ -415,7 +545,7 @@ def test_tracking_shows_pills_but_never_money(client, buyer, plan, operator):
     assert "به شما برمی‌گردانیم" not in body
 
 
-@pytest.mark.parametrize("state", ["mixed_refund", "mixed", "owed", "queued"])
+@pytest.mark.parametrize("state", ["mixed_refund", "mixed", "owed", "queued", "paused"])
 def test_the_page_the_list_the_account_card_and_the_bot_lead_with_the_same_state(
     client, buyer, plan, operator, state
 ):

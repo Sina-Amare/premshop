@@ -21,6 +21,8 @@
 .order-line:has(>.checkout-preview__art){display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:0 12px}
 .order-line h3,.order-line h2{margin:0;font:600 17px/1.6 var(--font-head);color:var(--v-ink)}
 .order-line__facts{min-width:0}
+/* Keep the word and time together when the facts column has room for both. */
+.order-line__time{display:inline-block;max-inline-size:100%}
 .order-terms__item{min-inline-size:0;padding-block:12px;border-block-end:1px solid var(--v-line);font-size:14px;line-height:1.9}
 .order-terms__name{margin:0 0 4px;font-weight:600;color:var(--v-ink)}
 .saved-product h4{margin:16px 0 6px;font-weight:500}

@@ -54,6 +54,12 @@ RANK = list(STATES)
 STATE_ICONS = {"cancelled": "close"}
 
 
+def running_deadline(item: OrderItem) -> datetime | None:
+    """The deadline a running delivery clock counts down to. A paused clock has none to
+    show: its deadline moves by the length of the pause when the clock resumes."""
+    return None if item.sla_paused_at is not None else item.due_at
+
+
 def item_state(
     item: OrderItem, refund: Refund | None, unpaid_until: datetime, now: datetime
 ) -> str:
@@ -64,7 +70,8 @@ def item_state(
     if item.status == S.AWAITING_INPUT:
         return "awaiting_input"
     if item.status == S.QUEUED:
-        return "late" if item.due_at is not None and item.due_at <= now else "queued"
+        due = running_deadline(item)
+        return "late" if due is not None and due <= now else "queued"
     if item.status == S.REPLACEMENT_REQUESTED:
         return "replacement"
     if item.status == S.DELIVERED:
