@@ -100,6 +100,7 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     assert order.items.get().sla_paused_at is None
     body = client.get(page()).content.decode()
     assert "تحویل هر روز" in body and "تعطیلی‌های گذشته" in body and owner.email in body
+    assert "تعطیلی تمام شد. مهلت هر محصول را در صف سفارش‌ها ببینید." in body
 
 
 def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner):

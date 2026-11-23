@@ -2255,8 +2255,8 @@ msgstr "No holiday has been recorded yet."
 msgid "تعطیلی شروع شد و مهلت‌های تحویل متوقف است."
 msgstr "The holiday has started and delivery deadlines are stopped."
 
-msgid "تعطیلی تمام شد. مهلت‌های جدید را در صف سفارش‌ها ببینید."
-msgstr "The holiday has ended. See the new deadlines in the order queue."
+msgid "تعطیلی تمام شد. مهلت هر محصول را در صف سفارش‌ها ببینید."
+msgstr "The holiday has ended. See each item's deadline in the order queue."
 
 msgid "تعطیلی از قبل شروع شده است."
 msgstr "A holiday has already started."

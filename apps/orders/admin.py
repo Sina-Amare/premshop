@@ -535,7 +535,7 @@ class OrderAdmin(ModelAdmin):
                         done = _("تعطیلی شروع شد و مهلت‌های تحویل متوقف است.")
                     else:
                         holiday.end(actor=cast(User, request.user), expected_open=cast(int, token))
-                        done = _("تعطیلی تمام شد. مهلت‌های جدید را در صف سفارش‌ها ببینید.")
+                        done = _("تعطیلی تمام شد. مهلت هر محصول را در صف سفارش‌ها ببینید.")
                     self.message_user(request, done, messages.SUCCESS)
                     return redirect("admin:orders_order_holiday")
                 confirming = action
