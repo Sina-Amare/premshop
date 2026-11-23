@@ -25,8 +25,8 @@ from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 
 # A fixed key no other advisory lock in the project uses ("HOLI" in ASCII).
 _LOCK_KEY = 0x484F4C49
-PAUSE_NOTE = "شروع تعطیلی · مهلت تحویل متوقف شد"
-STALE = gettext_lazy("وضعیت تعطیلی تغییر کرده است؛ صفحه را دوباره باز کنید.")
+PAUSE_NOTE = "شروع تعطیلی"
+STALE = gettext_lazy("در این فاصله تعطیلی شروع یا تمام شده است. صفحه را دوباره باز کنید.")
 
 
 def lock(*, exclusive: bool = False) -> None:
@@ -108,7 +108,7 @@ def start(*, actor: User, expected_latest: int | None) -> Holiday:
     lock(exclusive=True)
     latest = Holiday.objects.order_by("-pk").first()
     if latest is not None and latest.ended_at is None:
-        raise ValidationError(gettext_lazy("تعطیلی از قبل شروع شده است."))
+        raise ValidationError(gettext_lazy("تعطیلی قبلاً شروع شده است."))
     if (latest.pk if latest is not None else None) != expected_latest:
         raise ValidationError(STALE)
     opened = Holiday.objects.create(started_by=account, started_at=timezone.now())
@@ -133,7 +133,7 @@ def end(*, actor: User, expected_open: int) -> Holiday:
     lock(exclusive=True)
     opened = current()
     if opened is None:
-        raise ValidationError(gettext_lazy("الان تعطیلی‌ای در جریان نیست."))
+        raise ValidationError(gettext_lazy("الان در تعطیلی نیستید."))
     if opened.pk != expected_open:
         raise ValidationError(STALE)
     ended = timezone.now()

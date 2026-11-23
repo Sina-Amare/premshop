@@ -532,10 +532,10 @@ class OrderAdmin(ModelAdmin):
                 if step == "confirm":
                     if action == "start":
                         holiday.start(actor=cast(User, request.user), expected_latest=token)
-                        done = _("تعطیلی شروع شد و مهلت‌های تحویل متوقف است.")
+                        done = _("تعطیلی شروع شد.")
                     else:
                         holiday.end(actor=cast(User, request.user), expected_open=cast(int, token))
-                        done = _("تعطیلی تمام شد. مهلت هر محصول را در صف سفارش‌ها ببینید.")
+                        done = _("تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید.")
                     self.message_user(request, done, messages.SUCCESS)
                     return redirect("admin:orders_order_holiday")
                 confirming = action
@@ -1118,7 +1118,7 @@ class OrderAdmin(ModelAdmin):
                     label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
                     text = f"{format_countdown(abs(int(seconds)))} {label}"
                     if paused and item.status == OrderItem.Status.QUEUED:
-                        text = str(_("متوقف در تعطیلی")) + "، " + text
+                        text = str(_("در تعطیلی")) + "، " + text
                     elif paused:
                         text = str(_("متوقف")) + "، " + text
                 elif item.status == OrderItem.Status.QUEUED:

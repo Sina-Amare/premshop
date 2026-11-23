@@ -68,7 +68,7 @@ def test_the_page_says_what_starting_would_do_then_asks_once(client, owner, buye
         status="AWAITING_INPUT", sla_paused_at=timezone.now(), input_requested_at=timezone.now()
     )
     body = client.get(page()).content.decode()
-    assert "تحویل هر روز" in body and 'data-tone="done"' in body
+    assert "تحویل طبق روال" in body and 'data-tone="done"' in body
     assert "۲ محصول در ۱ سفارش" in body
     assert "۱ محصول" in body  # the one waiting for details, which a holiday leaves alone
     review = client.post(page(), {"action": "start", "step": "review", "expected": ""})
@@ -92,15 +92,15 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     review = client.post(page(), {"action": "end", "step": "review", "expected": opened.pk})
     review_body = review.content.decode()
     assert 'name="step" value="confirm"' in review_body
-    assert "شمارش مهلت تحویل ۱ محصول از سر گرفته می‌شود." in review_body
+    assert "از همین حالا مهلت ۱ محصول در صف دوباره می‌گذرد." in review_body
     done = client.post(page(), {"action": "end", "step": "confirm", "expected": opened.pk})
     assert done.status_code == 302
     opened.refresh_from_db()
     assert opened.ended_at is not None and opened.ended_by == owner
     assert order.items.get().sla_paused_at is None
     body = client.get(page()).content.decode()
-    assert "تحویل هر روز" in body and "تعطیلی‌های گذشته" in body and owner.email in body
-    assert "تعطیلی تمام شد. مهلت هر محصول را در صف سفارش‌ها ببینید." in body
+    assert "تحویل طبق روال" in body and "تعطیلی‌های گذشته" in body and owner.email in body
+    assert "تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید." in body
 
 
 def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner):
@@ -131,12 +131,12 @@ def test_the_history_has_an_empty_state(client, owner):
 
 def test_holiday_copy_describes_clocks_starting_from_payment_or_details(client, owner, buyer, plan):
     review = client.post(page(), {"action": "start", "step": "review", "expected": ""})
-    assert "مهلت‌های جدید هم از ابتدا متوقف‌اند." in review.content.decode()
+    assert "مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود." in review.content.decode()
     begin(owner)
     _, waiting = purchase(buyer, plan, owner, telegram=True)
     assert waiting.status == "AWAITING_INPUT" and waiting.due_at is None
     body = client.get(page()).content.decode()
-    assert "مهلت‌های جدید" in body and "از ابتدا متوقف‌اند" in body
+    assert "سفارش‌های جدید" in body and "مهلتشان تا پایان تعطیلی شروع نمی‌شود" in body
     assert "پرداخت‌های جدید" not in body
 
 
@@ -175,7 +175,7 @@ def test_a_paused_item_is_not_late_and_shows_its_stopped_time(client, owner, buy
     begin(owner)
     assert {tile["label"]: tile["count"] for tile in queue_overview(owner)}["دیر شده"] == 0
     body = client.get(queue()).content.decode()
-    assert "متوقف در تعطیلی" in body and 'data-clock="paused"' in body
+    assert "در تعطیلی، " in body and 'data-clock="paused"' in body
     assert 'data-clock="overdue"' not in body
     # An order whose only work is paused asks nothing of the operator until the holiday ends.
     assert 'class="order-next-line"' not in body
@@ -249,7 +249,7 @@ def test_during_a_holiday_a_paused_item_is_delivered_from_its_page(client, owner
     _, item = queued(buyer, plan, owner)
     begin(owner)
     body = client.get(delivery_url(item)).content.decode()
-    assert "متوقف در تعطیلی" in body and 'name="hours"' not in body
+    assert "تا پایان تعطیلی نمی‌گذرد" in body and 'name="hours"' not in body
     assert 'name="step" value="preview"' in body
     preview = client.post(delivery_url(item), form_data(item, "preview"))
     assert preview.status_code == 200 and "data-delivery-card" in preview.content.decode()
