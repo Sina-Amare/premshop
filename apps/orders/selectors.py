@@ -175,12 +175,13 @@ def grouped_items(
 ) -> list[dict[str, Any]]:
     """Lines by category. With `states`, each line also carries the customer's facts:
     its pill, refund, delivery time, delivery and subscription dates and warranty.
-    `by_deadline` is for a list that prints each queued line's delivery time."""
+    `by_deadline` is for a list that prints each queued or late line's delivery time."""
     categories: dict[tuple[Any, str], dict[str, Any]] = {}
     for item in items:
         facts = item.product_snapshot
         state = states.get(item.pk) if states is not None else None
-        key = _line_key(item, by_deadline and state == "queued") if states is not None else None
+        dated = by_deadline and state in ("queued", "late")
+        key = _line_key(item, dated) if states is not None else None
         category = (facts.get("category_id"), facts.get("category_name") or "محصولات سفارش")
         group = categories.setdefault(category, {"name": category[1], "lines": []})
         line = next(
@@ -278,7 +279,7 @@ def customer_summary(order: Order) -> dict[str, Any]:
         "mixed_status": len(set(states.values())) > 1,
         "line_facts": line_facts,
         "groups": groups,
-        # Only the purchase section prints a queued line's delivery time, so only its lines
+        # Only the purchase section prints a line's delivery time, so only its lines
         # split units by it; every other list keeps one row per product.
         "purchase_groups": grouped_items(items, states, by_deadline=True) if line_facts else groups,
         # One refund line's amount is already the card's heading and a totals row.
@@ -347,6 +348,8 @@ def _card_facts(
     # each running clock keeps its own date on its line.
     held = any(item.status == S.QUEUED and item.sla_paused_at is not None for item in items)
     dues = [due for item in items if (due := order_status.running_deadline(item))]
+    # Late items promised at different times share no one date; each line prints its own.
+    apart = lead == "late" and len({due.replace(second=0, microsecond=0) for due in dues}) > 1
     hours = [found for item in items if (found := _hours_after_details(item)) is not None]
     today = timezone.localdate()
     return {
@@ -356,7 +359,7 @@ def _card_facts(
         ],
         "paid": any(item.paid_at for item in items),
         # The promise covers every item; a delay counts from the first time missed.
-        "due_at": None if held else (min if lead == "late" else max)(dues, default=None),
+        "due_at": (None if held or apart else (min if lead == "late" else max)(dues, default=None)),
         "hours": None if held else max(hours, default=None),
         "delivered_at": items[0].delivered_at,
         "expires_at": items[0].expires_at,
@@ -381,7 +384,7 @@ def _card_facts(
             ),
             default=None,
         ),
-        "uniform": len(dates) == 1 and len(sent_days) <= 1 and not held,
+        "uniform": len(dates) == 1 and len(sent_days) <= 1 and not held and not apart,
     }
 
 

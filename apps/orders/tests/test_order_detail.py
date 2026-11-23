@@ -396,11 +396,87 @@ def test_a_late_item_beside_a_paused_one_apologises_only_for_its_own_time(
         overdue, frozen = now - timedelta(minutes=5), now - timedelta(hours=3)
         OrderItem.objects.filter(pk=items[0].pk).update(due_at=overdue)
         pause(items[1], due=frozen, at=now - timedelta(hours=4))
-        card = card_of(page(client, buyer, items[0].order))
+        body = page(client, buyer, items[0].order)
+    card = card_of(body)
     said = text(card)
     assert '<span class="badge badge--danger"' in card and "تأخیر در تحویل" in said
     assert f"قرار بود سرویس نمونه تا {when(overdue)} تحویل شود" in said
     assert "سرویس دوم" not in said and when(frozen) not in said
+    # The card already names the late time, so its line does not repeat it.
+    assert "قرار بود تا" not in text(purchase_of(body))
+
+
+def late_pair(buyer, plan, operator, first, second):
+    """Two late products, each promised at its own time."""
+    items = two_products(buyer, plan, operator)
+    for item, due in zip(items, (first, second), strict=True):
+        OrderItem.objects.filter(pk=item.pk).update(due_at=due)
+    return items[0].order
+
+
+def test_late_items_promised_at_different_times_each_keep_their_own_time(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        earlier, later = now - timedelta(hours=3), now - timedelta(minutes=5)
+        body = page(client, buyer, late_pair(buyer, plan, operator, earlier, later))
+    said = text(card_of(body))
+    assert "تأخیر در تحویل" in said and "بابت تأخیر در تحویل سرویس نمونه، سرویس دوم" in said
+    assert "زمان تحویلی که برای هر خرید گفته بودیم، در بخش «محصولات و مبلغ سفارش» آمده است." in said
+    # One date would promise the later product the earlier time.
+    assert when(earlier) not in said and when(later) not in said
+    purchase = text(purchase_of(body))
+    for due in (earlier, later):
+        assert f"قرار بود تا {when(due)} تحویل شود" in purchase
+
+
+def test_late_units_of_one_plan_promised_at_different_times_get_a_line_each(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        order, items = paid_order(buyer, operator, [services.OrderLine(plan, 2)])
+        earlier, later = now - timedelta(hours=3), now - timedelta(minutes=5)
+        for item, due in zip(items, (earlier, later), strict=True):
+            OrderItem.objects.filter(pk=item.pk).update(due_at=due)
+        body = page(client, buyer, order)
+    said = text(card_of(body))
+    assert when(earlier) not in said
+    # One product name, two purchases: the sentence must not say "each of them" of one name.
+    assert "بابت تأخیر در تحویل سرویس نمونه عذرخواهی می‌کنیم. زمان تحویلی که برای هر خرید" in said
+    purchase = purchase_of(body)
+    assert purchase.count('class="order-line__facts"') == 2
+    for due in (earlier, later):
+        assert f"قرار بود تا {when(due)} تحویل شود" in text(purchase)
+
+
+def test_late_items_promised_at_the_same_time_keep_the_dated_apology(client, buyer, plan, operator):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        due = now - timedelta(minutes=5)
+        # Seconds apart, one printed minute: still one time.
+        order = late_pair(buyer, plan, operator, due, due + timedelta(seconds=30))
+        body = page(client, buyer, order)
+    said = text(card_of(body))
+    assert f"قرار بود سرویس نمونه، سرویس دوم تا {when(due)} تحویل شود." in said
+    assert "زمان تحویلی که" not in said
+
+
+def test_a_late_line_keeps_its_time_when_the_order_leads_with_something_else(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        items = two_products(buyer, plan, operator)
+        overdue = now - timedelta(minutes=5)
+        OrderItem.objects.filter(pk=items[0].pk).update(due_at=overdue)
+        act(services.request_input, items[1], operator)
+        body = page(client, buyer, items[0].order)
+    assert "در انتظار اطلاعات شما" in text(card_of(body)) and when(overdue) not in text(
+        card_of(body)
+    )
+    assert f"قرار بود تا {when(overdue)} تحویل شود" in text(purchase_of(body))
 
 
 def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer, plan, operator):
