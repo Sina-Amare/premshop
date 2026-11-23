@@ -49,10 +49,25 @@ def customer(name):
     ("due", "paused", "resumed", "expected"),
     [
         # Two hours late when paused; the shift lands at 08:00, before support opens.
-        (tehran(2026, 11, 10, 10), tehran(2026, 11, 10, 12), tehran(2026, 11, 11, 10), tehran(2026, 11, 11, 10)),
-        (tehran(2026, 11, 9, 16), tehran(2026, 11, 9, 12), tehran(2026, 11, 9, 17, 59), tehran(2026, 11, 9, 21, 59)),
+        (
+            tehran(2026, 11, 10, 10),
+            tehran(2026, 11, 10, 12),
+            tehran(2026, 11, 11, 10),
+            tehran(2026, 11, 11, 10),
+        ),
+        (
+            tehran(2026, 11, 9, 16),
+            tehran(2026, 11, 9, 12),
+            tehran(2026, 11, 9, 17, 59),
+            tehran(2026, 11, 9, 21, 59),
+        ),
         # 22:00 is outside [10:00, 22:00): the next opening.
-        (tehran(2026, 11, 9, 16), tehran(2026, 11, 9, 12), tehran(2026, 11, 9, 18), tehran(2026, 11, 10, 10)),
+        (
+            tehran(2026, 11, 9, 16),
+            tehran(2026, 11, 9, 12),
+            tehran(2026, 11, 9, 18),
+            tehran(2026, 11, 10, 10),
+        ),
     ],
 )
 def test_a_resumed_deadline_moves_by_the_stopped_time_then_into_support_hours(

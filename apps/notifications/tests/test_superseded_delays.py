@@ -138,9 +138,7 @@ def blocking_sends(monkeypatch, entered, release):
     monkeypatch.setattr(services, "send_templated_email", held_send)
 
 
-def test_a_send_already_under_way_finishes_and_the_switch_waits(
-    buyer, plan, operator, monkeypatch
-):
+def test_a_send_already_under_way_finishes_and_the_switch_waits(buyer, plan, operator, monkeypatch):
     item = delayed(buyer, plan, operator)
     entered, release, pids = Event(), Event(), Queue()
     blocking_sends(monkeypatch, entered, release)
@@ -243,7 +241,9 @@ def test_a_pause_that_commits_first_stops_the_telegram_send(buyer, plan, operato
     assert (row.status, row.last_error_class, row.attempts) == ("failed", "superseded", 0)
 
 
-def test_a_delay_committed_as_the_holiday_starts_is_never_sent(buyer, plan, operator, both_channels):
+def test_a_delay_committed_as_the_holiday_starts_is_never_sent(
+    buyer, plan, operator, both_channels
+):
     _, item = queued(buyer, plan, operator)
     Notification.objects.update(status="sent")
     done, release, pids = Event(), Event(), Queue()

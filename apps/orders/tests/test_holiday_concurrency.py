@@ -26,7 +26,9 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 def unpaid(buyer, plan):
     Product.objects.filter(pk=plan.product_id).update(delivery_hours=6)
-    Plan.objects.filter(pk=plan.pk).update(telegram_required=False, input_type="none", max_quantity=1)
+    Plan.objects.filter(pk=plan.pk).update(
+        telegram_required=False, input_type="none", max_quantity=1
+    )
     plan.refresh_from_db()
     return services.place_order(user=buyer, lines=[services.OrderLine(plan, 1, None)])
 
@@ -80,7 +82,9 @@ def test_a_payment_racing_the_start_never_leaves_a_running_clock(buyer, plan, op
 def test_a_payment_racing_the_end_keeps_its_whole_pause(buyer, plan, operator):
     order = unpaid(buyer, plan)
     opened = opened_now(operator)
-    _, closed = race(pay(order, operator), lambda: holiday.end(actor=operator, expected_open=opened.pk))
+    _, closed = race(
+        pay(order, operator), lambda: holiday.end(actor=operator, expected_open=opened.pk)
+    )
     item = order.items.get()
     stopped_from = item.paid_at
     due = delivery_deadline(paid_at=stopped_from, delivery_hours=6)
@@ -141,7 +145,10 @@ def test_a_delivery_racing_the_end_is_neither_moved_nor_resumed(buyer, plan, ope
     opened = opened_now(operator)
     item.refresh_from_db()
     due = item.due_at
-    race(lambda: deliver(item, operator), lambda: holiday.end(actor=operator, expected_open=opened.pk))
+    race(
+        lambda: deliver(item, operator),
+        lambda: holiday.end(actor=operator, expected_open=opened.pk),
+    )
     item.refresh_from_db()
     assert item.status == "DELIVERED" and item.due_at == due and item.sla_paused_at is None
     assert item.events.filter(holiday=opened).count() == 1
@@ -154,7 +161,9 @@ def test_a_cancellation_racing_the_end_stays_cancelled_and_unmoved(buyer, plan, 
     opened = opened_now(operator)
     item.refresh_from_db()
     due = item.due_at
-    race(lambda: cancel(item, operator), lambda: holiday.end(actor=operator, expected_open=opened.pk))
+    race(
+        lambda: cancel(item, operator), lambda: holiday.end(actor=operator, expected_open=opened.pk)
+    )
     item.refresh_from_db()
     assert item.status == "CANCELLED" and item.due_at == due
     assert item.events.filter(holiday=opened).count() == 1
