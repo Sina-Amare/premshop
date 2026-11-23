@@ -36,6 +36,50 @@ def _order_button(order: Order) -> list[list[dict[str, str]]]:
     return [[{"text": text, "url": _order_url(order.order_number), "style": "primary"}]]
 
 
+def _key(template_name: str, occurrence_id: int, user_id: int, channel: str) -> str:
+    return f"{template_name}:{occurrence_id}:user:{user_id}:{channel}"
+
+
+def _occurrence(key: str) -> int:
+    """The history row a notice was made for, read back from `_key`."""
+    return int(key.split(":")[1])
+
+
+def _superseded(event_id: int) -> bool:
+    """A delay's item has changed since: a pause, a details request, a delivery, a
+    cancellation or a newer delay. The new time the notice names is no longer true."""
+    return OrderItemEvent.objects.filter(order_item__events__pk=event_id, pk__gt=event_id).exists()
+
+
+def _stale_delay(row: Notification) -> bool:
+    """Locks the delay's item until this send commits, so nothing can change it between
+    this check and the provider's answer: a holiday that starts meanwhile waits."""
+    event_id = _occurrence(row.dedupe_key)
+    item_id = OrderItemEvent.objects.filter(pk=event_id).values_list("order_item_id", flat=True)
+    list(OrderItem.objects.select_for_update().filter(pk__in=item_id).values_list("pk", flat=True))
+    return _superseded(event_id)
+
+
+def _drop(row: Notification) -> None:
+    # Not an attempt: nothing was sent, and nothing should be sent again.
+    row.status, row.next_attempt_at, row.last_error_class = "failed", None, "superseded"
+
+
+def drop_superseded_delay_notices() -> int:
+    """The minute run's sweep: a superseded delay fails now, not at its next retry."""
+    dropped = 0
+    with transaction.atomic():
+        pending = Notification.objects.select_for_update(skip_locked=True).filter(
+            template_name=Notification.Template.DELAY, status=Notification.Status.PENDING
+        )
+        for row in pending:
+            if _superseded(_occurrence(row.dedupe_key)):
+                _drop(row)
+                row.save(update_fields=["status", "next_attempt_at", "last_error_class"])
+                dropped += 1
+    return dropped
+
+
 def enqueue_event(
     template_name: str,
     occurrence_id: int,
@@ -51,6 +95,8 @@ def enqueue_event(
         raise ValueError("Unknown order notification")
     if template_name == "customer_claim":
         return _enqueue_customer_claim(occurrence_id, order_id, item_id)
+    if template_name == Notification.Template.DELAY and _superseded(occurrence_id):
+        return None
     order = Order.objects.values(
         "user_id",
         "user__email",
@@ -99,7 +145,7 @@ def enqueue_event(
     row = None
     if recipient:
         row, _ = Notification.objects.get_or_create(
-            dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:email",
+            dedupe_key=_key(template_name, occurrence_id, order["user_id"], "email"),
             defaults={
                 "order_id": order_id,
                 "template_name": template_name,
@@ -112,7 +158,7 @@ def enqueue_event(
     # After the email row, so a Telegram problem can never cost the email.
     if settings.TELEGRAM_BOT_TOKEN and order["user__telegram_id"]:
         Notification.objects.get_or_create(
-            dedupe_key=f"{template_name}:{occurrence_id}:user:{order['user_id']}:telegram",
+            dedupe_key=_key(template_name, occurrence_id, order["user_id"], "telegram"),
             defaults={
                 "order_id": order_id,
                 "template_name": template_name,
@@ -361,6 +407,10 @@ def send_due_notifications() -> int:
             )
             if row is None:
                 return sent
+            if row.template_name == Notification.Template.DELAY and _stale_delay(row):
+                _drop(row)
+                row.save()
+                continue
             try:
                 accepted = send_templated_email(
                     row.template_name,
@@ -435,6 +485,10 @@ def send_due_telegram() -> int:
                 .values_list("telegram_id", flat=True)
                 .first()
             )
+            if row.template_name == Notification.Template.DELAY and _stale_delay(row):
+                _drop(row)
+                row.save()
+                continue
             row.attempts += 1
             row.last_attempt_at = timezone.now()
             if current is None or current != row.chat_id:
