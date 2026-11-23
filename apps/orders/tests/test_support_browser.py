@@ -61,7 +61,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         )
         copy.click()
         expect(page.locator("[data-copy-status]")).to_have_text(
-            "کپی انجام نشد؛ شناسه را انتخاب و کپی کنید."
+            "کپی خودکار انجام نشد و می‌توانید شناسه‌ی پشتیبانی را خودتان انتخاب و کپی کنید."
         )
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)
@@ -69,9 +69,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         replace = page.get_by_text("شناسه را به کسی داده‌اید؟", exact=True)
         assert replace.bounding_box()["height"] >= 44
         replace.click()
-        expect(
-            page.get_by_text("شناسه‌ی قبلی از همان لحظه باطل می‌شود.", exact=False)
-        ).to_be_visible()
+        expect(page.get_by_text("شناسه‌ی قبلی از همان لحظه باطل شود", exact=False)).to_be_visible()
         capture(page, "support-confirm", width, tmp_path)
         old = order.support_identifier.support_token
         page.get_by_role("button", name="ساخت شناسه‌ی جدید", exact=True).click()
@@ -106,7 +104,12 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         settings.FIELD_ENCRYPTION_KEY = ""
         try:
             page.goto(live_server.url + detail)
-            expect(page.get_by_text("شناسه‌ی پشتیبانی در دسترس نیست.", exact=True)).to_be_visible()
+            expect(
+                page.get_by_text(
+                    "شناسه‌ی پشتیبانی در حال حاضر نمایش داده نمی‌شود و برای پیگیری این سفارش، شماره‌ی سفارش را برای پشتیبانی بفرستید.",
+                    exact=True,
+                )
+            ).to_be_visible()
             expect(
                 page.locator("[data-copy-support], input[name=expected_support_token]")
             ).to_have_count(0)
@@ -137,14 +140,17 @@ def test_operator_matches_in_existing_panel_without_javascript(
     check = "بررسی شناسه" if language == "fa" else "Check identifier"
     back = "بازگشت به سفارش" if language == "fa" else "Back to order"
     mismatch = (
-        "شناسه با این سفارش مطابقت ندارد."
+        "شناسه‌ای که وارد کردید با شناسه‌ی پشتیبانی این سفارش مطابقت ندارد و پیش از هر کمکی، باید شناسه‌ی درست را از مشتری بخواهید."
         if language == "fa"
-        else "The identifier does not match this order."
+        else (
+            "The ID you entered does not match this order's support ID, and before helping,"
+            " you should ask the customer for the right one."
+        )
     )
     matched = (
-        "شناسه با این سفارش مطابقت دارد."
+        "شناسه‌ای که وارد کردید با شناسه‌ی پشتیبانی این سفارش مطابقت دارد."
         if language == "fa"
-        else "The identifier matches this order."
+        else "The ID you entered matches this order's support ID."
     )
     try:
         page.goto(live_server.url + detail)
@@ -202,7 +208,7 @@ def test_enter_in_the_identifier_field_compares_instead_of_revealing_input(
         field.fill(identifier.grouped_token)
         field.press("Enter")
         expect(page.locator(".order-history [role=status]")).to_have_text(
-            "شناسه با این سفارش مطابقت دارد."
+            "شناسه‌ای که وارد کردید با شناسه‌ی پشتیبانی این سفارش مطابقت دارد."
         )
         assert page.url.endswith(reverse("admin:orders_order_support_match", args=[order.pk]))
         assert not CredentialAccessLog.objects.exists()

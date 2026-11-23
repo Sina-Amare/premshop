@@ -162,7 +162,9 @@ def test_bad_actions_leave_review_and_history_alone(client, buyer, plan, operato
     row = review_for(buyer, plan)
     client.force_login(operator)
     result = client.post(panel_url("moderate", row), data, follow=True)
-    assert "درخواست بررسی نظر معتبر نیست." in result.content.decode()
+    body = result.content.decode()
+    # An unknown decision or a missing reason, and a status the form never showed, each say so.
+    assert "این تصمیم درباره‌ی نظر ثبت نشد" in body or "این نظر در وضعیتی نیست" in body
     row.refresh_from_db()
     assert row.status == PENDING
     assert not audit(row).exists()
@@ -178,7 +180,10 @@ def test_one_star_publishes_then_hiding_last_row_clears_public_summary(
     assert "متن نظر یک‌ستاره" not in visitor.get(public).content.decode()
     post = panel_url("moderate", row)
     assert client.post(post, PUBLISH).status_code == 302
-    assert "وضعیت این نظر عوض شده است." in client.post(post, HIDE, follow=True).content.decode()
+    assert (
+        "وضعیت این نظر پس از باز شدن این صفحه تغییر کرده است و برای دیدن وضعیت فعلی آن، صفحه را دوباره باز کنید."
+        in client.post(post, HIDE, follow=True).content.decode()
+    )
     assert audit(row).count() == 1
     page = visitor.get(public).content.decode()
     assert "متن نظر یک‌ستاره" in page

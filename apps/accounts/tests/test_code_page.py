@@ -94,7 +94,10 @@ def test_a_wrong_code_answers_json_without_leaving_the_page(waiting):
 def test_a_malformed_code_answers_json_with_the_form_error(waiting):
     response = waiting.post(reverse("login-code-verify"), {"code": "12"}, **JSON)
 
-    assert response.json() == {"ok": False, "error": "کد باید ۶ رقم باشد."}
+    assert response.json() == {
+        "ok": False,
+        "error": "کد ورود ۶ رقم دارد و برای ورود باید هر ۶ رقم آن را وارد کنید.",
+    }
 
 
 def test_too_many_guesses_answer_429_in_json(waiting):
@@ -107,7 +110,7 @@ def test_too_many_guesses_answer_429_in_json(waiting):
     assert response.json()["ok"] is False
     assert (
         response.json()["error"]
-        == "برای این شماره چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+        == "برای ورود با این شماره در مدت کوتاهی چند بار تلاش شده است و برای حفظ امنیت حساب کاربری، تا ۱۵ دقیقه‌ی دیگر امکان تلاش دوباره وجود ندارد."
     )
 
 
@@ -189,7 +192,10 @@ def test_a_plain_resend_comes_back_to_the_page_with_a_new_code(waiting, user):
     assert response.status_code == 302
     assert response["Location"] == reverse("login-code-verify")
     assert len(sms.outbox) == 2
-    assert "کد جدید را فرستادیم." in waiting.get(response["Location"]).content.decode()
+    assert (
+        "کد ورود جدید با پیامک فرستاده شد و کد قبلی دیگر اعتبار ندارد."
+        in waiting.get(response["Location"]).content.decode()
+    )
     assert otp.verify(user.phone, code_from(sms.outbox[1]))
 
 
@@ -210,7 +216,7 @@ def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
 
     assert response.redirect_chain[-1][0] == reverse("login-code")
     # Printed on the number page, so it names the page that ran out.
-    assert "صفحه‌ی کد ورود دیگر کار نمی‌کند." in response.content.decode()
+    assert "صفحه‌ی وارد کردن کد ورود دیگر اعتبار ندارد" in response.content.decode()
 
 
 def test_a_mistyped_number_can_be_corrected_without_retyping_it(waiting, user):
@@ -271,7 +277,7 @@ def test_emptying_the_email_removes_it_and_says_so(client, user):
 
     user.refresh_from_db()
     assert user.email == ""
-    assert "ایمیل حذف شد." in body
+    assert "ایمیل شما از حساب کاربری حذف شد." in body
 
 
 def test_a_rejected_email_paints_one_field_and_nothing_else(client, user):

@@ -178,7 +178,11 @@ def test_the_panel_walk_reads_the_catalogue_and_the_code():
     assert len(found) > 200, len(found)
     # An entry of the catalogue, and a source string of the panel's code.
     assert any(text == "انتخاب فایل" for _, text in found)
-    assert any(text == "ذخیره نشد. خطاهای زیر را درست کنید." for _, text in found)
+    assert any(
+        text
+        == "تغییرات به دلیل خطاهای فرم ذخیره نشد و پس از اصلاح خطاهای زیر می‌توانید دوباره ذخیره کنید."
+        for _, text in found
+    )
 
 
 @pytest.mark.parametrize("pattern, instead", BANNED)

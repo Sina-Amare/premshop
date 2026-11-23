@@ -89,7 +89,7 @@ def test_the_500_page_needs_nothing_that_might_be_what_failed(client):
     details = support.details()
     assert details["telegram"] in body
     assert details["hours"] in body
-    assert "دوباره پرداخت نکنید" in body
+    assert "پیش از پرداخت دوباره" in body
     assert not [word for word in ENGLISH if word in body]
 
 

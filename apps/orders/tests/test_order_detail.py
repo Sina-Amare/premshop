@@ -160,7 +160,7 @@ def test_a_card_asks_once_for_what_to_send_in_telegram(client, buyer, plan, oper
     assert len(asks) == 1, asks
     if state in ("owed", "mixed_refund"):
         # Two numbers are asked for, so the promise names the one it counts from.
-        assert "پس از دریافت شماره‌ی کارت یا شبا،" in text(said)
+        assert "حداکثر یک روز کاری پس از دریافت آن به حسابتان واریز شود" in text(said)
 
 
 def test_the_copied_line_carries_the_order_number_and_the_panel_finds_its_identifier(
@@ -230,7 +230,7 @@ def test_a_cancelled_unpaid_order_says_no_payment_was_recorded_and_offers_no_sup
     client, buyer, plan, operator
 ):
     card = card_of(page(client, buyer, order_for_state(buyer, plan, operator, "cancelled")))
-    assert "پرداختی برای آن ثبت نشده بود." in card
+    assert "پرداختی برای این سفارش ثبت نشده بود" in card
     assert support.details()["telegram_url"] not in card
     assert "دیدن محصولات" in card
 
@@ -252,7 +252,7 @@ def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_custo
     assert figure in card and "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in text(
         card
     )
-    assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "تا یک روز کاری" in card
+    assert "شماره‌ی کارت یا شبای به نام خودتان" in card and "حداکثر یک روز کاری" in card
     assert "هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد." in card
     owed_row = body.split('data-money="owed"', 1)[1].split("</div>", 1)[0]
     assert figure in owed_row
@@ -280,7 +280,7 @@ def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
     order = items[0].order
     assert not Refund.objects.filter(order_item__order=order).exists()
     card = card_of(page(client, buyer, order))
-    assert "این لغو بازگشت وجه ندارد." in card
+    assert "لغو این سفارش شامل بازگشت وجه نمی‌شود" in card
     assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
 
 
@@ -375,7 +375,10 @@ def test_an_input_wait_beside_paused_and_running_units_keeps_its_hours_and_their
     left = ceil((waiting.due_at - waiting.sla_paused_at).total_seconds() / 3600)
     card = text(card_of(body))
     assert "اطلاعات فعال‌سازی سرویس دوم لازم است" in card
-    assert f"پس از رسیدن اطلاعات، تا {to_persian_digits(max(1, left))} ساعت" in card
+    assert (
+        "پس از رسیدن اطلاعات فعال‌سازی، خریدتان را حداکثر تا"
+        f" {to_persian_digits(max(1, left))} ساعت بعد تحویل می‌دهیم"
+    ) in card
     purchase = purchase_of(body)
     rows = [
         text(row)
@@ -423,7 +426,9 @@ def test_late_items_promised_at_different_times_each_keep_their_own_time(
         body = page(client, buyer, late_pair(buyer, plan, operator, earlier, later))
     said = text(card_of(body))
     assert "تأخیر در تحویل" in said and "بابت تأخیر در تحویل سرویس نمونه، سرویس دوم" in said
-    assert "زمان تحویلی که برای هر خرید گفته بودیم، در بخش «محصولات و مبلغ سفارش» آمده است." in said
+    assert (
+        "زمان تحویلی را که برای هر خرید گفته بودیم، در بخش «محصولات و مبلغ سفارش» می‌بینید." in said
+    )
     # One date would promise the later product the earlier time.
     assert when(earlier) not in said and when(later) not in said
     purchase = text(purchase_of(body))
@@ -444,7 +449,9 @@ def test_late_units_of_one_plan_promised_at_different_times_get_a_line_each(
     said = text(card_of(body))
     assert when(earlier) not in said
     # One product name, two purchases: the sentence must not say "each of them" of one name.
-    assert "بابت تأخیر در تحویل سرویس نمونه عذرخواهی می‌کنیم. زمان تحویلی که برای هر خرید" in said
+    assert (
+        "بابت تأخیر در تحویل سرویس نمونه عذرخواهی می‌کنیم و زمان تحویلی را که برای هر خرید" in said
+    )
     purchase = purchase_of(body)
     assert purchase.count('class="order-line__facts"') == 2
     for due in (earlier, later):
@@ -459,8 +466,8 @@ def test_late_items_promised_at_the_same_time_keep_the_dated_apology(client, buy
         order = late_pair(buyer, plan, operator, due, due + timedelta(seconds=30))
         body = page(client, buyer, order)
     said = text(card_of(body))
-    assert f"قرار بود سرویس نمونه، سرویس دوم تا {when(due)} تحویل شود." in said
-    assert "زمان تحویلی که" not in said
+    assert f"قرار بود سرویس نمونه، سرویس دوم تا {when(due)} تحویل شود و بابت این تأخیر" in said
+    assert "زمان تحویلی را که" not in said
 
 
 def test_a_late_line_keeps_its_time_when_the_order_leads_with_something_else(
@@ -587,7 +594,7 @@ def test_a_replacement_request_and_its_rejection_carry_their_dates(client, buyer
     reject(order.items.get(), operator)
     card = text(card_of(page(client, buyer, order)))
     assert f"درخواست تعویض در {today} رد شد" in card
-    assert "دلیلش را از پشتیبانی بپرسید." in card
+    assert "برای اطلاع از دلیل رد شدن درخواست تعویض، از پشتیبانی بپرسید." in card
 
 
 def test_tracking_and_the_order_page_agree_on_a_lapsed_payment_window(

@@ -580,7 +580,7 @@ def test_a_plan_rule_is_reported_under_its_own_field(client, operator, catalogue
     body = response.content.decode()
     error = re.search(rf'<ul class="errorlist" id="id_{prefix}-promo_price_error">(.*?)</ul>', body)
     assert error, "the rule is not under the promotion field"
-    assert "قیمت با تخفیف باید بیشتر از صفر و کمتر از قیمت فروش باشد." in error.group(1)
+    assert "قیمت تخفیفی باید بیشتر از صفر و کمتر از قیمت فروش باشد." in error.group(1)
 
 
 def test_a_failed_save_says_so_in_persian(client, operator, catalogue):
@@ -624,7 +624,7 @@ def test_saving_a_plan_below_cost_warns(client, operator, catalogue):
     response = client.post(change_url(product), data, follow=True)
 
     warnings = [str(m) for m in response.context["messages"] if m.level_tag == "warning"]
-    assert warnings and "زیر قیمت خرید" in warnings[0], warnings
+    assert warnings and "کمتر از قیمت خرید" in warnings[0], warnings
 
 
 def test_a_price_change_keeps_the_old_and_the_new_price(client, operator, catalogue):
@@ -1025,7 +1025,7 @@ def test_a_signed_in_customer_is_told_in_persian_why_the_panel_refused(client):
         reverse("admin:login"), {"username": "09127770002", "password": PASSWORD}
     ).content.decode()
 
-    assert "اما این حساب به پنل دسترسی ندارد. با حساب مدیر وارد شوید." in body
+    assert "ولی این حساب به این صفحه دسترسی ندارد" in body
     for leak in ("نداریدو", "صفحه فوق", "مایلید", "authenticated"):
         assert leak not in body, leak
 
@@ -1050,8 +1050,8 @@ def test_the_password_change_errors_say_ramz_obour(client, operator):
     )
 
     body = response.content.decode()
-    assert "رمز عبور فعلی اشتباه است." in body
-    assert "رمز عبور و تکرار آن یکسان نیستند." in body
+    assert "رمز عبور فعلی را اشتباه وارد کرده‌اید و باید آن را دوباره وارد کنید." in body
+    assert "رمز عبور و تکرار آن یکسان نیستند و باید هر دو را دوباره و یکسان وارد کنید." in body
     for leak in ("گذرواژه", "لطفاً", "Please correct"):
         assert leak not in body, leak
 
@@ -1076,7 +1076,7 @@ def test_the_bulk_delete_confirmation_reads_as_persian(client, operator, catalog
     for leak in ("موجودیت", "ذیل", "در خصوص", "اشیا"):
         assert leak not in body, leak
     # One product is named in the singular, and a plural verb did not agree.
-    assert "محصول انتخاب‌شده حذف شود؟" in body
+    assert "با حذف محصول انتخاب‌شده" in body
     assert "حذف شوند؟" not in body
 
 
@@ -1311,8 +1311,8 @@ def test_the_form_refuses_to_publish_without_usage_notes(client, operator, catal
 
     assert response.status_code == 200, "a product with no usage notes was published"
     body = response.content.decode()
-    assert "نکات استفاده نوشته نشده است." in errors_under(body, "usage_notes")
-    assert "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود" in errors_under(body, "status")
+    assert "نکات استفاده‌ی محصول هنوز نوشته نشده است" in errors_under(body, "usage_notes")
+    assert "امکان انتشار محصول تا رفع کمبودهایی" in errors_under(body, "status")
     draft.refresh_from_db()
     assert draft.status == Product.Status.DRAFT
     # The form holds the refused «فعال»; the page it links to is still a preview.
@@ -1343,7 +1343,10 @@ def test_the_form_refuses_to_publish_with_no_plan_on_sale(client, operator, cata
 
     assert response.status_code == 200
     group = response.content.decode().split('id="plans-group"', 1)[1]
-    assert "برای انتشار، حداقل یک پلن با وضعیت «موجود» لازم است." in group
+    assert (
+        "هیچ‌کدام از پلن‌های این محصول موجود نیست و محصول بدون دست‌کم یک پلن موجود منتشر نمی‌شود."
+        in group
+    )
     draft.refresh_from_db()
     assert draft.status == Product.Status.DRAFT
 
@@ -1356,7 +1359,7 @@ def test_a_placeholder_in_a_new_section_keeps_a_live_product_as_it_was(client, o
     response = client.post(change_url(live), data)
 
     assert response.status_code == 200, "a live page took an unfilled placeholder"
-    assert "هنوز پر نشده است" in errors_under(response.content.decode(), f"{row}-body")
+    assert "هنوز جای خالی" in errors_under(response.content.decode(), f"{row}-body")
     assert not live.sections.exists()
 
 
@@ -1371,7 +1374,7 @@ def test_the_plans_own_form_holds_a_live_plan_to_its_placeholders(client, operat
     response = client.post(url, data)
 
     assert response.status_code == 200, "a live plan took an unfilled placeholder"
-    assert "هنوز پر نشده است" in errors_under(response.content.decode(), "title")
+    assert "هنوز جای خالی" in errors_under(response.content.decode(), "title")
     plan.refresh_from_db()
     assert plan.title == "۱ ماهه"
 
@@ -1396,7 +1399,7 @@ def test_publishing_from_the_form_reads_the_rows_it_does_not_show(client, catalo
     response = client.post(change_url(draft), data)
 
     assert response.status_code == 200, "a stored placeholder went live"
-    assert "هنوز پر نشده است" in str(response.context["adminform"].form.non_field_errors())
+    assert "هنوز جای خالی" in str(response.context["adminform"].form.non_field_errors())
     draft.refresh_from_db()
     assert draft.status == Product.Status.DRAFT
 
@@ -1439,7 +1442,10 @@ def test_two_before_buying_sections_in_one_save_are_refused(client, operator, ca
     response = client.post(change_url(draft), data)
 
     assert response.status_code == 200
-    assert "هر محصول حداکثر یک بخش «پیش از خرید» دارد." in response.content.decode()
+    assert (
+        "هر محصول فقط می‌تواند یک بخش «پیش از خرید» داشته باشد و در این فرم بیش از یکی اضافه شده است."
+        in response.content.decode()
+    )
     assert not draft.sections.exists()
 
 
@@ -1465,7 +1471,7 @@ def test_the_bulk_action_names_every_reason_and_publishes_the_rest(client, opera
     )
 
     [error] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
-    for reason in ("معرفی کوتاه محصول را بنویسید.", "نکات استفاده", "پاسخ: جای خالی"):
+    for reason in ("جمع‌بندی یک‌خطی هنوز نوشته نشده است", "نکات استفاده", "در پاسخ"):
         assert reason in error, error
     draft.refresh_from_db()
     ready.refresh_from_db()
@@ -1486,10 +1492,10 @@ def test_each_reason_a_bulk_publish_gives_is_a_line_of_its_own(client, operator,
 
     [error] = [str(m) for m in response.context["messages"] if m.level_tag == "error"]
     headline, _, rest = error.partition('<ul class="panel-reasons">')
-    assert headline == "«\u2068draft\u2069» منتشر نشد.", error
+    assert headline == "«\u2068draft\u2069» منتشر نشد، چون موارد زیر هنوز رفع نشده‌اند:", error
     reasons = re.findall(r"<li>(.*?)</li>", rest)
-    assert "معرفی کوتاه محصول را بنویسید." in reasons
-    assert any(r.startswith("نکات استفاده نوشته نشده است.") for r in reasons), reasons
+    assert any(r.startswith("جمع‌بندی یک‌خطی هنوز نوشته نشده است") for r in reasons), reasons
+    assert any(r.startswith("نکات استفاده‌ی محصول هنوز نوشته نشده است") for r in reasons), reasons
     assert "&lt;li&gt;" not in response.content.decode()
 
 
@@ -1507,10 +1513,10 @@ def test_a_refused_publish_lists_its_reasons_at_the_top(client, operator, catalo
     assert readiness, "no list at the top of the refused form"
     assert body.index("panel-readiness") < body.index('name="usage_notes"')
     items = re.findall(r"<li>(.*?)</li>", readiness.group(0), re.S)
-    for reason in ("معرفی کوتاه محصول را بنویسید.", "نکات استفاده", "پاسخ: جای خالی"):
+    for reason in ("جمع‌بندی یک‌خطی هنوز نوشته نشده است", "نکات استفاده", "در پاسخ"):
         assert any(reason in item for item in items), (reason, items)
     assert not any(
-        "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود" in item for item in items
+        "امکان انتشار محصول تا رفع کمبودهایی" in item for item in items
     ), "the summary is not a reason"
 
 
@@ -1539,7 +1545,7 @@ def test_a_drafts_form_lists_what_it_still_lacks(client, operator, catalogue):
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the draft's form"
     assert "قبل از انتشار" in readiness.group(0)
-    assert "نکات استفاده نوشته نشده است." in readiness.group(0)
+    assert "نکات استفاده‌ی محصول هنوز نوشته نشده است" in readiness.group(0)
 
 
 def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, operator, catalogue):
@@ -1552,10 +1558,13 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the live product's form"
-    assert "دوباره منتشر نمی‌شود" in readiness.group(0)
-    assert "تا این‌ها درست نشود، دوباره منتشر نمی‌شود." in readiness.group(0)
+    assert "دوباره منتشر می‌شود" in readiness.group(0)
+    assert (
+        "این محصول اکنون منتشر است و پس از برداشته شدن از سایت، فقط با رفع موارد زیر دوباره منتشر می‌شود."
+        in readiness.group(0)
+    )
     assert "قبل از انتشار" not in readiness.group(0)
-    assert "نکات استفاده نوشته نشده است." in readiness.group(0)
+    assert "نکات استفاده‌ی محصول هنوز نوشته نشده است" in readiness.group(0)
 
 
 def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operator, catalogue):
@@ -1573,15 +1582,16 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
     # Blue like the same list on the form: orange is too close to the amber kept for attention.
     [note] = [str(m) for m in response.context["messages"] if m.level_tag == "info"]
     headline, _, rest = note.partition('<ul class="panel-reasons">')
-    assert headline == "«⁨live⁩» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.", note
+    assert headline == "«⁨live⁩» فقط پس از رفع موارد زیر دوباره منتشر می‌شود:", note
     assert re.findall(r"<li>(.*?)</li>", rest) == [
-        "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
+        "نکات استفاده‌ی محصول هنوز نوشته نشده است و اگر نکته‌ای برای این محصول وجود ندارد، عبارت «موضوعیت ندارد» را بنویسید."
     ]
 
 
 def test_a_ready_draft_says_so_and_a_live_product_says_nothing(client, operator, catalogue):
     assert (
-        "شرط‌های انتشار برقرار است." in client.get(change_url(catalogue["draft"])).content.decode()
+        "همه‌ی شرط‌های انتشار برای این محصول برقرار است."
+        in client.get(change_url(catalogue["draft"])).content.decode()
     )
     assert "panel-readiness" not in client.get(change_url(catalogue["live"])).content.decode()
 
@@ -1870,7 +1880,10 @@ def test_an_svg_logo_is_refused_in_persian(client, operator, catalogue, media):
     error = errors_under(response.content.decode(), "image")
     # Every logo the shop has is an SVG: the message names the formats, not "no image".
     # The same sentence the shop's own image check gives (apps/catalog/models.py).
-    assert "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است." in error, error
+    assert (
+        "فایل انتخاب‌شده تصویر سالم PNG،‏ JPEG یا WebP نیست و پنل فقط همین سه قالب را می‌پذیرد."
+        in error
+    ), error
     assert not [path for path in media.rglob("*") if path.is_file()]
 
 
@@ -1887,7 +1900,7 @@ def test_a_photo_cut_off_in_transit_is_refused_in_persian(client, operator, cata
     response = client.post(change_url(live), data)
 
     assert response.status_code == 200
-    assert "یا خراب است" in errors_under(response.content.decode(), "image")
+    assert "تصویر سالم" in errors_under(response.content.decode(), "image")
     assert not [path for path in media.rglob("*") if path.is_file()]
 
 

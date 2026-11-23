@@ -40,7 +40,10 @@ def test_owner_reviews_a_previously_delivered_item_once(client, buyer, plan, ope
     assert client.post(path, {"rating": 4}).status_code == 302
     again = client.post(path, {"rating": 1})
     assert again.status_code == 409
-    assert "برای این خرید قبلاً نظر داده‌اید." in again.content.decode()
+    assert (
+        "شما قبلاً برای این خرید نظر ثبت کرده‌اید و برای هر خرید فقط یک نظر می‌توانید بنویسید."
+        in again.content.decode()
+    )
     review = reviews().objects.get(order_item=item)
     assert (review.rating, review.text, review.status) == (4, "", "pending")
     pending = client.get(detail)
@@ -75,7 +78,7 @@ def test_rejects_invalid_ratings(client, buyer, plan, operator, rating):
     client.force_login(buyer)
     answer = client.post(review_path(order, item), {"rating": rating})
     assert answer.status_code == 400
-    assert "امتیازی از ۱ تا ۵ انتخاب کنید." in answer.content.decode()
+    assert "برای ثبت نظر، امتیازی از ۱ تا ۵ انتخاب کنید." in answer.content.decode()
     assert not reviews().objects.exists()
 
 
@@ -179,7 +182,7 @@ def test_public_reviews_use_only_published_rows_and_escape_plain_text(
     assert "۴٫۵ از ۵ · ۲ نظر" in client.get(url).content.decode()
     client.force_login(buyer)
     detail = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
-    assert "نظرتان در صفحه‌ی محصول نمایش داده نمی‌شود." in detail
+    assert "نظر شما بررسی شد و در صفحه‌ی محصول نمایش داده نمی‌شود." in detail
     assert "window.review" not in detail
     reviews().objects.filter(status="published", order_item__plan=plan).update(status="hidden")
     assert "هنوز نظری منتشر نشده است." in client.get(url).content.decode()

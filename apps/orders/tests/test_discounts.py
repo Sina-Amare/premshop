@@ -47,11 +47,11 @@ def test_selected_scope_caps_fixed_discount_and_tests_minimum_before_the_code(bu
     "changes,error",
     [
         ({"is_active": False}, "فعال نیست"),
-        ({"valid_from": timezone.now() + timedelta(days=1)}, "هنوز نرسیده"),
+        ({"valid_from": timezone.now() + timedelta(days=1)}, "هنوز شروع نشده"),
         ({"valid_until": timezone.now() - timedelta(seconds=1)}, "تمام شده"),
-        ({"max_uses": 1, "used_count": 1}, "ظرفیت این کد"),
-        ({"min_order_amount": 300000}, "کافی نیست"),
-        ({"scope": "selected"}, "این محصولات"),
+        ({"max_uses": 1, "used_count": 1}, "ظرفیت استفاده از این کد"),
+        ({"min_order_amount": 300000}, "جمع سفارش فعلی شما به این حداقل"),
+        ({"scope": "selected"}, "محصولات مشخصی"),
     ],
 )
 def test_coupon_rejection_is_specific_and_preserves_resources(buyer, plan, changes, error):
@@ -75,7 +75,7 @@ def test_per_customer_limit_counts_active_history_beyond_the_unpaid_order(buyer,
 
 @pytest.mark.parametrize("code", ["MISSING", "bad!", "ab", "x" * 40])
 def test_unknown_and_malformed_codes_do_not_silently_disappear(buyer, plan, code):
-    with pytest.raises(ValidationError, match="این کد تخفیف درست نیست"):
+    with pytest.raises(ValidationError, match="کد تخفیفی که وارد کرده"):
         services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code=code)
     assert not Order.objects.exists()
 
@@ -178,4 +178,4 @@ def test_discount_editor_rejects_an_inverted_validity_window(client):
     response = client.post(url, data)
     assert response.status_code == 200
     assert "valid_until" in response.context["adminform"].form.errors
-    assert "پایان اعتبار باید پس از شروع آن باشد" in response.content.decode()
+    assert "باید پس از زمان شروع اعتبار آن باشد" in response.content.decode()

@@ -140,11 +140,15 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         page.get_by_role("button", name="فرستادن کد به ایمیل", exact=True).focus()
         page.keyboard.press("Enter")
         # The code box is on the page before the send, so the sent notice is the evidence.
-        expect(page.get_by_text("کد به ایمیل این سفارش فرستاده شد.")).to_be_visible()
+        expect(
+            page.get_by_text(
+                "کد نمایش اطلاعات تحویل به ایمیل این سفارش فرستاده شد و پس از وارد کردن آن در کادر زیر، اطلاعات تحویل را می‌بینید."
+            )
+        ).to_be_visible()
         code = code_from_mail()
         page.get_by_label("کد نمایش اطلاعات").fill("wrong")
         page.get_by_role("button", name="تأیید کد", exact=True).click()
-        expect(page.locator("[role=alert]")).to_contain_text("کد درست نیست")
+        expect(page.locator("[role=alert]")).to_contain_text("کدی که وارد کردید درست نیست")
         capture(
             page,
             https_server + reverse("order-delivery-confirm", args=[order.order_number]),

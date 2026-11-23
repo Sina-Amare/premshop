@@ -91,7 +91,7 @@ def test_twenty_daily_ip_sends_across_numbers_then_expiry(rf):
         for index in range(20):
             services.request_login_code(rf.post("/"), f"0912000{index:04d}")
             clock.shift(901)
-        with pytest.raises(services.RateLimited, match="از این شبکه به سقف روزانه"):
+        with pytest.raises(services.RateLimited, match="متصل هستید به سقف روزانه"):
             services.request_login_code(rf.post("/"), PHONE)
         clock.shift(86400 - 18020)
         services.request_login_code(rf.post("/"), PHONE)

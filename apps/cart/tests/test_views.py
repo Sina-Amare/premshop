@@ -109,7 +109,10 @@ def test_stock_json_failure_leaves_cart_unchanged_and_uses_plain_persian(client,
     plan.save()
     response = client.post("/cart/add/", {"plan": plan.pk}, HTTP_ACCEPT="application/json")
     assert response.status_code == 400
-    assert response.json()["message"] == "این محصول فعلاً موجود نیست."
+    assert (
+        response.json()["message"]
+        == "گزینه‌ی انتخاب‌شده در حال حاضر موجود نیست و فعلاً امکان خرید آن وجود ندارد."
+    )
     assert not Cart.objects.exists()
 
 

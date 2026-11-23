@@ -178,7 +178,7 @@ def test_invalid_discount_is_visible_and_does_not_enable_undiscounted_purchase(c
     client.force_login(buyer)
     response = client.post(reverse("checkout"), {"action": "review", "discount_code": "WRONG"})
     assert response.status_code == 400
-    assert "این کد تخفیف درست نیست" in response.content.decode()
+    assert "در پرم‌شاپ وجود ندارد" in response.content.decode()
     assert response.context["quote"] is None
     assert 'name="action" value="checkout"' not in response.content.decode()
     assert cart.items.exists() and not Order.objects.exists()
@@ -221,7 +221,7 @@ def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buye
         },
     )
     assert response.status_code == 400
-    assert "ایمیل اکانت را درست وارد کنید" in response.content.decode()
+    assert "ایمیل اکانتی که وارد کردید درست نیست" in response.content.decode()
     assert "invalid-private-input" not in str(response.context["error"])
     assert cart.items.exists() and not Order.objects.exists()
 
@@ -357,18 +357,21 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    explanation = "برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید."
-    assert explanation in response.content.decode()
+    assert "برای ثبت سفارش جدید، ابتدا باید سفارش فعلی را پرداخت یا لغو کنید" in (
+        response.content.decode()
+    )
     assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
     with pytest.raises(UnpaidOrderExists) as caught:
         quote_checkout(user=buyer)
-    assert explanation in caught.value.messages[0]
+    assert "تا آن سفارش را پرداخت یا لغو نکنید، امکان ثبت سفارش جدید وجود ندارد" in (
+        caught.value.messages[0]
+    )
 
 
 def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, buyer, plan, cart):
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    assert "در این مرحله چیزی پرداخت نمی‌کنید." in response.content.decode()
+    assert "در این مرحله مبلغی پرداخت نمی‌کنید" in response.content.decode()
     assert "۲۴ ساعت" in response.content.decode()
 
 
@@ -377,4 +380,7 @@ def test_a_placed_order_is_greeted_on_its_own_page(client, buyer, cart):
     quote = quote_checkout(user=buyer)
     data = {"action": "checkout", "quote": quote.token, "checkout_id": uuid.uuid4()}
     page = client.post(reverse("checkout"), data, follow=True).content.decode()
-    assert '<div class="form-ok" role="status">سفارشتان ثبت شد.</div>' in page
+    assert (
+        '<div class="form-ok" role="status">سفارش شما با موفقیت ثبت شد و روش پرداخت آن را در همین صفحه می‌بینید.</div>'
+        in page
+    )

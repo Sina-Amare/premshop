@@ -130,7 +130,10 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.locator('[name="_save"]').click()
         expect(page.get_by_text("عددی بزرگ‌تر از صفر وارد کنید.", exact=True)).to_be_visible()
         expect(
-            page.get_by_text("حداقل یک محصول برای این کد تخفیف انتخاب کنید.", exact=True)
+            page.get_by_text(
+                "چون این کد تخفیف فقط برای محصولات انتخاب‌شده است، دست‌کم یک محصول برای آن انتخاب کنید.",
+                exact=True,
+            )
         ).to_be_visible()
         text = page.locator("body").inner_text()
         assert "Choose" not in text and "Remove all" not in text
@@ -141,6 +144,9 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.locator("#id_value").fill("100")
         # Found by typing in the picker's search, then chosen by double-click.
         page.locator("#id_products_input").press_sequentially(plan.product.name[:4])
+        # Centred first: at the viewport's edge the first click scrolls the list and the
+        # second lands elsewhere, so no double-click reaches the option.
+        page.locator("#id_products_from").evaluate("el => el.scrollIntoView({block: 'center'})")
         page.locator("#id_products_from option", has_text=plan.product.name).dblclick()
         page.locator('[name="_save"]').click()
         page.wait_for_url("**/admin/orders/discountcode/")
@@ -149,7 +155,10 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.goto(live_server.url + reverse("admin:orders_discountcode_change", args=[code.pk]))
         expect(page.locator("#id_code")).to_have_value("SAVE")
         assert not page.locator('[name="used_count"]').count()
-        assert "خالی یعنی بدون محدودیت" in page.locator("body").inner_text()
+        assert (
+            "برای استفاده‌ی بدون محدودیت، این کادر را خالی بگذارید"
+            in page.locator("body").inner_text()
+        )
         page.screenshot(path=str(tmp_path / f"discount-saved-{width}.png"), full_page=True)
     finally:
         context.close()

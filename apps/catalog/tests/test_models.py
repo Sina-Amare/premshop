@@ -136,7 +136,7 @@ def test_the_checks_reach_the_admin_form_in_persian(product):
     p = Plan(product=product, title="x", cost_price=1, sale_price=1000, promo_price=1000)
     with pytest.raises(ValidationError) as excinfo:
         p.full_clean()
-    assert "قیمت با تخفیف" in str(excinfo.value)
+    assert "قیمت تخفیفی" in str(excinfo.value)
 
 
 # --- The rest of data-model §3's CHECKs --------------------------------------
@@ -505,7 +505,7 @@ def test_publishing_needs_usage_notes(ready, notes):
     ready.usage_notes = notes
 
     assert ready.publish_problems() == [
-        "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
+        "نکات استفاده‌ی محصول هنوز نوشته نشده است و اگر نکته‌ای برای این محصول وجود ندارد، عبارت «موضوعیت ندارد» را بنویسید."
     ]
 
 
@@ -527,8 +527,14 @@ def test_usage_notes_ask_for_no_source(ready):
 @pytest.mark.parametrize(
     "field, problem",
     [
-        ("delivery_type", "نوع تحویل انتخاب نشده است."),
-        ("short_description", "معرفی کوتاه محصول را بنویسید."),
+        (
+            "delivery_type",
+            "نوع تحویل محصول هنوز انتخاب نشده است و لازم است یکی از نوع‌های تحویل را انتخاب کنید.",
+        ),
+        (
+            "short_description",
+            "جمع‌بندی یک‌خطی هنوز نوشته نشده است و بدون آن، زیر نام محصول معرفی‌ای نمایش داده نمی‌شود.",
+        ),
     ],
 )
 def test_each_missing_fact_is_named(ready, field, problem):
@@ -540,7 +546,9 @@ def test_each_missing_fact_is_named(ready, field, problem):
 def test_publishing_needs_a_plan_on_sale(ready):
     ready.plans.update(is_available=False)
 
-    assert ready.publish_problems() == ["برای انتشار، حداقل یک پلن با وضعیت «موجود» لازم است."]
+    assert ready.publish_problems() == [
+        "هیچ‌کدام از پلن‌های این محصول موجود نیست و محصول بدون دست‌کم یک پلن موجود منتشر نمی‌شود."
+    ]
 
 
 MARKERS = ["[تصمیم مالک، تصمیم ۴: چند روز]", "[وابسته به تصمیم ۸: …]", "[از تحویل آزمایشی: …]"]
@@ -570,7 +578,8 @@ def test_a_placeholder_is_named_with_its_section_and_field(ready):
     ProductSection.objects.create(product=ready, kind="before_buying", body="[تصمیم مالک، تصمیم ۴]")
 
     assert ready.publish_problems() == [
-        "بخش محتوا «\u2068پیش از خرید\u2069»، متن: جای خالی «[تصمیم مالک، تصمیم ۴]» هنوز پر نشده است."
+        "در متن بخش محتوا «\u2068پیش از خرید\u2069» هنوز جای خالی «[تصمیم مالک، تصمیم ۴]» مانده است"
+        " و باید آن را با متن واقعی پر کنید."
     ]
 
 
@@ -640,7 +649,7 @@ def test_sources_are_one_address_a_line(product):
     with pytest.raises(ValidationError) as excinfo:
         product.full_clean()
 
-    assert "خط ۲" in excinfo.value.message_dict["sources"][0]
+    assert "سطر ۲" in excinfo.value.message_dict["sources"][0]
 
 
 # --- When a price was last confirmed ---------------------------------------------
@@ -811,7 +820,9 @@ def test_anything_but_png_jpeg_or_webp_is_refused(product, media, name, data):
     with pytest.raises(ValidationError) as excinfo:
         section.full_clean()
 
-    assert excinfo.value.message_dict["image"] == ["این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."]
+    assert excinfo.value.message_dict["image"] == [
+        "فایل انتخاب‌شده تصویر سالم PNG،‏ JPEG یا WebP نیست و پنل فقط همین سه قالب را می‌پذیرد."
+    ]
     assert not [path for path in media.rglob("*") if path.is_file()], "nothing was stored"
 
 

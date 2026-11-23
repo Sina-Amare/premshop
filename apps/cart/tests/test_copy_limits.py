@@ -7,7 +7,18 @@ pytestmark = pytest.mark.django_db
 
 @pytest.mark.parametrize(
     "quantity,message",
-    [(0, "باید حداقل ۱ تا انتخاب کنید."), (4, "سقف خرید این گزینه در هر سفارش ۳ است.")],
+    [
+        (
+            0,
+            "تعداد هر محصول در سبد خرید باید دست‌کم ۱ باشد و برای حذف محصول، دکمه‌ی «حذف» کنار"
+            " آن را بزنید.",
+        ),
+        (
+            4,
+            "سقف خرید این گزینه در هر سفارش ۳ است و اگر به تعداد بیشتری نیاز دارید، بقیه را در"
+            " سفارش بعدی بخرید.",
+        ),
+    ],
 )
 def test_quantity_errors_name_the_limit(client, plan, quantity, message):
     response = client.post(
@@ -22,7 +33,10 @@ def test_current_stock_error_and_cart_limit_use_short_labels(client, plan):
     response = client.post(
         "/cart/add/", {"plan": plan.pk, "quantity": 3}, HTTP_ACCEPT="application/json"
     )
-    assert response.json()["message"] == "از این گزینه فقط ۲ تا موجود است."
+    assert response.json()["message"] == (
+        "از این گزینه در حال حاضر فقط ۲ مورد موجود است و می‌توانید حداکثر همین تعداد را"
+        " انتخاب کنید."
+    )
     client.post("/cart/add/", {"plan": plan.pk})
     body = client.get("/cart/").content.decode()
     assert "سقف خرید این گزینه در هر سفارش ۲ است." in body

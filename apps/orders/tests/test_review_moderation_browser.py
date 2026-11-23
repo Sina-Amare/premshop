@@ -69,21 +69,29 @@ def test_moderation_from_the_panel_home_through_history(
         check(
             "history-empty",
             history,
-            page.get_by_text("هنوز تغییری برای این مورد ثبت نشده.", exact=False),
+            page.get_by_text("هنوز تغییری برای این مورد در پنل ثبت نشده است", exact=False),
         )
         page.go_back()
         expect(publish).to_be_visible()
         stale = context.new_page()
         stale.goto(live_server.url + detail)
         publish.press("Enter")
-        check("detail-published", detail, page.get_by_text("نظر منتشر شد.", exact=True))
+        check(
+            "detail-published",
+            detail,
+            page.get_by_text("نظر منتشر شد و از این پس در صفحه‌ی محصول دیده می‌شود.", exact=True),
+        )
         published_queue = queue + "?status=published"
         page.goto(live_server.url + published_queue)
         check("queue-published", published_queue, link)
         link.press("Enter")
         expect(page).to_have_url(live_server.url + detail)
         stale.get_by_role("button", name="انتشار نظر").press("Enter")
-        expect(stale.get_by_text("وضعیت این نظر عوض شده است.")).to_be_visible()
+        expect(
+            stale.get_by_text(
+                "وضعیت این نظر پس از باز شدن این صفحه تغییر کرده است و برای دیدن وضعیت فعلی آن، صفحه را دوباره باز کنید."
+            )
+        ).to_be_visible()
         assert stale.url == live_server.url + detail
         stale.screenshot(path=str(tmp_path / f"detail-stale-{width}.png"), full_page=True)
         stale.close()
@@ -94,7 +102,11 @@ def test_moderation_from_the_panel_home_through_history(
         expect(reason).to_have_value("private_information")
         hide = page.get_by_role("button", name="پنهان‌کردن نظر")
         hide.press("Enter")
-        check("detail-hidden", detail, page.get_by_text("نظر پنهان شد.", exact=True))
+        check(
+            "detail-hidden",
+            detail,
+            page.get_by_text("نظر پنهان شد و دیگر در صفحه‌ی محصول دیده نمی‌شود.", exact=True),
+        )
         expect(hide).to_have_count(0)
         page.get_by_role("link", name="تاریخچه‌ی تغییرات").press("Enter")
         check("history", history, page.get_by_text("اطلاعات شخصی یا رمز ورود", exact=False))

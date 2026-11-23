@@ -35,7 +35,10 @@ def test_sign_in_choice_error_and_immediate_sms_switch(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("123")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(
-            page.get_by_text("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.", exact=True)
+            page.get_by_text(
+                "شماره‌ی موبایلی که وارد کردید درست نیست، چون شماره‌ی موبایل باید ۱۱ رقم داشته باشد و با ۰۹ شروع شود.",
+                exact=True,
+            )
         ).to_be_visible()
         page.screenshot(path=str(tmp_path / f"sign-in-error-{width}.png"), full_page=True)
         page.get_by_label("شماره‌ی موبایل", exact=True).fill(PHONE)
@@ -215,7 +218,7 @@ def test_telegram_resend_keeps_sms_enabled_and_never_announces_delivery(
                 json=(
                     {"ok": True, "channel": "telegram", "expires_in": 600, "cooldown": 120}
                     if accepted
-                    else {"ok": False, "error": "کد ورود فرستاده نشد."}
+                    else {"ok": False, "error": "کد ورود جدید فرستاده نشد."}
                 ),
             ),
         )

@@ -182,7 +182,7 @@ def test_each_reason_cancels_only_from_its_own_statuses(buyer, plan, operator, s
 )
 def test_nothing_voluntary_cancels_a_paid_item(buyer, plan, operator, reason):
     _, item = queued(buyer, plan, operator)
-    with pytest.raises(ValidationError, match="با این دلیل لغو"):
+    with pytest.raises(ValidationError, match="با دلیلی که انتخاب کرده"):
         cancel(item, operator, reason)
     item.refresh_from_db()
     assert item.status == "QUEUED" and not Refund.objects.exists()
@@ -190,7 +190,7 @@ def test_nothing_voluntary_cancels_a_paid_item(buyer, plan, operator, reason):
 
 def test_a_cancellation_needs_a_note(buyer, plan, operator):
     _, item = queued(buyer, plan, operator)
-    with pytest.raises(ValidationError, match="یادداشت را بنویسید"):
+    with pytest.raises(ValidationError, match="دلیل این کار بنویسید"):
         cancel(item, operator, note="   ")
     assert not Refund.objects.exists()
 
@@ -477,7 +477,7 @@ def test_a_repeated_or_stale_cancellation_changes_nothing(buyer, plan, operator)
     _, item = queued(buyer, plan, operator)
     page = event_id(item)
     cancel(item, operator, expected_event_id=page)
-    with pytest.raises(ValidationError, match="قبلاً ثبت شده"):
+    with pytest.raises(ValidationError, match="با همین فرم ثبت شده"):
         cancel(item, operator, expected_event_id=page)
     second = User.objects.create_superuser("second@example.test")
     with pytest.raises(ValidationError, match="صفحه را دوباره باز کنید"):

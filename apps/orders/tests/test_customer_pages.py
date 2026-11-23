@@ -158,7 +158,11 @@ def test_invoice_is_standalone_owner_only_and_has_no_private_values(client, buye
     body = response.content.decode()
     assert response.status_code == 200
     privacy_headers(response)
-    assert "فاکتور سفارش" in body and "این فاکتور رسید پرداخت نیست." in body
+    assert (
+        "فاکتور سفارش" in body
+        and "پرداخت این سفارش هنوز تأیید نشده است و این فاکتور تا پیش از تأیید پرداخت، رسید پرداخت به شمار نمی‌آید."
+        in body
+    )
     assert "دانلود تصویر فاکتور" in body and "در انتظار پرداخت" in body
     assert to_persian_digits(order.order_number) in body
     assert "تعداد: ۲" in body
@@ -477,8 +481,10 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
     # Unpaid: paying through support is the action, so the card says what to send, once.
-    assert "شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید." in body
-    assert "در تلگرام، شماره‌ی سفارش و شناسه‌ی پشتیبانی را بفرستید." not in body
+    assert (
+        "شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام برای پشتیبانی بفرستید تا روش پرداخت" in body
+    )
+    assert "برای پیگیری، شماره‌ی سفارش و شناسه‌ی پشتیبانی را در تلگرام" not in body
     assert f'<a href="{details["telegram_url"]}"' in body
     assert f'<a href="mailto:{details["email"]}"' in body
 
@@ -519,5 +525,5 @@ def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
 
     page = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    assert ("پس از تحویل به شما خبر می‌دهیم." in page) is promised
+    assert ("پس از تحویل، از طریق ایمیل یا تلگرام به شما اطلاع می‌دهیم" in page) is promised
     assert ("ایمیلتان را وارد کنید" in page) is not promised

@@ -104,4 +104,4 @@ def test_checkout_says_a_typed_email_is_kept_on_an_account_without_one(client, p
 
     page = client.get(reverse("checkout")).content.decode()
 
-    assert "اگر حسابتان ایمیل ندارد، همین را در حساب هم ثبت می‌کنیم." in page
+    assert "اگر حساب کاربری شما ایمیلی ندارد، این ایمیل در حساب کاربری‌تان هم ثبت می‌شود." in page

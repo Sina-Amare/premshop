@@ -169,7 +169,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
     order, item = queued(buyer, plan, operator)
     cancel(item, operator, note="SECRET-CANCELLATION")
     cancelled = rows("item_cancelled").get()
-    assert "در انتظار واریز" in cancelled.text_body
+    assert "این پیام تأیید واریز نیست" in cancelled.text_body
     assert "SECRET-CANCELLATION" not in cancelled.text_body + cancelled.html_body
     assert not rows("item_refunded").exists()
     refund = Refund.objects.get(order_item=item)
@@ -184,7 +184,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         executed_at=timezone.now(),
     )
     refunded = rows("item_refunded").get()
-    assert "به شما برگرداندیم" in refunded.text_body
+    assert "به حساب شما واریز شد" in refunded.text_body
     for row in (cancelled, refunded):
         assert "SECRET-TRANSFER-REF" not in row.text_body + row.html_body
         assert "2468" not in row.text_body + row.html_body
@@ -211,10 +211,14 @@ def test_an_unpaid_cancellation_is_one_message_for_the_whole_order(
     email = rows("item_cancelled").get(channel="email")
     bot = rows("item_cancelled").get(channel="telegram")
     assert email.subject == f"سفارش {to_persian_digits(order.order_number)} لغو شد"
-    if path == "expiry":
-        said, state = "پرداختی برای این سفارش ثبت نشد.", "پایان مهلت پرداخت"
-    else:
-        said, state = "پرداختی برای این سفارش ثبت نشده بود.", "لغوشده"
+    said, state = {
+        "customer": ("به درخواست خودتان لغو شد و چون پرداختی برای آن ثبت نشده بود", "لغوشده"),
+        "operator": ("را لغو کرد و چون پرداختی برای آن ثبت نشده بود", "لغوشده"),
+        "expiry": (
+            "لغو شد، چون تا ۲۴ ساعت پس از ثبت آن پرداختی دریافت نکردیم",
+            "پایان مهلت پرداخت",
+        ),
+    }[path]
     for body in (email.text_body, email.html_body, bot.text_body):
         assert "در انتظار واریز" not in body and "بازگشت وجه" not in body
         assert said in body and state in body and "سرویس نمونه" in body

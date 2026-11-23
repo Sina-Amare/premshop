@@ -178,7 +178,7 @@ def test_customer_sees_queue_without_reference_on_any_public_projection(
         assert reference not in response.content.decode()
         if name == "order-detail":
             assert "در حال آماده‌سازی" in response.content.decode()
-            assert "پرداخت آنلاین هنوز فعال نیست" not in response.content.decode()
+            assert "پرداخت آنلاین هنوز فعال نشده است" not in response.content.decode()
     assert client.get(url(order)).status_code == 302
 
 
@@ -204,4 +204,7 @@ def test_payment_form_and_mismatch_follow_panel_language(client, order, operator
     assert "Bank reference" in response.content.decode()
     response = client.post(url(order), {"amount": "1", "bank_ref": "ref"})
     assert response.status_code == 400
-    assert "The received amount must exactly match the order total." in response.content.decode()
+    assert (
+        "The payment was not recorded, because the amount received is not exactly the order"
+        in response.content.decode()
+    )

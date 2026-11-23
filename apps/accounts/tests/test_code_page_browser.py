@@ -88,7 +88,7 @@ def test_resend_stays_disabled_while_its_request_is_pending(page, live_server, u
         page.wait_for_timeout(50)
         assert len(held) == 1
     finally:
-        held[0].fulfill(json={"ok": False, "error": "کد فرستاده نشد."})
+        held[0].fulfill(json={"ok": False, "error": "کد ورود جدید فرستاده نشد."})
 
 
 def test_the_whole_flow_wrong_then_pasted_right(page, live_server, user, tmp_path):
@@ -204,7 +204,7 @@ def test_the_clock_runs_out_and_resend_brings_a_new_code(page, live_server, user
     )
     assert page.locator(".otp__cell").first.is_disabled()
     assert page.evaluate("() => document.activeElement.id") == "resend"
-    assert "منقضی" in status.text_content()
+    assert "اعتبار کد ورود به پایان رسیده" in status.text_content()
     assert "badge--time" not in page.get_attribute(
         "#code-clock", "class"
     ), "amber marks the running clock"
@@ -264,7 +264,12 @@ def test_a_wrong_code_animation_cannot_reopen_expired_cells(
 
     def one_second_left(route):
         if route.request.method == "POST":
-            route.fulfill(json={"ok": False, "error": "کد ورود درست نیست. دوباره تلاش کنید."})
+            route.fulfill(
+                json={
+                    "ok": False,
+                    "error": "کد ورودی که وارد کردید درست نیست و می‌توانید آن را دوباره وارد کنید یا کد جدیدی درخواست کنید.",
+                }
+            )
         else:
             response = route.fetch()
             body = re.sub(r'data-expires-in="\d+"', 'data-expires-in="1"', response.text())
@@ -274,7 +279,7 @@ def test_a_wrong_code_animation_cannot_reopen_expired_cells(
     page.reload()
     page.clock.run_for(submit_after)
     page.evaluate(PASTE_JS, "000000")
-    expect(page.locator("#code-error")).to_contain_text("کد ورود درست نیست")
+    expect(page.locator("#code-error")).to_contain_text("کد ورودی که وارد کردید درست نیست")
     page.clock.run_for(400)
 
     expect(page.locator(".otp__cell:enabled")).to_have_count(0)
@@ -354,7 +359,10 @@ def test_without_javascript_the_code_page_still_does_its_whole_job(
         ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
         page.click("#resend")
         page.wait_for_url("**/login/code/verify/")
-        assert "کد جدید را فرستادیم." in page.locator("main").inner_text()
+        assert (
+            "کد ورود جدید با پیامک فرستاده شد و کد قبلی دیگر اعتبار ندارد."
+            in page.locator("main").inner_text()
+        )
         assert len(sms.outbox) == 2
         page.screenshot(path=str(tmp_path / "10-nojs-resent.png"), full_page=True)
 

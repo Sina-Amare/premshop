@@ -266,7 +266,7 @@ def test_blank_input_is_neutral_and_not_logged(client, input_order, operator):
     client.force_login(operator)
     response = client.post(reveal_url(input_order))
     assert response.status_code == 200
-    assert "اطلاعاتی برای نمایش وجود ندارد" in response.content.decode()
+    assert "مشتری برای این محصول اطلاعاتی وارد نکرده است" in response.content.decode()
     assert not models.CredentialAccessLog.objects.exists()
 
 
@@ -511,7 +511,7 @@ def test_input_reveal_and_read_only_history_in_browser(
         page.goto(live_server.url + detail)
         assert page.url.endswith(detail)
         expect(page.locator("#input-access-history")).to_contain_text(
-            "هنوز اطلاعاتی نمایش داده نشده."
+            "اطلاعات این سفارش تا امروز برای هیچ‌کس نمایش داده نشده است."
         )
         assert long_value not in page.content()
         page.screenshot(path=str(tmp_path / f"masked-{width}-{javascript}.png"), full_page=True)
@@ -557,7 +557,9 @@ def test_input_reveal_and_read_only_history_in_browser(
         item.customer_input = ""
         item.save(update_fields=["customer_input"])
         page.locator("[data-customer-input-reveal]").click()
-        expect(page.locator("body")).to_contain_text("اطلاعاتی برای نمایش وجود ندارد.")
+        expect(page.locator("body")).to_contain_text(
+            "برای این محصول هنوز اطلاعات تحویلی ثبت نشده است."
+        )
         assert page.url.endswith(url)
         page.screenshot(path=str(tmp_path / f"blank-{width}-{javascript}.png"), full_page=True)
         page.get_by_role("link", name="بازگشت به سفارش", exact=True).click()

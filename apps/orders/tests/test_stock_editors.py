@@ -42,7 +42,7 @@ def test_stale_stock_form_preserves_checkout_or_requests_operator_review(
     plan.refresh_from_db()
     assert plan.stock_quantity == 2
     if intentional:
-        assert "موجودی تغییر کرده است" in response.content.decode()
+        assert "موجودی این پلن پس از باز شدن این صفحه" in response.content.decode()
 
 
 @pytest.mark.parametrize("token", ["", "forged"])

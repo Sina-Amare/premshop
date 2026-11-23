@@ -67,7 +67,9 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
             expect(box.locator('[data-state="claim_open"]')).to_be_visible()
             assert box.locator("form").count() == 0
         elif state == "expired":
-            expect(box).to_contain_text("مهلت ثبت درخواست تعویض برای این محصول تمام شده است.")
+            expect(box).to_contain_text(
+                "مهلت ثبت درخواست تعویض برای این محصول تمام شده است و اگر با آن مشکلی دارید، به پشتیبانی پیام بدهید."
+            )
         else:
             box.locator("summary").click()
             if state in ("rejected", "replaced"):
@@ -86,13 +88,17 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
                     "node => { node.checked = true; node.value = 'invalid'; }"
                 )
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
-                expect(page.get_by_role("alert")).to_contain_text("یکی از دلیل‌ها را انتخاب کنید.")
+                expect(page.get_by_role("alert")).to_contain_text(
+                    "برای ثبت درخواست تعویض، یکی از دلیل‌های فهرست را انتخاب کنید."
+                )
             elif state == "stale":
                 submit(item, buyer)
                 reject(item, operator)
                 box.get_by_label(LABEL_A, exact=True).check()
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
-                expect(page.get_by_role("alert")).to_contain_text("وضعیت این محصول تغییر کرده است")
+                expect(page.get_by_role("alert")).to_contain_text(
+                    "وضعیت این محصول پس از باز شدن این صفحه تغییر کرده"
+                )
         assert page.locator("html").get_attribute("dir") == "rtl"
         page.add_script_tag(path=str(AXE))
         violations = page.evaluate(RUN_AXE, STYLED)["violations"]

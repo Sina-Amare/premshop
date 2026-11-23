@@ -27,9 +27,9 @@ def test_daily_refusal_is_readable_on_the_code_page(browser, live_server, width,
         page.get_by_role("button", name="دریافت کد ورود").click()
         expect(page).to_have_url(live_server.url + path)
         text = (
-            "درخواست کد از این شبکه به سقف روزانه رسیده است."
+            "درخواست کد ورود از شبکه‌ی اینترنتی که به آن متصل هستید به سقف روزانه رسیده است"
             if network
-            else "درخواست کد برای این شماره به سقف روزانه رسیده است."
+            else "درخواست کد ورود برای این شماره به سقف روزانه رسیده است"
         )
         expect(page.get_by_text(text, exact=False)).to_be_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")

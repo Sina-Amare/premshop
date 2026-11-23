@@ -120,7 +120,7 @@ def test_category_page_and_its_empty_state(client, category, product):
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "در این دسته فعلاً محصولی نیست" in body
+    assert "در حال حاضر محصولی در این دسته برای فروش نداریم" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):
@@ -378,7 +378,7 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
 
     assert ">ناموجود</button>" in body
     assert "بپرسید چه زمانی دوباره موجود می‌شود." in body
-    assert "این محصول فعلاً موجود نیست" not in body
+    assert "گزینه‌ی انتخاب‌شده در حال حاضر موجود نیست" not in body
 
 
 # Attributes allowed after the class: a discount with an end carries data-left.
@@ -651,7 +651,7 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "الان تعداد جستجوها زیاد است." in response.content.decode()
+    assert "تعداد جستجوها در این لحظه زیاد است" in response.content.decode()
 
 
 @pytest.mark.parametrize("query", ["خرید اکانت جمینای", "خرید اکانت جمینای پرو", "اکانت gemini"])

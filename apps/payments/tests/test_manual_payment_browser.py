@@ -43,9 +43,9 @@ def test_operator_records_payment_and_customer_sees_queue(
     reference_label = "شماره‌ی پیگیری بانک" if language == "fa" else "Bank reference"
     history_label = "پرداخت‌های سفارش" if language == "fa" else "Order payments"
     mismatch = (
-        "مبلغ دریافتی باید دقیقاً برابر"
+        "مبلغ دریافتی با مبلغ نهایی سفارش دقیقاً برابر نیست"
         if language == "fa"
-        else "The received amount must exactly match"
+        else "The payment was not recorded, because the amount received is not exactly"
     )
     page = context.new_page()
     errors = []

@@ -85,13 +85,18 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             page.locator('[name="expected_support_token"]').evaluate("el => {el.value = 'stale';}")
             page.get_by_role("button", name="ساخت شناسه‌ی جدید", exact=True).click()
             expect(page.get_by_role("alert")).to_have_text(
-                "شناسه تغییر کرده است؛ صفحه را دوباره باز کنید."
+                "شناسه‌ی پشتیبانی این سفارش پیش از این درخواست عوض شده است و برای دیدن شناسه‌ی فعلی، صفحه را دوباره باز کنید."
             )
             expect(page).to_have_url(
                 live_server.url + reverse("order-support-replace", args=[order.order_number])
             )
         if state == "unavailable":
-            expect(page.get_by_text("شناسه‌ی پشتیبانی در دسترس نیست.", exact=True)).to_be_visible()
+            expect(
+                page.get_by_text(
+                    "شناسه‌ی پشتیبانی در حال حاضر نمایش داده نمی‌شود و برای پیگیری این سفارش، شماره‌ی سفارش را برای پشتیبانی بفرستید.",
+                    exact=True,
+                )
+            ).to_be_visible()
             expect(
                 page.locator("[data-copy-support], [name=expected_support_token]")
             ).to_have_count(0)

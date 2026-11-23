@@ -346,11 +346,11 @@ def test_changing_a_line_that_is_gone_says_so_instead_of_reporting_success(plan)
     """A stale tab pressed «+» on a line another tab had removed and was told
     the quantity had been updated."""
     request = request_for()
-    with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
+    with pytest.raises(ValidationError, match="دیگر در سبد خرید شما نیست"):
         set_quantity(request, plan_id=plan.pk, quantity=2)
     add_to_cart(request, plan_id=plan.pk)
     remove_from_cart(request, plan_id=plan.pk)
-    with pytest.raises(ValidationError, match="دیگر در سبد خرید نیست"):
+    with pytest.raises(ValidationError, match="دیگر در سبد خرید شما نیست"):
         set_quantity(request, plan_id=plan.pk, quantity=2)
 
 

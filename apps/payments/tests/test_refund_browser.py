@@ -51,7 +51,9 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.get_by_label("چهار رقم آخر مقصد", exact=True).fill("6037")
         page.get_by_label("شماره‌ی پیگیری بانک", exact=True).fill(reference)
         submit("ثبت واریز بازپرداخت")
-        expect(page.locator(".errorlist").first).to_contain_text("مبلغ واریز باید دقیقاً برابر")
+        expect(page.locator(".errorlist").first).to_contain_text(
+            "مبلغ واریز با جمع بازپرداخت‌های انتخاب‌شده دقیقاً برابر نیست"
+        )
         expect(page.locator("#id_bank_ref")).to_have_value(reference)
         shot("refund-mismatch-long-reference", form_url, "#manual-payment-title")
         page.locator("#id_amount").fill("400000")
@@ -74,7 +76,9 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         shot("reconciliation-invalid-day", report, "#reconciliation-title")
         execute(order, refunds[2:], operator)
         page.goto(live_server.url + form_url)
-        expect(page.get_by_text("بازپرداختی در انتظار واریز نیست.", exact=True)).to_be_visible()
+        expect(
+            page.get_by_text("برای این سفارش هیچ بازپرداختی در انتظار واریز نیست.", exact=True)
+        ).to_be_visible()
         expect(page.get_by_role("button", name="ثبت واریز بازپرداخت", exact=True)).to_have_count(0)
         shot("refund-none-owed", form_url, "#manual-payment-title")
     finally:

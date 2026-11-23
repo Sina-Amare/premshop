@@ -72,7 +72,7 @@ def test_all_five_review_drafts_have_descriptions_and_match_the_migration():
         assert page.body.strip()
         assert 0 < len(page.description) <= 300
         page.is_published = True
-        with pytest.raises(ValidationError, match="پیش از انتشار"):
+        with pytest.raises(ValidationError, match="صفحه تا پر شدن آن"):
             page.full_clean()
 
 

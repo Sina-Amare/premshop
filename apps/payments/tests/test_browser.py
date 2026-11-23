@@ -190,7 +190,9 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
             expect(page.locator(".otp__cell")).to_have_count(6)
             assert not page.get_by_role("button", name="تأیید کد و ادامه").is_visible()
             page.keyboard.type("000000")
-            expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
+            expect(page.locator("[data-login-status]")).to_contain_text(
+                "کد ورودی که وارد کردید درست نیست"
+            )
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
             expect(page.locator(".field__error")).to_contain_text("۱۱ رقم")
@@ -221,7 +223,9 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page.locator("[data-inline-code]")).to_be_visible()
         page.keyboard.type("000000")
-        expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
+        expect(page.locator("[data-login-status]")).to_contain_text(
+            "کد ورودی که وارد کردید درست نیست"
+        )
         page.wait_for_function("() => document.querySelector('.otp__cell').value === ''")
         expect(page.locator(".otp__cell").first).to_be_focused()
         page.keyboard.type("۱۲۳۴۵۶")
@@ -233,7 +237,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         screenshot(page, "review", width, tmp_path)
         page.get_by_label("کد تخفیف", exact=True).fill("WRONG")
         page.get_by_role("button", name="اعمال کد تخفیف").click()
-        expect(page.locator("[data-checkout-error]")).to_contain_text("این کد تخفیف درست نیست")
+        expect(page.locator("[data-checkout-error]")).to_contain_text("در پرم‌شاپ وجود ندارد")
         assert not page.get_by_role("button", name="ثبت سفارش", exact=True).count()
         screenshot(page, "discount-error", width, tmp_path)
         page.get_by_role("button", name="حذف کد تخفیف").click()
@@ -317,7 +321,11 @@ def test_long_checkout_without_consent_and_empty_cart_remain_readable(
         screenshot(page, "long-review", width, tmp_path)
         cart.items.all().delete()
         page.reload()
-        expect(page.get_by_text("سبد خرید شما خالی است.", exact=True)).to_be_visible()
+        expect(
+            page.get_by_text(
+                "سبد خرید شما خالی است و برای ثبت سفارش، اول محصولی به آن اضافه کنید.", exact=True
+            )
+        ).to_be_visible()
         screenshot(page, "empty", width, tmp_path)
     finally:
         context.close()

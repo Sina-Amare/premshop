@@ -18,7 +18,7 @@ from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 
 pytestmark = pytest.mark.django_db
 
-STALE = "وضعیت این محصول تغییر کرده است"
+STALE = "وضعیت این محصول پس از باز شدن این صفحه تغییر کرده است"
 
 
 @pytest.fixture
@@ -92,7 +92,10 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     review = client.post(page(), {"action": "end", "step": "review", "expected": opened.pk})
     review_body = review.content.decode()
     assert 'name="step" value="confirm"' in review_body
-    assert "از همین حالا مهلت ۱ محصول در صف دوباره می‌گذرد." in review_body
+    assert (
+        "با پایان تعطیلی، مهلت تحویل ۱ محصول متوقف‌شده به اندازه‌ی مدت تعطیلی عقب می‌افتد"
+        in review_body
+    )
     done = client.post(page(), {"action": "end", "step": "confirm", "expected": opened.pk})
     assert done.status_code == 302
     opened.refresh_from_db()
@@ -100,7 +103,10 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     assert order.items.get().sla_paused_at is None
     body = client.get(page()).content.decode()
     assert "تحویل طبق روال" in body and "تعطیلی‌های گذشته" in body and owner.email in body
-    assert "تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید." in body
+    assert (
+        "تعطیلی تمام شد و مهلت تحویل محصول‌های متوقف‌شده به اندازه‌ی مدت تعطیلی عقب افتاد و مهلت‌های جدید را در صف سفارش‌ها می‌بینید."
+        in body
+    )
 
 
 def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner):
@@ -126,7 +132,9 @@ def test_first_start_requires_an_explicit_blank_token(client, owner, value):
 
 
 def test_the_history_has_an_empty_state(client, owner):
-    assert "هنوز تعطیلی‌ای ثبت نشده است." in client.get(page()).content.decode()
+    assert (
+        "تا امروز هیچ تعطیلی‌ای برای فروشگاه ثبت نشده است." in client.get(page()).content.decode()
+    )
 
 
 def test_holiday_copy_describes_clocks_starting_from_payment_or_details(client, owner, buyer, plan):
@@ -295,4 +303,4 @@ def test_a_delay_form_from_before_the_holiday_is_out_of_date_after_it(client, ow
     )
     body = response.content.decode()
     assert response.status_code == 400 and STALE in body
-    assert "این تأخیر قبلاً ثبت شده" not in body
+    assert "گزارش تأخیر تأمین این محصول قبلاً" not in body
