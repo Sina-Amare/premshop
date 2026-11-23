@@ -10,7 +10,7 @@ from django.db import IntegrityError, transaction
 
 from apps.accounts.models import User
 from apps.catalog.models import Plan
-from apps.orders import holiday, services
+from apps.orders import holiday, selectors, services
 from apps.orders.clock import TEHRAN, resumed_deadline
 from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 from apps.orders.tests.test_delivery import deliver
@@ -169,6 +169,32 @@ def test_asking_a_paused_item_for_details_keeps_the_time_it_stopped(buyer, plan,
         act(services.resume_input, item, operator)
     item.refresh_from_db()
     assert item.due_at == resumed_deadline(due, began, received)
+
+
+# What the customer reads
+
+
+def test_the_customer_never_reads_a_holidays_own_lines(buyer, plan, operator):
+    order, item = purchase(buyer, plan, operator, telegram=False)
+    start(operator, MONDAY + timedelta(hours=1))
+    end(operator, MONDAY + timedelta(hours=2))
+    moved = "زمان تحویل تغییر کرد"
+
+    def read():
+        page = [row["status"] for row in selectors.customer_timeline(order)]
+        tracking = [
+            row["status"]
+            for group in selectors.order_for_tracking(order.tracking_token)
+            for row in group["timeline"]
+        ]
+        return page, tracking
+
+    page, tracking = read()
+    assert moved not in page and moved not in tracking
+    with time_machine.travel(MONDAY + timedelta(hours=3), tick=False):
+        act(services.delay_supply, item, operator, hours=2, note="تأمین‌کننده دیر کرد")
+    page, tracking = read()
+    assert moved in page and moved in tracking
 
 
 # Delivering during a holiday
