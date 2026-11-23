@@ -11,14 +11,14 @@
       <span class="panel-pill" data-tone="done">{% translate "تحویل هر روز" %}</span>
     {% endif %}
   </header>
-  <p class="holiday-lead">{% if facts.opened %}{% translate "مهلت تحویل محصول‌های در صف متوقف است و با پایان تعطیلی، به اندازه‌ی توقف عقب می‌رود." %}{% else %}{% translate "در تعطیلی، مهلت تحویل محصول‌های در صف متوقف می‌شود و با پایان آن، به اندازه‌ی توقف عقب می‌رود. مهلت فرستادن اطلاعات مشتری متوقف نمی‌شود." %}{% endif %}</p>
+  <p class="holiday-lead">{% if facts.opened %}{% translate "شمارش مهلت تحویل متوقف است. مهلت فرستادن اطلاعات تغییر نمی‌کند." %}{% else %}{% translate "در تعطیلی، شمارش مهلت تحویل متوقف می‌شود. مهلت فرستادن اطلاعات تغییر نمی‌کند." %}{% endif %}</p>
   {% if error %}<div role="alert" class="delivery-error holiday-error"><p>{{ error }}</p></div>{% endif %}
   <dl class="holiday-ledger">
     {% if facts.opened %}
       <div><dt>{% translate "شروع" %}</dt><dd>{{ facts.opened.started_at|jalali }}، {% translate "ساعت" %} <span class="holiday-figure">{{ facts.opened.started_at|time:"H:i"|fa_digits }}</span></dd></div>
       <div><dt>{% translate "مدت تا این لحظه" %}</dt><dd class="holiday-figure">{{ elapsed }}</dd></div>
       <div><dt>{% translate "مهلت‌های متوقف" %}</dt><dd>{% blocktranslate with items=facts.item_count|fa_digits orders=facts.order_count|fa_digits %}{{ items }} محصول در {{ orders }} سفارش{% endblocktranslate %}</dd></div>
-      <div><dt>{% translate "پرداخت‌های جدید" %}</dt><dd>{% translate "با مهلت متوقف وارد صف می‌شوند" %}</dd></div>
+      <div><dt>{% translate "مهلت‌های جدید" %}</dt><dd>{% translate "از ابتدا متوقف‌اند" %}</dd></div>
       <div><dt>{% translate "زودترین مهلت جدید (تخمین)" %}</dt><dd>{% if facts.earliest %}{{ facts.earliest|jalali }}، <span class="holiday-figure">{{ facts.earliest|time:"H:i"|fa_digits }}</span>{% else %}—{% endif %}</dd></div>
     {% else %}
       <div><dt>{% translate "محصول‌های در صف" %}</dt><dd>{% blocktranslate with items=facts.item_count|fa_digits orders=facts.order_count|fa_digits %}{{ items }} محصول در {{ orders }} سفارش{% endblocktranslate %}</dd></div>
@@ -31,7 +31,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="{{ confirming }}">
       <input type="hidden" name="expected" value="{{ token }}">
-      <p id="holiday-confirm-title">{% if confirming == "start" %}{% blocktranslate with items=facts.item_count|fa_digits %}از همین لحظه، مهلت {{ items }} محصول در صف و هر پرداخت جدید متوقف می‌شود.{% endblocktranslate %}{% else %}{% blocktranslate with items=facts.item_count|fa_digits %}مهلت {{ items }} محصول به اندازه‌ی توقف عقب می‌رود.{% endblocktranslate %}{% endif %}</p>
+      <p id="holiday-confirm-title">{% if confirming == "start" %}{% blocktranslate with items=facts.item_count|fa_digits %}شمارش مهلت تحویل {{ items }} محصول در صف متوقف می‌شود. مهلت‌های جدید هم از ابتدا متوقف‌اند.{% endblocktranslate %}{% else %}{% blocktranslate with items=facts.item_count|fa_digits %}شمارش مهلت تحویل {{ items }} محصول از سر گرفته می‌شود.{% endblocktranslate %}{% endif %}</p>
       <div class="holiday-actions">
         <button type="submit" name="step" value="confirm" class="order-input-action holiday-primary">{% if confirming == "start" %}{% translate "تأیید و شروع تعطیلی" %}{% else %}{% translate "تأیید و پایان تعطیلی" %}{% endif %}</button>
         <a class="order-input-action" href="{% url 'admin:orders_order_holiday' %}">{% translate "انصراف" %}</a>

@@ -52,7 +52,7 @@ def test_a_holiday_from_start_to_end_by_keyboard(browser, live_server, buyer, pl
         check(holiday_page, "تحویل هر روز")
         expect(page.locator("[data-holiday-banner]")).to_have_count(0)
         press("شروع تعطیلی")
-        check(holiday_page, "از همین لحظه")
+        check(holiday_page, "مهلت‌های جدید هم از ابتدا متوقف‌اند")
         press("تأیید و شروع تعطیلی")
         check(holiday_page, "در تعطیلی")
         expect(page.locator("[data-holiday-banner]")).to_be_visible()

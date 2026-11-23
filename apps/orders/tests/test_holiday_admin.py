@@ -13,7 +13,7 @@ from apps.orders.admin import queue_overview
 from apps.orders.models import Holiday, OrderItem
 from apps.orders.services import OrderLine, place_order
 from apps.orders.tests.test_delivery import delivery_url, form_data, queued
-from apps.orders.tests.test_input_clock import act, event_id
+from apps.orders.tests.test_input_clock import act, event_id, purchase
 from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 
 pytestmark = pytest.mark.django_db
@@ -90,7 +90,9 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     body = client.get(page()).content.decode()
     assert "تخمین" in body  # the new deadline is an estimate until the end is pressed
     review = client.post(page(), {"action": "end", "step": "review", "expected": opened.pk})
-    assert 'name="step" value="confirm"' in review.content.decode()
+    review_body = review.content.decode()
+    assert 'name="step" value="confirm"' in review_body
+    assert "شمارش مهلت تحویل ۱ محصول از سر گرفته می‌شود." in review_body
     done = client.post(page(), {"action": "end", "step": "confirm", "expected": opened.pk})
     assert done.status_code == 302
     opened.refresh_from_db()
@@ -124,6 +126,17 @@ def test_first_start_requires_an_explicit_blank_token(client, owner, value):
 
 def test_the_history_has_an_empty_state(client, owner):
     assert "هنوز تعطیلی‌ای ثبت نشده است." in client.get(page()).content.decode()
+
+
+def test_holiday_copy_describes_clocks_starting_from_payment_or_details(client, owner, buyer, plan):
+    review = client.post(page(), {"action": "start", "step": "review", "expected": ""})
+    assert "مهلت‌های جدید هم از ابتدا متوقف‌اند." in review.content.decode()
+    begin(owner)
+    _, waiting = purchase(buyer, plan, owner, telegram=True)
+    assert waiting.status == "AWAITING_INPUT" and waiting.due_at is None
+    body = client.get(page()).content.decode()
+    assert "مهلت‌های جدید" in body and "از ابتدا متوقف‌اند" in body
+    assert "پرداخت‌های جدید" not in body
 
 
 def test_only_the_owner_or_staff_given_the_permission_reach_the_page(client):
