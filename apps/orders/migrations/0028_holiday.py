@@ -6,10 +6,32 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def refuse_a_stranding_reverse(apps, schema_editor):
+    if apps.get_model("orders", "Holiday").objects.filter(ended_at=None).exists() or (
+        apps.get_model("orders", "OrderItem")
+        .objects.filter(status="QUEUED", sla_paused_at__isnull=False)
+        .exists()
+    ):
+        raise RuntimeError("End the holiday in the panel before reversing orders 0028.")
+    Event = apps.get_model("orders", "OrderItemEvent")
+    pending = apps.get_model("notifications", "Notification").objects.filter(
+        template_name="supply_delayed", status="pending"
+    )
+    # The sender's rule (notifications.services._superseded), on this migration's models.
+    for key in pending.values_list("dedupe_key", flat=True):
+        event_id = int(key.split(":")[1])
+        if Event.objects.filter(order_item__events__pk=event_id, pk__gt=event_id).exists():
+            raise RuntimeError(
+                "A superseded delay notice is still pending; let the worker's minute run drop"
+                " it before reversing orders 0028."
+            )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ("orders", "0027_review_admin_labels"),
+        ("notifications", "0006_drop_claim_alerts_on_reverse"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -106,4 +128,7 @@ class Migration(migrations.Migration):
                 name="holiday_ends_after_it_starts",
             ),
         ),
+        # Last, so a reverse checks first: earlier code would refuse to deliver a paused item,
+        # and would send a delay notice whose new time a later change made untrue.
+        migrations.RunPython(migrations.RunPython.noop, refuse_a_stranding_reverse),
     ]
