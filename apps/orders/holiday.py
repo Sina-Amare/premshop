@@ -43,6 +43,10 @@ def current() -> Holiday | None:
     return Holiday.objects.filter(ended_at=None).first()
 
 
+def clock_allows_delivery(item: OrderItem) -> bool:
+    return item.sla_paused_at is None or current() is not None
+
+
 def hold(item: OrderItem, started: datetime, opened: Holiday | None) -> None:
     """Stops a clock starting at `started` while `opened` is open. The caller holds `lock`."""
     if opened is not None and item.due_at is not None and item.sla_paused_at is None:

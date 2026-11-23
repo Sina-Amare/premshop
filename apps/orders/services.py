@@ -205,7 +205,7 @@ def deliver_item(
     if (
         item.status != OrderItem.Status.QUEUED
         or item.paid_at is None
-        or (item.sla_paused_at and holiday.current() is None)
+        or not holiday.clock_allows_delivery(item)
     ):
         raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()

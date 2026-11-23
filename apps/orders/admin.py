@@ -309,13 +309,13 @@ class OrderItemInline(TabularInline):
 
     @admin.display(description=_("تحویل"))
     def delivery(self, obj: OrderItem) -> str:
-        if obj.status == OrderItem.Status.QUEUED:
+        if obj.status == OrderItem.Status.QUEUED and holiday.clock_allows_delivery(obj):
             return format_html(
                 '<a class="order-input-action" href="{}">{}</a>',
                 reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
                 _("تحویل"),
             )
-        if obj.status == OrderItem.Status.AWAITING_INPUT:
+        if obj.status in (OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED):
             return format_html(
                 '<a class="order-input-action" data-danger href="{}">{}</a>',
                 reverse("admin:orders_order_deliver", args=[obj.order_id, obj.pk]),
@@ -787,9 +787,8 @@ class OrderAdmin(ModelAdmin):
         # deliver (A5), claim (A9) and replace (A10a) are separate services; the page
         # only chooses which one this item's status allows.
         # The rule deliver_item keeps: a stopped clock is a holiday's, and may still be delivered.
-        on_holiday = item.sla_paused_at is not None and holiday.current() is not None
         mode = {
-            OrderItem.Status.QUEUED: "deliver" if not item.sla_paused_at or on_holiday else None,
+            OrderItem.Status.QUEUED: "deliver" if holiday.clock_allows_delivery(item) else None,
             OrderItem.Status.DELIVERED: "claim",
             OrderItem.Status.REPLACEMENT_REQUESTED: "replace",
         }.get(cast(OrderItem.Status, item.status))

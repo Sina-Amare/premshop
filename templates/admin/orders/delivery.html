@@ -87,6 +87,8 @@
         <button data-danger type="submit" class="order-input-action">{% translate "رد درخواست تعویض" %}</button>
       </form>
     {% endif %}
+  {% elif item.status == "QUEUED" and item.sla_paused_at %}
+    <p>{% translate "مهلت تحویل" %}: {% translate "متوقف" %}</p>
   {% elif mode != "claim" %}
     <p>{% translate "این محصول در صف انجام نیست" %}: {{ item.get_status_display }}</p>
   {% endif %}

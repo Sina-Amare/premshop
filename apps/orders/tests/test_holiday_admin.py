@@ -202,6 +202,23 @@ def test_running_deadlines_lead_the_queued_tab_and_paused_ones_follow(client, ow
 # The delivery page
 
 
+def test_the_delivery_link_and_page_agree_for_a_stopped_item(client, owner, buyer, plan):
+    order, item = queued(buyer, plan, owner)
+    url = delivery_url(item)
+    order_url = reverse("admin:orders_order_change", args=[order.pk])
+    link = f'href="{url}"'
+    OrderItem.objects.filter(pk=item.pk).update(sla_paused_at=timezone.now())
+    order_body = client.get(order_url).content.decode()
+    assert f"{link}>تحویل</a>" not in order_body
+    assert f"{link}>لغو و بازپرداخت</a>" in order_body
+    body = client.get(url).content.decode()
+    assert "این محصول در صف انجام نیست" not in body
+    assert 'name="step" value="preview"' not in body
+    begin(owner)
+    assert f"{link}>تحویل</a>" in client.get(order_url).content.decode()
+    assert 'name="step" value="preview"' in client.get(url).content.decode()
+
+
 def test_during_a_holiday_a_paused_item_is_delivered_from_its_page(client, owner, buyer, plan):
     _, item = queued(buyer, plan, owner)
     begin(owner)
