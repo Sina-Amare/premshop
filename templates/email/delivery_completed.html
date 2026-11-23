@@ -1,8 +1,7 @@
-{% extends "email/base.html" %}
+{% extends "email/base.html" %}{% load fa %}
 {% block title %}محصول تحویل شد{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">محصول تحویل شد</h1>
-<p>این محصول تحویل شد. جزئیات آن را پس از ورود به حساب کاربری، در صفحه‌ی سفارش می‌بینید.</p>
-<p>اطلاعات ورود را در ایمیل ارسال نمی‌کنیم.</p>
+<p>تحویل {{ product_name|bdi }}، {{ plan_title|bdi }}، انجام شد و چون جزئیات تحویل را برای حفظ امنیت از طریق ایمیل نمی‌فرستیم، می‌توانید آن را پس از ورود به حساب کاربری در صفحه‌ی همین سفارش ببینید.</p>
 {% include "email/_order_notice.html" %}
 {% endblock %}

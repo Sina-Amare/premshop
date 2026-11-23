@@ -1,11 +1,11 @@
 {% load fa %}PremShop
 ———
 
-{% if state == "linked" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.
-اگر خودتان نبودید، از صفحه‌ی حساب کاربری قطعش کنید:
-{{ account_url }}{% elif state == "moved" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.
-اگر خودتان نبودید، به پشتیبانی خبر بدهید.{% else %}تلگرام{% if telegram %} {{ telegram }}{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.
-اگر خودتان نبودید، به پشتیبانی خبر بدهید.{% endif %}
+{% if state == "linked" %}حساب تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب کاربری شما متصل شد و از این پس خبر سفارش‌ها در همان تلگرام هم به شما می‌رسد.
+اگر این کار را خودتان انجام نداده‌اید، اتصال آن را از صفحه‌ی حساب کاربری قطع کنید:
+{{ account_url }}{% elif state == "moved" %}حساب تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب کاربری دیگری در PremShop متصل شد و از این پس خبر سفارش‌های شما در آن تلگرام نمی‌رسد.
+اگر این کار را خودتان انجام نداده‌اید، به پشتیبانی اطلاع دهید.{% else %}حساب تلگرام{% if telegram %} {{ telegram }}{% else %}تان{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب کاربری شما جدا شد و از این پس خبر سفارش‌ها فقط از طریق ایمیل به شما می‌رسد.
+اگر این کار را خودتان انجام نداده‌اید، به پشتیبانی اطلاع دهید.{% endif %}
 پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.
 
 ———

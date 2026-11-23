@@ -124,6 +124,8 @@ def enqueue_event(
     elif template_name == "item_cancelled":
         # An unpaid order's cancellation: no payment, so no refund line, and every product.
         context["products"] = list(dict.fromkeys(one.product_snapshot["name"] for one in items))
+        # One cancellation covers every unit, so the first names who cancelled.
+        context["cancel_reason"] = items[0].cancel_reason if items else ""
     if template_name in ("item_cancelled", "item_refunded"):
         refund = getattr(items[0], "refund", None) if item_id is not None else None
         context["amount"] = refund.amount if refund is not None else 0

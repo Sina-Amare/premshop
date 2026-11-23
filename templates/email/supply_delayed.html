@@ -2,7 +2,7 @@
 {% block title %}زمان تحویل تغییر کرد{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">زمان تحویل تغییر کرد</h1>
-<p>تحویل این محصول از زمانی که گفته بودیم دیرتر می‌شود.</p>
-<p>زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</p>
+<p>تحویل {{ product_name|bdi }}، {{ plan_title|bdi }}، به دلیل تأخیر در تأمین، دیرتر از زمانی که اعلام کرده بودیم انجام می‌شود و زمان تحویل جدید آن تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }} است.</p>
+<p>بابت این تأخیر عذرخواهی می‌کنیم و پس از تحویل، از طریق ایمیل به شما خبر می‌دهیم.</p>
 {% include "email/_order_notice.html" %}
 {% endblock %}

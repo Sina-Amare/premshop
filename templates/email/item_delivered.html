@@ -6,7 +6,7 @@
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">سفارش شما آماده است</h1>
 
-<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اطلاعات ورود {{ product_name }} آماده است.</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:1.95;color:#57534E;">اطلاعات ورود اکانت {{ product_name }} آماده است و با دکمه‌ی زیر می‌توانید آن را ببینید.</p>
 
 {% comment %}The ledger line — used once, here, where the money and the order number are.{% endcomment %}
 <div style="border-top:1px solid #E7E5E4;border-bottom:1px solid #E7E5E4;padding:6px 0;margin:0 0 28px 0;">
@@ -24,7 +24,7 @@ sanctioned convenience, and its constraints are stated where they are felt.
 {% endcomment %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;">
   <tr>
-    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">این لینک تا {{ link_ttl_hours|fa_digits }} ساعت اعتبار دارد و فقط یک بار باز می‌شود.</td>
+    <td bgcolor="#FDF6EC" style="background-color:#FDF6EC;border:1px solid #F0DFC4;border-radius:10px;padding:12px 16px 10px 16px;font-family:'Vazirmatn','Vazir','IRANSans','IRANYekan','Sahel','Shabnam',-apple-system,'SF Arabic','Segoe UI','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif;font-size:13px;line-height:1.8;color:#92400E;">این لینک تا {{ link_ttl_hours|fa_digits }} ساعت معتبر است و فقط یک بار باز می‌شود.</td>
   </tr>
 </table>
 
@@ -32,5 +32,5 @@ sanctioned convenience, and its constraints are stated where they are felt.
 
 <div style="height:1px;background-color:#E7E5E4;font-size:0;line-height:0;margin:32px 0 24px 0;">&nbsp;</div>
 
-<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اطلاعات ورود اکانت را هیچ‌وقت در ایمیل نمی‌فرستیم. آن را با همین لینک یا از حساب کاربری می‌بینید. اگر مشکلی بود، به همین ایمیل پاسخ بدهید.</p>
+<p style="margin:0;font-size:13px;line-height:1.9;color:#78716C;">اطلاعات ورود اکانت را هیچ‌وقت در متن ایمیل نمی‌فرستیم و آن را فقط با همین لینک یا از صفحه‌ی سفارش در حساب کاربری می‌بینید. اگر در دیدن یا استفاده از آن مشکلی داشتید، به همین ایمیل پاسخ بدهید.</p>
 {% endblock %}

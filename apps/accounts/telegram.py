@@ -29,7 +29,7 @@ from apps.accounts.models import User
 from apps.core import ratelimit, support, telegram
 from apps.core import telegram_emoji as emoji
 from apps.core.email import send_templated_email
-from apps.core.formatting import mask_phone
+from apps.core.formatting import mask_phone, to_persian_digits
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +49,13 @@ ACCOUNT_LINE = f"<p><b>{emoji.ACCOUNT} حساب کاربری:</b> <code>{{label}
 CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
 LINKED = (
     f"<h2>{emoji.CONFIRM} تلگرام شما به حساب PremShop وصل شد</h2>"
-    "<p>خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.</p>"
+    "<p>از این پس خبر تأیید پرداخت، تحویل و گزارش هر سفارش در همین گفت‌وگو هم به شما می‌رسد.</p>"
 )
 ALREADY = f"<h2>{emoji.CONFIRM} این تلگرام به حساب PremShop شما وصل است</h2>"
-SLOW = "کمی صبر کنید و دوباره بزنید."
+SLOW = (
+    "دکمه‌ها را در مدت کوتاهی چند بار زده‌اید و تا یک دقیقه‌ی دیگر می‌توانید دوباره از آن‌ها"
+    " استفاده کنید."
+)
 COMMAND = "پنل سفارش‌ها"
 
 Buttons = list[list[dict[str, Any]]]
@@ -73,17 +76,29 @@ def _screen(user: User, name: str) -> Screen:
     return _panel(user, name)
 
 
-LIMITED = f"<h2>{emoji.LIMITED} سقف اتصال این تلگرام برای امروز پر شده است</h2>"
-EXPIRED = f"<h2>{emoji.EXPIRED} این پیوند دیگر معتبر نیست</h2>"
+LIMITED = (
+    f"<h2>{emoji.LIMITED} سقف تأیید اتصال این حساب تلگرام پر شده است</h2>"
+    f"<p>هر حساب تلگرام در {to_persian_digits(ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM.seconds // 3600)}"
+    f" ساعت حداکثر {to_persian_digits(ratelimit.TELEGRAM_CONFIRMS_PER_TELEGRAM.times)} بار"
+    " می‌تواند اتصال را تأیید کند و پس از پایان این"
+    " مدت، با پیوند جدیدی از صفحه‌ی حساب کاربری می‌توانید دوباره آن را متصل کنید.</p>"
+)
+EXPIRED = (
+    f"<h2>{emoji.EXPIRED} این پیوند اتصال دیگر معتبر نیست</h2>"
+    "<p>پیوند اتصال تلگرام فقط تا ۱۰ دقیقه و برای یک بار اتصال معتبر است و پیوند جدید را با"
+    " دکمه‌ی زیر از صفحه‌ی حساب کاربری می‌گیرید.</p>"
+)
 # The steps are paragraphs: a rich message numbers a list in Latin digits.
 POINTER = (
     f"<h2>{emoji.BOT} ربات اطلاع‌رسانی سفارش‌های PremShop</h2>"
-    "<p>با اتصال حساب کاربری، خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا هم می‌رسد.</p>"
+    "<p>با اتصال حساب کاربری به این ربات، خبر تأیید پرداخت، تحویل و گزارش هر سفارش در همین"
+    " گفت‌وگو هم به شما می‌رسد.</p>"
     "<h4>اتصال در سه قدم</h4>"
     "<p>۱. در سایت وارد حساب کاربری شوید.</p>"
     "<p>۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.</p>"
     "<p>۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
-    "<footer>پیام‌های این گفت‌وگو خوانده نمی‌شوند؛ برای پرسش «پشتیبانی» را بزنید.</footer>"
+    "<footer>پیام‌هایی که در این گفت‌وگو می‌نویسید خوانده نمی‌شوند و برای پرسیدن سؤال، دکمه‌ی"
+    " «پشتیبانی» را بزنید.</footer>"
 )
 
 

@@ -1,7 +1,8 @@
 {% load fa order_tones %}PremShop
-پرداخت سفارش {{ order_number|fa_digits }} به مبلغ {{ amount|toman_plain }} تومان تأیید شد.
+پرداخت سفارش {{ order_number|fa_digits }} به مبلغ {{ amount|toman_plain }} تومان تأیید شد و وضعیت و زمان تحویل هر محصول را در صفحه‌ی سفارش می‌بینید.
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}وضعیت هر محصول و قدم بعدی را در صفحه‌ی سفارش ببینید:
+{% endif %}مشاهده‌ی سفارش:
 {{ order_url }}
+هر زمان که برای تحویل محصولی به اطلاعاتی از شما نیاز داشته باشیم یا محصولی تحویل داده شود، از طریق ایمیل به شما خبر می‌دهیم.
 
 پشتیبانی: {{ support.email }}

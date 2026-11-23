@@ -1,9 +1,9 @@
 {% load fa order_tones %}PremShop
-تحویل {{ product_name }}، {{ plan_title }}، از زمانی که گفته بودیم دیرتر می‌شود.
+تحویل {{ product_name }}، {{ plan_title }}، به دلیل تأخیر در تأمین، دیرتر از زمانی که اعلام کرده بودیم انجام می‌شود و زمان تحویل جدید آن تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }} است.
+بابت این تأخیر عذرخواهی می‌کنیم و پس از تحویل، از طریق ایمیل به شما خبر می‌دهیم.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}زمان تحویل جدید: تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
-مشاهده‌ی سفارش:
+{% endif %}مشاهده‌ی سفارش:
 {{ order_url }}
 
 پشتیبانی: {{ support.email }}

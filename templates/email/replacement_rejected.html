@@ -1,7 +1,7 @@
-{% extends "email/base.html" %}
+{% extends "email/base.html" %}{% load fa %}
 {% block title %}درخواست تعویض رد شد{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">درخواست تعویض رد شد</h1>
-<p>درخواست تعویض این محصول رد شد. دلیلش را از پشتیبانی بپرسید.</p>
+<p>درخواست تعویض {{ product_name|bdi }}، {{ plan_title|bdi }}، پس از بررسی پذیرفته نشد و دلیل آن را می‌توانید در تلگرام از پشتیبانی (<bdi dir="ltr">{{ support.telegram }}</bdi>) بپرسید.</p>
 {% include "email/_order_notice.html" %}
 {% endblock %}

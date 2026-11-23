@@ -3,6 +3,6 @@
 {% block preheader %}امروز {{ sent|fa_digits }} پیامک ورود فرستاده شده است.{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">پیامک‌های ورود امروز به {{ sent|fa_digits }} رسید</h1>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">تا {{ at|jalali }}، ساعت {{ at|time:"H:i"|fa_digits }}، {{ sent|fa_digits }} پیامک کد ورود فرستاده شده است. از {{ ceiling|fa_digits }} پیامک به بعد، فرستادن کد تا پایان این ۲۴ ساعت متوقف می‌شود.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این همه ورود از مشتری‌ها نیست، گزارش ارسال را در پنل SMS.ir ببینید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">تا {{ at|jalali }}، ساعت {{ at|time:"H:i"|fa_digits }}، {{ sent|fa_digits }} پیامک کد ورود فرستاده شده است و اگر شمار آن‌ها در همین بازه‌ی ۲۴ ساعته به {{ ceiling|fa_digits }} برسد، فرستادن کد ورود با پیامک تا پایان این بازه متوقف می‌شود.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این همه درخواست کد ورود از طرف مشتری‌ها نیست، گزارش ارسال را در پنل SMS.ir ببینید تا منبع آن مشخص شود.</p>
 {% endblock %}

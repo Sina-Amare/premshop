@@ -1,5 +1,5 @@
 {% load fa order_tones %}PremShop
-مبلغ {{ amount|toman_plain }} تومان را بابت {{ product_name }}، {{ plan_title }}، به شما برگرداندیم.
+مبلغ {{ amount|toman_plain }} تومان بابت خرید {{ product_name }}، {{ plan_title }}، به حساب شما واریز شد و بازگشت وجه این خرید کامل شده است.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
 {% endif %}مشاهده‌ی سفارش:

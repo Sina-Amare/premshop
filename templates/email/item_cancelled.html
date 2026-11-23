@@ -2,7 +2,15 @@
 {% block title %}{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}</h1>
-{% if cancel_reason == "input_timeout" %}<p>اطلاعات فعال‌سازی این محصول تا ۲۱ روز پس از درخواست به دستمان نرسید.</p>
-{% endif %}{% if amount %}<p>بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.</p>{% elif products %}<p>{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد. اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}</p>{% else %}<p>این لغو بازگشت وجه ندارد.</p>{% endif %}
-{% include "email/_order_notice.html" %}
+{% if product_name %}<p>خرید {{ product_name|bdi }}، {{ plan_title|bdi }}،{% if cancel_reason == "customer_after_payment" %} به درخواست خودتان{% endif %} لغو شد{% if cancel_reason == "input_timeout" %}، چون اطلاعات فعال‌سازی آن تا ۲۱ روز پس از درخواست به دستمان نرسید{% elif cancel_reason == "supply_failure" %}، چون نتوانستیم آن را تهیه کنیم{% elif cancel_reason == "warranty_refund" %}، چون نتوانستیم آن را تعویض کنیم{% endif %}.</p>
+{% elif pill_state == "expired" %}<p>سفارش {{ order_number|fa_digits }} لغو شد، چون تا ۲۴ ساعت پس از ثبت آن پرداختی دریافت نکردیم.</p>
+{% elif cancel_reason == "operator" %}<p>پشتیبانی سفارش {{ order_number|fa_digits }} را لغو کرد و چون پرداختی برای آن ثبت نشده بود، مبلغی برای بازگرداندن وجود ندارد.</p>
+<p>دلیل لغو را می‌توانید از پشتیبانی بپرسید.</p>
+{% elif cancel_reason == "customer_before_payment" %}<p>سفارش {{ order_number|fa_digits }} به درخواست خودتان لغو شد و چون پرداختی برای آن ثبت نشده بود، مبلغی برای بازگرداندن وجود ندارد.</p>
+{% else %}<p>سفارش {{ order_number|fa_digits }} لغو شد و چون پرداختی برای آن ثبت نشده بود، مبلغی هم برای بازگرداندن وجود ندارد.</p>
+{% endif %}{% if amount %}<p>مبلغ {{ amount|toman_plain }} تومان بابت این خرید به شما برگردانده می‌شود و کافی است شماره‌ی کارت یا شبای به نام خودتان را همراه با شماره‌ی سفارش در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید تا مبلغ حداکثر یک روز کاری پس از دریافت آن واریز شود.</p>
+<p>این پیام تأیید واریز نیست و پس از واریز مبلغ، پیام جداگانه‌ای برای تأیید آن دریافت می‌کنید.</p>
+{% elif products %}{% if pill_state == "expired" %}<p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید تا پرداختتان را بررسی کنیم.</p>
+{% endif %}{% elif product_name %}<p>لغو این خرید شامل بازگشت وجه نمی‌شود و اگر درباره‌ی آن سؤالی دارید، از پشتیبانی بپرسید.</p>
+{% endif %}{% include "email/_order_notice.html" %}
 {% endblock %}

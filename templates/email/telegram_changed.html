@@ -1,17 +1,17 @@
 {% extends "email/base.html" %}{% load fa %}
 {% block title %}{% if state == "linked" %}تلگرام وصل شد{% else %}تلگرام جدا شد{% endif %}{% endblock %}
-{% block preheader %}{% if state == "linked" %}تلگرام به حساب شما وصل شد.{% else %}تلگرام از حساب شما جدا شد.{% endif %}{% endblock %}
+{% block preheader %}{% if state == "linked" %}حساب تلگرام به حساب کاربری شما متصل شد.{% else %}حساب تلگرام از حساب کاربری شما جدا شد.{% endif %}{% endblock %}
 {% block content %}
 <h1 style="margin:0 0 12px 0;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">{% if state == "linked" %}تلگرام وصل شد{% else %}تلگرام جدا شد{% endif %}</h1>
 {% if state == "linked" %}
-<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a> قطعش کنید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">حساب تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب کاربری شما متصل شد و از این پس خبر سفارش‌ها در همان تلگرام هم به شما می‌رسد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این کار را خودتان انجام نداده‌اید، اتصال آن را از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a> قطع کنید.</p>
 {% elif state == "moved" %}
-<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، به پشتیبانی خبر بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">حساب تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب کاربری دیگری در PremShop متصل شد و از این پس خبر سفارش‌های شما در آن تلگرام نمی‌رسد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این کار را خودتان انجام نداده‌اید، به پشتیبانی اطلاع دهید.</p>
 {% else %}
-<p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام{% if telegram %} <bdi dir="ltr">{{ telegram }}</bdi>{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، به پشتیبانی خبر بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">حساب تلگرام{% if telegram %} <bdi dir="ltr">{{ telegram }}</bdi>{% else %}تان{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب کاربری شما جدا شد و از این پس خبر سفارش‌ها فقط از طریق ایمیل به شما می‌رسد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر این کار را خودتان انجام نداده‌اید، به پشتیبانی اطلاع دهید.</p>
 {% endif %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.</p>
 {% endblock %}
