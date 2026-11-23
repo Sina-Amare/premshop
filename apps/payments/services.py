@@ -23,6 +23,7 @@ from apps.accounts.models import User
 from apps.accounts.otp import normalize_email
 from apps.cart.models import Cart, CartItem
 from apps.catalog.inputs import normalize_customer_input
+from apps.orders import holiday
 from apps.orders.models import Order, OrderItem
 from apps.orders.selectors import current_unpaid_order
 from apps.orders.services import (
@@ -106,6 +107,8 @@ def confirm_payment(*, payment_id: int, actor: User) -> Payment:
     _bank_reference(payment.bank_ref)
     if payment.matched_by_id != account.pk:
         raise PermissionDenied
+    # Before the time is stamped, so a holiday cannot end between it and the clock's start.
+    holiday.lock()
     payment.status, payment.verified_at = Payment.Status.VERIFIED, timezone.now()
     payment.save(update_fields=["status", "verified_at"])
     mark_order_paid(order=order, payment=payment, actor=account)
