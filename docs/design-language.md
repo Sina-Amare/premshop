@@ -160,7 +160,7 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 ## Voice
 
-Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
+Persian copy is clear, natural and complete. A message is written the way a professional Iranian shop writes to its customers: one connected sentence that names the thing in full, says what happened, what happens next, when and through which channel, and what the reader can do, with the facts linked by «و», «که», «تا» and «پس از» instead of chopped into short sentences (owner, 2026-11-23; their model line is the last row of the table below). Every clause carries a fact that is true of what the code does, and nothing is added that says nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence.
 
 ### Written in Persian
 
@@ -180,16 +180,18 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «۴ از ۵، بر اساس ۱ نظر» | «۴ از ۵ · ۱ نظر» | The rating and count are enough. |
 | «خریدار تأییدشده» | «خریدار» | The ability to submit already comes from a purchase. |
 | «نظرتان در انتظار بررسی است.» | «اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.» | The buyer knows what can happen next. Publication depends on approval. |
+| «این تأخیر قبلاً ثبت شده است.» | «گزارش تأخیر تحویل محصول قبلاً ثبت شده و در اسرع وقت نتیجه‌ی آن از طریق ایمیل و در پنل کاربری به شما اعلام می‌شود.» | The report is named in full, and one sentence links what happened to what comes next, when and through which channel; the short line left a bare «این» and nothing to expect (2026-11-23). |
 
 ### Building a line
 
 The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت، پشتیبانی، تحویل و گزارش هر سفارش را هم در تلگرام پیگیری کنید.»
 
 - **Content first, then one verb.** Name the concrete things, then the one verb that acts on them.
-- **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
+- **A second verb for a second real fact:** an action («رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.») or what the reader can expect next, when it is true and they need it («… ثبت شده و در اسرع وقت نتیجه‌ی آن از طریق ایمیل … اعلام می‌شود.»). Never narration the reader has no use for: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
 - **Whole sentences a person would say,** never clipped fragments: «پرداختتان نیمه‌کاره مانده؟», not «پرداخت نیمه‌کاره؟».
 - **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
-- **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). A second message, or a chain of «که» clauses, becomes a second sentence.
+- **One fluent sentence for one message,** even when it holds a condition, a place, an action and what follows, as the owner's rewrites above show; a message is never chopped into short, dry sentences or telegraphic fragments (owner, 2026-11-14 and 2026-11-23). A second message, or a chain of «که» clauses, becomes a second sentence.
+- **Formal and polite, never bureaucratic:** «در اسرع وقت», «از طریق», «اعلام می‌شود», «امکان … وجود ندارد», «اطمینان حاصل کنید» are the register of a professional shop and are welcome; the markers under «Rules for every register» stay out.
 
 ### Register
 
