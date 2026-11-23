@@ -23,13 +23,15 @@ class Page(models.Model):
     body = models.TextField(
         _("متن صفحه"),
         blank=True,
-        help_text=_("متن با مارک‌داون: ## برای تیتر، - برای فهرست و [عنوان](آدرس) برای لینک."),
+        help_text=_(
+            "متن با مارک‌داون نوشته می‌شود و ## برای تیتر، - برای فهرست و [عنوان](آدرس) برای لینک است."
+        ),
     )
     description = models.CharField(
         _("توضیح کوتاه"),
         max_length=300,
         blank=True,
-        help_text=_("توضیح صفحه برای نتیجه‌ی جستجو و پیش‌نمایش لینک."),
+        help_text=_("توضیح کوتاه صفحه در نتیجه‌ی جستجو و پیش‌نمایش لینک نمایش داده می‌شود."),
     )
     is_published = models.BooleanField(
         _("منتشرشده"),
@@ -69,13 +71,19 @@ class Page(models.Model):
         super().clean()
         errors = {}
         if self.pk and type(self).objects.filter(pk=self.pk).exclude(slug=self.slug).exists():
-            errors["slug"] = _("آدرس صفحه پس از افزودن تغییر نمی‌کند.")
+            errors["slug"] = _(
+                "آدرس صفحه را پس از افزودن نمی‌توانید تغییر دهید و صفحه همیشه با همان آدرس باز می‌شود."
+            )
         if self.is_published:
             for name in ("title", "body", "description"):
                 value = getattr(self, name)
                 if not value.strip():
-                    errors[name] = _("برای انتشار، این قسمت را کامل کنید.")
+                    errors[name] = _(
+                        "صفحه بدون این قسمت منتشر نمی‌شود و لازم است پیش از انتشار آن را کامل کنید."
+                    )
                 elif PLACEHOLDER.search(value):
-                    errors[name] = _("پیش از انتشار، جاهای خالی داخل کروشه را پر کنید.")
+                    errors[name] = _(
+                        "این متن هنوز جای خالی داخل کروشه دارد و صفحه تا پر شدن آن‌ها منتشر نمی‌شود."
+                    )
         if errors:
             raise ValidationError(errors)

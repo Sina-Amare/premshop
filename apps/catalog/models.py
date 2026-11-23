@@ -121,7 +121,11 @@ def check_seo_title(row: Category | Product) -> None:
     """base.html adds « | PremShop» to every title, so the field never holds it."""
     if "premshop" in row.seo_title.casefold():
         raise ValidationError(
-            {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
+            {
+                "seo_title": _(
+                    "نام فروشگاه را در عنوان سئو ننویسید، چون سایت آن را خودش به آخر عنوان هر صفحه اضافه می‌کند."
+                )
+            }
         )
 
 
@@ -130,8 +134,8 @@ def check_no_typed_discount(row: Product | Plan, *fields: str) -> None:
     Typed into the text it outlives the offer and can contradict that figure."""
     refused = {
         field: _(
-            "تخفیف را اینجا ننویسید. "
-            "سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
+            "تخفیف را در این متن ننویسید، چون سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد، "
+            "ولی متن نوشته‌شده پس از پایان تخفیف همچنان روی صفحه می‌ماند."
         )
         for field in fields
         if any(mark in normalize_for_search(getattr(row, field)) for mark in ("٪", "%", "تخفیف"))
@@ -149,7 +153,11 @@ def validate_image_upload(file: Any) -> None:
     if getattr(file, "_committed", True):
         return
     if file.size > MAX_UPLOAD_BYTES:
-        raise ValidationError(_("حجم تصویر بیشتر از ۵ مگابایت است."))
+        raise ValidationError(
+            _(
+                "حجم تصویر بیشتر از حد مجاز ۵ مگابایت است و باید نسخه‌ی کوچک‌تری از آن را بارگذاری کنید."
+            )
+        )
     try:
         with Image.open(file) as image:
             kind, (width, height) = image.format, image.size
@@ -162,9 +170,17 @@ def validate_image_upload(file: Any) -> None:
     finally:
         file.seek(0)
     if kind not in IMAGE_SUFFIXES:
-        raise ValidationError(_("این فایل PNG،\u200f JPEG یا WebP نیست، یا خراب است."))
+        raise ValidationError(
+            _(
+                "فایل انتخاب‌شده تصویر سالم PNG،\u200f JPEG یا WebP نیست و پنل فقط همین سه قالب را می‌پذیرد."
+            )
+        )
     if width * height > MAX_UPLOAD_PIXELS:
-        raise ValidationError(_("ابعاد تصویر بیشتر از ۲۵ مگاپیکسل است."))
+        raise ValidationError(
+            _(
+                "ابعاد تصویر بیشتر از حد مجاز ۲۵ مگاپیکسل است و باید آن را پیش از بارگذاری کوچک کنید."
+            )
+        )
 
 
 def reencoded(file: Any, max_side: int) -> tuple[ContentFile[bytes], str]:
@@ -230,7 +246,10 @@ def validate_source_lines(text: str) -> None:
                 check(line.strip())
             except ValidationError:
                 raise ValidationError(
-                    _("سطر %(line)s نشانی کامل نیست، مثل https://openai.com/chatgpt/pricing"),
+                    _(
+                        "نشانی سطر %(line)s کامل نیست و باید نشانی کاملی با http یا https باشد، "
+                        "مثل \u2066https://openai.com/chatgpt/pricing\u2069"
+                    ),
                     params={"line": to_persian_digits(number)},
                 ) from None
 
@@ -267,7 +286,7 @@ class Category(models.Model):
         max_length=100,
         unique=True,
         allow_unicode=True,
-        help_text=_("در نشانی صفحه می‌آید و لاتین است، مثل «ai»."),
+        help_text=_("نامک با حروف لاتین در نشانی صفحه‌ی دسته‌بندی می‌آید، مثل «ai»."),
     )
     description = models.CharField(
         _("توضیح کوتاه"),
@@ -290,7 +309,7 @@ class Category(models.Model):
         blank=True,
         default="",
         help_text=_(
-            "Markdown ساده: پاراگراف، **پررنگ**، پیوند و فهرست. تیتر به متن ساده تبدیل می‌شود."
+            "متن معرفی **پررنگ**، پیوند و فهرست را در Markdown ساده می‌پذیرد و تیتر را متن ساده نشان می‌دهد."
         ),
     )
     seo_title = models.CharField(
@@ -306,7 +325,9 @@ class Category(models.Model):
         default="",
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"),
+        default=0,
+        help_text=_("هرچه عدد کوچک‌تر باشد، این مورد بالاتر نمایش داده می‌شود."),
     )
 
     class Meta:
@@ -437,8 +458,7 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         allow_unicode=True,
         help_text=_(
-            "در نشانی صفحه می‌آید و لاتین است، مثل «chatgpt-plus». "
-            "خالی بماند تا از نام لاتین ساخته شود."
+            "نامک لاتین مثل «chatgpt-plus» در نشانی صفحه می‌آید و اگر خالی بماند، از نام محصول ساخته می‌شود."
         ),
     )
     # Plain text, never Markdown: with no seo_description it is the meta description.
@@ -447,7 +467,9 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=300,
         blank=True,
         default="",
-        help_text=_("یک جمله: محصول برای خریدار چه می‌کند و به کار چه کسی می‌آید."),
+        help_text=_(
+            "در یک جمله بنویسید که محصول برای خریدار چه کاری انجام می‌دهد و به کار چه کسی می‌آید."
+        ),
     )
     # Off the form and off the page: 0020 moved it into a «متن آزاد» section.
     # The column stays until that migration no longer needs reversing.
@@ -462,17 +484,21 @@ class Product(ChecksNameTheirField, models.Model):
         null=True,
         blank=True,
         max_side=512,
-        help_text=_(
-            "لوگوی محصول، PNG،\u200f JPEG یا WebP. مربع، با حاشیه‌ی شفاف. سایت آن را در اندازه‌ی ثابت نشان می‌دهد."
-        ),
+        help_text=_("لوگوی مربع با حاشیه‌ی شفاف را در قالب PNG،\u200f JPEG یا WebP بارگذاری کنید."),
     )
     brand_colour = models.CharField(
         _("رنگ برند"),
         max_length=7,
         blank=True,
         default="",
-        validators=[RegexValidator(r"\A#[0-9a-fA-F]{6}\Z", _("رنگ را مانند #10a37f وارد کنید."))],
-        help_text=_("رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."),
+        validators=[
+            RegexValidator(
+                r"\A#[0-9a-fA-F]{6}\Z", _("رنگ برند را با علامت # و شش رقم بنویسید، مانند #10a37f.")
+            )
+        ],
+        help_text=_(
+            "رنگ زمینه‌ی کارت محصول را مانند #10a37f بنویسید و اگر خالی بماند، کارت زمینه‌ی خنثی می‌گیرد."
+        ),
     )
     delivery_type = models.CharField(
         _("نوع تحویل"),
@@ -486,7 +512,9 @@ class Product(ChecksNameTheirField, models.Model):
         _("نام‌های دیگر"),
         blank=True,
         default="",
-        help_text=_("شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"),
+        help_text=_(
+            "شکل‌هایی را که مشتری در جستجو می‌نویسد با ویرگول جدا کنید، مثل «چت جی‌پی‌تی، gpt»."
+        ),
     )
     warranty = models.CharField(
         _("گارانتی"),
@@ -497,7 +525,9 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."),
+        help_text=_(
+            "عددی بین ۱ تا ۴۸ را دست‌بالا بنویسید، چون همین مهلت به خریدار قول داده می‌شود."
+        ),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -518,7 +548,9 @@ class Product(ChecksNameTheirField, models.Model):
     renewable = models.BooleanField(
         _("قابل تمدید"),
         default=False,
-        help_text=_("روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."),
+        help_text=_(
+            "اگر این گزینه را روشن کنید، صفحه‌ی محصول به خریدار می‌گوید که اشتراک تمدید می‌شود."
+        ),
     )
     delivery_template = models.TextField(
         _("قالب تحویل"),
@@ -533,7 +565,9 @@ class Product(ChecksNameTheirField, models.Model):
         _("نکات استفاده"),
         blank=True,
         default="",
-        help_text=_("هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای ندارد، «موضوعیت ندارد»."),
+        help_text=_(
+            "هر نکته را در یک سطر با - شروع کنید و اگر نکته‌ای وجود ندارد، «موضوعیت ندارد» بنویسید."
+        ),
     )
     # A fact the page prints from its own field. The sections never repeat it,
     # so two parts of one page cannot disagree.
@@ -542,7 +576,9 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=300,
         blank=True,
         default="",
-        help_text=_("فقط اگر این محصول با قاعده‌ی بازگشت وجه فروشگاه فرق دارد. یک جمله."),
+        help_text=_(
+            "فقط اگر قاعده‌ی بازگشت وجه این محصول با قاعده‌ی فروشگاه فرق دارد، آن را در یک جمله بنویسید."
+        ),
     )
     sources = models.TextField(
         _("منبع‌ها"),
@@ -550,21 +586,20 @@ class Product(ChecksNameTheirField, models.Model):
         default="",
         validators=[validate_source_lines],
         help_text=_(
-            "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
+            "نشانی صفحه‌های رسمی‌ای را که ادعاهای متن بر آن‌ها تکیه دارد، هر کدام در یک سطر بنویسید."
         ),
     )
     facts_checked_on = models.DateField(
         _("آخرین بررسی"),
         null=True,
         blank=True,
-        help_text=_("روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."),
+        help_text=_("تاریخ روزی را بنویسید که ادعاهای متن را دوباره با منبع‌ها سنجیدید."),
     )
     time_sensitive = models.BooleanField(
         _("حساس به زمان"),
         default=False,
         help_text=_(
-            "امکانات یا قیمت ارائه‌دهنده زود عوض می‌شود. "
-            "انتشار، بررسی در ۷ روز اخیر را لازم دارد."
+            "محصولی که امکانات یا قیمتش زود عوض می‌شود، فقط با بررسی در ۷ روز اخیر منتشر می‌شود."
         ),
     )
     status = models.CharField(
@@ -572,7 +607,9 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text=_("پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."),
+        help_text=_(
+            "محصول پیش‌نویس روی سایت دیده نمی‌شود و محصول ناموجود در فهرست‌های سایت نمی‌آید و فروخته نمی‌شود."
+        ),
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")
@@ -618,7 +655,9 @@ class Product(ChecksNameTheirField, models.Model):
             models.CheckConstraint(
                 condition=Q(status__in=["draft", "active", "unavailable"]),
                 name="product_status_valid",
-                violation_error_message=_("وضعیت محصول معتبر نیست."),
+                violation_error_message=_(
+                    "وضعیت انتخاب‌شده برای محصول معتبر نیست و فقط پیش‌نویس، فعال یا ناموجود پذیرفته می‌شود."
+                ),
             ),
         ]
 
@@ -663,7 +702,7 @@ class Product(ChecksNameTheirField, models.Model):
                 raise ValidationError(
                     {
                         "slug": _(
-                            "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
+                            "چون نام محصول لاتین نیست، نامک خودکار ساخته نمی‌شود و باید آن را خودتان با حروف لاتین بنویسید، مثل «chatgpt-plus»."
                         )
                     }
                 )
@@ -671,7 +710,13 @@ class Product(ChecksNameTheirField, models.Model):
         check_seo_title(self)
         check_no_typed_discount(self, "name", "seo_title", "seo_description")
         if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
-            raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
+            raise ValidationError(
+                {
+                    "facts_checked_on": _(
+                        "تاریخ آخرین بررسی نمی‌تواند بعد از امروز باشد و باید روزی باشد که ادعاهای متن واقعاً با منبع‌ها سنجیده شده‌اند."
+                    )
+                }
+            )
         # The product form's half of the publishing rule: this row's own fields.
         # The rows under it are checked by the admin's inline formsets, because
         # Django validates this form before those. A product already live is
@@ -687,9 +732,13 @@ class Product(ChecksNameTheirField, models.Model):
                 refused.setdefault(field, []).append(message)
             if refused:
                 why = (
-                    gettext("محصول منتشرشده با جای خالی پرنشده ذخیره نمی‌شود.")
+                    gettext(
+                        "این محصول روی سایت منتشر شده است و تغییراتش فقط پس از پر شدن جاهای خالی متن آن ذخیره می‌شود."
+                    )
                     if live
-                    else gettext("تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود.")
+                    else gettext(
+                        "امکان انتشار محصول تا رفع کمبودهایی که در همین فرم مشخص شده‌اند وجود ندارد."
+                    )
                 )
                 refused.setdefault("status", []).append(why)
                 raise ValidationError(refused)
@@ -717,20 +766,26 @@ class Product(ChecksNameTheirField, models.Model):
         """What publishing needs from this row's own fields, by the field to fix."""
         problems: dict[str, str] = {}
         if self.delivery_type not in self.DeliveryType.values:
-            problems["delivery_type"] = gettext("نوع تحویل انتخاب نشده است.")
+            problems["delivery_type"] = gettext(
+                "نوع تحویل محصول هنوز انتخاب نشده است و لازم است یکی از نوع‌های تحویل را انتخاب کنید."
+            )
         if not self.short_description.strip():
-            problems["short_description"] = gettext("جمع‌بندی یک‌خطی خالی است.")
+            problems["short_description"] = gettext(
+                "جمع‌بندی یک‌خطی هنوز نوشته نشده است و بدون آن، زیر نام محصول معرفی‌ای نمایش داده نمی‌شود."
+            )
         if not re.search(
             "[اءؤئبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی]", normalize_for_search(self.aliases)
         ):
-            problems["aliases"] = gettext("حداقل یک نام فارسی برای جستجو بنویسید.")
+            problems["aliases"] = gettext(
+                "در نام‌های دیگر دست‌کم یک نام فارسی بنویسید تا خریدارانی که نام محصول را فارسی جستجو می‌کنند، آن را پیدا کنند."
+            )
         if not self.usage_notes.strip():
             problems["usage_notes"] = gettext(
-                "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
+                "نکات استفاده‌ی محصول هنوز نوشته نشده است و اگر نکته‌ای برای این محصول وجود ندارد، عبارت «موضوعیت ندارد» را بنویسید."
             )
         if self.time_sensitive and not self.facts_are_fresh:
             problems["facts_checked_on"] = gettext(
-                "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
+                "ادعاهای متن این محصول حساس به زمان در ۷ روز اخیر با منبع‌ها بررسی نشده‌اند و برای انتشار باید آن‌ها را دوباره بسنجید و تاریخ آخرین بررسی را به‌روز کنید."
             )
         return problems
 
@@ -808,7 +863,9 @@ class Product(ChecksNameTheirField, models.Model):
         )
 
 
-NO_AVAILABLE_PLAN = _("هیچ پلن موجودی ندارد.")
+NO_AVAILABLE_PLAN = _(
+    "هیچ‌کدام از پلن‌های این محصول موجود نیست و محصول بدون دست‌کم یک پلن موجود منتشر نمی‌شود."
+)
 
 
 def placeholders_in(row: models.Model) -> list[tuple[str, str]]:
@@ -822,11 +879,13 @@ def placeholders_in(row: models.Model) -> list[tuple[str, str]]:
         # Isolated, like Plan.__str__: a Latin title would otherwise pull the
         # Persian around it out of order.
         names = {"kind": row._meta.verbose_name, "row": f"\u2068{row}\u2069"}
-        where = gettext("%(kind)s «%(row)s»، ") % names
+        where = gettext(" %(kind)s «%(row)s»") % names
     found = []
     for name in row.PAGE_TEXT:  # type: ignore[attr-defined]
         if match := PLACEHOLDER.search(getattr(row, name)):
-            message = gettext("%(where)s%(field)s: جای خالی «%(marker)s» هنوز پر نشده است.") % {
+            message = gettext(
+                "در %(field)s%(where)s هنوز جای خالی «%(marker)s» مانده است و باید آن را با متن واقعی پر کنید."
+            ) % {
                 "where": where,
                 "field": cast(models.Field, row._meta.get_field(name)).verbose_name,
                 "marker": Truncator(match.group(0)).chars(60),
@@ -883,10 +942,12 @@ class ProductSpec(PageRow):
     is_key = models.BooleanField(
         _("مهم"),
         default=False,
-        help_text=_("کنار نام محصول، بالای صفحه‌ی محصول می‌آید."),
+        help_text=_("مشخصه‌ی مهم بالای صفحه‌ی محصول و کنار نام آن هم نمایش داده می‌شود."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"),
+        default=0,
+        help_text=_("هرچه عدد کوچک‌تر باشد، این مورد بالاتر نمایش داده می‌شود."),
     )
 
     class Meta:
@@ -913,40 +974,51 @@ class Plan(ChecksNameTheirField, PageRow):
         _("مدت (روز)"),
         null=True,
         blank=True,
-        help_text=_("برای گیفت کارت خالی بگذارید."),
+        help_text=_(
+            "مدت اشتراک را به روز بنویسید و برای گیفت کارت که تاریخ پایان ندارد، خالی بگذارید."
+        ),
     )  # null: never expires
     cost_price = MoneyField(
         verbose_name=_("قیمت خرید"),
-        help_text=_("مشتری این را نمی‌بیند."),
+        help_text=_("قیمت خرید فقط در پنل برای حساب سود به کار می‌رود و مشتری آن را نمی‌بیند."),
     )  # operator-only; snapshotted at order time
     sale_price = MoneyField(verbose_name=_("قیمت فروش"))
     promo_price = MoneyField(
         verbose_name=_("قیمت تخفیفی"),
         null=True,
         blank=True,
-        help_text=_("باید از قیمت فروش کمتر باشد."),
+        help_text=_(
+            "قیمت تخفیفی باید کمتر از قیمت فروش باشد و سایت درصد تخفیف را از همین دو حساب می‌کند."
+        ),
     )
     promo_starts_at = models.DateTimeField(
-        _("شروع تخفیف"), null=True, blank=True, help_text=_("خالی یعنی همین حالا.")
+        _("شروع تخفیف"),
+        null=True,
+        blank=True,
+        help_text=_("اگر خالی بماند، تخفیف از همین حالا شروع می‌شود."),
     )
     promo_ends_at = models.DateTimeField(
         _("پایان تخفیف"),
         null=True,
         blank=True,
         help_text=_(
-            "با تعیین تاریخ، روی سایت شمارش معکوس نمایش داده می‌شود. خالی یعنی بدون پایان."
+            "با تاریخ پایان، سایت شمارش معکوس نشان می‌دهد و اگر خالی بماند، تخفیف پایانی ندارد."
         ),
     )
     stock_quantity = models.PositiveIntegerField(
         _("موجودی"),
         null=True,
         blank=True,
-        help_text=_("هر سفارش ثبت‌شده خودش از این عدد کم می‌شود. خالی یعنی موجودی محدود نیست."),
+        help_text=_(
+            "هر سفارش ثبت‌شده خودکار از این عدد کم می‌شود و اگر خالی بماند، موجودی پلن محدود نیست."
+        ),
     )
     is_available = models.BooleanField(
         _("موجود"),
         default=True,
-        help_text=_("تیک را بردارید تا خریدنی نباشد. پاکش نکنید."),
+        help_text=_(
+            "برای توقف فروش پلن تیک را بردارید و آن را پاک نکنید، چون سفارش‌های قبلی به آن وابسته‌اند."
+        ),
     )  # soft delete: sold plans are never removed
     # Default 1, so a quantity control appears only where the operator has
     # said it makes sense. Most of this shop is subscriptions activated on one
@@ -956,7 +1028,7 @@ class Plan(ChecksNameTheirField, PageRow):
     max_quantity = models.PositiveSmallIntegerField(
         _("حداکثر تعداد در هر سفارش"),
         default=1,
-        help_text=_("۱ یعنی مشتری تعداد نمی‌بیند."),
+        help_text=_("اگر ۱ بماند، مشتری انتخاب تعداد را در صفحه‌ی محصول نمی‌بیند."),
     )
     input_type = models.CharField(
         _("نوع اطلاعات فعال‌سازی"),
@@ -970,7 +1042,7 @@ class Plan(ChecksNameTheirField, PageRow):
         null=True,
         blank=True,
         choices=[(None, _("بررسی‌نشده")), (True, _("لازم است")), (False, _("لازم نیست"))],
-        help_text=_("بسته به روش تحویل همین پلن، انتخاب کنید تلگرام لازم است یا نه."),
+        help_text=_("انتخاب کنید که روش تحویل همین پلن به حساب تلگرام مشتری نیاز دارد یا نه."),
     )
     requires_customer_input = models.BooleanField(
         _("نیاز به اطلاعات مشتری"),
@@ -982,16 +1054,20 @@ class Plan(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."),
+        help_text=_(
+            "عبارتی کوتاه بنویسید که برچسب کادر اطلاعات فعال‌سازی در صفحه‌ی سفارش می‌شود، مثل «ایمیل اکانت Spotify»."
+        ),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),
         blank=True,
         default="",
-        help_text=_("مشتری این را نمی‌بیند."),
+        help_text=_("لینک خرید از تأمین‌کننده فقط در پنل دیده می‌شود و مشتری آن را نمی‌بیند."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"),
+        default=0,
+        help_text=_("هرچه عدد کوچک‌تر باشد، این مورد بالاتر نمایش داده می‌شود."),
     )
     # When someone last stood behind this price: set by any change to a price
     # and by the panel's «قیمت‌ها را امروز بررسی کردم» for its review filters.
@@ -1021,7 +1097,9 @@ class Plan(ChecksNameTheirField, PageRow):
             models.CheckConstraint(
                 condition=Q(input_type__in=["unreviewed", "none", "email", "username"]),
                 name="plan_input_type_known",
-                violation_error_message=_("نوع اطلاعات فعال‌سازی معتبر نیست."),
+                violation_error_message=_(
+                    "نوع اطلاعات فعال‌سازی معتبر نیست و باید یکی از گزینه‌های همین فهرست انتخاب شود."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(input_type="unreviewed")
@@ -1033,7 +1111,9 @@ class Plan(ChecksNameTheirField, PageRow):
                     )
                 ),
                 name="plan_reviewed_input_consistent",
-                violation_error_message=_("نوع اطلاعات فعال‌سازی و نیاز به تلگرام را بررسی کنید."),
+                violation_error_message=_(
+                    "پس از انتخاب نوع اطلاعات فعال‌سازی، نیاز به تلگرام هم باید مشخص شود تا پلن بتواند سفارش بگیرد."
+                ),
             ),
             # A promotion is a lower price or it is nothing. Zero, negative, or
             # at-or-above the list price is refused by the database itself, so
@@ -1067,7 +1147,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
                 name="plan_duration_positive_or_unlimited",
                 violation_error_message=_(
-                    "مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان."
+                    "مدت پلن باید دست‌کم یک روز باشد و برای پلنی که پایان ندارد، این قسمت را خالی بگذارید."
                 ),
             ),
             models.CheckConstraint(
@@ -1090,7 +1170,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 condition=Q(requires_customer_input=False) | Q(max_quantity=1),
                 name="plan_customer_input_is_one_per_order",
                 violation_error_message=_(
-                    "از پلنی که اطلاعات مشتری می‌خواهد، در هر سفارش فقط یکی می‌شود خرید."
+                    "پلنی که اطلاعات مشتری را می‌خواهد، در هر سفارش فقط یک بار خریده می‌شود و حداکثر تعداد آن باید ۱ باشد."
                 ),
             ),
         ]
@@ -1134,23 +1214,27 @@ class Plan(ChecksNameTheirField, PageRow):
             .exclude(product_id=self.product_id)
             .exists()
         ):
-            errors["product"] = _("پس از ثبت سفارش، محصول این پلن را نمی‌توانید عوض کنید.")
+            errors["product"] = _(
+                "برای این پلن سفارش ثبت شده است و پس از ثبت سفارش، امکان تغییر محصول آن وجود ندارد."
+            )
         if self.input_type != self.InputType.UNREVIEWED:
             self.requires_customer_input = self.input_type in (
                 self.InputType.EMAIL,
                 self.InputType.USERNAME,
             )
             if self.telegram_required is None:
-                errors["telegram_required"] = _("نیاز به تلگرام را مشخص کنید.")
+                errors["telegram_required"] = _(
+                    "پس از انتخاب نوع اطلاعات فعال‌سازی، مشخص کنید که فعال‌سازی این پلن به حساب تلگرام مشتری نیاز دارد یا نه."
+                )
             if self.requires_customer_input and self.max_quantity != 1:
                 errors["max_quantity"] = _(
-                    "این پلن اطلاعات فعال‌سازی می‌خواهد، پس حداکثر تعداد در هر سفارش باید ۱ باشد."
+                    "این پلن اطلاعات فعال‌سازی می‌خواهد و به همین دلیل حداکثر تعداد آن در هر سفارش باید ۱ باشد."
                 )
         # Whatever the product's status: a draft's label is what goes live.
         if ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label)):
             errors["customer_input_label"] = _(
-                "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید."
-                " صفحه‌ی محصول از مشتری می‌خواهد این‌ها را در سایت وارد نکند."
+                "رمز اکانت یا کدی را که سرویس می‌فرستد از مشتری نپرسید، "
+                "چون صفحه‌ی محصول از مشتری می‌خواهد این اطلاعات را در سایت وارد نکند."
             )
         if errors:
             raise ValidationError(errors)
@@ -1164,7 +1248,7 @@ class Plan(ChecksNameTheirField, PageRow):
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
             raise ValidationError(
-                "این گزینه را فعلاً نمی‌توانید بخرید. از پشتیبانی راهنمایی بگیرید."
+                "امکان خرید این گزینه در حال حاضر وجود ندارد و برای راهنمایی می‌توانید در تلگرام به پشتیبانی پرم‌شاپ پیام بدهید."
             )
 
     @property
@@ -1266,14 +1350,18 @@ class ProductSection(ChecksNameTheirField, PageRow):
         _("نوع"),
         max_length=16,
         choices=Kind.choices,
-        help_text=_("قالب بخش را تعیین می‌کند. هر محصول حداکثر یک «پیش از خرید» دارد."),
+        help_text=_(
+            "نوع بخش قالب نمایش آن را تعیین می‌کند و هر محصول حداکثر یک بخش «پیش از خرید» دارد."
+        ),
     )
     title = models.CharField(
         _("تیتر"),
         max_length=120,
         blank=True,
         default="",
-        help_text=_("خالی بماند تا نام همین نوع تیتر شود. «متن آزاد» بی‌تیتر می‌ماند."),
+        help_text=_(
+            "اگر خالی بماند، نام نوع بخش تیتر آن می‌شود، ولی بخش «متن آزاد» بدون تیتر نمایش داده می‌شود."
+        ),
     )
     # Restricted Markdown, through apps.core.richtext with h3 free: the
     # section's own title is the h2.
@@ -1281,7 +1369,9 @@ class ProductSection(ChecksNameTheirField, PageRow):
         _("متن"),
         blank=True,
         default="",
-        help_text=_("Markdown ساده: **پررنگ**، فهرست با - یا ۱.، پیوند، جدول و تیتر ###."),
+        help_text=_(
+            "این متن **پررنگ**، فهرست با - یا ۱.، پیوند، جدول و تیتر ### را در Markdown ساده می‌پذیرد."
+        ),
     )
     image = ReencodedImageField(
         _("تصویر"),
@@ -1289,7 +1379,7 @@ class ProductSection(ChecksNameTheirField, PageRow):
         blank=True,
         max_side=1600,
         help_text=_(
-            "PNG،\u200f JPEG یا WebP. هیچ‌وقت اطلاعات ورود اکانت یا داده‌ی مشتری را نشان ندهد."
+            "تصویر PNG،\u200f JPEG یا WebP نباید هیچ اطلاعات ورود اکانت یا داده‌ای از مشتری را نشان دهد."
         ),
     )
     image_alt = models.CharField(
@@ -1297,10 +1387,14 @@ class ProductSection(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."),
+        help_text=_(
+            "برای کسی که تصویر را نمی‌بیند بنویسید چه چیزی نشان می‌دهد و تصویر بدون آن ذخیره نمی‌شود."
+        ),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"),
+        default=0,
+        help_text=_("هرچه عدد کوچک‌تر باشد، این مورد بالاتر نمایش داده می‌شود."),
     )
 
     class Meta:
@@ -1320,19 +1414,25 @@ class ProductSection(ChecksNameTheirField, PageRow):
                     ]
                 ),
                 name="section_kind_valid",
-                violation_error_message=_("نوع بخش معتبر نیست."),
+                violation_error_message=_(
+                    "نوع انتخاب‌شده برای بخش معتبر نیست و باید یکی از نوع‌های همین فهرست باشد."
+                ),
             ),
             # The conditions of a sale are said once, in one place on the page.
             models.UniqueConstraint(
                 fields=["product"],
                 condition=Q(kind="before_buying"),
                 name="section_one_before_buying",
-                violation_error_message=_("این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."),
+                violation_error_message=_(
+                    "این محصول از قبل یک بخش «پیش از خرید» دارد و به‌جای افزودن بخش جدید، باید همان بخش را ویرایش کنید."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(image="") | ~Q(image_alt=""),
                 name="section_image_has_alt",
-                violation_error_message=_("تصویر بدون متن جایگزین ذخیره نمی‌شود."),
+                violation_error_message=_(
+                    "تصویر بدون متن جایگزین ذخیره نمی‌شود و لازم است بنویسید که تصویر چه چیزی را نشان می‌دهد."
+                ),
             ),
         ]
 
@@ -1355,15 +1455,17 @@ class ProductQuestion(PageRow):
     question = models.CharField(
         _("پرسش"),
         max_length=200,
-        help_text=_("با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."),
+        help_text=_("پرسش را با زبان خود خریدار بنویسید، همان‌طور که در تلگرام می‌پرسد."),
     )
     # Restricted Markdown, like a section's text.
     answer = models.TextField(
         _("پاسخ"),
-        help_text=_("اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."),
+        help_text=_("اصل پاسخ را در جمله‌ی اول بگویید و پاسخ را معمولاً در یکی دو جمله تمام کنید."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"),
+        default=0,
+        help_text=_("هرچه عدد کوچک‌تر باشد، این مورد بالاتر نمایش داده می‌شود."),
     )
 
     class Meta:

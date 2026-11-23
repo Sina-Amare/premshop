@@ -102,7 +102,12 @@ class MailAttemptAdmin(ModelAdmin):
             try:
                 validate_email(address)
             except ValidationError:
-                messages.error(request, _("نشانی ایمیل را کامل وارد کنید."))
+                messages.error(
+                    request,
+                    _(
+                        "برای جستجو، نشانی کامل ایمیل را وارد کنید، چون نشانی‌ها فقط به شکل اثر انگشت ذخیره شده‌اند."
+                    ),
+                )
                 return HttpResponseRedirect(request.path)
             return HttpResponseRedirect(request.path + "?" + urlencode({"q": fingerprint(address)}))
         return super().changelist_view(request, extra_context)

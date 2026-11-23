@@ -25,7 +25,7 @@ msgid "Add row"
 msgstr "افزودن ردیف"
 
 msgid "After you've created a user, you’ll be able to edit more user options."
-msgstr "بعد از افزودن کاربر، بقیه‌ی گزینه‌ها را می‌بینید."
+msgstr "پس از افزودن کاربر، بقیه‌ی گزینه‌های حساب او را می‌توانید در صفحه‌ی ویرایش همان کاربر تنظیم کنید."
 
 msgid "All applications"
 msgstr "همه‌ی بخش‌ها"
@@ -157,7 +157,7 @@ msgid "Password"
 msgstr "رمز عبور"
 
 msgid "Please enter your old password, for security’s sake, and then enter your new password twice so we can verify you typed it in correctly."
-msgstr "برای امنیت، اول رمز عبور فعلی و بعد رمز جدید را دو بار وارد کنید."
+msgstr "برای حفظ امنیت حساب، اول رمز عبور فعلی و سپس رمز عبور جدید را دو بار وارد کنید."
 
 msgid "Previous"
 msgstr "قبلی"
@@ -235,7 +235,7 @@ msgid "This item will be deleted."
 msgstr "این مورد حذف می‌شود."
 
 msgid "This page yielded into no results. Create a new item or reset your filters."
-msgstr "چیزی پیدا نکردیم. جستجو یا فیلترها را تغییر دهید."
+msgstr "با این جستجو و فیلترها موردی پیدا نکردیم و می‌توانید عبارت جستجو یا فیلترها را تغییر دهید."
 
 msgid "Time"
 msgstr "ساعت"
@@ -316,7 +316,7 @@ msgid "Profile"
 msgstr "پروفایل"
 
 msgid "This object doesn’t have a change history. It probably wasn’t added via this admin site."
-msgstr "هنوز تغییری برای این مورد ثبت نشده. ممکن است خارج از این پنل ساخته شده باشد."
+msgstr "هنوز تغییری برای این مورد در پنل ثبت نشده است و ممکن است این مورد خارج از پنل ساخته شده باشد."
 
 msgid "Change my password"
 msgstr "تغییر رمز عبور من"
@@ -388,7 +388,7 @@ msgid "Select all objects on this page for an action"
 msgstr "انتخاب همه‌ی موردهای این صفحه"
 
 msgid "Your password has been set.  You may go ahead and log in now."
-msgstr "رمز عبورتان ثبت شد. حالا می‌توانید وارد شوید."
+msgstr "رمز عبور جدیدتان ثبت شد و اکنون می‌توانید با آن وارد پنل شوید."
 
 msgid "Please enter your new password twice so we can verify you typed it in correctly."
 msgstr "رمز عبور جدید را دو بار بنویسید تا از درستی‌اش مطمئن شویم."
@@ -397,25 +397,25 @@ msgid "Please go to the following page and choose a new password:"
 msgstr "به این صفحه بروید و رمز عبور جدیدی انتخاب کنید:"
 
 msgid "There’s been an error. It’s been reported to the site administrators via email and should be fixed shortly. Thanks for your patience."
-msgstr "خطایی رخ داد. گزارش آن ایمیل شد و به‌زودی درست می‌شود."
+msgstr "در حال حاضر امکان باز کردن این صفحه وجود ندارد و می‌توانید چند دقیقه بعد دوباره امتحان کنید."
 
 msgid "Something’s wrong with your database installation. Make sure the appropriate database tables have been created, and make sure the database is readable by the appropriate user."
-msgstr "پایگاه داده مشکل دارد. مطمئن شوید جدول‌ها ساخته شده‌اند و کاربر دسترسی خواندن دارد."
+msgstr "اتصال پنل به پایگاه داده مشکل دارد و باید از ساخته شدن جدول‌ها و دسترسی خواندن کاربر پایگاه داده اطمینان حاصل کنید."
 
 msgid "The password reset link was invalid, possibly because it has already been used.  Please request a new password reset."
-msgstr "این لینک معتبر نیست؛ احتمالاً قبلاً از آن استفاده شده. دوباره درخواست بدهید."
+msgstr "این لینک تغییر رمز عبور که احتمالاً قبلاً از آن استفاده شده است، دیگر معتبر نیست و برای ساختن رمز جدید باید دوباره درخواست بدهید."
 
 msgid "We’ve emailed you instructions for setting your password, if an account exists with the email you entered. You should receive them shortly."
-msgstr "اگر حسابی با این ایمیل باشد، راهنمای ساختن رمز عبور را فرستادیم. به‌زودی می‌رسد."
+msgstr "اگر حسابی با این ایمیل وجود داشته باشد، راهنمای ساختن رمز عبور جدید به همان ایمیل فرستاده شد و به‌زودی به دستتان می‌رسد."
 
 msgid "You're receiving this email because you requested a password reset for your user account at %(site_name)s."
 msgstr "این ایمیل را فرستادیم چون برای حسابتان در %(site_name)s درخواست رمز عبور جدید دادید."
 
 msgid "Forgotten your password? Enter your email address below, and we’ll email instructions for setting a new one."
-msgstr "رمز عبورتان یادتان رفته؟ ایمیلتان را بنویسید تا راهنمای ساختن رمز جدید را بفرستیم."
+msgstr "اگر رمز عبورتان را فراموش کرده‌اید، ایمیلتان را بنویسید تا راهنمای ساختن رمز عبور جدید برایتان فرستاده شود."
 
 msgid "Please enter the correct %(username)s and password for a staff account. Note that both fields may be case-sensitive."
-msgstr "⁨%(username)s⁩ یا رمز عبور حساب مدیر درست نیست. به بزرگی و کوچکی حروف هم دقت کنید."
+msgstr "⁨%(username)s⁩ یا رمز عبور حساب مدیر درست نیست و لازم است هر دو را دوباره وارد کنید و به بزرگی و کوچکی حروف هم دقت کنید."
 
 # Leaks found 2026-10-19: Unfold's own words, and Django's Persian where it
 # breaks this shop's spelling («گذرواژه», «لطفاً», «اشیای», a stray «·»).
@@ -426,19 +426,19 @@ msgid "Choose file to upload"
 msgstr "انتخاب فایل"
 
 msgid "Upload a valid image. The file you uploaded was either not an image or a corrupted image."
-msgstr "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."
+msgstr "فایل انتخاب‌شده تصویر سالم PNG،‏ JPEG یا WebP نیست و پنل فقط همین سه قالب را می‌پذیرد."
 
 msgid "Delete selected %(verbose_name_plural)s"
 msgstr "حذف این %(verbose_name_plural)s"
 
 msgid "Are you sure you want to delete the selected %(objects_name)s? All of the following objects and their related items will be deleted:"
-msgstr "%(objects_name)s انتخاب‌شده حذف شود؟ همه‌ی موارد زیر و اطلاعات وابسته به آن‌ها هم حذف می‌شوند:"
+msgstr "با حذف %(objects_name)s انتخاب‌شده، همه‌ی موارد زیر و اطلاعات وابسته به آن‌ها هم حذف می‌شوند و این کار برگشت‌پذیر نیست:"
 
 msgid "Deleting the selected %(objects_name)s would require deleting the following protected related objects:"
 msgstr "%(objects_name)s انتخاب‌شده حذف نمی‌شود، چون موارد زیر به آن‌ها وابسته‌اند:"
 
 msgid "Deleting the selected %(objects_name)s would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
-msgstr "با حذف %(objects_name)s انتخاب‌شده، موارد زیر هم حذف می‌شوند؛ اما حسابتان اجازه‌ی حذف آن‌ها را ندارد:"
+msgstr "با حذف %(objects_name)s انتخاب‌شده، موارد زیر هم حذف می‌شوند، ولی حساب شما اجازه‌ی حذف آن‌ها را ندارد:"
 
 msgid "Cannot delete %(name)s"
 msgstr "%(name)s حذف نمی‌شود"
@@ -456,19 +456,19 @@ msgid " By %(filter_title)s "
 msgstr " %(filter_title)s "
 
 msgid "Your old password was entered incorrectly. Please enter it again."
-msgstr "رمز عبور فعلی اشتباه است."
+msgstr "رمز عبور فعلی را اشتباه وارد کرده‌اید و باید آن را دوباره وارد کنید."
 
 msgid "The two password fields didn’t match."
-msgstr "رمز عبور و تکرار آن یکسان نیستند."
+msgstr "رمز عبور و تکرار آن یکسان نیستند و باید هر دو را دوباره و یکسان وارد کنید."
 
 msgid "Enter the same password as before, for verification."
 msgstr "همان رمز عبور جدید را دوباره بنویسید."
 
 msgid "Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
-msgstr "برای نام در لینک، از حروف لاتین، عدد، «-» یا «_» استفاده کنید؛ مثل «⁦chatgpt-plus⁩»."
+msgstr "برای این قسمت فقط حروف لاتین، عدد، «-» یا «_» را به کار ببرید، مثل «⁦chatgpt-plus⁩»."
 
 msgid "Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or hyphens."
-msgstr "برای نام در لینک، از حروف لاتین، عدد، «-» یا «_» استفاده کنید؛ مثل «⁦chatgpt-plus⁩»."
+msgstr "برای این قسمت فقط حروف لاتین، عدد، «-» یا «_» را به کار ببرید، مثل «⁦chatgpt-plus⁩»."
 
 msgid "Changed {fields}."
 msgstr "{fields} تغییر کرد."
@@ -501,10 +501,10 @@ msgid "The {name} “{obj}” was changed successfully. You may edit it again be
 msgstr "تغییرات {name} «{obj}» ذخیره شد."
 
 msgid "The {name} “{obj}” was added successfully. You may add another {name} below."
-msgstr "{name} «{obj}» اضافه شد. می‌توانید {name} بعدی را ثبت کنید."
+msgstr "{name} «{obj}» اضافه شد و می‌توانید {name} بعدی را در همین فرم ثبت کنید."
 
 msgid "The {name} “{obj}” was changed successfully. You may add another {name} below."
-msgstr "تغییرات {name} «{obj}» ذخیره شد. می‌توانید {name} بعدی را ثبت کنید."
+msgstr "تغییرات {name} «{obj}» ذخیره شد و می‌توانید {name} بعدی را در همین فرم ثبت کنید."
 
 msgid "The %(name)s “%(obj)s” was deleted successfully."
 msgstr "%(name)s «%(obj)s» حذف شد."
@@ -531,7 +531,7 @@ msgid ", "
 msgstr "، "
 
 msgid "You are authenticated as %(username)s, but are not authorized to access this page. Would you like to login to a different account?"
-msgstr "با حساب ⁨%(username)s⁩ وارد شدید، اما این حساب به پنل دسترسی ندارد. با حساب مدیر وارد شوید."
+msgstr "با حساب ⁨%(username)s⁩ وارد شده‌اید، ولی این حساب به این صفحه دسترسی ندارد و برای دیدن آن باید با حساب دیگری که دسترسی دارد وارد شوید."
 
 # The panel's icon-only controls are named by these (static/js/admin.js reads
 # the add link's title). Django's own Persian says «اضافه‌کردن».
@@ -661,29 +661,8 @@ msgstr "برای انتشار دوباره"
 msgid "تأیید قیمت"
 msgstr "بررسی قیمت"
 
-msgid "در نشانی صفحه می‌آید و لاتین است، مثل «ai»."
-msgstr "این بخش در لینک صفحه می‌آید؛ با حروف لاتین بنویسید، مثل «⁦ai⁩»."
-
-msgid "شکل‌هایی که مشتری ممکن است بنویسد، با ویرگول: چت جی‌پی‌تی، چت جیپت، gpt"
-msgstr "اسم‌هایی که مشتری ممکن است جستجو کند را با ویرگول جدا کنید؛ مثل چت جی‌پی‌تی، چت جیپت، ⁦gpt⁩."
-
-msgid "تیک را بردارید تا خریدنی نباشد. پاکش نکنید."
-msgstr "اگر نمی‌خواهید این پلن فروخته شود، تیک «موجود» را بردارید؛ لازم نیست آن را حذف کنید."
-
 msgid "برای فعال‌سازی چیزی از مشتری لازم است؟"
 msgstr "برای فعال‌سازی این پلن به اطلاعات مشتری نیاز دارید؟"
-
-msgid "قیمت تخفیفی باید بیشتر از صفر و کمتر از قیمت فروش باشد."
-msgstr "قیمت با تخفیف باید بیشتر از صفر و کمتر از قیمت فروش باشد."
-
-msgid "از پلنی که اطلاعات مشتری می‌خواهد، در هر سفارش فقط یکی می‌شود خرید."
-msgstr "اگر این پلن به اطلاعات مشتری نیاز دارد، حداکثر تعداد در هر سفارش باید ۱ باشد."
-
-msgid "نام محصول لاتین نیست، پس نامک را خودتان بنویسید، مثل «chatgpt-plus»."
-msgstr "چون نام محصول لاتین نیست، بخش «نام در لینک» را خودتان با حروف لاتین بنویسید؛ مثل «⁦chatgpt-plus⁩»."
-
-msgid "پلن «%(plan)s» زیر قیمت خرید فروخته می‌شود: %(loss)s زیان در هر فروش."
-msgstr "پلن «%(plan)s» زیر قیمت خرید فروخته می‌شود؛ با هر فروش %(loss)s ضرر می‌کنید."
 
 msgid "زیان"
 msgstr "ضرر"
@@ -691,44 +670,11 @@ msgstr "ضرر"
 msgid "%(count)s بخش از «%(source)s» به «%(target)s» کپی شد."
 msgstr "%(count)s بخش از «%(source)s» روی «%(target)s» کپی شد."
 
-msgid "Markdown ساده: **پررنگ**، فهرست با - یا ۱.، پیوند، جدول و تیتر ###."
-msgstr "**پررنگ**، فهرست با - یا ۱.، تیتر با ###؛ لینک و جدول را هم می‌توانید بگذارید."
-
-msgid "Markdown ساده: پاراگراف، **پررنگ**، پیوند و فهرست. تیتر به متن ساده تبدیل می‌شود."
-msgstr "می‌توانید پاراگراف، **متن پررنگ**، لینک و فهرست بنویسید. تیترها به متن ساده تبدیل می‌شوند."
-
-msgid "PNG،‏ JPEG یا WebP. هیچ‌وقت اطلاعات ورود اکانت یا داده‌ی مشتری را نشان ندهد."
-msgstr "فایل PNG، JPEG یا WebP انتخاب کنید. تصویر نباید اطلاعات ورود اکانت یا اطلاعات مشتری را نشان دهد."
-
-msgid "اول «این محصول برای شما نیست اگر…»، بعد محدودیت‌ها و آنچه شامل نیست. گارانتی، استثنای بازگشت وجه (اگر باشد) و نکات استفاده را صفحه خودش از فیلدهایشان می‌آورد."
-msgstr "اول بگویید این محصول برای چه کسی مناسب نیست؛ بعد محدودیت‌ها و مواردی را بنویسید که شامل نمی‌شود. گارانتی، شرایط خاص بازگشت وجه و نکات استفاده، خودکار از بخش‌های خودشان نمایش داده می‌شوند."
-
 msgid "بیش از ۷ روز پیش، یا هرگز"
 msgstr "بررسی‌نشده یا بیش از ۷ روز از بررسی گذشته"
 
-msgid "جمع‌بندی یک‌خطی خالی است."
-msgstr "معرفی کوتاه محصول را بنویسید."
-
 msgid "منتشرشده، بدون نکات استفاده"
 msgstr "منتشرشده و بدون نکات استفاده"
-
-msgid "روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."
-msgstr "تاریخی که اطلاعات محصول را دوباره با منابع آن بررسی کردید."
-
-msgid "سطر %(line)s نشانی کامل نیست، مثل https://openai.com/chatgpt/pricing"
-msgstr "لینک خط %(line)s کامل نیست. نشانی کامل را وارد کنید؛ مثل ⁦https://openai.com/chatgpt/pricing⁩"
-
-msgid "هیچ محصول دیگری بخش محتوا ندارد."
-msgstr "محصول دیگری با بخش محتوا پیدا نکردیم."
-
-msgid "هیچ پلن موجودی ندارد."
-msgstr "برای انتشار، حداقل یک پلن با وضعیت «موجود» لازم است."
-
-msgid "رنگ را مانند #10a37f وارد کنید."
-msgstr "کد رنگ را به شکل ⁦#10a37f⁩ وارد کنید."
-
-msgid "رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."
-msgstr "کد رنگ زمینه‌ی کارت را بنویسید؛ مثل ⁦#10a37f⁩. اگر خالی بگذارید، زمینه خنثی می‌ماند."
 
 msgid "This field is required."
 msgstr "این قسمت را پر کنید."
@@ -761,7 +707,7 @@ msgid "Successfully deleted %(count)d %(items)s."
 msgstr "%(count)d مورد از %(items)s حذف شد."
 
 msgid "Items must be selected in order to perform actions on them. No items have been changed."
-msgstr "اول موردهایی را که می‌خواهید انتخاب کنید. چیزی تغییر نکرد."
+msgstr "چون هیچ موردی انتخاب نشده بود، چیزی تغییر نکرد و برای اجرای کار باید اول موردهای مورد نظرتان را انتخاب کنید."
 
 msgid "No action selected."
 msgstr "کاری انتخاب نکرده‌اید."
@@ -777,8 +723,8 @@ msgstr "این عدد نباید از %(limit_value)s کمتر باشد."
 
 msgid "Ensure this value has at most %(limit_value)d character (it has %(show_value)d)."
 msgid_plural "Ensure this value has at most %(limit_value)d characters (it has %(show_value)d)."
-msgstr[0] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
-msgstr[1] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
+msgstr[0] "این متن نباید بیشتر از %(limit_value)d کاراکتر باشد، ولی اکنون %(show_value)d کاراکتر دارد."
+msgstr[1] "این متن نباید بیشتر از %(limit_value)d کاراکتر باشد، ولی اکنون %(show_value)d کاراکتر دارد."
 
 msgid "Review published."
 msgstr "نظر منتشر شد."

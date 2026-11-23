@@ -163,7 +163,11 @@ class ProductRowsFormSet(PaginationInlineFormSet):
         if self.model is ProductSection:
             kinds = [form.cleaned_data.get("kind") for form in rows]
             if kinds.count(ProductSection.Kind.BEFORE_BUYING) > 1:
-                raise ValidationError(_("هر محصول حداکثر یک بخش «پیش از خرید» دارد."))
+                raise ValidationError(
+                    _(
+                        "هر محصول فقط می‌تواند یک بخش «پیش از خرید» داشته باشد و در این فرم بیش از یکی اضافه شده است."
+                    )
+                )
         product = self.instance
         if self.model is Plan and product.status == Product.Status.ACTIVE:
             if not product.is_live_in_db() and not any(form.instance.is_available for form in rows):
@@ -266,20 +270,24 @@ class PlanForm(forms.ModelForm):
             list(Product.objects.select_for_update().filter(pk__in=product_ids).order_by("pk"))
             current = Plan.objects.select_for_update().get(pk=self.instance.pk)
             if current.product_id not in product_ids:
-                raise ValidationError("اطلاعات محصول تغییر کرده است. صفحه را دوباره باز کنید.")
+                raise ValidationError(
+                    "محصول این پلن پس از باز شدن این صفحه تغییر کرده است و برای ثبت تغییرتان باید صفحه را دوباره باز کنید."
+                )
             if "stock_quantity" in cleaned:
                 try:
                     snapshot = signing.loads(cleaned.get("stock_version", ""), salt="catalog.stock")
                 except signing.BadSignature:
                     raise ValidationError(
-                        "صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید."
+                        "تغییرات ذخیره نشد، چون اطلاعات این صفحه‌ی ویرایش معتبر نیست و لازم است صفحه را دوباره باز کنید و تغییرها را از نو وارد کنید."
                     ) from None
                 if (
                     not isinstance(snapshot, dict)
                     or snapshot.get("plan") != current.pk
                     or "stock" not in snapshot
                 ):
-                    raise ValidationError("صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید.")
+                    raise ValidationError(
+                        "تغییرات ذخیره نشد، چون اطلاعات این صفحه‌ی ویرایش معتبر نیست و لازم است صفحه را دوباره باز کنید و تغییرها را از نو وارد کنید."
+                    )
                 if cleaned["stock_quantity"] == snapshot["stock"]:
                     cleaned["stock_quantity"] = current.stock_quantity
                     self.changed_data[:] = [
@@ -288,7 +296,7 @@ class PlanForm(forms.ModelForm):
                 elif current.stock_quantity != snapshot["stock"]:
                     self.add_error(
                         "stock_quantity",
-                        "موجودی تغییر کرده است. صفحه را دوباره باز کنید و مقدار جدید را ببینید.",
+                        "موجودی این پلن پس از باز شدن این صفحه با سفارش یا ویرایش دیگری تغییر کرده است و لازم است صفحه را دوباره باز کنید و مقدار جدید را پیش از ویرایش ببینید.",
                     )
             else:
                 self.instance.stock_quantity = current.stock_quantity
@@ -573,7 +581,9 @@ def warn_if_below_cost(request: HttpRequest, plan: Plan) -> None:
     if plan.is_available and loss > 0:
         messages.warning(
             request,
-            gettext("پلن «%(plan)s» زیر قیمت خرید فروخته می‌شود: %(loss)s زیان در هر فروش.")
+            gettext(
+                "پلن «%(plan)s» کمتر از قیمت خرید فروخته می‌شود و هر فروش آن %(loss)s زیان دارد."
+            )
             % {"plan": plan, "loss": format_toman(loss)},
         )
 
@@ -732,7 +742,7 @@ class ProductAdmin(PreviewAdminMixin):
         )
         for product in drafts:
             if problems := product.publish_problems():
-                headline = gettext("«%(product)s» منتشر نشد.") % {
+                headline = gettext("«%(product)s» منتشر نشد، چون موارد زیر هنوز رفع نشده‌اند:") % {
                     "product": f"\u2068{product}\u2069"
                 }
                 messages.error(request, reasons_message(headline, problems))
@@ -756,7 +766,7 @@ class ProductAdmin(PreviewAdminMixin):
         self._set_status(request, queryset, Product.Status.DRAFT)
         for product in taken:
             if problems := product.publish_problems():
-                headline = gettext("«%(product)s» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.") % {
+                headline = gettext("«%(product)s» فقط پس از رفع موارد زیر دوباره منتشر می‌شود:") % {
                     "product": f"\u2068{product}\u2069"
                 }
                 messages.info(request, reasons_message(headline, problems))
@@ -785,7 +795,7 @@ class ProductAdmin(PreviewAdminMixin):
             messages.error(
                 request,
                 gettext(
-                    "بخش‌ها روی «%(target)s» کپی نشد، چون منتشر شده است. اول آن را از سایت بردارید."
+                    "بخش‌ها روی «%(target)s» کپی نشد، چون این محصول روی سایت منتشر شده است و برای کپی کردن بخش‌ها باید اول آن را از سایت بردارید."
                 )
                 % {"target": f"\u2068{target}\u2069"},
             )
@@ -818,7 +828,7 @@ class ProductAdmin(PreviewAdminMixin):
                 message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
                 if skipped:
                     message += " " + gettext(
-                        "«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد."
+                        "بخش «پیش از خرید» کپی نشد، چون «%(target)s» از قبل یک بخش «پیش از خرید» دارد."
                     ) % {"target": names["target"]}
                 notices.append(message)
         for message in notices:
@@ -843,8 +853,12 @@ class ProductAdmin(PreviewAdminMixin):
                 self.log_change(request, product, [{"changed": {"fields": [change]}}])
         messages.success(
             request,
-            gettext("%(count)s محصول %(status)s شد.")
-            % {"count": to_persian_digits(len(changing)), "status": status.label},
+            (
+                gettext("%(count)s محصول منتشر شد و از همین حالا روی سایت نمایش داده می‌شود.")
+                if status == Product.Status.ACTIVE
+                else gettext("%(count)s محصول از سایت برداشته شد و به پیش‌نویس برگشت.")
+            )
+            % {"count": to_persian_digits(len(changing))},
         )
 
     @admin.display(description=_("قیمت"))
@@ -924,7 +938,7 @@ class ProductAdmin(PreviewAdminMixin):
             field.widget = BrandColourWidget(obj, attrs=field.widget.attrs)
         if "status" in form.base_fields:
             form.base_fields["status"].help_text = _(
-                "پیش‌نویس روی سایت دیده نمی‌شود. ناموجود، اگر آماده‌ی انتشار باشد، صفحه دارد ولی فروخته نمی‌شود."
+                "محصول پیش‌نویس روی سایت دیده نمی‌شود و صفحه‌ی محصول ناموجود، اگر آماده‌ی انتشار باشد، باز می‌ماند ولی فروخته نمی‌شود."
             )
         return form
 
@@ -1061,7 +1075,8 @@ class PlanAdmin(PreviewAdminMixin):
         count = queryset.update(price_confirmed_at=timezone.now())
         messages.success(
             request,
-            gettext("قیمت %(count)s پلن تأیید شد.") % {"count": to_persian_digits(count)},
+            gettext("قیمت %(count)s پلن با تاریخ امروز تأیید شد.")
+            % {"count": to_persian_digits(count)},
         )
 
     @admin.display(description=_("تأیید قیمت"), ordering="price_confirmed_at")

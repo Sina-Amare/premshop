@@ -51,7 +51,7 @@ straight quotes, which scripts/compile_messages.py cannot read inside a msgid.
     {% else %}
         <div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
             <p class="font-semibold p-4 text-font-important-light dark:text-font-important-dark">
-                {% blocktranslate with escaped_object=object %}{{ object_name }} «{{ escaped_object }}» حذف شود؟ همه‌ی موردهای زیر حذف می‌شوند:{% endblocktranslate %}
+                {% blocktranslate with escaped_object=object %}با حذف {{ object_name }} «{{ escaped_object }}»، همه‌ی موردهای زیر حذف می‌شوند و این کار برگشت‌پذیر نیست:{% endblocktranslate %}
             </p>
 
             {% include "admin/includes/object_delete_summary.html" %}

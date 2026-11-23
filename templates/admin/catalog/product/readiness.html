@@ -13,7 +13,7 @@ fields thousands of pixels apart on a phone.
                 <h2 class="font-semibold">{% translate "صفحه‌ی این محصول نمایش داده نمی‌شود" %}</h2>
             {% elif readiness_live %}
                 <h2 class="font-semibold">{% translate "اگر از سایت برداشته شود" %}</h2>
-                <p>{% translate "تا این‌ها درست نشود، دوباره منتشر نمی‌شود." %}</p>
+                <p>{% translate "این محصول اکنون منتشر است و پس از برداشته شدن از سایت، فقط با رفع موارد زیر دوباره منتشر می‌شود." %}</p>
             {% else %}
                 <h2 class="font-semibold">{% translate "پیش از انتشار" %}</h2>
             {% endif %}
@@ -23,7 +23,7 @@ fields thousands of pixels apart on a phone.
                 {% endfor %}
             </ul>
         {% else %}
-            <p>{% translate "شرط‌های انتشار برقرار است." %}</p>
+            <p>{% translate "همه‌ی شرط‌های انتشار برای این محصول برقرار است." %}</p>
         {% endif %}
     </div>
 {% endif %}

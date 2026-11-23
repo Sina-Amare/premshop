@@ -40,7 +40,7 @@ catalogue and what needs the operator there; the recent actions stay beside it.
                 <ul>{% for product in attention.drafts %}<li><a href="{% url 'admin:catalog_product_change' product.pk %}"><bdi>{{ product.name }}</bdi></a></li>{% endfor %}</ul>
             {% endif %}
             {% if not attention.sold_out and not attention.ending and not attention.drafts %}
-                <p>{% translate "فعلاً موردی برای رسیدگی نیست." %}</p>
+                <p>{% translate "در حال حاضر پلن ناموجود، تخفیفی که به‌زودی تمام شود یا پیش‌نویسی منتظر رسیدگی شما نیست." %}</p>
             {% endif %}
         </section>
     </div>
