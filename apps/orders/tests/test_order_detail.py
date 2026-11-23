@@ -445,9 +445,7 @@ def test_late_units_of_one_plan_promised_at_different_times_get_a_line_each(
         assert f"قرار بود تا {when(due)} تحویل شود" in text(purchase)
 
 
-def test_late_items_promised_at_the_same_time_keep_the_dated_apology(
-    client, buyer, plan, operator
-):
+def test_late_items_promised_at_the_same_time_keep_the_dated_apology(client, buyer, plan, operator):
     now = timezone.now().replace(second=0, microsecond=0)
     with time_machine.travel(now, tick=False):
         due = now - timedelta(minutes=5)
