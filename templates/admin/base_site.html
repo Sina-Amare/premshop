@@ -6,7 +6,7 @@
 {% if holiday %}
 <section role="status" class="holiday-banner" data-holiday-banner>
 <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>
-<p><strong>{% translate "تعطیلی" %}</strong> {% blocktranslate with day=holiday.started_at|jalali hour=holiday.started_at|time:"H:i"|fa_digits %}مهلت‌های تحویل از {{ day }}، ساعت {{ hour }} متوقف است.{% endblocktranslate %}</p>
+<p><strong>{% translate "تعطیلی" %}:</strong> {% blocktranslate with day=holiday.started_at|jalali hour=holiday.started_at|time:"H:i"|fa_digits %}مهلت‌های تحویل از {{ day }}، ساعت {{ hour }} متوقف است.{% endblocktranslate %}</p>
 {% if perms.orders.change_holiday %}<a class="holiday-banner-link" href="{% url 'admin:orders_order_holiday' %}">{% translate "مدیریت تعطیلی" %}</a>{% endif %}
 </section>
 {% endif %}
