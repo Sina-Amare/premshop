@@ -111,6 +111,17 @@ def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner
     assert Holiday.objects.filter(ended_at=None).count() == 1
 
 
+@pytest.mark.parametrize("value", [None, "bad", "²"])
+def test_first_start_requires_an_explicit_blank_token(client, owner, value):
+    data = {"action": "start", "step": "confirm"}
+    if value is not None:
+        data["expected"] = value
+    response = client.post(page(), data)
+    assert response.status_code == 400
+    assert "صفحه را دوباره باز کنید" in response.content.decode()
+    assert not Holiday.objects.exists()
+
+
 def test_the_history_has_an_empty_state(client, owner):
     assert "هنوز تعطیلی‌ای ثبت نشده است." in client.get(page()).content.decode()
 

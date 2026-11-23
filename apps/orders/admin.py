@@ -518,20 +518,24 @@ class OrderAdmin(ModelAdmin):
         confirming, error = "", ""
         if request.method == "POST":
             action, step = request.POST.get("action"), request.POST.get("step")
-            raw = to_latin_digits(request.POST.get("expected", "")).strip()
-            expected = int(raw) if raw.isdigit() else None
+            raw = request.POST.get("expected")
+            expected = "" if token is None else str(token)
             if action not in ("start", "end") or step not in ("review", "confirm"):
                 return HttpResponseBadRequest()
             try:
-                if action != ("end" if opened is not None else "start") or expected != token:
+                if (
+                    action != ("end" if opened is not None else "start")
+                    or raw is None
+                    or to_latin_digits(raw).strip() != expected
+                ):
                     raise ValidationError(holiday.STALE)
                 if step == "confirm":
                     if action == "start":
-                        holiday.start(actor=cast(User, request.user), expected_latest=expected)
+                        holiday.start(actor=cast(User, request.user), expected_latest=token)
                         done = _("تعطیلی شروع شد و مهلت‌های تحویل متوقف است.")
                     else:
                         holiday.end(
-                            actor=cast(User, request.user), expected_open=cast(int, expected)
+                            actor=cast(User, request.user), expected_open=cast(int, token)
                         )
                         done = _("تعطیلی تمام شد و مهلت‌ها به اندازه‌ی توقف عقب رفت.")
                     self.message_user(request, done, messages.SUCCESS)
