@@ -403,6 +403,60 @@ def test_a_late_item_beside_a_paused_one_apologises_only_for_its_own_time(
     assert "سرویس دوم" not in said and when(frozen) not in said
 
 
+def late_pair(buyer, plan, operator, first, second):
+    """Two late products, each promised at its own time."""
+    items = two_products(buyer, plan, operator)
+    for item, due in zip(items, (first, second), strict=True):
+        OrderItem.objects.filter(pk=item.pk).update(due_at=due)
+    return items[0].order
+
+
+def test_late_items_promised_at_different_times_each_keep_their_own_time(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        earlier, later = now - timedelta(hours=3), now - timedelta(minutes=5)
+        body = page(client, buyer, late_pair(buyer, plan, operator, earlier, later))
+    said = text(card_of(body))
+    assert "تأخیر در تحویل" in said and "بابت تأخیر در تحویل سرویس نمونه، سرویس دوم" in said
+    assert "زمانی که برای هر کدام گفته بودیم، پایین‌تر آمده است." in said
+    # One date would promise the later product the earlier time.
+    assert when(earlier) not in said and when(later) not in said
+    purchase = text(purchase_of(body))
+    for due in (earlier, later):
+        assert f"قرار بود تا {when(due)} تحویل شود" in purchase
+
+
+def test_late_units_of_one_plan_promised_at_different_times_get_a_line_each(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        order, items = paid_order(buyer, operator, [services.OrderLine(plan, 2)])
+        earlier, later = now - timedelta(hours=3), now - timedelta(minutes=5)
+        for item, due in zip(items, (earlier, later), strict=True):
+            OrderItem.objects.filter(pk=item.pk).update(due_at=due)
+        body = page(client, buyer, order)
+    assert when(earlier) not in text(card_of(body))
+    purchase = purchase_of(body)
+    assert purchase.count('class="order-line__facts"') == 2
+    for due in (earlier, later):
+        assert f"قرار بود تا {when(due)} تحویل شود" in text(purchase)
+
+
+def test_late_items_promised_at_the_same_time_keep_the_dated_apology(
+    client, buyer, plan, operator
+):
+    now = timezone.now().replace(second=0, microsecond=0)
+    with time_machine.travel(now, tick=False):
+        due = now - timedelta(minutes=5)
+        body = page(client, buyer, late_pair(buyer, plan, operator, due, due))
+    said = text(card_of(body))
+    assert f"قرار بود سرویس نمونه، سرویس دوم تا {when(due)} تحویل شود." in said
+    assert "پایین‌تر آمده است" not in said
+
+
 def test_a_delivered_item_names_its_subscription_and_warranty_ends(client, buyer, plan, operator):
     order = order_for_state(buyer, plan, operator, "delivered")
     end = timezone.localdate() + timedelta(days=30)
