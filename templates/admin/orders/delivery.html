@@ -24,7 +24,10 @@
       <p>{% translate "قیمت تأمین زمان خرید" %}: {{ item.cost_snapshot|toman }}</p>
       {% if item.plan.supplier_url %}<p><a href="{{ item.plan.supplier_url }}" rel="noopener noreferrer" target="_blank">{% translate "صفحه‌ی تأمین‌کننده" %}</a></p>{% endif %}
       {% if item.plan.product.delivery_template %}<p class="delivery-template">{{ item.plan.product.delivery_template }}</p>{% endif %}
-      {% if mode == "deliver" and item.due_at %}
+      {% if mode == "deliver" and item.sla_paused_at %}
+        <p class="delivery-paused"><span class="panel-pill" data-tone="progress" data-icon="pause">{% translate "در تعطیلی" %}</span> <span>{% blocktranslate with left=paused_left %}مهلت تحویل: {{ left }}، تا پایان تعطیلی نمی‌گذرد{% endblocktranslate %}</span></p>
+        <p class="delivery-help">{% translate "تا پایان تعطیلی نمی‌توانید تأخیر تأمین ثبت کنید." %}</p>
+      {% elif mode == "deliver" and item.due_at %}
         <p>{% translate "مهلت تحویل" %}: {{ item.due_at|jalali }}، {{ item.due_at|date:"H:i"|fa_digits }}</p>
         <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'delay' %}" class="order-payment-form" autocomplete="off">
           {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
@@ -84,6 +87,8 @@
         <button data-danger type="submit" class="order-input-action">{% translate "رد درخواست تعویض" %}</button>
       </form>
     {% endif %}
+  {% elif item.status == "QUEUED" and item.sla_paused_at %}
+    <p>{% translate "مهلت تحویل" %}: {% translate "متوقف" %}</p>
   {% elif mode != "claim" %}
     <p>{% translate "این محصول در صف انجام نیست" %}: {{ item.get_status_display }}</p>
   {% endif %}

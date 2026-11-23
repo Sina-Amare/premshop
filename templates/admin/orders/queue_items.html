@@ -4,7 +4,7 @@
 {% for row in queue_items %}
   <li>
     <span class="order-queue-product"><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></span>
-    <span class="order-status order-queue-state" data-tone="{{ row.tone }}" data-state="{{ row.item.status }}">{{ row.item.get_status_display }}</span>
+    <span class="order-status order-queue-state" data-tone="{{ row.tone }}" data-state="{{ row.item.status }}"{% if row.kind == "paused" and row.item.status == "QUEUED" %} data-icon="pause"{% endif %}>{{ row.item.get_status_display }}</span>
     {% if row.text %}<span class="order-queue-time" data-clock="{{ row.kind }}">{{ row.text }}{% if row.since %} {{ row.since|jalali }}، {{ row.since|date:'H:i'|fa_digits }}{% endif %}</span>{% endif %}
     {% if row.cancel_on %}<span class="order-queue-time" data-clock="{% if row.stale %}overdue{% else %}neutral{% endif %}">{% translate "لغو خودکار" %}: {{ row.cancel_on|jalali }}</span>{% endif %}
   </li>

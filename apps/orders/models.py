@@ -408,6 +408,58 @@ class OrderEmailRecovery(models.Model):
         return f"{self.order_id} / {self.operator_id} / {self.created_at.isoformat()}"
 
 
+class Holiday(models.Model):
+    """Days the owner does not deliver: while one is open, delivery clocks stand still.
+
+    The open row is the setting; the closed rows are the record of when it was used.
+    """
+
+    started_at = models.DateTimeField(_("شروع"), default=timezone.now, editable=False)
+    started_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name=_("شروع‌کننده"),
+        editable=False,
+    )
+    ended_at = models.DateTimeField(_("پایان"), null=True, blank=True, editable=False)
+    ended_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="+",
+        null=True,
+        blank=True,
+        verbose_name=_("پایان‌دهنده"),
+        editable=False,
+    )
+
+    class Meta:
+        verbose_name = _("تعطیلی")
+        verbose_name_plural = _("تعطیلی‌ها")
+        ordering = ["-started_at", "-pk"]
+        constraints = [
+            # NULLs would otherwise count as distinct, and two open holidays would pass.
+            models.UniqueConstraint(
+                fields=["ended_at"],
+                condition=Q(ended_at__isnull=True),
+                nulls_distinct=False,
+                name="holiday_one_open",
+            ),
+            models.CheckConstraint(
+                condition=Q(ended_at__isnull=True, ended_by__isnull=True)
+                | Q(ended_at__isnull=False, ended_by__isnull=False),
+                name="holiday_end_recorded_together",
+            ),
+            models.CheckConstraint(
+                condition=Q(ended_at__isnull=True) | Q(ended_at__gte=F("started_at")),
+                name="holiday_ends_after_it_starts",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Holiday {self.pk} from {self.started_at.isoformat()}"
+
+
 class OrderItemEvent(models.Model):
     class ClaimReason(models.TextChoices):
         DETAILS = "details_failed", _("اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.")
@@ -429,6 +481,10 @@ class OrderItemEvent(models.Model):
     note = models.TextField(blank=True, default="")
     claim_reason = models.CharField(
         max_length=32, choices=ClaimReason.choices, blank=True, default=""
+    )
+    # Set only on the pause and the resume a holiday writes, which the customer's history omits.
+    holiday = models.ForeignKey(
+        Holiday, on_delete=models.PROTECT, null=True, blank=True, related_name="events"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

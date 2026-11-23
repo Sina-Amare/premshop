@@ -32,8 +32,9 @@ from apps.catalog.pricing import effective_price
 from apps.cms.models import Page
 from apps.core import events, support
 from apps.core.formatting import format_jalali, to_latin_digits, to_persian_digits
+from apps.orders import holiday
 from apps.orders import status as order_status
-from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window
+from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window, resumed_deadline
 from apps.orders.models import (
     SUPPORT_ALPHABET,
     CredentialAccessLog,
@@ -200,12 +201,18 @@ def deliver_item(
             " دکمه‌ی «نمایش اطلاعات تحویل» در صفحه‌ی سفارش ببینید."
         ),
     )
-    if item.status != OrderItem.Status.QUEUED or item.paid_at is None or item.sla_paused_at:
+    # A stopped clock is a holiday's: the owner may still deliver during one.
+    if (
+        item.status != OrderItem.Status.QUEUED
+        or item.paid_at is None
+        or not holiday.clock_allows_delivery(item)
+    ):
         raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
     item.first_expires_on = content.expires_at
     item.warranty_ends_on = order_status.warranty_last_day(item)
+    item.sla_paused_at = None
     item.save(
         update_fields=[
             "status",
@@ -214,6 +221,7 @@ def deliver_item(
             "first_expires_on",
             "actual_cost",
             "warranty_ends_on",
+            "sla_paused_at",
         ]
     )
     return _write_set(item, account, OrderItem.Status.QUEUED, content)
@@ -1342,6 +1350,8 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
         raise PermissionDenied
     User.objects.select_for_update(no_key=True).get(pk=order.user_id)
     order = Order.objects.select_for_update().get(pk=order.pk)
+    holiday.lock()
+    opened = holiday.current()
     items = list(order.items.select_for_update().defer("customer_input").order_by("pk"))
     if not can_pay_order(order, items=items, payment_id=payment.pk):
         raise ValidationError(gettext_lazy("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
@@ -1354,7 +1364,8 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
             requires_input=item.clock_requires_input,
             input_received_at=item.input_received_at,
         )
-        item.save(update_fields=["status", "paid_at", "due_at"])
+        holiday.hold(item, item.paid_at, opened)
+        item.save(update_fields=["status", "paid_at", "due_at", "sla_paused_at"])
         event = OrderItemEvent.objects.create(
             order_item=item,
             from_status=OrderItem.Status.PENDING_PAYMENT,
@@ -1452,7 +1463,13 @@ def _input_event(
 
 @transaction.atomic
 def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id: int) -> OrderItem:
-    item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
+    item, account = _input_item(
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        operator_only=True,
+        then=lambda _order: holiday.lock(),
+    )
     if _input_replay(
         item, expected_event_id, OrderItem.Status.QUEUED, OrderItem.Status.AWAITING_INPUT
     ):
@@ -1460,7 +1477,9 @@ def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id
     if item.status != OrderItem.Status.QUEUED or item.paid_at is None:
         raise ValidationError(gettext_lazy("این محصول در صف انجام نیست."))
     item.input_requested_at = timezone.now()
-    item.sla_paused_at = item.input_requested_at if item.due_at is not None else None
+    # A clock a holiday already stopped stays stopped from then; no stopped time is lost.
+    if item.due_at is not None:
+        item.sla_paused_at = item.sla_paused_at or item.input_requested_at
     item.status = OrderItem.Status.AWAITING_INPUT
     item.input_notice = OrderItem.InputNotice.NONE  # a new episode starts its ladder again
     item.save(update_fields=["status", "input_requested_at", "sla_paused_at", "input_notice"])
@@ -1479,7 +1498,11 @@ def _receive_input(
     customer_input: str | None = None,
 ) -> OrderItem:
     item, account = _input_item(
-        order_id=order_id, item_id=item_id, actor=actor, operator_only=customer_input is None
+        order_id=order_id,
+        item_id=item_id,
+        actor=actor,
+        operator_only=customer_input is None,
+        then=lambda _order: holiday.lock(),
     )
     if _input_replay(
         item, expected_event_id, OrderItem.Status.AWAITING_INPUT, OrderItem.Status.QUEUED
@@ -1509,6 +1532,7 @@ def _receive_input(
         )
         fields.append("customer_input")
     at = timezone.now()
+    opened = holiday.current()
     if first:
         item.input_received_at = at
         item.due_at = delivery_deadline(
@@ -1517,11 +1541,13 @@ def _receive_input(
             requires_input=item.clock_requires_input,
             input_received_at=item.input_received_at,
         )
-    else:
-        if item.sla_paused_at is None or item.due_at is None:
-            raise ValidationError(gettext_lazy("مهلت تحویل این محصول متوقف نشده است."))
-        item.due_at = in_support_window(item.due_at + (at - item.sla_paused_at))
-    item.sla_paused_at = None
+        holiday.hold(item, at, opened)
+    elif item.sla_paused_at is None or item.due_at is None:
+        raise ValidationError(gettext_lazy("مهلت تحویل این محصول متوقف نشده است."))
+    elif opened is None:
+        item.due_at = resumed_deadline(item.due_at, item.sla_paused_at, at)
+        item.sla_paused_at = None
+    # During a holiday the stop runs on, and its end moves the deadline once for all of it.
     item.status = OrderItem.Status.QUEUED
     item.save(update_fields=fields)
     _input_event(

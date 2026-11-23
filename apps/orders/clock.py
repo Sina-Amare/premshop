@@ -34,6 +34,13 @@ def delivery_deadline(
     return min(due, start + timedelta(hours=48))
 
 
+def resumed_deadline(due: datetime, paused_at: datetime, resumed_at: datetime) -> datetime:
+    """A stopped clock's deadline when it restarts: moved by the stopped time, then into
+    support hours once (ADR-0009). The cap is not applied again; the pause was not the shop's
+    delivery time."""
+    return in_support_window(due + (resumed_at - paused_at))
+
+
 def in_support_window(due: datetime) -> datetime:
     """The same moment if support is open then, otherwise the next opening."""
     due = due.astimezone(TEHRAN)

@@ -1,7 +1,15 @@
 {% extends "admin/base_site.html" %}
-{% load i18n fa %}
+{% load i18n fa holiday_tags %}
 {% block messages %}
 {{ block.super }}
+{% if user.is_active and user.is_staff %}{% open_holiday as holiday %}{% endif %}
+{% if holiday %}
+<section role="status" class="holiday-banner" data-holiday-banner>
+<span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>
+<p>{% blocktranslate with day=holiday.started_at|jalali hour=holiday.started_at|time:"H:i"|fa_digits %}فروشگاه از {{ day }}، ساعت {{ hour }} در تعطیلی است و مهلت تحویل سفارش‌ها نمی‌گذرد.{% endblocktranslate %}</p>
+{% if perms.orders.change_holiday %}<a class="holiday-banner-link" href="{% url 'admin:orders_order_holiday' %}">{% translate "مدیریت تعطیلی" %}</a>{% endif %}
+</section>
+{% endif %}
 {% if mail_quota.warning %}
 <section role="status" class="border border-base-200 rounded-default p-4 mx-4 my-4" data-mail-quota>
 <h2>{% translate "وضعیت ارسال ایمیل" %}</h2>

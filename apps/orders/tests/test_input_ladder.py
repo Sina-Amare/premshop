@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.notifications.models import Notification
-from apps.orders import services
+from apps.orders import holiday, services
 from apps.orders.admin import queue_overview
 from apps.orders.clock import TEHRAN
 from apps.orders.models import OrderItem, OrderItemEvent
@@ -143,6 +143,23 @@ def test_the_21st_tehran_day_cancels_with_an_owed_refund_and_claims_no_transfer(
     [notice] = notices(item, "item_cancelled")
     assert "۲۱ روز" in notice.text_body and "۲۱ روز" in notice.html_body
     assert "این پیام تأیید واریز نیست" in notice.text_body
+
+
+def test_a_holiday_moves_no_rung_of_the_ladder(buyer, plan, operator):
+    item = waiting(buyer, plan, operator)
+    with time_machine.travel(REQUESTED + timedelta(hours=1), tick=False):
+        holiday.start(actor=operator, expected_latest=None)
+    assert run(REQUESTED + timedelta(hours=48)) == 1
+    with time_machine.travel(tehran(2026, 11, 16, 12, 1), tick=False):
+        tiles = {tile["label"]: tile["count"] for tile in queue_overview(operator)}
+    assert tiles[STALE] == 1
+    assert run(tehran(2026, 11, 23, 10)) == 1
+    assert run(tehran(2026, 11, 30, 20, 59)) == 0
+    assert run(tehran(2026, 11, 30, 21)) == 1
+    item.refresh_from_db()
+    assert (item.status, item.cancel_reason) == ("CANCELLED", "input_timeout")
+    assert item.events.filter(to_status="CANCELLED").count() == 1
+    assert Refund.objects.filter(order_item=item, status=Refund.Status.OWED).count() == 1
 
 
 @pytest.mark.parametrize("hour,minute", [(10, 0), (20, 59)])
