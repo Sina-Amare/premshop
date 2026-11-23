@@ -8,6 +8,46 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def test_the_holiday_reverses_only_when_nothing_would_be_stranded(buyer, plan):
+    from apps.accounts.models import User
+    from apps.notifications.models import Notification
+    from apps.notifications.services import drop_superseded_delay_notices
+    from apps.orders import holiday
+    from apps.orders import services as orders
+    from apps.orders.tests.test_delivery import queued
+    from apps.orders.tests.test_input_clock import act
+
+    previous = ("orders", "0027_review_admin_labels")
+    operator = User.objects.create_superuser("operator@example.test")
+    _, item = queued(buyer, plan, operator)
+
+    def reverse():
+        MigrationExecutor(connection).migrate([previous])
+
+    def delay():
+        act(orders.delay_supply, item, operator, hours=2, note="تأمین‌کننده دیر کرد")
+        return Notification.objects.filter(template_name="supply_delayed").latest("pk")
+
+    try:
+        stale = delay()
+        opened = holiday.start(actor=operator, expected_latest=None)
+        with pytest.raises(RuntimeError, match="holiday"):
+            reverse()
+        holiday.end(actor=operator, expected_open=opened.pk)
+        with pytest.raises(RuntimeError, match="delay notice"):
+            reverse()
+        assert drop_superseded_delay_notices() == 1
+        stale.refresh_from_db()
+        assert stale.status == "failed"
+        item.refresh_from_db()
+        valid = delay()
+        reverse()
+        assert Notification.objects.filter(pk=valid.pk, status="pending").exists()
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_waiting_clock_migration_reverses_without_changing_purchase_facts(buyer, plan):
     previous = ("orders", "0015_recorded_delivery_deadlines")
     try:
