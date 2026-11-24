@@ -44,7 +44,7 @@ STATES: dict[str, tuple[str, str]] = {
     "replacement": ("بررسی درخواست تعویض", "progress"),
     "queued": ("در حال آماده‌سازی", "progress"),
     "delivered": ("تحویل‌شده", "done"),
-    "refunded": ("بازگشت وجه تکمیل‌شده", "closed"),
+    "refunded": ("وجه را برگرداندیم", "closed"),
     "expired": ("پایان مهلت پرداخت", "closed"),
     # Red by the owner's choice (2026-11-11), yet last in the ranking: any other item says more.
     "cancelled": ("لغوشده", "problem"),

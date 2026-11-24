@@ -2448,3 +2448,7 @@ msgstr "Reject request"
 
 msgid "خالی = نامحدود. هر سفارش یک بار حساب می‌شود. لغو سفارش پرداخت‌نشده یا لغو همه‌ی محصولات مشمول تخفیف پیش از تحویل، یک بار از تعداد استفاده کم می‌کند."
 msgstr "Blank = unlimited. Each order counts as one use. Cancelling an unpaid order, or cancelling all discounted items before delivery, removes that use from the total."
+
+
+msgid "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید."
+msgstr "The item's status changed. Reopen the page."

@@ -28,7 +28,7 @@
       selection.removeAllRanges();
       selection.addRange(range);
       status.classList.remove('sr-only');
-      status.textContent = 'کپی خودکار انجام نشد. شناسه را انتخاب کنید و کپی بگیرید.';
+      status.textContent = 'شناسه را کپی کنید و همراه شماره‌ی سفارش بفرستید.';
     }
   });
 }());

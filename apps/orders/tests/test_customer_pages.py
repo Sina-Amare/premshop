@@ -158,10 +158,7 @@ def test_invoice_is_standalone_owner_only_and_has_no_private_values(client, buye
     body = response.content.decode()
     assert response.status_code == 200
     privacy_headers(response)
-    assert (
-        "فاکتور سفارش" in body
-        and "این فاکتور جزئیات سفارش را نشان می‌دهد و تأیید پرداخت نیست." in body
-    )
+    assert "فاکتور سفارش" in body and "این فاکتور رسید پرداخت نیست." in body
     assert "دانلود تصویر فاکتور" in body and "در انتظار پرداخت" in body
     assert to_persian_digits(order.order_number) in body
     assert "تعداد: ۲" in body
@@ -522,5 +519,5 @@ def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
 
     page = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    assert ("پس از تحویل به شما خبر می‌دهیم." in page) is promised
-    assert ("ایمیلتان را وارد کنید" in page) is not promised
+    assert ("پس از تحویل خبر می‌دهیم." in page) is promised
+    assert ("ایمیلتان را ثبت کنید" in page) is not promised

@@ -54,7 +54,7 @@ from apps.orders.services import (
 ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
-INVOICE_NOTICE = "این فاکتور جزئیات سفارش را نشان می‌دهد و تأیید پرداخت نیست."
+INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
 
 
 @never_cache
@@ -265,7 +265,7 @@ def delivery_code(
                 raise ValidationError("کد اشتباه است یا اعتبارش تمام شده است.")
         else:
             proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد تأیید را به نشانی ایمیل همین سفارش فرستادیم.")
+            messages.success(request, "کد تأیید را به ایمیل این سفارش فرستادیم.")
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     return redirect("order-detail", order_number=order_number)
@@ -450,7 +450,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
 def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
-    error = "لغو سفارش با انتخاب «بله، لغو سفارش» تأیید می‌شود."
+    error = "برای تأیید، دکمه‌ی «بله، لغو سفارش» را بزنید."
     if request.POST.get("confirm") == "yes":
         try:
             cancel_unpaid_order(order_id=order.pk, actor=cast(User, request.user))

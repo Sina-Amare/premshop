@@ -92,9 +92,7 @@ def replace_support_token(
         raise PermissionDenied
     identifier = OrderSupportIdentifier.objects.get(order_id=order.pk)
     if not constant_time_compare(identifier.support_token, expected_support_token):
-        raise ValidationError(
-            "شناسه‌ی پشتیبانی تغییر کرده است. برای دیدن شناسه‌ی فعلی، صفحه‌ی سفارش را دوباره باز کنید."
-        )
+        raise ValidationError("شناسه‌ی پشتیبانی تغییر کرده است. شناسه‌ی فعلی در همین صفحه است.")
     while constant_time_compare(identifier.support_token, expected_support_token):
         identifier.support_token = new_support_token()
     identifier.save(update_fields=["support_token"])
@@ -336,11 +334,7 @@ def open_customer_claim(
         latest = item.events.latest("pk")
         if latest.actor == OrderItemEvent.Actor.CUSTOMER and latest.actor_user_id == account.pk:
             return item
-        raise ValidationError(
-            gettext_lazy(
-                "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
-            )
-        )
+        raise ValidationError(gettext_lazy("وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید."))
     if reason not in OrderItemEvent.ClaimReason.values:
         raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
     if reason not in available_claim_reasons(item):
@@ -894,7 +888,7 @@ class Purchase:
 class UnpaidOrderExists(ValidationError):
     def __init__(self, order: Order) -> None:
         self.order = order
-        super().__init__("تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد.")
+        super().__init__("اول سفارش فعلی را پرداخت یا لغو کنید.")
 
 
 def _money(value: Decimal) -> Decimal:

@@ -67,7 +67,7 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
             expect(box.locator('[data-state="claim_open"]')).to_be_visible()
             assert box.locator("form").count() == 0
         elif state == "expired":
-            expect(box).to_contain_text("مهلت ثبت درخواست تعویض برای این محصول تمام شده است.")
+            expect(box).to_contain_text("مهلت درخواست تعویض گذشته است.")
         else:
             box.locator("summary").click()
             if state in ("rejected", "replaced"):

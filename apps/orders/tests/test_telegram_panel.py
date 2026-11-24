@@ -245,9 +245,6 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
     ]
 
 
-NOTHING_TO_DO = "کاری لازم نیست."
-
-
 # The bot names the one account a customer's message should go to.
 HANDLE = support.details()["telegram"]
 
@@ -259,16 +256,16 @@ HANDLE = support.details()["telegram"]
         (
             "refund_owed",
             {},
-            f"شماره‌ی کارت یا شبای به نام خودتان و شماره‌ی سفارش را در تلگرام برای {HANDLE} بفرستید.",
+            f"شماره‌ی کارت یا شبای حسابی به نام خودتان را همراه شماره‌ی سفارش برای {HANDLE} بفرستید.",
         ),
-        ("late", {}, f"زمان تحویل گذشته است. برای پیگیری، به {HANDLE} پیام بدهید."),
-        ("replacement", {}, NOTHING_TO_DO),
-        ("queued", {}, NOTHING_TO_DO),
-        ("delivered", {}, NOTHING_TO_DO),
+        ("late", {}, f"برای پیگیری تحویل به {HANDLE} پیام بدهید."),
+        ("replacement", {}, None),
+        ("queued", {}, None),
+        ("delivered", {"contact": False}, None),
         ("delivered", {"in_warranty": True}, f"مشکلی هست؟ به {HANDLE} پیام بدهید."),
-        ("refunded", {}, NOTHING_TO_DO),
-        ("expired", {}, "مهلت ۲۴ ساعته‌ی پرداخت تمام شد و سفارش لغو شد."),
-        ("cancelled", {}, "سفارش به درخواست شما پیش از پرداخت لغو شد."),
+        ("refunded", {"refund": 200_000}, "۲۰۰,۰۰۰ تومان را به شما برگرداندیم."),
+        ("expired", {}, "مهلت ۲۴ ساعته‌ی پرداخت تمام شده است."),
+        ("cancelled", {}, "این سفارش را پیش از پرداخت لغو کردید."),
         (
             "cancelled",
             {"reason": "operator"},
@@ -281,9 +278,11 @@ def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, sta
     summary["card"] = {**summary["card"], **order_status.pill(state), **card}
     context = {**summary, "support": support.details(), "order_url": "/"}
     text = render_to_string("telegram/panel_order.html", context)
-    assert sentence in text and "تماس بگیرید" not in text
-    if card:
-        assert NOTHING_TO_DO not in text
+    assert "تماس بگیرید" not in text
+    if sentence is None:
+        assert "<blockquote>" not in text
+    else:
+        assert sentence in text
 
 
 @pytest.mark.parametrize(

@@ -61,7 +61,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         )
         copy.click()
         expect(page.locator("[data-copy-status]")).to_have_text(
-            "کپی خودکار انجام نشد. شناسه را انتخاب کنید و کپی بگیرید."
+            "شناسه را کپی کنید و همراه شماره‌ی سفارش بفرستید."
         )
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)

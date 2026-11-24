@@ -27,5 +27,5 @@ class ReviewForm(forms.Form):
     def clean_review_text(self) -> str:
         text = cast(str, self.cleaned_data["review_text"])
         if _CONTACT.search(normalize("NFKC", text)):
-            raise ValidationError("پیش از ثبت نظر، ایمیل یا شماره‌ی موبایل را از متن بردارید.")
+            raise ValidationError("ایمیل یا شماره‌ی موبایل را از متن نظرتان بردارید.")
         return text

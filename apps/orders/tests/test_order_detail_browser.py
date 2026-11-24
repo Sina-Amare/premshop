@@ -85,7 +85,7 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             page.locator('[name="expected_support_token"]').evaluate("el => {el.value = 'stale';}")
             page.get_by_role("button", name="ساخت شناسه‌ی جدید", exact=True).click()
             expect(page.get_by_role("alert")).to_have_text(
-                "شناسه‌ی پشتیبانی تغییر کرده است. برای دیدن شناسه‌ی فعلی، صفحه‌ی سفارش را دوباره باز کنید."
+                "شناسه‌ی پشتیبانی تغییر کرده است. شناسه‌ی فعلی در همین صفحه است."
             )
             expect(page).to_have_url(
                 live_server.url + reverse("order-support-replace", args=[order.order_number])
