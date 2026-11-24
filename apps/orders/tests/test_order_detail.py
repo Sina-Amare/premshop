@@ -296,7 +296,14 @@ def test_cancelling_a_fully_discounted_item_keeps_the_other_purchase_in_preparat
     assert not Refund.objects.filter(order_item__order=order).exists()
     body = page(client, buyer, order)
     assert "در حال آماده‌سازی" in card_of(body)
-    assert "لغوشده" in body
+    rows = re.findall(r'<article class="order-line">(.*?)</article>', purchase_of(body), re.S)
+    assert len(rows) == 2
+    for product, label in (
+        (plan.product.name, "لغوشده"),
+        (other.product.name, "در حال آماده‌سازی"),
+    ):
+        row = next(row for row in rows if product in row)
+        assert label in row
     assert 'data-money="paid"' in body and 'data-money="owed"' not in body
 
 
