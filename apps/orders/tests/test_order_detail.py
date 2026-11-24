@@ -14,10 +14,11 @@ from apps.catalog.models import Category, Plan, Product
 from apps.core import support
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
 from apps.orders import selectors, services, telegram_panel
-from apps.orders.models import Order, OrderItem, OrderSupportIdentifier
+from apps.orders.models import DiscountCode, Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act
 from apps.orders.tests.test_input_clock import operator as operator
+from apps.orders.tests.test_lifecycle_concurrency import separate_plan
 from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 from apps.orders.tests.test_replacement import claim, reject
 from apps.payments.models import Refund
@@ -246,11 +247,15 @@ def test_an_overdue_order_offers_a_new_order_and_no_payment(client, buyer, plan,
     assert "پرداخت آنلاین" not in card and "data-support-contact" not in card
 
 
-def test_a_refund_owed_shows_the_ledgers_amount_and_asks_for_a_card_in_the_customers_name(
+def test_supply_failure_shows_the_net_paid_amount_and_asks_for_a_card_in_the_customers_name(
     client, buyer, plan, operator
 ):
-    order = order_for_state(buyer, plan, operator, "owed")
+    DiscountCode.objects.create(code="SAVE", kind="fixed", value=50000)
+    order, (item,) = paid_order(buyer, operator, [services.OrderLine(plan, 1)], "SAVE")
+    cancel(item, operator)
     refund = Refund.objects.get(order_item__order=order)
+    assert order.payments.get().amount == refund.amount == Decimal("150000")
+    assert refund.status == Refund.Status.OWED
     body = page(client, buyer, order)
     card = card_of(body)
     figure = format_toman(refund.amount, with_unit=False)
@@ -276,19 +281,23 @@ def test_a_refund_paid_shows_its_amount_and_date_but_never_where_it_went(
         assert staff_only not in body and to_persian_digits(staff_only) not in body
 
 
-def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
+def test_cancelling_a_fully_discounted_item_keeps_the_other_purchase_in_preparation(
     client, buyer, plan, operator
 ):
-    _, items = paid_order(buyer, operator, [services.OrderLine(plan, 1)])
-    OrderItem.objects.filter(pk=items[0].pk).update(discount_share=items[0].price_snapshot)
-    items[0].refresh_from_db()
-    cancel(items[0], operator)
-    order = items[0].order
+    other = separate_plan(plan)
+    code = DiscountCode.objects.create(code="SAVE", kind="fixed", value=200000, scope="selected")
+    code.products.add(plan.product)
+    order, (covered, paid) = paid_order(
+        buyer, operator, [services.OrderLine(plan, 1), services.OrderLine(other, 1)], code.code
+    )
+    cancel(covered, operator)
+    assert covered.paid_amount == 0
+    assert paid.paid_amount == order.payments.get().amount == Decimal("200000")
     assert not Refund.objects.filter(order_item__order=order).exists()
-    card = card_of(page(client, buyer, order))
-    assert "مبلغی برای بازگشت وجه این سفارش ثبت نشده است" in card
-    assert "چون نتوانستیم محصول را تهیه کنیم" in card
-    assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
+    body = page(client, buyer, order)
+    assert "در حال آماده‌سازی" in card_of(body)
+    assert "لغوشده" in body
+    assert 'data-money="paid"' in body and 'data-money="owed"' not in body
 
 
 def test_a_queued_item_past_its_delivery_time_reads_as_late_and_points_to_support(
