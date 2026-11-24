@@ -297,6 +297,38 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 
 The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
 
+### Editorial review guide (draft)
+
+PremShop sounds like a shop that knows what it sells and can explain what happens after payment. Tell the buyer what they can choose now, what the shop does next and what affects the purchase. In the panel, give the operator enough information to check a decision at a glance.
+
+| Where | What the reader needs |
+|---|---|
+| Home and search | A reason to browse and a way forward. On a failed search the catalogue and Telegram serve different purposes. Keep the Telegram invitation even though the button also names Telegram. |
+| Product page | A concrete reason to buy, a comparison that helps choose, and any limitation that could change the choice. Give each option the same units for price and duration. Use «مدت اشتراک» and «مبلغ کارت» where those are the actual choices. |
+| Cart and checkout | Keep what changes the total, holds up checkout, or starts a deadline. Where a line is the only explanation of a disabled action, keep it by that action or point to the affected item. |
+| Account and orders | Name which account, order or purchase a message concerns. On a mixed order, give each affected product its own state and next action. |
+| Email, Telegram and SMS | Read the subject, title, body and button as one message. Repeat a fact if a channel needs it to stand alone. SMS can often stop at the code, its purpose and the warning. Start a line with Persian if an English name would set the wrong direction. |
+| Operator panel | A label can name a field. A hint can say what a blank value does or when the result appears. Give the full consequence for an irreversible operation. |
+| Legal and security | Name the condition, scope and deadline. Check the recipient and who can act. Keep «این کد را به کسی ندهید» with the code. |
+
+Use the reader's words. «اکانت» is natural for a service they bought, «حساب کاربری» is where they sign in at PremShop, and «پلن» is useful in the panel. The FAQ can sound like a conversation. Keep amounts, times and warranty conditions exact in every register.
+
+Read what's already on the screen before adding a sentence. A paragraph telling the buyer to choose a product repeats the empty cart's title and its «دیدن محصولات» button. Signing in to recover an earlier cart is a different action and deserves a line. Keep owner-approved copy in place and bring proposed changes to the owner with the rendered context.
+
+| Example | Editorial decision |
+|---|---|
+| «شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم بعد از آن وارد کنید.» → «شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.» | The familiar eleven-digit form gives the reader one thing to check. The validator still accepts the supported country-code spellings. |
+| «برای رمز عبور، کنار عدد از حروف یا علامت هم استفاده کنید.» → «رمز عبور نباید فقط عدد باشد.» | This validator rejects an all-digit password. A password with no digits can pass this rule. |
+| «تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد.» → «اول سفارش فعلی را پرداخت یا لغو کنید.» | The order link is beside the instruction. The separate sentence about keeping the cart gives a fact the button cannot convey. |
+| «کد جدید با پیامک فرستاده شد.» → «کد جدید را برایتان پیامک کردیم.» | The SMS provider has accepted the send by this point. Telegram's queued request offers conditional help because the site has yet to learn whether delivery is possible. |
+| «این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.» on a 503 page | The error page cannot verify the effect of an outage. Give the buyer a way to retry or contact the shop. |
+
+For money, write down the event behind the text before editing. An amount owed, a transfer made by the operator and a transfer recorded in the panel are distinct events. Review the refund amount, destination and transfer reference alongside the confirmation. Keep both the reason money is due and the condition that starts the wait. A recorded payment is the buyer's payment to the shop. A recorded refund is the shop's transfer to the buyer.
+
+For product and SEO copy, explain a purchased capability through a task the buyer can recognize. Describe background playback as listening while the screen is off. Mention requirements and usage limits where they change the choice. Review source material before changing a claim. Keep edits to seeded defaults from overwriting product copy the operator has maintained.
+
+For review, open the rendered view at 390 and 1440 pixels with ordinary and long values. Check empty, blocked, expired and successful states. Exercise the action named in each message, or check its code path in an isolated fixture. Review plain-text email beside HTML. A bot or SMS preview uses a sample payload with sending disabled. Very short help can look clear in a source file and become unclear once a field is hidden or a variable changes. Re-read the result with those branches visible and ask a second reader whether an older line or deletion would work better.
+
 ## Decided by the owner
 
 Each of these looks like a detail anyone could tidy away, and each is the owner's decision. A change to one waits for the owner's agreement, and a proposal that would undo one says so.
