@@ -96,7 +96,7 @@ def test_a_staff_number_gets_the_wrong_code_answer(client):
 def test_an_invalid_number_is_refused_before_anything_is_sent(client):
     response = ask(client, "12345")
 
-    assert "شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم" in response.content.decode()
+    assert "شماره‌ی موبایل باید ۱۱ رقم باشد" in response.content.decode()
     assert not sms.outbox
 
 
@@ -213,7 +213,7 @@ def test_past_the_days_ceiling_no_code_is_sent(rf):
     with pytest.raises(services.CodeNotSent) as refused:
         services.request_login_code(at(rf), PHONE)
 
-    assert "متوقف" in refused.value.text
+    assert "کد ورود پیامک کنیم" in refused.value.text
     assert not sms.outbox
     assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, PHONE) == 1
 

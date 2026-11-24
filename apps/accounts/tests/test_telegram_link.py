@@ -216,7 +216,7 @@ def test_changes_from_the_account_page_have_a_daily_limit(bot, client, user):
     issued = client.session["accounts.telegram_link"]
     refused = client.post(url, {"action": "link"}, follow=True)
     assert client.session["accounts.telegram_link"] == issued
-    assert "به سقف تغییر اتصال تلگرام در ۲۴ ساعت" in refused.content.decode()
+    assert "در ۲۴ ساعت فقط ۵ بار" in refused.content.decode()
     # Unlinking is never refused: it is what the link alert tells a customer to do.
     linked(user)
     client.post(url, {"action": "unlink"})
@@ -257,7 +257,7 @@ def test_an_expired_or_made_up_token_links_nothing(bot, user, settings):
     assert len(screens) == 3
     # No confirm button: only the way back to the account page for a new link.
     for _, buttons in screens:
-        assert buttons == [[account_button(f"{emoji.LINK} دریافت پیوند جدید", settings)]]
+        assert buttons == [[account_button(f"{emoji.LINK} دریافت لینک جدید", settings)]]
 
 
 def test_a_newer_token_kills_the_older_one(bot, user):
@@ -309,6 +309,7 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
         assert label in body(payload)
     support_url = support.details()["telegram_url"]
+    assert "پیام‌های این گفت‌وگو را نمی‌خوانیم." in body(payload)
     assert f'به <a href="{support_url}">پشتیبانی</a> پیام بدهید.' in body(payload)
     assert buttons == [
         [account_button(f"{emoji.LINK} اتصال حساب", settings)],

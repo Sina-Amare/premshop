@@ -35,9 +35,7 @@ def test_sign_in_choice_error_and_immediate_sms_switch(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("123")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(
-            page.get_by_text(
-                "شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم بعد از آن وارد کنید.", exact=True
-            )
+            page.get_by_text("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.", exact=True)
         ).to_be_visible()
         page.screenshot(path=str(tmp_path / f"sign-in-error-{width}.png"), full_page=True)
         page.get_by_label("شماره‌ی موبایل", exact=True).fill(PHONE)

@@ -42,9 +42,7 @@ WRONG_CODE = "کد ورود اشتباه است یا اعتبارش تمام ش�
 CODE_RESENT = "کد جدید را برایتان پیامک کردیم."
 # Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = (
-    "اعتبار این صفحه تمام شده است. برای دریافت کد ورود، شماره‌ی موبایلتان را دوباره وارد کنید."
-)
+PAGE_EXPIRED = "برای گرفتن کد جدید، شماره‌ی موبایلتان را دوباره وارد کنید."
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -331,11 +329,11 @@ def account_telegram(request: HttpRequest) -> HttpResponse:
     # Unlink is never limited: it is what the link alert tells a customer to do, and only a
     # linked account can send its email, each link already bounded below and in the bot.
     if action == "link" and not ratelimit.hit(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)):
-        messages.error(request, "به سقف تغییر اتصال تلگرام در ۲۴ ساعت رسیده‌اید.")
+        messages.error(request, "در ۲۴ ساعت فقط ۵ بار می‌توانید لینک اتصال تلگرام بگیرید.")
     elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
     elif action == "unlink":
         telegram.unlink(user)
         request.session.pop(TELEGRAM_LINK_KEY, None)
-        messages.success(request, "اتصال حساب تلگرام به حساب کاربری قطع شد.")
+        messages.success(request, "اتصال تلگرام قطع شد.")
     return redirect(reverse("account") + "#telegram")

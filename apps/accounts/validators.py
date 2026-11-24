@@ -18,6 +18,8 @@ from django.core.exceptions import ValidationError
 
 from apps.core.formatting import to_persian_digits
 
+_MOBILE_FORMAT = "شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود."
+
 PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 
@@ -32,7 +34,7 @@ def normalize_digits(value: str) -> str:
 
 def normalize_mobile_phone(value: str) -> str:
     if not isinstance(value, str) or len(value) > 32:
-        raise ValidationError("شماره‌ی موبایل را به شکل ۰۹ و ۹ رقم بعد از آن وارد کنید.")
+        raise ValidationError(_MOBILE_FORMAT)
     typed = normalize_digits(value)
     # Contact cards often carry invisible direction marks on RTL phones.
     number = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
@@ -40,7 +42,7 @@ def normalize_mobile_phone(value: str) -> str:
         return ""
     mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", number))
     if not mobile:
-        raise ValidationError("شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم بعد از آن وارد کنید.")
+        raise ValidationError(_MOBILE_FORMAT)
     return "0" + mobile.group(1)
 
 
@@ -69,12 +71,12 @@ class NumericPasswordValidator(password_validation.NumericPasswordValidator):
     def validate(self, password: str, user: Any = None) -> None:
         if password.isdigit():
             raise ValidationError(
-                "برای رمز عبور، کنار عدد از حروف یا علامت هم استفاده کنید.",
+                "رمز عبور نباید فقط عدد باشد.",
                 code="password_entirely_numeric",
             )
 
     def get_help_text(self) -> str:
-        return "برای رمز عبور، کنار عدد از حروف یا علامت هم استفاده کنید."
+        return "رمز عبور نباید فقط عدد باشد."
 
 
 class CommonPasswordValidator(password_validation.CommonPasswordValidator):
