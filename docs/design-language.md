@@ -162,6 +162,8 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
+Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation.
+
 ### Written in Persian
 
 The owner's strict rule, 2026-11-14: a line is thought and written in Persian, starting from its situation (who reads it, what just happened, what they do next) and said the way a Persian speaker would say it to that reader. It is never an English sentence carried over word by word, however correct: «درخواست کد ثبت شد» is "request submitted", «بررسی کنید» is "check", «در اختیار کسی نگذارید» is "do not share", and each is rewritten from the situation, not polished.
@@ -313,9 +315,9 @@ PremShop sounds like a shop that knows what it sells and can explain what happen
 
 Use the reader's words. «اکانت» is natural for a service they bought, «حساب کاربری» is where they sign in at PremShop, and «پلن» is useful in the panel. The FAQ can sound like a conversation. Keep amounts, times and warranty conditions exact in every register.
 
-A line can help the reader understand who acts next or whether anything is expected of them. Keep that reassurance where the state supports it. Use a short status label in a badge and save the explanation for the nearby text. In a cancellation or refund, plain neutral wording can convey the outcome without putting the reader at odds with the shop.
+Keep a sentence if it helps the reader choose, understand what happened, know who acts next or feel confident waiting. «فعلاً کاری لازم نیست» belongs in preparation and replacement review when the buyer can safely wait. Use a short status label in a badge and explain the reason, timing and next step nearby as needed. A delay can call for an apology and a useful way to follow up. In a cancellation or refund, name the shop's role when it explains the cause, and use neutral wording for the financial status. A natural passive, such as «بازگشت وجه انجام شد», suits a status label when the outcome is what the buyer needs to scan.
 
-Read what's already on the screen before adding a sentence. A paragraph telling the buyer to choose a product repeats the empty cart's title and its «دیدن محصولات» button. Signing in to recover an earlier cart is a different action and deserves a line. Keep owner-approved copy in place and bring proposed changes to the owner with the rendered context.
+Read what's already on the screen before editing. A paragraph telling the buyer to choose a product repeats the empty cart's title and its «دیدن محصولات» button. Signing in to recover an earlier cart is a different action and deserves a line. Keep sound copy when it already fits the reader's situation. For each edit, name the problem it solves and read the whole message again. A shorter version earns its place when it reads more clearly and carries the same useful information. Keep owner-approved copy in place and bring proposed changes to the owner with the rendered context.
 
 | Example | Editorial decision |
 |---|---|
@@ -325,11 +327,13 @@ Read what's already on the screen before adding a sentence. A paragraph telling 
 | «کد جدید با پیامک فرستاده شد.» → «کد جدید را برایتان پیامک کردیم.» | The SMS provider has accepted the send by this point. Telegram's queued request offers conditional help because the site has yet to learn whether delivery is possible. |
 | «این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.» on a 503 page | The error page cannot verify the effect of an outage. Give the buyer a way to retry or contact the shop. |
 
-For money, write down the event behind the text before editing. An amount owed, a transfer made by the operator and a transfer recorded in the panel are distinct events. Review the refund amount, destination and transfer reference alongside the confirmation. Keep both the reason money is due and the condition that starts the wait. A recorded payment is the buyer's payment to the shop. A recorded refund is the shop's transfer to the buyer.
+For money, write down the event behind the text before editing. An amount owed, a transfer made by the operator and a transfer recorded in the panel are distinct events. Check the amount after discounts and which purchase it belongs to. Review the refund amount, destination and transfer reference alongside the confirmation. Keep both the reason money is due and the condition that starts the wait. A recorded payment is the buyer's payment to the shop. A recorded refund is the shop's transfer to the buyer.
 
-For product and SEO copy, explain a purchased capability through a task the buyer can recognize. Describe background playback as listening while the screen is off. Mention requirements and usage limits where they change the choice. Review source material before changing a claim. Keep edits to seeded defaults from overwriting product copy the operator has maintained.
+For errors and sign-in, give the cause the system can establish and the next action the reader can take. Check which action was limited, whether the limit applies to the number or network, and whether the time is an upper bound or a countdown. For delivery, check what arrives, the page where the buyer can find it, what they must verify and what support can do if they lose access.
 
-For review, open the rendered view at 390 and 1440 pixels with ordinary and long values. Check empty, blocked, expired and successful states. Exercise the action named in each message, or check its code path in an isolated fixture. Review plain-text email beside HTML. A bot or SMS preview uses a sample payload with sending disabled. Very short help can look clear in a source file and become unclear once a field is hidden or a variable changes. Re-read the result with those branches visible and ask a second reader whether an older line or deletion would work better.
+For product and SEO copy, explain a purchased capability through a task the buyer can recognize. Describe background playback as listening while the screen is off. Keep the concrete benefits, comparisons, requirements and usage limits that help someone decide what to buy. Review source material before changing a claim. Keep edits to seeded defaults from overwriting product copy the operator has maintained.
+
+For review, open the rendered view at 390 and 1440 pixels with ordinary and long values. Check empty, blocked, expired and successful states. Exercise the action named in each message, or check its code path in an isolated fixture. Build financial examples through checkout, payment and cancellation so the receipt, discount and refund agree. Pair comparisons by the same code branch or event in each version. Review plain-text email beside HTML. A bot or SMS preview uses a sample payload with sending disabled. Very short help can look clear in a source file and become unclear once a field is hidden or a variable changes. Re-read the result with those branches visible and ask a second reader whether the existing line, an edit or deletion best serves the reader.
 
 ## Decided by the owner
 
