@@ -67,7 +67,7 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.get_by_label("روز (شمسی)", exact=True).fill("1400/01/01")
         submit("نمایش روز")
         expect(
-            page.get_by_text("بازپرداختی در این روز ثبت یا واریز نشده است.", exact=True)
+            page.get_by_text("در این روز نه بدهی جدیدی ثبت شد، نه بازپرداختی واریز شد.", exact=True)
         ).to_be_visible()
         shot("reconciliation-empty", report, "#reconciliation-title")
         page.get_by_label("روز (شمسی)", exact=True).fill("1405/13/32")

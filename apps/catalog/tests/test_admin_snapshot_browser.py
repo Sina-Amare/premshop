@@ -353,7 +353,7 @@ def test_empty_field_preview_marks_its_real_position(open_panel, product, field)
     placeholder = frame.locator(".snapshot-placeholder.snapshot-highlight")
     expect(placeholder).to_be_visible()
     expect(placeholder).to_have_attribute("data-preview-field", field)
-    expect(placeholder).to_contain_text("در همین قسمت دیده می‌شود")
+    expect(placeholder).to_contain_text("جای این بخش در صفحه‌ی محصول")
     region = (
         "#before-buying"
         if field in {"refund_note", "usage_notes"}

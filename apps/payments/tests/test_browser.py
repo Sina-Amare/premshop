@@ -182,7 +182,7 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("12345")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         if javascript:
-            expect(page.locator("[data-login-status]")).to_contain_text("۰۹ و ۹ رقم")
+            expect(page.locator("[data-login-status]")).to_contain_text("۱۱ رقم باشد و با ۰۹")
             page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230002")
             page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
             expect(page.locator("[data-inline-code]")).to_be_visible()
@@ -193,7 +193,7 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
             expect(page.locator("[data-login-status]")).to_contain_text("کد ورود اشتباه است")
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
-            expect(page.locator(".field__error")).to_contain_text("۰۹ و ۹ رقم")
+            expect(page.locator(".field__error")).to_contain_text("۱۱ رقم باشد و با ۰۹")
     finally:
         context.close()
 

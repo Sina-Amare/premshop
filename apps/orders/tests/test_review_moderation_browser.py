@@ -69,7 +69,7 @@ def test_moderation_from_the_panel_home_through_history(
         check(
             "history-empty",
             history,
-            page.get_by_text("هنوز تغییری برای این مورد ثبت نشده.", exact=False),
+            page.get_by_text("تغییری در تاریخچه ثبت نشده است.", exact=True),
         )
         page.go_back()
         expect(publish).to_be_visible()

@@ -45,7 +45,7 @@ def test_operator_records_payment_and_customer_sees_queue(
     mismatch = (
         "با مبلغ نهایی سفارش برابر باشد"
         if language == "fa"
-        else "The received amount must exactly match"
+        else "The amount received must match the order total."
     )
     page = context.new_page()
     errors = []
