@@ -149,7 +149,7 @@ def validate_image_upload(file: Any) -> None:
     if getattr(file, "_committed", True):
         return
     if file.size > MAX_UPLOAD_BYTES:
-        raise ValidationError(_("حجم تصویر بیشتر از ۵ مگابایت است."))
+        raise ValidationError(_("برای بارگذاری تصویر، حجم فایل را به ۵ مگابایت یا کمتر برسانید."))
     try:
         with Image.open(file) as image:
             kind, (width, height) = image.format, image.size
@@ -572,7 +572,7 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text=_("پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."),
+        help_text=_("اگر وضعیت محصول «فعال» باشد، در فهرست فروشگاه نمایش داده می‌شود."),
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")

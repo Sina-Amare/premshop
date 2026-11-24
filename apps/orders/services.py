@@ -1040,7 +1040,9 @@ def _price(
         raise ValidationError("اطلاعات سفارش درست نیست.")
     ids = [line.plan.pk for line in lines]
     if len(set(ids)) != len(ids):
-        raise ValidationError("هر گزینه را فقط یک بار به سفارش اضافه کنید.")
+        raise ValidationError(
+            "این گزینه بیش از یک بار در سفارش آمده است. تعداد موردنیاز را در یک ردیف از سبد خرید وارد کنید."
+        )
     prepared = []
     subtotal = Decimal(0)
     for line in sorted(lines, key=lambda line: line.plan.pk or 0):

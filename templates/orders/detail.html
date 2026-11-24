@@ -85,7 +85,7 @@
 <p class="order-support-contacts"><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
 <p>پاسخ‌گویی: {{ support.hours }}</p>
 {% if support_identifier %}<details class="order-support-replace"><summary>شناسه را به کسی داده‌اید؟</summary>
-<p>شناسه‌ی جدید بسازید. شناسه‌ی قبلی از همان لحظه باطل می‌شود.</p>
+<p>با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.</p>
 <form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% endif %}
 </details>

@@ -170,7 +170,7 @@ def test_match_form_is_scoped_private_and_never_echoes_either_identifier(
     )
     for supplied, message in (
         (order.support_identifier.support_token, "شناسه با این سفارش مطابقت دارد."),
-        ("PRIVATE-BAD-INPUT", "شناسه با این سفارش مطابقت ندارد."),
+        ("PRIVATE-BAD-INPUT", "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."),
     ):
         response = client.post(url, {"support_token": supplied})
         body = response.content.decode()

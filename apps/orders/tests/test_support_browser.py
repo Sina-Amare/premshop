@@ -137,7 +137,7 @@ def test_operator_matches_in_existing_panel_without_javascript(
     check = "بررسی شناسه" if language == "fa" else "Check identifier"
     back = "بازگشت به سفارش" if language == "fa" else "Back to order"
     mismatch = (
-        "شناسه با این سفارش مطابقت ندارد."
+        "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."
         if language == "fa"
         else "The identifier does not match this order."
     )

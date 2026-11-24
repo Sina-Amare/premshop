@@ -90,7 +90,7 @@ class ProfileForm(forms.ModelForm):
         label="ایمیل",
         required=False,
         max_length=254,
-        help_text="رسید و خبرهای سفارش را به این ایمیل می‌فرستیم.",
+        help_text="رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.",
         error_messages={"invalid": "این ایمیل درست نیست."},
         widget=forms.EmailInput(
             attrs={
