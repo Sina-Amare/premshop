@@ -2269,3 +2269,100 @@ msgstr "Nearest deadline"
 
 msgid "نزدیک‌ترین مهلت پس از پایان (تخمینی)"
 msgstr "Nearest deadline after the end (estimate)"
+
+
+msgid "حداکثر حجم تصویر ۵ مگابایت است."
+msgstr "The maximum image size is 5 MB."
+
+msgid "بخش آخر نشانی با حروف لاتین، مثل «ai»."
+msgstr "Last part of the URL in Latin letters, for example “ai”."
+
+msgid "مثل ‎#10a37f‎. خالی یعنی رنگ خنثی."
+msgstr "For example #10a37f. Leave blank for a neutral colour."
+
+msgid "از ۱ تا ۴۸ ساعت."
+msgstr "From 1 to 48 hours."
+
+msgid "جایگزین «تحویل تا … ساعت» در سایت. مهلت تحویل عوض نمی‌شود."
+msgstr "Replaces “Delivery within … hours” on the site. The delivery deadline stays the same."
+
+msgid "یادداشت داخلی کنار فرم تحویل."
+msgstr "Internal note beside the delivery form."
+
+msgid "فقط تفاوت با شرایط بازگشت وجه فروشگاه، در یک جمله."
+msgstr "Only differences from the shop’s refund policy, in one sentence."
+
+msgid "لینک منابع رسمی، هر کدام در یک سطر. فقط در پنل."
+msgstr "Official source links, one per line. Only visible in the panel."
+
+msgid "روزی که توضیحات محصول را با منابع بررسی کردید."
+msgstr "The day you checked the product description against its sources."
+
+msgid "برای محصول با امکانات یا قیمت متغیر. پیش از انتشار، بررسی در ۷ روز اخیر لازم است."
+msgstr "For products with changing features or prices. A check within the past 7 days is required to publish."
+
+msgid "فقط در پنل، برای محاسبه‌ی سود فروش."
+msgstr "Only visible in the panel. Used to calculate profit on sales."
+
+msgid "فقط در پنل، برای تهیه‌ی محصول."
+msgstr "Only visible in the panel. Used to source the product."
+
+msgid "خالی = شروع فوری"
+msgstr "Blank = starts immediately"
+
+msgid "با تعیین پایان، تخفیف شمارش معکوس دارد. خالی = بدون پایان"
+msgstr "With an end date: countdown while the offer is active. Blank = no end"
+
+msgid "با ثبت سفارش، تعداد خرید از موجودی کم می‌شود. خالی = نامحدود"
+msgstr "Stock decreases by the quantity ordered. Blank = unlimited"
+
+msgid "با برداشتن تیک، فروش این پلن متوقف می‌شود."
+msgstr "Uncheck to stop selling this plan."
+
+msgid "عدد ۱: بدون انتخاب تعداد در صفحه‌ی محصول."
+msgstr "1 hides the quantity selector on the product page."
+
+msgid "برای فروش این پلن، نوع اطلاعات و نیاز به تلگرام را هم مشخص کنید."
+msgstr "Customers can buy this plan after the information type and Telegram requirement are set."
+
+msgid "نمونه «ایمیل اکانت Spotify»"
+msgstr "Example: Spotify account email"
+
+msgid "با افزودن تصویر، توضیح کوتاهی از محتوای آن بنویسید."
+msgstr "When you add an image, describe it briefly."
+
+msgid "با تغییر نامک، لینک قبلی محصول از کار می‌افتد."
+msgstr "Changing the slug breaks the previous product link."
+
+msgid "با تغییر نامک، لینک قبلی دسته‌بندی از کار می‌افتد."
+msgstr "Changing the slug breaks the previous category link."
+
+msgid "پیش‌نمایش نتیجه‌ی جستجو. متن نهایی را موتور جستجو انتخاب می‌کند."
+msgstr "Search result preview. The search engine chooses the final text."
+
+msgid "پیش‌نمایش به‌روز است. هنوز چیزی ذخیره نشده."
+msgstr "The preview is up to date. Your changes are still unsaved."
+
+msgid "پیش‌نمایش به‌روز نشد. فعلاً همان نسخه‌ی قبلی را می‌بینید."
+msgstr "The preview could not be updated. You are still seeing the previous version."
+
+msgid "این بخش فعلاً در صفحه‌ی محصول دیده نمی‌شود."
+msgstr "This section is currently hidden on the product page."
+
+msgid "جای این بخش در صفحه‌ی محصول"
+msgstr "Where this section appears on the product page"
+
+msgid "حذف را لغو کنید تا این ردیف به پیش‌نمایش برگردد."
+msgstr "Undo the deletion to bring this row back into the preview."
+
+msgid "خلاصه‌ی صفحه برای نتایج جستجو و پیش‌نمایش لینک."
+msgstr "Page summary for search results and link previews."
+
+msgid "برای انتشار دوباره"
+msgstr "To publish again"
+
+msgid "محصول دیگری برای کپی بخش‌ها نداریم."
+msgstr "There is no other product to copy sections from."
+
+msgid "نمایش شرایط تمدید روی همین اکانت، با قیمت روز."
+msgstr "Shows renewal terms for the same account at the current price."

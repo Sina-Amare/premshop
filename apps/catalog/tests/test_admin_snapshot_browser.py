@@ -176,8 +176,9 @@ def test_plan_guidance_applies_to_costs_and_supplier_links(open_panel, product):
     page = open_panel(change_form(product))
     for field in ("supplier_url", "cost_price"):
         guidance = page.locator(f"#id_plans-0-{field}_helptext")
-        expect(guidance).to_contain_text("مشتری این را نمی‌بیند")
-    expect(page.locator("#id_plans-0-supplier_url_helptext")).not_to_contain_text("این قیمت")
+        expect(guidance).to_contain_text("فقط در پنل")
+    expect(page.locator("#id_plans-0-cost_price_helptext")).to_contain_text("سود فروش")
+    expect(page.locator("#id_plans-0-supplier_url_helptext")).not_to_contain_text("سود فروش")
 
 
 def test_title_error_requires_removing_the_store_name(open_panel, product):

@@ -29,7 +29,7 @@ class Page(models.Model):
         _("توضیح کوتاه"),
         max_length=300,
         blank=True,
-        help_text=_("خلاصه‌ی صفحه را برای نتایج جستجو و پیش‌نمایش لینک بنویسید."),
+        help_text=_("خلاصه‌ی صفحه برای نتایج جستجو و پیش‌نمایش لینک."),
     )
     is_published = models.BooleanField(
         _("منتشرشده"),
