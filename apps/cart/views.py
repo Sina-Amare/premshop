@@ -16,7 +16,14 @@ from apps.core.formatting import format_toman, to_persian_digits
 
 class LineForm(forms.Form):
     plan = forms.IntegerField(min_value=1)
-    quantity = forms.IntegerField(min_value=0, required=False)
+    quantity = forms.IntegerField(
+        min_value=0,
+        required=False,
+        error_messages={
+            "invalid": "تعداد باید عدد صحیح باشد.",
+            "min_value": "تعداد نمی‌تواند کمتر از صفر باشد.",
+        },
+    )
     step = forms.IntegerField(min_value=-1, max_value=1, required=False)
 
 
@@ -50,7 +57,8 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
 
     form = LineForm(request.POST)
     if not form.is_valid():
-        return error("برای تعداد، یک عدد کامل وارد کنید.")
+        message = next(iter(form.errors.get("quantity", ())), "صفحه را دوباره باز کنید.")
+        return error(message)
     kwargs = {"plan_id": form.cleaned_data["plan"]}
     if operation is not services.remove_from_cart:
         quantity = form.cleaned_data["quantity"]

@@ -8,7 +8,7 @@
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
   {% if existing %}
-    <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد. محصولات تا آن زمان در سبد خریدتان می‌مانند.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
+    <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>اول سفارش فعلی را پرداخت یا لغو کنید. محصولات تا آن زمان در سبد خریدتان می‌مانند.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
       <section class="checkout-box checkout-login" data-checkout-login>
@@ -89,7 +89,7 @@
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
           <div class="cart-cta{% if purchase.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div></div>
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button></div>
-          <p class="small">در این مرحله پرداختی انجام نمی‌دهید. پس از ثبت سفارش، تا ۲۴ ساعت فرصت دارید مبلغ را با هماهنگی پشتیبانی در تلگرام پرداخت کنید.</p>
+          <p class="small">در این مرحله چیزی پرداخت نمی‌کنید. پس از ثبت سفارش، تا ۲۴ ساعت فرصت دارید مبلغ را با هماهنگی پشتیبانی در تلگرام بپردازید.</p>
           {% for legal_page in legal_pages %}{% if legal_page.slug == 'terms' %}<p class="small"><a class="cart-back" href="{{ legal_page.get_absolute_url }}" target="_blank" rel="noopener">قوانین خرید</a></p>{% endif %}{% endfor %}
         {% endif %}
       </aside>{% endif %}

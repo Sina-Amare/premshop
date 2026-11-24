@@ -52,7 +52,7 @@ def _locked_cart(request: HttpRequest, *, create: bool) -> Cart | None:
             .filter(session_key=request.session.session_key, expire_date__gt=timezone.now())
             .exists()
         ):
-            raise ValidationError("سبد خرید را دوباره باز کنید تا تغییرات آن را ببینید.")
+            raise ValidationError("سبد خرید را دوباره باز کنید.")
         lookup = {"session_key": request.session.session_key, "user_id": None}
     carts = Cart.objects.select_for_update()
     if create:

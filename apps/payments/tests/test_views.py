@@ -357,7 +357,7 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    explanation = "تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد."
+    explanation = "اول سفارش فعلی را پرداخت یا لغو کنید."
     assert explanation in response.content.decode()
     assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
     with pytest.raises(UnpaidOrderExists) as caught:
@@ -368,7 +368,7 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
 def test_checkout_explains_that_payment_is_not_taken_at_order_creation(client, buyer, plan, cart):
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    assert "در این مرحله پرداختی انجام نمی‌دهید." in response.content.decode()
+    assert "در این مرحله چیزی پرداخت نمی‌کنید." in response.content.decode()
     assert "۲۴ ساعت" in response.content.decode()
 
 

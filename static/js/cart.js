@@ -190,7 +190,7 @@
       const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
       const data = await response.json();
       if (!response.ok) message = data.message || 'ابتدا سبد خرید را دوباره باز کنید و بعد تغییر را انجام دهید.';
-      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. صفحه را دوباره باز کنید تا سبد خرید به‌روز را ببینید.';
+      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. سبد خرید را دوباره باز کنید.';
     } catch {
       message = 'پاسخی از سایت نرسید. پیش از تلاش دوباره، تعداد را در سبد خرید ببینید.';
     } finally {
