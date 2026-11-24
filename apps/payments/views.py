@@ -106,7 +106,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
         return _page(
             request,
             discount_code=code,
-            error=error or "صفحه‌ی ثبت سفارش را دوباره باز کنید.",
+            error=error or "مشکلی در فرم ثبت سفارش پیش آمد. صفحه را دوباره باز کنید.",
             status=400,
         )
     try:

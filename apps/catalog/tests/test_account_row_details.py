@@ -34,18 +34,18 @@ DESKTOP = {"width": 1440, "height": 900}
 
 # (the row's label, the sentence its body opens with)
 ROWS = {
-    T.ON_CUSTOMER_ACCOUNT: ("اکانت", ""),
+    T.ON_CUSTOMER_ACCOUNT: ("اکانت", "اشتراک روی اکانت خودتان فعال می‌شود."),
     T.READY_ACCOUNT: (
         "اکانت",
-        "اطلاعات ورود را همراه اکانت تحویل می‌گیرید.",
+        "بعد از تحویل، با اطلاعاتی که دریافت می‌کنید وارد اکانت آماده شوید.",
     ),
     T.CODE_LICENSE: (
         "نوع تحویل",
-        "کد لایسنس را بعد از تحویل در برنامه وارد کنید.",
+        "پس از تحویل، کد لایسنس را طبق راهنمای همان سرویس وارد کنید.",
     ),
     T.GIFT_CARD: (
         "نوع تحویل",
-        "کد را بعد از تحویل در اکانتتان وارد کنید.",
+        "پس از تحویل، کد گیفت کارت را در اکانتتان وارد کنید.",
     ),
 }
 REFUSAL = (
@@ -158,7 +158,7 @@ def test_the_row_is_a_closed_disclosure_saying_what_its_delivery_type_means(clie
     label, sentence = ROWS[delivery_type]
     assert words(row.summary) == f"{label} {product.get_delivery_type_display()}"
     if delivery_type == T.ON_CUSTOMER_ACCOUNT:
-        sentence = words([render_to_string("catalog/_activation_answer.html")])
+        sentence += " " + words([render_to_string("catalog/_activation_answer.html")])
     assert words(row.body) == sentence
     assert not offences(sentence, written=True)
 

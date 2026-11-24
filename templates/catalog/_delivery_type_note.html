@@ -2,4 +2,4 @@
 Outside the <summary>, which the copy scan skips as the buyer's own voice.
 The ready-account sentence must stay true when S9 builds delivery: if the
 login details arrive some other way, change it in that commit.
-{% endcomment %}<p>{% if product.delivery_type == "on_customer_account" %}{% include 'catalog/_activation_answer.html' %}{% elif product.delivery_type == "ready_account" %}اطلاعات ورود را همراه اکانت تحویل می‌گیرید.{% elif product.delivery_type == "code_license" %}کد لایسنس را بعد از تحویل در برنامه وارد کنید.{% elif product.delivery_type == "gift_card" %}کد را بعد از تحویل در اکانتتان وارد کنید.{% endif %}</p>
+{% endcomment %}<p>{% if product.delivery_type == "on_customer_account" %}اشتراک روی اکانت خودتان فعال می‌شود. {% include 'catalog/_activation_answer.html' %}{% elif product.delivery_type == "ready_account" %}بعد از تحویل، با اطلاعاتی که دریافت می‌کنید وارد اکانت آماده شوید.{% elif product.delivery_type == "code_license" %}پس از تحویل، کد لایسنس را طبق راهنمای همان سرویس وارد کنید.{% elif product.delivery_type == "gift_card" %}پس از تحویل، کد گیفت کارت را در اکانتتان وارد کنید.{% endif %}</p>

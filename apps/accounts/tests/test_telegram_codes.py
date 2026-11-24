@@ -121,6 +121,19 @@ def test_invalid_channel_is_refused_before_sending_or_queuing(client, queued):
     assert not queued and not sms.outbox
 
 
+def test_invalid_resend_channel_keeps_the_pending_code_request(client, queued):
+    assert ask(client).json()["ok"]
+    url = reverse("login-code-resend")
+    response = client.post(url, {"channel": "email"}, **JSON)
+    assert response.status_code == 400
+    assert "روش دریافت کد درست نیست." in response.json()["error"]
+
+    response = client.post(url, {"channel": "email"}, follow=True)
+    assert response.redirect_chain[-1][0] == reverse("login-code-verify")
+    assert "روش دریافت کد درست نیست." in response.content.decode()
+    assert len(queued) == 1 and not sms.outbox
+
+
 def test_telegram_uses_no_sms_allowance_and_sms_is_available_immediately(client, linked, queued):
     ask(client)
     assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, PHONE) == 1

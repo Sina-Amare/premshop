@@ -29,9 +29,11 @@ def test_daily_refusal_is_readable_on_the_code_page(browser, live_server, width,
         text = (
             "سقف پیامک ورود برای این شبکه پر شده است."
             if network
-            else "امکان ارسال پیامک بیشتر به این شماره نیست."
+            else "سقف روزانه‌ی پیامک ورود برای این شماره پر شده است."
         )
-        expect(page.get_by_text(f"{text} ۲۴ ساعت دیگر دوباره امتحان کنید.")).to_be_visible()
+        expect(
+            page.get_by_text(f"{text} تا ۲۴ ساعت صبر کنید و دوباره امتحان کنید.")
+        ).to_be_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"daily-{network}-{width}.png"), full_page=True)
     finally:

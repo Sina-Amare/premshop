@@ -42,7 +42,7 @@ WRONG_CODE = "کد ورود اشتباه است یا اعتبارش تمام ش�
 CODE_RESENT = "کد جدید را برایتان پیامک کردیم."
 # Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "برای گرفتن کد جدید، شماره‌ی موبایلتان را دوباره وارد کنید."
+PAGE_EXPIRED = "درخواست کد ورود را پیدا نکردیم. شماره‌ی موبایلتان را دوباره وارد کنید."
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -218,9 +218,10 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         {"channel": request.POST.get("channel", request.session.get(PENDING_CHANNEL_KEY, "sms"))}
     )
     if not channel_form.is_valid():
+        error = "روش دریافت کد درست نیست. صفحه را دوباره باز کنید و کد بگیرید."
         if _wants_json(request):
-            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
-        messages.error(request, PAGE_EXPIRED)
+            return JsonResponse({"ok": False, "error": error}, status=400)
+        messages.error(request, error)
         return redirect("login-code-verify")
     try:
         issued = services.request_login_code(
