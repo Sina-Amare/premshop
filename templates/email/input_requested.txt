@@ -1,5 +1,6 @@
 {% load fa order_tones %}PremShop
-برای تحویل این محصول، اطلاعات فعال‌سازی را طبق راهنمای صفحه‌ی سفارش برایمان بفرستید.
+اطلاعات فعال‌سازی لازم است
+اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
 {% endif %}محصول: {{ product_name }}، {{ plan_title }}

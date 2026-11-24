@@ -43,7 +43,7 @@ COMMANDS_KEY = "telegram:commands"
 CONFIRM = (
     f"<h2>{emoji.LINK} اتصال تلگرام به PremShop</h2>"
     "{account}"
-    "<p>اتصال این تلگرام به حساب کاربری بالا را تأیید کنید.</p>"
+    "<p>اگر این حساب کاربری برای خودتان است، اتصال را تأیید کنید.</p>"
 )
 ACCOUNT_LINE = f"<p><b>{emoji.ACCOUNT} حساب کاربری:</b> <code>{{label}}</code></p>"
 CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
@@ -78,17 +78,16 @@ LIMITED = (
     "<p>با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.</p>"
 )
 EXPIRED = (
-    f"<h2>{emoji.EXPIRED} پایان اعتبار لینک</h2>" "<p>از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.</p>"
+    f"<h2>{emoji.EXPIRED} اعتبار لینک تمام شد</h2>" "<p>از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.</p>"
 )
 # The steps are paragraphs: a rich message numbers a list in Latin digits.
 POINTER = (
-    f"<h2>{emoji.BOT} ربات اطلاع‌رسانی سفارش‌های PremShop</h2>"
-    "<p>حساب کاربری را به تلگرام وصل کنید تا خبرهای سفارشتان را در این گفت‌وگو ببینید.</p>"
-    "<h4>اتصال در سه قدم</h4>"
+    f"<h2>{emoji.BOT} ربات سفارش‌های پرم‌شاپ</h2>"
+    "<p>با اتصال تلگرام به حساب کاربری، خبرهای سفارش‌ها را همین‌جا می‌بینید.</p>"
     "<p>۱. در سایت وارد حساب کاربری شوید.</p>"
     "<p>۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.</p>"
-    "<p>۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
-    '<footer>به <a href="{support_url}">پشتیبانی</a> پیام بدهید.</footer>'
+    "<p>۳. در ربات «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
+    '<footer>پیام‌های این گفت‌وگو را نمی‌خوانیم. به <a href="{support_url}">پشتیبانی</a> پیام بدهید.</footer>'
 )
 
 
@@ -106,7 +105,7 @@ def _pointer() -> Screen:
 
 
 def _expired() -> Screen:
-    return EXPIRED, [[{**_link_settings(f"{emoji.LINK} دریافت پیوند جدید"), "style": "primary"}]]
+    return EXPIRED, [[{**_link_settings(f"{emoji.LINK} دریافت لینک جدید"), "style": "primary"}]]
 
 
 def _digest(token: str) -> str:

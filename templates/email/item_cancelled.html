@@ -1,8 +1,8 @@
 {% extends "email/base.html" %}{% load fa %}
-{% block title %}{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}{% endblock %}
+{% block title %}{% if product_name %}خرید لغو شد{% else %}سفارش لغو شد{% endif %}{% endblock %}
 {% block content %}
-<h1 style="font-size:21px;line-height:1.6;">{% if product_name %}محصول لغو شد{% else %}سفارش لغو شد{% endif %}</h1>
+<h1 style="font-size:21px;line-height:1.6;">{% if product_name %}خرید لغو شد{% else %}سفارش لغو شد{% endif %}</h1>
 {% if cancel_reason == "input_timeout" %}<p>اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم.</p>
-{% endif %}{% if amount %}<p>مبلغ بازپرداخت این خرید {{ amount|toman_plain }} تومان است. وضعیت واریز را در صفحه‌ی سفارش ببینید.</p>{% elif products %}<p>{% include "email/_unpaid_cancellation.txt" %}{% if pill_state == "expired" %} اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید.{% endif %}</p>{% else %}<p>این لغو بازگشت وجه ندارد.</p>{% endif %}
+{% endif %}{% if amount %}<p>مبلغ بازگشت وجه: {{ amount|toman_plain }} تومان. وضعیت واریز را در صفحه‌ی سفارش ببینید.</p>{% elif products %}<p>{% include "email/_unpaid_cancellation.txt" %}{% if pill_state == "expired" %} اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای <bdi dir="ltr">{{ support.telegram }}</bdi> بفرستید.{% endif %}</p>{% else %}<p>این خرید مشمول بازگشت وجه نیست.</p>{% endif %}
 {% include "email/_order_notice.html" %}
 {% endblock %}

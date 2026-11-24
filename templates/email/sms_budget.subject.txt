@@ -1,1 +1,1 @@
-{% load fa %}شمار پیامک‌های ورود به {{ sent|fa_digits }} رسید
+{% load fa %}پیامک‌های کد ورود به {{ sent|fa_digits }} رسید

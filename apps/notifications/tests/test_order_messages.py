@@ -184,7 +184,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         executed_at=timezone.now(),
     )
     refunded = rows("item_refunded").get()
-    assert "به حساب شما واریز شد" in refunded.text_body
+    assert "تومان را به حسابتان برگرداندیم." in refunded.text_body
     for row in (cancelled, refunded):
         assert "SECRET-TRANSFER-REF" not in row.text_body + row.html_body
         assert "2468" not in row.text_body + row.html_body
@@ -436,9 +436,9 @@ def test_a_missing_details_notice_marks_the_reason_under_the_numbered_item_title
         cancel(item, operator, "input_timeout")
 
     body = rows("item_cancelled").get(channel="telegram").text_body
-    assert f"محصولی از سفارش {to_persian_digits(order.order_number)} لغو شد</h2>" in body
+    assert f"لغو خرید در سفارش {to_persian_digits(order.order_number)}</h2>" in body
     assert (
-        "<mark>علت:</mark> اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم."
+        "اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم."
         in body
     )
 

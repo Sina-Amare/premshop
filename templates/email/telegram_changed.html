@@ -8,10 +8,10 @@
 <p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان تلگرام را وصل نکرده‌اید، اتصال تلگرام را از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a> قطع کنید.</p>
 {% elif state == "moved" %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر شما این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
 {% else %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام{% if telegram %} <bdi dir="ltr">{{ telegram }}</bdi>{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر شما این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
 {% endif %}
-<p style="font-size:16px;line-height:1.95;color:#57534E;">پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">پشتیبانی هیچ‌وقت رمز عبور یا کد ورودتان را نمی‌خواهد.</p>
 {% endblock %}

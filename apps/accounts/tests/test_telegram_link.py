@@ -305,7 +305,8 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     buttons = payload["reply_markup"]["inline_keyboard"]
     framed(body(payload), buttons)
     # What the bot is for, then the three steps of linking, each named by its button's label.
-    assert "اتصال در سه قدم" in body(payload)
+    for number in "۱۲۳":
+        assert f"<p>{number}. " in body(payload)
     for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
         assert label in body(payload)
     support_url = support.details()["telegram_url"]

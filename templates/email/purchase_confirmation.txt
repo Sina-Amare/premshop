@@ -1,6 +1,6 @@
 {% load fa %}سفارش {{ order_number|fa_digits }} ثبت شد
 
-سفارش هنگام ثبت در انتظار پرداخت بود. وضعیت فعلی را در صفحه‌ی سفارش ببینید.
+وضعیت هنگام ثبت: در انتظار پرداخت
 تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}
 مشاهده‌ی سفارش:
 {{ order_url }}
@@ -29,7 +29,7 @@
 {% if discount_amount %}تخفیف: {{ discount_amount|toman_plain }} تومان
 {% endif %}مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان
 
-صفحه‌های ثبت‌شده با سفارش
+قوانین و راه‌های تماس هنگام خرید
 {% for page in policies %}{{ page.title }}
 {{ page.body }}
 
