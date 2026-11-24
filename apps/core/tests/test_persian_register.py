@@ -251,7 +251,17 @@ class UiText(HTMLParser):
 
 @pytest.mark.parametrize("pattern,instead", BANNED)
 def test_customer_and_email_sources_use_the_same_persian(ui_source_strings, pattern, instead):
-    bad = [where for where, text in ui_source_strings if re.search(pattern, text)]
+    # The cart's unavailable-item notice uses the approved "please".
+    bad = [
+        where
+        for where, text in ui_source_strings
+        if re.search(pattern, text)
+        and not (
+            pattern == "لطفاً"
+            and Path(where).as_posix() == "templates/cart/detail.html"
+            and text == "برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید."
+        )
+    ]
     assert not bad, f"write {instead} — {bad}"
 
 

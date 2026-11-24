@@ -32,7 +32,7 @@ from apps.orders.tests.test_delivery import NOTE, VALUE, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_lifecycle_concurrency import in_connection
-from apps.orders.tests.test_paid_cancellation import cancel, paid_order
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order, tehran
 from apps.orders.tests.test_replacement import claim
 from apps.payments.models import Refund
 from apps.payments.services import execute_refunds, record_manual_payment
@@ -422,6 +422,20 @@ def test_missing_consumer_is_logged_without_breaking_the_action(
     assert order.items.get().status == "QUEUED"
     assert "RuntimeError" in caplog.text
     assert not Notification.objects.exists()
+
+
+def test_a_missing_details_notice_marks_the_reason_under_the_numbered_item_title(
+    buyer, plan, operator, telegram
+):
+    linked(buyer)
+    with tehran(2026, 11, 3):
+        order, item = queued(buyer, plan, operator, telegram=True)
+    with tehran(2026, 11, 24):
+        cancel(item, operator, "input_timeout")
+
+    body = rows("item_cancelled").get(channel="telegram").text_body
+    assert f"محصولی از سفارش {to_persian_digits(order.order_number)} لغو شد</h2>" in body
+    assert "<mark>علت:</mark> عدم دریافت اطلاعات موردنیاز برای فعال‌سازی" in body
 
 
 def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(

@@ -9,7 +9,8 @@
     <button type="submit" class="order-input-action">{% translate "نمایش روز" %}</button>
   </form>
   {% if not form.errors %}
-  <p>{% translate "گزارش از نیمه‌شب تا نیمه‌شب بعد به وقت تهران است و بدهی بازپرداخت را جدا از مبلغی که واریز کرده‌اید نشان می‌دهد." %}</p>
+  <p>{% translate "«بدهی جدید» مبلغ بازپرداخت‌هایی است که در این روز ثبت شده‌اند. «بازپرداخت‌های واریزشده» مبلغی است که در همین روز به مشتریان برگردانده‌اید." %}</p>
+  <p>{% translate "تاریخ گزارش به وقت تهران است." %}</p>
   <dl>
     <dt>{% translate "پرداخت‌های تأییدشده" %}</dt><dd>{{ payment_total|toman_plain }} {% translate "تومان" %}</dd>
     <dt>{% translate "بدهی جدید بازپرداخت" %}</dt><dd>{{ owed_total|toman_plain }} {% translate "تومان" %}</dd>

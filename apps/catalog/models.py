@@ -572,7 +572,7 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text=_("اگر وضعیت محصول «فعال» باشد، در فهرست فروشگاه نمایش داده می‌شود."),
+        help_text=_("محصول را روی «فعال» بگذارید تا در فهرست فروشگاه نمایش داده شود."),
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")

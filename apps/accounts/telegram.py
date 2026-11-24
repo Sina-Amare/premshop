@@ -75,12 +75,10 @@ def _screen(user: User, name: str) -> Screen:
 
 LIMITED = (
     f"<h2>{emoji.LIMITED} محدودیت اتصال تلگرام</h2>"
-    "<p>با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید. "
-    "پس از پایان این بازه دوباره امتحان کنید.</p>"
+    "<p>با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.</p>"
 )
 EXPIRED = (
-    f"<h2>{emoji.EXPIRED} پایان اعتبار لینک</h2>"
-    "<p>برای ادامه‌ی اتصال، از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.</p>"
+    f"<h2>{emoji.EXPIRED} پایان اعتبار لینک</h2>" "<p>از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.</p>"
 )
 # The steps are paragraphs: a rich message numbers a list in Latin digits.
 POINTER = (
@@ -90,7 +88,7 @@ POINTER = (
     "<p>۱. در سایت وارد حساب کاربری شوید.</p>"
     "<p>۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.</p>"
     "<p>۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
-    "<footer>اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.</footer>"
+    '<footer>به <a href="{support_url}">پشتیبانی</a> پیام بدهید.</footer>'
 )
 
 
@@ -100,12 +98,10 @@ def _link_settings(text: str) -> dict[str, Any]:
 
 def _pointer() -> Screen:
     """The reply to anyone the bot does not know: what it is for and how to link."""
-    return POINTER, [
+    support_url = escape(support.details()["telegram_url"])
+    return POINTER.format(support_url=support_url), [
         [{**_link_settings(f"{emoji.LINK} اتصال حساب"), "style": "primary"}],
-        [
-            {"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")},
-            {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support.details()["telegram_url"]},
-        ],
+        [{"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")}],
     ]
 
 

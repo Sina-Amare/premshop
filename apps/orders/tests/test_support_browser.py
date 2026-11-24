@@ -70,9 +70,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         assert replace.bounding_box()["height"] >= 44
         replace.click()
         expect(
-            page.get_by_text(
-                "با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.", exact=False
-            )
+            page.get_by_text("با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.", exact=False)
         ).to_be_visible()
         capture(page, "support-confirm", width, tmp_path)
         old = order.support_identifier.support_token

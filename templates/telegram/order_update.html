@@ -8,5 +8,5 @@
 <tr><th>{{ e.DEADLINE }} مهلت ارسال اطلاعات</th><td>تا پایان {{ due_at|jalali }}</td></tr>{% endif %}
 </table>{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
 <blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، این خرید لغو می‌شود و کل مبلغ آن را به شما برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
-<blockquote><p>خرید این محصول به این دلیل لغو شد که تا ۲۱ روز پس از درخواست، اطلاعات فعال‌سازی آن را دریافت نکردیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
+<blockquote><p><mark>علت:</mark> عدم دریافت اطلاعات موردنیاز برای فعال‌سازی در مهلت تعیین‌شده.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
 <blockquote><p>{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}</p></blockquote>{% endif %}

@@ -1,5 +1,5 @@
 {% load fa order_tones %}PremShop
-پرداخت سفارش {{ order_number|fa_digits }} به مبلغ {{ amount|toman_plain }} تومان تأیید شد. در صفحه‌ی سفارش می‌بینید هر محصول در چه مرحله‌ای است و آیا برای تحویلش کاری از طرف شما لازم است.
+پرداخت سفارش {{ order_number|fa_digits }} به مبلغ {{ amount|toman_plain }} تومان تأیید شد. می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
 {% endif %}مشاهده‌ی سفارش:
 {{ order_url }}

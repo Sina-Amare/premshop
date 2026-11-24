@@ -300,8 +300,8 @@ msgstr "The product page says it can be renewed."
 msgid "کنار فرم تحویل به شما نشان داده می‌شود و برای مشتری فرستاده نمی‌شود."
 msgstr "Shown beside the delivery form; never sent to the customer."
 
-msgid "اگر وضعیت محصول «فعال» باشد، در فهرست فروشگاه نمایش داده می‌شود."
-msgstr "Products marked Active are shown in the shop listings."
+msgid "محصول را روی «فعال» بگذارید تا در فهرست فروشگاه نمایش داده شود."
+msgstr "Set the product to Active to show it in the shop listings."
 
 msgid "کنار نام محصول، بالای صفحه‌ی محصول می‌آید."
 msgstr "Shown beside the product name, at the top of the product page."
@@ -1905,8 +1905,11 @@ msgstr "Record refund transfer"
 msgid "روز (شمسی)"
 msgstr "Day (Jalali)"
 
-msgid "گزارش از نیمه‌شب تا نیمه‌شب بعد به وقت تهران است و بدهی بازپرداخت را جدا از مبلغی که واریز کرده‌اید نشان می‌دهد."
-msgstr "The report runs from midnight to midnight Tehran time and shows refunds owed separately from completed transfers."
+msgid "«بدهی جدید» مبلغ بازپرداخت‌هایی است که در این روز ثبت شده‌اند. «بازپرداخت‌های واریزشده» مبلغی است که در همین روز به مشتریان برگردانده‌اید."
+msgstr "Newly owed refunds are the amounts recorded as owed on this day. Refunds sent are the amounts returned to customers on the same day."
+
+msgid "تاریخ گزارش به وقت تهران است."
+msgstr "The report date is in Tehran time."
 
 msgid "زمان ثبت بدهی"
 msgstr "Time the refund became owed"

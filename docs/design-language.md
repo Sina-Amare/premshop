@@ -180,6 +180,15 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «۴ از ۵، بر اساس ۱ نظر» | «۴ از ۵ · ۱ نظر» | The rating and count are enough. |
 | «خریدار تأییدشده» | «خریدار» | The ability to submit already comes from a purchase. |
 | «نظرتان در انتظار بررسی است.» | «اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.» | The buyer knows what can happen next. Publication depends on approval. |
+| «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید. پس از پایان این بازه دوباره امتحان کنید.» | «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.» | The limit gives the reason and the time window. |
+| «برای ادامه‌ی اتصال، از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | «از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | The heading already says the link expired. The sentence gives the next step. |
+| «اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.» | «به پشتیبانی پیام بدهید.» | The word «پشتیبانی» is the link. |
+| «در صفحه‌ی سفارش می‌بینید هر محصول در چه مرحله‌ای است و آیا برای تحویلش کاری از طرف شما لازم است.» | «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | Name the information the buyer will find and where to find it. |
+| «رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.» | «رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.» | Say what this email address is for. |
+| «اگر از لینک یک محصول به این صفحه رسیده‌اید، نامش را جستجو کنید یا از فهرست محصولات به خرید ادامه دهید.» | «شاید آدرس اشتباه است، یا این محصول را دیگر نمی‌فروشیم.» | Keep the reason on the 404. A second line can point to search and the shop. |
+| «اگر می‌خواهید خرید بقیه‌ی محصولات را ادامه دهید، این مورد را از سبد خرید حذف کنید.» | «برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید.» | The unavailable item is already identified. Give the action directly. |
+| «برای خرید، محصولتان را از فهرست پیدا کنید و به سبد اضافه کنید.» | «برای شروع، یک محصول را انتخاب کنید.» | One step is enough for an empty cart. |
+| «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.» | «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.» | State what happens to the previous identifier. |
 
 ### Building a line
 
