@@ -57,7 +57,7 @@
     });
   }
   function fail(message) {
-    showError(message || 'کد ورود درست نیست. دوباره تلاش کنید.');
+    showError(message || 'ورود با این کد انجام نشد. کد را دوباره وارد کنید.');
     row.fail(function () {
       tick();
       row.disable(expired);
@@ -99,7 +99,7 @@
       row.disable(true);
       showError('');
       resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
-      status.textContent = 'کد منقضی شد. برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
+      status.textContent = 'اعتبار کد تمام شد. با «ارسال دوباره» کد جدید بگیرید.';
       resendButton.classList.replace('btn--ghost', 'btn--primary');
     }
     var wait = cooldownUntil - now;
@@ -145,9 +145,9 @@
         document.getElementById('delivery-sms').hidden = data.channel === 'telegram';
         document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
         smsForm.hidden = data.channel !== 'telegram';
-        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید را فرستادیم.';
+        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید با پیامک فرستاده شد.';
         status.textContent = data.channel === 'telegram'
-          ? document.getElementById('delivery-telegram').textContent : 'کد جدید را فرستادیم.';
+          ? document.getElementById('delivery-telegram').textContent : 'کد جدید با پیامک فرستاده شد.';
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;

@@ -52,7 +52,7 @@ a courtesy, and the server's limit on codes per number is the defence.
 
 <form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="resend-form">
   {% csrf_token %}
-  <span class="small" id="resend-hint">کد نرسید؟ شماره‌ی بالا را بررسی کنید.</span>
+  <span class="small" id="resend-hint">اگر کد نرسیده است، ببینید شماره‌ی بالای صفحه درست نوشته شده باشد.</span>
   <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
 </form>
 <form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="sms-form"{% if channel != "telegram" %} hidden{% endif %}>

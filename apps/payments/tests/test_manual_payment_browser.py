@@ -43,7 +43,7 @@ def test_operator_records_payment_and_customer_sees_queue(
     reference_label = "شماره‌ی پیگیری بانک" if language == "fa" else "Bank reference"
     history_label = "پرداخت‌های سفارش" if language == "fa" else "Order payments"
     mismatch = (
-        "مبلغ دریافتی باید دقیقاً برابر"
+        "با مبلغ نهایی سفارش برابر است"
         if language == "fa"
         else "The received amount must exactly match"
     )

@@ -35,7 +35,9 @@ def test_sign_in_choice_error_and_immediate_sms_switch(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("123")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(
-            page.get_by_text("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.", exact=True)
+            page.get_by_text(
+                "شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم بعد از آن وارد کنید.", exact=True
+            )
         ).to_be_visible()
         page.screenshot(path=str(tmp_path / f"sign-in-error-{width}.png"), full_page=True)
         page.get_by_label("شماره‌ی موبایل", exact=True).fill(PHONE)
@@ -101,7 +103,7 @@ def test_checkout_keeps_its_long_cart_through_telegram_and_sms(
         page.screenshot(path=str(tmp_path / f"checkout-telegram-{width}.png"), full_page=True)
         page.locator(".otp__cell").first.click()
         page.keyboard.type("000000")
-        expect(page.locator("[data-login-status]")).to_contain_text("درست نیست")
+        expect(page.locator("[data-login-status]")).to_contain_text("کد ورود اشتباه است")
         page.screenshot(path=str(tmp_path / f"checkout-code-error-{width}.png"), full_page=True)
         page.locator("#sms-form button").click()
         expect(page.locator("#delivery-sms")).to_be_visible()

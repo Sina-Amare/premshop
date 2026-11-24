@@ -15,7 +15,7 @@
 {% endfor %}
 {% if delivery_ready and not delivery_confirmed %}
 {% if delivery_email %}
-<p>برای دیدن اطلاعات تحویل، ابتدا ایمیل این سفارش را تأیید کنید: <bdi dir="ltr">{{ delivery_email }}</bdi></p>
+<p>برای دیدن اطلاعات تحویل، کدی را که به این ایمیل می‌فرستیم در فرم پایین وارد کنید. <bdi dir="ltr">{{ delivery_email }}</bdi></p>
 <form method="post" action="{% url 'order-delivery-code' order.order_number %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">فرستادن کد به ایمیل</button></form>
 <form method="post" action="{% url 'order-delivery-confirm' order.order_number %}">{% csrf_token %}
 <div class="field"><label class="field__label" for="delivery-code">کد نمایش اطلاعات</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>

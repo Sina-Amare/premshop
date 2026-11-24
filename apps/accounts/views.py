@@ -37,11 +37,13 @@ TELEGRAM_LINK_KEY = "accounts.telegram_link"
 # code per number every two minutes, so the button waits as long.
 RESEND_COOLDOWN_SECONDS = 120
 
-WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
-CODE_RESENT = "کد جدید را فرستادیم."
+WRONG_CODE = "کد ورود اشتباه است یا اعتبارش تمام شده است."
+CODE_RESENT = "کد جدید با پیامک فرستاده شد."
 # Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر کار نمی‌کند. دوباره شماره‌ی موبایلتان را وارد کنید."
+PAGE_EXPIRED = (
+    "اعتبار این صفحه تمام شده است. برای دریافت کد ورود، شماره‌ی موبایلتان را دوباره وارد کنید."
+)
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -324,11 +326,11 @@ def account_telegram(request: HttpRequest) -> HttpResponse:
     # Unlink is never limited: it is what the link alert tells a customer to do, and only a
     # linked account can send its email, each link already bounded below and in the bot.
     if action == "link" and not ratelimit.hit(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)):
-        messages.error(request, "سقف تغییر اتصال تلگرام برای امروز پر شده است.")
+        messages.error(request, "به سقف تغییر اتصال تلگرام در ۲۴ ساعت رسیده‌اید.")
     elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
     elif action == "unlink":
         telegram.unlink(user)
         request.session.pop(TELEGRAM_LINK_KEY, None)
-        messages.success(request, "اتصال تلگرام قطع شد.")
+        messages.success(request, "اتصال حساب تلگرام به حساب کاربری قطع شد.")
     return redirect(reverse("account") + "#telegram")

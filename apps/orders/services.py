@@ -92,7 +92,9 @@ def replace_support_token(
         raise PermissionDenied
     identifier = OrderSupportIdentifier.objects.get(order_id=order.pk)
     if not constant_time_compare(identifier.support_token, expected_support_token):
-        raise ValidationError("شناسه تغییر کرده است؛ صفحه را دوباره باز کنید.")
+        raise ValidationError(
+            "شناسه‌ی پشتیبانی تغییر کرده است. برای دیدن شناسه‌ی فعلی، صفحه‌ی سفارش را دوباره باز کنید."
+        )
     while constant_time_compare(identifier.support_token, expected_support_token):
         identifier.support_token = new_support_token()
     identifier.save(update_fields=["support_token"])
@@ -154,7 +156,7 @@ def delivery_content(
     # Its warranty ends at expires_at; without one, its retention deadline could not be set.
     if warranty == Product.Warranty.FULL_PERIOD and expires_at is None:
         raise ValidationError(
-            gettext_lazy("گارانتی این محصول تا پایان دوره است؛ تاریخ پایان اشتراک را بنویسید.")
+            gettext_lazy("برای ثبت گارانتی تا پایان دوره، تاریخ پایان اشتراک را وارد کنید.")
         )
     kept = tuple(
         DeliveryLine(line.title.strip(), line.value.strip())
@@ -164,13 +166,13 @@ def delivery_content(
     if not kept:
         raise ValidationError(gettext_lazy("دست‌کم یک سطر اطلاعات تحویل بنویسید."))
     if any(not line.title or not line.value for line in kept):
-        raise ValidationError(gettext_lazy("هر سطر تحویل هم عنوان می‌خواهد هم مقدار."))
+        raise ValidationError(gettext_lazy("در هر سطر، عنوان و مقدار را وارد کنید."))
     if (
         len(kept) > DELIVERY_LINES
         or len(note) > 2000
         or any(len(line.title) > 100 or len(line.value) > 2000 for line in kept)
     ):
-        raise ValidationError(gettext_lazy("اطلاعات تحویل بیش از اندازه طولانی است."))
+        raise ValidationError(gettext_lazy("متن اطلاعات تحویل را کوتاه‌تر کنید."))
     if expires_at is not None and expires_at < timezone.localdate():
         raise ValidationError(gettext_lazy("تاریخ پایان اشتراک گذشته است."))
     return DeliveryContent(kept, note.strip(), expires_at)
@@ -207,7 +209,9 @@ def deliver_item(
         or item.paid_at is None
         or not holiday.clock_allows_delivery(item)
     ):
-        raise ValidationError(gettext_lazy("این محصول آماده‌ی تحویل نیست."))
+        raise ValidationError(
+            gettext_lazy("تا محصول در صف تحویل نباشد، اطلاعات تحویل ثبت نمی‌شود.")
+        )
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
     item.first_expires_on = content.expires_at
@@ -335,7 +339,9 @@ def open_customer_claim(
         if latest.actor == OrderItemEvent.Actor.CUSTOMER and latest.actor_user_id == account.pk:
             return item
         raise ValidationError(
-            gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+            gettext_lazy(
+                "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+            )
         )
     if reason not in OrderItemEvent.ClaimReason.values:
         raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
@@ -391,13 +397,13 @@ def delay_supply(
     item, account = _input_item(order_id=order_id, item_id=item_id, actor=actor, operator_only=True)
     note = _event_note(note)
     if type(hours) is not int or not 1 <= hours <= MAX_DELAY_HOURS:
-        raise ValidationError(gettext_lazy("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید."))
+        raise ValidationError(gettext_lazy("برای تمدید مهلت، عددی از ۱ تا ۷۲ ساعت وارد کنید."))
     _expect_page(
         item,
         expected_event_id,
         account,
         (OrderItem.Status.QUEUED, OrderItem.Status.QUEUED),
-        gettext_lazy("این تأخیر قبلاً ثبت شده و این فرم دوباره ثبت نشد."),
+        gettext_lazy("تأخیر این محصول قبلاً ثبت شده است. مهلت جدید را در صفحه‌ی سفارش ببینید."),
     )
     if (
         item.status != OrderItem.Status.QUEUED
@@ -405,7 +411,9 @@ def delay_supply(
         or item.due_at is None
         or item.sla_paused_at
     ):
-        raise ValidationError(gettext_lazy("مهلت این محصول را نمی‌شود عقب انداخت."))
+        raise ValidationError(
+            gettext_lazy("تغییر مهلت فقط برای محصولی ممکن است که در صف تحویل باشد.")
+        )
     item.due_at = in_support_window(item.due_at + timedelta(hours=hours))
     item.save(update_fields=["due_at"])
     due = timezone.localtime(item.due_at)
@@ -497,7 +505,7 @@ def refund_amount(item: OrderItem, reason: str, today: date | None = None) -> De
         or (expiry is not None and claimed > expiry)
     ):
         raise ValidationError(
-            gettext_lazy("درخواست تعویض خارج از مدت گارانتی ثبت شده است؛ آن را رد کنید.")
+            gettext_lazy("این درخواست پس از پایان گارانتی ثبت شده است. درخواست را رد کنید.")
         )
     if expiry is None:
         return item.paid_amount
@@ -529,7 +537,7 @@ def cancel_paid_item(
         account,
         # A repeat finds its own cancellation as the latest row, from whatever status it left.
         (latest.from_status or "", OrderItem.Status.CANCELLED),
-        gettext_lazy("این لغو قبلاً ثبت شده و این فرم دوباره ثبت نشد."),
+        gettext_lazy("لغو این محصول قبلاً ثبت شده است. جزئیات را در صفحه‌ی سفارش ببینید."),
     )
     return _cancel_paid(item, account, plans, reason, note)
 
@@ -605,7 +613,7 @@ def mark_item_refunded(*, item: OrderItem, refund: Refund, actor: User) -> None:
     _input_event(item, actor, OrderItem.Status.CANCELLED, notification="item_refunded")
 
 
-NO_OPEN_CLAIM = gettext_lazy("برای این محصول درخواست تعویض بازی نیست.")
+NO_OPEN_CLAIM = gettext_lazy("این محصول درخواست تعویض در انتظار رسیدگی ندارد.")
 MAX_DELAY_HOURS = 72
 
 
@@ -624,7 +632,7 @@ def _event_note(note: str) -> str:
     if not note:
         raise ValidationError(gettext_lazy("یادداشت را بنویسید."))
     if len(note) > 2000:
-        raise ValidationError(gettext_lazy("یادداشت بیش از اندازه طولانی است."))
+        raise ValidationError(gettext_lazy("متن یادداشت را کوتاه‌تر کنید."))
     return note
 
 
@@ -651,7 +659,9 @@ def _expect_page(
         previous = item.events.filter(pk__lt=latest.pk).order_by("-pk").first()
         if previous is not None and previous.pk == expected_event_id:
             raise ValidationError(repeated)
-    raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+    raise ValidationError(
+        gettext_lazy("وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید.")
+    )
 
 
 RETENTION_DAYS = 30
@@ -886,7 +896,7 @@ class Purchase:
 class UnpaidOrderExists(ValidationError):
     def __init__(self, order: Order) -> None:
         self.order = order
-        super().__init__("برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید.")
+        super().__init__("تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد.")
 
 
 def _money(value: Decimal) -> Decimal:
@@ -966,21 +976,21 @@ def _discount(
     if code is None:
         return Decimal(0), {}
     if not code.is_active:
-        raise ValidationError("این کد تخفیف فعال نیست.")
+        raise ValidationError("این کد تخفیف غیرفعال است.")
     if code.valid_from and at < code.valid_from:
-        raise ValidationError("زمان استفاده از این کد تخفیف هنوز نرسیده است.")
+        raise ValidationError("اعتبار این کد تخفیف هنوز شروع نشده است.")
     if code.valid_until and at >= code.valid_until:
         raise ValidationError("مهلت استفاده از این کد تخفیف تمام شده است.")
     if code.max_uses is not None and code.used_count >= code.max_uses:
-        raise ValidationError("ظرفیت این کد تخفیف تمام شده است.")
+        raise ValidationError("این کد تخفیف به تعداد مجاز استفاده رسیده است.")
     uses = DiscountRedemption.objects.filter(
         discount_code=code, user_id=user_id, released_at__isnull=True
     )
     if code.per_user_limit is not None and uses.count() >= code.per_user_limit:
-        raise ValidationError("شما قبلاً به تعداد مجاز از این کد تخفیف استفاده کرده‌اید.")
+        raise ValidationError("از همه‌ی دفعات مجاز این کد تخفیف استفاده کرده‌اید.")
     subtotal = sum((line.price * line.quantity for line in lines), Decimal(0))
     if code.min_order_amount is not None and subtotal < code.min_order_amount:
-        raise ValidationError("مبلغ سفارش برای استفاده از این کد تخفیف کافی نیست.")
+        raise ValidationError("برای استفاده از این کد تخفیف، مبلغ سفارش باید بیشتر باشد.")
     product_ids = (
         sorted(code.products.values_list("pk", flat=True))
         if code.scope == DiscountCode.Scope.SELECTED
@@ -995,7 +1005,7 @@ def _discount(
         Decimal(0),
     )
     if eligible <= 0:
-        raise ValidationError("این کد تخفیف برای این محصولات کار نمی‌کند.")
+        raise ValidationError("این کد تخفیف شامل محصولات این سفارش نمی‌شود.")
     amount = (
         (eligible * code.value / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
         if code.kind == DiscountCode.Kind.PERCENT
@@ -1046,12 +1056,14 @@ def _price(
     for line in sorted(lines, key=lambda line: line.plan.pk or 0):
         plan = plans.get(line.plan.pk or 0)
         if plan is None or not plan.is_available or not plan.product.is_public:
-            raise ValidationError("این گزینه فعلاً موجود نیست.")
+            raise ValidationError("مدت یا گزینه‌ی انتخابی برای خرید موجود نیست.")
         plan.validate_input_configuration()
         if type(line.quantity) is not int or not 1 <= line.quantity <= plan.max_quantity:
-            raise ValidationError("از این گزینه نمی‌توانید این تعداد بخرید.")
+            raise ValidationError("تعداد را در محدوده‌ی مجاز این گزینه وارد کنید.")
         if plan.stock_quantity is not None and plan.stock_quantity < line.quantity:
-            raise ValidationError("موجودی این محصول برای تعداد انتخاب‌شده کافی نیست.")
+            raise ValidationError(
+                "تعداد انتخابی بیشتر از موجودی این محصول است. تعداد را در سبد خرید کمتر کنید."
+            )
         value = "" if line.customer_input is None else line.customer_input
         if not isinstance(value, str) or len(value) > 2000:
             raise ValidationError("اطلاعات فعال‌سازی درست نیست.")
@@ -1080,7 +1092,9 @@ def _plans(ids: Sequence[int], *, lock: bool) -> dict[int, Plan]:
         .order_by("pk")
     )
     if any(plan.product_id not in product_ids for plan in plans):
-        raise ValidationError("اطلاعات محصول تغییر کرده است. صفحه را دوباره باز کنید.")
+        raise ValidationError(
+            "مشخصات این محصول تغییر کرده است. صفحه را دوباره باز کنید تا اطلاعات جدید را ببینید."
+        )
     return {plan.pk: plan for plan in plans}
 
 
@@ -1205,7 +1219,7 @@ def place_order(
     current_terms = purchase.terms_digest() if isinstance(expected_terms, str) else purchase.terms()
     if expected_terms is not None and current_terms != expected_terms:
         raise ValidationError(
-            "قیمت یا شرایط خرید تغییر کرده است. تغییرات را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
+            "قیمت یا شرایط خرید تغییر کرده است. مبلغ و شرایط جدید را ببینید و دوباره سفارش را ثبت کنید.",
             code="quote_changed",
         )
     inputs = {
@@ -1354,7 +1368,7 @@ def mark_order_paid(*, order: Order, payment: Any, actor: User) -> None:
     opened = holiday.current()
     items = list(order.items.select_for_update().defer("customer_input").order_by("pk"))
     if not can_pay_order(order, items=items, payment_id=payment.pk):
-        raise ValidationError(gettext_lazy("وضعیت این سفارش برای ثبت پرداخت مناسب نیست."))
+        raise ValidationError(gettext_lazy("برای این سفارش در وضعیت فعلی نمی‌توان پرداخت ثبت کرد."))
     events.emit("payment_confirmed", payment.pk, order.pk)
     for item in items:
         item.status, item.paid_at = OrderItem.Status.QUEUED, payment.verified_at
@@ -1428,7 +1442,9 @@ def _input_replay(item: OrderItem, expected_event_id: int, before: str, after: s
         previous = item.events.filter(pk__lt=latest.pk).order_by("-pk").first()
         if previous is not None and previous.pk == expected_event_id:
             return True
-    raise ValidationError(gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+    raise ValidationError(
+        gettext_lazy("وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید.")
+    )
 
 
 def _input_event(
@@ -1475,7 +1491,7 @@ def request_input(*, order_id: int, item_id: int, actor: User, expected_event_id
     ):
         return item
     if item.status != OrderItem.Status.QUEUED or item.paid_at is None:
-        raise ValidationError(gettext_lazy("این محصول در صف انجام نیست."))
+        raise ValidationError(gettext_lazy("این محصول در صف تحویل نیست."))
     item.input_requested_at = timezone.now()
     # A clock a holiday already stopped stays stopped from then; no stopped time is lost.
     if item.due_at is not None:
@@ -1514,7 +1530,9 @@ def _receive_input(
             account.pk,
         ):
             raise ValidationError(
-                gettext_lazy("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                gettext_lazy(
+                    "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+                )
             )
         return item
     if (
@@ -1522,11 +1540,15 @@ def _receive_input(
         or item.paid_at is None
         or (item.due_at is None) != first
     ):
-        raise ValidationError(gettext_lazy("این محصول منتظر دریافت اطلاعات نیست."))
+        raise ValidationError(
+            gettext_lazy("برای این محصول در حال حاضر اطلاعاتی از مشتری درخواست نشده است.")
+        )
     fields = ["status", "due_at", "input_received_at", "sla_paused_at"]
     if customer_input is not None:
         if not can_submit_customer_input(item):
-            raise ValidationError(gettext_lazy("این محصول منتظر دریافت اطلاعات نیست."))
+            raise ValidationError(
+                gettext_lazy("برای این محصول در حال حاضر اطلاعاتی از مشتری درخواست نشده است.")
+            )
         item.customer_input = normalize_customer_input(
             item.product_snapshot["input_type"], customer_input
         )
@@ -1543,7 +1565,7 @@ def _receive_input(
         )
         holiday.hold(item, at, opened)
     elif item.sla_paused_at is None or item.due_at is None:
-        raise ValidationError(gettext_lazy("مهلت تحویل این محصول متوقف نشده است."))
+        raise ValidationError(gettext_lazy("مهلت تحویل این محصول در حال محاسبه است."))
     elif opened is None:
         item.due_at = resumed_deadline(item.due_at, item.sla_paused_at, at)
         item.sla_paused_at = None
@@ -1715,7 +1737,7 @@ def _release(
         item.status not in (OrderItem.Status.PENDING_PAYMENT, OrderItem.Status.CANCELLED)
         for item in items
     ):
-        raise ValidationError("فقط سفارشی که منتظر پرداخت است از اینجا لغو می‌شود.")
+        raise ValidationError("از این بخش فقط سفارش‌های در انتظار پرداخت را می‌توان لغو کرد.")
     # Legacy orders may already contain individually cancelled units.
     pending = [item for item in items if item.status == OrderItem.Status.PENDING_PAYMENT]
     quantities = Counter(item.plan_id for item in pending if item.stock_debited)
@@ -1725,7 +1747,7 @@ def _release(
             quantity = plan.stock_quantity + quantities[plan_id]
             if quantity > 2147483647:
                 raise ValidationError(
-                    "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا موجودی را بررسی کند."
+                    "برای لغو این سفارش باید موجودی بررسی شود. در تلگرام به پشتیبانی پیام بدهید."
                 )
             plan.stock_quantity = quantity
             Plan.objects.filter(pk=plan_id).update(stock_quantity=quantity)
@@ -1765,7 +1787,7 @@ def _release_redemption(order: Order, code: DiscountCode | None, at: datetime) -
         return
     if code is None or code.used_count < 1:
         raise ValidationError(
-            "این سفارش فعلاً لغو نمی‌شود. به پشتیبانی پیام بدهید تا کد تخفیف را بررسی کند."
+            "برای لغو این سفارش باید کد تخفیف بررسی شود. در تلگرام به پشتیبانی پیام بدهید."
         )
     redemption.released_at = at
     redemption.save(update_fields=["released_at"])

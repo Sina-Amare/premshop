@@ -189,10 +189,10 @@
     try {
       const response = await fetch(action.action, {method:'POST', body, headers:{Accept:'application/json'}});
       const data = await response.json();
-      if (!response.ok) message = data.message || 'سبد خریدتان را بررسی کنید و دوباره امتحان کنید.';
-      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. برای دیدن سبد خرید به‌روز، صفحه را دوباره باز کنید.';
+      if (!response.ok) message = data.message || 'ابتدا سبد خرید را دوباره باز کنید و بعد تغییر را انجام دهید.';
+      else if (!await sync(data, true, data.message, accepted)) message = 'تغییر ثبت شد. صفحه را دوباره باز کنید تا سبد خرید به‌روز را ببینید.';
     } catch {
-      message = 'مشخص نیست تغییر ثبت شد یا نه. سبد خریدتان را بررسی کنید.';
+      message = 'پاسخی از سایت نرسید. پیش از تلاش دوباره، تعداد را در سبد خرید ببینید.';
     } finally {
       cartPending = false;
       cartPage.removeAttribute('aria-busy');
@@ -280,7 +280,7 @@
         show(data);
       } else fail(data.message || 'صفحه را دوباره باز کنید و یک بار دیگر امتحان کنید.');
     } catch {
-      fail('مشخص نیست اضافه شد یا نه. سبد خریدتان را بررسی کنید.');
+      fail('پاسخی از سایت نرسید. پیش از افزودن دوباره، سبد خریدتان را باز کنید.');
     } finally {
       form.dataset.pending = 'false';
       form.removeAttribute('aria-busy');

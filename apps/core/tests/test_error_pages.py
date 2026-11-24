@@ -36,7 +36,7 @@ def test_a_permission_error_is_a_persian_page(client):
 
     assert response.status_code == 403
     assert 'lang="fa"' in body
-    assert "اجازه‌ی دیدن این صفحه را ندارید" in body
+    assert "اجازه‌ی دسترسی به این صفحه را ندارید" in body
     assert not [word for word in ENGLISH if word in body]
 
 

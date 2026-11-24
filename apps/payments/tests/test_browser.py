@@ -182,7 +182,7 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
         page.get_by_label("شماره‌ی موبایل", exact=True).fill("12345")
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         if javascript:
-            expect(page.locator("[data-login-status]")).to_contain_text("۱۱ رقم")
+            expect(page.locator("[data-login-status]")).to_contain_text("۰۹ و ۹ رقم")
             page.get_by_label("شماره‌ی موبایل", exact=True).fill("09121230002")
             page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
             expect(page.locator("[data-inline-code]")).to_be_visible()
@@ -190,10 +190,10 @@ def test_inline_invalid_fields_use_persian_errors_in_english_browser(
             expect(page.locator(".otp__cell")).to_have_count(6)
             assert not page.get_by_role("button", name="تأیید کد و ادامه").is_visible()
             page.keyboard.type("000000")
-            expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
+            expect(page.locator("[data-login-status]")).to_contain_text("کد ورود اشتباه است")
         else:
             expect(page).to_have_url(live_server.url + reverse("login-code"))
-            expect(page.locator(".field__error")).to_contain_text("۱۱ رقم")
+            expect(page.locator(".field__error")).to_contain_text("۰۹ و ۹ رقم")
     finally:
         context.close()
 
@@ -221,7 +221,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
         page.get_by_role("button", name="دریافت کد ورود", exact=True).click()
         expect(page.locator("[data-inline-code]")).to_be_visible()
         page.keyboard.type("000000")
-        expect(page.locator("[data-login-status]")).to_contain_text("کد ورود درست نیست")
+        expect(page.locator("[data-login-status]")).to_contain_text("کد ورود اشتباه است")
         page.wait_for_function("() => document.querySelector('.otp__cell').value === ''")
         expect(page.locator(".otp__cell").first).to_be_focused()
         page.keyboard.type("۱۲۳۴۵۶")

@@ -11,7 +11,7 @@ def test_account_feedback_distinguishes_refused_mail_from_success(level, css, ro
     markup = render_to_string(
         "accounts/_account_base.html",
         {
-            "messages": [Message(level, "ارسال ایمیل فعلاً به سقف مجاز رسیده است.")],
+            "messages": [Message(level, "ظرفیت ارسال ایمیل پر شده است.")],
             "csrf_token": "fixture",
         },
     )

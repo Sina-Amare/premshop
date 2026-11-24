@@ -121,7 +121,7 @@ def check_seo_title(row: Category | Product) -> None:
     """base.html adds « | PremShop» to every title, so the field never holds it."""
     if "premshop" in row.seo_title.casefold():
         raise ValidationError(
-            {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
+            {"seo_title": _("نام فروشگاه به‌صورت خودکار به انتهای عنوان اضافه می‌شود.")}
         )
 
 
@@ -267,7 +267,7 @@ class Category(models.Model):
         max_length=100,
         unique=True,
         allow_unicode=True,
-        help_text=_("در نشانی صفحه می‌آید و لاتین است، مثل «ai»."),
+        help_text=_("بخش پایانی نشانی صفحه را با حروف لاتین بنویسید، مثل «ai»."),
     )
     description = models.CharField(
         _("توضیح کوتاه"),
@@ -306,7 +306,7 @@ class Category(models.Model):
         default="",
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
     )
 
     class Meta:
@@ -472,7 +472,9 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         default="",
         validators=[RegexValidator(r"\A#[0-9a-fA-F]{6}\Z", _("رنگ را مانند #10a37f وارد کنید."))],
-        help_text=_("رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."),
+        help_text=_(
+            "برای زمینه‌ی کارت یک رنگ مثل #10a37f وارد کنید یا برای زمینه‌ی خنثی خالی بگذارید."
+        ),
     )
     delivery_type = models.CharField(
         _("نوع تحویل"),
@@ -497,7 +499,7 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."),
+        help_text=_("بیشترین زمان لازم برای تحویل را از ۱ تا ۴۸ ساعت وارد کنید."),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -542,7 +544,7 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=300,
         blank=True,
         default="",
-        help_text=_("فقط اگر این محصول با قاعده‌ی بازگشت وجه فروشگاه فرق دارد. یک جمله."),
+        help_text=_("اگر شرایط بازگشت وجه این محصول متفاوت است، استثنا را در یک جمله بنویسید."),
     )
     sources = models.TextField(
         _("منبع‌ها"),
@@ -557,7 +559,7 @@ class Product(ChecksNameTheirField, models.Model):
         _("آخرین بررسی"),
         null=True,
         blank=True,
-        help_text=_("روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."),
+        help_text=_("تاریخ آخرین تطبیق توضیحات محصول با منابع را وارد کنید."),
     )
     time_sensitive = models.BooleanField(
         _("حساس به زمان"),
@@ -883,10 +885,10 @@ class ProductSpec(PageRow):
     is_key = models.BooleanField(
         _("مهم"),
         default=False,
-        help_text=_("کنار نام محصول، بالای صفحه‌ی محصول می‌آید."),
+        help_text=_("این مشخصه بالای صفحه‌ی محصول و کنار نام آن دیده می‌شود."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
     )
 
     class Meta:
@@ -927,7 +929,10 @@ class Plan(ChecksNameTheirField, PageRow):
         help_text=_("باید از قیمت فروش کمتر باشد."),
     )
     promo_starts_at = models.DateTimeField(
-        _("شروع تخفیف"), null=True, blank=True, help_text=_("خالی یعنی همین حالا.")
+        _("شروع تخفیف"),
+        null=True,
+        blank=True,
+        help_text=_("برای شروع فوری تخفیف، این تاریخ را خالی بگذارید."),
     )
     promo_ends_at = models.DateTimeField(
         _("پایان تخفیف"),
@@ -946,7 +951,7 @@ class Plan(ChecksNameTheirField, PageRow):
     is_available = models.BooleanField(
         _("موجود"),
         default=True,
-        help_text=_("تیک را بردارید تا خریدنی نباشد. پاکش نکنید."),
+        help_text=_("برای توقف فروش این پلن، گزینه را خاموش کنید."),
     )  # soft delete: sold plans are never removed
     # Default 1, so a quantity control appears only where the operator has
     # said it makes sense. Most of this shop is subscriptions activated on one
@@ -956,7 +961,7 @@ class Plan(ChecksNameTheirField, PageRow):
     max_quantity = models.PositiveSmallIntegerField(
         _("حداکثر تعداد در هر سفارش"),
         default=1,
-        help_text=_("۱ یعنی مشتری تعداد نمی‌بیند."),
+        help_text=_("اگر مقدار ۱ باشد، انتخاب تعداد در صفحه‌ی محصول نمایش داده نمی‌شود."),
     )
     input_type = models.CharField(
         _("نوع اطلاعات فعال‌سازی"),
@@ -982,7 +987,9 @@ class Plan(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."),
+        help_text=_(
+            "نام کوتاه اطلاعاتی را بنویسید که از مشتری می‌خواهید، مثل «ایمیل اکانت Spotify»."
+        ),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),
@@ -991,7 +998,7 @@ class Plan(ChecksNameTheirField, PageRow):
         help_text=_("مشتری این را نمی‌بیند."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
     )
     # When someone last stood behind this price: set by any change to a price
     # and by the panel's «قیمت‌ها را امروز بررسی کردم» for its review filters.
@@ -1067,7 +1074,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
                 name="plan_duration_positive_or_unlimited",
                 violation_error_message=_(
-                    "مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان."
+                    "مدت پلن را دست‌کم یک روز وارد کنید یا برای اشتراک بدون پایان خالی بگذارید."
                 ),
             ),
             models.CheckConstraint(
@@ -1164,7 +1171,7 @@ class Plan(ChecksNameTheirField, PageRow):
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
             raise ValidationError(
-                "این گزینه را فعلاً نمی‌توانید بخرید. از پشتیبانی راهنمایی بگیرید."
+                "این گزینه فعلاً برای خرید آماده نیست. برای راهنمایی، در تلگرام به پشتیبانی پیام بدهید."
             )
 
     @property
@@ -1300,7 +1307,7 @@ class ProductSection(ChecksNameTheirField, PageRow):
         help_text=_("آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
     )
 
     class Meta:
@@ -1327,12 +1334,16 @@ class ProductSection(ChecksNameTheirField, PageRow):
                 fields=["product"],
                 condition=Q(kind="before_buying"),
                 name="section_one_before_buying",
-                violation_error_message=_("این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."),
+                violation_error_message=_(
+                    "برای تغییر متن «پیش از خرید»، بخش فعلی محصول را ویرایش کنید."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(image="") | ~Q(image_alt=""),
                 name="section_image_has_alt",
-                violation_error_message=_("تصویر بدون متن جایگزین ذخیره نمی‌شود."),
+                violation_error_message=_(
+                    "برای ذخیره‌ی تصویر، توضیح کوتاهی از محتوای آن در «متن جایگزین» بنویسید."
+                ),
             ),
         ]
 
@@ -1363,7 +1374,7 @@ class ProductQuestion(PageRow):
         help_text=_("اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
     )
 
     class Meta:

@@ -1,9 +1,9 @@
 {% load fa order_tones %}PremShop
-تحویل {{ product_name }}، {{ plan_title }}، انجام شد.
+محصول تحویل داده شد. برای دیدن اطلاعات تحویل، وارد حساب کاربری شوید و صفحه‌ی سفارش را باز کنید.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}جزئیات آن را پس از ورود به حساب کاربری، در صفحه‌ی سفارش می‌بینید:
+{% endif %}محصول: {{ product_name }}، {{ plan_title }}
 {{ order_url }}
-اطلاعات ورود را در ایمیل ارسال نمی‌کنیم.
+اطلاعات ورود اکانت فقط در صفحه‌ی سفارش دیده می‌شود.
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

@@ -280,7 +280,7 @@ def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
     order = items[0].order
     assert not Refund.objects.filter(order_item__order=order).exists()
     card = card_of(page(client, buyer, order))
-    assert "این لغو بازگشت وجه ندارد." in card
+    assert "برای این لغو بازپرداختی انجام نمی‌شود." in card
     assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
 
 

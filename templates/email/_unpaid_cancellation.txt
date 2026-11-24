@@ -1,0 +1,1 @@
+{% if pill_state == "expired" %}مهلت ۲۴ ساعته‌ی پرداخت تمام شد و سفارش لغو شد.{% elif cancel_reason == "operator" %}پشتیبانی سفارش را پیش از ثبت پرداخت لغو کرد.{% elif cancel_reason == "customer_before_payment" %}سفارش به درخواست شما پیش از پرداخت لغو شد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}

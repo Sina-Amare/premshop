@@ -6,4 +6,4 @@
 مشاهده‌ی سفارش در پنل:
 {{ panel_url }}
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

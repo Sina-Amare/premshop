@@ -92,7 +92,7 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
                 reject(item, operator)
                 box.get_by_label(LABEL_A, exact=True).check()
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
-                expect(page.get_by_role("alert")).to_contain_text("وضعیت این محصول تغییر کرده است")
+                expect(page.get_by_role("alert")).to_contain_text("وضعیت محصول تغییر کرده است")
         assert page.locator("html").get_attribute("dir") == "rtl"
         page.add_script_tag(path=str(AXE))
         violations = page.evaluate(RUN_AXE, STYLED)["violations"]

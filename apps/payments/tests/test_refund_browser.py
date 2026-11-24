@@ -51,7 +51,7 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.get_by_label("چهار رقم آخر مقصد", exact=True).fill("6037")
         page.get_by_label("شماره‌ی پیگیری بانک", exact=True).fill(reference)
         submit("ثبت واریز بازپرداخت")
-        expect(page.locator(".errorlist").first).to_contain_text("مبلغ واریز باید دقیقاً برابر")
+        expect(page.locator(".errorlist").first).to_contain_text("مبلغ را برابر جمع بازپرداخت")
         expect(page.locator("#id_bank_ref")).to_have_value(reference)
         shot("refund-mismatch-long-reference", form_url, "#manual-payment-title")
         page.locator("#id_amount").fill("400000")

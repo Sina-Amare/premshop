@@ -216,7 +216,7 @@ def test_changes_from_the_account_page_have_a_daily_limit(bot, client, user):
     issued = client.session["accounts.telegram_link"]
     refused = client.post(url, {"action": "link"}, follow=True)
     assert client.session["accounts.telegram_link"] == issued
-    assert "برای امروز" in refused.content.decode()
+    assert "به سقف تغییر اتصال تلگرام در ۲۴ ساعت" in refused.content.decode()
     # Unlinking is never refused: it is what the link alert tells a customer to do.
     linked(user)
     client.post(url, {"action": "unlink"})

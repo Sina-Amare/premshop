@@ -54,7 +54,7 @@ from apps.orders.services import (
 ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
-INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
+INVOICE_NOTICE = "این فاکتور جزئیات سفارش را نشان می‌دهد و تأیید پرداخت نیست."
 
 
 @never_cache
@@ -262,10 +262,10 @@ def delivery_code(
     try:
         if confirm:
             if not proof.confirm_code(**arguments, code=request.POST.get("code", "")):
-                raise ValidationError("کد درست نیست یا مهلتش گذشته است.")
+                raise ValidationError("کد اشتباه است یا اعتبارش تمام شده است.")
         else:
             proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد به ایمیل این سفارش فرستاده شد.")
+            messages.success(request, "کد تأیید را به نشانی ایمیل همین سفارش فرستادیم.")
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     return redirect("order-detail", order_number=order_number)
@@ -350,7 +350,7 @@ def submit_review(request: HttpRequest, order_number: int, item_id: int) -> Http
             request,
             _owned_summary(request, order_number),
             status=409,
-            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید.", {}),
+            review_error=(item_id, "نظرتان برای این خرید قبلاً ثبت شده است.", {}),
         )
     return redirect(reverse("order-detail", args=[order_number]) + "#order-reviews")
 
@@ -425,7 +425,10 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
     order = summary["order"]
     if request.POST.get("confirm") != "yes":
         return _render_detail(
-            request, summary, error="ساخت شناسه‌ی جدید را تأیید کنید.", status=400
+            request,
+            summary,
+            error="برای تغییر شناسه، دکمه‌ی «ساخت شناسه‌ی جدید» را بزنید.",
+            status=400,
         )
     try:
         replace_support_token(
@@ -437,7 +440,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     except ImproperlyConfigured, OrderSupportIdentifier.DoesNotExist:
         return _render_detail(request, summary, error="شناسه‌ی پشتیبانی در دسترس نیست.", status=503)
-    messages.success(request, "شناسه‌ی پشتیبانی جایگزین شد.")
+    messages.success(request, "شناسه‌ی پشتیبانی جدید آماده است.")
     return redirect("order-detail", order_number=order.order_number)
 
 
@@ -447,7 +450,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
 def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
-    error = "برای لغو سفارش، دکمه‌ی «بله، لغو سفارش» را بزنید."
+    error = "لغو سفارش با انتخاب «بله، لغو سفارش» تأیید می‌شود."
     if request.POST.get("confirm") == "yes":
         try:
             cancel_unpaid_order(order_id=order.pk, actor=cast(User, request.user))

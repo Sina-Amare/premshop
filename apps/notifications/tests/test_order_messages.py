@@ -184,7 +184,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         executed_at=timezone.now(),
     )
     refunded = rows("item_refunded").get()
-    assert "به شما برگرداندیم" in refunded.text_body
+    assert "به حساب شما واریز شد" in refunded.text_body
     for row in (cancelled, refunded):
         assert "SECRET-TRANSFER-REF" not in row.text_body + row.html_body
         assert "2468" not in row.text_body + row.html_body
@@ -211,10 +211,12 @@ def test_an_unpaid_cancellation_is_one_message_for_the_whole_order(
     email = rows("item_cancelled").get(channel="email")
     bot = rows("item_cancelled").get(channel="telegram")
     assert email.subject == f"سفارش {to_persian_digits(order.order_number)} لغو شد"
-    if path == "expiry":
-        said, state = "پرداختی برای این سفارش ثبت نشد.", "پایان مهلت پرداخت"
-    else:
-        said, state = "پرداختی برای این سفارش ثبت نشده بود.", "لغوشده"
+    said = {
+        "expiry": "مهلت ۲۴ ساعته‌ی پرداخت تمام شد و سفارش لغو شد.",
+        "operator": "پشتیبانی سفارش را پیش از ثبت پرداخت لغو کرد.",
+        "customer": "سفارش به درخواست شما پیش از پرداخت لغو شد.",
+    }[path]
+    state = "پایان مهلت پرداخت" if path == "expiry" else "لغوشده"
     for body in (email.text_body, email.html_body, bot.text_body):
         assert "در انتظار واریز" not in body and "بازگشت وجه" not in body
         assert said in body and state in body and "سرویس نمونه" in body

@@ -149,7 +149,7 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.goto(live_server.url + reverse("admin:orders_discountcode_change", args=[code.pk]))
         expect(page.locator("#id_code")).to_have_value("SAVE")
         assert not page.locator('[name="used_count"]').count()
-        assert "خالی یعنی بدون محدودیت" in page.locator("body").inner_text()
+        assert "برای استفاده‌ی نامحدود خالی بگذارید" in page.locator("body").inner_text()
         page.screenshot(path=str(tmp_path / f"discount-saved-{width}.png"), full_page=True)
     finally:
         context.close()

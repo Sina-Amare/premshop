@@ -42,7 +42,7 @@
     <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'claim' %}" class="order-payment-form delivery-form" autocomplete="off">
       {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
       <div><label for="claim-reason">{% translate "دلیل درخواست تعویض" %}</label><select id="claim-reason" name="reason" required><option value="">{% translate "انتخاب دلیل" %}</option>{% for reason, label in claim_choices %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
-      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "رمز یا اطلاعات ورود را اینجا ننویسید؛ این یادداشت در سابقه‌ی سفارش می‌ماند." %}</p></div>
+      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این یادداشت در سابقه‌ی سفارش می‌ماند. رمز یا اطلاعات ورود را در آن ننویسید." %}</p></div>
       <button type="submit" class="order-input-action">{% translate "ثبت درخواست تعویض" %}</button>
     </form>
   {% elif mode == "replace" %}
@@ -50,7 +50,7 @@
     {% if claim_reason and claim_note %}<p>{{ claim_note }}</p>{% endif %}
     <p>{{ claim_actor }}</p>
   {% endif %}
-  {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "خطاهای فرم را درست کنید." %}</p>{% endif %}</div>{% endif %}
+  {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "موارد مشخص‌شده در فرم را اصلاح کنید." %}</p>{% endif %}</div>{% endif %}
   {% if preview %}
     {% include "admin/orders/_delivery_card.html" with content=preview only %}
     <p>{% if mode == "replace" %}{% translate "هزینه‌ی تأمین اضافه" %}{% else %}{% translate "قیمت تأمین واقعی" %}{% endif %}: {{ form.cleaned_data.actual_cost|toman }}</p>

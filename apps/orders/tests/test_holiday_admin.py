@@ -18,7 +18,7 @@ from apps.orders.tests.test_paid_cancellation import cancel, paid_order
 
 pytestmark = pytest.mark.django_db
 
-STALE = "وضعیت این محصول تغییر کرده است"
+STALE = "وضعیت محصول تغییر کرده است"
 
 
 @pytest.fixture
@@ -295,4 +295,4 @@ def test_a_delay_form_from_before_the_holiday_is_out_of_date_after_it(client, ow
     )
     body = response.content.decode()
     assert response.status_code == 400 and STALE in body
-    assert "این تأخیر قبلاً ثبت شده" not in body
+    assert "تأخیر این محصول قبلاً ثبت شده" not in body

@@ -46,12 +46,12 @@ def test_selected_scope_caps_fixed_discount_and_tests_minimum_before_the_code(bu
 @pytest.mark.parametrize(
     "changes,error",
     [
-        ({"is_active": False}, "فعال نیست"),
-        ({"valid_from": timezone.now() + timedelta(days=1)}, "هنوز نرسیده"),
+        ({"is_active": False}, "غیرفعال است"),
+        ({"valid_from": timezone.now() + timedelta(days=1)}, "هنوز شروع نشده"),
         ({"valid_until": timezone.now() - timedelta(seconds=1)}, "تمام شده"),
-        ({"max_uses": 1, "used_count": 1}, "ظرفیت این کد"),
-        ({"min_order_amount": 300000}, "کافی نیست"),
-        ({"scope": "selected"}, "این محصولات"),
+        ({"max_uses": 1, "used_count": 1}, "به تعداد مجاز استفاده رسیده"),
+        ({"min_order_amount": 300000}, "مبلغ سفارش باید بیشتر باشد"),
+        ({"scope": "selected"}, "شامل محصولات این سفارش"),
     ],
 )
 def test_coupon_rejection_is_specific_and_preserves_resources(buyer, plan, changes, error):
@@ -68,7 +68,7 @@ def test_per_customer_limit_counts_active_history_beyond_the_unpaid_order(buyer,
     DiscountCode.objects.create(code="SAVE", kind="fixed", value=100, per_user_limit=1)
     order = services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     OrderItem.objects.filter(order=order).update(status=OrderItem.Status.QUEUED)
-    with pytest.raises(ValidationError, match="تعداد مجاز"):
+    with pytest.raises(ValidationError, match="دفعات مجاز"):
         services.place_order(user=buyer, lines=[OrderLine(plan, 1)], discount_code="SAVE")
     assert DiscountRedemption.objects.count() == 1
 
@@ -178,4 +178,4 @@ def test_discount_editor_rejects_an_inverted_validity_window(client):
     response = client.post(url, data)
     assert response.status_code == 200
     assert "valid_until" in response.context["adminform"].form.errors
-    assert "پایان اعتبار باید پس از شروع آن باشد" in response.content.decode()
+    assert "تاریخ پایان اعتبار را بعد از تاریخ شروع" in response.content.decode()

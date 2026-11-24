@@ -4,8 +4,8 @@
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
 {% endif %}{% if products %}{% if products|length > 1 %}محصولات{% else %}محصول{% endif %}: {{ products|join:"، " }}
 {% endif %}{% if cancel_reason == "input_timeout" %}اطلاعات فعال‌سازی این محصول تا ۲۱ روز پس از درخواست به دستمان نرسید.
-{% endif %}{% if amount %}بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% elif products %}{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد. اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای {{ support.telegram }} بفرستید.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}{% else %}این لغو بازگشت وجه ندارد.{% endif %}
+{% endif %}{% if amount %}بازگشت وجه این محصول به مبلغ {{ amount|toman_plain }} تومان در انتظار واریز است. این پیام تأیید واریز نیست.{% elif products %}{% include "email/_unpaid_cancellation.txt" %}{% if pill_state == "expired" %} اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را در تلگرام برای {{ support.telegram }} بفرستید.{% endif %}{% else %}این لغو بازگشت وجه ندارد.{% endif %}
 مشاهده‌ی سفارش:
 {{ order_url }}
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

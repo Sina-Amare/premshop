@@ -406,7 +406,9 @@ class DeliveryForm(forms.Form):
                 raise ValueError
             return cast(date, jdatetime.date(*map(int, found.groups())).togregorian())
         except ValueError:
-            raise ValidationError(_("تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید.")) from None
+            raise ValidationError(
+                _("تاریخ را به شکل سال/ماه/روز بنویسید، مثل ۱۴۰۵/۰۹/۱۵.")
+            ) from None
 
     def clean(self) -> dict[str, Any]:
         data = self.cleaned_data
@@ -631,7 +633,9 @@ class OrderAdmin(ModelAdmin):
                 expected = int(request.POST.get("expected_event_id", ""))
             except ValueError:
                 raise ValidationError(
-                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                    _(
+                        "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+                    )
                 ) from None
             service(
                 order_id=order_id,
@@ -687,13 +691,17 @@ class OrderAdmin(ModelAdmin):
                 expected = int(request.POST.get("expected_event_id", ""))
             except ValueError:
                 raise ValidationError(
-                    _("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید.")
+                    _(
+                        "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+                    )
                 ) from None
             if action == "delay":
                 try:
                     changes["hours"] = int(to_latin_digits(request.POST.get("hours", "")).strip())
                 except ValueError:
-                    raise ValidationError(_("ساعت تأخیر را عددی از ۱ تا ۷۲ بنویسید.")) from None
+                    raise ValidationError(
+                        _("برای تمدید مهلت، عددی از ۱ تا ۷۲ ساعت وارد کنید.")
+                    ) from None
             if action in ("claim", "cancel"):
                 changes["reason"] = request.POST.get("reason", "")
             service(
@@ -811,10 +819,14 @@ class OrderAdmin(ModelAdmin):
         if request.method == "POST" and form.is_valid():
             content = form.cleaned_data["content"]
             if step == "preview" and not can_deliver:
-                error = str(_("این محصول آماده‌ی تحویل نیست."))
+                error = str(_("تا محصول در صف تحویل نباشد، اطلاعات تحویل ثبت نمی‌شود."))
             elif step == "preview" and form.cleaned_data["expected_event_id"] != event_id:
                 # A preview of a page the item has moved past would only be refused at confirm.
-                error = str(_("وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."))
+                error = str(
+                    _(
+                        "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+                    )
+                )
             elif step == "preview":
                 preview = content
             elif step == "confirm":
@@ -1250,7 +1262,7 @@ class DiscountForm(forms.ModelForm):
         )
         for name in ("max_uses", "per_user_limit"):
             self.fields[name].help_text = _(
-                "خالی یعنی بدون محدودیت. استفاده‌های لغوشده حساب نمی‌شوند."
+                "برای استفاده‌ی نامحدود خالی بگذارید، چون سفارش‌های لغوشده در شمار استفاده‌ها نمی‌آیند."
             )
 
     def clean_code(self) -> str:
@@ -1266,7 +1278,7 @@ class DiscountForm(forms.ModelForm):
             self.add_error("min_order_amount", _("صفر یا عددی بزرگ‌تر وارد کنید."))
         start, end = cleaned.get("valid_from"), cleaned.get("valid_until")
         if start and end and start >= end:
-            self.add_error("valid_until", _("پایان اعتبار باید پس از شروع آن باشد."))
+            self.add_error("valid_until", _("تاریخ پایان اعتبار را بعد از تاریخ شروع بگذارید."))
         if cleaned.get("scope") == DiscountCode.Scope.SELECTED and not cleaned.get("products"):
             self.add_error("products", _("حداقل یک محصول برای این کد تخفیف انتخاب کنید."))
         return cleaned

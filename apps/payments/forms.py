@@ -52,7 +52,9 @@ class JalaliDateField(forms.Field):
                 raise ValueError
             return jdatetime.date(*map(int, found.groups())).togregorian()
         except ValueError, OverflowError:
-            raise ValidationError(_("تاریخ را مثل ۱۴۰۵/۰۹/۱۵ بنویسید.")) from None
+            raise ValidationError(
+                _("تاریخ را به شکل سال/ماه/روز بنویسید، مثل ۱۴۰۵/۰۹/۱۵.")
+            ) from None
 
 
 class ReconciliationForm(forms.Form):
@@ -134,8 +136,8 @@ class CheckoutForm(forms.Form):
         max_length=254,
         required=False,
         help_text=(
-            "رسید و خبرهای سفارش را به این ایمیل می‌فرستیم. "
-            "اگر حسابتان ایمیل ندارد، همین را در حساب هم ثبت می‌کنیم."
+            "رسید و جزئیات این سفارش به همین ایمیل فرستاده می‌شود. "
+            "اگر برای حساب کاربری ایمیلی ثبت نکرده‌اید، این نشانی در حساب هم ذخیره می‌شود."
         ),
         error_messages={"invalid": "این ایمیل درست نیست."},
         widget=forms.EmailInput(

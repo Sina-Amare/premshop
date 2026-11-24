@@ -4,4 +4,4 @@
 {% endif %}مشاهده‌ی سفارش:
 {{ order_url }}
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

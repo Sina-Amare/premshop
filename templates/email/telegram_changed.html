@@ -5,13 +5,13 @@
 <h1 style="margin:0 0 12px 0;font-size:21px;font-weight:bold;line-height:1.55;color:#292524;">{% if state == "linked" %}تلگرام وصل شد{% else %}تلگرام جدا شد{% endif %}</h1>
 {% if state == "linked" %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a> قطعش کنید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان تلگرام را وصل نکرده‌اید، از <a href="{{ account_url }}" style="color:#2459D3;">صفحه‌ی حساب کاربری</a>اتصال تلگرام را قطع کنید.</p>
 {% elif state == "moved" %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام <bdi dir="ltr">{{ telegram }}</bdi> در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، به پشتیبانی خبر بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر شما این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
 {% else %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">تلگرام{% if telegram %} <bdi dir="ltr">{{ telegram }}</bdi>{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.</p>
-<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر خودتان نبودید، به پشتیبانی خبر بدهید.</p>
+<p style="font-size:16px;line-height:1.95;color:#57534E;">اگر شما این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.</p>
 {% endif %}
 <p style="font-size:16px;line-height:1.95;color:#57534E;">پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.</p>
 {% endblock %}

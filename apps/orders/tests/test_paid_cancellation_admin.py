@@ -71,7 +71,7 @@ def test_a_claim_offers_its_unused_day_refund_inside_the_warranty_only(buyer, pl
     claim(item, operator, reason="stopped_early")
     body = signed_in(operator).get(delivery_url(item)).content.decode()
     assert cancel_url(item) not in body and offered(body) == []
-    assert "خارج از مدت گارانتی" in body
+    assert "پس از پایان گارانتی" in body
 
 
 def test_a_delivered_item_without_a_claim_has_no_cancel_form(buyer, plan, operator):

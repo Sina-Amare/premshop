@@ -32,13 +32,15 @@ def moderate_review(
         target = Review.Status.HIDDEN
         message = _HIDE_LOG_MESSAGE[HideReason(reason)]
     else:
-        raise ValidationError(_("درخواست بررسی نظر معتبر نیست."))
+        raise ValidationError(_("این درخواست انجام نشد. صفحه‌ی بررسی نظرها را دوباره باز کنید."))
     if expected_status not in sources:
-        raise ValidationError(_("درخواست بررسی نظر معتبر نیست."))
+        raise ValidationError(_("این درخواست انجام نشد. صفحه‌ی بررسی نظرها را دوباره باز کنید."))
 
     review = Review.objects.select_for_update().only("status").get(pk=review_id)
     if review.status != expected_status:
-        raise ValidationError(_("وضعیت این نظر عوض شده است."))
+        raise ValidationError(
+            _("وضعیت نظر تغییر کرده است. صفحه را دوباره باز کنید تا نتیجه‌ی فعلی را ببینید.")
+        )
     review.status = target
     review.save(update_fields=["status"])
     LogEntry.objects.log_actions(

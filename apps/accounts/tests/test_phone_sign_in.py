@@ -96,7 +96,7 @@ def test_a_staff_number_gets_the_wrong_code_answer(client):
 def test_an_invalid_number_is_refused_before_anything_is_sent(client):
     response = ask(client, "12345")
 
-    assert "شماره‌ی موبایل باید ۱۱ رقم باشد" in response.content.decode()
+    assert "شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم" in response.content.decode()
     assert not sms.outbox
 
 

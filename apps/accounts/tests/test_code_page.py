@@ -107,7 +107,7 @@ def test_too_many_guesses_answer_429_in_json(waiting):
     assert response.json()["ok"] is False
     assert (
         response.json()["error"]
-        == "برای این شماره چند بار پشت سر هم تلاش شده است. ۱۵ دقیقه دیگر دوباره امتحان کنید."
+        == "به دلیل چند تلاش پیاپی با این شماره، ۱۵ دقیقه صبر کنید و دوباره وارد شوید."
     )
 
 
@@ -189,7 +189,7 @@ def test_a_plain_resend_comes_back_to_the_page_with_a_new_code(waiting, user):
     assert response.status_code == 302
     assert response["Location"] == reverse("login-code-verify")
     assert len(sms.outbox) == 2
-    assert "کد جدید را فرستادیم." in waiting.get(response["Location"]).content.decode()
+    assert "کد جدید با پیامک فرستاده شد." in waiting.get(response["Location"]).content.decode()
     assert otp.verify(user.phone, code_from(sms.outbox[1]))
 
 
@@ -210,7 +210,7 @@ def test_a_plain_resend_after_the_page_ran_out_starts_again(client):
 
     assert response.redirect_chain[-1][0] == reverse("login-code")
     # Printed on the number page, so it names the page that ran out.
-    assert "صفحه‌ی کد ورود دیگر کار نمی‌کند." in response.content.decode()
+    assert "اعتبار این صفحه تمام شده است." in response.content.decode()
 
 
 def test_a_mistyped_number_can_be_corrected_without_retyping_it(waiting, user):

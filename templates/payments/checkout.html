@@ -8,7 +8,7 @@
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
   {% if existing %}
-    <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید. سبد خریدتان پاک نمی‌شود.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
+    <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد. محصولات تا آن زمان در سبد خریدتان می‌مانند.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
       <section class="checkout-box checkout-login" data-checkout-login>
@@ -79,7 +79,7 @@
           {% for line, field in form.input_fields %}<div class="checkout-input"><div class="checkout-input__head"><div class="checkout-preview__art" style="--brand: {{ line.plan.product.card_colour|default:'#737373' }}" aria-hidden="true">{% include 'catalog/_card_art.html' with product=line.plan.product %}</div><p id="customer_input_{{ line.plan.pk }}_product"><bdi>{{ line.snapshot.name }}</bdi>، <bdi>{{ line.snapshot.plan_title }}</bdi></p></div>{% include 'accounts/_field.html' %}</div>{% endfor %}
         </section>{% endif %}
         <section class="checkout-box"><h2>اطلاعات تماس</h2>{% if request.user.phone %}<p>سفارش با شماره‌ی <bdi dir="ltr">{{ request.user.phone|fa_digits }}</bdi> ثبت می‌شود.</p>{% endif %}{% include 'accounts/_field.html' with field=form.email %}</section>
-        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>تا خطای بالا برطرف نشود، سفارش ثبت نمی‌شود.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
+        {% else %}<section class="checkout-box"><h2>سبد خرید را بررسی کنید</h2><p>موارد مشخص‌شده را اصلاح کنید تا بتوانید سفارش را ثبت کنید.</p><button class="btn btn--secondary" type="submit" name="action" value="review" formnovalidate>تلاش دوباره</button><p><a href="{% url 'cart' %}">بازگشت به سبد خرید</a></p></section>{% endif %}
       </div>
       {% if purchase %}<aside class="cart-summary" aria-label="خلاصه‌ی سفارش">
         <div class="checkout-summary-heading"><h2>خلاصه‌ی سفارش</h2><a class="cart-back" href="{% url 'cart' %}">ویرایش سبد خرید</a></div>
@@ -89,7 +89,7 @@
           <dl class="checkout-totals"><div><dt>جمع محصولات</dt><dd>{{ quote.purchase.subtotal|price_html }}</dd></div>{% if quote.purchase.code %}<div><dt>تخفیف <bdi>{{ quote.purchase.code.code }}</bdi></dt><dd>{{ quote.purchase.discount|price_html }}</dd></div>{% endif %}</dl>
           <div class="cart-cta{% if purchase.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">مبلغ نهایی سفارش</div><div class="cart-summary__total cart-money">{{ quote.purchase.total|price_html }}</div></div>
           <button class="btn btn--primary" type="submit" name="action" value="checkout">ثبت سفارش</button></div>
-          <p class="small">در این مرحله چیزی پرداخت نمی‌کنید. پس از ثبت سفارش، تا ۲۴ ساعت فرصت دارید مبلغ را از طریق پشتیبانی در تلگرام پرداخت کنید.</p>
+          <p class="small">در این مرحله پرداختی انجام نمی‌دهید. پس از ثبت سفارش، تا ۲۴ ساعت فرصت دارید مبلغ را با هماهنگی پشتیبانی در تلگرام پرداخت کنید.</p>
           {% for legal_page in legal_pages %}{% if legal_page.slug == 'terms' %}<p class="small"><a class="cart-back" href="{{ legal_page.get_absolute_url }}" target="_blank" rel="noopener">قوانین خرید</a></p>{% endif %}{% endfor %}
         {% endif %}
       </aside>{% endif %}

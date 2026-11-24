@@ -184,5 +184,5 @@ def test_the_maintenance_page_stands_alone_in_written_persian():
     assert TELEGRAM_HANDLE in page
     assert "<h1>به‌زودی برمی‌گردیم</h1>" in page
     assert "<title>به‌زودی برمی‌گردیم</title>" in page
-    assert "سفارش‌هایی که ثبت کرده‌اید سر جایشان هستند." in page
+    assert "سفارش‌های ثبت‌شده را پس از باز شدن سایت در حساب کاربری می‌بینید." in page
     assert "دوباره پرداخت نکنید" in page

@@ -148,7 +148,7 @@ def test_plain_resend_keeps_telegram_and_never_claims_delivery(client, queued):
         clock.shift(121)
         response = client.post(reverse("login-code-resend"), follow=True)
     assert len(queued) == 2 and not sms.outbox
-    assert "کد جدید را فرستادیم." not in response.content.decode()
+    assert "کد جدید با پیامک فرستاده شد." not in response.content.decode()
 
 
 def test_worker_sends_a_copyable_code_and_stores_only_the_hash(client, linked, queued, sent):

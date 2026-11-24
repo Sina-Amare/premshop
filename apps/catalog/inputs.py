@@ -21,9 +21,9 @@ def normalize_customer_input(kind: str, value: str | None) -> str:
         try:
             validate_email(value)
         except ValidationError:
-            raise ValidationError("ایمیل اکانت را درست وارد کنید.") from None
+            raise ValidationError("ایمیل اکانت را کامل وارد کنید، مثل name@example.com.") from None
         if len(value) > 254:
-            raise ValidationError("ایمیل اکانت را درست وارد کنید.")
+            raise ValidationError("ایمیل اکانت را کامل وارد کنید، مثل name@example.com.")
         local, domain = value.rsplit("@", 1)
         return f"{local}@{domain.lower()}"
     if kind == "username":
