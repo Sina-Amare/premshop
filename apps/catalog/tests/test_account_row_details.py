@@ -1,9 +1,9 @@
 """The buy box's account row opens to say what the product's delivery type means.
 
 The row named the delivery type beside an info icon that did nothing. It is a
-<details> now: the summary keeps the row, and the body is one written sentence
-about this product's own delivery type, followed on the buyer's own account by
-the activation answer the FAQ gives. That answer tells the buyer never to type
+<details> now: the summary names the delivery type and the body explains what
+the buyer receives or does next. On the buyer's own account it gives the
+activation answer the FAQ uses. That answer tells the buyer never to type
 a password or a service's code into this site, so the panel refuses a plan
 that would ask for one.
 """
@@ -32,21 +32,20 @@ T = Product.DeliveryType
 PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1440, "height": 900}
 
-ON_ACCOUNT = "اشتراک روی اکانت خودتان فعال می‌شود."
 # (the row's label, the sentence its body opens with)
 ROWS = {
-    T.ON_CUSTOMER_ACCOUNT: ("اکانت", ON_ACCOUNT),
+    T.ON_CUSTOMER_ACCOUNT: ("اکانت", ""),
     T.READY_ACCOUNT: (
         "اکانت",
-        "یک اکانت آماده تحویل می‌گیرید و با اطلاعات ورود اکانتی که به شما می‌دهیم، وارد آن می‌شوید.",
+        "اطلاعات ورود را همراه اکانت تحویل می‌گیرید.",
     ),
     T.CODE_LICENSE: (
         "نوع تحویل",
-        "یک کد لایسنس تحویل می‌گیرید و آن را خودتان در برنامه وارد می‌کنید.",
+        "کد لایسنس را بعد از تحویل در برنامه وارد کنید.",
     ),
     T.GIFT_CARD: (
         "نوع تحویل",
-        "کد گیفت کارت را تحویل می‌گیرید و آن را خودتان در اکانتتان وارد می‌کنید.",
+        "کد را بعد از تحویل در اکانتتان وارد کنید.",
     ),
 }
 REFUSAL = (
@@ -159,7 +158,7 @@ def test_the_row_is_a_closed_disclosure_saying_what_its_delivery_type_means(clie
     label, sentence = ROWS[delivery_type]
     assert words(row.summary) == f"{label} {product.get_delivery_type_display()}"
     if delivery_type == T.ON_CUSTOMER_ACCOUNT:
-        sentence += " " + words([render_to_string("catalog/_activation_answer.html")])
+        sentence = words([render_to_string("catalog/_activation_answer.html")])
     assert words(row.body) == sentence
     assert not offences(sentence, written=True)
 

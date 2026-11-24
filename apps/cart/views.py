@@ -58,7 +58,7 @@ def _change(request: HttpRequest, operation: Callable[..., object]) -> HttpRespo
     form = LineForm(request.POST)
     if not form.is_valid():
         message = next(iter(form.errors.get("quantity", ())), "صفحه را دوباره باز کنید.")
-        return error(message)
+        return error(str(message))
     kwargs = {"plan_id": form.cleaned_data["plan"]}
     if operation is not services.remove_from_cart:
         quantity = form.cleaned_data["quantity"]
