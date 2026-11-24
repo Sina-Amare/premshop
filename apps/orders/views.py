@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 from typing import Any, cast
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
@@ -154,11 +155,12 @@ def _render_detail(
             "has_site_input": any(row["can_submit"] for row in input_requests),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
+            "telegram_available": bool(settings.TELEGRAM_BOT_TOKEN),
             # Order news goes by email or Telegram; with neither, this page is the news.
             "reachable": bool(
                 summary["order"].placement_email
                 or summary["order"].user.email
-                or summary["order"].user.telegram_id
+                or (settings.TELEGRAM_BOT_TOKEN and summary["order"].user.telegram_id)
             ),
         },
         status=status,

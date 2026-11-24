@@ -313,6 +313,8 @@ PremShop sounds like a shop that knows what it sells and can explain what happen
 
 Use the reader's words. «اکانت» is natural for a service they bought, «حساب کاربری» is where they sign in at PremShop, and «پلن» is useful in the panel. The FAQ can sound like a conversation. Keep amounts, times and warranty conditions exact in every register.
 
+A line can help the reader understand who acts next or whether anything is expected of them. Keep that reassurance where the state supports it. Use a short status label in a badge and save the explanation for the nearby text. In a cancellation or refund, plain neutral wording can convey the outcome without putting the reader at odds with the shop.
+
 Read what's already on the screen before adding a sentence. A paragraph telling the buyer to choose a product repeats the empty cart's title and its «دیدن محصولات» button. Signing in to recover an earlier cart is a different action and deserves a line. Keep owner-approved copy in place and bring proposed changes to the owner with the rendered context.
 
 | Example | Editorial decision |

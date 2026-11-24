@@ -135,6 +135,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
     try:
         page.goto(detail)
         capture(page, detail, "#order-delivery", "masked", width, tmp_path)
+        expect(page.locator("[data-delivery-recovery]")).to_contain_text("پیش از ثبت سفارش")
         scan(page)
         assert "delivered-secret" not in page.content()
         page.get_by_role("button", name="فرستادن کد به ایمیل", exact=True).focus()
@@ -157,6 +158,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         page.get_by_role("button", name="تأیید کد", exact=True).focus()
         page.keyboard.press("Enter")
         expect(page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True)).to_be_visible()
+        expect(page.locator("#order-delivery")).to_contain_text("ایمیل این سفارش تأیید شده است.")
         capture(page, detail, "[data-delivery-masked]", "confirmed", width, tmp_path)
         with page.expect_response(lambda response: response.url == reveal) as seen:
             page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True).click()

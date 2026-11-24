@@ -32,7 +32,7 @@ CASES = [
     ("overdue", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
     ("late", "تأخیر در تحویل", "danger", "گذشت", True),
-    ("paused", "در حال آماده‌سازی", "progress", "سرویس نمونه", False),
+    ("paused", "در حال آماده‌سازی", "progress", "مهلت تحویل فعلاً متوقف است", False),
     ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
     ("delivered", "تحویل‌شده", "ok", "تحویل شد", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
@@ -41,7 +41,7 @@ CASES = [
     ("operator_cancelled", "لغوشده", "danger", "پشتیبانی این سفارش را", True),
     ("expired", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
-    ("refunded", "وجه را برگرداندیم", "neutral", "به شما برگرداندیم", False),
+    ("refunded", "بازگشت وجه انجام شد", "neutral", "به حسابتان واریز شد", False),
     ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
     ("mixed_refund", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("empty", "لغوشده", "danger", "این سفارش محصولی ندارد", False),
@@ -204,6 +204,7 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
     assert body.count('id="support-identifier"') <= 1
     assert "تماس بگیرید" not in body
     assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
+    assert ("فعلاً کاری لازم نیست." in card) is (state in ("queued", "paused", "claimed"))
     if state in ("overdue", "expired"):
         screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
         assert ("لغو شد." in card) is (state == "expired")
@@ -285,7 +286,8 @@ def test_a_paid_item_a_code_covered_fully_owes_nothing_and_never_reads_as_free(
     order = items[0].order
     assert not Refund.objects.filter(order_item__order=order).exists()
     card = card_of(page(client, buyer, order))
-    assert "مبلغی برای این سفارش برنمی‌گردانیم" in card
+    assert "مبلغی برای بازگشت وجه این سفارش ثبت نشده است" in card
+    assert "چون نتوانستیم محصول را تهیه کنیم" in card
     assert "پرداختی برای آن ثبت نشده بود" not in card and "رایگان" not in card
 
 
@@ -329,7 +331,7 @@ def test_a_paused_item_shows_no_frozen_date_apology_or_hours(
         card = text(card_of(page(client, buyer, order)))
     for false in ("گذشت", "تحویل می‌دهیم", "پس از تأیید پرداخت", when(frozen)):
         assert false not in card, false
-    assert "در حال آماده‌سازی سرویس نمونه" in card
+    assert "مهلت تحویل فعلاً متوقف است" in card
     assert support.details()["telegram_url"] not in card_of(page(client, buyer, order))
 
 
@@ -348,7 +350,8 @@ def test_a_paused_unit_and_running_units_of_one_plan_each_keep_their_own_line(
         screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
         invoice = client.get(reverse("order-invoice", args=[order.order_number]))
     card = text(card_of(body))
-    assert "تحویل می‌دهیم" not in card and "در حال آماده‌سازی سرویس نمونه" in card
+    assert "تحویل می‌دهیم" not in card and "مهلت تحویل بخشی از خریدها متوقف است" in card
+    assert "مهلت تحویل بخشی از خریدها متوقف است. برای تحویل فعلاً کاری لازم نیست." in screen
     purchase = text(purchase_of(body))
     assert purchase_of(body).count('class="order-line__facts"') == 3
     assert purchase.count("تحویل تا") == 2

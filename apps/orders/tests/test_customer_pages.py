@@ -497,14 +497,21 @@ def test_a_bad_tracking_link_gives_telegram_support_as_plain_text(client):
 
 
 @pytest.mark.parametrize(
-    ("email", "telegram_id", "promised"),
-    [("", None, False), ("buyer@example.test", None, True), ("", 4242, True)],
+    ("email", "telegram_id", "bot_enabled", "promised"),
+    [
+        ("", None, False, False),
+        ("", None, True, False),
+        ("buyer@example.test", None, False, True),
+        ("", 4242, True, True),
+        ("", 4242, False, False),
+    ],
 )
 def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
-    client, plan, email, telegram_id, promised
+    client, plan, email, telegram_id, bot_enabled, promised, settings
 ):
     from apps.payments.services import record_manual_payment
 
+    settings.TELEGRAM_BOT_TOKEN = "test" if bot_enabled else ""  # nosec B105
     plan.input_type, plan.max_quantity = "none", 1
     plan.save()
     customer = User.objects.create_user(email, phone="09121112244", telegram_id=telegram_id)
@@ -521,3 +528,4 @@ def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
 
     assert ("پس از تحویل خبر می‌دهیم." in page) is promised
     assert ("ایمیلتان را ثبت کنید" in page) is not promised
+    assert ("یا تلگرام را وصل کنید" in page) is (bot_enabled and not promised)
