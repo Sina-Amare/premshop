@@ -18,12 +18,11 @@
       <button type="submit" class="btn btn--ghost">خروج از حساب</button>
     </form>
     {# Leaving asks once; without a script the button above signs out directly. #}
-    <dialog class="acct-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-text">
+    <dialog class="acct-dialog" id="logout-dialog" aria-labelledby="logout-title">
       <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}
         <span class="acct-dialog__icon">{% include 'storefront/icon.html' with name='user' %}</span>
         <h2 id="logout-title">از حساب کاربری خارج می‌شوید؟</h2>
-        <p id="logout-text">برای دیدن سفارش‌ها پس از خروج، دوباره با کد ورود وارد حساب شوید.</p>
         <div class="acct-dialog__actions"><button type="submit" class="btn btn--primary acct-dialog__go">بله، خروج از حساب</button><button type="button" class="btn btn--secondary" data-dialog-close autofocus>انصراف</button></div>
       </form>
     </dialog>

@@ -245,7 +245,7 @@ msgstr "Part of the page address, in Latin letters, like “ai”."
 msgid "برچسب HTML اجرا نمی‌شود و همان‌طور که نوشته شده دیده می‌شود."
 msgstr "HTML tags do not run; they show exactly as typed."
 
-msgid "موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند."
+msgid "عدد کمتر، اولویت بیشتر"
 msgstr "Smaller numbers come first."
 
 msgid "پیش‌نویس"
@@ -822,8 +822,8 @@ msgstr "See where each field appears. Previewing does not save changes."
 msgid "تاریخ آخرین بررسی اطلاعات؛ پایین توضیحات محصول"
 msgstr "Last information review date, below the product description"
 
-msgid "جای دسته را در منوی سایت تعیین می‌کند، به شرطی که در آن محصول فعال باشد."
-msgstr "Navigation order for categories with public products; empty categories stay out of the menu."
+msgid "دسته فقط وقتی در منو می‌آید که محصول فعال داشته باشد."
+msgstr "The category appears in the menu if it has a public product."
 
 msgid "ترتیب ردیف‌های جدول مشخصات"
 msgstr "Order of specification rows"
@@ -1194,8 +1194,8 @@ msgstr "Redemption limit per customer"
 msgid "حداکثر تعداد استفاده"
 msgstr "Total redemption limit"
 
-msgid "برای استفاده‌ی نامحدود خالی بگذارید، چون سفارش‌های لغوشده در شمار استفاده‌ها نمی‌آیند."
-msgstr "Leave blank for unlimited use. Cancelled redemptions do not count."
+msgid "برای استفاده‌ی نامحدود خالی بگذارید."
+msgstr "Leave blank for unlimited use."
 
 msgid "زمان آزادسازی"
 msgstr "Released at"
@@ -1629,8 +1629,8 @@ msgstr "Delivery details"
 msgid "متن اطلاعات تحویل را کوتاه‌تر کنید."
 msgstr "The delivery details are too long."
 
-msgid "تا محصول در صف تحویل نباشد، اطلاعات تحویل ثبت نمی‌شود."
-msgstr "This item is not ready for delivery."
+msgid "در وضعیت فعلی نمی‌توانید اطلاعات تحویل را ثبت کنید."
+msgstr "You cannot record delivery details while the item is in this state."
 
 msgid "این محصول در صف انجام نیست"
 msgstr "This item is not in the queue"
@@ -1860,8 +1860,8 @@ msgstr "Item %(item)s · %(amount)s · %(status)s"
 msgid "این سفارش پرداخت تأییدشده ندارد."
 msgstr "This order has no verified payment."
 
-msgid "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است. شماره را با رسید بانک تطبیق دهید."
-msgstr "This bank reference also appears on another order; check it against the bank."
+msgid "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است. واریز را در حساب بانکی بررسی کنید."
+msgstr "This bank reference also appears on another order. Verify the transfer in the bank account."
 
 msgid "این محصول بازپرداخت واریزشده ندارد."
 msgstr "This item has no executed refund."
@@ -1881,14 +1881,14 @@ msgstr "Refunds covered by this transfer"
 msgid "بازپرداخت‌های این واریز را انتخاب کنید."
 msgstr "Select the refunds covered by this transfer."
 
-msgid "بدهی جدید بازپرداخت"
-msgstr "Refunds newly owed"
+msgid "بازپرداخت‌های ثبت‌شده در این روز"
+msgstr "Refunds recorded that day"
 
 msgid "بازپرداخت‌های سفارش"
 msgstr "Order refunds"
 
-msgid "بازپرداخت‌های واریزشده"
-msgstr "Refunds sent"
+msgid "بازپرداخت‌های واریزشده در این روز"
+msgstr "Refunds sent that day"
 
 msgid "بدهی جدید در این روز"
 msgstr "Newly owed on this day"
@@ -1905,9 +1905,6 @@ msgstr "Record refund transfer"
 msgid "روز (شمسی)"
 msgstr "Day (Jalali)"
 
-msgid "«بدهی جدید» مبلغ بازپرداخت‌هایی است که در این روز ثبت شده‌اند. «بازپرداخت‌های واریزشده» مبلغی است که در همین روز به مشتریان برگردانده‌اید."
-msgstr "Newly owed refunds are the amounts recorded as owed on this day. Refunds sent are the amounts returned to customers on the same day."
-
 msgid "تاریخ گزارش به وقت تهران است."
 msgstr "The report date is in Tehran time."
 
@@ -1923,10 +1920,7 @@ msgstr "The transfer cannot predate the refund becoming owed."
 msgid "ساعت واریز (تهران، با ثانیه)"
 msgstr "Transfer time (Tehran, with seconds)"
 
-msgid "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است. شماره را با رسید بانک تطبیق دهید."
-msgstr "This reference is also on another order. Check it against the bank receipt."
-
-msgid "این فرم برای ثبت واریزی است که در بانک انجام داده‌اید. پیش از ثبت، مشخصات واریز را بررسی کنید، چون بعداً تغییر نمی‌کنند."
+msgid "ابتدا مبلغ را در بانک واریز کنید. این فرم فقط واریز را ثبت می‌کند. پس از ثبت، مشخصات واریز قابل تغییر نیست."
 msgstr "Record only a transfer already completed at the bank. This form moves no money, and saved transfer details cannot be edited."
 
 msgid "مبلغ را برابر جمع بازپرداخت‌هایی وارد کنید که برای این واریز انتخاب کرده‌اید."
@@ -2231,8 +2225,8 @@ msgstr "From now on, the deadlines of %(items)s queued items run again."
 msgid "از همین حالا مهلت %(items)s محصول در صف نمی‌گذرد و مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود."
 msgstr "From now on, the deadlines of %(items)s queued items stop running, and new orders' deadlines do not start until the holiday ends."
 
-msgid "تعطیلی فعالی برای پایان دادن وجود ندارد."
-msgstr "You are not on holiday now."
+msgid "فروشگاه در حالت تعطیلی نیست."
+msgstr "The shop is not on holiday."
 
 msgid "این اولین تعطیلی است."
 msgstr "This is the first holiday."
@@ -2249,7 +2243,7 @@ msgstr "The holiday has started."
 msgid "تعطیلی قبلاً شروع شده است."
 msgstr "A holiday has already started."
 
-msgid "وضعیت تعطیلی تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
+msgid "وضعیت تعطیلی تغییر کرد. صفحه را دوباره باز کنید."
 msgstr "A holiday started or ended since this page opened. Open it again."
 
 msgid "زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود، ولی مهلت فرستادن اطلاعات مشتری در تعطیلی هم می‌گذرد."

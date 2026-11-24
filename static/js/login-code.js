@@ -9,7 +9,7 @@
   var submitButton = document.getElementById('code-submit');
   var resendForm = document.getElementById('resend-form');
   var resendButton = document.getElementById('resend');
-  var resendHint = document.getElementById('resend-hint');
+  var smsDeliveryText = document.getElementById('delivery-sms-text');
   var smsForm = document.getElementById('sms-form');
 
   var FA = '۰۱۲۳۴۵۶۷۸۹';
@@ -98,7 +98,6 @@
       clock.classList.replace('badge--time', 'badge--neutral');   // the clock has stopped
       row.disable(true);
       showError('');
-      resendHint.textContent = 'برای گرفتن کد جدید، «ارسال دوباره» را بزنید.';
       status.textContent = 'اعتبار کد تمام شد. با «ارسال دوباره» کد جدید بگیرید.';
       resendButton.classList.replace('btn--ghost', 'btn--primary');
     }
@@ -145,9 +144,9 @@
         document.getElementById('delivery-sms').hidden = data.channel === 'telegram';
         document.getElementById('delivery-telegram').hidden = data.channel !== 'telegram';
         smsForm.hidden = data.channel !== 'telegram';
-        resendHint.textContent = data.channel === 'telegram' ? '' : 'کد جدید با پیامک فرستاده شد.';
+        if (data.sms_notice) smsDeliveryText.textContent = data.sms_notice;
         status.textContent = data.channel === 'telegram'
-          ? document.getElementById('delivery-telegram').textContent : 'کد جدید با پیامک فرستاده شد.';
+          ? document.getElementById('delivery-telegram').textContent : smsDeliveryText.textContent;
       } else {
         showError(data.error);
         cooldownUntil = Math.floor(Date.now() / 1000) + 5;

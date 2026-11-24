@@ -120,7 +120,7 @@ def test_category_page_and_its_empty_state(client, category, product):
 
     empty = Category.objects.create(name="خالی", slug="empty")
     body = client.get(reverse("category", args=[empty.slug])).content.decode()
-    assert "هنوز محصولی در این دسته برای خرید قرار نگرفته است" in body
+    assert "فعلاً محصولی در این دسته نداریم" in body
 
 
 def test_a_category_page_offers_no_filter(client, category, product):

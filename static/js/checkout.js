@@ -9,6 +9,8 @@
   const resend = root.querySelector('[data-inline-resend]');
   const sms = root.querySelector('[data-inline-sms]');
   const delivery = root.querySelector('[data-code-delivery]');
+  const smsDeliveryText = delivery.querySelector('#delivery-sms-text');
+  const firstSmsText = smsDeliveryText.textContent;
   const status = root.querySelector('[data-login-status]');
   const edit = root.querySelector('[data-inline-edit]');
   let resendAt = 0;
@@ -87,6 +89,7 @@
         edit.hidden = false;
         status.hidden = true;
         delivery.hidden = false;
+        smsDeliveryText.textContent = data.sms_notice || firstSmsText;
         delivery.querySelector('#delivery-sms').hidden = data.channel === 'telegram';
         delivery.querySelector('#delivery-telegram').hidden = data.channel !== 'telegram';
         sms.hidden = data.channel !== 'telegram';

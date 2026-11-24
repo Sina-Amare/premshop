@@ -148,7 +148,9 @@ def start_recovery(*, order_id: int, actor: User, email: str) -> None:
     try:
         telegram.send_message(chat_id, str(text))
     except Exception:  # noqa: BLE001 — never echo transport payloads in command errors
-        raise ValidationError(UNSENT) from None
+        raise ValidationError(
+            "کد تغییر ایمیل در تلگرام فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید."
+        ) from None
     with transaction.atomic():
         order, owner = locked_order(order_id, actor, operator=True)
         if subject != _recovery_subject(order, owner, actor, email):

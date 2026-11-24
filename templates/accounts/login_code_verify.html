@@ -7,7 +7,7 @@
 {% block auth_intro %}
   {% include "accounts/_code_delivery.html" %}
   <p class="small auth-change">
-    شماره اشتباه است؟ <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر شماره</a>
+    کد نرسید؟ شماره موبایلتان را بررسی کنید. <a href="{% url 'login-code' %}?next={{ next|urlencode }}">تغییر شماره</a>
   </p>
 {% endblock %}
 
@@ -52,7 +52,6 @@ a courtesy, and the server's limit on codes per number is the defence.
 
 <form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="resend-form">
   {% csrf_token %}
-  <span class="small" id="resend-hint">اگر کد نرسیده است، ببینید شماره‌ی بالای صفحه درست نوشته شده باشد.</span>
   <button type="submit" class="btn btn--ghost" id="resend">ارسال دوباره</button>
 </form>
 <form method="post" action="{% url 'login-code-resend' %}" class="otp__resend" id="sms-form"{% if channel != "telegram" %} hidden{% endif %}>

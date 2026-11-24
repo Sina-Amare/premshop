@@ -819,7 +819,7 @@ class OrderAdmin(ModelAdmin):
         if request.method == "POST" and form.is_valid():
             content = form.cleaned_data["content"]
             if step == "preview" and not can_deliver:
-                error = str(_("تا محصول در صف تحویل نباشد، اطلاعات تحویل ثبت نمی‌شود."))
+                error = str(_("در وضعیت فعلی نمی‌توانید اطلاعات تحویل را ثبت کنید."))
             elif step == "preview" and form.cleaned_data["expected_event_id"] != event_id:
                 # A preview of a page the item has moved past would only be refused at confirm.
                 error = str(
@@ -1261,9 +1261,7 @@ class DiscountForm(forms.ModelForm):
             "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
         )
         for name in ("max_uses", "per_user_limit"):
-            self.fields[name].help_text = _(
-                "برای استفاده‌ی نامحدود خالی بگذارید، چون سفارش‌های لغوشده در شمار استفاده‌ها نمی‌آیند."
-            )
+            self.fields[name].help_text = _("برای استفاده‌ی نامحدود خالی بگذارید.")
 
     def clean_code(self) -> str:
         return self.cleaned_data["code"].strip().upper()

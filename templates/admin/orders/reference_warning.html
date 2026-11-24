@@ -1,3 +1,3 @@
 {% load i18n fa %}
-{% if duplicates %}<p class="order-reference-warning">{% translate "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است. شماره را با رسید بانک تطبیق دهید." %}
+{% if duplicates %}<p class="order-reference-warning">{% translate "این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است. واریز را در حساب بانکی بررسی کنید." %}
 {% for pk, number in duplicates.items %}<a href="{% url 'admin:orders_order_change' pk %}">{{ number|fa_digits }}</a>{% if not forloop.last %}، {% endif %}{% endfor %}</p>{% endif %}

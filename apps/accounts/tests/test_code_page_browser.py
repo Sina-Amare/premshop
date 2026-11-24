@@ -356,7 +356,8 @@ def test_without_javascript_the_code_page_still_does_its_whole_job(
         ratelimit.reset(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, user.phone)
         page.click("#resend")
         page.wait_for_url("**/login/code/verify/")
-        assert "کد جدید با پیامک فرستاده شد." in page.locator("main").inner_text()
+        assert page.locator("#delivery-sms").is_visible()
+        assert page.locator("main").inner_text().count("کد جدید را برایتان پیامک کردیم.") == 1
         assert len(sms.outbox) == 2
         page.screenshot(path=str(tmp_path / "10-nojs-resent.png"), full_page=True)
 

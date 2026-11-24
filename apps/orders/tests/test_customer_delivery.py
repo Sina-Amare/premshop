@@ -491,7 +491,7 @@ def test_recovery_expiry_guess_budget_permissions_and_send_failure(buyer, plan, 
     with time_machine.travel(now + timedelta(minutes=13), tick=False):
         assert not finish_recovery(order, operator, code)
         with patch("apps.orders.proof.telegram.send_message", side_effect=RuntimeError("failed")):
-            with pytest.raises(ValidationError):
+            with pytest.raises(ValidationError, match="کد تغییر ایمیل در تلگرام فرستاده نشد"):
                 proof().start_recovery(order_id=order.pk, actor=operator, email="new@example.test")
     assert not models.OrderEmailRecovery.objects.exists()
 

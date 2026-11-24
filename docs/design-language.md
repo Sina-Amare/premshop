@@ -166,6 +166,30 @@ Persian copy must be short, clear and natural. State the next action directly, w
 
 The owner's strict rule, 2026-11-14: a line is thought and written in Persian, starting from its situation (who reads it, what just happened, what they do next) and said the way a Persian speaker would say it to that reader. It is never an English sentence carried over word by word, however correct: «درخواست کد ثبت شد» is "request submitted", «بررسی کنید» is "check", «در اختیار کسی نگذارید» is "do not share", and each is rewritten from the situation, not polished.
 
+
+### Decide whether the text belongs
+
+Start with the page or message a reader actually gets. Read the heading, status, field label, buttons and surrounding text together. For a notification, read the subject, body and action in that order. Ask what the reader still needs to know or do. Keep a good existing line. Remove a line that repeats an answer already visible beside it. Use a label or a short phrase for a field, value or relationship. Write a sentence when the reader needs an explanation, a condition or a next step.
+
+- In the delivery-delay email, the heading says the time changed and the next line gives the new deadline. A sentence saying delivery was deferred makes the buyer wait another line for the date.
+- On a paid order awaiting details, a visible form can make «اطلاعات فعال‌سازی را در فرم زیر وارد کنید.» unnecessary. A buyer with no form still needs the Telegram instructions. Check mixed orders too, because the route can differ by product.
+- A refund form needs to say the bank transfer happens first and the panel only records it. The button «ثبت واریز بازپرداخت» is too short to carry that distinction and the fact that records cannot be corrected there after saving.
+
+### Read it the way a buyer or operator would
+
+Use familiar verbs and put the fact or action where the reader will find it on the first pass. Official-looking grammar can hide the subject or make something simple sound like a system operation. These examples from the shop show the decision in its setting.
+
+| Context | Earlier copy | Better copy | Why |
+|---|---|---|---|
+| Empty category | «هنوز محصولی در این دسته برای خرید قرار نگرفته است.» | «فعلاً محصولی در این دسته نداریم.» | The category already has a name. Say what the buyer came to learn. «فعلاً» leaves room for the stock to change. |
+| Ending a holiday after someone else ended it | «تعطیلی فعالی برای پایان دادن وجود ندارد.» | «فروشگاه در حالت تعطیلی نیست.» | Name the state on the screen. There is no need to describe a missing record. |
+| Checking the number on the code screen | «اگر کد نرسیده است، ببینید شماره‌ی بالای صفحه درست نوشته شده باشد.» | «کد نرسید؟ شماره موبایلتان را بررسی کنید.» | Start with the problem and name the thing to check. Put it next to the number and its change link. |
+| Sorting help in the panel | «موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.» | «عدد کمتر، اولویت بیشتر» | The field already says «ترتیب نمایش». The operator only needs the direction. |
+| Reason for cancelling a purchase | «علت: عدم دریافت اطلاعات موردنیاز برای فعال‌سازی در مهلت تعیین‌شده.» | «اطلاعات فعال‌سازی را در مهلت تعیین‌شده دریافت نکردیم.» | A direct verb makes the cause clear. In the standalone notice, name the ۲۱ days and what starts the clock. Name the affected product if the rest of the order can still go ahead. |
+| SMS resend on the website | «کد جدید با پیامک فرستاده شد.» | «کد جدید را برایتان پیامک کردیم.» | Use the verb a buyer expects and say what the shop has actually done. A message about an asynchronous Telegram request must also fit what the shop knows at that point. |
+
+The operator usually needs a short label or a consequence. A product page should make the choice easier with a concrete benefit and the terms that affect buying. An error should name the problem and a way forward. In security and money messages, check the actual recipient, amount, limit, deadline and trigger against what the shop does. Read the rendered result at phone and desktop widths. Check plain-text email alongside HTML, and read bot and SMS copy as standalone messages. Spelling and formatting checks help after the wording works in context.
+
 ### Lines the owner rewrote
 
 The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced.
@@ -196,7 +220,7 @@ The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت�
 
 - **Content first, then one verb.** Name the concrete things, then the one verb that acts on them.
 - **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
-- **Whole sentences a person would say,** never clipped fragments: «پرداختتان نیمه‌کاره مانده؟», not «پرداخت نیمه‌کاره؟».
+- **Write a complete thought.** A standalone notice needs a sentence the reader can understand in one pass. A label or short field hint can carry a complete thought in context.
 - **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
 - **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). A second message, or a chain of «که» clauses, becomes a second sentence.
 
@@ -217,14 +241,14 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 ### Rules for every register
 
 - **Address** is «شما» with «ـید»: «می‌توانید» (in the FAQ, «می‌تونید»), never «می‌تونین», «تو», «واسه» or «می‌باشه». The verb carries the address; «شما» is not repeated in every sentence.
-- **One point of view:** facts are stated impersonally, the reader is addressed by the verb, and «ما» is only for what the shop itself does.
+- **Use the point of view that makes responsibility clear.** Address the reader through the verb. Use the shop’s voice for what it did or will do, and state a condition directly when that is what matters.
 - **One register per sentence:** «حسابتان» with «می‌توانید» ✓ · «حسابتون» with «می‌تونید» in the FAQ ✓ · «حسابتان» with «می‌تونید» ✗.
 - **No bureaucratic markers:** «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», or a passive with «توسط».
 - **Spelling never relaxes.** A half-space in «می‌» and «ها», and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»), never «ـهٔ». A clitic joins with no space, except after ه («شماره‌تان»). «تأیید» has one spelling. Persian «ی» and «ک», never Arabic «ي» and «ك».
 - **A Persian line never opens with a Latin word:** Telegram, plain-text email and many editors set a line's direction from its first letter. «سرویس Netflix …», not «Netflix …».
 - **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional is never how money is promised.
 - **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each promise beside its condition, and `apps/catalog/tests/test_promises.py` checks every public product. A warranty, refund or replacement belongs to the product whose verified terms support it.
-- **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbal nouns that name what happens. Explanation belongs in the FAQ and the product's questions.
+- **Let a label do its job.** A badge can name the state and a button can name the action. Put an explanation where the reader needs it to choose or act.
 - **Say a limit the way a person would:** «از این گزینه تا ۳ اشتراک می‌توانید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
 - **Numbers, not adjectives:** «تا ۱۲ ساعت», never «سریع» or «در کمترین زمان ممکن», and no superlative a number could replace («بهترین», «سریع‌ترین»).
 - **Product and tool names stay in English** wherever a customer reads them. Persian spellings appear only in search aliases and page titles, because shoppers search with them.

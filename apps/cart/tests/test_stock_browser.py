@@ -32,7 +32,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         page.locator("#qty").fill("2")
         expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_visible()
         expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_disabled()
-        expect(page.locator("#qty-limit")).to_contain_text("در هر سفارش ۲ است")
+        expect(page.locator("#qty-limit")).to_contain_text("حداکثر ۲ عدد")
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         expect(page.locator("#cart-toast .cart-toast__art")).to_be_visible()

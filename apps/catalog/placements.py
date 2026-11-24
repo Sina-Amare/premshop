@@ -119,7 +119,7 @@ def field_placements(model: str) -> dict[str, tuple[str, str]]:
             (
                 "sort_order",
                 "navigation",
-                _("جای دسته را در منوی سایت تعیین می‌کند، به شرطی که در آن محصول فعال باشد."),
+                _("دسته فقط وقتی در منو می‌آید که محصول فعال داشته باشد."),
             ),
             (
                 "seo_title,seo_description",

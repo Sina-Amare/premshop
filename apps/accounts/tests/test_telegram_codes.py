@@ -76,7 +76,7 @@ def test_both_entry_points_offer_sms_by_default_and_telegram(client):
 
 def test_sign_in_page_says_the_number_also_makes_the_account(client):
     body = client.get(reverse("login-code")).content.decode()
-    assert "برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید." in body
+    assert "اگر حساب کاربری ندارید، با همین شماره برایتان حساب می‌سازیم." in body
 
 
 @pytest.mark.parametrize("state", ["unknown", "unlinked", "linked", "inactive", "staff"])
@@ -148,7 +148,7 @@ def test_plain_resend_keeps_telegram_and_never_claims_delivery(client, queued):
         clock.shift(121)
         response = client.post(reverse("login-code-resend"), follow=True)
     assert len(queued) == 2 and not sms.outbox
-    assert "کد جدید با پیامک فرستاده شد." not in response.content.decode()
+    assert ">کد جدید را برایتان پیامک کردیم.</span>" not in response.content.decode()
 
 
 def test_worker_sends_a_copyable_code_and_stores_only_the_hash(client, linked, queued, sent):

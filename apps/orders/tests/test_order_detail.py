@@ -521,7 +521,9 @@ def test_two_refunds_owed_name_each_product_with_its_own_reason_and_amount(
     card = text(card_of(body))
     assert format_toman(Decimal(500000), with_unit=False) in card
     assert "خرید سرویس نمونه لغو شد، چون نتوانستیم آن را تهیه کنیم." in card
-    assert "خرید سرویس دوم لغو شد، چون اطلاعات فعال‌سازی تا ۲۱ روز به دستمان نرسید." in card
+    assert (
+        "خرید سرویس دوم لغو شد. اطلاعات فعال‌سازی را تا ۲۱ روز پس از درخواست دریافت نکردیم." in card
+    )
     lines = line_money(body)
     assert len(lines) == 2
     for amount in (200000, 300000):

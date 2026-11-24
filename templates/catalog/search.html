@@ -36,8 +36,7 @@ behind one, so the message reports what happened and accuses nobody.
   <header class="page-head v-page-hero v-page-hero--light"><span class="v-page-hero__mark" aria-hidden="true">{% include 'storefront/icon.html' with name='search' %}</span>
     <h1 class="page-head__title">محصولی پیدا نکردیم</h1>
     <p class="small page-head__intro">جستجوی شما: <bdi class="v-query">{{ query }}</bdi></p>
-    <div class="v-search-recovery"><p>دنبال سرویس دیگری هستید؟ در تلگرام از ما بپرسید.</p><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
-    {% if everything %}<p class="small page-head__intro">این محصولات را هم ببینید:</p>{% endif %}
+    <div class="v-search-recovery"><a class="v-hero__help" href="{{ support.telegram_url }}?text={{ telegram_draft|urlencode:'' }}" rel="noopener">{% include 'storefront/icon.html' with name='telegram' %}پرسیدن در تلگرام</a></div>
   </header>
   {% if everything %}
     {# Each card's name is an h3; without this the outline jumps from the h1. #}

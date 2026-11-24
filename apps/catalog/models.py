@@ -306,7 +306,7 @@ class Category(models.Model):
         default="",
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -888,7 +888,7 @@ class ProductSpec(PageRow):
         help_text=_("این مشخصه بالای صفحه‌ی محصول و کنار نام آن دیده می‌شود."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -998,7 +998,7 @@ class Plan(ChecksNameTheirField, PageRow):
         help_text=_("مشتری این را نمی‌بیند."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
     # When someone last stood behind this price: set by any change to a price
     # and by the panel's «قیمت‌ها را امروز بررسی کردم» for its review filters.
@@ -1307,7 +1307,7 @@ class ProductSection(ChecksNameTheirField, PageRow):
         help_text=_("آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -1374,7 +1374,7 @@ class ProductQuestion(PageRow):
         help_text=_("اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:

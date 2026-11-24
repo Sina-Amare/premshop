@@ -212,7 +212,7 @@ def test_an_unpaid_cancellation_is_one_message_for_the_whole_order(
     bot = rows("item_cancelled").get(channel="telegram")
     assert email.subject == f"سفارش {to_persian_digits(order.order_number)} لغو شد"
     said = {
-        "expiry": "مهلت ۲۴ ساعته‌ی پرداخت تمام شد و سفارش لغو شد.",
+        "expiry": "مهلت ۲۴ ساعته‌ی پرداخت تمام شد.",
         "operator": "پشتیبانی سفارش را پیش از ثبت پرداخت لغو کرد.",
         "customer": "سفارش به درخواست شما پیش از پرداخت لغو شد.",
     }[path]
@@ -437,7 +437,10 @@ def test_a_missing_details_notice_marks_the_reason_under_the_numbered_item_title
 
     body = rows("item_cancelled").get(channel="telegram").text_body
     assert f"محصولی از سفارش {to_persian_digits(order.order_number)} لغو شد</h2>" in body
-    assert "<mark>علت:</mark> عدم دریافت اطلاعات موردنیاز برای فعال‌سازی" in body
+    assert (
+        "<mark>علت:</mark> اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم."
+        in body
+    )
 
 
 def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(

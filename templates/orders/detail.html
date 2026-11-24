@@ -13,11 +13,11 @@
 <p data-support-instructions>پرداخت آنلاین هنوز فعال نیست. برای پرداخت {{ card.total|price_html }}، {% if support_identifier %}شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %}شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>
 {% elif state == 'awaiting_input' %}
 <h2 id="order-next-title">اطلاعات فعال‌سازی <bdi>{{ products }}</bdi> لازم است</h2>
-<div data-input-request>{% if has_site_input %}<p>اطلاعات فعال‌سازی را در فرم زیر وارد کنید.</p>{% else %}<p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
+<div data-input-request>{% if not has_site_input %}<p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
 {% if card.hours %}<p>پس از رسیدن اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
 {% elif state == 'refund_owed' %}
 <h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
-{% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> لغو شد{% if group.reason == 'supply_failure' %}، چون نتوانستیم آن را تهیه کنیم{% elif group.reason == 'input_timeout' %}، چون اطلاعات فعال‌سازی تا ۲۱ روز به دستمان نرسید{% elif group.reason == 'warranty_refund' %}، چون نتوانستیم آن را تعویض کنیم{% endif %}.</p>{% endfor %}
+{% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> لغو شد{% if group.reason == 'supply_failure' %}، چون نتوانستیم آن را تهیه کنیم{% elif group.reason == 'input_timeout' %}. اطلاعات فعال‌سازی را تا ۲۱ روز پس از درخواست دریافت نکردیم{% elif group.reason == 'warranty_refund' %}، چون نتوانستیم آن را تعویض کنیم{% endif %}.</p>{% endfor %}
 <p data-support-instructions>برای واریز، شماره‌ی کارت یا شبای به نام خودتان{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید. پس از دریافت شماره‌ی کارت یا شبا، مبلغ را تا یک روز کاری واریز می‌کنیم.</p>
 {% elif state == 'late' %}
 <h2 id="order-next-title">زمان تحویل گذشته است</h2>
@@ -81,7 +81,7 @@
 {% include "orders/_reviews.html" %}
 <div class="order-records">
 <details class="order-record" id="order-help"><summary>پشتیبانی این سفارش</summary>
-<p>شناسه‌ی پشتیبانی را همراه شماره‌ی سفارش بفرستید تا مطمئن شویم سفارش را خودتان ثبت کرده‌اید.</p>
+{% if support_identifier %}<p>شناسه‌ی پشتیبانی را همراه شماره‌ی سفارش بفرستید تا مطمئن شویم سفارش را خودتان ثبت کرده‌اید.</p>{% elif card.contact %}<p>برای پیگیری، شماره‌ی سفارش را بفرستید.</p>{% endif %}
 {% if not card.contact %}{% include "orders/_support_identifier.html" %}{% endif %}
 <p class="order-support-contacts"><a href="{{ support.telegram_url }}" rel="noopener noreferrer"><bdi dir="ltr">{{ support.telegram }}</bdi></a><a href="mailto:{{ support.email }}"><bdi dir="ltr">{{ support.email }}</bdi></a></p>
 <p>پاسخ‌گویی: {{ support.hours }}</p>
