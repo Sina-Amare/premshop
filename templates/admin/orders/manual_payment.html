@@ -5,10 +5,10 @@
 <section class="order-history" aria-labelledby="manual-payment-title">
   <header><h2 id="manual-payment-title">{{ title }} · {% translate "سفارش" %} {{ order.order_number|fa_digits }}</h2></header>
   {% if refund_transfer %}
-  {% if has_refunds or form.is_bound %}<p>{% translate "این فرم فقط واریزی را که در بانک انجام داده‌اید ثبت می‌کند. پس از ثبت، مشخصات واریز قابل تغییر نیست." %}</p>{% endif %}
+  {% if has_refunds or form.is_bound %}<p>{% translate "اول مبلغ را از حساب بانکی واریز کنید، بعد مشخصات واریز را اینجا ثبت کنید. اطلاعات ثبت‌شده را نمی‌توان تغییر داد." %}</p>{% endif %}
   {% else %}
   <p>{% translate "مبلغ نهایی سفارش" %}: {{ order.total_amount|toman }}</p>
-  <p>{% translate "پرداخت را بعد از دیدن واریز در حساب بانکی تأیید کنید. تصویر رسید به تنهایی کافی نیست." %}</p>
+  <p>{% translate "اول دریافت مبلغ را در حساب بانکی بررسی کنید. برای تأیید پرداخت، تصویر رسید کافی نیست." %}</p>
   {% endif %}
   {% if not refund_transfer or has_refunds or form.is_bound %}
   <form method="post" class="order-payment-form" novalidate>

@@ -61,9 +61,7 @@ def _payment_order(order_id: int) -> Order:
 
 def _received_amount(amount: Decimal, expected: Decimal) -> None:
     if not isinstance(amount, Decimal) or not amount.is_finite() or amount != expected:
-        raise ValidationError(
-            _("مبلغی را وارد کنید که در رسید بانک ثبت شده و با مبلغ نهایی سفارش برابر است.")
-        )
+        raise ValidationError(_("مبلغ دریافتی باید با مبلغ نهایی سفارش برابر باشد."))
 
 
 def _bank_reference(bank_ref: str) -> str:
@@ -87,7 +85,7 @@ def record_manual_payment(*, order_id: int, actor: User, amount: Decimal, bank_r
             raise ValidationError(_("پرداخت این سفارش قبلاً با مشخصات دیگری ثبت شده است."))
         return confirm_payment(payment_id=verified.pk, actor=account)
     if not can_pay_order(order):
-        raise ValidationError(_("برای این سفارش در وضعیت فعلی نمی‌توان پرداخت ثبت کرد."))
+        raise ValidationError(_("دیگر نمی‌توانید برای این سفارش پرداخت ثبت کنید."))
     payment = Payment.objects.create(
         order=order,
         method=Payment.Method.MANUAL,
@@ -181,7 +179,7 @@ def execute_refunds(
         raise ValidationError(_("فقط بازپرداخت‌های همین سفارش را انتخاب کنید."))
     if any(refund.status != Refund.Status.OWED for refund in refunds):
         raise ValidationError(
-            _("چون یکی از بازپرداخت‌ها قبلاً واریز شده، این فرم هیچ واریز جدیدی ثبت نکرد.")
+            _("واریز یکی از بازپرداخت‌های انتخابی قبلاً ثبت شده است. واریز جدیدی ثبت نشد.")
         )
     if any(items[refund.order_item_id].status != OrderItem.Status.CANCELLED for refund in refunds):
         raise ValidationError(_("یکی از محصولات انتخابی در انتظار بازپرداخت نیست."))
@@ -192,12 +190,10 @@ def execute_refunds(
         or amount != amount.to_integral_value()
         or amount != sum(refund.amount for refund in refunds)
     ):
-        raise ValidationError(
-            _("مبلغ را برابر جمع بازپرداخت‌هایی وارد کنید که برای این واریز انتخاب کرده‌اید.")
-        )
+        raise ValidationError(_("مبلغ واریز باید برابر جمع بازپرداخت‌های انتخابی باشد."))
     # The bank-time field displays seconds, not the database's fractional seconds.
     if executed_at < max(refund.created_at for refund in refunds).replace(microsecond=0):
-        raise ValidationError(_("زمان واریز را بعد از ثبت بازپرداخت یا در همان لحظه وارد کنید."))
+        raise ValidationError(_("زمان واریز نمی‌تواند پیش از ثبت بدهی بازپرداخت باشد."))
     for refund in refunds:
         refund.status = Refund.Status.EXECUTED
         refund.destination_kind, refund.destination_last4 = destination_kind, destination_last4

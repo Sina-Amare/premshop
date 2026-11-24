@@ -84,9 +84,7 @@ def test_moderation_from_the_panel_home_through_history(
         expect(page).to_have_url(live_server.url + detail)
         stale.get_by_role("button", name="انتشار نظر").press("Enter")
         expect(
-            stale.get_by_text(
-                "وضعیت نظر تغییر کرده است. صفحه را دوباره باز کنید تا نتیجه‌ی فعلی را ببینید."
-            )
+            stale.get_by_text("وضعیت نظر تغییر کرده است. صفحه را دوباره باز کنید.")
         ).to_be_visible()
         assert stale.url == live_server.url + detail
         stale.screenshot(path=str(tmp_path / f"detail-stale-{width}.png"), full_page=True)

@@ -17,9 +17,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 def test_escape_closes_quick_plans_before_the_enclosing_admin_preview(open_panel, product):
     page = open_panel(change_form(product), width=390)
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     frame = page.frame_locator(".snapshot-panel iframe")
     frame.locator("[data-quick-open]").first.click()
     expect(frame.locator("#quick-plans")).to_be_visible()
@@ -65,9 +63,7 @@ def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, pr
     page = open_panel(change_form(product), width=width)
     page.fill("#id_name", "Unsaved service")
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator(".pdp__title")).to_have_text("Unsaved service")
     expect(frame.locator("[data-preview-target=card] .pcard__name")).to_have_text("Unsaved service")
@@ -160,7 +156,7 @@ def test_panel_guidance_is_natural_and_publishing_requirements_stay_precise(open
     page = open_panel(change_form(product))
     expect(page.locator("label[for=id_slug]")).to_contain_text("نام در لینک")
     expect(page.locator(".field-delivery_hours")).to_contain_text("از ۱ تا ۴۸ ساعت")
-    expect(page.locator(".field-delivery_note")).to_contain_text("اگر پر کنید، مشتری همین متن را")
+    expect(page.locator(".field-delivery_note")).to_contain_text("مهلت تحویل عوض نمی‌شود")
     expect(page.locator(".panel-readiness")).to_contain_text("نکات استفاده نوشته نشده است")
     expect(page.locator(".field-usage_notes")).to_contain_text("موضوعیت ندارد")
     page.fill("#id_name", "")
@@ -212,9 +208,7 @@ def test_field_destination_and_stale_network_failure_preserve_the_last_snapshot(
 def test_late_snapshot_response_cannot_replace_a_newer_one(open_panel, product):
     page = open_panel(change_form(product))
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     held = []
     page.route("**/preview/", lambda route: held.append(route))
     page.locator("[data-snapshot-refresh]").click()
@@ -246,9 +240,7 @@ def test_field_guidance_aligns_below_its_input(open_panel, product):
 def test_preview_reserves_space_without_covering_the_editor(open_panel, product, width):
     page = open_panel(change_form(product), width=width)
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     panel = page.locator(".snapshot-panel").bounding_box()
     form = page.locator("#product_form").bounding_box()
     assert panel["height"] <= 740
@@ -279,9 +271,7 @@ def test_full_screen_is_explicit_and_restores_inline_editing(open_panel, product
     trigger.click()
     panel = page.locator(".snapshot-panel")
     expect(panel).to_have_attribute("role", "region")
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.locator("[data-snapshot-expand]").click()
     expect(panel).to_have_attribute("aria-modal", "true")
     assert page.locator("#product_form").evaluate("e=>e.inert")
@@ -300,9 +290,7 @@ def test_resizing_the_preview_preserves_edits_and_field_navigation(open_panel, p
     page = open_panel(change_form(product))
     page.fill("#id_name", "An unsaved name")
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.set_viewport_size({"width": 390, "height": 900})
     page.locator("[data-snapshot-field=name]").click()
     panel = page.locator(".snapshot-panel")
@@ -347,18 +335,14 @@ def test_plan_field_preview_selects_its_own_plan_and_exact_destination(open_pane
 def test_field_link_refreshes_edited_values_before_highlighting(open_panel, product):
     page = open_panel(change_form(product))
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.fill("#id_short_description", "این متن تازه باید همین حالا دیده بشه.")
     page.locator("[data-snapshot-field=short_description]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator(".snapshot-highlight")).to_have_text(
         "این متن تازه باید همین حالا دیده بشه."
     )
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
 
 
 @pytest.mark.parametrize("field", ["short_description", "refund_note", "usage_notes", "renewable"])
@@ -430,9 +414,7 @@ def test_existing_lazy_section_image_is_not_reported_as_empty(open_panel, produc
         ),
     )
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text(
-        "آخرین تغییرات فرم را نشان می‌دهد"
-    )
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.locator("[data-snapshot-field=sections-0-image]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator("img.pdp__img.snapshot-highlight")).to_be_visible()

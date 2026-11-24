@@ -79,7 +79,7 @@ class Refund(models.Model):
 
     class Status(models.TextChoices):
         OWED = "owed", _("در انتظار واریز")
-        EXECUTED = "executed", _("واریز شد")
+        EXECUTED = "executed", _("واریز ثبت شد")
 
     class Destination(models.TextChoices):
         CARD = "card", _("کارت")

@@ -54,7 +54,7 @@ def test_the_queue_raises_the_expiry_check_only_when_something_is_wrong(
     UnpaidExpirySweep.objects.update(last_success_at=timezone.now() - timedelta(hours=1))
     stale = client.get(queue).content.decode()
     assert '<section class="order-expiry" data-tone="problem"' in stale
-    assert "بیش از ۳ دقیقه از آخرین بررسی خودکار" in stale
+    assert "بررسی خودکار به‌روز نیست" in stale
 
 
 def test_a_search_looks_through_every_order_whatever_the_tab(client, buyer, plan, operator):

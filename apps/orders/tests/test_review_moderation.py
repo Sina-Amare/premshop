@@ -181,7 +181,7 @@ def test_one_star_publishes_then_hiding_last_row_clears_public_summary(
     post = panel_url("moderate", row)
     assert client.post(post, PUBLISH).status_code == 302
     assert (
-        "وضعیت نظر تغییر کرده است. صفحه را دوباره باز کنید تا نتیجه‌ی فعلی را ببینید."
+        "وضعیت نظر تغییر کرده است. صفحه را دوباره باز کنید."
         in client.post(post, HIDE, follow=True).content.decode()
     )
     assert audit(row).count() == 1

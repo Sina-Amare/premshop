@@ -42,7 +42,7 @@
     <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'claim' %}" class="order-payment-form delivery-form" autocomplete="off">
       {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
       <div><label for="claim-reason">{% translate "دلیل درخواست تعویض" %}</label><select id="claim-reason" name="reason" required><option value="">{% translate "انتخاب دلیل" %}</option>{% for reason, label in claim_choices %}<option value="{{ reason }}">{{ label }}</option>{% endfor %}</select></div>
-      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "این یادداشت در سابقه‌ی سفارش می‌ماند. رمز یا اطلاعات ورود را در آن ننویسید." %}</p></div>
+      <div><label for="claim-note">{% translate "یادداشت" %}</label><textarea id="claim-note" name="note" rows="3" maxlength="2000" required></textarea><p class="delivery-help">{% translate "یادداشت در سابقه‌ی سفارش می‌ماند. اطلاعات ورود را اینجا ننویسید." %}</p></div>
       <button type="submit" class="order-input-action">{% translate "ثبت درخواست تعویض" %}</button>
     </form>
   {% elif mode == "replace" %}
@@ -80,7 +80,7 @@
       <button type="submit" name="step" value="preview" class="order-input-action">{% translate "پیش‌نمایش" %}</button>
     </form>
     {% if mode == "replace" %}
-      <h3 id="reject-title" class="delivery-reject">{% translate "رد درخواست، بدون اطلاعات جدید" %}</h3>
+      <h3 id="reject-title" class="delivery-reject">{% translate "رد درخواست" %}</h3>
       <form method="post" action="{% url 'admin:orders_order_item_action' order.pk item.pk 'reject' %}" class="order-payment-form delivery-form" autocomplete="off" aria-labelledby="reject-title">
         {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ event_id }}">
         <div><label for="reject-note">{% translate "دلیل رد درخواست" %}</label><textarea id="reject-note" name="note" rows="3" maxlength="2000" required></textarea></div>

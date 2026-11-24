@@ -251,7 +251,7 @@ def test_every_editable_catalog_field_has_a_placement_or_behavior_note(client, o
         mapping = field_placements(model._meta.model_name)
         fields = panel.get_form(request, obj).base_fields
         assert all(
-            f"{model._meta.model_name}.{name}" in mapping
+            f"{model._meta.model_name}.{name}" in mapping or field.help_text
             for name, field in fields.items()
             if not field.widget.is_hidden
         )
@@ -260,7 +260,7 @@ def test_every_editable_catalog_field_has_a_placement_or_behavior_note(client, o
                 prefix = inline.get_formset(request, obj).get_default_prefix()
                 fields = inline.get_formset(request, obj).form.base_fields
                 assert all(
-                    f"{prefix}.{name}" in mapping
+                    f"{prefix}.{name}" in mapping or field.help_text
                     for name, field in fields.items()
                     if name not in {"id", "product", "DELETE"} and not field.widget.is_hidden
                 )

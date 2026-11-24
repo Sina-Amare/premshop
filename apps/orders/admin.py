@@ -1257,11 +1257,11 @@ class DiscountForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["value"].label = _("میزان تخفیف")
         self.fields["scope"].label = _("روی کدام محصولات")
-        self.fields["value"].help_text = _(
-            "برای تخفیف درصدی، درصد؛ برای مبلغ ثابت، تومان وارد کنید."
+        self.fields["value"].help_text = _("تخفیف درصدی به درصد، تخفیف ثابت به تومان.")
+        self.fields["max_uses"].help_text = _(
+            "خالی = نامحدود. هر سفارش یک بار حساب می‌شود. لغو سفارش پرداخت‌نشده یا لغو همه‌ی محصولات مشمول تخفیف پیش از تحویل، یک بار از تعداد استفاده کم می‌کند."
         )
-        for name in ("max_uses", "per_user_limit"):
-            self.fields[name].help_text = _("برای استفاده‌ی نامحدود خالی بگذارید.")
+        self.fields["per_user_limit"].help_text = _("خالی = نامحدود")
 
     def clean_code(self) -> str:
         return self.cleaned_data["code"].strip().upper()
@@ -1276,9 +1276,9 @@ class DiscountForm(forms.ModelForm):
             self.add_error("min_order_amount", _("صفر یا عددی بزرگ‌تر وارد کنید."))
         start, end = cleaned.get("valid_from"), cleaned.get("valid_until")
         if start and end and start >= end:
-            self.add_error("valid_until", _("تاریخ پایان اعتبار را بعد از تاریخ شروع بگذارید."))
+            self.add_error("valid_until", _("پایان اعتبار باید بعد از شروع باشد."))
         if cleaned.get("scope") == DiscountCode.Scope.SELECTED and not cleaned.get("products"):
-            self.add_error("products", _("حداقل یک محصول برای این کد تخفیف انتخاب کنید."))
+            self.add_error("products", _("دست‌کم یک محصول انتخاب کنید."))
         return cleaned
 
 

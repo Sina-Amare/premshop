@@ -268,7 +268,7 @@ def test_the_reveal_page_says_the_details_were_deleted(client, buyer, plan, oper
     client.force_login(operator)
     url = reverse("admin:orders_order_reveal_delivery", args=[item.order_id, item.pk])
     body = client.post(url).content.decode()
-    assert "پس از پایان مهلت نگهداری حذف شده است" in body
+    assert "اطلاعات تحویل را حذف کرده‌ایم" in body
     assert not models.CredentialAccessLog.objects.exists()
 
 
