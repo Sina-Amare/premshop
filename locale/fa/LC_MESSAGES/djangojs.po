@@ -48,3 +48,9 @@ msgid "%s selected option not visible"
 msgid_plural "%s selected options not visible"
 msgstr[0] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"
 msgstr[1] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"
+
+msgid "Available %s"
+msgstr "%s قابل انتخاب"
+
+msgid "Chosen %s"
+msgstr "%s انتخاب‌شده"

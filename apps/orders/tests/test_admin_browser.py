@@ -132,6 +132,7 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         expect(page.get_by_text("دست‌کم یک محصول انتخاب کنید.", exact=True)).to_be_visible()
         text = page.locator("body").inner_text()
         assert "Choose" not in text and "Remove all" not in text
+        assert "محصولات قابل انتخاب" in text and "محصولات انتخاب‌شده" in text
         assert page.locator('label[for="id_value"]').inner_text().startswith("میزان تخفیف")
         page.evaluate("document.fonts.ready")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
