@@ -70,7 +70,9 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         assert replace.bounding_box()["height"] >= 44
         replace.click()
         expect(
-            page.get_by_text("شناسه‌ی قبلی از همان لحظه باطل می‌شود.", exact=False)
+            page.get_by_text(
+                "با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.", exact=False
+            )
         ).to_be_visible()
         capture(page, "support-confirm", width, tmp_path)
         old = order.support_identifier.support_token
@@ -139,7 +141,7 @@ def test_operator_matches_in_existing_panel_without_javascript(
     mismatch = (
         "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."
         if language == "fa"
-        else "The identifier does not match this order."
+        else "The identifier you entered is invalid for this order."
     )
     matched = (
         "شناسه با این سفارش مطابقت دارد."

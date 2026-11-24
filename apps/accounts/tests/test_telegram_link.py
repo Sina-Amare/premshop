@@ -216,7 +216,7 @@ def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):
     token = links.start_link(user)
     bot.clear()
     links.handle_update(press(f"link:{token}"))
-    assert "برای امروز" in body(dict(bot)["editMessageText"])
+    assert "در هر ۲۴ ساعت بیشتر از ۵ بار" in body(dict(bot)["editMessageText"])
     framed(body(dict(bot)["editMessageText"]))
     assert links.link_owner(token) == user
 
