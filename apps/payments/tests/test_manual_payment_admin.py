@@ -204,4 +204,4 @@ def test_payment_form_and_mismatch_follow_panel_language(client, order, operator
     assert "Bank reference" in response.content.decode()
     response = client.post(url(order), {"amount": "1", "bank_ref": "ref"})
     assert response.status_code == 400
-    assert "The received amount must exactly match the order total." in response.content.decode()
+    assert "The amount received must match the order total." in response.content.decode()

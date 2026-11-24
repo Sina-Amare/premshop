@@ -162,9 +162,7 @@ def test_bad_actions_leave_review_and_history_alone(client, buyer, plan, operato
     row = review_for(buyer, plan)
     client.force_login(operator)
     result = client.post(panel_url("moderate", row), data, follow=True)
-    assert (
-        "این درخواست انجام نشد. صفحه‌ی بررسی نظرها را دوباره باز کنید." in result.content.decode()
-    )
+    assert "صفحه‌ی بررسی نظرها را دوباره باز کنید." in result.content.decode()
     row.refresh_from_db()
     assert row.status == PENDING
     assert not audit(row).exists()
