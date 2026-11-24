@@ -18,10 +18,10 @@ msgid "Filter"
 msgstr "جستجو"
 
 msgid "Type into this box to filter down the list of available %s."
-msgstr "برای پیدا کردن در فهرست %s موجود، اینجا بنویسید."
+msgstr "جستجو در فهرست %s موجود"
 
 msgid "Type into this box to filter down the list of selected %s."
-msgstr "برای پیدا کردن در فهرست %s انتخاب‌شده، اینجا بنویسید."
+msgstr "جستجو در فهرست %s انتخاب‌شده"
 
 msgid "(click to clear)"
 msgstr "(برای پاک کردن کلیک کنید)"
