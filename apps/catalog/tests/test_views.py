@@ -377,7 +377,7 @@ def test_product_with_no_available_plan_disables_the_button(client, category):
     body = client.get(reverse("product", args=[obj.slug])).content.decode()
 
     assert ">ناموجود</button>" in body
-    assert "بپرسید چه زمانی دوباره موجود می‌شود." in body
+    assert "پرسیدن زمان موجود شدن در تلگرام" in body
     assert "این محصول فعلاً موجود نیست" not in body
 
 

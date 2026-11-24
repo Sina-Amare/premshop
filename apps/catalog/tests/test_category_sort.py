@@ -202,5 +202,5 @@ def test_every_order_stays_inside_the_category_query_budget(client, category, so
 def test_the_sort_control_is_labelled_as_a_display_order(client, shelf):
     body = sorted_page(client, shelf).content.decode()
 
-    assert ">نمایش به ترتیب:<" in body
+    assert ">ترتیب نمایش<" in body
     assert "مرتب‌سازی" not in body
