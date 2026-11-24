@@ -486,7 +486,7 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
     assert f'<a href="mailto:{details["email"]}"' in body
 
 
-def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
+def test_a_bad_tracking_link_gives_telegram_support_as_plain_text(client):
     details = support.details()
 
     response = client.get("/track/not-a-token/")
@@ -494,7 +494,7 @@ def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
 
     assert response.status_code == 404
     assert "شماره‌ی سفارش را دارید" in body
-    assert details["telegram"] in body and details["email"] in body
+    assert details["telegram"] in body and details["email"] not in body
     # A link off this page would carry the bad address as a Referer or a body.
     assert "t.me" not in body and "mailto:" not in body
 
