@@ -54,7 +54,7 @@
     <aside class="cart-summary" aria-label="جمع سبد خرید">
       <h2>خلاصه‌ی سبد</h2>
       {% include 'cart/_saving.html' %}
-      {% if not cart.ready %}<p class="cart-summary__blocked">برای ادامه، موارد مشخص‌شده در سبد را اصلاح کنید.</p>{% endif %}
+      {% if not cart.ready %}<p class="cart-summary__blocked">برای ادامه، محصولات ناموجود را حذف کنید یا تعداد را کم کنید.</p>{% endif %}
       <div class="cart-cta{% if cart.lines|length > 2 %} cart-cta--bar{% endif %}"><div class="cart-summary__grand"><div class="cart-summary__label">{% if cart.ready %}جمع سبد خرید{% else %}جمع محصولات آماده‌ی خرید{% endif %}</div>
       <div class="cart-summary__total cart-money{% if cart.total|toman_plain|length > 11 %} cart-money--long{% endif %}">{% if cart.has_purchasable_items %}{{ cart.total|price_html }}{% else %}<span aria-label="اول محصولات سبد خرید را بررسی کنید">—</span>{% endif %}</div></div>
       {% if cart.ready %}<a class="btn btn--primary" href="{% url 'checkout' %}">ادامه و ثبت سفارش</a>{% else %}<button class="btn btn--primary" type="button" disabled>ادامه و ثبت سفارش</button>{% endif %}</div>
