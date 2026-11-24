@@ -299,7 +299,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 
 The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
 
-### Editorial review guide (draft)
+### Editorial review guide
 
 PremShop sounds like a shop that knows what it sells and can explain what happens after payment. Tell the buyer what they can choose now, what the shop does next and what affects the purchase. In the panel, give the operator enough information to check a decision at a glance.
 
