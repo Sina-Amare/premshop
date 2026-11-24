@@ -8,6 +8,6 @@
 <tr><th>{{ e.DEADLINE }} مهلت ارسال اطلاعات</th><td>تا پایان {{ due_at|jalali }}</td></tr>{% endif %}
 </table>{% if template_name == "input_requested" or template_name == "input_reminder" or template_name == "input_final_warning" %}
 <p>اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید.</p>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
-<blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، خرید این محصول را لغو می‌کنیم و کل مبلغ را برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
+<blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
 <blockquote><p>اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
 <blockquote><p>{% include "email/_unpaid_cancellation.txt" %}</p></blockquote>{% endif %}

@@ -31,9 +31,9 @@
 {% if discount_amount %}<p>تخفیف: {{ discount_amount|toman_plain }} تومان</p>{% endif %}
 <p><strong>مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان</strong></p>
 </section>
-<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
+{% if policies %}<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
 <h2 style="font-size:19px;color:#292524;">قوانین و راه‌های تماس هنگام خرید</h2>
 {% for page in policies %}<h3 style="font-size:17px;">{{ page.title|bdi }}</h3><div>{{ page.body|markdown:"45" }}</div>{% endfor %}
-</section>
+</section>{% endif %}
 </div>
 {% endblock %}

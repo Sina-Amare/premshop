@@ -29,9 +29,9 @@
 {% if discount_amount %}تخفیف: {{ discount_amount|toman_plain }} تومان
 {% endif %}مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان
 
-قوانین و راه‌های تماس هنگام خرید
+{% if policies %}قوانین و راه‌های تماس هنگام خرید
 {% for page in policies %}{{ page.title }}
 {{ page.body }}
 
-{% endfor %}پشتیبانی در تلگرام
+{% endfor %}{% endif %}پشتیبانی در تلگرام
 {{ support.telegram }}

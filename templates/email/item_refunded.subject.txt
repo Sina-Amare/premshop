@@ -1,1 +1,1 @@
-{% load fa %}بازگشت وجه برای سفارش {{ order_number|fa_digits }}
+{% load fa %}مبلغ بازگشت وجه سفارش {{ order_number|fa_digits }} واریز شد
