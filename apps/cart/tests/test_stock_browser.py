@@ -32,7 +32,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         page.locator("#qty").fill("2")
         expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_visible()
         expect(page.get_by_role("button", name="بیشتر", exact=True)).to_be_disabled()
-        expect(page.locator("#qty-limit")).to_contain_text("در هر سفارش ۲ است")
+        expect(page.locator("#qty-limit")).to_contain_text("حداکثر ۲ عدد")
         page.locator(".buybox__cta").click()
         expect(page.locator("#cart-toast")).to_be_visible()
         expect(page.locator("#cart-toast .cart-toast__art")).to_be_visible()
@@ -67,7 +67,7 @@ def test_untimed_cart_keeps_unavailable_selections_until_explicit_removal(
         page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
         expect(page.locator(".cart-line__stock")).to_have_text("ناموجود")
         expect(page.locator(".cart-line__warning")).to_have_text(
-            "برای ادامه‌ی خرید، این مورد را حذف کنید."
+            "برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید."
         )
         expect(page.locator(".cart-line__restock")).to_be_visible()
         assert CartItem.objects.get().quantity == 1

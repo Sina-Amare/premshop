@@ -272,14 +272,16 @@ class PlanForm(forms.ModelForm):
                     snapshot = signing.loads(cleaned.get("stock_version", ""), salt="catalog.stock")
                 except signing.BadSignature:
                     raise ValidationError(
-                        "صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید."
+                        "اعتبار این فرم تمام شده است. صفحه‌ی ویرایش محصول را دوباره باز کنید."
                     ) from None
                 if (
                     not isinstance(snapshot, dict)
                     or snapshot.get("plan") != current.pk
                     or "stock" not in snapshot
                 ):
-                    raise ValidationError("صفحه‌ی ویرایش معتبر نیست. صفحه را دوباره باز کنید.")
+                    raise ValidationError(
+                        "اعتبار این فرم تمام شده است. صفحه‌ی ویرایش محصول را دوباره باز کنید."
+                    )
                 if cleaned["stock_quantity"] == snapshot["stock"]:
                     cleaned["stock_quantity"] = current.stock_quantity
                     self.changed_data[:] = [
@@ -288,7 +290,7 @@ class PlanForm(forms.ModelForm):
                 elif current.stock_quantity != snapshot["stock"]:
                     self.add_error(
                         "stock_quantity",
-                        "موجودی تغییر کرده است. صفحه را دوباره باز کنید و مقدار جدید را ببینید.",
+                        "موجودی از زمان باز کردن فرم تغییر کرده است. صفحه را دوباره باز کنید تا مقدار فعلی را ببینید.",
                     )
             else:
                 self.instance.stock_quantity = current.stock_quantity
@@ -756,9 +758,9 @@ class ProductAdmin(PreviewAdminMixin):
         self._set_status(request, queryset, Product.Status.DRAFT)
         for product in taken:
             if problems := product.publish_problems():
-                headline = gettext("«%(product)s» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.") % {
-                    "product": f"\u2068{product}\u2069"
-                }
+                headline = gettext(
+                    "برای انتشار دوباره‌ی «%(product)s»، موارد زیر را کامل کنید."
+                ) % {"product": f"\u2068{product}\u2069"}
                 messages.info(request, reasons_message(headline, problems))
 
     def has_copy_sections_permission(self, request: HttpRequest) -> bool:
@@ -818,7 +820,7 @@ class ProductAdmin(PreviewAdminMixin):
                 message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
                 if skipped:
                     message += " " + gettext(
-                        "«پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد."
+                        "«%(target)s» بخش «پیش از خرید» دارد. برای تغییر متن، همان بخش را ویرایش کنید."
                     ) % {"target": names["target"]}
                 notices.append(message)
         for message in notices:
@@ -924,7 +926,7 @@ class ProductAdmin(PreviewAdminMixin):
             field.widget = BrandColourWidget(obj, attrs=field.widget.attrs)
         if "status" in form.base_fields:
             form.base_fields["status"].help_text = _(
-                "پیش‌نویس روی سایت دیده نمی‌شود. ناموجود، اگر آماده‌ی انتشار باشد، صفحه دارد ولی فروخته نمی‌شود."
+                "با وضعیت «پیش‌نویس» صفحه برای مشتری باز نمی‌شود. محصول «ناموجود» اگر آماده‌ی انتشار باشد، صفحه دارد ولی خریدش ممکن نیست."
             )
         return form
 

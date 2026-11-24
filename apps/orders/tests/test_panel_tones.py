@@ -99,7 +99,7 @@ def test_a_sent_refund_reads_as_closed_in_the_orders_history(client, buyer, plan
     order = order_for_state(buyer, plan, operator, "refunded")
     client.force_login(operator)
     body = client.get(reverse("admin:orders_order_change", args=[order.pk])).content.decode()
-    assert '<span class="order-status" data-tone="closed">واریز شد</span>' in body
+    assert '<span class="order-status" data-tone="closed">واریز ثبت شد</span>' in body
 
 
 def test_unfold_labels_draw_the_shared_pill_in_its_tone(client, plan, operator):

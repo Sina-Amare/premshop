@@ -34,7 +34,7 @@
   the others add a parameter that the canonical link leaves out. One product has
   nothing to be ordered against.{% endcomment %}
   {% if products|length > 1 %}{% with chosen=sort|default:'new' %}{% url 'category' category.slug as here %}
-  <div class="sort" role="group" aria-labelledby="sort-label"><span class="sort__label" id="sort-label">نمایش به ترتیب:</span>
+  <div class="sort" role="group" aria-labelledby="sort-label"><span class="sort__label" id="sort-label">ترتیب نمایش</span>
     <a class="sort__link" href="{{ here }}"{% if chosen == 'new' %} aria-current="true"{% endif %}>جدیدترین</a>
     <a class="sort__link" href="{{ here }}?sort=cheap"{% if chosen == 'cheap' %} aria-current="true"{% endif %}>ارزان‌ترین</a>
     <a class="sort__link" href="{{ here }}?sort=expensive"{% if chosen == 'expensive' %} aria-current="true"{% endif %}>گران‌ترین</a>
@@ -49,7 +49,7 @@
   </div>
 {% else %}
   <div class="card empty">
-    <p class="prose flush">در این دسته فعلاً محصولی نیست.</p>
+    <p class="prose flush">فعلاً محصولی در این دسته نداریم.</p>
     <a class="btn btn--secondary" href="{% url 'home' %}">دیدن محصولات</a>
   </div>
 {% endif %}

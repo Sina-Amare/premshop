@@ -1,9 +1,10 @@
 {% load fa order_tones %}PremShop
-درخواست تعویض {{ product_name }}، {{ plan_title }}، رد شد.
+درخواست تعویض رد شد.
+برای اطلاع از دلیل، در تلگرام به پشتیبانی پیام بدهید.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}دلیل رد شدن را از پشتیبانی بپرسید.
+{% endif %}محصول: {{ product_name }}، {{ plan_title }}
 مشاهده‌ی سفارش:
 {{ order_url }}
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

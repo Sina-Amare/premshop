@@ -29,7 +29,7 @@ class Page(models.Model):
         _("توضیح کوتاه"),
         max_length=300,
         blank=True,
-        help_text=_("توضیح صفحه برای نتیجه‌ی جستجو و پیش‌نمایش لینک."),
+        help_text=_("خلاصه‌ی صفحه برای نتایج جستجو و پیش‌نمایش لینک."),
     )
     is_published = models.BooleanField(
         _("منتشرشده"),
@@ -76,6 +76,8 @@ class Page(models.Model):
                 if not value.strip():
                     errors[name] = _("برای انتشار، این قسمت را کامل کنید.")
                 elif PLACEHOLDER.search(value):
-                    errors[name] = _("پیش از انتشار، جاهای خالی داخل کروشه را پر کنید.")
+                    errors[name] = _(
+                        "عبارت‌های داخل کروشه را پیش از انتشار با اطلاعات نهایی جایگزین کنید."
+                    )
         if errors:
             raise ValidationError(errors)

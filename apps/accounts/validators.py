@@ -18,6 +18,8 @@ from django.core.exceptions import ValidationError
 
 from apps.core.formatting import to_persian_digits
 
+_MOBILE_FORMAT = "شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود."
+
 PERSIAN_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
 
@@ -32,7 +34,7 @@ def normalize_digits(value: str) -> str:
 
 def normalize_mobile_phone(value: str) -> str:
     if not isinstance(value, str) or len(value) > 32:
-        raise ValidationError("شماره‌ی موبایل درست نیست.")
+        raise ValidationError(_MOBILE_FORMAT)
     typed = normalize_digits(value)
     # Contact cards often carry invisible direction marks on RTL phones.
     number = "".join(ch for ch in typed if unicodedata.category(ch) != "Cf")
@@ -40,7 +42,7 @@ def normalize_mobile_phone(value: str) -> str:
         return ""
     mobile = re.fullmatch(r"(?:\+98|0098|98)?0?(9[0-9]{9})", re.sub(r"[\s()-]", "", number))
     if not mobile:
-        raise ValidationError("شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.")
+        raise ValidationError(_MOBILE_FORMAT)
     return "0" + mobile.group(1)
 
 
@@ -68,7 +70,10 @@ class MinimumLengthValidator(password_validation.MinimumLengthValidator):
 class NumericPasswordValidator(password_validation.NumericPasswordValidator):
     def validate(self, password: str, user: Any = None) -> None:
         if password.isdigit():
-            raise ValidationError("رمز عبور نباید فقط عدد باشد.", code="password_entirely_numeric")
+            raise ValidationError(
+                "رمز عبور نباید فقط عدد باشد.",
+                code="password_entirely_numeric",
+            )
 
     def get_help_text(self) -> str:
         return "رمز عبور نباید فقط عدد باشد."
@@ -79,7 +84,9 @@ class CommonPasswordValidator(password_validation.CommonPasswordValidator):
         try:
             super().validate(password, user)
         except ValidationError as exc:
-            raise ValidationError("این رمز عبور خیلی رایج است.", code=exc.code) from None
+            raise ValidationError(
+                "این رمز عبور رایج است. رمز دیگری انتخاب کنید.", code=exc.code
+            ) from None
 
     def get_help_text(self) -> str:
         return "رمز عبور نباید رایج باشد."
@@ -91,7 +98,7 @@ class UserAttributeSimilarityValidator(password_validation.UserAttributeSimilari
             super().validate(password, user)
         except ValidationError as exc:
             raise ValidationError(
-                "رمز عبور خیلی شبیه شماره‌ی موبایل یا ایمیل شماست.", code=exc.code
+                "رمزی انتخاب کنید که شبیه شماره‌ی موبایل یا ایمیلتان نباشد.", code=exc.code
             ) from None
 
     def get_help_text(self) -> str:

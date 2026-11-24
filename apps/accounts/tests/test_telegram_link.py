@@ -24,13 +24,27 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 # The rich message tags the bot writes. Telegram refuses a message with any other tag, or
 # with one left open, and the customer's press would draw nothing.
-RICH_TAGS = {"h2", "h4", "p", "b", "code", "table", "tr", "th", "td", "blockquote", "footer"}
+RICH_TAGS = {
+    "a",
+    "h2",
+    "h4",
+    "p",
+    "b",
+    "code",
+    "table",
+    "tr",
+    "th",
+    "td",
+    "blockquote",
+    "footer",
+    "mark",
+}
 
 
 def framed(text, buttons=(), *, success=False):
     """The frame of every bot screen: a rich message that opens with its emoji and title as a
-    heading, in tags Telegram accepts, each closed; links only as buttons, two buttons to a
-    row at most, and at most one coloured button, never red."""
+    heading, with balanced tags Telegram accepts and at most two buttons per row.
+    At most one button is coloured."""
     assert re.match(r"<h2>[^\w<]+ [^<]+</h2>", text), text[:80]
     opened = []
     for closing, tag in re.findall(r"<(/?)(\w+)[^>]*>", text):
@@ -202,7 +216,7 @@ def test_changes_from_the_account_page_have_a_daily_limit(bot, client, user):
     issued = client.session["accounts.telegram_link"]
     refused = client.post(url, {"action": "link"}, follow=True)
     assert client.session["accounts.telegram_link"] == issued
-    assert "برای امروز" in refused.content.decode()
+    assert "در ۲۴ ساعت فقط ۵ بار" in refused.content.decode()
     # Unlinking is never refused: it is what the link alert tells a customer to do.
     linked(user)
     client.post(url, {"action": "unlink"})
@@ -216,7 +230,7 @@ def test_one_telegram_can_confirm_only_a_few_links_a_day(bot, user):
     token = links.start_link(user)
     bot.clear()
     links.handle_update(press(f"link:{token}"))
-    assert "برای امروز" in body(dict(bot)["editMessageText"])
+    assert "در هر ۲۴ ساعت بیشتر از ۵ بار" in body(dict(bot)["editMessageText"])
     framed(body(dict(bot)["editMessageText"]))
     assert links.link_owner(token) == user
 
@@ -243,7 +257,7 @@ def test_an_expired_or_made_up_token_links_nothing(bot, user, settings):
     assert len(screens) == 3
     # No confirm button: only the way back to the account page for a new link.
     for _, buttons in screens:
-        assert buttons == [[account_button(f"{emoji.LINK} دریافت پیوند جدید", settings)]]
+        assert buttons == [[account_button(f"{emoji.LINK} دریافت لینک جدید", settings)]]
 
 
 def test_a_newer_token_kills_the_older_one(bot, user):
@@ -291,15 +305,16 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     buttons = payload["reply_markup"]["inline_keyboard"]
     framed(body(payload), buttons)
     # What the bot is for, then the three steps of linking, each named by its button's label.
-    assert "اتصال در سه قدم" in body(payload)
+    for number in "۱۲۳":
+        assert f"<p>{number}. " in body(payload)
     for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
         assert label in body(payload)
+    support_url = support.details()["telegram_url"]
+    assert "پیام‌های این گفت‌وگو را نمی‌خوانیم." in body(payload)
+    assert f'به <a href="{support_url}">پشتیبانی</a> پیام بدهید.' in body(payload)
     assert buttons == [
         [account_button(f"{emoji.LINK} اتصال حساب", settings)],
-        [
-            {"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")},
-            {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support.details()["telegram_url"]},
-        ],
+        [{"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")}],
     ]
     assert User.objects.get(pk=user.pk).telegram_id is None
 

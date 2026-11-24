@@ -258,7 +258,7 @@ def test_a_warranty_refund_needs_a_claim_opened_inside_the_warranty(
         if allowed:
             cancel(item, operator, "warranty_refund")
         else:
-            with pytest.raises(ValidationError, match="خارج از مدت گارانتی"):
+            with pytest.raises(ValidationError, match="پس از پایان گارانتی"):
                 cancel(item, operator, "warranty_refund")
     item.refresh_from_db()
     assert item.status == ("CANCELLED" if allowed else "REPLACEMENT_REQUESTED")
@@ -271,7 +271,7 @@ def test_a_seven_day_claim_after_the_subscription_ended_is_refused(buyer, plan, 
         deliver(item, operator, expires_at=date(2026, 11, 5))
     with tehran(2026, 11, 6):
         legacy_claim(item, operator)
-        with pytest.raises(ValidationError, match="خارج از مدت گارانتی"):
+        with pytest.raises(ValidationError, match="پس از پایان گارانتی"):
             cancel(item, operator, "warranty_refund")
 
 

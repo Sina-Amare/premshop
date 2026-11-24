@@ -129,11 +129,10 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.locator("#id_value").fill("0")
         page.locator('[name="_save"]').click()
         expect(page.get_by_text("عددی بزرگ‌تر از صفر وارد کنید.", exact=True)).to_be_visible()
-        expect(
-            page.get_by_text("حداقل یک محصول برای این کد تخفیف انتخاب کنید.", exact=True)
-        ).to_be_visible()
+        expect(page.get_by_text("دست‌کم یک محصول انتخاب کنید.", exact=True)).to_be_visible()
         text = page.locator("body").inner_text()
         assert "Choose" not in text and "Remove all" not in text
+        assert "محصولات قابل انتخاب" in text and "محصولات انتخاب‌شده" in text
         assert page.locator('label[for="id_value"]').inner_text().startswith("میزان تخفیف")
         page.evaluate("document.fonts.ready")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
@@ -149,7 +148,7 @@ def test_discount_editor_errors_creation_and_read_only_usage(
         page.goto(live_server.url + reverse("admin:orders_discountcode_change", args=[code.pk]))
         expect(page.locator("#id_code")).to_have_value("SAVE")
         assert not page.locator('[name="used_count"]').count()
-        assert "خالی یعنی بدون محدودیت" in page.locator("body").inner_text()
+        assert "خالی = نامحدود" in page.locator("body").inner_text()
         page.screenshot(path=str(tmp_path / f"discount-saved-{width}.png"), full_page=True)
     finally:
         context.close()

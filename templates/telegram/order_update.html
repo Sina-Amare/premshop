@@ -3,10 +3,13 @@
 <tr><th>{{ e.STATUS }} وضعیت</th><td><b>{{ pill_state|state_label }}</b></td></tr>{% endif %}{% if product_name %}
 <tr><th>{{ e.PRODUCT }} محصول</th><td>{{ product_name }}، {{ plan_title }}</td></tr>{% elif products %}
 <tr><th>{{ e.PRODUCT }} {% if products|length > 1 %}محصولات{% else %}محصول{% endif %}</th><td>{{ products|join:" و " }}</td></tr>{% endif %}{% if template_name == "payment_confirmed" or template_name == "item_refunded" or template_name == "item_cancelled" and amount %}
-<tr><th>{{ e.AMOUNT }} مبلغ</th><td>{{ amount|toman_plain }} تومان</td></tr>{% elif template_name == "supply_delayed" and due_at %}
+<tr><th>{{ e.AMOUNT }} {% if template_name == "item_cancelled" %}مبلغ بازگشت وجه{% else %}مبلغ{% endif %}</th><td>{{ amount|toman_plain }} تومان</td></tr>{% elif template_name == "supply_delayed" and due_at %}
 <tr><th>{{ e.DEADLINE }} زمان تحویل جدید</th><td>تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</td></tr>{% elif template_name == "input_reminder" or template_name == "input_final_warning" %}
 <tr><th>{{ e.DEADLINE }} مهلت ارسال اطلاعات</th><td>تا پایان {{ due_at|jalali }}</td></tr>{% endif %}
-</table>{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
-<blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، این خرید لغو می‌شود و کل مبلغ آن را به شما برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
-<blockquote><p>اطلاعات فعال‌سازی این محصول تا ۲۱ روز پس از درخواست به دستمان نرسید.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
-<blockquote><p>{% if pill_state == "expired" %}پرداختی برای این سفارش ثبت نشد.{% else %}پرداختی برای این سفارش ثبت نشده بود.{% endif %}</p></blockquote>{% endif %}
+</table>{% if template_name == "delivery_completed" %}
+<p>برای دیدن اطلاعات تحویل، صفحه‌ی سفارش را باز کنید. از همان صفحه کد بگیرید و با آن ایمیل همین سفارش را تأیید کنید.</p>
+<p>اگر سفارش ایمیل ندارد یا به آن دسترسی ندارید، از صفحه‌ی سفارش به پشتیبانی پیام بدهید.</p>{% endif %}{% if template_name == "input_requested" or template_name == "input_reminder" or template_name == "input_final_warning" %}
+<p>اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید.</p>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
+<blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
+<blockquote><p>اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
+<blockquote><p>{% include "email/_unpaid_cancellation.txt" %}</p></blockquote>{% endif %}

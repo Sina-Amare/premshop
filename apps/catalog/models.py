@@ -121,7 +121,7 @@ def check_seo_title(row: Category | Product) -> None:
     """base.html adds « | PremShop» to every title, so the field never holds it."""
     if "premshop" in row.seo_title.casefold():
         raise ValidationError(
-            {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
+            {"seo_title": _("نام فروشگاه به‌صورت خودکار به انتهای عنوان اضافه می‌شود.")}
         )
 
 
@@ -149,7 +149,7 @@ def validate_image_upload(file: Any) -> None:
     if getattr(file, "_committed", True):
         return
     if file.size > MAX_UPLOAD_BYTES:
-        raise ValidationError(_("حجم تصویر بیشتر از ۵ مگابایت است."))
+        raise ValidationError(_("حداکثر حجم تصویر ۵ مگابایت است."))
     try:
         with Image.open(file) as image:
             kind, (width, height) = image.format, image.size
@@ -267,7 +267,7 @@ class Category(models.Model):
         max_length=100,
         unique=True,
         allow_unicode=True,
-        help_text=_("در نشانی صفحه می‌آید و لاتین است، مثل «ai»."),
+        help_text=_("بخش آخر نشانی با حروف لاتین، مثل «ai»."),
     )
     description = models.CharField(
         _("توضیح کوتاه"),
@@ -306,7 +306,7 @@ class Category(models.Model):
         default="",
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -472,7 +472,7 @@ class Product(ChecksNameTheirField, models.Model):
         blank=True,
         default="",
         validators=[RegexValidator(r"\A#[0-9a-fA-F]{6}\Z", _("رنگ را مانند #10a37f وارد کنید."))],
-        help_text=_("رنگ زمینه‌ی کارت، مانند #10a37f. خالی یعنی زمینه‌ی خنثی."),
+        help_text=_("مثل ‎#10a37f‎. خالی یعنی رنگ خنثی."),
     )
     delivery_type = models.CharField(
         _("نوع تحویل"),
@@ -497,17 +497,14 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("بین ۱ تا ۴۸ ساعت. دست‌بالا بنویسید."),
+        help_text=_("از ۱ تا ۴۸ ساعت."),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
         max_length=120,
         blank=True,
         default="",
-        help_text=_(
-            "اگر پر کنید، مشتری همین متن را همان‌طور که نوشته‌اید "
-            "به‌جای «تحویل تا … ساعت» می‌بیند."
-        ),
+        help_text=_("جایگزین «تحویل تا … ساعت» در سایت. مهلت تحویل عوض نمی‌شود."),
     )
     # Claimed, never assumed. Renewal depends on the upstream provider and on
     # the operator being able to get the same account back, so an untouched
@@ -518,13 +515,13 @@ class Product(ChecksNameTheirField, models.Model):
     renewable = models.BooleanField(
         _("قابل تمدید"),
         default=False,
-        help_text=_("روی صفحه‌ی محصول می‌نویسیم که تمدید می‌شود."),
+        help_text=_("نمایش شرایط تمدید روی همین اکانت، با قیمت روز."),
     )
     delivery_template = models.TextField(
         _("قالب تحویل"),
         blank=True,
         default="",
-        help_text=_("کنار فرم تحویل به شما نشان داده می‌شود و برای مشتری فرستاده نمی‌شود."),
+        help_text=_("یادداشت داخلی کنار فرم تحویل."),
     )
     # Restricted Markdown with no heading level free: it is printed inside
     # «پیش از خرید», under that section's own h2. Required to publish, so no
@@ -542,29 +539,26 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=300,
         blank=True,
         default="",
-        help_text=_("فقط اگر این محصول با قاعده‌ی بازگشت وجه فروشگاه فرق دارد. یک جمله."),
+        help_text=_("فقط تفاوت با شرایط بازگشت وجه فروشگاه، در یک جمله."),
     )
     sources = models.TextField(
         _("منبع‌ها"),
         blank=True,
         default="",
         validators=[validate_source_lines],
-        help_text=_(
-            "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
-        ),
+        help_text=_("لینک منابع رسمی، هر کدام در یک سطر. فقط در پنل."),
     )
     facts_checked_on = models.DateField(
         _("آخرین بررسی"),
         null=True,
         blank=True,
-        help_text=_("روزی که ادعاهای متن را دوباره با منبع‌ها سنجیدید."),
+        help_text=_("روزی که توضیحات محصول را با منابع بررسی کردید."),
     )
     time_sensitive = models.BooleanField(
         _("حساس به زمان"),
         default=False,
         help_text=_(
-            "امکانات یا قیمت ارائه‌دهنده زود عوض می‌شود. "
-            "انتشار، بررسی در ۷ روز اخیر را لازم دارد."
+            "برای محصول با امکانات یا قیمت متغیر. پیش از انتشار، بررسی در ۷ روز اخیر لازم است."
         ),
     )
     status = models.CharField(
@@ -572,7 +566,7 @@ class Product(ChecksNameTheirField, models.Model):
         max_length=16,
         choices=Status.choices,
         default=Status.DRAFT,
-        help_text=_("پیش‌نویس و ناموجود روی سایت دیده نمی‌شوند."),
+        help_text=_("محصول را روی «فعال» بگذارید تا در فهرست فروشگاه نمایش داده شود."),
     )
     # Maintained on save, never edited by hand. See search.py for what it folds.
     search_text = models.TextField(editable=False, blank=True, default="")
@@ -883,10 +877,10 @@ class ProductSpec(PageRow):
     is_key = models.BooleanField(
         _("مهم"),
         default=False,
-        help_text=_("کنار نام محصول، بالای صفحه‌ی محصول می‌آید."),
+        help_text=_("این مشخصه بالای صفحه‌ی محصول و کنار نام آن دیده می‌شود."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -917,7 +911,7 @@ class Plan(ChecksNameTheirField, PageRow):
     )  # null: never expires
     cost_price = MoneyField(
         verbose_name=_("قیمت خرید"),
-        help_text=_("مشتری این را نمی‌بیند."),
+        help_text=_("فقط در پنل، برای محاسبه‌ی سود فروش."),
     )  # operator-only; snapshotted at order time
     sale_price = MoneyField(verbose_name=_("قیمت فروش"))
     promo_price = MoneyField(
@@ -927,26 +921,27 @@ class Plan(ChecksNameTheirField, PageRow):
         help_text=_("باید از قیمت فروش کمتر باشد."),
     )
     promo_starts_at = models.DateTimeField(
-        _("شروع تخفیف"), null=True, blank=True, help_text=_("خالی یعنی همین حالا.")
+        _("شروع تخفیف"),
+        null=True,
+        blank=True,
+        help_text=_("خالی = شروع فوری"),
     )
     promo_ends_at = models.DateTimeField(
         _("پایان تخفیف"),
         null=True,
         blank=True,
-        help_text=_(
-            "با تعیین تاریخ، روی سایت شمارش معکوس نمایش داده می‌شود. خالی یعنی بدون پایان."
-        ),
+        help_text=_("با تعیین پایان، تخفیف شمارش معکوس دارد. خالی = بدون پایان"),
     )
     stock_quantity = models.PositiveIntegerField(
         _("موجودی"),
         null=True,
         blank=True,
-        help_text=_("هر سفارش ثبت‌شده خودش از این عدد کم می‌شود. خالی یعنی موجودی محدود نیست."),
+        help_text=_("با ثبت سفارش، تعداد خرید از موجودی کم می‌شود. خالی = نامحدود"),
     )
     is_available = models.BooleanField(
         _("موجود"),
         default=True,
-        help_text=_("تیک را بردارید تا خریدنی نباشد. پاکش نکنید."),
+        help_text=_("با برداشتن تیک، فروش این پلن متوقف می‌شود."),
     )  # soft delete: sold plans are never removed
     # Default 1, so a quantity control appears only where the operator has
     # said it makes sense. Most of this shop is subscriptions activated on one
@@ -956,21 +951,20 @@ class Plan(ChecksNameTheirField, PageRow):
     max_quantity = models.PositiveSmallIntegerField(
         _("حداکثر تعداد در هر سفارش"),
         default=1,
-        help_text=_("۱ یعنی مشتری تعداد نمی‌بیند."),
+        help_text=_("عدد ۱: بدون انتخاب تعداد در صفحه‌ی محصول."),
     )
     input_type = models.CharField(
         _("نوع اطلاعات فعال‌سازی"),
         max_length=12,
         choices=InputType.choices,
         default=InputType.UNREVIEWED,
-        help_text=_("تا نوع اطلاعات و نیاز به تلگرام را مشخص نکنید، این پلن سفارش نمی‌گیرد."),
+        help_text=_("برای فروش این پلن، نوع اطلاعات و نیاز به تلگرام را هم مشخص کنید."),
     )
     telegram_required = models.BooleanField(
         _("نیاز به تلگرام برای فعال‌سازی"),
         null=True,
         blank=True,
         choices=[(None, _("بررسی‌نشده")), (True, _("لازم است")), (False, _("لازم نیست"))],
-        help_text=_("بسته به روش تحویل همین پلن، انتخاب کنید تلگرام لازم است یا نه."),
     )
     requires_customer_input = models.BooleanField(
         _("نیاز به اطلاعات مشتری"),
@@ -982,16 +976,16 @@ class Plan(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("عبارت کوتاه؛ مثل: ایمیل اکانت Spotify."),
+        help_text=_("نمونه «ایمیل اکانت Spotify»"),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),
         blank=True,
         default="",
-        help_text=_("مشتری این را نمی‌بیند."),
+        help_text=_("فقط در پنل، برای تهیه‌ی محصول."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
     # When someone last stood behind this price: set by any change to a price
     # and by the panel's «قیمت‌ها را امروز بررسی کردم» for its review filters.
@@ -1067,7 +1061,7 @@ class Plan(ChecksNameTheirField, PageRow):
                 condition=Q(duration_days__isnull=True) | Q(duration_days__gt=0),
                 name="plan_duration_positive_or_unlimited",
                 violation_error_message=_(
-                    "مدت پلن باید دست‌کم یک روز باشد، یا خالی برای بی‌پایان."
+                    "مدت پلن را دست‌کم یک روز وارد کنید یا برای اشتراک بدون پایان خالی بگذارید."
                 ),
             ),
             models.CheckConstraint(
@@ -1164,7 +1158,7 @@ class Plan(ChecksNameTheirField, PageRow):
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
             raise ValidationError(
-                "این گزینه را فعلاً نمی‌توانید بخرید. از پشتیبانی راهنمایی بگیرید."
+                "این گزینه فعلاً برای خرید آماده نیست. برای راهنمایی، در تلگرام به پشتیبانی پیام بدهید."
             )
 
     @property
@@ -1297,10 +1291,10 @@ class ProductSection(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("آنچه تصویر نشان می‌دهد، برای کسی که آن را نمی‌بیند. با تصویر لازم است."),
+        help_text=_("با افزودن تصویر، توضیح کوتاهی از محتوای آن بنویسید."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:
@@ -1327,12 +1321,16 @@ class ProductSection(ChecksNameTheirField, PageRow):
                 fields=["product"],
                 condition=Q(kind="before_buying"),
                 name="section_one_before_buying",
-                violation_error_message=_("این محصول بخش «پیش از خرید» دارد. همان را ویرایش کنید."),
+                violation_error_message=_(
+                    "برای تغییر متن «پیش از خرید»، بخش فعلی محصول را ویرایش کنید."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(image="") | ~Q(image_alt=""),
                 name="section_image_has_alt",
-                violation_error_message=_("تصویر بدون متن جایگزین ذخیره نمی‌شود."),
+                violation_error_message=_(
+                    "برای ذخیره‌ی تصویر، توضیح کوتاهی از محتوای آن در «متن جایگزین» بنویسید."
+                ),
             ),
         ]
 
@@ -1363,7 +1361,7 @@ class ProductQuestion(PageRow):
         help_text=_("اصل جواب در جمله‌ی اول، معمولاً یکی دو جمله."),
     )
     sort_order = models.SmallIntegerField(
-        _("ترتیب نمایش"), default=0, help_text=_("عدد کوچک‌تر، بالاتر.")
+        _("ترتیب نمایش"), default=0, help_text=_("عدد کمتر، اولویت بیشتر")
     )
 
     class Meta:

@@ -213,7 +213,7 @@ def test_past_the_days_ceiling_no_code_is_sent(rf):
     with pytest.raises(services.CodeNotSent) as refused:
         services.request_login_code(at(rf), PHONE)
 
-    assert "متوقف" in refused.value.text
+    assert "کد ورود پیامک کنیم" in refused.value.text
     assert not sms.outbox
     assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, PHONE) == 1
 

@@ -316,7 +316,7 @@ msgid "Profile"
 msgstr "پروفایل"
 
 msgid "This object doesn’t have a change history. It probably wasn’t added via this admin site."
-msgstr "هنوز تغییری برای این مورد ثبت نشده. ممکن است خارج از این پنل ساخته شده باشد."
+msgstr "تغییری در تاریخچه ثبت نشده است."
 
 msgid "Change my password"
 msgstr "تغییر رمز عبور من"
@@ -397,7 +397,7 @@ msgid "Please go to the following page and choose a new password:"
 msgstr "به این صفحه بروید و رمز عبور جدیدی انتخاب کنید:"
 
 msgid "There’s been an error. It’s been reported to the site administrators via email and should be fixed shortly. Thanks for your patience."
-msgstr "خطایی رخ داد. گزارش آن ایمیل شد و به‌زودی درست می‌شود."
+msgstr "صفحه باز نشد. چند لحظه بعد دوباره امتحان کنید."
 
 msgid "Something’s wrong with your database installation. Make sure the appropriate database tables have been created, and make sure the database is readable by the appropriate user."
 msgstr "پایگاه داده مشکل دارد. مطمئن شوید جدول‌ها ساخته شده‌اند و کاربر دسترسی خواندن دارد."

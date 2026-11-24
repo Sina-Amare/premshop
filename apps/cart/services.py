@@ -52,7 +52,7 @@ def _locked_cart(request: HttpRequest, *, create: bool) -> Cart | None:
             .filter(session_key=request.session.session_key, expire_date__gt=timezone.now())
             .exists()
         ):
-            raise ValidationError("صفحه را دوباره باز کنید و سبد خریدتان را بررسی کنید.")
+            raise ValidationError("سبد خرید را دوباره باز کنید.")
         lookup = {"session_key": request.session.session_key, "user_id": None}
     carts = Cart.objects.select_for_update()
     if create:
@@ -82,7 +82,7 @@ def _available_plan(plan_id: int) -> Plan:
 def _validate_quantity(plan: Plan, quantity: int) -> None:
     limit = 1 if plan.requires_customer_input else plan.max_quantity
     if type(quantity) is not int or quantity < 1:
-        raise ValidationError("باید حداقل ۱ تا انتخاب کنید.")
+        raise ValidationError("تعداد خرید باید دست‌کم یک باشد.")
     if quantity > limit:
         raise ValidationError(f"سقف خرید این گزینه در هر سفارش {to_persian_digits(limit)} است.")
 
@@ -140,7 +140,7 @@ def set_quantity(request: HttpRequest, *, plan_id: int, quantity: int) -> None:
             item.save(update_fields=["quantity"])
             _touch(request, cart)
             return
-    raise ValidationError("این مورد دیگر در سبد خرید نیست.")
+    raise ValidationError("این مورد از سبد خرید حذف شده است.")
 
 
 @transaction.atomic

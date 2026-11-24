@@ -76,7 +76,7 @@ def test_both_entry_points_offer_sms_by_default_and_telegram(client):
 
 def test_sign_in_page_says_the_number_also_makes_the_account(client):
     body = client.get(reverse("login-code")).content.decode()
-    assert "برای ورود یا ساخت حساب کاربری، شماره‌ی موبایلتان را وارد کنید." in body
+    assert "اگر حساب کاربری ندارید، با همین شماره برایتان حساب می‌سازیم." in body
 
 
 @pytest.mark.parametrize("state", ["unknown", "unlinked", "linked", "inactive", "staff"])
@@ -121,6 +121,19 @@ def test_invalid_channel_is_refused_before_sending_or_queuing(client, queued):
     assert not queued and not sms.outbox
 
 
+def test_invalid_resend_channel_keeps_the_pending_code_request(client, queued):
+    assert ask(client).json()["ok"]
+    url = reverse("login-code-resend")
+    response = client.post(url, {"channel": "email"}, **JSON)
+    assert response.status_code == 400
+    assert "روش دریافت کد درست نیست." in response.json()["error"]
+
+    response = client.post(url, {"channel": "email"}, follow=True)
+    assert response.redirect_chain[-1][0] == reverse("login-code-verify")
+    assert "روش دریافت کد درست نیست." in response.content.decode()
+    assert len(queued) == 1 and not sms.outbox
+
+
 def test_telegram_uses_no_sms_allowance_and_sms_is_available_immediately(client, linked, queued):
     ask(client)
     assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_COOLDOWN, PHONE) == 1
@@ -148,7 +161,7 @@ def test_plain_resend_keeps_telegram_and_never_claims_delivery(client, queued):
         clock.shift(121)
         response = client.post(reverse("login-code-resend"), follow=True)
     assert len(queued) == 2 and not sms.outbox
-    assert "کد جدید را فرستادیم." not in response.content.decode()
+    assert ">کد جدید را برایتان پیامک کردیم.</span>" not in response.content.decode()
 
 
 def test_worker_sends_a_copyable_code_and_stores_only_the_hash(client, linked, queued, sent):

@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 from typing import Any, cast
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
@@ -154,11 +155,12 @@ def _render_detail(
             "has_site_input": any(row["can_submit"] for row in input_requests),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
+            "telegram_available": bool(settings.TELEGRAM_BOT_TOKEN),
             # Order news goes by email or Telegram; with neither, this page is the news.
             "reachable": bool(
                 summary["order"].placement_email
                 or summary["order"].user.email
-                or summary["order"].user.telegram_id
+                or (settings.TELEGRAM_BOT_TOKEN and summary["order"].user.telegram_id)
             ),
         },
         status=status,
@@ -262,10 +264,10 @@ def delivery_code(
     try:
         if confirm:
             if not proof.confirm_code(**arguments, code=request.POST.get("code", "")):
-                raise ValidationError("کد درست نیست یا مهلتش گذشته است.")
+                raise ValidationError("کد اشتباه است یا اعتبارش تمام شده است.")
         else:
             proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد به ایمیل این سفارش فرستاده شد.")
+            messages.success(request, "کد تأیید را به ایمیل این سفارش فرستادیم.")
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     return redirect("order-detail", order_number=order_number)
@@ -350,7 +352,7 @@ def submit_review(request: HttpRequest, order_number: int, item_id: int) -> Http
             request,
             _owned_summary(request, order_number),
             status=409,
-            review_error=(item_id, "برای این خرید قبلاً نظر داده‌اید.", {}),
+            review_error=(item_id, "نظرتان برای این خرید قبلاً ثبت شده است.", {}),
         )
     return redirect(reverse("order-detail", args=[order_number]) + "#order-reviews")
 
@@ -425,7 +427,10 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
     order = summary["order"]
     if request.POST.get("confirm") != "yes":
         return _render_detail(
-            request, summary, error="ساخت شناسه‌ی جدید را تأیید کنید.", status=400
+            request,
+            summary,
+            error="برای تغییر شناسه، دکمه‌ی «ساخت شناسه‌ی جدید» را بزنید.",
+            status=400,
         )
     try:
         replace_support_token(
@@ -437,7 +442,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     except ImproperlyConfigured, OrderSupportIdentifier.DoesNotExist:
         return _render_detail(request, summary, error="شناسه‌ی پشتیبانی در دسترس نیست.", status=503)
-    messages.success(request, "شناسه‌ی پشتیبانی جایگزین شد.")
+    messages.success(request, "شناسه‌ی پشتیبانی جدید آماده است.")
     return redirect("order-detail", order_number=order.order_number)
 
 
@@ -447,7 +452,7 @@ def replace_support(request: HttpRequest, order_number: int) -> HttpResponse:
 def cancel(request: HttpRequest, order_number: int) -> HttpResponse:
     summary = _owned_summary(request, order_number)
     order = summary["order"]
-    error = "برای لغو سفارش، دکمه‌ی «بله، لغو سفارش» را بزنید."
+    error = "برای تأیید، دکمه‌ی «بله، لغو سفارش» را بزنید."
     if request.POST.get("confirm") == "yes":
         try:
             cancel_unpaid_order(order_id=order.pk, actor=cast(User, request.user))

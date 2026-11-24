@@ -245,9 +245,6 @@ def test_an_order_screen_shows_its_facts_and_returns_to_its_list(buyer, plan, se
     ]
 
 
-NOTHING_TO_DO = "کاری لازم نیست."
-
-
 # The bot names the one account a customer's message should go to.
 HANDLE = support.details()["telegram"]
 
@@ -255,24 +252,24 @@ HANDLE = support.details()["telegram"]
 @pytest.mark.parametrize(
     ("state", "card", "sentence"),
     [
-        ("awaiting_input", {}, f"اطلاعات فعال‌سازی و شماره‌ی سفارش را برای {HANDLE} بفرستید."),
+        ("awaiting_input", {}, "روش ارسال اطلاعات فعال‌سازی را در صفحه‌ی سفارش ببینید."),
         (
             "refund_owed",
             {},
-            f"شماره‌ی کارت یا شبای به نام خودتان و شماره‌ی سفارش را برای {HANDLE} بفرستید.",
+            f"شماره‌ی کارت یا شبای حسابی به نام خودتان را همراه شماره‌ی سفارش برای {HANDLE} بفرستید.",
         ),
-        ("late", {}, f"زمان تحویل گذشته است. برای پیگیری، به {HANDLE} پیام بدهید."),
-        ("replacement", {}, NOTHING_TO_DO),
-        ("queued", {}, NOTHING_TO_DO),
-        ("delivered", {}, NOTHING_TO_DO),
+        ("late", {}, f"برای پیگیری تحویل به {HANDLE} پیام بدهید."),
+        ("replacement", {}, "برای بررسی درخواست فعلاً کاری لازم نیست."),
+        ("queued", {}, "برای تحویل فعلاً کاری لازم نیست."),
+        ("delivered", {"contact": False}, None),
         ("delivered", {"in_warranty": True}, f"مشکلی هست؟ به {HANDLE} پیام بدهید."),
-        ("refunded", {}, NOTHING_TO_DO),
-        ("expired", {}, "پرداختی برای این سفارش ثبت نشد."),
-        ("cancelled", {}, "پرداختی برای این سفارش ثبت نشده بود."),
+        ("refunded", {"refund": 200_000}, "۲۰۰,۰۰۰ تومان به حسابتان واریز شد."),
+        ("expired", {}, "مهلت ۲۴ ساعته‌ی پرداخت تمام شده است."),
+        ("cancelled", {}, "این سفارش را پیش از پرداخت لغو کردید."),
         (
             "cancelled",
             {"reason": "operator"},
-            f"پرداختی برای این سفارش ثبت نشده بود. دلیلش را از {HANDLE} بپرسید.",
+            f"پشتیبانی سفارش را پیش از ثبت پرداخت لغو کرد. برای اطلاع از دلیل، به {HANDLE} پیام بدهید.",
         ),
     ],
 )
@@ -281,9 +278,11 @@ def test_every_state_names_its_next_step_as_the_order_page_does(buyer, plan, sta
     summary["card"] = {**summary["card"], **order_status.pill(state), **card}
     context = {**summary, "support": support.details(), "order_url": "/"}
     text = render_to_string("telegram/panel_order.html", context)
-    assert sentence in text and "تماس بگیرید" not in text
-    if card:
-        assert NOTHING_TO_DO not in text
+    assert "تماس بگیرید" not in text
+    if sentence is None:
+        assert "<blockquote>" not in text
+    else:
+        assert sentence in text
 
 
 @pytest.mark.parametrize(

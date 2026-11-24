@@ -2,12 +2,12 @@
 ———
 
 {% if state == "linked" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب شما وصل شد.
-اگر خودتان نبودید، از صفحه‌ی حساب کاربری قطعش کنید:
+اگر خودتان تلگرام را وصل نکرده‌اید، اتصال تلگرام را از صفحه‌ی حساب کاربری قطع کنید.
 {{ account_url }}{% elif state == "moved" %}تلگرام {{ telegram }} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} به حساب دیگری در PremShop منتقل شد.
-اگر خودتان نبودید، به پشتیبانی خبر بدهید.{% else %}تلگرام{% if telegram %} {{ telegram }}{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.
-اگر خودتان نبودید، به پشتیبانی خبر بدهید.{% endif %}
+اگر خودتان این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.{% else %}تلگرام{% if telegram %} {{ telegram }}{% endif %} در {{ changed_at|jalali }}، ساعت {{ changed_at|time:"H:i"|fa_digits }} از حساب شما جدا شد.
+اگر خودتان این تغییر را انجام نداده‌اید، در تلگرام به پشتیبانی پیام بدهید.{% endif %}
 پشتیبانی PremShop هیچ‌وقت رمز عبور یا کد ورود شما را نمی‌خواهد.
 
 ———
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}
 premshop.ir

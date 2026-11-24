@@ -346,7 +346,7 @@ def _card_facts(
     sent_days = {_day(moment) for moment in sent}
     # A paused clock has no date to promise, so the card promises none for its products;
     # each running clock keeps its own date on its line.
-    held = any(item.status == S.QUEUED and item.sla_paused_at is not None for item in items)
+    held = sum(item.status == S.QUEUED and item.sla_paused_at is not None for item in items)
     dues = [due for item in items if (due := order_status.running_deadline(item))]
     # Late items promised at different times share no one date; each line prints its own.
     apart = lead == "late" and len({due.replace(second=0, microsecond=0) for due in dues}) > 1
@@ -361,6 +361,8 @@ def _card_facts(
         # The promise covers every item; a delay counts from the first time missed.
         "due_at": (None if held or apart else (min if lead == "late" else max)(dues, default=None)),
         "hours": None if held else max(hours, default=None),
+        "paused": bool(held),
+        "partly_paused": 0 < held < len(items),
         "delivered_at": items[0].delivered_at,
         "expires_at": items[0].expires_at,
         "warranty_end": ends[0],

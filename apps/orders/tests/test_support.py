@@ -170,7 +170,7 @@ def test_match_form_is_scoped_private_and_never_echoes_either_identifier(
     )
     for supplied, message in (
         (order.support_identifier.support_token, "شناسه با این سفارش مطابقت دارد."),
-        ("PRIVATE-BAD-INPUT", "شناسه با این سفارش مطابقت ندارد."),
+        ("PRIVATE-BAD-INPUT", "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."),
     ):
         response = client.post(url, {"support_token": supplied})
         body = response.content.decode()
@@ -296,7 +296,10 @@ def test_missing_key_preserves_order_reads_and_shows_unavailable_without_control
     detail = reverse("order-detail", args=[order.order_number])
     response = client.get(detail)
     body = response.content.decode()
-    assert response.status_code == 200 and "شناسه‌ی پشتیبانی در دسترس نیست." in body
+    assert (
+        response.status_code == 200
+        and "اگر شناسه را نمی‌بینید، شماره‌ی سفارش را برای پشتیبانی بفرستید." in body
+    )
     assert support_token not in body
     assert "data-copy-support" not in body and 'name="expected_support_token"' not in body
     for name, args in (("order-list", []), ("order-invoice", [order.order_number])):
@@ -316,7 +319,7 @@ def test_missing_key_preserves_order_reads_and_shows_unavailable_without_control
         {"support_token": support_token},
     )
     assert response.status_code == 503
-    assert "بررسی شناسه در دسترس نیست؛ دوباره تلاش کنید." in response.content.decode()
+    assert "تطبیق شناسه انجام نشد. دوباره امتحان کنید." in response.content.decode()
 
 
 def test_item_order_lookup_does_not_read_support_identifier(buyer, plan, settings):

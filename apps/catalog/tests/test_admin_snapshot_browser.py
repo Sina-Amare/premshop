@@ -17,7 +17,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 def test_escape_closes_quick_plans_before_the_enclosing_admin_preview(open_panel, product):
     page = open_panel(change_form(product), width=390)
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     frame = page.frame_locator(".snapshot-panel iframe")
     frame.locator("[data-quick-open]").first.click()
     expect(frame.locator("#quick-plans")).to_be_visible()
@@ -63,7 +63,7 @@ def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, pr
     page = open_panel(change_form(product), width=width)
     page.fill("#id_name", "Unsaved service")
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator(".pdp__title")).to_have_text("Unsaved service")
     expect(frame.locator("[data-preview-target=card] .pcard__name")).to_have_text("Unsaved service")
@@ -73,7 +73,7 @@ def test_unsaved_preview_refresh_errors_and_close_preserve_editor(open_panel, pr
     expect(page.locator("#id_name")).to_have_value("Unsaved service")
     page.fill("#id_name", "Changed again")
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("فرم تغییر کرده")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("دیدن تغییرات فرم")
     page.locator("[data-snapshot-refresh]").click()
     expect(frame.locator(".pdp__title")).to_have_text("Changed again")
     page.locator("[data-snapshot-close]").click()
@@ -155,14 +155,16 @@ def test_only_current_sidebar_destination_has_the_selected_surface(open_panel, p
 def test_panel_guidance_is_natural_and_publishing_requirements_stay_precise(open_panel, product):
     page = open_panel(change_form(product))
     expect(page.locator("label[for=id_slug]")).to_contain_text("نام در لینک")
-    expect(page.locator(".field-delivery_hours")).to_contain_text("بین ۱ تا ۴۸ ساعت")
-    expect(page.locator(".field-delivery_note")).to_contain_text("اگر پر کنید، مشتری همین متن را")
+    expect(page.locator(".field-delivery_hours")).to_contain_text("از ۱ تا ۴۸ ساعت")
+    expect(page.locator(".field-delivery_note")).to_contain_text("مهلت تحویل عوض نمی‌شود")
     expect(page.locator(".panel-readiness")).to_contain_text("نکات استفاده نوشته نشده است")
     expect(page.locator(".field-usage_notes")).to_contain_text("موضوعیت ندارد")
     page.fill("#id_name", "")
     with page.expect_navigation():
         page.locator("#submit-row button[name=_continue]").click()
-    expect(page.locator(".errornote")).to_contain_text("ذخیره نشد. خطاهای زیر را درست کنید.")
+    expect(page.locator(".errornote")).to_contain_text(
+        "فرم ذخیره نشد. موارد مشخص‌شده را اصلاح کنید."
+    )
     expect(page.locator(".field-name")).to_contain_text("این قسمت را پر کنید.")
 
 
@@ -170,8 +172,9 @@ def test_plan_guidance_applies_to_costs_and_supplier_links(open_panel, product):
     page = open_panel(change_form(product))
     for field in ("supplier_url", "cost_price"):
         guidance = page.locator(f"#id_plans-0-{field}_helptext")
-        expect(guidance).to_contain_text("مشتری این را نمی‌بیند")
-    expect(page.locator("#id_plans-0-supplier_url_helptext")).not_to_contain_text("این قیمت")
+        expect(guidance).to_contain_text("فقط در پنل")
+    expect(page.locator("#id_plans-0-cost_price_helptext")).to_contain_text("سود فروش")
+    expect(page.locator("#id_plans-0-supplier_url_helptext")).not_to_contain_text("سود فروش")
 
 
 def test_title_error_requires_removing_the_store_name(open_panel, product):
@@ -180,7 +183,7 @@ def test_title_error_requires_removing_the_store_name(open_panel, product):
     page.fill("#id_seo_title", "PremShop Plus")
     with page.expect_navigation():
         page.locator("#submit-row button[name=_continue]").click()
-    expect(page.locator(".field-seo_title")).to_contain_text("نام فروشگاه را ننویسید")
+    expect(page.locator(".field-seo_title")).to_contain_text("به انتهای عنوان اضافه می‌شود")
     expect(page.locator(".field-seo_title")).not_to_contain_text("لازم نیست")
 
 
@@ -205,7 +208,7 @@ def test_field_destination_and_stale_network_failure_preserve_the_last_snapshot(
 def test_late_snapshot_response_cannot_replace_a_newer_one(open_panel, product):
     page = open_panel(change_form(product))
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     held = []
     page.route("**/preview/", lambda route: held.append(route))
     page.locator("[data-snapshot-refresh]").click()
@@ -237,7 +240,7 @@ def test_field_guidance_aligns_below_its_input(open_panel, product):
 def test_preview_reserves_space_without_covering_the_editor(open_panel, product, width):
     page = open_panel(change_form(product), width=width)
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     panel = page.locator(".snapshot-panel").bounding_box()
     form = page.locator("#product_form").bounding_box()
     assert panel["height"] <= 740
@@ -247,7 +250,7 @@ def test_preview_reserves_space_without_covering_the_editor(open_panel, product,
         assert form["width"] >= 580
         assert panel["x"] + panel["width"] + 15 <= form["x"]
         page.locator("#id_name").fill("Editing beside the preview")
-        expect(page.locator("[data-snapshot-status]")).to_contain_text("فرم تغییر کرده")
+        expect(page.locator("[data-snapshot-status]")).to_contain_text("دیدن تغییرات فرم")
         page.locator("#id_plans-0-sale_price").scroll_into_view_if_needed()
         panel = page.locator(".snapshot-panel").bounding_box()
         save = page.locator("#submit-row").bounding_box()
@@ -268,7 +271,7 @@ def test_full_screen_is_explicit_and_restores_inline_editing(open_panel, product
     trigger.click()
     panel = page.locator(".snapshot-panel")
     expect(panel).to_have_attribute("role", "region")
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.locator("[data-snapshot-expand]").click()
     expect(panel).to_have_attribute("aria-modal", "true")
     assert page.locator("#product_form").evaluate("e=>e.inert")
@@ -287,7 +290,7 @@ def test_resizing_the_preview_preserves_edits_and_field_navigation(open_panel, p
     page = open_panel(change_form(product))
     page.fill("#id_name", "An unsaved name")
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.set_viewport_size({"width": 390, "height": 900})
     page.locator("[data-snapshot-field=name]").click()
     panel = page.locator(".snapshot-panel")
@@ -298,7 +301,7 @@ def test_resizing_the_preview_preserves_edits_and_field_navigation(open_panel, p
     )
     page.set_viewport_size({"width": 1440, "height": 900})
     page.locator("#id_name").fill("Still editing")
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("فرم تغییر کرده")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("دیدن تغییرات فرم")
     page.locator("[data-snapshot-close]").click()
     expect(page.locator("[data-snapshot-field=name]")).to_be_focused()
     expect(page.locator("#id_name")).to_have_value("Still editing")
@@ -332,14 +335,14 @@ def test_plan_field_preview_selects_its_own_plan_and_exact_destination(open_pane
 def test_field_link_refreshes_edited_values_before_highlighting(open_panel, product):
     page = open_panel(change_form(product))
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.fill("#id_short_description", "این متن تازه باید همین حالا دیده بشه.")
     page.locator("[data-snapshot-field=short_description]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator(".snapshot-highlight")).to_have_text(
         "این متن تازه باید همین حالا دیده بشه."
     )
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
 
 
 @pytest.mark.parametrize("field", ["short_description", "refund_note", "usage_notes", "renewable"])
@@ -350,7 +353,7 @@ def test_empty_field_preview_marks_its_real_position(open_panel, product, field)
     placeholder = frame.locator(".snapshot-placeholder.snapshot-highlight")
     expect(placeholder).to_be_visible()
     expect(placeholder).to_have_attribute("data-preview-field", field)
-    expect(placeholder).to_contain_text("اینجا")
+    expect(placeholder).to_contain_text("جای این بخش در صفحه‌ی محصول")
     region = (
         "#before-buying"
         if field in {"refund_note", "usage_notes"}
@@ -411,7 +414,7 @@ def test_existing_lazy_section_image_is_not_reported_as_empty(open_panel, produc
         ),
     )
     page.locator("[data-snapshot-open]").click()
-    expect(page.locator("[data-snapshot-status]")).to_contain_text("به‌روز است")
+    expect(page.locator("[data-snapshot-status]")).to_contain_text("هنوز چیزی ذخیره نشده")
     page.locator("[data-snapshot-field=sections-0-image]").click()
     frame = page.frame_locator(".snapshot-panel iframe")
     expect(frame.locator("img.pdp__img.snapshot-highlight")).to_be_visible()

@@ -1,12 +1,12 @@
 {% extends "email/base.html" %}{% load fa richtext %}
 {% block title %}ثبت سفارش {{ order_number|fa_digits }}{% endblock %}
-{% block preheader %}سفارش شما ثبت شد؛ هنگام ثبت پرداخت نشده بود.{% endblock %}
+{% block preheader %}وضعیت هنگام ثبت سفارش: در انتظار پرداخت{% endblock %}
 {% block content %}
 <div style="overflow-wrap:anywhere;word-break:break-word;">
 <h1 style="margin:0 0 16px;font-size:21px;line-height:1.6;color:#292524;">سفارش {{ order_number|fa_digits }} ثبت شد</h1>
-<p>این سفارش هنگام ثبت پرداخت نشده بود. این ایمیل تأیید پرداخت نیست.</p>
+<p>وضعیت هنگام ثبت: در انتظار پرداخت</p>
 <p>تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}</p>
-<p><a href="{{ order_url }}" style="color:#2459D3;">مشاهده‌ی وضعیت فعلی سفارش در حساب شما</a></p>
+<p><a href="{{ order_url }}" style="color:#2459D3;">مشاهده‌ی سفارش</a></p>
 {% for line in lines %}
 <section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
 <h2 style="font-size:19px;color:#292524;">{{ line.facts.name|bdi }}</h2>
@@ -31,9 +31,9 @@
 {% if discount_amount %}<p>تخفیف: {{ discount_amount|toman_plain }} تومان</p>{% endif %}
 <p><strong>مبلغ نهایی سفارش: {{ total_amount|toman_plain }} تومان</strong></p>
 </section>
-<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
-<h2 style="font-size:19px;color:#292524;">صفحه‌های ثبت‌شده با سفارش</h2>
+{% if policies %}<section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
+<h2 style="font-size:19px;color:#292524;">قوانین و راه‌های تماس هنگام خرید</h2>
 {% for page in policies %}<h3 style="font-size:17px;">{{ page.title|bdi }}</h3><div>{{ page.body|markdown:"45" }}</div>{% endfor %}
-</section>
+</section>{% endif %}
 </div>
 {% endblock %}

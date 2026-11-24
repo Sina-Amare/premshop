@@ -61,7 +61,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         )
         copy.click()
         expect(page.locator("[data-copy-status]")).to_have_text(
-            "کپی انجام نشد؛ شناسه را انتخاب و کپی کنید."
+            "شناسه را کپی کنید و همراه شماره‌ی سفارش بفرستید."
         )
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)
@@ -70,7 +70,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         assert replace.bounding_box()["height"] >= 44
         replace.click()
         expect(
-            page.get_by_text("شناسه‌ی قبلی از همان لحظه باطل می‌شود.", exact=False)
+            page.get_by_text("با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.", exact=False)
         ).to_be_visible()
         capture(page, "support-confirm", width, tmp_path)
         old = order.support_identifier.support_token
@@ -106,7 +106,11 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         settings.FIELD_ENCRYPTION_KEY = ""
         try:
             page.goto(live_server.url + detail)
-            expect(page.get_by_text("شناسه‌ی پشتیبانی در دسترس نیست.", exact=True)).to_be_visible()
+            expect(
+                page.get_by_text(
+                    "اگر شناسه را نمی‌بینید، شماره‌ی سفارش را برای پشتیبانی بفرستید.", exact=True
+                )
+            ).to_be_visible()
             expect(
                 page.locator("[data-copy-support], input[name=expected_support_token]")
             ).to_have_count(0)
@@ -137,9 +141,9 @@ def test_operator_matches_in_existing_panel_without_javascript(
     check = "بررسی شناسه" if language == "fa" else "Check identifier"
     back = "بازگشت به سفارش" if language == "fa" else "Back to order"
     mismatch = (
-        "شناسه با این سفارش مطابقت ندارد."
+        "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."
         if language == "fa"
-        else "The identifier does not match this order."
+        else "The identifier you entered is invalid for this order."
     )
     matched = (
         "شناسه با این سفارش مطابقت دارد."

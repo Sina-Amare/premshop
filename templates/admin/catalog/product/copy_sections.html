@@ -14,7 +14,7 @@ action and selection, as Django's own delete confirmation does.
             {% csrf_token %}
 
             <p class="font-semibold mb-2 text-font-important-light dark:text-font-important-dark">
-                {% translate "بخش‌ها به آخر این محصولات اضافه می‌شوند:" %}
+                {% translate "بخش‌های انتخابی به انتهای محتوای این محصولات اضافه می‌شوند:" %}
             </p>
 
             <ul class="leading-relaxed mb-4">
@@ -26,7 +26,7 @@ action and selection, as Django's own delete confirmation does.
             {% if form.fields.source.queryset.exists %}
                 {% include "unfold/helpers/field.html" with field=form.source %}
             {% else %}
-                <p class="mb-4">{% translate "هیچ محصول دیگری بخش محتوا ندارد." %}</p>
+                <p class="mb-4">{% translate "محصول دیگری برای کپی بخش‌ها نداریم." %}</p>
             {% endif %}
 
             {% for target in targets %}

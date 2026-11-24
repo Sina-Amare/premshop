@@ -483,7 +483,7 @@ def test_the_order_page_tells_the_customer_where_to_send_the_order_number(client
     assert f'<a href="mailto:{details["email"]}"' in body
 
 
-def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
+def test_a_bad_tracking_link_gives_telegram_support_as_plain_text(client):
     details = support.details()
 
     response = client.get("/track/not-a-token/")
@@ -491,20 +491,27 @@ def test_a_bad_tracking_link_names_the_contacts_as_plain_text(client):
 
     assert response.status_code == 404
     assert "شماره‌ی سفارش را دارید" in body
-    assert details["telegram"] in body and details["email"] in body
+    assert details["telegram"] in body and details["email"] not in body
     # A link off this page would carry the bad address as a Referer or a body.
     assert "t.me" not in body and "mailto:" not in body
 
 
 @pytest.mark.parametrize(
-    ("email", "telegram_id", "promised"),
-    [("", None, False), ("buyer@example.test", None, True), ("", 4242, True)],
+    ("email", "telegram_id", "bot_enabled", "promised"),
+    [
+        ("", None, False, False),
+        ("", None, True, False),
+        ("buyer@example.test", None, False, True),
+        ("", 4242, True, True),
+        ("", 4242, False, False),
+    ],
 )
 def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
-    client, plan, email, telegram_id, promised
+    client, plan, email, telegram_id, bot_enabled, promised, settings
 ):
     from apps.payments.services import record_manual_payment
 
+    settings.TELEGRAM_BOT_TOKEN = "test" if bot_enabled else ""  # nosec B105
     plan.input_type, plan.max_quantity = "none", 1
     plan.save()
     customer = User.objects.create_user(email, phone="09121112244", telegram_id=telegram_id)
@@ -519,5 +526,6 @@ def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
 
     page = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
-    assert ("پس از تحویل به شما خبر می‌دهیم." in page) is promised
-    assert ("ایمیلتان را وارد کنید" in page) is not promised
+    assert ("پس از تحویل خبر می‌دهیم." in page) is promised
+    assert ("ایمیلتان را ثبت کنید" in page) is not promised
+    assert ("یا تلگرام را وصل کنید" in page) is (bot_enabled and not promised)

@@ -330,8 +330,8 @@ for index, (name, slug, category, colour, aliases) in enumerate(
             delivery=T.GIFT_CARD if gift else T.READY_ACCOUNT,
             warranty=W.NONE,
             hours=24,
-            short="محصول نمونه برای بررسی ظاهر فروشگاه؛ قیمت و شرایط فروش واقعی نیست.",
-            usage_notes="اطلاعات این محصول آزمایشی‌ست؛ قبل از فروش، شرایط سرویس باید بررسی بشه.",
+            short="محصول آزمایشی فروشگاه با قیمت و شرایط نمونه.",
+            usage_notes="این محصول آزمایشی است. پیش از عرضه، شرایط سرویس را بررسی کنید.",
             specs=[("اطلاعات محصول", "نمونه‌ی آزمایشی")],
             plans=[
                 (

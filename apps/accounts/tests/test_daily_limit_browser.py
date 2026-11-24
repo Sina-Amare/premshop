@@ -27,11 +27,13 @@ def test_daily_refusal_is_readable_on_the_code_page(browser, live_server, width,
         page.get_by_role("button", name="دریافت کد ورود").click()
         expect(page).to_have_url(live_server.url + path)
         text = (
-            "درخواست کد از این شبکه به سقف روزانه رسیده است."
+            "سقف پیامک ورود برای این شبکه پر شده است."
             if network
-            else "درخواست کد برای این شماره به سقف روزانه رسیده است."
+            else "سقف روزانه‌ی پیامک ورود برای این شماره پر شده است."
         )
-        expect(page.get_by_text(text, exact=False)).to_be_visible()
+        expect(
+            page.get_by_text(f"{text} تا ۲۴ ساعت صبر کنید و دوباره امتحان کنید.")
+        ).to_be_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"daily-{network}-{width}.png"), full_page=True)
     finally:

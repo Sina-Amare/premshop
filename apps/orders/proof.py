@@ -19,10 +19,12 @@ from apps.core.formatting import to_persian_digits
 from apps.orders.models import Order, OrderEmailRecovery
 
 TTL = 600
-UNSENT = "کد فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید."
-LIMITED = "زیاد کد خواسته‌اید. کمی بعد دوباره امتحان کنید."
-LAPSED = "تأیید ایمیل فقط تا ۱۰ دقیقه معتبر است. برای دیدن اطلاعات تحویل، دوباره کد بگیرید."
-RECOVERY_UNAVAILABLE = "بازیابی فقط با تلگرامی ممکن است که پیش از خرید به حساب وصل بوده است."
+UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
+LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
+LAPSED = "تأیید ایمیل دیگر اعتبار ندارد. برای دیدن اطلاعات تحویل، کد جدید بگیرید."
+RECOVERY_UNAVAILABLE = (
+    "برای بازیابی باید از همان حساب تلگرامی استفاده کنید که پیش از خرید به حساب کاربری وصل بود."
+)
 
 
 def locked_order(order_id: int, actor: User, *, operator: bool = False) -> tuple[Order, User]:
@@ -49,7 +51,7 @@ def email_for(order: Order) -> tuple[str, int]:
 def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
     if not session_key or not email:
-        raise ValidationError("برای دیدن اطلاعات تحویل، به پشتیبانی پیام بدهید.")
+        raise ValidationError("برای دیدن اطلاعات تحویل، در تلگرام به پشتیبانی پیام بدهید.")
     binding = salted_hmac(
         "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"
     ).hexdigest()
@@ -137,8 +139,8 @@ def start_recovery(*, order_id: int, actor: User, email: str) -> None:
     text = format_html(
         "کد تغییر ایمیل سفارش {}: <code>{}</code>\n"
         "ایمیل جدید: <code>{}</code>\n"
-        "اگر این تغییر را از پشتیبانی خواسته‌اید، کد را برایش بخوانید.\n"
-        "کد تا ۱۰ دقیقه معتبر است؛ کد ورود به سایت را برای پشتیبانی نفرستید.",
+        "اگر خودتان درخواست تغییر ایمیل داده‌اید، این کد را برای پشتیبانی بخوانید.\n"
+        "کد تغییر ایمیل تا ۱۰ دقیقه اعتبار دارد. کد ورود به سایت را برای پشتیبانی نفرستید.",
         to_persian_digits(order.order_number),
         code,
         email,
@@ -146,7 +148,9 @@ def start_recovery(*, order_id: int, actor: User, email: str) -> None:
     try:
         telegram.send_message(chat_id, str(text))
     except Exception:  # noqa: BLE001 — never echo transport payloads in command errors
-        raise ValidationError(UNSENT) from None
+        raise ValidationError(
+            "کد تغییر ایمیل در تلگرام فرستاده نشد. چند دقیقه دیگر دوباره امتحان کنید."
+        ) from None
     with transaction.atomic():
         order, owner = locked_order(order_id, actor, operator=True)
         if subject != _recovery_subject(order, owner, actor, email):

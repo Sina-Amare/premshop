@@ -75,7 +75,7 @@ def test_operator_input_cycle_and_customer_handoff(
         )
         page.get_by_role("button", name=receipt, exact=True).click()
         error = (
-            "وضعیت این محصول تغییر کرده است؛ صفحه را دوباره باز کنید."
+            "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید تا وضعیت فعلی را ببینید."
             if language == "fa"
             else "This item has changed; reopen the page."
         )

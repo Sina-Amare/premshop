@@ -1,8 +1,9 @@
 {% load fa order_tones %}PremShop
-مبلغ {{ amount|toman_plain }} تومان را بابت {{ product_name }}، {{ plan_title }}، به شما برگرداندیم.
+‏{{ amount|toman_plain }} تومان را به حسابتان برگرداندیم.
+محصول: {{ product_name }}، {{ plan_title }}
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
 {% endif %}مشاهده‌ی سفارش:
 {{ order_url }}
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

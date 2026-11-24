@@ -43,16 +43,16 @@ COMMANDS_KEY = "telegram:commands"
 CONFIRM = (
     f"<h2>{emoji.LINK} اتصال تلگرام به PremShop</h2>"
     "{account}"
-    "<p>اتصال این تلگرام به حساب کاربری بالا را تأیید کنید.</p>"
+    "<p>اگر این حساب کاربری برای خودتان است، اتصال را تأیید کنید.</p>"
 )
 ACCOUNT_LINE = f"<p><b>{emoji.ACCOUNT} حساب کاربری:</b> <code>{{label}}</code></p>"
 CONFIRM_BUTTON = f"{emoji.CONFIRM} تأیید اتصال"
 LINKED = (
     f"<h2>{emoji.CONFIRM} تلگرام شما به حساب PremShop وصل شد</h2>"
-    "<p>خبر تأیید پرداخت، تحویل و گزارش هر سفارش از این پس اینجا هم می‌رسد.</p>"
+    "<p>از این پس خبرهای سفارش، از تأیید پرداخت تا تحویل، به این حساب تلگرام هم می‌رسد.</p>"
 )
 ALREADY = f"<h2>{emoji.CONFIRM} این تلگرام به حساب PremShop شما وصل است</h2>"
-SLOW = "کمی صبر کنید و دوباره بزنید."
+SLOW = "چند لحظه صبر کنید و دوباره امتحان کنید."
 COMMAND = "پنل سفارش‌ها"
 
 Buttons = list[list[dict[str, Any]]]
@@ -73,17 +73,22 @@ def _screen(user: User, name: str) -> Screen:
     return _panel(user, name)
 
 
-LIMITED = f"<h2>{emoji.LIMITED} سقف اتصال این تلگرام برای امروز پر شده است</h2>"
-EXPIRED = f"<h2>{emoji.EXPIRED} این پیوند دیگر معتبر نیست</h2>"
+LIMITED = (
+    f"<h2>{emoji.LIMITED} محدودیت اتصال تلگرام</h2>"
+    "<p>با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.</p>"
+)
+EXPIRED = (
+    f"<h2>{emoji.EXPIRED} اعتبار لینک تمام شد</h2>"
+    "<p>از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.</p>"
+)
 # The steps are paragraphs: a rich message numbers a list in Latin digits.
 POINTER = (
-    f"<h2>{emoji.BOT} ربات اطلاع‌رسانی سفارش‌های PremShop</h2>"
-    "<p>با اتصال حساب کاربری، خبر تأیید پرداخت، تحویل و گزارش هر سفارش اینجا هم می‌رسد.</p>"
-    "<h4>اتصال در سه قدم</h4>"
+    f"<h2>{emoji.BOT} ربات سفارش‌های PremShop</h2>"
+    "<p>با اتصال تلگرام به حساب کاربری، خبرهای سفارش‌ها را همین‌جا می‌بینید.</p>"
     "<p>۱. در سایت وارد حساب کاربری شوید.</p>"
     "<p>۲. در صفحه‌ی حساب کاربری، «اتصال تلگرام» و بعد «باز کردن تلگرام» را بزنید.</p>"
-    "<p>۳. اینجا «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
-    "<footer>پیام‌های این گفت‌وگو خوانده نمی‌شوند؛ برای پرسش «پشتیبانی» را بزنید.</footer>"
+    "<p>۳. در ربات «شروع» و بعد «تأیید اتصال» را بزنید.</p>"
+    '<footer>پیام‌های این گفت‌وگو را نمی‌خوانیم. به <a href="{support_url}">پشتیبانی</a> پیام بدهید.</footer>'
 )
 
 
@@ -93,17 +98,15 @@ def _link_settings(text: str) -> dict[str, Any]:
 
 def _pointer() -> Screen:
     """The reply to anyone the bot does not know: what it is for and how to link."""
-    return POINTER, [
+    support_url = escape(support.details()["telegram_url"])
+    return POINTER.format(support_url=support_url), [
         [{**_link_settings(f"{emoji.LINK} اتصال حساب"), "style": "primary"}],
-        [
-            {"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")},
-            {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support.details()["telegram_url"]},
-        ],
+        [{"text": f"{emoji.BUY} خرید از سایت", "url": settings.SITE_URL + reverse("home")}],
     ]
 
 
 def _expired() -> Screen:
-    return EXPIRED, [[{**_link_settings(f"{emoji.LINK} دریافت پیوند جدید"), "style": "primary"}]]
+    return EXPIRED, [[{**_link_settings(f"{emoji.LINK} دریافت لینک جدید"), "style": "primary"}]]
 
 
 def _digest(token: str) -> str:

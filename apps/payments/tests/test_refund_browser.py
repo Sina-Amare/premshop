@@ -51,7 +51,9 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.get_by_label("چهار رقم آخر مقصد", exact=True).fill("6037")
         page.get_by_label("شماره‌ی پیگیری بانک", exact=True).fill(reference)
         submit("ثبت واریز بازپرداخت")
-        expect(page.locator(".errorlist").first).to_contain_text("مبلغ واریز باید دقیقاً برابر")
+        expect(page.locator(".errorlist").first).to_contain_text(
+            "مبلغ واریز باید برابر جمع بازپرداخت"
+        )
         expect(page.locator("#id_bank_ref")).to_have_value(reference)
         shot("refund-mismatch-long-reference", form_url, "#manual-payment-title")
         page.locator("#id_amount").fill("400000")
@@ -65,7 +67,7 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.get_by_label("روز (شمسی)", exact=True).fill("1400/01/01")
         submit("نمایش روز")
         expect(
-            page.get_by_text("بازپرداختی در این روز ثبت یا واریز نشده است.", exact=True)
+            page.get_by_text("در این روز نه بدهی جدیدی ثبت شد، نه بازپرداختی واریز شد.", exact=True)
         ).to_be_visible()
         shot("reconciliation-empty", report, "#reconciliation-title")
         page.get_by_label("روز (شمسی)", exact=True).fill("1405/13/32")
@@ -76,6 +78,7 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.goto(live_server.url + form_url)
         expect(page.get_by_text("بازپرداختی در انتظار واریز نیست.", exact=True)).to_be_visible()
         expect(page.get_by_role("button", name="ثبت واریز بازپرداخت", exact=True)).to_have_count(0)
+        expect(page.get_by_text("این فرم فقط واریزی را", exact=False)).to_have_count(0)
         shot("refund-none-owed", form_url, "#manual-payment-title")
     finally:
         context.close()

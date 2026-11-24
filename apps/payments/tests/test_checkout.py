@@ -78,7 +78,7 @@ def test_quotes_from_another_contract_version_cannot_create_orders(buyer, plan, 
     old = services.CheckoutQuote(
         quote.purchase, signing.dumps(payload, salt=services.QUOTE_SALT, compress=True)
     )
-    with pytest.raises(ValidationError, match="صفحه را دوباره باز کنید"):
+    with pytest.raises(ValidationError, match="ثبت سفارش را دوباره باز کنید"):
         submit(buyer, old)
     assert cart.items.exists() and not Order.objects.exists()
 

@@ -2,7 +2,7 @@
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
-  <p>{% translate "درخواست را در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را اینجا وارد نکنید." %}</p>
+  <p>{% translate "درباره‌ی درخواست در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را در این فرم ننویسید." %}</p>
   {% for control in input_controls %}
     <article class="saved-purchase">
       <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>، <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
@@ -41,7 +41,7 @@
 {% endif %}
 <section class="order-history" aria-labelledby="order-support-title">
   <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
-  <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور مالکیت سفارش را ثابت نمی‌کند." %}</p>
+  <p>{% translate "برای تطبیق درخواست، شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور به تنهایی کافی نیست." %}</p>
   <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
   <input id="support-token" name="support_token" form="order-support-match" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
   </div><button type="submit" form="order-support-match" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>

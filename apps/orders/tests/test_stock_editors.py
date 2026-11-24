@@ -42,7 +42,7 @@ def test_stale_stock_form_preserves_checkout_or_requests_operator_review(
     plan.refresh_from_db()
     assert plan.stock_quantity == 2
     if intentional:
-        assert "موجودی تغییر کرده است" in response.content.decode()
+        assert "موجودی از زمان باز کردن فرم تغییر کرده است" in response.content.decode()
 
 
 @pytest.mark.parametrize("token", ["", "forged"])
@@ -54,6 +54,6 @@ def test_stock_editor_refuses_missing_or_forged_original_quantities(client, plan
     data["stock_quantity"] = ["9"]
     response = client.post(url, data)
     assert response.status_code == 200
-    assert "صفحه‌ی ویرایش معتبر نیست" in response.content.decode()
+    assert "اعتبار این فرم تمام شده است" in response.content.decode()
     plan.refresh_from_db()
     assert plan.stock_quantity is None

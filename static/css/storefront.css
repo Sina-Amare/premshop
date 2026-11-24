@@ -1523,7 +1523,7 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 .cart-remove,.cart-summary .cart-back,.checkout-box .cart-back,.buybox__note a,.sort__link{min-height:44px}
 @media(max-width:760px){.cart-hero .cart-back{width:44px;min-height:44px}.sort__link{min-height:44px}}
 /* Labels on tinted tiles and panels keep AA contrast. */
-.acct-panel--me .fact__k,.pdp__facts .fact__k,#resend-hint{color:var(--v-text)}
+.acct-panel--me .fact__k,.pdp__facts .fact__k{color:var(--v-text)}
 #resend-form.otp__resend{background:#fff}
 /* The account pill adds no height to the header row. */
 .v-account{padding-block:0}

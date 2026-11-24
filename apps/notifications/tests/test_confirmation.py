@@ -89,7 +89,7 @@ def test_discovery_freezes_address_and_full_text_without_sensitive_fields(
             "Saved terms",
             "https://shop.example.test/refunds/",
             "https://shop.example.test" + reverse("order-detail", args=[order.order_number]),
-            "پرداخت نشده",
+            "در انتظار پرداخت",
         ):
             assert value in part
         for value in (

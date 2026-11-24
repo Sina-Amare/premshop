@@ -1,9 +1,11 @@
 {% load fa order_tones %}PremShop
-برای تحویل {{ product_name }}، {{ plan_title }}، به اطلاعات شما نیاز داریم.
+اطلاعات فعال‌سازی لازم است
+اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید.
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}راهنمای ارسال اطلاعات را در صفحه‌ی سفارش ببینید:
+{% endif %}محصول: {{ product_name }}، {{ plan_title }}
+مشاهده‌ی سفارش:
 {{ order_url }}
-اطلاعات فعال‌سازی را در پاسخ به این ایمیل نفرستید.
+اطلاعات را در پاسخ به این ایمیل نفرستید.
 
-پشتیبانی: {{ support.email }}
+پشتیبانی در تلگرام: {{ support.telegram }}

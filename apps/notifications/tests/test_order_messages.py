@@ -32,7 +32,7 @@ from apps.orders.tests.test_delivery import NOTE, VALUE, deliver, queued
 from apps.orders.tests.test_input_clock import act, event_id
 from apps.orders.tests.test_input_clock import operator as operator
 from apps.orders.tests.test_lifecycle_concurrency import in_connection
-from apps.orders.tests.test_paid_cancellation import cancel, paid_order
+from apps.orders.tests.test_paid_cancellation import cancel, paid_order, tehran
 from apps.orders.tests.test_replacement import claim
 from apps.payments.models import Refund
 from apps.payments.services import execute_refunds, record_manual_payment
@@ -117,6 +117,10 @@ def test_delivery_notification_contains_no_credential_material(buyer, plan, oper
     for part in (row.subject, row.text_body, row.html_body):
         assert VALUE not in part and NOTE not in part and "SECRET-CUSTOMER-INPUT" not in part
     assert url in row.text_body and url in row.html_body
+    step = "با آن ایمیل همین سفارش را تأیید کنید."
+    assert step in row.text_body and step in row.html_body
+    fallback = "اگر سفارش ایمیل ندارد یا به آن دسترسی ندارید"
+    assert fallback in row.text_body and fallback in row.html_body
     assert row.recipient == order.placement_email
 
 
@@ -169,7 +173,8 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
     order, item = queued(buyer, plan, operator)
     cancel(item, operator, note="SECRET-CANCELLATION")
     cancelled = rows("item_cancelled").get()
-    assert "در انتظار واریز" in cancelled.text_body
+    assert "در انتظار بازگشت وجه" in cancelled.text_body
+    assert "واریز شد" not in cancelled.subject
     assert "SECRET-CANCELLATION" not in cancelled.text_body + cancelled.html_body
     assert not rows("item_refunded").exists()
     refund = Refund.objects.get(order_item=item)
@@ -184,7 +189,8 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
         executed_at=timezone.now(),
     )
     refunded = rows("item_refunded").get()
-    assert "به شما برگرداندیم" in refunded.text_body
+    assert "واریز شد" in refunded.subject
+    assert "تومان را به حسابتان برگرداندیم." in refunded.text_body
     for row in (cancelled, refunded):
         assert "SECRET-TRANSFER-REF" not in row.text_body + row.html_body
         assert "2468" not in row.text_body + row.html_body
@@ -211,10 +217,12 @@ def test_an_unpaid_cancellation_is_one_message_for_the_whole_order(
     email = rows("item_cancelled").get(channel="email")
     bot = rows("item_cancelled").get(channel="telegram")
     assert email.subject == f"سفارش {to_persian_digits(order.order_number)} لغو شد"
-    if path == "expiry":
-        said, state = "پرداختی برای این سفارش ثبت نشد.", "پایان مهلت پرداخت"
-    else:
-        said, state = "پرداختی برای این سفارش ثبت نشده بود.", "لغوشده"
+    said = {
+        "expiry": "مهلت ۲۴ ساعته‌ی پرداخت تمام شد.",
+        "operator": "پشتیبانی سفارش را پیش از ثبت پرداخت لغو کرد.",
+        "customer": "سفارش به درخواست شما پیش از پرداخت لغو شد.",
+    }[path]
+    state = "پایان مهلت پرداخت" if path == "expiry" else "لغوشده"
     for body in (email.text_body, email.html_body, bot.text_body):
         assert "در انتظار واریز" not in body and "بازگشت وجه" not in body
         assert said in body and state in body and "سرویس نمونه" in body
@@ -422,6 +430,20 @@ def test_missing_consumer_is_logged_without_breaking_the_action(
     assert order.items.get().status == "QUEUED"
     assert "RuntimeError" in caplog.text
     assert not Notification.objects.exists()
+
+
+def test_a_missing_details_notice_marks_the_reason_under_the_numbered_item_title(
+    buyer, plan, operator, telegram
+):
+    linked(buyer)
+    with tehran(2026, 11, 3):
+        order, item = queued(buyer, plan, operator, telegram=True)
+    with tehran(2026, 11, 24):
+        cancel(item, operator, "input_timeout")
+
+    body = rows("item_cancelled").get(channel="telegram").text_body
+    assert f"لغو خرید در سفارش {to_persian_digits(order.order_number)}</h2>" in body
+    assert "اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم." in body
 
 
 def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(

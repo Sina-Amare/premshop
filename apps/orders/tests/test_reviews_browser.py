@@ -85,7 +85,7 @@ def test_review_states_and_keyboard(browser, live_server, buyer, plan, operator,
         review.save(update_fields=["status"])
         page.goto(order_url)
         expect(page).to_have_url(order_url)
-        expect(section.get_by_text("نظرتان در صفحه‌ی محصول نمایش داده نمی‌شود.")).to_be_visible()
+        expect(section.get_by_text("این نظر در صفحه‌ی محصول منتشر نمی‌شود.")).to_be_visible()
         expect(section.get_by_text("پنهان‌شده")).to_be_visible()
         expect(section.get_by_text("MixedContent", exact=False)).to_have_count(0)
         capture(page, "order-hidden", width, tmp_path)

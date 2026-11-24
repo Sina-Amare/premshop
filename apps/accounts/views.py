@@ -30,6 +30,7 @@ PENDING_PHONE_KEY = "accounts.pending_phone"
 PENDING_EXPIRES_KEY = "accounts.pending_expires_at"
 PENDING_NEXT_KEY = "accounts.pending_next"
 PENDING_CHANNEL_KEY = "accounts.pending_channel"
+SMS_RESENT_KEY = "accounts.sms_resent"
 # The link token the account page is waiting on, kept server-side rather than in a URL.
 TELEGRAM_LINK_KEY = "accounts.telegram_link"
 
@@ -37,11 +38,11 @@ TELEGRAM_LINK_KEY = "accounts.telegram_link"
 # code per number every two minutes, so the button waits as long.
 RESEND_COOLDOWN_SECONDS = 120
 
-WRONG_CODE = "کد ورود درست نیست یا منقضی شده است."
-CODE_RESENT = "کد جدید را فرستادیم."
+WRONG_CODE = "کد ورود اشتباه است یا اعتبارش تمام شده است."
+CODE_RESENT = "کد جدید را برایتان پیامک کردیم."
 # Shown on the code page by its script and on the number page without one, so
 # it names the page that ran out.
-PAGE_EXPIRED = "صفحه‌ی کد ورود دیگر کار نمی‌کند. دوباره شماره‌ی موبایلتان را وارد کنید."
+PAGE_EXPIRED = "درخواست کد ورود را پیدا نکردیم. شماره‌ی موبایلتان را دوباره وارد کنید."
 
 
 def _safe_next(request: HttpRequest) -> str:
@@ -72,7 +73,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             return JsonResponse({"ok": True, "next": _safe_next(request)})
         return redirect(_safe_next(request))
 
-    # Back from «شماره اشتباه است؟» on the code page: the number the code went
+    # Back from «تغییر شماره» on the code page: the number the code went
     # to is already in the field, so a typo is corrected rather than retyped.
     form = PhoneForm(
         request.POST or None, initial={"phone": request.session.get(PENDING_PHONE_KEY)}
@@ -96,6 +97,7 @@ def login_code_request(request: HttpRequest) -> HttpResponse:
             request.session[PENDING_PHONE_KEY] = phone
             request.session[PENDING_EXPIRES_KEY] = issued.expires_at
             request.session[PENDING_CHANNEL_KEY] = issued.channel
+            request.session.pop(SMS_RESENT_KEY, None)
             # The code flow spans three requests, so the destination rides the
             # session with the number rather than the URL. It is validated
             # here, on the way in, and never re-read from the request after.
@@ -144,6 +146,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
                 request.session.pop(PENDING_PHONE_KEY, None)
                 request.session.pop(PENDING_EXPIRES_KEY, None)
                 request.session.pop(PENDING_CHANNEL_KEY, None)
+                request.session.pop(SMS_RESENT_KEY, None)
                 destination = request.session.pop(PENDING_NEXT_KEY, None) or reverse("account")
                 if _wants_json(request):
                     return JsonResponse({"ok": True, "next": destination})
@@ -159,6 +162,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
         )
         return JsonResponse({"ok": False, "error": str(error)}, status=status)
 
+    sms_resent = request.session.get(SMS_RESENT_KEY, False)
     return render(
         request,
         "accounts/login_code_verify.html",
@@ -167,6 +171,7 @@ def login_code_verify(request: HttpRequest) -> HttpResponse:
             "phone": mask_phone(phone),
             "expires_in": _seconds_left(request.session.get(PENDING_EXPIRES_KEY, 0)),
             "resend_cooldown": RESEND_COOLDOWN_SECONDS,
+            "sms_delivery_text": CODE_RESENT if sms_resent else "",
             "next": request.session.get(PENDING_NEXT_KEY) or reverse("account"),
             "channel": request.session.get(PENDING_CHANNEL_KEY, "sms"),
             "telegram_bot_url": f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}",
@@ -213,9 +218,10 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         {"channel": request.POST.get("channel", request.session.get(PENDING_CHANNEL_KEY, "sms"))}
     )
     if not channel_form.is_valid():
+        error = "روش دریافت کد درست نیست. صفحه را دوباره باز کنید و کد بگیرید."
         if _wants_json(request):
-            return JsonResponse({"ok": False, "error": PAGE_EXPIRED}, status=400)
-        messages.error(request, PAGE_EXPIRED)
+            return JsonResponse({"ok": False, "error": error}, status=400)
+        messages.error(request, error)
         return redirect("login-code-verify")
     try:
         issued = services.request_login_code(
@@ -233,9 +239,8 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
         return redirect("login-code-verify")
     request.session[PENDING_EXPIRES_KEY] = issued.expires_at
     request.session[PENDING_CHANNEL_KEY] = issued.channel
+    request.session[SMS_RESENT_KEY] = issued.channel == "sms"
     if not _wants_json(request):
-        if issued.channel == "sms":
-            messages.success(request, CODE_RESENT)
         return redirect("login-code-verify")
     return JsonResponse(
         {
@@ -243,6 +248,7 @@ def login_code_resend(request: HttpRequest) -> HttpResponse:
             "expires_in": _seconds_left(issued.expires_at),
             "cooldown": RESEND_COOLDOWN_SECONDS,
             "channel": issued.channel,
+            "sms_notice": CODE_RESENT if issued.channel == "sms" else "",
         }
     )
 
@@ -324,7 +330,7 @@ def account_telegram(request: HttpRequest) -> HttpResponse:
     # Unlink is never limited: it is what the link alert tells a customer to do, and only a
     # linked account can send its email, each link already bounded below and in the bot.
     if action == "link" and not ratelimit.hit(ratelimit.TELEGRAM_CHANGES_PER_ACCOUNT, str(user.pk)):
-        messages.error(request, "سقف تغییر اتصال تلگرام برای امروز پر شده است.")
+        messages.error(request, "در ۲۴ ساعت فقط ۵ بار می‌توانید لینک اتصال تلگرام بگیرید.")
     elif action == "link" and settings.TELEGRAM_BOT_TOKEN:
         request.session[TELEGRAM_LINK_KEY] = telegram.start_link(user)
     elif action == "unlink":

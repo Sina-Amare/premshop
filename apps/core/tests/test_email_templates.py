@@ -36,6 +36,16 @@ def test_payment_preview_describes_the_order_without_a_single_item():
         assert "محصول:" not in part
 
 
+@pytest.mark.parametrize("has_policies", [True, False])
+def test_receipt_shows_the_policy_heading_with_saved_pages(has_policies):
+    context = dict(EMAIL_PREVIEWS["purchase_confirmation"])
+    if not has_policies:
+        context["policies"] = []
+    _, text, html = render_email("purchase_confirmation", context)
+    for part in (text, html):
+        assert ("قوانین و راه‌های تماس هنگام خرید" in part) is has_policies
+
+
 @pytest.mark.parametrize("name", sorted(EMAIL_PREVIEWS))
 def test_every_template_renders_all_three_parts(name):
     """A typo in any template is a broken send; CI catches it here instead."""

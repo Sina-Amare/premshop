@@ -18,10 +18,10 @@ msgid "Filter"
 msgstr "جستجو"
 
 msgid "Type into this box to filter down the list of available %s."
-msgstr "برای پیدا کردن در فهرست %s موجود، اینجا بنویسید."
+msgstr "جستجو در فهرست %s موجود"
 
 msgid "Type into this box to filter down the list of selected %s."
-msgstr "برای پیدا کردن در فهرست %s انتخاب‌شده، اینجا بنویسید."
+msgstr "جستجو در فهرست %s انتخاب‌شده"
 
 msgid "(click to clear)"
 msgstr "(برای پاک کردن کلیک کنید)"
@@ -48,3 +48,9 @@ msgid "%s selected option not visible"
 msgid_plural "%s selected options not visible"
 msgstr[0] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"
 msgstr[1] "%s گزینه‌ی انتخاب‌شده در فهرست دیده نمی‌شود"
+
+msgid "Available %s"
+msgstr "%s قابل انتخاب"
+
+msgid "Chosen %s"
+msgstr "%s انتخاب‌شده"

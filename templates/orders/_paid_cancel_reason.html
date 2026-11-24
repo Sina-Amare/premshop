@@ -1,0 +1,1 @@
+{% for group in card.reasons %}<p>خرید <bdi>{{ group.products }}</bdi> را لغو کردیم{% if group.reason == 'supply_failure' %} چون نتوانستیم محصول را تهیه کنیم{% elif group.reason == 'input_timeout' %} چون تا ۲۱ روز پس از درخواست، اطلاعات فعال‌سازی را دریافت نکردیم{% elif group.reason == 'warranty_refund' %} چون نتوانستیم محصول را تعویض کنیم{% endif %}.</p>{% endfor %}

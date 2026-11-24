@@ -63,7 +63,9 @@ class PaymentOrderAdmin(OrderAdmin):
         ) and reference_matches(reference, order_id, orders=self.viewable_orders(request)):
             self.message_user(
                 request,
-                _("این شماره‌ی پیگیری در سفارش دیگری هم ثبت شده است؛ آن را با بانک تطبیق دهید."),
+                _(
+                    "این شماره‌ی پیگیری برای سفارش دیگری هم ثبت شده است. تراکنش را در حساب بانکی بررسی کنید."
+                ),
                 messages.WARNING,
             )
 

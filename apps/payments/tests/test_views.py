@@ -221,7 +221,7 @@ def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buye
         },
     )
     assert response.status_code == 400
-    assert "ایمیل اکانت را درست وارد کنید" in response.content.decode()
+    assert "ایمیل اکانت را کامل وارد کنید" in response.content.decode()
     assert "invalid-private-input" not in str(response.context["error"])
     assert cart.items.exists() and not Order.objects.exists()
 
@@ -357,7 +357,7 @@ def test_unpaid_order_message_explains_the_block_without_a_false_action(client, 
     order = place_order(user=buyer, lines=[OrderLine(plan, 1)])
     client.force_login(buyer)
     response = client.get(reverse("checkout"))
-    explanation = "برای ثبت سفارش جدید، اول سفارش فعلی را پرداخت یا لغو کنید."
+    explanation = "اول سفارش فعلی را پرداخت یا لغو کنید."
     assert explanation in response.content.decode()
     assert reverse("order-detail", args=[order.order_number]) in response.content.decode()
     with pytest.raises(UnpaidOrderExists) as caught:

@@ -41,10 +41,18 @@ def test_prices_owner_and_cart_id_from_browser_are_ignored(client, plan, buyer):
 
 
 @pytest.mark.parametrize(
-    "data", [{}, {"plan": "invalid"}, {"plan": 1, "quantity": "1.5"}, {"plan": 1, "quantity": -1}]
+    ("data", "message"),
+    [
+        ({}, "صفحه را دوباره باز کنید."),
+        ({"plan": "invalid"}, "صفحه را دوباره باز کنید."),
+        ({"plan": 1, "quantity": "1.5"}, "تعداد باید عدد صحیح باشد."),
+        ({"plan": 1, "quantity": -1}, "تعداد نمی‌تواند کمتر از صفر باشد."),
+    ],
 )
-def test_bad_input_never_changes_cart(client, data):
-    assert client.post("/cart/add/", data).status_code == 400
+def test_bad_input_never_changes_cart(client, data, message):
+    response = client.post("/cart/add/", data)
+    assert response.status_code == 400
+    assert message in response.content.decode()
     assert not Cart.objects.exists()
 
 

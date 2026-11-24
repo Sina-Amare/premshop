@@ -162,9 +162,35 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
+Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation.
+
 ### Written in Persian
 
 The owner's strict rule, 2026-11-14: a line is thought and written in Persian, starting from its situation (who reads it, what just happened, what they do next) and said the way a Persian speaker would say it to that reader. It is never an English sentence carried over word by word, however correct: «درخواست کد ثبت شد» is "request submitted", «بررسی کنید» is "check", «در اختیار کسی نگذارید» is "do not share", and each is rewritten from the situation, not polished.
+
+
+### Decide whether the text belongs
+
+Start with the page or message a reader actually gets. Read the heading, status, field label, buttons and surrounding text together. For a notification, read the subject, body and action in that order. Ask what the reader still needs to know or do. Keep a good existing line. Remove a line that repeats an answer already visible beside it. Use a label or a short phrase for a field, value or relationship. Write a sentence when the reader needs an explanation, a condition or a next step.
+
+- In the delivery-delay email, the heading says the time changed and the next line gives the new deadline. A sentence saying delivery was deferred makes the buyer wait another line for the date.
+- On a paid order awaiting details, a visible form can make «اطلاعات فعال‌سازی را در فرم زیر وارد کنید.» unnecessary. A buyer with no form still needs the Telegram instructions. Check mixed orders too, because the route can differ by product.
+- A refund form needs to say the bank transfer happens first and the panel only records it. The button «ثبت واریز بازپرداخت» is too short to carry that distinction and the fact that records cannot be corrected there after saving.
+
+### Read it the way a buyer or operator would
+
+Use familiar verbs and put the fact or action where the reader will find it on the first pass. Official-looking grammar can hide the subject or make something simple sound like a system operation. These examples from the shop show the decision in its setting.
+
+| Context | Earlier copy | Better copy | Why |
+|---|---|---|---|
+| Empty category | «هنوز محصولی در این دسته برای خرید قرار نگرفته است.» | «فعلاً محصولی در این دسته نداریم.» | The category already has a name. Say what the buyer came to learn. «فعلاً» leaves room for the stock to change. |
+| Ending a holiday after someone else ended it | «تعطیلی فعالی برای پایان دادن وجود ندارد.» | «فروشگاه در حالت تعطیلی نیست.» | Name the state on the screen. There is no need to describe a missing record. |
+| Checking the number on the code screen | «اگر کد نرسیده است، ببینید شماره‌ی بالای صفحه درست نوشته شده باشد.» | «کد نرسید؟ شماره موبایلتان را بررسی کنید.» | Start with the problem and name the thing to check. Put it next to the number and its change link. |
+| Sorting help in the panel | «موارد با عدد کوچک‌تر بالاتر نمایش داده می‌شوند.» | «عدد کمتر، اولویت بیشتر» | The field already says «ترتیب نمایش». The operator only needs the direction. |
+| Reason for cancelling a purchase | «علت: عدم دریافت اطلاعات موردنیاز برای فعال‌سازی در مهلت تعیین‌شده.» | «اطلاعات فعال‌سازی را در مهلت تعیین‌شده دریافت نکردیم.» | A direct verb makes the cause clear. In the standalone notice, name the ۲۱ days and what starts the clock. Name the affected product if the rest of the order can still go ahead. |
+| SMS resend on the website | «کد جدید با پیامک فرستاده شد.» | «کد جدید را برایتان پیامک کردیم.» | Use the verb a buyer expects and say what the shop has actually done. A message about an asynchronous Telegram request must also fit what the shop knows at that point. |
+
+The operator usually needs a short label or a consequence. A product page should make the choice easier with a concrete benefit and the terms that affect buying. An error should name the problem and a way forward. In security and money messages, check the actual recipient, amount, limit, deadline and trigger against what the shop does. Read the rendered result at phone and desktop widths. Check plain-text email alongside HTML, and read bot and SMS copy as standalone messages. Spelling and formatting checks help after the wording works in context.
 
 ### Lines the owner rewrote
 
@@ -180,6 +206,15 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «۴ از ۵، بر اساس ۱ نظر» | «۴ از ۵ · ۱ نظر» | The rating and count are enough. |
 | «خریدار تأییدشده» | «خریدار» | The ability to submit already comes from a purchase. |
 | «نظرتان در انتظار بررسی است.» | «اگر نظرتان تأیید شود، در صفحه‌ی محصول دیده می‌شود.» | The buyer knows what can happen next. Publication depends on approval. |
+| «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید. پس از پایان این بازه دوباره امتحان کنید.» | «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.» | The limit gives the reason and the time window. |
+| «برای ادامه‌ی اتصال، از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | «از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | The heading already says the link expired. The sentence gives the next step. |
+| «اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.» | «به پشتیبانی پیام بدهید.» | The word «پشتیبانی» is the link. |
+| «در صفحه‌ی سفارش می‌بینید هر محصول در چه مرحله‌ای است و آیا برای تحویلش کاری از طرف شما لازم است.» | «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | Name the information the buyer will find and where to find it. |
+| «رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.» | «رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.» | Say what this email address is for. |
+| «اگر از لینک یک محصول به این صفحه رسیده‌اید، نامش را جستجو کنید یا از فهرست محصولات به خرید ادامه دهید.» | «شاید آدرس اشتباه است، یا این محصول را دیگر نمی‌فروشیم.» | Keep the reason on the 404. A second line can point to search and the shop. |
+| «اگر می‌خواهید خرید بقیه‌ی محصولات را ادامه دهید، این مورد را از سبد خرید حذف کنید.» | «برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید.» | The unavailable item is already identified. Give the action directly. |
+| «برای خرید، محصولتان را از فهرست پیدا کنید و به سبد اضافه کنید.» | «برای شروع، یک محصول را انتخاب کنید.» | One step is enough for an empty cart. |
+| «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.» | «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.» | State what happens to the previous identifier. |
 
 ### Building a line
 
@@ -187,7 +222,7 @@ The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت�
 
 - **Content first, then one verb.** Name the concrete things, then the one verb that acts on them.
 - **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
-- **Whole sentences a person would say,** never clipped fragments: «پرداختتان نیمه‌کاره مانده؟», not «پرداخت نیمه‌کاره؟».
+- **Write a complete thought.** A standalone notice needs a sentence the reader can understand in one pass. A label or short field hint can carry a complete thought in context.
 - **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
 - **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). A second message, or a chain of «که» clauses, becomes a second sentence.
 
@@ -208,14 +243,14 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 ### Rules for every register
 
 - **Address** is «شما» with «ـید»: «می‌توانید» (in the FAQ, «می‌تونید»), never «می‌تونین», «تو», «واسه» or «می‌باشه». The verb carries the address; «شما» is not repeated in every sentence.
-- **One point of view:** facts are stated impersonally, the reader is addressed by the verb, and «ما» is only for what the shop itself does.
+- **Use the point of view that makes responsibility clear.** Address the reader through the verb. Use the shop’s voice for what it did or will do, and state a condition directly when that is what matters.
 - **One register per sentence:** «حسابتان» with «می‌توانید» ✓ · «حسابتون» with «می‌تونید» in the FAQ ✓ · «حسابتان» with «می‌تونید» ✗.
 - **No bureaucratic markers:** «می‌باشد», «می‌گردد», «صورت می‌گیرد», «جهت», «لذا», «نمایید», «مذکور», or a passive with «توسط».
 - **Spelling never relaxes.** A half-space in «می‌» and «ها», and the ezafe «ـه‌ی» after a silent ه («مشاهده‌ی همه»), never «ـهٔ». A clitic joins with no space, except after ه («شماره‌تان»). «تأیید» has one spelling. Persian «ی» and «ک», never Arabic «ي» and «ك».
 - **A Persian line never opens with a Latin word:** Telegram, plain-text email and many editors set a line's direction from its first letter. «سرویس Netflix …», not «Netflix …».
 - **A commitment has three parts:** a number, the point it counts from («پس از تأیید پرداخت», «پس از تحویل»), and the shop as the one who acts. A half conditional is never how money is promised.
 - **A site-wide promise is true of every public product, or it is not printed.** `apps/catalog/promises.py` holds each promise beside its condition, and `apps/catalog/tests/test_promises.py` checks every public product. A warranty, refund or replacement belongs to the product whose verified terms support it.
-- **Label, do not explain.** Promises, badges and section heads are noun phrases of two to four words; buttons are verbal nouns that name what happens. Explanation belongs in the FAQ and the product's questions.
+- **Let a label do its job.** A badge can name the state and a button can name the action. Put an explanation where the reader needs it to choose or act.
 - **Say a limit the way a person would:** «از این گزینه تا ۳ اشتراک می‌توانید بخرید.», not «حداکثر تعداد قابل افزودن: ۳ عدد». No «قابل» with an infinitive, and no «عدد» as a unit in a sentence.
 - **Numbers, not adjectives:** «تا ۱۲ ساعت», never «سریع» or «در کمترین زمان ممکن», and no superlative a number could replace («بهترین», «سریع‌ترین»).
 - **Product and tool names stay in English** wherever a customer reads them. Persian spellings appear only in search aliases and page titles, because shoppers search with them.
@@ -263,6 +298,42 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 | Ezafe after a silent ه | «ـه‌ی» («مشاهده‌ی همه») | «مشاهده همه», «افزودن یک مشخصه دیگر» |
 
 The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
+
+### Editorial review guide
+
+PremShop sounds like a shop that knows what it sells and can explain what happens after payment. Tell the buyer what they can choose now, what the shop does next and what affects the purchase. In the panel, give the operator enough information to check a decision at a glance.
+
+| Where | What the reader needs |
+|---|---|
+| Home and search | A reason to browse and a way forward. On a failed search the catalogue and Telegram serve different purposes. Keep the Telegram invitation even though the button also names Telegram. |
+| Product page | A concrete reason to buy, a comparison that helps choose, and any limitation that could change the choice. Give each option the same units for price and duration. Use «مدت اشتراک» and «مبلغ کارت» where those are the actual choices. |
+| Cart and checkout | Keep what changes the total, holds up checkout, or starts a deadline. Where a line is the only explanation of a disabled action, keep it by that action or point to the affected item. |
+| Account and orders | Name which account, order or purchase a message concerns. On a mixed order, give each affected product its own state and next action. |
+| Email, Telegram and SMS | Read the subject, title, body and button as one message. Repeat a fact if a channel needs it to stand alone. SMS can often stop at the code, its purpose and the warning. Start a line with Persian if an English name would set the wrong direction. |
+| Operator panel | A label can name a field. A hint can say what a blank value does or when the result appears. Give the full consequence for an irreversible operation. |
+| Legal and security | Name the condition, scope and deadline. Check the recipient and who can act. Keep «این کد را به کسی ندهید» with the code. |
+
+Use the reader's words. «اکانت» is natural for a service they bought, «حساب کاربری» is where they sign in at PremShop, and «پلن» is useful in the panel. The FAQ can sound like a conversation. Keep amounts, times and warranty conditions exact in every register.
+
+Keep a sentence if it helps the reader choose, understand what happened, know who acts next or feel confident waiting. «فعلاً کاری لازم نیست» belongs in preparation and replacement review when the buyer can safely wait. Use a short status label in a badge and explain the reason, timing and next step nearby as needed. A delay can call for an apology and a useful way to follow up. In a cancellation or refund, name the shop's role when it explains the cause, and use neutral wording for the financial status. A natural passive, such as «بازگشت وجه انجام شد», suits a status label when the outcome is what the buyer needs to scan.
+
+Read what's already on the screen before editing. A paragraph telling the buyer to choose a product repeats the empty cart's title and its «دیدن محصولات» button. Signing in to recover an earlier cart is a different action and deserves a line. Keep sound copy when it already fits the reader's situation. For each edit, name the problem it solves and read the whole message again. A shorter version earns its place when it reads more clearly and carries the same useful information. Keep owner-approved copy in place and bring proposed changes to the owner with the rendered context.
+
+| Example | Editorial decision |
+|---|---|
+| «شماره‌ی موبایل را کامل، با ۰۹ و ۹ رقم بعد از آن وارد کنید.» → «شماره‌ی موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.» | The familiar eleven-digit form gives the reader one thing to check. The validator still accepts the supported country-code spellings. |
+| «برای رمز عبور، کنار عدد از حروف یا علامت هم استفاده کنید.» → «رمز عبور نباید فقط عدد باشد.» | This validator rejects an all-digit password. A password with no digits can pass this rule. |
+| «تا پرداخت یا لغو سفارش فعلی، ثبت سفارش جدید امکان ندارد.» → «اول سفارش فعلی را پرداخت یا لغو کنید.» | The order link is beside the instruction. The separate sentence about keeping the cart gives a fact the button cannot convey. |
+| «کد جدید با پیامک فرستاده شد.» → «کد جدید را برایتان پیامک کردیم.» | The SMS provider has accepted the send by this point. Telegram's queued request offers conditional help because the site has yet to learn whether delivery is possible. |
+| «این مشکل روی سفارش‌های ثبت‌شده اثری ندارد.» on a 503 page | The error page cannot verify the effect of an outage. Give the buyer a way to retry or contact the shop. |
+
+For money, write down the event behind the text before editing. An amount owed, a transfer made by the operator and a transfer recorded in the panel are distinct events. Check the amount after discounts and which purchase it belongs to. Review the refund amount, destination and transfer reference alongside the confirmation. Keep both the reason money is due and the condition that starts the wait. A recorded payment is the buyer's payment to the shop. A recorded refund is the shop's transfer to the buyer.
+
+For errors and sign-in, give the cause the system can establish and the next action the reader can take. Check which action was limited, whether the limit applies to the number or network, and whether the time is an upper bound or a countdown. For delivery, check what arrives, the page where the buyer can find it, what they must verify and what support can do if they lose access.
+
+For product and SEO copy, explain a purchased capability through a task the buyer can recognize. Describe background playback as listening while the screen is off. Keep the concrete benefits, comparisons, requirements and usage limits that help someone decide what to buy. Review source material before changing a claim. Keep edits to seeded defaults from overwriting product copy the operator has maintained.
+
+For review, open the rendered view at 390 and 1440 pixels with ordinary and long values. Check empty, blocked, expired and successful states. Exercise the action named in each message, or check its code path in an isolated fixture. Build financial examples through checkout, payment and cancellation so the receipt, discount and refund agree. Pair comparisons by the same code branch or event in each version. Review plain-text email beside HTML. A bot or SMS preview uses a sample payload with sending disabled. Very short help can look clear in a source file and become unclear once a field is hidden or a variable changes. Re-read the result with those branches visible and ask a second reader whether the existing line, an edit or deletion best serves the reader.
 
 ## Decided by the owner
 

@@ -171,8 +171,8 @@ def test_panel_search_needs_the_whole_address(client, django_user_model):
         (0, 800, True, False, False, ""),
         (180, 0, True, True, False, "نگه داشته شده"),
         (0, 900, True, True, False, "نگه داشته شده"),
-        (200, 0, True, True, True, "سقف ارسال پر شده"),
-        (0, 1000, True, True, True, "سقف ارسال پر شده"),
+        (200, 0, True, True, True, "ارسال ایمیل به سقف مجاز رسیده"),
+        (0, 1000, True, True, True, "ارسال ایمیل به سقف مجاز رسیده"),
     ],
 )
 def test_the_banner_follows_each_limit(

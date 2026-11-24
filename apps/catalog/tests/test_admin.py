@@ -1552,8 +1552,7 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the live product's form"
-    assert "دوباره منتشر نمی‌شود" in readiness.group(0)
-    assert "تا این‌ها درست نشود، دوباره منتشر نمی‌شود." in readiness.group(0)
+    assert "برای انتشار دوباره" in readiness.group(0)
     assert "قبل از انتشار" not in readiness.group(0)
     assert "نکات استفاده نوشته نشده است." in readiness.group(0)
 
@@ -1573,7 +1572,7 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
     # Blue like the same list on the form: orange is too close to the amber kept for attention.
     [note] = [str(m) for m in response.context["messages"] if m.level_tag == "info"]
     headline, _, rest = note.partition('<ul class="panel-reasons">')
-    assert headline == "«⁨live⁩» تا این‌ها درست نشود، دوباره منتشر نمی‌شود.", note
+    assert headline == "برای انتشار دوباره‌ی «⁨live⁩»، موارد زیر را کامل کنید.", note
     assert re.findall(r"<li>(.*?)</li>", rest) == [
         "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
     ]
@@ -1581,7 +1580,8 @@ def test_taking_down_a_product_that_could_not_go_back_up_says_why(client, operat
 
 def test_a_ready_draft_says_so_and_a_live_product_says_nothing(client, operator, catalogue):
     assert (
-        "شرط‌های انتشار برقرار است." in client.get(change_url(catalogue["draft"])).content.decode()
+        "محصول برای انتشار آماده است."
+        in client.get(change_url(catalogue["draft"])).content.decode()
     )
     assert "panel-readiness" not in client.get(change_url(catalogue["live"])).content.decode()
 
@@ -1662,7 +1662,7 @@ def test_a_copy_never_gives_a_product_a_second_before_buying(client, operator, c
     response = copy_from(client, source, target, follow=True)
 
     assert list(target.sections.values_list("body", flat=True)) == ["خودش"]
-    assert any("کپی نشد" in str(m) for m in response.context["messages"])
+    assert any("بخش «پیش از خرید» دارد" in str(m) for m in response.context["messages"])
 
 
 def test_section_copies_and_history_roll_back_across_all_targets(
