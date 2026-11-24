@@ -117,7 +117,7 @@ def test_delivery_notification_contains_no_credential_material(buyer, plan, oper
     for part in (row.subject, row.text_body, row.html_body):
         assert VALUE not in part and NOTE not in part and "SECRET-CUSTOMER-INPUT" not in part
     assert url in row.text_body and url in row.html_body
-    step = "ایمیل همین سفارش را با کد تأیید کنید."
+    step = "با آن ایمیل همین سفارش را تأیید کنید."
     assert step in row.text_body and step in row.html_body
     fallback = "اگر سفارش ایمیل ندارد یا به آن دسترسی ندارید"
     assert fallback in row.text_body and fallback in row.html_body

@@ -7,7 +7,7 @@
 <tr><th>{{ e.DEADLINE }} زمان تحویل جدید</th><td>تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</td></tr>{% elif template_name == "input_reminder" or template_name == "input_final_warning" %}
 <tr><th>{{ e.DEADLINE }} مهلت ارسال اطلاعات</th><td>تا پایان {{ due_at|jalali }}</td></tr>{% endif %}
 </table>{% if template_name == "delivery_completed" %}
-<p>برای دیدن اطلاعات تحویل، صفحه‌ی سفارش را باز کنید و ایمیل همین سفارش را با کد تأیید کنید.</p>
+<p>برای دیدن اطلاعات تحویل، صفحه‌ی سفارش را باز کنید. از همان صفحه کد بگیرید و با آن ایمیل همین سفارش را تأیید کنید.</p>
 <p>اگر سفارش ایمیل ندارد یا به آن دسترسی ندارید، از صفحه‌ی سفارش به پشتیبانی پیام بدهید.</p>{% endif %}{% if template_name == "input_requested" or template_name == "input_reminder" or template_name == "input_final_warning" %}
 <p>اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید.</p>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
 <blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
