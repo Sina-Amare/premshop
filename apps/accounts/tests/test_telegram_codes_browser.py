@@ -54,7 +54,8 @@ def test_sign_in_choice_error_and_immediate_sms_switch(
         expect(page.locator(".otp__cell").first).to_have_value("")
         page.screenshot(path=str(tmp_path / f"telegram-code-error-{width}.png"), full_page=True)
         page.locator("#sms-form button").click()
-        expect(page.locator("#delivery-sms")).to_have_text("کد جدید را برایتان پیامک کردیم.")
+        expect(page.locator("#delivery-sms")).to_be_visible()
+        expect(page.locator("#delivery-sms-text")).to_have_text("کد جدید را برایتان پیامک کردیم.")
         expect(page.locator("#sms-form")).to_be_hidden()
         assert len(sms.outbox) == 1 and len(queued) == 1
         page.screenshot(path=str(tmp_path / f"sms-code-{width}.png"), full_page=True)
@@ -106,7 +107,8 @@ def test_checkout_keeps_its_long_cart_through_telegram_and_sms(
         expect(page.locator("[data-login-status]")).to_contain_text("کد ورود اشتباه است")
         page.screenshot(path=str(tmp_path / f"checkout-code-error-{width}.png"), full_page=True)
         page.locator("#sms-form button").click()
-        expect(page.locator("#delivery-sms")).to_have_text("کد جدید را برایتان پیامک کردیم.")
+        expect(page.locator("#delivery-sms")).to_be_visible()
+        expect(page.locator("#delivery-sms-text")).to_have_text("کد جدید را برایتان پیامک کردیم.")
         expect(page.locator("#sms-form")).to_be_hidden()
         assert len(queued) == 1 and len(sms.outbox) == 1
         expect(page.locator(".otp__cell").first).to_have_value("")

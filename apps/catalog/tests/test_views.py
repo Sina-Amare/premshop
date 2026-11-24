@@ -675,7 +675,7 @@ def test_a_search_miss_names_the_query_and_offers_the_catalogue(client, product)
 
     assert "محصولی پیدا نکردیم" in body
     assert '<bdi class="v-query">xbox</bdi>' in body
-    assert "این محصولات را هم ببینید:" in body
+    assert f'href="{product.get_absolute_url()}"' in body
 
 
 def test_the_search_page_is_not_indexed(client, product):

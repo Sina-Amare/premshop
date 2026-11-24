@@ -209,9 +209,7 @@ def deliver_item(
         or item.paid_at is None
         or not holiday.clock_allows_delivery(item)
     ):
-        raise ValidationError(
-            gettext_lazy("تا محصول در صف تحویل نباشد، اطلاعات تحویل ثبت نمی‌شود.")
-        )
+        raise ValidationError(gettext_lazy("در وضعیت فعلی نمی‌توانید اطلاعات تحویل را ثبت کنید."))
     item.status, item.delivered_at = OrderItem.Status.DELIVERED, timezone.now()
     item.expires_at, item.actual_cost = content.expires_at, actual_cost
     item.first_expires_on = content.expires_at

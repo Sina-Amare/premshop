@@ -169,7 +169,7 @@ def test_cancelled_is_owed_and_refunded_is_only_after_execution(buyer, plan, ope
     order, item = queued(buyer, plan, operator)
     cancel(item, operator, note="SECRET-CANCELLATION")
     cancelled = rows("item_cancelled").get()
-    assert "در انتظار واریز" in cancelled.text_body
+    assert "در انتظار بازگشت وجه" in cancelled.text_body
     assert "SECRET-CANCELLATION" not in cancelled.text_body + cancelled.html_body
     assert not rows("item_refunded").exists()
     refund = Refund.objects.get(order_item=item)
