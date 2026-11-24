@@ -76,6 +76,7 @@ def test_operator_records_a_grouped_refund_and_reconciles_it_with_the_keyboard(
         page.goto(live_server.url + form_url)
         expect(page.get_by_text("بازپرداختی در انتظار واریز نیست.", exact=True)).to_be_visible()
         expect(page.get_by_role("button", name="ثبت واریز بازپرداخت", exact=True)).to_have_count(0)
+        expect(page.get_by_text("این فرم فقط واریزی را", exact=False)).to_have_count(0)
         shot("refund-none-owed", form_url, "#manual-payment-title")
     finally:
         context.close()

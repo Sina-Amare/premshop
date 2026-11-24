@@ -1920,7 +1920,7 @@ msgstr "The transfer cannot predate the refund becoming owed."
 msgid "ساعت واریز (تهران، با ثانیه)"
 msgstr "Transfer time (Tehran, with seconds)"
 
-msgid "ابتدا مبلغ را در بانک واریز کنید. این فرم فقط واریز را ثبت می‌کند. پس از ثبت، مشخصات واریز قابل تغییر نیست."
+msgid "این فرم فقط واریزی را که در بانک انجام داده‌اید ثبت می‌کند. پس از ثبت، مشخصات واریز قابل تغییر نیست."
 msgstr "Record only a transfer already completed at the bank. This form moves no money, and saved transfer details cannot be edited."
 
 msgid "مبلغ را برابر جمع بازپرداخت‌هایی وارد کنید که برای این واریز انتخاب کرده‌اید."
