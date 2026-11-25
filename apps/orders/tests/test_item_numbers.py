@@ -34,7 +34,7 @@ def test_the_panel_names_an_item_by_its_place_in_its_order(client, buyer, plan, 
         named = set(re.findall("آیتم ([۰-۹]+)", response.content.decode()))
         assert named and named <= {"۱", "۲", "۳"}, (url, named)
     form = client.get(reverse("admin:orders_order_execute_refunds", args=[order.pk]))
-    choices = re.findall(r"\(([۰-۹]+)\) · ", form.content.decode())
+    choices = re.findall(r"آیتم ([۰-۹]+) · ", form.content.decode())
     assert choices == ["۳"] and not set(choices) & ids
 
 

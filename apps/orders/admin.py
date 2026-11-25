@@ -112,7 +112,7 @@ def _stopped_time(item: OrderItem) -> str:
     if item.due_at is None or item.sla_paused_at is None:
         return ""
     seconds = (item.due_at - item.sla_paused_at).total_seconds()
-    label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
+    label = _("از مهلت گذشته") if seconds <= 0 else _("مانده")
     return f"{format_countdown(abs(int(seconds)))} {label}"
 
 
@@ -355,7 +355,7 @@ class DeliveryForm(forms.Form):
         label=_("پایان اشتراک"),
         required=False,
         max_length=10,
-        help_text=_("به تاریخ شمسی مثل ۱۴۰۵/۰۹/۱۵، و خالی برای اشتراک بی‌پایان."),
+        help_text=_("تاریخ شمسی، مثل ۱۴۰۵/۰۹/۱۵. خالی = اشتراک بی‌پایان."),
         widget=forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric", "autocomplete": "off"}),
     )
     actual_cost = forms.DecimalField(
@@ -869,7 +869,7 @@ class OrderAdmin(ModelAdmin):
                     cancel_refusal = cancel_refusal or " ".join(refusal.messages)
                 else:
                     label = (
-                        _("بازگشت وجه پس از درخواست تعویض")
+                        _("بازپرداخت پس از درخواست تعویض")
                         if reason == OrderItem.CancelReason.WARRANTY_REFUND
                         else OrderItem.CancelReason(reason).label
                     )
@@ -1005,7 +1005,7 @@ class OrderAdmin(ModelAdmin):
                 controls = []
                 for item in obj.items.all():
                     if item.status == OrderItem.Status.QUEUED:
-                        action, label = "request", _("ثبت درخواست اطلاعات")
+                        action, label = "request", _("درخواست اطلاعات از مشتری")
                     elif item.status == OrderItem.Status.AWAITING_INPUT:
                         action = "receive" if item.due_at is None else "resume"
                         label = _("ثبت دریافت اطلاعات")
@@ -1127,7 +1127,7 @@ class OrderAdmin(ModelAdmin):
                         reference = item.sla_paused_at
                     seconds = (deadline - reference).total_seconds()
                     kind = "paused" if paused else ("overdue" if seconds <= 0 else "remaining")
-                    label = _("گذشته از مهلت") if seconds <= 0 else _("مانده")
+                    label = _("از مهلت گذشته") if seconds <= 0 else _("مانده")
                     text = f"{format_countdown(abs(int(seconds)))} {label}"
                     if paused and item.status == OrderItem.Status.QUEUED:
                         text = str(_("در تعطیلی")) + "، " + text
@@ -1259,12 +1259,22 @@ class DiscountForm(forms.ModelForm):
         self.fields["scope"].label = _("روی کدام محصولات")
         self.fields["value"].help_text = _("تخفیف درصدی به درصد، تخفیف ثابت به تومان.")
         self.fields["max_uses"].help_text = _(
-            "خالی = نامحدود. هر سفارش یک بار حساب می‌شود. لغو سفارش پرداخت‌نشده یا لغو همه‌ی محصولات مشمول تخفیف پیش از تحویل، یک بار از تعداد استفاده کم می‌کند."
+            "خالی = نامحدود. هر سفارش یک استفاده حساب می‌شود. اگر سفارش پیش از پرداخت لغو شود، یا همه‌ی"
+            " محصولات مشمول تخفیفش پیش از تحویل لغو شوند، آن استفاده آزاد می‌شود."
         )
         self.fields["per_user_limit"].help_text = _("خالی = نامحدود")
+        self.fields["code"].help_text = _("۴ تا ۸ حرف لاتین یا رقم، مثل YALDA25")
+        self.fields["min_order_amount"].help_text = _(
+            "جمع کل سفارش پیش از این کد، حتی اگر کد فقط شامل بعضی محصولات باشد. خالی = بدون حداقل"
+        )
+        self.fields["valid_from"].help_text = _("خالی = از همین حالا")
+        self.fields["valid_until"].help_text = _("خالی = بدون پایان")
 
     def clean_code(self) -> str:
-        return self.cleaned_data["code"].strip().upper()
+        code = str(self.cleaned_data["code"]).strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{4,8}", code):
+            raise forms.ValidationError(_("کد باید ۴ تا ۸ حرف لاتین یا رقم باشد."))
+        return code
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}

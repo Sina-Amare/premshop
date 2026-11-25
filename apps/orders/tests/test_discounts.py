@@ -119,8 +119,8 @@ def test_operator_can_create_normalized_coupon_and_history_stays_read_only(clien
     assert listing in client.get(reverse("admin:index")).content.decode()
     url = reverse("admin:orders_discountcode_add")
     body = client.get(url).content.decode()
-    assert "هر سفارش یک بار حساب می‌شود" in body
-    assert "لغو همه‌ی محصولات مشمول تخفیف پیش از تحویل" in body
+    assert "هر سفارش یک استفاده حساب می‌شود" in body
+    assert "همه‌ی محصولات مشمول تخفیفش پیش از تحویل لغو شوند" in body
     data = form_of(client, url, form_id="discountcode_form")
     data.update(code=[" save "], kind=["fixed"], value=["100"], scope=["all"], is_active=["on"])
     response = client.post(url, data)

@@ -69,7 +69,7 @@ def test_queue_tabs_keyboard_search_and_delivery_shell(
         )
         make_order(buyer, plan, "PENDING_PAYMENT")
         page.reload()
-        check("queued", "گذشته از مهلت")
+        check("queued", "از مهلت گذشته")
         assert page.locator("#result_list tbody tr").count() == 2
         waiting = page.get_by_role("navigation", name="صف سفارش‌ها").get_by_role(
             "link", name="منتظر اطلاعات مشتری"

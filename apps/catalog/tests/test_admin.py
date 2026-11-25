@@ -1076,7 +1076,7 @@ def test_the_bulk_delete_confirmation_reads_as_persian(client, operator, catalog
     for leak in ("موجودیت", "ذیل", "در خصوص", "اشیا"):
         assert leak not in body, leak
     # One product is named in the singular, and a plural verb did not agree.
-    assert "محصول انتخاب‌شده حذف شود؟" in body
+    assert "این محصول حذف شود؟" in body
     assert "حذف شوند؟" not in body
 
 
@@ -1312,7 +1312,7 @@ def test_the_form_refuses_to_publish_without_usage_notes(client, operator, catal
     assert response.status_code == 200, "a product with no usage notes was published"
     body = response.content.decode()
     assert "نکات استفاده نوشته نشده است." in errors_under(body, "usage_notes")
-    assert "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود" in errors_under(body, "status")
+    assert "تا موارد مشخص‌شده کامل نشود، محصول منتشر نمی‌شود" in errors_under(body, "status")
     draft.refresh_from_db()
     assert draft.status == Product.Status.DRAFT
     # The form holds the refused «فعال»; the page it links to is still a preview.
@@ -1510,7 +1510,7 @@ def test_a_refused_publish_lists_its_reasons_at_the_top(client, operator, catalo
     for reason in ("معرفی کوتاه محصول را بنویسید.", "نکات استفاده", "پاسخ: جای خالی"):
         assert any(reason in item for item in items), (reason, items)
     assert not any(
-        "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود" in item for item in items
+        "تا موارد مشخص‌شده کامل نشود، محصول منتشر نمی‌شود" in item for item in items
     ), "the summary is not a reason"
 
 
@@ -1552,7 +1552,7 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the live product's form"
-    assert "برای انتشار دوباره" in readiness.group(0)
+    assert "اگر از سایت برداشته شود" in readiness.group(0)
     assert "قبل از انتشار" not in readiness.group(0)
     assert "نکات استفاده نوشته نشده است." in readiness.group(0)
 
@@ -1662,7 +1662,7 @@ def test_a_copy_never_gives_a_product_a_second_before_buying(client, operator, c
     response = copy_from(client, source, target, follow=True)
 
     assert list(target.sections.values_list("body", flat=True)) == ["خودش"]
-    assert any("بخش «پیش از خرید» دارد" in str(m) for m in response.context["messages"])
+    assert any("بخش «پیش از خرید» کپی نشد" in str(m) for m in response.context["messages"])
 
 
 def test_section_copies_and_history_roll_back_across_all_targets(

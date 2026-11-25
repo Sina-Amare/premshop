@@ -2,7 +2,7 @@
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
-  <p>{% translate "درباره‌ی درخواست در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را در این فرم ننویسید." %}</p>
+  <p>{% translate "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و برای مشتری پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید." %}</p>
   {% for control in input_controls %}
     <article class="saved-purchase">
       <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>، <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>
@@ -32,7 +32,7 @@
   {% for refund in refund_history %}<article class="saved-purchase">
     <p>{% translate "آیتم" %} {{ item_numbers|item_place:refund.order_item_id|fa_digits }}، {{ refund.amount|toman }}، <span class="order-status" data-tone="closed">{{ refund.get_status_display }}</span></p>
     {% if refund.executed_at %}
-    <p>{{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by }}</bdi></p>
+    <p>{% translate "زمان واریز" %}: {{ refund.executed_at|jalali }}، {{ refund.executed_at|date:'H:i:s'|fa_digits }}، <bdi>{{ refund.executed_by }}</bdi></p>
     <p>{{ refund.get_destination_kind_display }}، <bdi dir="ltr">{{ refund.destination_last4 }}</bdi>، <bdi dir="ltr" class="order-bank-reference">{{ refund.bank_ref }}</bdi></p>
     {% endif %}
   </article>{% endfor %}
@@ -41,7 +41,7 @@
 {% endif %}
 <section class="order-history" aria-labelledby="order-support-title">
   <header><h2 id="order-support-title">{% translate "تطبیق شناسه‌ی پشتیبانی" %}</h2></header>
-  <p>{% translate "برای تطبیق درخواست، شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور به تنهایی کافی نیست." %}</p>
+  <p>{% translate "شناسه‌ای را که مشتری فرستاده وارد کنید تا معلوم شود سفارش مال اوست. تصویر فاکتور مالکیت یا پرداخت را ثابت نمی‌کند." %}</p>
   <div class="order-payment-form"><div><label for="support-token">{% translate "شناسه‌ی پشتیبانی سفارش" %}</label>
   <input id="support-token" name="support_token" form="order-support-match" type="text" dir="ltr" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false">
   </div><button type="submit" form="order-support-match" class="order-input-action">{% translate "بررسی شناسه" %}</button></div>

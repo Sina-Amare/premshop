@@ -272,16 +272,14 @@ class PlanForm(forms.ModelForm):
                     snapshot = signing.loads(cleaned.get("stock_version", ""), salt="catalog.stock")
                 except signing.BadSignature:
                     raise ValidationError(
-                        "اعتبار این فرم تمام شده است. صفحه‌ی ویرایش محصول را دوباره باز کنید."
+                        "این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید."
                     ) from None
                 if (
                     not isinstance(snapshot, dict)
                     or snapshot.get("plan") != current.pk
                     or "stock" not in snapshot
                 ):
-                    raise ValidationError(
-                        "اعتبار این فرم تمام شده است. صفحه‌ی ویرایش محصول را دوباره باز کنید."
-                    )
+                    raise ValidationError("این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید.")
                 if cleaned["stock_quantity"] == snapshot["stock"]:
                     cleaned["stock_quantity"] = current.stock_quantity
                     self.changed_data[:] = [
@@ -820,7 +818,7 @@ class ProductAdmin(PreviewAdminMixin):
                 message = gettext("%(count)s بخش از «%(source)s» به «%(target)s» کپی شد.") % names
                 if skipped:
                     message += " " + gettext(
-                        "«%(target)s» بخش «پیش از خرید» دارد. برای تغییر متن، همان بخش را ویرایش کنید."
+                        "بخش «پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد. برای تغییر متنش، همان بخش را ویرایش کنید."
                     ) % {"target": names["target"]}
                 notices.append(message)
         for message in notices:
@@ -843,11 +841,12 @@ class ProductAdmin(PreviewAdminMixin):
                 old = Product.Status(product.status).label
                 change = f"{label} از «{old}» به «{status.label}»"
                 self.log_change(request, product, [{"changed": {"fields": [change]}}])
-        messages.success(
-            request,
-            gettext("%(count)s محصول %(status)s شد.")
-            % {"count": to_persian_digits(len(changing)), "status": status.label},
+        done = (
+            gettext("%(count)s محصول منتشر شد.")
+            if status == Product.Status.ACTIVE
+            else gettext("%(count)s محصول از سایت برداشته شد.")
         )
+        messages.success(request, done % {"count": to_persian_digits(len(changing))})
 
     @admin.display(description=_("قیمت"))
     def price_range(self, obj: Product) -> str:

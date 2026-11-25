@@ -9,14 +9,14 @@
 {% if expiry_stale %}<section class="order-expiry" data-tone="problem" aria-label="{% translate 'بررسی مهلت پرداخت' %}">
   <p>{% translate "آخرین بررسی مهلت پرداخت" %}: {% if expiry_state %}{{ expiry_state.last_success_at|jalali }}، {% translate "ساعت" %} {{ expiry_state.last_success_at|time:"H:i"|fa_digits }}{% else %}{% translate "هنوز اجرا نشده است" %}{% endif %}</p>
   <p>{% translate "سفارش‌های پرداخت‌نشده پس از مهلت" %}: {{ expiry_backlog|fa_digits }}</p>
-  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار به‌روز نیست. وضعیت کارهای زمان‌بندی‌شده‌ی سرور را بررسی کنید." %}</p>{% endif %}
+  {% if expiry_stale %}<p role="status">{% translate "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. کارهای زمان‌بندی‌شده‌ی سرور را بررسی کنید." %}</p>{% endif %}
 </section>{% endif %}
 {{ block.super }}
 {% endblock %}
 {% block result_list %}
 {% if cl.result_count %}{{ block.super }}{% else %}
 <section class="order-queue-empty">
-  <p>{% translate "سفارشی پیدا نکردیم." %}</p>
+  <p>{% if cl.query %}{% translate "سفارشی پیدا نکردیم." %}{% else %}{% translate "فعلاً سفارشی در این فهرست نیست." %}{% endif %}</p>
   {% if cl.query %}<a href="?tab={{ request.GET.tab|default:'queued'|urlencode }}">{% translate "پاک کردن جستجو" %}</a>{% else %}<a href="{{ request.get_full_path }}">{% translate "تازه‌سازی" %}</a>{% endif %}
 </section>
 {% endif %}

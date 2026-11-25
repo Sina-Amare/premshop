@@ -12,7 +12,7 @@ fields thousands of pixels apart on a phone.
             {% if readiness_unavailable %}
                 <h2 class="font-semibold">{% translate "صفحه‌ی این محصول نمایش داده نمی‌شود" %}</h2>
             {% elif readiness_live %}
-                <h2 class="font-semibold">{% translate "برای انتشار دوباره" %}</h2>
+                <h2 class="font-semibold">{% translate "اگر از سایت برداشته شود" %}</h2>
             {% else %}
                 <h2 class="font-semibold">{% translate "پیش از انتشار" %}</h2>
             {% endif %}
@@ -21,6 +21,7 @@ fields thousands of pixels apart on a phone.
                     <li>{{ problem }}</li>
                 {% endfor %}
             </ul>
+{% if readiness_live %}<p>{% translate "تا این موارد درست نشود، دوباره منتشر نمی‌شود." %}</p>{% endif %}
         {% else %}
             <p>{% translate "محصول برای انتشار آماده است." %}</p>
         {% endif %}

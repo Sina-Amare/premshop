@@ -75,7 +75,7 @@ def test_operator_sees_live_expiry_backlog_and_stale_sweep_warning(client, buyer
     assert response.context["expiry_stale"] is False
     assert response.context["expiry_backlog"] == 1
     UnpaidExpirySweep.objects.update(last_success_at=timezone.now() - timedelta(minutes=4))
-    assert "بررسی خودکار به‌روز نیست" in client.get(url).content.decode()
+    assert "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده" in client.get(url).content.decode()
 
 
 def test_admin_order_list_query_count_is_the_same_for_five_orders_and_fifteen(

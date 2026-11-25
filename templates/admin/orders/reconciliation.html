@@ -9,7 +9,7 @@
     <button type="submit" class="order-input-action">{% translate "نمایش روز" %}</button>
   </form>
   {% if not form.errors %}
-  <p>{% translate "تاریخ گزارش به وقت تهران است." %}</p>
+  <p>{% translate "تاریخ گزارش به وقت تهران است. هر پرداخت در روز تأییدش آمده است، نه روز واریز مشتری." %}</p>
   <dl>
     <dt>{% translate "پرداخت‌های تأییدشده" %}</dt><dd>{{ payment_total|toman_plain }} {% translate "تومان" %}</dd>
     <dt>{% translate "بدهی جدید بازپرداخت" %}</dt><dd>{{ owed_total|toman_plain }} {% translate "تومان" %}</dd>
@@ -20,7 +20,7 @@
   <header><h2 id="reconciliation-payments">{% translate "پرداخت‌های تأییدشده" %}</h2></header>
   {% for row in payments %}{% with payment=row.payment %}<article class="saved-purchase">
     <h3><a href="{% url 'admin:orders_order_change' payment.order_id %}">{% translate "سفارش" %} {{ payment.order.order_number|fa_digits }}</a>، {{ payment.amount|toman }}</h3>
-    <p>{{ payment.verified_at|jalali }}، {{ payment.verified_at|date:'H:i:s'|fa_digits }}، <bdi>{{ payment.matched_by }}</bdi></p>
+    <p>{% translate "زمان تأیید" %}: {{ payment.verified_at|jalali }}، {{ payment.verified_at|date:'H:i:s'|fa_digits }}، <bdi>{{ payment.matched_by }}</bdi></p>
     <p>{% translate "شماره‌ی پیگیری بانک" %}: <bdi dir="ltr" class="order-bank-reference">{{ payment.bank_ref }}</bdi></p>
     {% include "admin/orders/reference_warning.html" with duplicates=row.duplicates only %}
   </article>{% endwith %}{% empty %}<p>{% translate "پرداختی در این روز تأیید نشده است." %}</p>{% endfor %}

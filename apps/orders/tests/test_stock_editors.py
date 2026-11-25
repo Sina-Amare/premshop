@@ -54,6 +54,6 @@ def test_stock_editor_refuses_missing_or_forged_original_quantities(client, plan
     data["stock_quantity"] = ["9"]
     response = client.post(url, data)
     assert response.status_code == 200
-    assert "اعتبار این فرم تمام شده است" in response.content.decode()
+    assert "این فرم دیگر معتبر نیست" in response.content.decode()
     plan.refresh_from_db()
     assert plan.stock_quantity is None

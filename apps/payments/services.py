@@ -156,7 +156,7 @@ def execute_refunds(
         or timezone.is_naive(executed_at)
         or executed_at > timezone.now()
     ):
-        raise ValidationError(_("زمان واریز باید معتبر و حداکثر همین لحظه باشد."))
+        raise ValidationError(_("زمان واریز نمی‌تواند در آینده باشد."))
     order = _payment_order(order_id)
     if not order.payments.select_for_update().filter(status=Payment.Status.VERIFIED).exists():
         raise ValidationError(_("این سفارش پرداخت تأییدشده ندارد."))
@@ -317,7 +317,7 @@ def _check_quote_age(token: str) -> None:
         signing.loads(token, salt=QUOTE_SALT, max_age=QUOTE_AGE)
     except signing.SignatureExpired:
         raise ValidationError(
-            "قیمت و موجودی را بررسی کنید و دوباره «ثبت سفارش» را بزنید.",
+            "این صفحه بیش از ۱۵ دقیقه باز مانده بود. قیمت و موجودی را دوباره ببینید و «ثبت سفارش» را بزنید.",
             code="quote_changed",
         ) from None
 

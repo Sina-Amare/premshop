@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 class Notification(models.Model):
     class Template(models.TextChoices):
-        PURCHASE = "purchase_confirmation", _("تأییدیه‌ی خرید")
+        PURCHASE = "purchase_confirmation", _("ثبت سفارش")
         PAYMENT = "payment_confirmed", _("تأیید پرداخت")
         INPUT = "input_requested", _("درخواست اطلاعات")
         INPUT_REMINDER = "input_reminder", _("یادآوری اطلاعات")
@@ -14,7 +14,7 @@ class Notification(models.Model):
         DELIVERY = "delivery_completed", _("تحویل محصول")
         REJECTION = "replacement_rejected", _("رد درخواست تعویض")
         DELAY = "supply_delayed", _("تغییر مهلت تحویل")
-        CANCELLATION = "item_cancelled", _("لغو محصول")
+        CANCELLATION = "item_cancelled", _("لغو خرید")
         REFUND = "item_refunded", _("واریز بازپرداخت")
         CLAIM = "customer_claim", _("درخواست تعویض مشتری")
 
@@ -48,7 +48,7 @@ class Notification(models.Model):
     # it, if the customer's link has changed since.
     chat_id = models.BigIntegerField(_("گفت‌وگوی تلگرام"), null=True, blank=True, editable=False)
     subject = models.TextField(_("موضوع"), editable=False)
-    text_body = models.TextField(_("متن ایمیل"), editable=False)
+    text_body = models.TextField(_("متن پیام"), editable=False)
     html_body = models.TextField(_("نسخه‌ی HTML"), editable=False)
     status = models.CharField(
         _("وضعیت"), max_length=8, choices=Status.choices, default=Status.PENDING
@@ -62,7 +62,7 @@ class Notification(models.Model):
     sent_at = models.DateTimeField(_("زمان ارسال"), null=True, blank=True, editable=False)
     last_error_class = models.CharField(_("نوع خطا"), max_length=200, blank=True, editable=False)
     smtp_code = models.PositiveSmallIntegerField(
-        _("کد SMTP"), null=True, blank=True, editable=False
+        _("کد پاسخ SMTP"), null=True, blank=True, editable=False
     )
 
     class Meta:

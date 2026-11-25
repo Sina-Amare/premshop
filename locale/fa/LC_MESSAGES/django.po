@@ -432,13 +432,13 @@ msgid "Delete selected %(verbose_name_plural)s"
 msgstr "حذف این %(verbose_name_plural)s"
 
 msgid "Are you sure you want to delete the selected %(objects_name)s? All of the following objects and their related items will be deleted:"
-msgstr "%(objects_name)s انتخاب‌شده حذف شود؟ همه‌ی موارد زیر و اطلاعات وابسته به آن‌ها هم حذف می‌شوند:"
+msgstr "این %(objects_name)s حذف شود؟ همه‌ی موارد زیر و اطلاعات وابسته به آن‌ها هم حذف می‌شوند:"
 
 msgid "Deleting the selected %(objects_name)s would require deleting the following protected related objects:"
-msgstr "%(objects_name)s انتخاب‌شده حذف نمی‌شود، چون موارد زیر به آن‌ها وابسته‌اند:"
+msgstr "این %(objects_name)s حذف نمی‌شود، چون موارد زیر به آن‌ها وابسته‌اند:"
 
 msgid "Deleting the selected %(objects_name)s would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
-msgstr "با حذف %(objects_name)s انتخاب‌شده، موارد زیر هم حذف می‌شوند؛ اما حسابتان اجازه‌ی حذف آن‌ها را ندارد:"
+msgstr "با حذف این %(objects_name)s، موارد زیر هم حذف می‌شوند، اما حسابتان اجازه‌ی حذف آن‌ها را ندارد:"
 
 msgid "Cannot delete %(name)s"
 msgstr "%(name)s حذف نمی‌شود"
@@ -598,9 +598,6 @@ msgstr "توضیح در نتایج جستجو"
 msgid "نام‌های دیگر"
 msgstr "نام‌های رایج محصول"
 
-msgid "مهلت تحویل (ساعت)"
-msgstr "زمان تحویل (ساعت)"
-
 msgid "متن دلخواه مهلت"
 msgstr "توضیح زمان تحویل"
 
@@ -654,9 +651,6 @@ msgstr "قبل از انتشار"
 
 msgid "پیش از خرید"
 msgstr "پیش از خرید"
-
-msgid "اگر از سایت برداشته شود"
-msgstr "برای انتشار دوباره"
 
 msgid "تأیید قیمت"
 msgstr "بررسی قیمت"
@@ -718,9 +712,6 @@ msgstr "تاریخی که اطلاعات محصول را دوباره با من�
 msgid "سطر %(line)s نشانی کامل نیست، مثل https://openai.com/chatgpt/pricing"
 msgstr "لینک خط %(line)s کامل نیست. نشانی کامل را وارد کنید؛ مثل ⁦https://openai.com/chatgpt/pricing⁩"
 
-msgid "هیچ محصول دیگری بخش محتوا ندارد."
-msgstr "محصول دیگری با بخش محتوا پیدا نکردیم."
-
 msgid "هیچ پلن موجودی ندارد."
 msgstr "برای انتشار، حداقل یک پلن با وضعیت «موجود» لازم است."
 
@@ -777,8 +768,8 @@ msgstr "این عدد نباید از %(limit_value)s کمتر باشد."
 
 msgid "Ensure this value has at most %(limit_value)d character (it has %(show_value)d)."
 msgid_plural "Ensure this value has at most %(limit_value)d characters (it has %(show_value)d)."
-msgstr[0] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
-msgstr[1] "این متن نباید بیشتر از %(limit_value)d حرف باشد؛ الان %(show_value)d حرف است."
+msgstr[0] "این متن نباید بیشتر از %(limit_value)d کاراکتر باشد؛ الان %(show_value)d کاراکتر است."
+msgstr[1] "این متن نباید بیشتر از %(limit_value)d کاراکتر باشد؛ الان %(show_value)d کاراکتر است."
 
 msgid "Review published."
 msgstr "نظر منتشر شد."

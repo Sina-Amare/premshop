@@ -266,7 +266,7 @@ def test_blank_input_is_neutral_and_not_logged(client, input_order, operator):
     client.force_login(operator)
     response = client.post(reveal_url(input_order))
     assert response.status_code == 200
-    assert "اطلاعاتی برای نمایش وجود ندارد" in response.content.decode()
+    assert "اطلاعاتی ثبت نشده یا پس از مهلت نگهداری حذف شده است" in response.content.decode()
     assert not models.CredentialAccessLog.objects.exists()
 
 
@@ -557,7 +557,7 @@ def test_input_reveal_and_read_only_history_in_browser(
         item.customer_input = ""
         item.save(update_fields=["customer_input"])
         page.locator("[data-customer-input-reveal]").click()
-        expect(page.locator("body")).to_contain_text("اطلاعاتی برای نمایش وجود ندارد.")
+        expect(page.locator("body")).to_contain_text("اطلاعاتی ثبت نشده یا پس از مهلت نگهداری حذف شده است.")
         assert page.url.endswith(url)
         page.screenshot(path=str(tmp_path / f"blank-{width}-{javascript}.png"), full_page=True)
         page.get_by_role("link", name="بازگشت به سفارش", exact=True).click()
