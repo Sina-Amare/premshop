@@ -67,7 +67,7 @@
     <h2>سبد خرید شما خالی است</h2>
     <p>برای شروع، یک محصول را انتخاب کنید.</p>
     <a class="btn btn--primary" href="{% url 'home' %}#products">دیدن محصولات{% include 'storefront/icon.html' with name='arrow' %}</a>
-    {% if not user.is_authenticated %}<p class="cart-empty__signin">اگر قبلاً محصولی در سبد حسابتان گذاشته‌اید، برای دیدنش <a href="{% url 'login-code' %}?next={{ request.path|urlencode }}">وارد حساب شوید</a>.</p>{% endif %}
+    {% if not user.is_authenticated %}<p class="cart-empty__signin">اگر قبلاً با حساب کاربری‌تان محصولی به سبد خرید اضافه کرده‌اید، پس از <a href="{% url 'login-code' %}?next={{ request.path|urlencode }}">ورود به حساب</a> آن را همین‌جا می‌بینید.</p>{% endif %}
   </div>
   {% endif %}
 </div>

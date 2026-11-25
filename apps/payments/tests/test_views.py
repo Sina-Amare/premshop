@@ -221,7 +221,7 @@ def test_input_errors_preserve_cart_without_echoing_input_in_errors(client, buye
         },
     )
     assert response.status_code == 400
-    assert "ایمیل اکانت را کامل وارد کنید" in response.content.decode()
+    assert "ایمیل اکانت را کامل و به شکل name@example.com وارد کنید" in response.content.decode()
     assert "invalid-private-input" not in str(response.context["error"])
     assert cart.items.exists() and not Order.objects.exists()
 

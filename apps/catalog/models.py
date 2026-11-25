@@ -121,7 +121,7 @@ def check_seo_title(row: Category | Product) -> None:
     """base.html adds « | PremShop» to every title, so the field never holds it."""
     if "premshop" in row.seo_title.casefold():
         raise ValidationError(
-            {"seo_title": _("نام فروشگاه به‌صورت خودکار به انتهای عنوان اضافه می‌شود.")}
+            {"seo_title": _("نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند.")}
         )
 
 
@@ -405,7 +405,7 @@ class Product(ChecksNameTheirField, models.Model):
 
     class Warranty(models.TextChoices):
         NONE = "none", _("بدون گارانتی")
-        DAYS_7 = "days_7", _("۷ روز")
+        DAYS_7 = "days_7", _("۷ روز پس از تحویل")
         FULL_PERIOD = "full_period", _("تا پایان دوره")
 
     CHECK_FIELDS: ClassVar[dict[str, str]] = {
@@ -497,7 +497,9 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("از ۱ تا ۴۸ ساعت."),
+        help_text=_(
+            "از ۱ تا ۴۸ ساعت. قول ما به مشتری است و تغییرش فقط سفارش‌های بعدی را عوض می‌کند."
+        ),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -515,7 +517,9 @@ class Product(ChecksNameTheirField, models.Model):
     renewable = models.BooleanField(
         _("قابل تمدید"),
         default=False,
-        help_text=_("نمایش شرایط تمدید روی همین اکانت، با قیمت روز."),
+        help_text=_(
+            "صفحه‌ی محصول تمدید همین اکانت با قیمت روز را وعده می‌دهد. فقط اگر شدنی است، تیک بزنید."
+        ),
     )
     delivery_template = models.TextField(
         _("قالب تحویل"),
@@ -530,7 +534,9 @@ class Product(ChecksNameTheirField, models.Model):
         _("نکات استفاده"),
         blank=True,
         default="",
-        help_text=_("هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای ندارد، «موضوعیت ندارد»."),
+        help_text=_(
+            "هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای نیست، بنویسید «موضوعیت ندارد»."
+        ),
     )
     # A fact the page prints from its own field. The sections never repeat it,
     # so two parts of one page cannot disagree.
@@ -552,7 +558,7 @@ class Product(ChecksNameTheirField, models.Model):
         _("آخرین بررسی"),
         null=True,
         blank=True,
-        help_text=_("روزی که توضیحات محصول را با منابع بررسی کردید."),
+        help_text=_("تاریخ آخرین بررسی صحت اطلاعات محصول"),
     )
     time_sensitive = models.BooleanField(
         _("حساس به زمان"),
@@ -665,7 +671,9 @@ class Product(ChecksNameTheirField, models.Model):
         check_seo_title(self)
         check_no_typed_discount(self, "name", "seo_title", "seo_description")
         if self.facts_checked_on and self.facts_checked_on > timezone.localdate():
-            raise ValidationError({"facts_checked_on": _("روز بررسی نمی‌تواند بعد از امروز باشد.")})
+            raise ValidationError(
+                {"facts_checked_on": _("تاریخ بررسی نمی‌تواند بعد از امروز باشد.")}
+            )
         # The product form's half of the publishing rule: this row's own fields.
         # The rows under it are checked by the admin's inline formsets, because
         # Django validates this form before those. A product already live is
@@ -683,7 +691,10 @@ class Product(ChecksNameTheirField, models.Model):
                 why = (
                     gettext("محصول منتشرشده با جای خالی پرنشده ذخیره نمی‌شود.")
                     if live
-                    else gettext("تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود.")
+                    else gettext(
+                        "تا موارد مشخص‌شده کامل نشود، محصول منتشر نمی‌شود. برای ذخیره بدون انتشار،"
+                        " وضعیت «پیش‌نویس» را انتخاب کنید."
+                    )
                 )
                 refused.setdefault("status", []).append(why)
                 raise ValidationError(refused)
@@ -724,7 +735,7 @@ class Product(ChecksNameTheirField, models.Model):
             )
         if self.time_sensitive and not self.facts_are_fresh:
             problems["facts_checked_on"] = gettext(
-                "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
+                "این محصول حساس به زمان است و اطلاعاتش در ۷ روز اخیر بررسی نشده است."
             )
         return problems
 
@@ -907,7 +918,7 @@ class Plan(ChecksNameTheirField, PageRow):
         _("مدت (روز)"),
         null=True,
         blank=True,
-        help_text=_("برای گیفت کارت خالی بگذارید."),
+        help_text=_("خالی = بدون تاریخ پایان، مثل گیفت کارت یا لایسنس دائمی."),
     )  # null: never expires
     cost_price = MoneyField(
         verbose_name=_("قیمت خرید"),
@@ -930,13 +941,15 @@ class Plan(ChecksNameTheirField, PageRow):
         _("پایان تخفیف"),
         null=True,
         blank=True,
-        help_text=_("با تعیین پایان، تخفیف شمارش معکوس دارد. خالی = بدون پایان"),
+        help_text=_("خالی = بدون پایان. با تاریخ پایان، سایت شمارش معکوس نشان می‌دهد."),
     )
     stock_quantity = models.PositiveIntegerField(
         _("موجودی"),
         null=True,
         blank=True,
-        help_text=_("با ثبت سفارش، تعداد خرید از موجودی کم می‌شود. خالی = نامحدود"),
+        help_text=_(
+            "خالی = نامحدود. ثبت سفارش کمش می‌کند و لغو پیش از پرداخت یا لغو ۲۱ روزه زیادش می‌کند."
+        ),
     )
     is_available = models.BooleanField(
         _("موجود"),
@@ -951,20 +964,24 @@ class Plan(ChecksNameTheirField, PageRow):
     max_quantity = models.PositiveSmallIntegerField(
         _("حداکثر تعداد در هر سفارش"),
         default=1,
-        help_text=_("عدد ۱: بدون انتخاب تعداد در صفحه‌ی محصول."),
+        help_text=_("از ۱ تا ۱۰. با ۱، صفحه‌ی محصول انتخاب تعداد ندارد."),
     )
     input_type = models.CharField(
         _("نوع اطلاعات فعال‌سازی"),
         max_length=12,
         choices=InputType.choices,
         default=InputType.UNREVIEWED,
-        help_text=_("برای فروش این پلن، نوع اطلاعات و نیاز به تلگرام را هم مشخص کنید."),
+        help_text=_("تا نوع اطلاعات و نیاز به تلگرام را مشخص نکنید، این پلن سفارش نمی‌گیرد."),
     )
     telegram_required = models.BooleanField(
         _("نیاز به تلگرام برای فعال‌سازی"),
         null=True,
         blank=True,
         choices=[(None, _("بررسی‌نشده")), (True, _("لازم است")), (False, _("لازم نیست"))],
+        help_text=_(
+            "با «لازم است»، پس از پرداخت از مشتری اطلاعات خواسته می‌شود و مهلت تحویل تا دریافتش"
+            " شروع نمی‌شود."
+        ),
     )
     requires_customer_input = models.BooleanField(
         _("نیاز به اطلاعات مشتری"),
@@ -976,7 +993,9 @@ class Plan(ChecksNameTheirField, PageRow):
         max_length=200,
         blank=True,
         default="",
-        help_text=_("نمونه «ایمیل اکانت Spotify»"),
+        help_text=_(
+            "در جمله‌ی «برای فعال‌سازی، … را از شما می‌خواهیم» می‌نشیند، مثل «ایمیل اکانت Spotify»."
+        ),
     )
     supplier_url = models.URLField(
         _("لینک تأمین‌کننده"),
@@ -1158,7 +1177,9 @@ class Plan(ChecksNameTheirField, PageRow):
             or ASKS_FOR_A_SECRET.search(normalize_for_search(self.customer_input_label))
         ):
             raise ValidationError(
-                "این گزینه فعلاً برای خرید آماده نیست. برای راهنمایی، در تلگرام به پشتیبانی پیام بدهید."
+                "گزینه‌ی «%(plan)s» فعلاً برای خرید آماده نیست. برای ادامه‌ی خرید، آن را از سبد خرید حذف"
+                " کنید یا در تلگرام به پشتیبانی پیام بدهید.",
+                params={"plan": str(self)},
             )
 
     @property
@@ -1353,7 +1374,7 @@ class ProductQuestion(PageRow):
     question = models.CharField(
         _("پرسش"),
         max_length=200,
-        help_text=_("با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."),
+        help_text=_("به زبان خود خریدار، همان‌طور که در تلگرام می‌پرسد."),
     )
     # Restricted Markdown, like a section's text.
     answer = models.TextField(

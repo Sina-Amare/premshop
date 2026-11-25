@@ -34,7 +34,7 @@ class Page(models.Model):
     is_published = models.BooleanField(
         _("منتشرشده"),
         default=False,
-        help_text=_("وقتی منتشر کنید که متن تأیید شده و کارهایی که در آن گفته‌ایم آماده باشد."),
+        help_text=_("فقط وقتی تیک بزنید که متن نهایی باشد و به همه‌ی وعده‌هایش عمل کنیم."),
     )
     updated_at = models.DateTimeField(_("آخرین ویرایش"), auto_now=True)
 

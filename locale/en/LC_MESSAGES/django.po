@@ -41,9 +41,6 @@ msgstr "Send failed"
 msgid "جست‌وجو"
 msgstr "Search"
 
-msgid "جست‌وجو با نشانی کامل ایمیل"
-msgstr "Search by exact email address"
-
 msgid "در حال ارسال"
 msgstr "Sending"
 
@@ -56,38 +53,17 @@ msgstr "Outcome recorded at"
 msgid "زمان درخواست"
 msgstr "Requested at"
 
-msgid "سابقه ارسال ایمیل"
-msgstr "Email attempt"
-
-msgid "سابقه ارسال ایمیل‌ها"
-msgstr "Email attempts"
-
 msgid "ارسال ایمیل به سقف مجاز رسیده و تا آزاد شدن ظرفیت متوقف است."
 msgstr "The sending limit has been reached. Sending is paused until capacity becomes available."
 
 msgid "شروع دوره‌ی بعدی:"
 msgstr "Next period starts:"
 
-msgid "تعداد ایمیل‌های ارسالی در دسترس نیست. فقط برای ایمیل‌های امنیتی ارسال را امتحان می‌کنیم. تنظیمات و اتصال پایگاه داده را بررسی کنید."
-msgstr "Mail accounting is unavailable. Security email will still attempt sending; other mail is paused. Check the settings and database connection."
-
-msgid "شماره پاسخ سرویس"
-msgstr "SMTP response code"
-
-msgid "ظرفیت باقی‌مانده برای ایمیل‌های امنیتی نگه داشته شده است."
-msgstr "Remaining capacity is reserved for security email."
-
-msgid "متوقف‌شده به‌خاطر سقف ارسال"
-msgstr "Blocked by sending limit"
-
 msgid "نتیجه"
 msgstr "Outcome"
 
 msgid "نتیجه نامشخص"
 msgstr "Uncertain outcome"
-
-msgid "نشانی ایمیل در این گزارش ذخیره نمی‌شود. پذیرش یعنی سرویس ایمیل پیام را گرفته است و رسیدن آن به صندوق گیرنده را تأیید نمی‌کند."
-msgstr "The address is not stored. Accepted means the mail service accepted the message; it does not prove inbox delivery."
 
 msgid "نشانی ایمیل را کامل وارد کنید."
 msgstr "Enter the complete email address."
@@ -306,9 +282,6 @@ msgstr "Set the product to Active to show it in the shop listings."
 msgid "این مشخصه بالای صفحه‌ی محصول و کنار نام آن دیده می‌شود."
 msgstr "Shown beside the product name, at the top of the product page."
 
-msgid "برای گیفت کارت خالی بگذارید."
-msgstr "Leave empty for a gift card."
-
 msgid "قیمت خرید"
 msgstr "Cost price (toman)"
 
@@ -422,9 +395,6 @@ msgstr "Margin"
 msgid "پلن «%(plan)s» زیر قیمت خرید فروخته می‌شود: %(loss)s زیان در هر فروش."
 msgstr "The plan “%(plan)s” sells below its cost: a loss of %(loss)s on every sale."
 
-msgid "%(count)s محصول %(status)s شد."
-msgstr "%(count)s products set to %(status)s."
-
 msgid "زیان"
 msgstr "Loss"
 
@@ -500,9 +470,6 @@ msgstr "“%(product)s” was not published."
 msgid "بخش‌ها روی «%(target)s» کپی نشد، چون منتشر شده است. اول آن را از سایت بردارید."
 msgstr "No sections were copied onto “%(target)s”: it is published. Take it off the site first."
 
-msgid "«%(target)s» بخش «پیش از خرید» دارد. برای تغییر متن، همان بخش را ویرایش کنید."
-msgstr "“Before you buy” was not copied: “%(target)s” already has one."
-
 msgid "آخرین بررسی"
 msgstr "Last checked"
 
@@ -533,17 +500,8 @@ msgstr "First “this product is not for you if…”, then the limits and what 
 msgid "برای تغییر متن «پیش از خرید»، بخش فعلی محصول را ویرایش کنید."
 msgstr "This product already has a “Before you buy” section. Edit that one."
 
-msgid "این محصول حساس به زمان است و ادعاهایش در ۷ روز اخیر بررسی نشده‌اند."
-msgstr "This product is time-sensitive and its claims have not been checked in the last 7 days."
-
-msgid "با صدای خریدار، همان‌طور که در تلگرام می‌پرسد."
-msgstr "In the buyer’s voice, as they would ask on Telegram."
-
 msgid "بخش محتوا"
 msgstr "content section"
-
-msgid "بخش‌های انتخابی به انتهای محتوای این محصولات اضافه می‌شوند:"
-msgstr "The sections are added at the end of these products:"
 
 msgid "بخش‌های محتوا"
 msgstr "content sections"
@@ -559,9 +517,6 @@ msgstr "Over 7 days ago, or never"
 
 msgid "تأیید قیمت"
 msgstr "Price confirmed"
-
-msgid "تا کمبودهای این فرم رفع نشود، منتشر نمی‌شود."
-msgstr "Not published until what this form is missing is filled in."
 
 msgid "این فایل PNG،‏ JPEG یا WebP نیست، یا خراب است."
 msgstr "This file is not PNG, JPEG or WebP, or it is damaged."
@@ -592,12 +547,6 @@ msgstr "Time-sensitive, unchecked for over 30 days"
 
 msgid "خالی بماند تا نام همین نوع تیتر شود. «متن آزاد» بی‌تیتر می‌ماند."
 msgstr "Leave empty to use the kind’s name as the heading. Free text has none."
-
-msgid "روز بررسی نمی‌تواند بعد از امروز باشد."
-msgstr "The check date cannot be after today."
-
-msgid "نام فروشگاه به‌صورت خودکار به انتهای عنوان اضافه می‌شود."
-msgstr "Leave out the shop’s name. The site adds it to the end of the title itself."
 
 msgid "تخفیف را اینجا ننویسید. سایت درصد آن را از قیمت تخفیفی پلن حساب می‌کند و کنار قیمت نشان می‌دهد."
 msgstr "Leave the discount out of this field. The site works out its percentage from the plan’s discounted price and shows it beside the price."
@@ -658,9 +607,6 @@ msgstr "Usage notes"
 
 msgid "نکات استفاده نوشته نشده است. اگر نکته‌ای ندارد، بنویسید «موضوعیت ندارد»."
 msgstr "The usage notes are empty. If there is nothing to add, enter the Persian for “not applicable”."
-
-msgid "هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای ندارد، «موضوعیت ندارد»."
-msgstr "One note per line, each starting with -. If there is nothing to add, the Persian for “not applicable”."
 
 msgid "نشانی صفحه‌های رسمی پشتوانه‌ی ادعاهای متن، هر کدام در یک سطر. روی سایت نمی‌آید."
 msgstr "The official pages behind the text’s claims, one address per line. Not shown on the site."
@@ -724,9 +670,6 @@ msgstr "One sentence: what the product does for the buyer and who it suits."
 
 msgid "برای انتشار دوباره‌ی «%(product)s»، موارد زیر را کامل کنید."
 msgstr "“%(product)s” cannot be published again until these are fixed."
-
-msgid "اگر از سایت برداشته شود"
-msgstr "If it is taken off the shop"
 
 msgid "برای انتشار دوباره، موارد زیر را کامل کنید."
 msgstr "Until these are fixed, it cannot be published again."
@@ -1311,9 +1254,6 @@ msgstr "Page address"
 msgid "آدرس صفحه پس از افزودن تغییر نمی‌کند."
 msgstr "A page address cannot change after creation."
 
-msgid "وقتی منتشر کنید که متن تأیید شده و کارهایی که در آن گفته‌ایم آماده باشد."
-msgstr "Publish after the text is approved and the stated processes are operational."
-
 msgid "برای انتشار، این قسمت را کامل کنید."
 msgstr "Complete this field before publishing."
 
@@ -1368,9 +1308,6 @@ msgstr "Item"
 msgid "اطلاعات مشتری"
 msgstr "Customer input"
 
-msgid "اطلاعاتی برای نمایش وجود ندارد."
-msgstr "There is no input to show."
-
 msgid "بازگشت به سفارش"
 msgstr "Back to order"
 
@@ -1404,9 +1341,6 @@ msgstr "Recipient"
 msgid "موضوع"
 msgstr "Subject"
 
-msgid "متن ایمیل"
-msgstr "Email text"
-
 msgid "نسخه‌ی HTML"
 msgstr "HTML version"
 
@@ -1422,12 +1356,6 @@ msgstr "Last attempt"
 msgid "زمان ارسال"
 msgstr "Sent at"
 
-msgid "کد SMTP"
-msgstr "SMTP code"
-
-msgid "تأییدیه‌ی خرید"
-msgstr "Purchase confirmation"
-
 msgid "تأییدیه‌های خرید"
 msgstr "Purchase confirmations"
 
@@ -1439,9 +1367,6 @@ msgstr "Delivery method"
 
 msgid "تحویل تا %(hours)s ساعت پس از تأیید پرداخت"
 msgstr "Delivery within %(hours)s hours of payment confirmation"
-
-msgid "برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید."
-msgstr "Activating this product needs coordination on Telegram."
 
 msgid "شرایط لغو و بازگشت وجه"
 msgstr "Cancellation and refund terms"
@@ -1539,9 +1464,6 @@ msgstr "This item is not waiting for details."
 msgid "ثبت درخواست اطلاعات"
 msgstr "Record a request for details"
 
-msgid "درباره‌ی درخواست در تلگرام با مشتری هماهنگ کنید. رمز یا کد ورود را در این فرم ننویسید."
-msgstr "Arrange the request with the customer on Telegram. Do not enter passwords or sign-in codes here."
-
 msgid "زمان توقف مهلت تحویل"
 msgstr "Delivery deadline paused at"
 
@@ -1602,9 +1524,6 @@ msgstr "Order pages"
 msgid "تطبیق شناسه‌ی پشتیبانی"
 msgstr "Match support identifier"
 
-msgid "برای تطبیق درخواست، شناسه‌ای را که مشتری فرستاده وارد کنید. تصویر فاکتور به تنهایی کافی نیست."
-msgstr "Enter the identifier the customer sent. An invoice image does not prove who owns the order."
-
 msgid "شناسه‌ی پشتیبانی سفارش"
 msgstr "Order support identifier"
 
@@ -1613,15 +1532,6 @@ msgstr "Check identifier"
 
 msgid "شناسه با این سفارش مطابقت دارد."
 msgstr "The identifier matches this order."
-
-msgid "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."
-msgstr "The identifier you entered is invalid for this order."
-
-msgid "این بررسی فقط برای تطبیق درخواست پشتیبانی است."
-msgstr "This check only matches a support request to its order."
-
-msgid "تطبیق شناسه انجام نشد. دوباره امتحان کنید."
-msgstr "Identifier comparison is unavailable; try again."
 
 msgid "اطلاعات تحویل"
 msgstr "Delivery details"
@@ -1634,9 +1544,6 @@ msgstr "You cannot record delivery details while the item is in this state."
 
 msgid "این محصول در صف انجام نیست"
 msgstr "This item is not in the queue"
-
-msgid "به تاریخ شمسی مثل ۱۴۰۵/۰۹/۱۵، و خالی برای اشتراک بی‌پایان."
-msgstr "A Persian calendar date such as 1405/09/15; empty for a subscription with no end."
 
 msgid "تأمین"
 msgstr "Supply"
@@ -1664,9 +1571,6 @@ msgstr "Write at least one line of delivery details."
 
 msgid "زمان تحویل"
 msgstr "Delivered at"
-
-msgid "سطرهای خالی نادیده گرفته می‌شوند."
-msgstr "Empty lines are ignored."
 
 msgid "صفحه‌ی تأمین‌کننده"
 msgstr "Supplier page"
@@ -1788,9 +1692,6 @@ msgstr "The note is too long."
 msgid "یادداشت را بنویسید."
 msgstr "Write a note."
 
-msgid "این توضیح در سابقه‌ی سفارش می‌ماند."
-msgstr "This note stays in the order history."
-
 msgid "لغو این محصول قبلاً ثبت شده است. جزئیات را در صفحه‌ی سفارش ببینید."
 msgstr "This cancellation was already recorded, and this form was not recorded again."
 
@@ -1911,9 +1812,6 @@ msgstr "The report date is in Tehran time."
 msgid "زمان ثبت بدهی"
 msgstr "Time the refund became owed"
 
-msgid "زمان واریز باید معتبر و حداکثر همین لحظه باشد."
-msgstr "The transfer time must be valid and no later than now."
-
 msgid "زمان واریز را بعد از ثبت بازپرداخت یا در همان لحظه وارد کنید."
 msgstr "The transfer cannot predate the refund becoming owed."
 
@@ -1982,9 +1880,6 @@ msgstr "Replacement rejected"
 
 msgid "تغییر مهلت تحویل"
 msgstr "Delivery deadline changed"
-
-msgid "لغو محصول"
-msgstr "Item cancelled"
 
 msgid "واریز بازپرداخت"
 msgstr "Refund sent"
@@ -2101,9 +1996,6 @@ msgstr "Choose one of the reasons."
 
 msgid "انتخاب دلیل"
 msgstr "Choose a reason"
-
-msgid "بازگشت وجه پس از درخواست تعویض"
-msgstr "Refund after replacement claim"
 
 msgid "پایان اشتراک در تحویل اول"
 msgstr "Subscription end at first delivery"
@@ -2295,9 +2187,6 @@ msgstr "Only differences from the shop’s refund policy, in one sentence."
 msgid "لینک منابع رسمی، هر کدام در یک سطر. فقط در پنل."
 msgstr "Official source links, one per line. Only visible in the panel."
 
-msgid "روزی که توضیحات محصول را با منابع بررسی کردید."
-msgstr "The day you checked the product description against its sources."
-
 msgid "برای محصول با امکانات یا قیمت متغیر. پیش از انتشار، بررسی در ۷ روز اخیر لازم است."
 msgstr "For products with changing features or prices. A check within the past 7 days is required to publish."
 
@@ -2310,23 +2199,8 @@ msgstr "Only visible in the panel. Used to source the product."
 msgid "خالی = شروع فوری"
 msgstr "Blank = starts immediately"
 
-msgid "با تعیین پایان، تخفیف شمارش معکوس دارد. خالی = بدون پایان"
-msgstr "With an end date: countdown while the offer is active. Blank = no end"
-
-msgid "با ثبت سفارش، تعداد خرید از موجودی کم می‌شود. خالی = نامحدود"
-msgstr "Stock decreases by the quantity ordered. Blank = unlimited"
-
 msgid "با برداشتن تیک، فروش این پلن متوقف می‌شود."
 msgstr "Uncheck to stop selling this plan."
-
-msgid "عدد ۱: بدون انتخاب تعداد در صفحه‌ی محصول."
-msgstr "1 hides the quantity selector on the product page."
-
-msgid "برای فروش این پلن، نوع اطلاعات و نیاز به تلگرام را هم مشخص کنید."
-msgstr "Customers can buy this plan after the information type and Telegram requirement are set."
-
-msgid "نمونه «ایمیل اکانت Spotify»"
-msgstr "Example: Spotify account email"
 
 msgid "با افزودن تصویر، توضیح کوتاهی از محتوای آن بنویسید."
 msgstr "When you add an image, describe it briefly."
@@ -2346,14 +2220,8 @@ msgstr "The preview is up to date. Your changes are still unsaved."
 msgid "پیش‌نمایش به‌روز نشد. فعلاً همان نسخه‌ی قبلی را می‌بینید."
 msgstr "The preview could not be updated. You are still seeing the previous version."
 
-msgid "این بخش فعلاً در صفحه‌ی محصول دیده نمی‌شود."
-msgstr "This section is currently hidden on the product page."
-
 msgid "جای این بخش در صفحه‌ی محصول"
 msgstr "Where this section appears on the product page"
-
-msgid "حذف را لغو کنید تا این ردیف به پیش‌نمایش برگردد."
-msgstr "Undo the deletion to bring this row back into the preview."
 
 msgid "خلاصه‌ی صفحه برای نتایج جستجو و پیش‌نمایش لینک."
 msgstr "Page summary for search results and link previews."
@@ -2361,18 +2229,9 @@ msgstr "Page summary for search results and link previews."
 msgid "برای انتشار دوباره"
 msgstr "To publish again"
 
-msgid "محصول دیگری برای کپی بخش‌ها نداریم."
-msgstr "There is no other product to copy sections from."
-
-msgid "نمایش شرایط تمدید روی همین اکانت، با قیمت روز."
-msgstr "Shows renewal terms for the same account at the current price."
-
 
 msgid "اول مبلغ را از حساب بانکی واریز کنید، بعد مشخصات واریز را اینجا ثبت کنید. اطلاعات ثبت‌شده را نمی‌توان تغییر داد."
 msgstr "Make the transfer from your bank account first, then record its details here. The saved details cannot be changed."
-
-msgid "اول دریافت مبلغ را در حساب بانکی بررسی کنید. برای تأیید پرداخت، تصویر رسید کافی نیست."
-msgstr "Check your bank account for the deposit first. A receipt image is insufficient to confirm payment."
 
 msgid "واریز ثبت شد"
 msgstr "Transfer recorded"
@@ -2428,9 +2287,6 @@ msgstr "Select at least one product."
 msgid "سفارش‌های پرداخت‌نشده پس از مهلت"
 msgstr "Unpaid orders past their deadline"
 
-msgid "بررسی خودکار به‌روز نیست. وضعیت کارهای زمان‌بندی‌شده‌ی سرور را بررسی کنید."
-msgstr "The automatic check is overdue. Check the scheduled tasks on the server."
-
 msgid "یادداشت در سابقه‌ی سفارش می‌ماند. اطلاعات ورود را اینجا ننویسید."
 msgstr "This note stays in the order history. Keep sign-in details out of it."
 
@@ -2446,9 +2302,231 @@ msgstr "We deleted the delivery details at the end of their retention period. Th
 msgid "رد درخواست"
 msgstr "Reject request"
 
-msgid "خالی = نامحدود. هر سفارش یک بار حساب می‌شود. لغو سفارش پرداخت‌نشده یا لغو همه‌ی محصولات مشمول تخفیف پیش از تحویل، یک بار از تعداد استفاده کم می‌کند."
-msgstr "Blank = unlimited. Each order counts as one use. Cancelling an unpaid order, or cancelling all discounted items before delivery, removes that use from the total."
-
 
 msgid "وضعیت محصول تغییر کرده است. صفحه را دوباره باز کنید."
 msgstr "The item's status changed. Reopen the page."
+
+msgid "%(count)s محصول از سایت برداشته شد."
+msgstr "%(count)s product(s) taken off the site."
+
+msgid "%(count)s محصول منتشر شد."
+msgstr "%(count)s product(s) published."
+
+msgid "از مهلت گذشته"
+msgstr "overdue"
+
+msgid "از ۱ تا ۱۰. با ۱، صفحه‌ی محصول انتخاب تعداد ندارد."
+msgstr "From 1 to 10. With 1, the product page has no quantity picker."
+
+msgid "اطلاعاتی ثبت نشده یا پس از مهلت نگهداری حذف شده است. سابقه‌ی سفارش را ببینید."
+msgstr "Nothing was entered, or it was deleted after the retention period. See the order history."
+
+msgid "اول مطمئن شوید مبلغ به حساب بانکی رسیده است. تصویر رسید برای تأیید پرداخت کافی نیست."
+msgstr "First make sure the money has reached the bank account. A receipt screenshot is not enough to confirm a payment."
+
+msgid "این بخش با اطلاعات فعلی در صفحه‌ی محصول دیده نمی‌شود. راهنمای کنار فیلد را ببینید."
+msgstr "With the current details this section does not appear on the product page. See the field's hint."
+
+msgid "این توضیح فقط در سابقه‌ی سفارش می‌ماند و مشتری آن را نمی‌بیند."
+msgstr "This note stays in the order history only; the customer does not see it."
+
+msgid "این ردیف با ذخیره حذف می‌شود. برای نگه داشتنش، تیک حذف را بردارید."
+msgstr "This row is deleted on save. To keep it, untick delete."
+
+msgid "این محصول حساس به زمان است و اطلاعاتش در ۷ روز اخیر بررسی نشده است."
+msgstr "This product is time-sensitive and its details were not checked in the last 7 days."
+
+msgid "این محصول در صف انجام نیست."
+msgstr "This item is not in the queue."
+
+msgid "این محصول هنوز تحویل نشده است."
+msgstr "This item has not been delivered yet."
+
+msgid "بازپرداخت پس از درخواست تعویض"
+msgstr "Refund after a replacement request"
+
+msgid "بخش «پیش از خرید» کپی نشد، چون «%(target)s» یکی دارد. برای تغییر متنش، همان بخش را ویرایش کنید."
+msgstr "The “Before you buy” section was not copied, because “%(target)s” already has one. To change its text, edit that section."
+
+msgid "برابر جمع بازپرداخت‌های انتخاب‌شده"
+msgstr "Equal to the sum of the selected refunds"
+
+msgid "بررسی خودکار بیش از ۳ دقیقه است که اجرا نشده. کارهای زمان‌بندی‌شده‌ی سرور را بررسی کنید."
+msgstr "The automatic check has not run for more than 3 minutes. Check the server's scheduled jobs."
+
+msgid "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست."
+msgstr "The identifier cannot be checked right now. This result does not mean the identifier was rejected."
+
+msgid "به زبان خود خریدار، همان‌طور که در تلگرام می‌پرسد."
+msgstr "In the buyer's own words, as they would ask on Telegram."
+
+msgid "تا موارد مشخص‌شده کامل نشود، محصول منتشر نمی‌شود. برای ذخیره بدون انتشار، وضعیت «پیش‌نویس» را انتخاب کنید."
+msgstr "Until the marked items are complete, the product is not published. To save without publishing, choose the “Draft” status."
+
+msgid "تاریخ آخرین بررسی صحت اطلاعات محصول"
+msgstr "Date the product's details were last checked for accuracy"
+
+msgid "تاریخ بررسی نمی‌تواند بعد از امروز باشد."
+msgstr "The check date cannot be later than today."
+
+msgid "تاریخ شمسی، مثل ۱۴۰۵/۰۹/۱۵. خالی = اشتراک بی‌پایان."
+msgstr "Solar Hijri date, such as 1405/09/15. Blank = no end."
+
+msgid "تاریخ گزارش به وقت تهران است. هر پرداخت در روز تأییدش آمده است، نه روز واریز مشتری."
+msgstr "Report dates are in Tehran time. Each payment appears on the day it was confirmed, not the day the customer transferred it."
+
+msgid "تعداد ایمیل‌های ارسالی خوانده نشد. تا رفع مشکل فقط برای ایمیل‌های امنیتی ارسال را امتحان می‌کنیم. تنظیمات و اتصال پایگاه داده را بررسی کنید."
+msgstr "The email sent count could not be read. Until this is fixed, only security emails will be attempted. Check the settings and database connection."
+
+msgid "جستجو با نشانی کامل ایمیل"
+msgstr "Search by full email address"
+
+msgid "جمع کل سفارش پیش از این کد، حتی اگر کد فقط شامل بعضی محصولات باشد. خالی = بدون حداقل"
+msgstr "The whole order's total before this code, even if the code covers only some products. Blank = no minimum"
+
+msgid "خالی = از همین حالا"
+msgstr "Blank = from now"
+
+msgid "خالی = بدون تاریخ پایان، مثل گیفت کارت یا لایسنس دائمی."
+msgstr "Blank = no end date, as for a gift card or a lifetime licence."
+
+msgid "خالی = بدون پایان"
+msgstr "Blank = no end"
+
+msgid "خالی = بدون پایان. با تاریخ پایان، سایت شمارش معکوس نشان می‌دهد."
+msgstr "Blank = no end. With an end date, the site shows a countdown."
+
+msgid "خالی = نامحدود. هر سفارش یک استفاده حساب می‌شود. اگر سفارش پیش از پرداخت لغو شود، یا همه‌ی محصولات مشمول تخفیفش پیش از تحویل لغو شوند، آن استفاده آزاد می‌شود."
+msgstr "Blank = unlimited. Each order counts as one use. If the order is cancelled before payment, or every discounted product in it is cancelled before delivery, that use is released."
+
+msgid "درخواست اطلاعات از مشتری"
+msgstr "Ask the customer for details"
+
+msgid "زمان واریز نمی‌تواند در آینده باشد."
+msgstr "The transfer time cannot be in the future."
+
+msgid "سابقه‌ی ارسال ایمیل"
+msgstr "Email send log"
+
+msgid "سابقه‌ی ارسال ایمیل‌ها"
+msgstr "Email send logs"
+
+msgid "سطرهای خالی ثبت نمی‌شوند."
+msgstr "Empty rows are not saved."
+
+msgid "شناسه با این سفارش مطابقت ندارد."
+msgstr "The identifier does not match this order."
+
+msgid "شناسه‌ای را که مشتری فرستاده وارد کنید تا معلوم شود سفارش مال اوست. تصویر فاکتور مالکیت یا پرداخت را ثابت نمی‌کند."
+msgstr "Enter the identifier the customer sent to confirm the order is theirs. An invoice image proves neither ownership nor payment."
+
+msgid "ظرفیت باقی‌مانده برای ایمیل‌های امنیتی نگه داشته شده و ایمیل‌های سفارش تا آزاد شدن ظرفیت منتظر می‌مانند."
+msgstr "The remaining capacity is held for security mail, and order emails wait until capacity frees up."
+
+msgid "فعلاً سفارشی در این فهرست نیست."
+msgstr "No orders in this list right now."
+
+msgid "فقط در سابقه‌ی سفارش می‌ماند. مشتری زمان جدید تحویل را می‌بیند، نه این دلیل را."
+msgstr "Stays in the order history only. The customer sees the new delivery time, not this reason."
+
+msgid "فقط در سابقه‌ی سفارش می‌ماند. پیام رد درخواست از مشتری می‌خواهد دلیل را از پشتیبانی بپرسد."
+msgstr "Stays in the order history only. The rejection message asks the customer to ask support for the reason."
+
+msgid "لغو بدون بازپرداخت"
+msgstr "Cancel without a refund"
+
+msgid "لغو خرید"
+msgstr "Purchase cancelled"
+
+msgid "مبلغ بازپرداخت: ندارد."
+msgstr "Refund amount: none."
+
+msgid "متن پیام"
+msgstr "Message text"
+
+msgid "متوقف به‌دلیل سقف ارسال"
+msgstr "Stopped by the sending limit"
+
+msgid "مطابقت شناسه فقط مالکیت سفارش را نشان می‌دهد، نه پرداخت را."
+msgstr "A match shows only that the order is theirs, not that it was paid."
+
+msgid "نام فروشگاه را ننویسید. سایت خودش آن را به آخر عنوان اضافه می‌کند."
+msgstr "Leave out the shop's name. The site adds it to the end of the title."
+
+msgid "نشانی ایمیل در این گزارش ذخیره نمی‌شود. «سرویس ایمیل پذیرفت» یعنی پیام به سرویس ایمیل رسیده است، نه لزوماً به صندوق گیرنده."
+msgstr "Email addresses are not stored in this log. “Accepted by the mail service” means the message reached the mail service, not necessarily the recipient's inbox."
+
+msgid "نظر پنهان‌شده دوباره منتشر نمی‌شود."
+msgstr "A hidden review cannot be published again."
+
+msgid "هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای نیست، بنویسید «موضوعیت ندارد»."
+msgstr "One note per line, each starting with -. If there are none, write “Not applicable”."
+
+msgid "هیچ محصول دیگری بخش محتوا ندارد."
+msgstr "No other product has content sections."
+
+msgid "پس از پرداخت، برای فعال‌سازی این محصول باید در تلگرام با پشتیبانی هماهنگ کنید."
+msgstr "After payment, activating this product needs coordination with support on Telegram."
+
+msgid "کد باید ۴ تا ۸ حرف لاتین یا رقم باشد."
+msgstr "The code must be 4 to 8 Latin letters or digits."
+
+msgid "کد پاسخ SMTP"
+msgstr "SMTP reply code"
+
+msgid "۷ روز پس از تحویل"
+msgstr "7 days after delivery"
+
+msgid "با «لازم است»، پس از پرداخت از مشتری اطلاعات خواسته می‌شود و مهلت تحویل تا دریافتش شروع نمی‌شود."
+msgstr "With “Required”, the customer is asked for details after payment, and the delivery deadline does not start until they arrive."
+
+msgid "در جمله‌ی «برای فعال‌سازی، … را از شما می‌خواهیم» می‌نشیند، مثل «ایمیل اکانت Spotify»."
+msgstr "Fills the gap in “For activation, we ask you for …”, such as “Spotify account email”."
+
+msgid "از ۱ تا ۴۸ ساعت. قول ما به مشتری است و تغییرش فقط سفارش‌های بعدی را عوض می‌کند."
+msgstr "From 1 to 48 hours. It is our promise to the customer, and changing it affects only later orders."
+
+msgid "اگر محصول از سایت برداشته شود، تا این موارد درست نشود دوباره منتشر نمی‌شود."
+msgstr "If the product is taken off the site, it cannot be published again until these are fixed."
+
+msgid "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، برایش پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید."
+msgstr "“Ask the customer for details” stops the delivery deadline and, if the customer has an email or a linked Telegram, messages them. If receipt of the details is not recorded within 21 days, the purchase is cancelled automatically. Never write a password or sign-in code the customer sends on Telegram into the panel."
+
+msgid "با ثبت، پرداخت سفارش تأیید می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود. این ثبت برگشت ندارد."
+msgstr "Recording confirms the order's payment and, if the customer has an email or a linked Telegram, notifies them. It cannot be undone."
+
+msgid "بخش‌های محصولی که انتخاب می‌کنید به انتهای محتوای این محصولات اضافه می‌شوند. «پیش از خرید» فقط به محصولی اضافه می‌شود که آن را ندارد:"
+msgstr "The sections of the product you choose are added to the end of these products' content. “Before you buy” is added only to a product that does not have one:"
+
+msgid "خالی = نامحدود. ثبت سفارش کمش می‌کند و لغو پیش از پرداخت یا لغو ۲۱ روزه زیادش می‌کند."
+msgstr "Blank = unlimited. An order lowers it; a cancellation before payment or the 21-day cancellation raises it."
+
+msgid "صفحه‌ی محصول تمدید همین اکانت با قیمت روز را وعده می‌دهد. فقط اگر شدنی است، تیک بزنید."
+msgstr "The product page promises renewal of the same account at the day's price. Tick it only if that is possible."
+
+msgid "فقط وقتی تیک بزنید که متن نهایی باشد و به همه‌ی وعده‌هایش عمل کنیم."
+msgstr "Tick only when the text is final and we keep every promise in it."
+
+msgid "لغو برگشت ندارد. اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود."
+msgstr "Cancelling cannot be undone. If the customer has an email or a linked Telegram, they are notified."
+
+msgid "لغو برگشت ندارد. اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود. این مبلغ تا ثبت واریز، «در انتظار واریز» می‌ماند."
+msgstr "Cancelling cannot be undone. If the customer has an email or a linked Telegram, they are notified. This amount stays “awaiting transfer” until the transfer is recorded."
+
+msgid "پیش از انتشار دوباره"
+msgstr "Before publishing again"
+
+msgid "شناسه‌ای را که مشتری فرستاده وارد کنید تا با شناسه‌ی همین سفارش مقایسه شود. تصویر فاکتور مالکیت یا پرداخت را ثابت نمی‌کند."
+msgstr "Enter the identifier the customer sent to compare it with the identifier on this order. An invoice image does not establish ownership or payment."
+
+msgid "این تطبیق به‌تنهایی هویت فرستنده یا پرداخت را تأیید نمی‌کند."
+msgstr "A match alone does not verify the sender's identity or payment."
+
+msgid "با تغییر شماره، کاربر بی‌رمز از همه‌ی دستگاه‌ها خارج می‌شود. خالی = ورود ممکن نیست."
+msgstr "Changing the number signs a user without a password out on every device. A blank number prevents sign-in."
+
+msgid "بدون تیک، کاربر از حسابش خارج می‌شود و نمی‌تواند وارد شود."
+msgstr "Clearing this signs the user out and prevents sign-in."
+
+msgid "این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید."
+msgstr "This form is no longer valid. Open the page again."

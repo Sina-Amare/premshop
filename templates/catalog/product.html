@@ -34,7 +34,7 @@
         the operator writes and marks «مهم». Nothing is key by default.
         {% endcomment %}
         <div class="pdp__meta">
-          <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
+          <span class="badge badge--neutral">{% if product.warranty == "none" %}بدون گارانتی{% elif product.warranty == "days_7" %}گارانتی ۷ روز{% else %}گارانتی {{ product.get_warranty_display }}{% endif %}</span>
           <span class="badge badge--neutral">{{ product.delivery_sentence }}</span>
           {% if product_reviews %}<a class="badge pdp__rating" href="#product-reviews"><svg aria-hidden="true"><use href="#i-star"></use></svg>{{ review_average|fa_digits }} از ۵ · {{ product_reviews|length|fa_digits }} نظر</a>{% endif %}
           {% for spec in key_specs %}<span data-preview-row="{{ spec.preview_key }}" data-preview-field="is_key" class="badge badge--key">{{ spec.title }}: <bdi>{{ spec.value }}</bdi></span>{% endfor %}

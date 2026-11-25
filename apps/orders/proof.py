@@ -21,7 +21,11 @@ from apps.orders.models import Order, OrderEmailRecovery
 TTL = 600
 UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
 LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
-LAPSED = "تأیید ایمیل دیگر اعتبار ندارد. برای دیدن اطلاعات تحویل، کد جدید بگیرید."
+LAPSED = "مهلت دیدن اطلاعات تحویل تمام شد. برای دیدن دوباره، کد جدیدی بگیرید."
+DELIVERY_LIMITED = (
+    "فعلاً نمی‌توانیم کد دیگری بفرستیم. اگر در همین مرورگر برای این سفارش در ۱۰ دقیقه‌ی گذشته کد گرفته‌اید"
+    " و هنوز از آن استفاده نکرده‌اید، آخرین کد را وارد کنید. در غیر این صورت، کمی بعد دوباره کد بگیرید."
+)
 RECOVERY_UNAVAILABLE = (
     "برای بازیابی باید از همان حساب تلگرامی استفاده کنید که پیش از خرید به حساب کاربری وصل بود."
 )
@@ -58,7 +62,9 @@ def _subject(order: Order, session_key: str) -> str:
     return f"order-delivery:{order.pk}:{binding}"
 
 
-def _budget(order: Order, actor: User, prefix: str, ip: str | None = None) -> None:
+def _budget(
+    order: Order, actor: User, prefix: str, ip: str | None = None, message: str = LIMITED
+) -> None:
     limits = [
         (f"{prefix}:account", str(actor.pk)),
         (f"{prefix}:order", str(order.pk)),
@@ -66,9 +72,9 @@ def _budget(order: Order, actor: User, prefix: str, ip: str | None = None) -> No
     for name, subject in limits:
         for times, seconds in ((1, 60), (5, 3600)):
             if not ratelimit.hit(ratelimit.Limit(f"{name}:{seconds}", times, seconds), subject):
-                raise ValidationError(LIMITED)
+                raise ValidationError(message)
     if ip is not None and not ratelimit.hit(ratelimit.Limit(f"{prefix}:ip", 10, 3600), ip):
-        raise ValidationError(LIMITED)
+        raise ValidationError(message)
 
 
 def request_code(*, order_id: int, actor: User, session_key: str, ip: str) -> None:
@@ -76,7 +82,7 @@ def request_code(*, order_id: int, actor: User, session_key: str, ip: str) -> No
         order, _ = locked_order(order_id, actor)
         subject = _subject(order, session_key)
         email, _ = email_for(order)
-        _budget(order, actor, "delivery-code", ip)
+        _budget(order, actor, "delivery-code", ip, DELIVERY_LIMITED)
     code = otp._new_code()
     try:
         sent = send_templated_email(
@@ -139,7 +145,8 @@ def start_recovery(*, order_id: int, actor: User, email: str) -> None:
     text = format_html(
         "کد تغییر ایمیل سفارش {}: <code>{}</code>\n"
         "ایمیل جدید: <code>{}</code>\n"
-        "اگر خودتان درخواست تغییر ایمیل داده‌اید، این کد را برای پشتیبانی بخوانید.\n"
+        "اگر خودتان از پشتیبانی خواسته‌اید ایمیل این سفارش عوض شود و ایمیل بالا درست است، این کد را"
+        " برای پشتیبانی بفرستید؛ وگرنه آن را به کسی ندهید.\n"
         "کد تغییر ایمیل تا ۱۰ دقیقه اعتبار دارد. کد ورود به سایت را برای پشتیبانی نفرستید.",
         to_persian_digits(order.order_number),
         code,

@@ -37,7 +37,10 @@ def test_each_refusal_has_its_own_message_and_spends_no_other_budget(client, blo
         services.TOO_MANY_CODES,
         services.TOO_MANY_CODES_FROM_NETWORK,
     ][blocked]
-    assert response.json()["error"] == expected
+    message = response.json()["error"]
+    assert message == expected
+    assert ("۲۴ ساعت دیگر", "۲۴ ساعت دیگر", "دو دقیقه", "یک ساعت", "یک ساعت")[blocked] in message
+    assert "دوباره" in message
     assert [ratelimit.remaining(*budget) for budget in budgets()] == before
     assert not sms.outbox
 
@@ -47,7 +50,7 @@ def test_daily_refusal_precedes_exhausted_short_windows(rf):
         for _ in range(limit.times):
             ratelimit.hit(limit, subject)
     with pytest.raises(
-        services.RateLimited, match="پیامک ورود برای این شماره پر شده است. تا ۲۴ ساعت"
+        services.RateLimited, match="برای این شماره در ۲۴ ساعت فقط ۱۰ بار کد ورود پیامک می‌کنیم"
     ):
         services.request_login_code(rf.post("/"), PHONE)
 
@@ -75,7 +78,7 @@ def test_the_daily_budget_is_per_number_not_reset_on_login_and_expires(client, r
         assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, PHONE) == 0
         assert services.complete_code_login(rf_request(client, rf), PHONE, sms_code()) is not None
         with pytest.raises(
-            services.RateLimited, match="پیامک ورود برای این شماره پر شده است. تا ۲۴ ساعت"
+            services.RateLimited, match="برای این شماره در ۲۴ ساعت فقط ۱۰ بار کد ورود پیامک می‌کنیم"
         ):
             services.request_login_code(rf.post("/"), PHONE)
         clock.shift(86400 - 9 * 13 * 60)

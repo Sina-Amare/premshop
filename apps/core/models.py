@@ -9,7 +9,7 @@ class MailAttempt(models.Model):
         ACCEPTED = "accepted", _("سرویس ایمیل پذیرفت")
         REJECTED = "rejected", _("ارسال ناموفق")
         UNCERTAIN = "uncertain", _("نتیجه نامشخص")
-        BLOCKED = "blocked", _("متوقف‌شده به‌خاطر سقف ارسال")
+        BLOCKED = "blocked", _("متوقف به‌دلیل سقف ارسال")
 
     template = models.CharField(
         _("نوع ایمیل"),
@@ -27,12 +27,12 @@ class MailAttempt(models.Model):
     completed_at = models.DateTimeField(_("زمان ثبت نتیجه"), null=True)
     status = models.CharField(_("نتیجه"), max_length=12, choices=Status, default=Status.IN_FLIGHT)
     error_type = models.CharField(_("نوع خطا"), max_length=64, blank=True)
-    smtp_code = models.PositiveSmallIntegerField(_("شماره پاسخ سرویس"), null=True)
+    smtp_code = models.PositiveSmallIntegerField(_("کد پاسخ SMTP"), null=True)
 
     class Meta:
         ordering = ["-created_at", "-pk"]
-        verbose_name = _("سابقه ارسال ایمیل")
-        verbose_name_plural = _("سابقه ارسال ایمیل‌ها")
+        verbose_name = _("سابقه‌ی ارسال ایمیل")
+        verbose_name_plural = _("سابقه‌ی ارسال ایمیل‌ها")
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(

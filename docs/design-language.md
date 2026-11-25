@@ -209,12 +209,16 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید. پس از پایان این بازه دوباره امتحان کنید.» | «با این حساب تلگرام در هر ۲۴ ساعت بیشتر از ۵ بار نمی‌توانید اتصال را تأیید کنید.» | The limit gives the reason and the time window. |
 | «برای ادامه‌ی اتصال، از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | «از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | The heading already says the link expired. The sentence gives the next step. |
 | «اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.» | «به پشتیبانی پیام بدهید.» | The word «پشتیبانی» is the link. |
-| «در صفحه‌ی سفارش می‌بینید هر محصول در چه مرحله‌ای است و آیا برای تحویلش کاری از طرف شما لازم است.» | «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | Name the information the buyer will find and where to find it. |
+| «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | «مراحل تحویل را در صفحه‌ی سفارش ببینید.» | The owner's second rewrite of their own line. A pointer names what the reader will find there and nothing more; the noun stack read heavy. |
 | «رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.» | «رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.» | Say what this email address is for. |
 | «اگر از لینک یک محصول به این صفحه رسیده‌اید، نامش را جستجو کنید یا از فهرست محصولات به خرید ادامه دهید.» | «شاید آدرس اشتباه است، یا این محصول را دیگر نمی‌فروشیم.» | Keep the reason on the 404. A second line can point to search and the shop. |
 | «اگر می‌خواهید خرید بقیه‌ی محصولات را ادامه دهید، این مورد را از سبد خرید حذف کنید.» | «برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید.» | The unavailable item is already identified. Give the action directly. |
 | «برای خرید، محصولتان را از فهرست پیدا کنید و به سبد اضافه کنید.» | «برای شروع، یک محصول را انتخاب کنید.» | One step is enough for an empty cart. |
 | «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی همان لحظه از اعتبار می‌افتد.» | «با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.» | State what happens to the previous identifier. |
+| «برای تحویل فعلاً کاری لازم نیست.» | «فعلاً نیازی نیست کاری انجام دهید.» | The heading above already gives the delivery time. The reassurance stands on its own, without a «برای …» in front. |
+| «این سفارش ایمیل ندارد.» | «برای این سفارش ایمیلی ثبت نشده است.» | An order does not "have" an email. Say what was or was not recorded. |
+| «اطلاعات فعال‌سازی لازم است» | «برای فعال‌سازی به اطلاعات شما نیاز داریم» | The shop says what it needs from the buyer, instead of stating an impersonal requirement. |
+| «روزی که توضیحات محصول را با منابع بررسی کردید.» | «تاریخ آخرین بررسی صحت اطلاعات محصول» | A field hint names what the date vouches for. The relative clause dangled under its label. |
 
 ### Building a line
 
@@ -334,6 +338,25 @@ For errors and sign-in, give the cause the system can establish and the next act
 For product and SEO copy, explain a purchased capability through a task the buyer can recognize. Describe background playback as listening while the screen is off. Keep the concrete benefits, comparisons, requirements and usage limits that help someone decide what to buy. Review source material before changing a claim. Keep edits to seeded defaults from overwriting product copy the operator has maintained.
 
 For review, open the rendered view at 390 and 1440 pixels with ordinary and long values. Check empty, blocked, expired and successful states. Exercise the action named in each message, or check its code path in an isolated fixture. Build financial examples through checkout, payment and cancellation so the receipt, discount and refund agree. Pair comparisons by the same code branch or event in each version. Review plain-text email beside HTML. A bot or SMS preview uses a sample payload with sending disabled. Very short help can look clear in a source file and become unclear once a field is hidden or a variable changes. Re-read the result with those branches visible and ask a second reader whether the existing line, an edit or deletion best serves the reader.
+
+### Before and after, with the reason
+
+Each pair comes from the shop. The right-hand column is the judgment to reuse; the wording itself is not a pattern to stamp elsewhere.
+
+| Situation | Weak | Better | Why |
+|---|---|---|---|
+| Delivery notice by email and Telegram | «کد را از همان صفحه بگیرید و با آن ایمیل همین سفارش را تأیید کنید.» | «در صفحه‌ی سفارش «فرستادن کد به ایمیل» را بزنید و کدی را که به ایمیل سفارش می‌رسد، همان‌جا وارد کنید.» | Say what the reader does, in the page's own button words. The weak line described the system's check and pointed at a code that did not exist yet. |
+| A paid purchase cancelled, refund owed | «مبلغ بازگشت وجه: … تومان. وضعیت واریز را در صفحه‌ی سفارش ببینید.» | «… برای دریافت آن، شماره‌ی کارت یا شبای حسابی به نام خودتان را طبق راهنمای صفحه‌ی سفارش برای پشتیبانی بفرستید. مبلغ را تا یک روز کاری پس از دریافت آن واریز می‌کنیم.» | Money owed is not money sent. Give the step that releases it and the commitment, in the future tense, and never imply a transfer. When the shop failed, say why and apologize. |
+| A cancellation with a zero refund | «مبلغی برای بازگشت وجه این خرید ثبت نشده است.» | «این خرید بازگشت وجهی ندارد.» | A zero refund can follow a zero paid share or rounding. State the outcome. |
+| A sign-in limit on the reader's own number | «برای این شماره چند بار کد ورود درخواست شده است. تا یک ساعت صبر کنید و دوباره امتحان کنید.» | «برای این شماره در یک ساعت فقط ۵ بار می‌توانید کد بگیرید. تا یک ساعت صبر کنید و دوباره امتحان کنید.» | State the rule and give a retry window. Offer an alternate channel where it works. A network limit can give the retry time without blaming the reader. |
+| The bot's footer | «پیام‌های این گفت‌وگو را نمی‌خوانیم.» | «پیام‌هایی که اینجا می‌نویسید به پشتیبانی نمی‌رسد.» | Give the consequence the reader cares about, not a refusal, and keep the way to a person beside it. |
+| A security code nobody asked for | «اگر خودتان این کد را درخواست نکرده‌اید، کاری لازم نیست.» | «اگر خودتان این کد را نخواسته‌اید، ممکن است کس دیگری وارد حساب کاربری‌تان شده باشد. به پشتیبانی پیام بدهید.» | Check who can trigger a message before reassuring. Only a session signed in to the account can ask for this code. |
+| A panel button that messages the customer | «ثبت درخواست اطلاعات» | «درخواست اطلاعات از مشتری», with the section saying that the delivery clock stops, the customer is messaged and day 21 cancels the purchase | An action that reaches a customer or cannot be undone says so where it is pressed. |
+| A cancellation with nothing to refund | «مبلغ بازپرداخت: رایگان» | «مبلغ بازپرداخت: ندارد.» | «رایگان» is a price word. A refund line states an amount, and the button no longer promises a record that is never made. |
+| The footer's invitation | «بگویید چه نیازی دارید تا در انتخاب کمکتان کنیم.» | «بگویید برای چه کاری می‌خواهید تا در انتخاب سرویس، نوع اکانت و مدت اشتراک کمکتان کنیم.» | Sell the conversation by naming the help it gives: the concrete things, then one verb. |
+| A status label beside its own sentence | «مهلت پرداخت تمام شد» as the label | «پایان مهلت پرداخت», kept | The email prints the label right above «مهلت ۲۴ ساعته‌ی پرداخت تمام شد.»; a label must not repeat the sentence beside it. |
+
+Three mechanics catch reviewers. The panel shows the Persian catalogue's text for any Persian msgid in `locale/fa/LC_MESSAGES/django.po`, so check a panel line in the rendered panel, not only in the code. Model help stays within 18 words (`apps/core/tests/test_persian_register.py`), which suits a hint the operator reads at a glance. With an inanimate plural subject the singular verb is natural («تا این موارد درست نشود»), and it also keeps clear of the spoken-Persian check.
 
 ## Decided by the owner
 

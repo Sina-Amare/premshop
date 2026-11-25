@@ -1,7 +1,10 @@
 import pytest
+from django.forms import modelform_factory
 from django.urls import reverse
+from django.utils import translation
 
 from apps.accounts.models import User
+from apps.catalog.admin import PlanForm
 from apps.catalog.models import Plan, Product
 from apps.catalog.tests.test_admin import form_of, plan_prefix
 from apps.orders.services import OrderLine, place_order
@@ -54,6 +57,15 @@ def test_stock_editor_refuses_missing_or_forged_original_quantities(client, plan
     data["stock_quantity"] = ["9"]
     response = client.post(url, data)
     assert response.status_code == 200
-    assert "اعتبار این فرم تمام شده است" in response.content.decode()
+    assert "این فرم دیگر معتبر نیست" in response.content.decode()
     plan.refresh_from_db()
     assert plan.stock_quantity is None
+
+
+def test_new_panel_hints_and_stock_form_errors_switch_to_english(plan):
+    with translation.override("en"):
+        assert str(User._meta.get_field("phone").help_text).startswith("Changing the number")
+        assert str(User._meta.get_field("is_active").help_text).startswith("Clearing this")
+        form_class = modelform_factory(Plan, form=PlanForm, fields=("stock_quantity",))
+        form = form_class({"stock_quantity": 5}, instance=plan)
+        assert "This form is no longer valid. Open the page again." in form.non_field_errors()

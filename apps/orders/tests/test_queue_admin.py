@@ -228,7 +228,7 @@ def test_deadline_boundaries_and_missing_deadlines(client, operator, buyer, plan
             due_at=now - timedelta(hours=1),
         )
         body = client.get(listing(), {"tab": "waiting"}).content.decode()
-        assert "۰۱:۰۰:۰۰" in body and "گذشته از مهلت" in body
+        assert "۰۱:۰۰:۰۰" in body and "از مهلت گذشته" in body
         assert 'data-clock="paused"' in body and 'data-clock="overdue"' not in body
         assert paused.items.get().due_at == now - timedelta(hours=1)
 

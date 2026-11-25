@@ -93,6 +93,7 @@ class RefundTransferForm(ManualPaymentForm):
     def __init__(self, *args: Any, refunds: list[Refund], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["amount"].label = _("مبلغ واریزشده (تومان)")
+        self.fields["amount"].help_text = _("برابر جمع بازپرداخت‌های انتخاب‌شده")
         # Each item by its place in its order, never its database id.
         places = item_numbers({row.order_item.order_id for row in refunds})
         cast(forms.TypedMultipleChoiceField, self.fields["refund_ids"]).choices = [
@@ -100,7 +101,7 @@ class RefundTransferForm(ManualPaymentForm):
                 row.pk,
                 _("آیتم %(item)s · %(amount)s · %(status)s")
                 % {
-                    "item": f"\u2068{row.order_item.product_snapshot.get('name', '')}\u2069؛ \u2068{row.order_item.product_snapshot.get('plan_title', '')}\u2069 ({to_persian_digits(places[row.order_item_id])})",
+                    "item": f"{to_persian_digits(places[row.order_item_id])} · \u2068{row.order_item.product_snapshot.get('name', '')}\u2069، \u2068{row.order_item.product_snapshot.get('plan_title', '')}\u2069",
                     "amount": format_toman(row.amount),
                     "status": row.get_status_display(),
                 },
@@ -136,7 +137,7 @@ class CheckoutForm(forms.Form):
         max_length=254,
         required=False,
         help_text=(
-            "رسید و جزئیات این سفارش به همین ایمیل فرستاده می‌شود. "
+            "رسید، خبرهای این سفارش و کد نمایش اطلاعات تحویل به همین ایمیل فرستاده می‌شود. "
             "اگر برای حساب کاربری ایمیلی ثبت نکرده‌اید، این نشانی در حساب هم ذخیره می‌شود."
         ),
         error_messages={"invalid": "این ایمیل درست نیست."},

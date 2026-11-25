@@ -123,7 +123,7 @@ def test_panel_shows_claim_reason_and_customer_source(
         page.goto(target)
         expect(page).to_have_url(target)
         expect(page.locator(".delivery-claim")).to_have_text("دلیل درخواست تعویض: " + LABEL_A)
-        expect(page.locator(".delivery-claim + p")).to_have_text("مشتری")
+        expect(page.locator(".delivery-claim + p")).to_have_text("ثبت‌کننده: مشتری")
         capture(page, "claim-panel-open", width, tmp_path)
         target = live_server.url + reverse("admin:orders_order_change", args=[order.pk])
         page.goto(target)

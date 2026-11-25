@@ -140,6 +140,7 @@ def test_customer_detail_and_replacement_require_ownership_post_confirmation_and
     client.force_login(buyer)
     response = client.get(detail)
     assert order.support_identifier.grouped_token in response.content.decode()
+    assert "شناسه را فقط برای پشتیبانی بفرستید." in response.content.decode()
     assert response["Content-Encoding"] == "identity"
     assert "no-store" in response["Cache-Control"]
     assert response["Referrer-Policy"] == "same-origin"
@@ -162,7 +163,9 @@ def test_match_form_is_scoped_private_and_never_echoes_either_identifier(
     detail = reverse("admin:orders_order_change", args=[order.pk])
     client.force_login(operator)
     assert client.get(url).status_code == 405
-    assert order.support_identifier.support_token not in client.get(detail).content.decode()
+    detail_body = client.get(detail).content.decode()
+    assert order.support_identifier.support_token not in detail_body
+    assert "با شناسه‌ی همین سفارش مقایسه شود" in detail_body
     csrf = Client(enforce_csrf_checks=True)
     csrf.force_login(operator)
     assert (
@@ -170,11 +173,12 @@ def test_match_form_is_scoped_private_and_never_echoes_either_identifier(
     )
     for supplied, message in (
         (order.support_identifier.support_token, "شناسه با این سفارش مطابقت دارد."),
-        ("PRIVATE-BAD-INPUT", "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."),
+        ("PRIVATE-BAD-INPUT", "شناسه با این سفارش مطابقت ندارد."),
     ):
         response = client.post(url, {"support_token": supplied})
         body = response.content.decode()
         assert response.status_code == 200 and message in body
+        assert "این تطبیق به‌تنهایی هویت فرستنده یا پرداخت را تأیید نمی‌کند" in body
         assert supplied not in body and order.support_identifier.support_token not in body
         assert "no-store" in response["Cache-Control"]
         assert response["Referrer-Policy"] == "no-referrer"
@@ -319,7 +323,9 @@ def test_missing_key_preserves_order_reads_and_shows_unavailable_without_control
         {"support_token": support_token},
     )
     assert response.status_code == 503
-    assert "تطبیق شناسه انجام نشد. دوباره امتحان کنید." in response.content.decode()
+    assert (
+        "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست." in response.content.decode()
+    )
 
 
 def test_item_order_lookup_does_not_read_support_identifier(buyer, plan, settings):

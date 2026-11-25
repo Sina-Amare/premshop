@@ -96,6 +96,12 @@ def test_a_customer_linked_to_telegram_hears_the_last_day_there_too(
     settings.TELEGRAM_BOT_TOKEN = "test-bot-token"  # noqa: S105 - a fake token, never sent
     type(buyer).objects.filter(pk=buyer.pk).update(telegram_id=4242)
     item = waiting(buyer, plan, operator)
+    requests = notices(item, "input_requested")
+    assert {row.channel for row in requests} == {"email", "telegram"}
+    for request in requests:
+        assert f"تا پایان {LAST_DAY}" in request.text_body
+        if request.channel == Notification.Channel.EMAIL:
+            assert f"تا پایان {LAST_DAY}" in request.html_body
     run(tehran(2026, 11, 23, 10))
     [telegram] = Notification.objects.filter(
         order_id=item.order_id, template_name="input_final_warning", channel="telegram"
@@ -142,7 +148,9 @@ def test_the_21st_tehran_day_cancels_with_an_owed_refund_and_claims_no_transfer(
     assert plan.stock_quantity == 5
     [notice] = notices(item, "item_cancelled")
     assert "۲۱ روز" in notice.text_body and "۲۱ روز" in notice.html_body
-    assert "وضعیت واریز را در صفحه‌ی سفارش ببینید" in notice.text_body
+    assert (
+        "پس از دریافت شماره‌ی کارت یا شبا، مبلغ را تا یک روز کاری واریز می‌کنیم" in notice.text_body
+    )
 
 
 def test_a_holiday_moves_no_rung_of_the_ladder(buyer, plan, operator):

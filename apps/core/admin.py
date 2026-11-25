@@ -77,7 +77,7 @@ class MailAttemptAdmin(ModelAdmin):
             to_persian_digits(timezone.localtime(obj.created_at).strftime("%H:%M:%S")),
         )
 
-    @admin.display(description=_("شماره پاسخ سرویس"), ordering="smtp_code")
+    @admin.display(description=_("کد پاسخ SMTP"), ordering="smtp_code")
     def smtp_shown(self, obj: MailAttempt) -> str:
         return "—" if obj.smtp_code is None else to_persian_digits(obj.smtp_code)
 

@@ -12,7 +12,7 @@
 <h2 id="order-next-title">پرداخت تا {{ card.deadline|jalali }}، ساعت {{ card.deadline|date:"H:i"|fa_digits }}</h2>
 <p data-support-instructions>برای پرداخت {{ card.total|price_html }}، {% if support_identifier %}شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %}شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>
 {% elif state == 'awaiting_input' %}
-<h2 id="order-next-title">اطلاعات فعال‌سازی <bdi>{{ products }}</bdi> لازم است</h2>
+<h2 id="order-next-title">برای فعال‌سازی <bdi>{{ products }}</bdi> به اطلاعات شما نیاز داریم</h2>
 <div data-input-request>{% if not has_site_input %}<p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
 {% if card.hours %}<p>پس از دریافت اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
 {% elif state == 'refund_owed' %}
@@ -24,10 +24,10 @@
 <p>{% if card.due_at %}قرار بود تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل بدهیم. بابت تأخیر عذرخواهی می‌کنیم.{% else %}بابت تأخیر عذرخواهی می‌کنیم. زمان تحویل هر محصول را در بخش «محصولات و مبلغ سفارش» ببینید.{% endif %}</p>
 {% elif state == 'replacement' %}
 <h2 id="order-next-title">درخواست تعویض <bdi>{{ products }}</bdi>{% if card.requested_at %} در {{ card.requested_at|jalali }}{% endif %} ثبت شد</h2>
-<p>برای بررسی درخواست فعلاً کاری لازم نیست. {% if reachable %}وقتی نتیجه مشخص شد، خبر می‌دهیم.{% else %}نتیجه را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
+<p>فعلاً نیازی نیست کاری انجام دهید. {% if reachable %}وقتی نتیجه مشخص شد، خبر می‌دهیم.{% else %}نتیجه را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
 {% elif state == 'queued' %}
 <h2 id="order-next-title">{% if card.partly_paused %}مهلت تحویل بخشی از خریدها متوقف است{% elif card.paused %}مهلت تحویل فعلاً متوقف است{% elif card.due_at %}تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم{% elif card.hours %}تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت تحویل می‌دهیم{% else %}<bdi>{{ products }}</bdi>{% endif %}</h2>
-<p>برای تحویل فعلاً کاری لازم نیست. {% if reachable %}پس از تحویل خبر می‌دهیم.{% else %}وضعیت تحویل را در همین صفحه ببینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
+<p>فعلاً نیازی نیست کاری انجام دهید. {% if reachable %}پس از تحویل خبر می‌دهیم.{% else %}وضعیت تحویل را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
 {% elif state == 'delivered' %}
 {% if card.rejected_at %}<h2 id="order-next-title">درخواست تعویض در {{ card.rejected_at|jalali }} رد شد</h2>
 {% elif card.uniform %}<h2 id="order-next-title">در {{ card.delivered_at|jalali }} تحویل شد</h2>

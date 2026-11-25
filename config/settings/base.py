@@ -471,7 +471,7 @@ UNFOLD = {
                         "permission": lambda request: request.user.has_perm("cms.view_page"),
                     },
                     {
-                        "title": _("سابقه ارسال ایمیل‌ها"),
+                        "title": _("سابقه‌ی ارسال ایمیل‌ها"),
                         "icon": "mail",
                         "link": reverse_lazy("admin:core_mailattempt_changelist"),
                         "permission": lambda request: request.user.has_perm(

@@ -17,6 +17,7 @@ from typing import ClassVar
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.accounts.validators import normalize_mobile_phone
 
@@ -72,7 +73,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     # NULL for an account with no number (one made before the phone was the
     # identity): it cannot sign in. One normal form, enforced in the database,
     # because the panel, a shell and an import reach the table without the manager.
-    phone = models.CharField("شماره‌ی موبایل", max_length=20, unique=True, null=True, blank=True)
+    phone = models.CharField(
+        "شماره‌ی موبایل",
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_(
+            "با تغییر شماره، کاربر بی‌رمز از همه‌ی دستگاه‌ها خارج می‌شود. خالی = ورود ممکن نیست."
+        ),
+    )
 
     # A contact address for order mail, never a way in, so neither unique nor
     # confirmed: two accounts may share one.
@@ -88,7 +98,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     telegram_username = models.CharField("نام کاربری تلگرام", max_length=64, blank=True, default="")
     telegram_linked_at = models.DateTimeField("زمان اتصال تلگرام", null=True, blank=True)
 
-    is_active = models.BooleanField("فعال", default=True)
+    is_active = models.BooleanField(
+        "فعال",
+        default=True,
+        help_text=_("بدون تیک، کاربر از حسابش خارج می‌شود و نمی‌تواند وارد شود."),
+    )
     is_staff = models.BooleanField("دسترسی پنل", default=False)
     date_joined = models.DateTimeField("تاریخ عضویت", default=timezone.now)
 

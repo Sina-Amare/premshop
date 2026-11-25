@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Product
-from apps.core import telegram
+from apps.core import support, telegram
 from apps.core import telegram_emoji as emoji
 from apps.core.email import render_email, send_templated_email
 from apps.core.email_log import MailQuotaExceeded
@@ -173,6 +173,7 @@ def enqueue_event(
                         "template_name": template_name,
                         "icon": emoji.for_product(items[0].product_snapshot.get("name", "")),
                         "e": emoji,
+                        "support": support.details(),
                     },
                 ).strip(),
             },

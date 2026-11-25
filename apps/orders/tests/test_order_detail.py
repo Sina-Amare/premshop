@@ -34,7 +34,7 @@ CASES = [
     ("queued", "در حال آماده‌سازی", "progress", "تحویل", False),
     ("late", "تأخیر در تحویل", "danger", "گذشت", True),
     ("paused", "در حال آماده‌سازی", "progress", "مهلت تحویل فعلاً متوقف است", False),
-    ("waiting", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
+    ("waiting", "در انتظار اطلاعات شما", "time", "به اطلاعات شما نیاز داریم", True),
     ("delivered", "تحویل‌شده", "ok", "تحویل شد", True),
     ("claimed", "بررسی درخواست تعویض", "progress", "درخواست تعویض", False),
     ("rejected", "تحویل‌شده", "ok", "درخواست تعویض در", True),
@@ -43,7 +43,7 @@ CASES = [
     ("expired", "پایان مهلت پرداخت", "neutral", "پرداختی برای این سفارش ثبت نشد", False),
     ("owed", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("refunded", "بازگشت وجه انجام شد", "neutral", "به حسابتان واریز شد", False),
-    ("mixed", "در انتظار اطلاعات شما", "time", "اطلاعات فعال‌سازی", True),
+    ("mixed", "در انتظار اطلاعات شما", "time", "به اطلاعات شما نیاز داریم", True),
     ("mixed_refund", "در انتظار بازگشت وجه", "time", "به شما برمی‌گردانیم", True),
     ("empty", "لغوشده", "danger", "این سفارش محصولی ندارد", False),
 ]
@@ -205,7 +205,9 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
     assert body.count('id="support-identifier"') <= 1
     assert "تماس بگیرید" not in body
     assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
-    assert ("فعلاً کاری لازم نیست." in card) is (state in ("queued", "paused", "claimed"))
+    assert ("فعلاً نیازی نیست کاری انجام دهید." in card) is (
+        state in ("queued", "paused", "claimed")
+    )
     if state in ("overdue", "expired"):
         screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
         assert ("لغو شد." in card) is (state == "expired")
@@ -367,7 +369,7 @@ def test_a_paused_unit_and_running_units_of_one_plan_each_keep_their_own_line(
         invoice = client.get(reverse("order-invoice", args=[order.order_number]))
     card = text(card_of(body))
     assert "تحویل می‌دهیم" not in card and "مهلت تحویل بخشی از خریدها متوقف است" in card
-    assert "مهلت تحویل بخشی از خریدها متوقف است. برای تحویل فعلاً کاری لازم نیست." in screen
+    assert "مهلت تحویل بخشی از خریدها متوقف است. فعلاً نیازی نیست کاری انجام دهید." in screen
     purchase = text(purchase_of(body))
     assert purchase_of(body).count('class="order-line__facts"') == 3
     assert purchase.count("تحویل تا") == 2
@@ -398,7 +400,7 @@ def test_an_input_wait_beside_paused_and_running_units_keeps_its_hours_and_their
         body = page(client, buyer, order)
     left = ceil((waiting.due_at - waiting.sla_paused_at).total_seconds() / 3600)
     card = text(card_of(body))
-    assert "اطلاعات فعال‌سازی سرویس دوم لازم است" in card
+    assert "برای فعال‌سازی سرویس دوم به اطلاعات شما نیاز داریم" in card
     assert f"پس از دریافت اطلاعات، تا {to_persian_digits(max(1, left))} ساعت" in card
     purchase = purchase_of(body)
     rows = [

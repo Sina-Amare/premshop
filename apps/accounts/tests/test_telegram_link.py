@@ -310,7 +310,7 @@ def test_anything_else_gets_a_pointer_to_the_account_page(bot, user, settings, t
     for label in ("«اتصال تلگرام»", "«باز کردن تلگرام»", "«شروع»", "«تأیید اتصال»"):
         assert label in body(payload)
     support_url = support.details()["telegram_url"]
-    assert "پیام‌های این گفت‌وگو را نمی‌خوانیم." in body(payload)
+    assert "پیام‌هایی که اینجا می‌نویسید به دست ما نمی‌رسد." in body(payload)
     assert f'به <a href="{support_url}">پشتیبانی</a> پیام بدهید.' in body(payload)
     assert buttons == [
         [account_button(f"{emoji.LINK} اتصال حساب", settings)],

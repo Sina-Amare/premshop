@@ -86,7 +86,7 @@ def _home(user: User) -> tuple[str, Buttons]:
             {"text": f"{emoji.ACCOUNT} حساب کاربری", "url": _site("account")},
             {"text": f"{emoji.SUPPORT} پشتیبانی", "url": support_url},
         ],
-        [{"text": f"{emoji.SHARE} معرفی PremShop", "url": share}],
+        [{"text": f"{emoji.SHARE} معرفی به دوستان", "url": share}],
     ]
 
 

@@ -5,19 +5,20 @@
 <div style="overflow-wrap:anywhere;word-break:break-word;">
 <h1 style="margin:0 0 16px;font-size:21px;line-height:1.6;color:#292524;">سفارش {{ order_number|fa_digits }} ثبت شد</h1>
 <p>وضعیت هنگام ثبت: در انتظار پرداخت</p>
+<p>اگر هنوز پرداخت نکرده‌اید، برای پرداخت {{ total_amount|toman_plain }} تومان طبق راهنمای صفحه‌ی سفارش در تلگرام به پشتیبانی پیام بدهید. سفارشی که تا ۲۴ ساعت پس از ثبت پرداخت نشود، لغو می‌شود.</p>
 <p>تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}</p>
 <p><a href="{{ order_url }}" style="color:#2459D3;">مشاهده‌ی سفارش</a></p>
 {% for line in lines %}
 <section style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:16px;">
 <h2 style="font-size:19px;color:#292524;">{{ line.facts.name|bdi }}</h2>
-<p>{{ line.facts.plan_title|bdi }}؛ تعداد: {{ line.quantity|fa_digits }}</p>
-<p>قیمت واحد: {{ line.price|toman_plain }} تومان؛ جمع: {{ line.amount|toman_plain }} تومان</p>
+<p>{{ line.facts.plan_title|bdi }}، تعداد: {{ line.quantity|fa_digits }}</p>
+<p>قیمت واحد: {{ line.price|toman_plain }} تومان، جمع: {{ line.amount|toman_plain }} تومان</p>
 {% if line.facts.duration_days %}<p>مدت: {{ line.facts.duration_days|fa_digits }} روز</p>{% endif %}
 <h3 style="font-size:17px;color:#292524;">شرایط زمان خرید</h3>
 {% if line.delivery %}<p>روش تحویل: {{ line.delivery }}</p>{% endif %}
 {% if line.facts.delivery_note %}<div>{{ line.facts.delivery_note|markdown:"45" }}</div>{% elif line.facts.delivery_hours %}<p>تحویل تا {{ line.facts.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت</p>{% endif %}
 {% if line.warranty %}<p>گارانتی: {{ line.warranty }}</p>{% endif %}
-{% if line.facts.telegram_required %}<p>برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.</p>{% endif %}
+{% if line.facts.telegram_required %}<p>پس از پرداخت، برای فعال‌سازی این محصول باید در تلگرام با پشتیبانی هماهنگ کنید.</p>{% endif %}
 {% if line.facts.specs %}<dl>{% for spec in line.facts.specs %}<dt>{{ spec.title|bdi }}</dt><dd>{{ spec.value|bdi }}</dd>{% endfor %}</dl>{% endif %}
 {% if line.facts.usage_notes %}<h4>نکات استفاده</h4><div>{{ line.facts.usage_notes|markdown:"56" }}</div>{% endif %}
 {% if line.facts.refund_note %}<h4>شرایط لغو و بازگشت وجه</h4><div>{{ line.facts.refund_note|markdown:"56" }}</div>{% endif %}

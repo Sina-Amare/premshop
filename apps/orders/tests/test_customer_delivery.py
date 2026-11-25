@@ -250,6 +250,17 @@ def test_a_reveal_waiting_for_replacement_reads_only_the_committed_new_set(buyer
     assert models.CredentialAccessLog.objects.count() == 1
 
 
+def test_a_limited_delivery_code_can_only_be_reused_in_the_same_browser_session(
+    buyer, plan, operator
+):
+    order, _ = delivered(buyer, plan, operator)
+    code = request_code(order, buyer)
+    with pytest.raises(ValidationError, match="در همین مرورگر"):
+        request_code(order, buyer, session="other-session")
+    assert not confirm(order, buyer, code, session="other-session")
+    assert confirm(order, buyer, code)
+
+
 def test_request_budgets_cover_account_order_and_ip(buyer, plan, operator):
     order, _ = delivered(buyer, plan, operator)
     second = services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
@@ -548,6 +559,20 @@ def test_source_migration_backfills_existing_rows_and_reverses(buyer, plan, oper
         MigrationExecutor(connection).migrate(newest)
 
 
+def test_reveal_for_a_purchase_still_in_the_queue_does_not_call_it_cancelled(buyer, plan, operator):
+    order, item = queued(buyer, plan, operator)
+    client = Client()
+    client.force_login(buyer)
+    verified(order, buyer, client.session.session_key)
+
+    response = client.post(urls(order, item)[2])
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "هنوز اطلاعات تحویل این خرید آماده نیست." in body
+    assert "این خرید لغو شده است" not in body
+    assert not models.CredentialAccessLog.objects.exists()
+
+
 def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
     client = Client()
@@ -559,7 +584,7 @@ def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, 
         response = client.post(urls(order, item)[2], follow=True)
     assert response.redirect_chain == [(reverse("order-detail", args=[order.order_number]), 302)]
     body = response.content.decode()
-    assert "تأیید ایمیل دیگر اعتبار ندارد." in body and urls(order, item)[0] in body
+    assert "مهلت دیدن اطلاعات تحویل تمام شد." in body and urls(order, item)[0] in body
     assert VALUE not in body and not models.CredentialAccessLog.objects.exists()
 
 
