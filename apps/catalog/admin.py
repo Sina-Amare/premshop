@@ -272,14 +272,14 @@ class PlanForm(forms.ModelForm):
                     snapshot = signing.loads(cleaned.get("stock_version", ""), salt="catalog.stock")
                 except signing.BadSignature:
                     raise ValidationError(
-                        "این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید."
+                        _("این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید.")
                     ) from None
                 if (
                     not isinstance(snapshot, dict)
                     or snapshot.get("plan") != current.pk
                     or "stock" not in snapshot
                 ):
-                    raise ValidationError("این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید.")
+                    raise ValidationError(_("این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید."))
                 if cleaned["stock_quantity"] == snapshot["stock"]:
                     cleaned["stock_quantity"] = current.stock_quantity
                     self.changed_data[:] = [

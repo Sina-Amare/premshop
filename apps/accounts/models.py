@@ -17,6 +17,7 @@ from typing import ClassVar
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.accounts.validators import normalize_mobile_phone
 
@@ -78,7 +79,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         null=True,
         blank=True,
-        help_text="با تغییر شماره، کاربر بی‌رمز از همه‌ی دستگاه‌ها خارج می‌شود. خالی = ورود ممکن نیست.",
+        help_text=_(
+            "با تغییر شماره، کاربر بی‌رمز از همه‌ی دستگاه‌ها خارج می‌شود. خالی = ورود ممکن نیست."
+        ),
     )
 
     # A contact address for order mail, never a way in, so neither unique nor
@@ -96,7 +99,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     telegram_linked_at = models.DateTimeField("زمان اتصال تلگرام", null=True, blank=True)
 
     is_active = models.BooleanField(
-        "فعال", default=True, help_text="بدون تیک، کاربر از حسابش خارج می‌شود و نمی‌تواند وارد شود."
+        "فعال",
+        default=True,
+        help_text=_("بدون تیک، کاربر از حسابش خارج می‌شود و نمی‌تواند وارد شود."),
     )
     is_staff = models.BooleanField("دسترسی پنل", default=False)
     date_joined = models.DateTimeField("تاریخ عضویت", default=timezone.now)

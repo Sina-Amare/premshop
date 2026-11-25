@@ -2521,3 +2521,12 @@ msgstr "Enter the identifier the customer sent to compare it with the identifier
 
 msgid "این تطبیق به‌تنهایی هویت فرستنده یا پرداخت را تأیید نمی‌کند."
 msgstr "A match alone does not verify the sender's identity or payment."
+
+msgid "با تغییر شماره، کاربر بی‌رمز از همه‌ی دستگاه‌ها خارج می‌شود. خالی = ورود ممکن نیست."
+msgstr "Changing the number signs a user without a password out on every device. A blank number prevents sign-in."
+
+msgid "بدون تیک، کاربر از حسابش خارج می‌شود و نمی‌تواند وارد شود."
+msgstr "Clearing this signs the user out and prevents sign-in."
+
+msgid "این فرم دیگر معتبر نیست. صفحه را دوباره باز کنید."
+msgstr "This form is no longer valid. Open the page again."
