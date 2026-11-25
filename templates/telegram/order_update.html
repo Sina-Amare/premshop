@@ -11,7 +11,7 @@
 <p>اگر برای سفارش ایمیلی ثبت نشده یا به آن دسترسی ندارید، از صفحه‌ی سفارش به پشتیبانی پیام بدهید.</p>{% endif %}{% if template_name == "replacement_rejected" %}
 <p>برای اطلاع از دلیل، به {{ support.telegram }} پیام بدهید.</p>{% endif %}{% if template_name == "input_requested" or template_name == "input_reminder" or template_name == "input_final_warning" %}
 <p>اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید، نه در این گفت‌وگو.</p>{% endif %}{% if template_name == "input_requested" %}
-<blockquote><p>اگر تا ۲۱ روز اطلاعات به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
+<blockquote><p>اگر تا پایان {{ due_at|jalali }} اطلاعات به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
 <blockquote><p>اگر اطلاعات تا این تاریخ به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "input_timeout" %}
 <blockquote><p>اطلاعات فعال‌سازی این محصول را تا ۲۱ روز پس از درخواست دریافت نکردیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and cancel_reason == "supply_failure" %}
 <blockquote><p>نتوانستیم این محصول را تهیه کنیم. بابت این مشکل عذرخواهی می‌کنیم.</p></blockquote>{% elif template_name == "item_cancelled" and cancel_reason == "warranty_refund" %}

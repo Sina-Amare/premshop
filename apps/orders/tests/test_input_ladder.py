@@ -96,6 +96,12 @@ def test_a_customer_linked_to_telegram_hears_the_last_day_there_too(
     settings.TELEGRAM_BOT_TOKEN = "test-bot-token"  # noqa: S105 - a fake token, never sent
     type(buyer).objects.filter(pk=buyer.pk).update(telegram_id=4242)
     item = waiting(buyer, plan, operator)
+    requests = notices(item, "input_requested")
+    assert {row.channel for row in requests} == {"email", "telegram"}
+    for request in requests:
+        assert f"تا پایان {LAST_DAY}" in request.text_body
+        if request.channel == Notification.Channel.EMAIL:
+            assert f"تا پایان {LAST_DAY}" in request.html_body
     run(tehran(2026, 11, 23, 10))
     [telegram] = Notification.objects.filter(
         order_id=item.order_id, template_name="input_final_warning", channel="telegram"

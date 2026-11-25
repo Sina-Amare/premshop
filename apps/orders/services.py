@@ -1465,7 +1465,12 @@ def _input_event(
         claim_reason=claim_reason,
     )
     if notification:
-        events.emit(notification, event.pk, item.order_id, item_id=item.pk, due_at=item.due_at)
+        due_at = (
+            input_last_day(item.input_requested_at)
+            if notification == "input_requested" and item.input_requested_at is not None
+            else item.due_at
+        )
+        events.emit(notification, event.pk, item.order_id, item_id=item.pk, due_at=due_at)
     return event
 
 
