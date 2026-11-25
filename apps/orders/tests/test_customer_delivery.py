@@ -250,6 +250,17 @@ def test_a_reveal_waiting_for_replacement_reads_only_the_committed_new_set(buyer
     assert models.CredentialAccessLog.objects.count() == 1
 
 
+def test_a_limited_delivery_code_can_only_be_reused_in_the_same_browser_session(
+    buyer, plan, operator
+):
+    order, _ = delivered(buyer, plan, operator)
+    code = request_code(order, buyer)
+    with pytest.raises(ValidationError, match="در همین مرورگر"):
+        request_code(order, buyer, session="other-session")
+    assert not confirm(order, buyer, code, session="other-session")
+    assert confirm(order, buyer, code)
+
+
 def test_request_budgets_cover_account_order_and_ip(buyer, plan, operator):
     order, _ = delivered(buyer, plan, operator)
     second = services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
