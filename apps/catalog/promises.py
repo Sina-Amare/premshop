@@ -27,9 +27,7 @@ from apps.core.formatting import to_persian_digits
 # edits one product is not a promise.
 DELIVERY_CAP_HOURS = 48
 # The FAQ's answer, so in its conversational register (design-language.md §Register).
-DELIVERY_COMMITMENT = (
-    f"تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت بعد از تأیید پرداخت، سفارشتون رو تحویل می‌دیم."
-)
+DELIVERY_COMMITMENT = f"تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت بعد از تأیید پرداخت، سفارشتون رو تحویل می‌دیم."
 
 
 @dataclass(frozen=True)

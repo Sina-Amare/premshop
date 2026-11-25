@@ -262,7 +262,9 @@ def test_the_faq_says_a_refund_after_delivery_pays_for_the_unused_days(client, s
 def test_the_home_page_and_the_faq_share_one_card_and_one_answer_per_question(client, shop):
     def cards(path: str) -> dict[str, str]:
         body = client.get(path).content.decode()
-        card = r'<summary class="qa__q">(.*?)</summary><div class="qa__a"><p class="prose">(.*?)</p>'
+        card = (
+            r'<summary class="qa__q">(.*?)</summary><div class="qa__a"><p class="prose">(.*?)</p>'
+        )
         return dict(re.findall(card, body, re.S))
 
     home, faq = cards(reverse("home")), cards(reverse("faq"))
