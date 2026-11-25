@@ -126,8 +126,6 @@ def offences(text: str, *, written: bool = False) -> list[str]:
 class _Commitments(HTMLParser):
     CLASSES = {
         "faq__answer",
-        "qa__a",
-        "delivery-answer",
         "price",
         "deadline",
         "deadline__said",
@@ -296,7 +294,7 @@ def test_activation_answer_does_not_make_a_blanket_password_promise(client):
     text = said(answer[1])[0]
     assert "نه، فقط ایمیل" not in text
     assert "سایت" in text and "وارد نکنید" in text
-    assert not offences(text, written=True)
+    assert not offences(text)
 
 
 def test_product_activation_answer_does_not_promise_email_is_sufficient(client, shop):

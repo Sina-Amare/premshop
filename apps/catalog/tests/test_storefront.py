@@ -256,7 +256,23 @@ def test_every_faq_answer_is_short(client, shop):
 def test_the_faq_says_a_refund_after_delivery_pays_for_the_unused_days(client, shop):
     body = client.get(reverse("faq")).content.decode()
     assert "اگر اشتراکم وسط دوره قطع بشه، چی می‌شه؟" in body
-    assert "مبلغ روزهای استفاده‌نشده را برمی‌گردانیم." in body
+    assert "مبلغ روزهای استفاده‌نشده رو برمی‌گردونیم." in body
+
+
+def test_the_home_page_and_the_faq_share_one_card_and_one_answer_per_question(client, shop):
+    def cards(path: str) -> dict[str, str]:
+        body = client.get(path).content.decode()
+        card = (
+            r'<summary class="qa__q">(.*?)</summary><div class="qa__a"><p class="prose">(.*?)</p>'
+        )
+        return dict(re.findall(card, body, re.S))
+
+    home, faq = cards(reverse("home")), cards(reverse("faq"))
+
+    assert len(home) == 3 and len(faq) >= 5
+    shared = home.keys() & faq.keys()
+    assert len(shared) == 2, "the activation and delivery questions sit on both pages"
+    assert {q: home[q] for q in shared} == {q: faq[q] for q in shared}
 
 
 # --- The brand marks ---------------------------------------------------------

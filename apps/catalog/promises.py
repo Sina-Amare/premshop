@@ -26,7 +26,8 @@ from apps.core.formatting import to_persian_digits
 # The cap, not the slowest product: a number that moves whenever the operator
 # edits one product is not a promise.
 DELIVERY_CAP_HOURS = 48
-DELIVERY_COMMITMENT = f"تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت پس از تأیید پرداخت."
+# The FAQ's answer, so in its conversational register (design-language.md §Register).
+DELIVERY_COMMITMENT = f"تا {to_persian_digits(DELIVERY_CAP_HOURS)} ساعت بعد از تأیید پرداخت، سفارشتون رو تحویل می‌دیم."
 
 
 @dataclass(frozen=True)
