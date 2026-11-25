@@ -903,7 +903,7 @@ svg.stars--big{inline-size:150px;block-size:30px}
 .qa__item,.qa__item+.qa__item{overflow:hidden;border:1px solid var(--v-line);border-radius:16px;background:#fff;transition:border-color 160ms,box-shadow 160ms}
 .qa__item:hover{border-color:color-mix(in oklab,var(--v-accent) 40%,white)}
 .qa__item[open]{border-color:var(--v-accent);box-shadow:0 16px 32px -22px var(--v-accent)}
-.qa__q{padding:20px 24px;font:600 16px/1.6 var(--font-head)}
+.qa__q{padding:20px 24px;font:600 18px/1.6 var(--font-head)}
 .qa__q:focus-visible{outline:2px solid var(--v-accent);outline-offset:-4px;border-radius:14px}
 .qa__q:hover{background:none}
 .qa__q::after{width:32px;height:32px;border-radius:50%;color:var(--v-accent);background:linear-gradient(currentColor,currentColor) center/12px 2px no-repeat,linear-gradient(currentColor,currentColor) center/2px 12px no-repeat,var(--v-mint);transition:background-size 200ms,background-color 160ms,color 160ms}
