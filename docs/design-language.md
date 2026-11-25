@@ -162,7 +162,20 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
-Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation.
+Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation. Professional is not formal, natural is not colloquial, and longer is not better (owner, 2026-11-24).
+
+### How to write a line
+
+The examples in this section carry the judgment; the rules only name it. Before writing, read the examples for the surface at hand, then take every new or changed line through these steps in order:
+
+1. **The situation, in Persian.** Who reads the line, what just happened and what they do next. The line is said the way a Persian speaker would say it to that reader (Written in Persian).
+2. **Whether it belongs.** Read it beside the heading, status, labels and buttons already on screen. Keeping, rewriting, shortening and deleting are equally good outcomes (Decide whether the text belongs, Editorial review guide).
+3. **The facts behind it.** A line is a claim about one code branch. Check the recipient, amount, limit and deadline, and what has and has not happened in that branch (Editorial review guide, its paragraphs on money, errors, sign-in and delivery).
+4. **The words.** Write for the surface and in the owner's taste (Register, Rules for every register, Building a line, Glossary, Lines the owner rewrote).
+5. **The rendered result.** Read the line on its page at 390 and 1440 in every state that shows it, as the buyer or operator would: plain-text email beside HTML, bot and SMS messages on their own (Read it the way a buyer or operator would).
+6. **A second reader.** Someone who did not write the line reads it, and the owner sees changed lines beside the old ones in their rendered context (Before and after, with the reason).
+
+An example is a judgment to reuse, never a wording to stamp. Copying one example's shape onto every line produces copy that reads as generated, however correct each line is.
 
 ### Written in Persian
 
@@ -194,12 +207,12 @@ The operator usually needs a short label or a consequence. A product page should
 
 ### Lines the owner rewrote
 
-The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced.
+The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced. `apps/core/tests/test_owner_lines.py` fails when the code no longer holds a line of this table, so changing one is the owner's decision and updates its row.
 
 | Rejected | The owner's line | What changed |
 |---|---|---|
 | «برای دریافت کد در تلگرام، باید قبلاً آن را از صفحه‌ی حساب کاربری وصل کرده باشید.» | «برای دریافت کد در تلگرام باید از قبل آن را از صفحه‌ی حساب کاربری به حساب تلگرامتان متصل کرده باشید.» | One sentence names what connects to what; «وصل کرده باشید» alone left it open. |
-| «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. |
+| «درخواست کد ثبت شد. ربات پریمشاپ را در تلگرام بررسی کنید.» | «کد به ربات پرم‌شاپ در حساب تلگرام شما فرستاده شد.», with «ربات پرم‌شاپ» linking straight to the bot | It says what happened and where, and the link is the next step; «ثبت شد» and «بررسی کنید» were translated, and the brand was misspelled. The shipped line is conditional, «اگر حساب تلگرامتان به حساب کاربری متصل باشد، کد ورود را در ربات پرم‌شاپ می‌بینید.», because the request is queued and the site cannot yet know the code reached the bot. |
 | «این کد را در اختیار کسی نگذارید.» | «این کد را به کسی ندهید.» | The warning reads as Persian rather than an English sentence carried over. |
 | «اطلاعات ورود اکانت یا کد تحویل‌شده کار نمی‌کند.» | «اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.» | Use «تحویل‌داده‌شده», not «تحویل‌شده»; use «درست نیست», not «کار نمی‌کند». The reason names incorrect delivery details. |
 | «نظر می‌تواند تا ۱۰۰۰ نویسه باشد.» | «تا ۱۰۰۰ کاراکتر می‌توانید بنویسید.» | The character limit uses the site's ordinary word and addresses the buyer. |
@@ -228,7 +241,7 @@ The owner's rule, 2026-11-10, with their own example: «تأیید پرداخت�
 - **A second verb only for a second real action:** «رمز ایمیلتان را عوض کنید و به پشتیبانی خبر بدهید.» Never a chain that narrates what happens next: «این تلگرام وصل می‌شود و خبر سفارش‌ها هم می‌رسد. اگر حساب خودتان است، دکمه را بزنید.»
 - **Write a complete thought.** A standalone notice needs a sentence the reader can understand in one pass. A label or short field hint can carry a complete thought in context.
 - **A label and its value** where a line only names something: «پشتیبانی: @premshop_support».
-- **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). A second message, or a chain of «که» clauses, becomes a second sentence.
+- **One fluent sentence for one message,** even when it holds a condition, a place and an action, as the owner's rewrites above show; a message is not chopped into short sentences (owner, 2026-11-14). This never makes a line longer than its message: a label stays a label, a second message or a chain of «که» clauses becomes a second sentence, and a line that adds nothing is deleted (owner, 2026-11-24).
 
 ### Register
 
@@ -301,7 +314,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 | Add | «افزودن» | «اضافه کردن», «ایجاد», «ساختن» |
 | Ezafe after a silent ه | «ـه‌ی» («مشاهده‌ی همه») | «مشاهده همه», «افزودن یک مشخصه دیگر» |
 
-The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages. The rest, such as «حساب» used for a service account, needs a reader.
+The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages; `apps/core/tests/test_owner_lines.py` keeps the owner's rewritten lines in the code. The rest, such as «حساب» used for a service account, needs a reader.
 
 ### Editorial review guide
 
@@ -313,7 +326,7 @@ PremShop sounds like a shop that knows what it sells and can explain what happen
 | Product page | A concrete reason to buy, a comparison that helps choose, and any limitation that could change the choice. Give each option the same units for price and duration. Use «مدت اشتراک» and «مبلغ کارت» where those are the actual choices. |
 | Cart and checkout | Keep what changes the total, holds up checkout, or starts a deadline. Where a line is the only explanation of a disabled action, keep it by that action or point to the affected item. |
 | Account and orders | Name which account, order or purchase a message concerns. On a mixed order, give each affected product its own state and next action. |
-| Email, Telegram and SMS | Read the subject, title, body and button as one message. Repeat a fact if a channel needs it to stand alone. SMS can often stop at the code, its purpose and the warning. Start a line with Persian if an English name would set the wrong direction. |
+| Email, Telegram and SMS | Read the subject, title, body and button as one message. An email can be warm and complete, a bot message natural and a little warm, an SMS very short. Repeat a fact if a channel needs it to stand alone. SMS can often stop at the code, its purpose and the warning. Start a line with Persian if an English name would set the wrong direction. |
 | Operator panel | A label can name a field. A hint can say what a blank value does or when the result appears. Give the full consequence for an irreversible operation. |
 | Legal and security | Name the condition, scope and deadline. Check the recipient and who can act. Keep «این کد را به کسی ندهید» with the code. |
 
