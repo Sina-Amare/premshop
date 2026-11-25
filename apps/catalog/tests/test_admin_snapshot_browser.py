@@ -183,7 +183,7 @@ def test_title_error_requires_removing_the_store_name(open_panel, product):
     page.fill("#id_seo_title", "PremShop Plus")
     with page.expect_navigation():
         page.locator("#submit-row button[name=_continue]").click()
-    expect(page.locator(".field-seo_title")).to_contain_text("به انتهای عنوان اضافه می‌شود")
+    expect(page.locator(".field-seo_title")).to_contain_text("به آخر عنوان اضافه می‌کند")
     expect(page.locator(".field-seo_title")).not_to_contain_text("لازم نیست")
 
 

@@ -671,9 +671,6 @@ msgstr "One sentence: what the product does for the buyer and who it suits."
 msgid "برای انتشار دوباره‌ی «%(product)s»، موارد زیر را کامل کنید."
 msgstr "“%(product)s” cannot be published again until these are fixed."
 
-msgid "اگر از سایت برداشته شود"
-msgstr "If it is taken off the shop"
-
 msgid "برای انتشار دوباره، موارد زیر را کامل کنید."
 msgstr "Until these are fixed, it cannot be published again."
 
@@ -2345,12 +2342,6 @@ msgstr "This item is not in the queue."
 msgid "این محصول هنوز تحویل نشده است."
 msgstr "This item has not been delivered yet."
 
-msgid "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و برای مشتری پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید."
-msgstr "“Ask the customer for details” stops the delivery deadline and messages the customer. If receipt of the details is not recorded within 21 days, the purchase is cancelled automatically. Never write a password or sign-in code the customer sends on Telegram into the panel."
-
-msgid "با ثبت، پرداخت سفارش تأیید می‌شود و به مشتری خبر می‌رسد. این ثبت برگشت ندارد."
-msgstr "Recording confirms the order's payment and notifies the customer. It cannot be undone."
-
 msgid "بازپرداخت پس از درخواست تعویض"
 msgstr "Refund after a replacement request"
 
@@ -2368,9 +2359,6 @@ msgstr "The identifier cannot be checked right now. This result does not mean th
 
 msgid "به زبان خود خریدار، همان‌طور که در تلگرام می‌پرسد."
 msgstr "In the buyer's own words, as they would ask on Telegram."
-
-msgid "تا این موارد درست نشود، دوباره منتشر نمی‌شود."
-msgstr "Until these are fixed, it cannot be published again."
 
 msgid "تا موارد مشخص‌شده کامل نشود، محصول منتشر نمی‌شود. برای ذخیره بدون انتشار، وضعیت «پیش‌نویس» را انتخاب کنید."
 msgstr "Until the marked items are complete, the product is not published. To save without publishing, choose the “Draft” status."
@@ -2447,12 +2435,6 @@ msgstr "Stays in the order history only. The rejection message asks the customer
 msgid "لغو بدون بازپرداخت"
 msgstr "Cancel without a refund"
 
-msgid "لغو برگشت ندارد و به مشتری خبر داده می‌شود."
-msgstr "Cancelling cannot be undone, and the customer is notified."
-
-msgid "لغو برگشت ندارد. به مشتری خبر داده می‌شود و این مبلغ تا ثبت واریز، «در انتظار واریز» می‌ماند."
-msgstr "Cancelling cannot be undone. The customer is notified, and this amount stays “awaiting transfer” until the transfer is recorded."
-
 msgid "لغو خرید"
 msgstr "Purchase cancelled"
 
@@ -2480,9 +2462,6 @@ msgstr "A hidden review cannot be published again."
 msgid "هر نکته در یک سطر که با - شروع می‌شود. اگر نکته‌ای نیست، بنویسید «موضوعیت ندارد»."
 msgstr "One note per line, each starting with -. If there are none, write “Not applicable”."
 
-msgid "همه‌ی بخش‌های محصولی که انتخاب می‌کنید به انتهای محتوای این محصولات اضافه می‌شوند:"
-msgstr "Every section of the product you choose is added to the end of these products' content:"
-
 msgid "هیچ محصول دیگری بخش محتوا ندارد."
 msgstr "No other product has content sections."
 
@@ -2495,26 +2474,44 @@ msgstr "The code must be 4 to 8 Latin letters or digits."
 msgid "کد پاسخ SMTP"
 msgstr "SMTP reply code"
 
-msgid "۴ تا ۸ حرف لاتین یا رقم، مثل YALDA25"
-msgstr "4 to 8 Latin letters or digits, such as YALDA25"
-
 msgid "۷ روز پس از تحویل"
 msgstr "7 days after delivery"
 
 msgid "با «لازم است»، پس از پرداخت از مشتری اطلاعات خواسته می‌شود و مهلت تحویل تا دریافتش شروع نمی‌شود."
 msgstr "With “Required”, the customer is asked for details after payment, and the delivery deadline does not start until they arrive."
 
-msgid "از ۱ تا ۴۸ ساعت؛ قول ما به مشتری است و فقط روی سفارش‌های بعدی اثر دارد."
-msgstr "From 1 to 48 hours; it is our promise to the customer and applies only to orders placed after the change."
-
-msgid "با تیک، صفحه‌ی محصول تمدید روی همین اکانت را وعده می‌دهد؛ فقط اگر ممکن است تیک بزنید."
-msgstr "When ticked, the product page promises renewal on the same account; tick it only if that is possible."
-
-msgid "با ثبت سفارش کم و با لغو پیش از پرداخت یا نرسیدن اطلاعات زیاد می‌شود. خالی = نامحدود"
-msgstr "Goes down when an order is placed, and back up when one is cancelled before payment or its details never arrive. Blank = unlimited"
-
 msgid "در جمله‌ی «برای فعال‌سازی، … را از شما می‌خواهیم» می‌نشیند، مثل «ایمیل اکانت Spotify»."
 msgstr "Fills the gap in “For activation, we ask you for …”, such as “Spotify account email”."
 
-msgid "فقط وقتی تیک بزنید که متن نهایی است و وعده‌هایش انجام می‌شود."
-msgstr "Tick only when the text is final and its promises are kept."
+msgid "از ۱ تا ۴۸ ساعت. قول ما به مشتری است و تغییرش فقط سفارش‌های بعدی را عوض می‌کند."
+msgstr "From 1 to 48 hours. It is our promise to the customer, and changing it affects only later orders."
+
+msgid "اگر محصول از سایت برداشته شود، تا این موارد درست نشود دوباره منتشر نمی‌شود."
+msgstr "If the product is taken off the site, it cannot be published again until these are fixed."
+
+msgid "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، برایش پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید."
+msgstr "“Ask the customer for details” stops the delivery deadline and, if the customer has an email or a linked Telegram, messages them. If receipt of the details is not recorded within 21 days, the purchase is cancelled automatically. Never write a password or sign-in code the customer sends on Telegram into the panel."
+
+msgid "با ثبت، پرداخت سفارش تأیید می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود. این ثبت برگشت ندارد."
+msgstr "Recording confirms the order's payment and, if the customer has an email or a linked Telegram, notifies them. It cannot be undone."
+
+msgid "بخش‌های محصولی که انتخاب می‌کنید به انتهای محتوای این محصولات اضافه می‌شوند. «پیش از خرید» فقط به محصولی اضافه می‌شود که آن را ندارد:"
+msgstr "The sections of the product you choose are added to the end of these products' content. “Before you buy” is added only to a product that does not have one:"
+
+msgid "خالی = نامحدود. ثبت سفارش کمش می‌کند و لغو پیش از پرداخت یا لغو ۲۱ روزه زیادش می‌کند."
+msgstr "Blank = unlimited. An order lowers it; a cancellation before payment or the 21-day cancellation raises it."
+
+msgid "صفحه‌ی محصول تمدید همین اکانت با قیمت روز را وعده می‌دهد. فقط اگر شدنی است، تیک بزنید."
+msgstr "The product page promises renewal of the same account at the day's price. Tick it only if that is possible."
+
+msgid "فقط وقتی تیک بزنید که متن نهایی باشد و به همه‌ی وعده‌هایش عمل کنیم."
+msgstr "Tick only when the text is final and we keep every promise in it."
+
+msgid "لغو برگشت ندارد. اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود."
+msgstr "Cancelling cannot be undone. If the customer has an email or a linked Telegram, they are notified."
+
+msgid "لغو برگشت ندارد. اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود. این مبلغ تا ثبت واریز، «در انتظار واریز» می‌ماند."
+msgstr "Cancelling cannot be undone. If the customer has an email or a linked Telegram, they are notified. This amount stays “awaiting transfer” until the transfer is recorded."
+
+msgid "پیش از انتشار دوباره"
+msgstr "Before publishing again"

@@ -773,6 +773,6 @@ def test_shared_attempt_limit_does_not_blame_the_new_authentication_method(rf, m
         message = caught.value.message
     else:
         message = services.password_attempt_refusal(request, phone)
-    assert "با هر شماره در ۱۵ دقیقه فقط ۱۰ بار می‌توانید برای ورود تلاش کنید" in message
+    assert "با این شماره در ۱۵ دقیقه فقط ۱۰ بار می‌توانید برای ورود تلاش کنید" in message
     assert "۱۵ دقیقه" in message
     assert "اشتباه" not in message

@@ -9,7 +9,7 @@
   {% else %}
   <p>{% translate "مبلغ نهایی سفارش" %}: {{ order.total_amount|toman }}</p>
   <p>{% translate "اول مطمئن شوید مبلغ به حساب بانکی رسیده است. تصویر رسید برای تأیید پرداخت کافی نیست." %}</p>
-<p>{% translate "با ثبت، پرداخت سفارش تأیید می‌شود و به مشتری خبر می‌رسد. این ثبت برگشت ندارد." %}</p>
+<p>{% translate "با ثبت، پرداخت سفارش تأیید می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، خبردار می‌شود. این ثبت برگشت ندارد." %}</p>
   {% endif %}
   {% if not refund_transfer or has_refunds or form.is_bound %}
   <form method="post" class="order-payment-form" novalidate>

@@ -143,7 +143,7 @@ def test_operator_matches_in_existing_panel_without_javascript(
     mismatch = (
         "شناسه با این سفارش مطابقت ندارد."
         if language == "fa"
-        else "The identifier you entered is invalid for this order."
+        else "The identifier does not match this order."
     )
     matched = (
         "شناسه با این سفارش مطابقت دارد."

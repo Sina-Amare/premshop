@@ -1263,7 +1263,6 @@ class DiscountForm(forms.ModelForm):
             " محصولات مشمول تخفیفش پیش از تحویل لغو شوند، آن استفاده آزاد می‌شود."
         )
         self.fields["per_user_limit"].help_text = _("خالی = نامحدود")
-        self.fields["code"].help_text = _("۴ تا ۸ حرف لاتین یا رقم، مثل YALDA25")
         self.fields["min_order_amount"].help_text = _(
             "جمع کل سفارش پیش از این کد، حتی اگر کد فقط شامل بعضی محصولات باشد. خالی = بدون حداقل"
         )

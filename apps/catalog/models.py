@@ -497,7 +497,9 @@ class Product(ChecksNameTheirField, models.Model):
     delivery_hours = models.SmallIntegerField(
         _("مهلت تحویل (ساعت)"),
         default=24,
-        help_text=_("از ۱ تا ۴۸ ساعت؛ قول ما به مشتری است و فقط روی سفارش‌های بعدی اثر دارد."),
+        help_text=_(
+            "از ۱ تا ۴۸ ساعت. قول ما به مشتری است و تغییرش فقط سفارش‌های بعدی را عوض می‌کند."
+        ),
     )
     delivery_note = models.CharField(
         _("متن دلخواه مهلت"),
@@ -516,7 +518,7 @@ class Product(ChecksNameTheirField, models.Model):
         _("قابل تمدید"),
         default=False,
         help_text=_(
-            "با تیک، صفحه‌ی محصول تمدید روی همین اکانت را وعده می‌دهد؛ فقط اگر ممکن است تیک بزنید."
+            "صفحه‌ی محصول تمدید همین اکانت با قیمت روز را وعده می‌دهد. فقط اگر شدنی است، تیک بزنید."
         ),
     )
     delivery_template = models.TextField(
@@ -946,7 +948,7 @@ class Plan(ChecksNameTheirField, PageRow):
         null=True,
         blank=True,
         help_text=_(
-            "با ثبت سفارش کم و با لغو پیش از پرداخت یا نرسیدن اطلاعات زیاد می‌شود. خالی = نامحدود"
+            "خالی = نامحدود. ثبت سفارش کمش می‌کند و لغو پیش از پرداخت یا لغو ۲۱ روزه زیادش می‌کند."
         ),
     )
     is_available = models.BooleanField(

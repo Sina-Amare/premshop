@@ -135,7 +135,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
     try:
         page.goto(detail)
         capture(page, detail, "#order-delivery", "masked", width, tmp_path)
-        expect(page.locator("[data-delivery-recovery]")).to_contain_text("پیش از ثبت سفارش")
+        expect(page.locator("[data-delivery-recovery]")).to_contain_text("پیش از ثبت این سفارش")
         scan(page)
         assert "delivered-secret" not in page.content()
         page.get_by_role("button", name="فرستادن کد به ایمیل", exact=True).focus()

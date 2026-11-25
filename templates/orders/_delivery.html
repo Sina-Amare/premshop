@@ -1,7 +1,7 @@
 {% if delivery_rows %}
 <section class="card order-card" id="order-delivery" aria-labelledby="order-delivery-title">
 <h2 id="order-delivery-title">اطلاعات تحویل</h2>
-{% if delivery_ready and delivery_confirmed %}<p>کد تأیید شد. تا ۱۰ دقیقه می‌توانید اطلاعات تحویل هر محصول را ببینید.</p>{% endif %}
+{% if delivery_ready and delivery_confirmed %}<p>کد تأیید شد. تا ۱۰ دقیقه پس از تأیید کد می‌توانید اطلاعات تحویل هر محصول را ببینید.</p>{% endif %}
 {% for row in delivery_rows %}
 <div class="order-input-item" data-delivery-item="{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
@@ -23,7 +23,7 @@
 <div class="field"><label class="field__label" for="delivery-code">کد نمایش اطلاعات تحویل</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>
 <button type="submit" class="btn btn--primary">تأیید کد</button></form>
 {% endif %}
-<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است. برای دیدن اطلاعات تحویل،{% endif %} به <a href="{{ support.telegram_url }}" rel="noopener noreferrer">پشتیبانی</a> پیام بدهید. اگر پیش از ثبت این سفارش تلگرام را به حساب کاربری‌تان وصل کرده بودید، می‌توانیم {% if delivery_email %}ایمیل سفارش را عوض کنیم{% else %}برای سفارش ایمیل ثبت کنیم{% endif %}.</p>
+<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است. برای دیدن اطلاعات تحویل،{% endif %} به <a href="{{ support.telegram_url }}" rel="noopener noreferrer">پشتیبانی</a> پیام بدهید. اگر تلگرامی که الان به حساب کاربری‌تان وصل است پیش از ثبت این سفارش وصل شده بود، می‌توانیم {% if delivery_email %}ایمیل سفارش را عوض کنیم{% else %}برای سفارش ایمیل ثبت کنیم{% endif %}.</p>
 {% endif %}
 </section>
 {% endif %}

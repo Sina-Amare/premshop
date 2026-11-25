@@ -2,7 +2,7 @@
 {% if input_controls %}
 <section class="order-history" aria-labelledby="order-input-title">
   <header><h2 id="order-input-title">{% translate "اطلاعات فعال‌سازی" %}</h2></header>
-  <p>{% translate "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و برای مشتری پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید." %}</p>
+  <p>{% translate "با «درخواست اطلاعات از مشتری»، مهلت تحویل متوقف می‌شود و اگر مشتری ایمیل داشته باشد یا تلگرامش وصل باشد، برایش پیام می‌رود. اگر تا ۲۱ روز دریافت اطلاعات ثبت نشود، خرید خودکار لغو می‌شود. رمز یا کد ورودی را که مشتری در تلگرام می‌فرستد، در پنل ننویسید." %}</p>
   {% for control in input_controls %}
     <article class="saved-purchase">
       <h3><bdi>{{ control.item.product_snapshot.name }}</bdi>، <bdi>{{ control.item.product_snapshot.plan_title }}</bdi></h3>

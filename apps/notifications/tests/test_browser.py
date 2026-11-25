@@ -80,7 +80,7 @@ def test_order_email_previews(browser, live_server, settings, monkeypatch, width
         "replacement_rejected": "درخواست تعویض رد شد",
         "supply_delayed": "زمان تحویل تغییر کرد",
         "item_cancelled": "خرید لغو شد",
-        "item_refunded": "بازگشت وجه",
+        "item_refunded": "بازگشت وجه انجام شد",
     }
     try:
         for name, heading in headings.items():
@@ -152,7 +152,7 @@ def test_notification_panel_types_and_states(
         )
         page.reload()
         expect(page.locator("#result_list")).to_contain_text("تأیید پرداخت")
-        expect(page.locator("#result_list")).to_contain_text("تأییدیه‌ی خرید")
+        expect(page.locator("#result_list")).to_contain_text("ثبت سفارش")
         expect(page.locator("#result_list")).to_contain_text("ناموفق")
         assert not page.locator('input[name="_selected_action"]').count()
         page.screenshot(path=str(tmp_path / f"messages-mixed-{width}.png"), full_page=True)

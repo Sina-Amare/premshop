@@ -52,7 +52,7 @@ def test_queue_tabs_keyboard_search_and_delivery_shell(
         page.goto(live_server.url + listing)
         check("empty", "در صف انجام")
         assert page.locator("#result_list tbody tr").count() == 0
-        expect(page.get_by_text("سفارشی پیدا نکردیم.", exact=True)).to_be_visible()
+        expect(page.get_by_text("فعلاً سفارشی در این فهرست نیست.", exact=True)).to_be_visible()
         plan.title = "پلن یک ماهه با نام طولانی برای فعال‌سازی روی اکانت شخصی Example Pro"
         plan.save(update_fields=["title"])
         now = timezone.now()

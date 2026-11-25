@@ -1552,7 +1552,7 @@ def test_a_live_product_that_could_not_go_back_up_says_so_on_its_form(client, op
 
     readiness = re.search(r'<div class="panel-readiness.*?</div>', body, re.S)
     assert readiness, "no readiness list on the live product's form"
-    assert "اگر از سایت برداشته شود" in readiness.group(0)
+    assert "پیش از انتشار دوباره" in readiness.group(0)
     assert "قبل از انتشار" not in readiness.group(0)
     assert "نکات استفاده نوشته نشده است." in readiness.group(0)
 
