@@ -70,7 +70,7 @@ TOKEN_NAMES = [
     ("--color-fill-subtle", "سطح کم‌رنگ"),
     ("--color-line", "خط"),
     ("--color-line-strong", "خط پررنگ"),
-    ("--color-accent", "لهجه"),
+    ("--color-accent", "تأکید"),
     ("--color-ok", "موفق"),
     ("--color-time", "زمان"),
     ("--color-danger", "خطا"),
@@ -168,8 +168,8 @@ EMAIL_PREVIEWS: dict[str, dict[str, object]] = {
                 "quantity": 2,
                 "price": Decimal("200000"),
                 "amount": Decimal("400000"),
-                "warranty": "طبق شرایط محصول",
-                "delivery": "روی حساب شما",
+                "warranty": "۷ روز پس از تحویل",
+                "delivery": "فعال‌سازی روی اکانت شخصی",
             }
         ],
         "policies": [

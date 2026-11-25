@@ -651,7 +651,7 @@ def test_search_rate_limited(client, product):
     response = client.get(reverse("search") + "?q=a")
 
     assert response.status_code == 429
-    assert "درخواست‌های جستجو به سقف رسیده است." in response.content.decode()
+    assert "از این شبکه پشت سر هم جستجو شده است." in response.content.decode()
     assert "یک دقیقه دیگر دوباره جستجو کنید." in response.content.decode()
 
 

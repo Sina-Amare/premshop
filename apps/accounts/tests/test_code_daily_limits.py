@@ -47,7 +47,7 @@ def test_daily_refusal_precedes_exhausted_short_windows(rf):
         for _ in range(limit.times):
             ratelimit.hit(limit, subject)
     with pytest.raises(
-        services.RateLimited, match="پیامک ورود برای این شماره پر شده است. تا ۲۴ ساعت"
+        services.RateLimited, match="برای هر شماره در ۲۴ ساعت فقط ۱۰ بار کد ورود پیامک می‌کنیم"
     ):
         services.request_login_code(rf.post("/"), PHONE)
 
@@ -75,7 +75,7 @@ def test_the_daily_budget_is_per_number_not_reset_on_login_and_expires(client, r
         assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, PHONE) == 0
         assert services.complete_code_login(rf_request(client, rf), PHONE, sms_code()) is not None
         with pytest.raises(
-            services.RateLimited, match="پیامک ورود برای این شماره پر شده است. تا ۲۴ ساعت"
+            services.RateLimited, match="برای هر شماره در ۲۴ ساعت فقط ۱۰ بار کد ورود پیامک می‌کنیم"
         ):
             services.request_login_code(rf.post("/"), PHONE)
         clock.shift(86400 - 9 * 13 * 60)

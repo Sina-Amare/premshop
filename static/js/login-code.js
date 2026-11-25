@@ -155,7 +155,7 @@
       smsForm.querySelector('button').disabled = false;
       tick();
     }).catch(function () {
-      showError('کد فرستاده نشد. دوباره تلاش کنید.');
+      showError('پاسخی از سایت نرسید. اگر کد جدیدی دریافت نکردید، دوباره امتحان کنید.');
       cooldownUntil = Math.floor(Date.now() / 1000) + 5;
       resendPending = false;
       smsForm.querySelector('button').disabled = false;
