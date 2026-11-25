@@ -61,7 +61,7 @@ def test_customer_support_copy_replacement_and_invoice_privacy(
         )
         copy.click()
         expect(page.locator("[data-copy-status]")).to_have_text(
-            "شناسه را کپی کنید و همراه شماره‌ی سفارش بفرستید."
+            "کپی نشد. شناسه را خودتان کپی کنید و همراه شماره‌ی سفارش بفرستید."
         )
         assert page.evaluate("getSelection().toString()") == order.support_identifier.grouped_token
         capture(page, "support-copy-refused", width, tmp_path)
@@ -141,7 +141,7 @@ def test_operator_matches_in_existing_panel_without_javascript(
     check = "بررسی شناسه" if language == "fa" else "Check identifier"
     back = "بازگشت به سفارش" if language == "fa" else "Back to order"
     mismatch = (
-        "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."
+        "شناسه با این سفارش مطابقت ندارد."
         if language == "fa"
         else "The identifier you entered is invalid for this order."
     )

@@ -1,11 +1,12 @@
 {% load fa %}سفارش {{ order_number|fa_digits }} ثبت شد
 
 وضعیت هنگام ثبت: در انتظار پرداخت
+اگر هنوز پرداخت نکرده‌اید، برای پرداخت {{ total_amount|toman_plain }} تومان طبق راهنمای صفحه‌ی سفارش در تلگرام به پشتیبانی پیام بدهید. سفارشی که تا ۲۴ ساعت پس از ثبت پرداخت نشود، لغو می‌شود.
 تاریخ ثبت: {{ created_at|jalali }}، ساعت {{ created_at|time:"H:i"|fa_digits }}
 مشاهده‌ی سفارش:
 {{ order_url }}
 
-{% for line in lines %}محصول: {{ line.facts.name }}؛ {{ line.facts.plan_title }}
+{% for line in lines %}محصول: {{ line.facts.name }}، {{ line.facts.plan_title }}
 تعداد: {{ line.quantity|fa_digits }}
 قیمت واحد: {{ line.price|toman_plain }} تومان
 جمع: {{ line.amount|toman_plain }} تومان
@@ -14,7 +15,7 @@
 {% endif %}{% if line.facts.delivery_note %}{{ line.facts.delivery_note }}
 {% elif line.facts.delivery_hours %}تحویل تا {{ line.facts.delivery_hours|fa_digits }} ساعت پس از تأیید پرداخت
 {% endif %}{% if line.warranty %}گارانتی: {{ line.warranty }}
-{% endif %}{% if line.facts.telegram_required %}برای فعال‌سازی این محصول باید در تلگرام هماهنگ کنید.
+{% endif %}{% if line.facts.telegram_required %}پس از پرداخت، برای فعال‌سازی این محصول باید در تلگرام با پشتیبانی هماهنگ کنید.
 {% endif %}{% for spec in line.facts.specs %}{{ spec.title }}: {{ spec.value }}
 {% endfor %}{% if line.facts.usage_notes %}نکات استفاده
 {{ line.facts.usage_notes }}

@@ -142,7 +142,7 @@ def test_the_21st_tehran_day_cancels_with_an_owed_refund_and_claims_no_transfer(
     assert plan.stock_quantity == 5
     [notice] = notices(item, "item_cancelled")
     assert "۲۱ روز" in notice.text_body and "۲۱ روز" in notice.html_body
-    assert "وضعیت واریز را در صفحه‌ی سفارش ببینید" in notice.text_body
+    assert "مبلغ را تا یک روز کاری پس از دریافت آن واریز می‌کنیم" in notice.text_body
 
 
 def test_a_holiday_moves_no_rung_of_the_ladder(buyer, plan, operator):

@@ -1,12 +1,12 @@
 {% if delivery_rows %}
 <section class="card order-card" id="order-delivery" aria-labelledby="order-delivery-title">
 <h2 id="order-delivery-title">اطلاعات تحویل</h2>
-{% if delivery_ready and delivery_confirmed %}<p>ایمیل این سفارش تأیید شده است. می‌توانید اطلاعات هر محصول را جداگانه باز کنید.</p>{% endif %}
+{% if delivery_ready and delivery_confirmed %}<p>کد تأیید شد. تا ۱۰ دقیقه می‌توانید اطلاعات تحویل هر محصول را ببینید.</p>{% endif %}
 {% for row in delivery_rows %}
 <div class="order-input-item" data-delivery-item="{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
-{% if not row.available %}<p data-delivery-unavailable>اطلاعات تحویل این محصول دیگر نمایش داده نمی‌شود.</p>
-{% elif not row.delivery %}<p data-delivery-deleted>اطلاعات تحویل این محصول حذف شده است.</p>
+{% if not row.available %}<p data-delivery-unavailable>این خرید لغو شده است و اطلاعات تحویلش دیگر نمایش داده نمی‌شود.</p>
+{% elif not row.delivery %}<p data-delivery-deleted>مهلت نگهداری اطلاعات تحویل این محصول تمام شده و آن را حذف کرده‌ایم.</p>
 {% else %}
 <dl class="order-totals" data-delivery-masked>{% for field in row.delivery.fields.all %}<div><dt><bdi>{{ field.title }}</bdi></dt><dd aria-label="پنهان">••••••</dd></div>{% endfor %}</dl>
 {% if delivery_confirmed %}<form method="post" action="{% url 'order-delivery-reveal' order.order_number row.item.pk %}">{% csrf_token %}<button class="btn btn--primary" type="submit">نمایش اطلاعات تحویل</button></form>{% endif %}
@@ -20,10 +20,10 @@
 <p>ایمیل این سفارش: <bdi dir="ltr">{{ delivery_email }}</bdi></p>
 <form method="post" action="{% url 'order-delivery-code' order.order_number %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">فرستادن کد به ایمیل</button></form>
 <form method="post" action="{% url 'order-delivery-confirm' order.order_number %}">{% csrf_token %}
-<div class="field"><label class="field__label" for="delivery-code">کد تأیید ایمیل</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>
+<div class="field"><label class="field__label" for="delivery-code">کد نمایش اطلاعات تحویل</label><input class="field__input" id="delivery-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required></div>
 <button type="submit" class="btn btn--primary">تأیید کد</button></form>
 {% endif %}
-<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}این سفارش ایمیل ندارد. برای دیدن اطلاعات تحویل،{% endif %} به <a href="{{ support.telegram_url }}" rel="noopener noreferrer">پشتیبانی</a> پیام بدهید. برای تغییر ایمیل سفارش، باید پیش از ثبت سفارش تلگرام را به حسابتان وصل کرده باشید.</p>
+<p data-delivery-recovery>{% if delivery_email %}اگر به ایمیل این سفارش دسترسی ندارید،{% else %}برای این سفارش ایمیلی ثبت نشده است. برای دیدن اطلاعات تحویل،{% endif %} به <a href="{{ support.telegram_url }}" rel="noopener noreferrer">پشتیبانی</a> پیام بدهید. اگر پیش از ثبت این سفارش تلگرام را به حساب کاربری‌تان وصل کرده بودید، می‌توانیم {% if delivery_email %}ایمیل سفارش را عوض کنیم{% else %}برای سفارش ایمیل ثبت کنیم{% endif %}.</p>
 {% endif %}
 </section>
 {% endif %}

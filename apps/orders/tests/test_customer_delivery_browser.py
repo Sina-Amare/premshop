@@ -141,9 +141,9 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         page.get_by_role("button", name="فرستادن کد به ایمیل", exact=True).focus()
         page.keyboard.press("Enter")
         # The code box is on the page before the send, so the sent notice is the evidence.
-        expect(page.get_by_text("کد تأیید را به ایمیل این سفارش فرستادیم.")).to_be_visible()
+        expect(page.get_by_text("کد را به ایمیل این سفارش فرستادیم.")).to_be_visible()
         code = code_from_mail()
-        page.get_by_label("کد تأیید ایمیل").fill("wrong")
+        page.get_by_label("کد نمایش اطلاعات تحویل").fill("wrong")
         page.get_by_role("button", name="تأیید کد", exact=True).click()
         expect(page.locator("[role=alert]")).to_contain_text("کد اشتباه است")
         capture(
@@ -154,11 +154,11 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
             width,
             tmp_path,
         )
-        page.get_by_label("کد تأیید ایمیل").fill(code)
+        page.get_by_label("کد نمایش اطلاعات تحویل").fill(code)
         page.get_by_role("button", name="تأیید کد", exact=True).focus()
         page.keyboard.press("Enter")
         expect(page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True)).to_be_visible()
-        expect(page.locator("#order-delivery")).to_contain_text("ایمیل این سفارش تأیید شده است.")
+        expect(page.locator("#order-delivery")).to_contain_text("کد تأیید شد.")
         capture(page, detail, "[data-delivery-masked]", "confirmed", width, tmp_path)
         with page.expect_response(lambda response: response.url == reveal) as seen:
             page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True).click()

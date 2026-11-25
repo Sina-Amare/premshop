@@ -95,7 +95,7 @@ def test_home_is_a_grid_counting_each_kind_of_order(buyer, plan, operator, setti
             {"text": f"{emoji.ACCOUNT} حساب کاربری", "url": site + reverse("account")},
             {"text": f"{emoji.SUPPORT} پشتیبانی", "url": "https://t.me/premshop_support"},
         ],
-        [{"text": f"{emoji.SHARE} معرفی PremShop", "url": share_url(site)}],
+        [{"text": f"{emoji.SHARE} معرفی به دوستان", "url": share_url(site)}],
     ]
 
 
@@ -259,8 +259,8 @@ HANDLE = support.details()["telegram"]
             f"شماره‌ی کارت یا شبای حسابی به نام خودتان را همراه شماره‌ی سفارش برای {HANDLE} بفرستید.",
         ),
         ("late", {}, f"برای پیگیری تحویل به {HANDLE} پیام بدهید."),
-        ("replacement", {}, "برای بررسی درخواست فعلاً کاری لازم نیست."),
-        ("queued", {}, "برای تحویل فعلاً کاری لازم نیست."),
+        ("replacement", {}, "فعلاً نیازی نیست کاری انجام دهید."),
+        ("queued", {}, "فعلاً نیازی نیست کاری انجام دهید."),
         ("delivered", {"contact": False}, None),
         ("delivered", {"in_warranty": True}, f"مشکلی هست؟ به {HANDLE} پیام بدهید."),
         ("refunded", {"refund": 200_000}, "۲۰۰,۰۰۰ تومان به حسابتان واریز شد."),

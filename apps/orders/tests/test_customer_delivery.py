@@ -559,7 +559,7 @@ def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, 
         response = client.post(urls(order, item)[2], follow=True)
     assert response.redirect_chain == [(reverse("order-detail", args=[order.order_number]), 302)]
     body = response.content.decode()
-    assert "تأیید ایمیل دیگر اعتبار ندارد." in body and urls(order, item)[0] in body
+    assert "مهلت دیدن اطلاعات تحویل تمام شد." in body and urls(order, item)[0] in body
     assert VALUE not in body and not models.CredentialAccessLog.objects.exists()
 
 

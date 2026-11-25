@@ -267,7 +267,7 @@ def delivery_code(
                 raise ValidationError("کد اشتباه است یا اعتبارش تمام شده است.")
         else:
             proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد تأیید را به ایمیل این سفارش فرستادیم.")
+            messages.success(request, "کد را به ایمیل این سفارش فرستادیم.")
     except ValidationError as invalid:
         return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
     return redirect("order-detail", order_number=order_number)

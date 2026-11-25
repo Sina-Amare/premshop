@@ -2,6 +2,6 @@
 {% block title %}زمان تحویل تغییر کرد{% endblock %}
 {% block content %}
 <h1 style="font-size:21px;line-height:1.6;">زمان تحویل تغییر کرد</h1>
-<p>تحویل تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</p>
+<p>تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم. بابت تأخیر در تحویل عذرخواهی می‌کنیم.</p>
 {% include "email/_order_notice.html" %}
 {% endblock %}

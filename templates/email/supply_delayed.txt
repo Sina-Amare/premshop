@@ -3,7 +3,7 @@
 محصول: {{ product_name }}، {{ plan_title }}
 شماره‌ی سفارش: {{ order_number|fa_digits }}
 {% if pill_state %}وضعیت: {{ pill_state|state_label }}
-{% endif %}تحویل تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}
+{% endif %}تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم. بابت تأخیر در تحویل عذرخواهی می‌کنیم.
 مشاهده‌ی سفارش:
 {{ order_url }}
 

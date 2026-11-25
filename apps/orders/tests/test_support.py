@@ -170,7 +170,7 @@ def test_match_form_is_scoped_private_and_never_echoes_either_identifier(
     )
     for supplied, message in (
         (order.support_identifier.support_token, "شناسه با این سفارش مطابقت دارد."),
-        ("PRIVATE-BAD-INPUT", "شناسه‌ای که وارد کردید برای این سفارش معتبر نیست."),
+        ("PRIVATE-BAD-INPUT", "شناسه با این سفارش مطابقت ندارد."),
     ):
         response = client.post(url, {"support_token": supplied})
         body = response.content.decode()
@@ -319,7 +319,7 @@ def test_missing_key_preserves_order_reads_and_shows_unavailable_without_control
         {"support_token": support_token},
     )
     assert response.status_code == 503
-    assert "تطبیق شناسه انجام نشد. دوباره امتحان کنید." in response.content.decode()
+    assert "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست." in response.content.decode()
 
 
 def test_item_order_lookup_does_not_read_support_identifier(buyer, plan, settings):
