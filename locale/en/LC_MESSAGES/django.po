@@ -2375,8 +2375,8 @@ msgstr "Solar Hijri date, such as 1405/09/15. Blank = no end."
 msgid "تاریخ گزارش به وقت تهران است. هر پرداخت در روز تأییدش آمده است، نه روز واریز مشتری."
 msgstr "Report dates are in Tehran time. Each payment appears on the day it was confirmed, not the day the customer transferred it."
 
-msgid "تعداد ایمیل‌های ارسالی خوانده نشد. تا رفع مشکل فقط ایمیل‌های امنیتی را می‌فرستیم. تنظیمات و اتصال پایگاه داده را بررسی کنید."
-msgstr "The sent-mail count could not be read. Until it is fixed, only security mail is sent. Check the settings and the database connection."
+msgid "تعداد ایمیل‌های ارسالی خوانده نشد. تا رفع مشکل فقط برای ایمیل‌های امنیتی ارسال را امتحان می‌کنیم. تنظیمات و اتصال پایگاه داده را بررسی کنید."
+msgstr "The email sent count could not be read. Until this is fixed, only security emails will be attempted. Check the settings and database connection."
 
 msgid "جستجو با نشانی کامل ایمیل"
 msgstr "Search by full email address"

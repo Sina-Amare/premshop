@@ -199,4 +199,6 @@ def test_the_banner_explains_an_accounting_outage_to_staff_only(
     client.force_login(customer)
     assert "mail_quota" not in client.get(reverse("admin:login")).context
     client.force_login(django_user_model.objects.create_superuser("owner@example.test"))
-    assert "data-mail-quota" in client.get(reverse("admin:index")).content.decode()
+    body = client.get(reverse("admin:index")).content.decode()
+    assert "data-mail-quota" in body
+    assert "فقط برای ایمیل‌های امنیتی ارسال را امتحان می‌کنیم" in body

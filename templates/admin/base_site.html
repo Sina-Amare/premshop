@@ -14,7 +14,7 @@
 <section role="status" class="border border-base-200 rounded-default p-4 mx-4 my-4" data-mail-quota>
 <h2>{% translate "وضعیت ارسال ایمیل" %}</h2>
 {% if mail_quota.unavailable %}
-<p>{% translate "تعداد ایمیل‌های ارسالی خوانده نشد. تا رفع مشکل فقط ایمیل‌های امنیتی را می‌فرستیم. تنظیمات و اتصال پایگاه داده را بررسی کنید." %}</p>
+<p>{% translate "تعداد ایمیل‌های ارسالی خوانده نشد. تا رفع مشکل فقط برای ایمیل‌های امنیتی ارسال را امتحان می‌کنیم. تنظیمات و اتصال پایگاه داده را بررسی کنید." %}</p>
 {% else %}
 <p>{% translate "۲۴ ساعت گذشته:" %} {{ mail_quota.daily|fa_digits }} {% translate "از" %} {% translate "۲۰۰" %} · {% translate "دوره‌ی ماهانه:" %} {{ mail_quota.monthly|fa_digits }} {% translate "از" %} {% translate "۱٬۰۰۰" %}</p>
 <p>{% translate "ظرفیت باقی‌مانده:" %} {{ mail_quota.daily_remaining|fa_digits }} {% translate "روزانه" %} · {{ mail_quota.monthly_remaining|fa_digits }} {% translate "ماهانه" %}</p>
