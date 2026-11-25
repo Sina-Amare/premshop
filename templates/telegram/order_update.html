@@ -18,6 +18,6 @@
 <blockquote><p>نتوانستیم این محصول را تعویض کنیم. بابت این مشکل عذرخواهی می‌کنیم.</p></blockquote>{% endif %}{% if template_name == "item_cancelled" and amount %}
 <p>برای دریافت این مبلغ، شماره‌ی کارت یا شبای حسابی به نام خودتان را همراه شماره‌ی سفارش برای {{ support.telegram }} بفرستید. پس از دریافت شماره‌ی کارت یا شبا، مبلغ را تا یک روز کاری واریز می‌کنیم.</p>
 <p>پشتیبانی هیچ‌وقت رمز کارت یا رمز پویا را از شما نمی‌خواهد.</p>{% elif template_name == "item_cancelled" and product_name %}
-<p>مبلغ پرداختی این خرید صفر بود و بازگشت وجهی ندارد.</p>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
+<p>این خرید بازگشت وجهی ندارد.</p>{% endif %}{% if template_name == "item_cancelled" and products and not amount %}
 <blockquote><p>{% include "email/_unpaid_cancellation.txt" %}</p></blockquote>{% if pill_state == "expired" %}
 <p>اگر مبلغی واریز کرده‌اید، شماره‌ی سفارش را برای {{ support.telegram }} بفرستید.</p>{% endif %}{% endif %}

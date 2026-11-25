@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from functools import partial
 from smtplib import (
@@ -461,3 +461,33 @@ def test_a_paid_cancellation_announces_its_own_refund_not_the_order_total(
         body = row.text_body + row.html_body
         assert toman_plain(refund.amount) in body, body
         assert toman_plain(order.total_amount) not in body
+
+
+def test_a_prorated_refund_that_rounds_to_zero_does_not_call_the_purchase_free(
+    buyer, plan, operator, telegram, client
+):
+    linked(buyer)
+    type(plan.product).objects.filter(pk=plan.product_id).update(warranty="full_period")
+    type(plan).objects.filter(pk=plan.pk).update(sale_price=1)
+    plan.refresh_from_db()
+    with tehran(2026, 11, 3):
+        order, item = queued(buyer, plan, operator)
+        deliver(item, operator, expires_at=date(2026, 12, 2))
+    with tehran(2026, 12, 2):
+        claim(item, operator, reason="stopped_early")
+        client.force_login(operator)
+        url = reverse("admin:orders_order_deliver", args=[order.pk, item.pk])
+        panel = client.get(url).content.decode()
+        cancel(item, operator, "warranty_refund")
+
+    assert item.paid_amount == 1
+    assert "مبلغ بازپرداخت: ندارد." in panel
+    assert "مبلغ پرداختی این محصول صفر بود" not in panel
+    assert not Refund.objects.filter(order_item=item).exists()
+    notices = rows("item_cancelled").filter(order=order)
+    assert notices.count() == 2
+    for row in notices:
+        assert "این خرید بازگشت وجهی ندارد." in row.text_body
+        assert "مبلغ پرداختی این خرید صفر بود" not in row.text_body
+        if row.html_body:
+            assert "مبلغ پرداختی این خرید صفر بود" not in row.html_body

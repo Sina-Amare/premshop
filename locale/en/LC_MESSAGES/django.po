@@ -2438,8 +2438,8 @@ msgstr "Cancel without a refund"
 msgid "لغو خرید"
 msgstr "Purchase cancelled"
 
-msgid "مبلغ بازپرداخت: ندارد. مبلغ پرداختی این محصول صفر بود."
-msgstr "Refund amount: none. Nothing was paid for this item."
+msgid "مبلغ بازپرداخت: ندارد."
+msgstr "Refund amount: none."
 
 msgid "متن پیام"
 msgstr "Message text"
