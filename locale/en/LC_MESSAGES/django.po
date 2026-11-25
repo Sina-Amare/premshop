@@ -2515,3 +2515,9 @@ msgstr "Cancelling cannot be undone. If the customer has an email or a linked Te
 
 msgid "پیش از انتشار دوباره"
 msgstr "Before publishing again"
+
+msgid "شناسه‌ای را که مشتری فرستاده وارد کنید تا با شناسه‌ی همین سفارش مقایسه شود. تصویر فاکتور مالکیت یا پرداخت را ثابت نمی‌کند."
+msgstr "Enter the identifier the customer sent to compare it with the identifier on this order. An invoice image does not establish ownership or payment."
+
+msgid "این تطبیق به‌تنهایی هویت فرستنده یا پرداخت را تأیید نمی‌کند."
+msgstr "A match alone does not verify the sender's identity or payment."

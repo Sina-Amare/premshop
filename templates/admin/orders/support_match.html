@@ -5,7 +5,7 @@
   <h1 id="support-match-title">{{ title }}</h1>
   <p>{% translate "شماره‌ی سفارش" %}: {{ order.order_number|fa_digits }}</p>
   <p role="status">{% if matched is None %}{% translate "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست." %}{% elif matched %}{% translate "شناسه با این سفارش مطابقت دارد." %}{% else %}{% translate "شناسه با این سفارش مطابقت ندارد." %}{% endif %}</p>
-  <p>{% translate "مطابقت شناسه فقط مالکیت سفارش را نشان می‌دهد، نه پرداخت را." %}</p>
+  <p>{% translate "این تطبیق به‌تنهایی هویت فرستنده یا پرداخت را تأیید نمی‌کند." %}</p>
   <a class="order-input-action" href="{% url 'admin:orders_order_change' order.pk %}">{% translate "بازگشت به سفارش" %}</a>
 </section>
 {% endblock %}
