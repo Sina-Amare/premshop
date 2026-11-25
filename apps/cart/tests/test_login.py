@@ -43,7 +43,10 @@ def test_code_login_combines_existing_cart_and_shows_reduction(client, buyer, pl
     CartItem.objects.create(cart=account, plan=plan, quantity=2)
     client.post("/cart/add/", {"plan": plan.pk, "quantity": 2})
     response = sign_in_by_code(client, buyer.phone, follow=True, next="/cart/")
-    assert "تعداد بعضی محصولات سبد خریدتان را تا سقف خرید هر سفارش کم کردیم." in response.content.decode()
+    assert (
+        "تعداد بعضی محصولات سبد خریدتان را تا سقف خرید هر سفارش کم کردیم."
+        in response.content.decode()
+    )
     assert account.items.get().quantity == 3
     assert Cart.objects.count() == 1
 

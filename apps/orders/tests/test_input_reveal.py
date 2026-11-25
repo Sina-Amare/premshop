@@ -557,7 +557,9 @@ def test_input_reveal_and_read_only_history_in_browser(
         item.customer_input = ""
         item.save(update_fields=["customer_input"])
         page.locator("[data-customer-input-reveal]").click()
-        expect(page.locator("body")).to_contain_text("اطلاعاتی ثبت نشده یا پس از مهلت نگهداری حذف شده است.")
+        expect(page.locator("body")).to_contain_text(
+            "اطلاعاتی ثبت نشده یا پس از مهلت نگهداری حذف شده است."
+        )
         assert page.url.endswith(url)
         page.screenshot(path=str(tmp_path / f"blank-{width}-{javascript}.png"), full_page=True)
         page.get_by_role("link", name="بازگشت به سفارش", exact=True).click()

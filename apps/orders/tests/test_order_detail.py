@@ -205,7 +205,9 @@ def test_each_state_shows_its_pill_its_fact_and_only_its_own_action(
     assert body.count('id="support-identifier"') <= 1
     assert "تماس بگیرید" not in body
     assert ("بله، لغو سفارش" in body) is (state in ("unpaid", "overdue"))
-    assert ("فعلاً نیازی نیست کاری انجام دهید." in card) is (state in ("queued", "paused", "claimed"))
+    assert ("فعلاً نیازی نیست کاری انجام دهید." in card) is (
+        state in ("queued", "paused", "claimed")
+    )
     if state in ("overdue", "expired"):
         screen, _ = telegram_panel.render(buyer, f"o:{order.order_number}")
         assert ("لغو شد." in card) is (state == "expired")

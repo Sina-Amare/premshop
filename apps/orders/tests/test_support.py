@@ -319,7 +319,9 @@ def test_missing_key_preserves_order_reads_and_shows_unavailable_without_control
         {"support_token": support_token},
     )
     assert response.status_code == 503
-    assert "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست." in response.content.decode()
+    assert (
+        "بررسی شناسه فعلاً ممکن نیست. این نتیجه به معنی رد شناسه نیست." in response.content.decode()
+    )
 
 
 def test_item_order_lookup_does_not_read_support_identifier(buyer, plan, settings):

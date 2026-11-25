@@ -110,7 +110,9 @@ def test_order_email_previews(browser, live_server, settings, monkeypatch, width
             },
         )
         page.goto(f"{live_server.url}/dev/emails/item_cancelled/")
-        expect(page.get_by_text("مبلغ پرداختی این خرید صفر بود و بازگشت وجهی ندارد.")).to_be_visible()
+        expect(
+            page.get_by_text("مبلغ پرداختی این خرید صفر بود و بازگشت وجهی ندارد.")
+        ).to_be_visible()
         page.screenshot(path=str(tmp_path / f"cancelled-zero-{width}.png"), full_page=True)
     finally:
         context.close()
