@@ -107,7 +107,8 @@ def test_too_many_guesses_answer_429_in_json(waiting):
     assert response.json()["ok"] is False
     assert (
         response.json()["error"]
-        == "با این شماره در ۱۵ دقیقه فقط ۱۰ بار می‌توانید برای ورود تلاش کنید."
+        == "با این شماره در ۱۵ دقیقه فقط ۱۰ بار می‌توانید برای ورود تلاش کنید. "
+        "تا ۱۵ دقیقه صبر کنید و دوباره امتحان کنید."
     )
 
 

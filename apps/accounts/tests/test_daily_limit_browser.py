@@ -31,7 +31,7 @@ def test_daily_refusal_is_readable_on_the_code_page(browser, live_server, width,
             " کاربری وصل کرده‌اید، کد را از تلگرام بگیرید، وگرنه ۲۴ ساعت دیگر دوباره امتحان کنید."
             if network
             else "برای این شماره در ۲۴ ساعت فقط ۱۰ بار کد ورود پیامک می‌کنیم. اگر حساب تلگرامتان"
-            " را به حساب کاربری وصل کرده‌اید، کد را از تلگرام بگیرید."
+            " را به حساب کاربری وصل کرده‌اید، کد را از تلگرام بگیرید، وگرنه ۲۴ ساعت دیگر دوباره امتحان کنید."
         )
         expect(page.get_by_text(text)).to_be_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")

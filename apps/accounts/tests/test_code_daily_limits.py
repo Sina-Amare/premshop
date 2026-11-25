@@ -37,7 +37,10 @@ def test_each_refusal_has_its_own_message_and_spends_no_other_budget(client, blo
         services.TOO_MANY_CODES,
         services.TOO_MANY_CODES_FROM_NETWORK,
     ][blocked]
-    assert response.json()["error"] == expected
+    message = response.json()["error"]
+    assert message == expected
+    assert ("۲۴ ساعت دیگر", "۲۴ ساعت دیگر", "دو دقیقه", "یک ساعت", "یک ساعت")[blocked] in message
+    assert "دوباره" in message
     assert [ratelimit.remaining(*budget) for budget in budgets()] == before
     assert not sms.outbox
 
