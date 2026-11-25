@@ -9,7 +9,8 @@
 {% if content.note %}<div class="prose" data-delivery-note>{{ content.note|markdown:"4" }}</div>{% endif %}
 {% elif state == 'unreadable' %}<p data-delivery-unreadable>نتوانستیم اطلاعات تحویل را نشان دهیم. در تلگرام به پشتیبانی پیام بدهید.</p>
 {% elif state == 'deleted' %}<p data-delivery-deleted>مهلت نگهداری اطلاعات تحویل این محصول تمام شده و آن را حذف کرده‌ایم.</p>
-{% else %}<p data-delivery-unavailable>این خرید لغو شده است و اطلاعات تحویلش دیگر نمایش داده نمی‌شود.</p>{% endif %}
+{% elif item.status == 'CANCELLED' or item.status == 'REFUNDED' %}<p data-delivery-unavailable>این خرید لغو شده است و اطلاعات تحویلش دیگر نمایش داده نمی‌شود.</p>
+{% else %}<p data-delivery-unavailable>هنوز اطلاعات تحویل این خرید آماده نیست.</p>{% endif %}
 <a class="btn btn--secondary" href="{% url 'order-detail' order.order_number %}">بازگشت به سفارش</a>
 </section>
 {% endblock %}

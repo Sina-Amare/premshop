@@ -559,6 +559,20 @@ def test_source_migration_backfills_existing_rows_and_reverses(buyer, plan, oper
         MigrationExecutor(connection).migrate(newest)
 
 
+def test_reveal_for_a_purchase_still_in_the_queue_does_not_call_it_cancelled(buyer, plan, operator):
+    order, item = queued(buyer, plan, operator)
+    client = Client()
+    client.force_login(buyer)
+    verified(order, buyer, client.session.session_key)
+
+    response = client.post(urls(order, item)[2])
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "هنوز اطلاعات تحویل این خرید آماده نیست." in body
+    assert "این خرید لغو شده است" not in body
+    assert not models.CredentialAccessLog.objects.exists()
+
+
 def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
     client = Client()
