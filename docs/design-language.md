@@ -162,7 +162,7 @@ Templates live in `templates/email/`; `/dev/emails/` renders them while `DEBUG` 
 
 Persian copy must be short, clear and natural. State the next action directly, without repeating the status or adding sentences that say nothing new. Read each message as a whole before shipping it; joining correct phrases can still produce an awkward sentence. The owner reaffirmed this on 2026-11-09 after the order-page sketch.
 
-Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation. Professional is not formal, natural is not colloquial, and longer is not better (owner, 2026-11-24).
+Give the reader enough to understand what happened and decide what to do. That can include reassurance, a reason to buy or a detail that affects price, delivery or access. Choose the length and tone that fit the situation. Professional is not formal, natural is not colloquial, and longer is not better (owner, 2026-11-24); the FAQ is the one surface written conversationally (Register).
 
 ### How to write a line
 
@@ -173,7 +173,7 @@ The examples in this section carry the judgment; the rules only name it. Before 
 3. **The facts behind it.** A line is a claim about one code branch. Check the recipient, amount, limit and deadline, and what has and has not happened in that branch (Editorial review guide, its paragraphs on money, errors, sign-in and delivery).
 4. **The words.** Write for the surface and in the owner's taste (Register, Rules for every register, Building a line, Glossary, Lines the owner rewrote).
 5. **The rendered result.** Read the line on its page at 390 and 1440 in every state that shows it, as the buyer or operator would: plain-text email beside HTML, bot and SMS messages on their own (Read it the way a buyer or operator would).
-6. **A second reader.** Someone who did not write the line reads it, and the owner sees changed lines beside the old ones in their rendered context (Before and after, with the reason).
+6. **A second reader.** Someone who did not write the line reads it, and the owner sees changed lines beside the old ones in their rendered context (Editorial review guide).
 
 An example is a judgment to reuse, never a wording to stamp. Copying one example's shape onto every line produces copy that reads as generated, however correct each line is.
 
@@ -207,7 +207,7 @@ The operator usually needs a short label or a consequence. A product page should
 
 ### Lines the owner rewrote
 
-The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced. `apps/core/tests/test_owner_lines.py` fails when the code no longer holds a line of this table, so changing one is the owner's decision and updates its row.
+The owner's rewrites are the model to imitate. Every line the owner rewrites joins this table beside the line it replaced. `apps/core/tests/test_owner_lines.py` fails when the code no longer holds a line of this table or holds the line it replaced again, so changing one is the owner's decision and updates its row.
 
 | Rejected | The owner's line | What changed |
 |---|---|---|
@@ -314,7 +314,7 @@ A conversational FAQ answer still states money, time and warranty exactly: its c
 | Add | «افزودن» | «اضافه کردن», «ایجاد», «ساختن» |
 | Ezafe after a silent ه | «ـه‌ی» («مشاهده‌ی همه») | «مشاهده همه», «افزودن یک مشخصه دیگر» |
 
-The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages; `apps/core/tests/test_owner_lines.py` keeps the owner's rewritten lines in the code. The rest, such as «حساب» used for a service account, needs a reader.
+The rules a pattern can see are tests: `apps/catalog/tests/test_storefront_copy.py` reads every storefront page, both halves of every email and the strings the pages' scripts write; `apps/core/tests/test_persian_register.py` reads model labels and help, the Persian catalogue, template text, accessible labels, scripts and Python messages; `apps/accounts/tests/test_copy.py` reads the sign-in and account pages; `apps/core/tests/test_owner_lines.py` keeps the owner's rewritten lines in the code and the lines they replaced out of it. The rest, such as «حساب» used for a service account, needs a reader.
 
 ### Editorial review guide
 
