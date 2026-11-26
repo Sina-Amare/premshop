@@ -551,7 +551,9 @@ class OrderAdmin(ModelAdmin):
         now = timezone.now()
         facts = holiday.summary(now)
         past_holidays = list(
-            Holiday.objects.filter(ended_at__isnull=False).select_related("started_by", "ended_by")[:10]
+            Holiday.objects.filter(ended_at__isnull=False).select_related("started_by", "ended_by")[
+                :10
+            ]
         )
         past = [
             {
