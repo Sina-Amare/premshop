@@ -39,6 +39,42 @@ def screenshot(page, label, width, directory):
 
 
 @pytest.mark.parametrize("width", [390, 1440])
+def test_checkout_requires_email_when_the_buyer_has_no_contact(
+    browser, live_server, plan, width, tmp_path
+):
+    buyer = User.objects.create_user(phone="09123456789")
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    client = Client()
+    client.force_login(buyer)
+
+    with browser.new_context(viewport={"width": width, "height": 1000}) as context:
+        context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.session.session_key,
+                    "url": live_server.url,
+                }
+            ]
+        )
+        page = context.new_page()
+        page.goto(live_server.url + reverse("checkout"))
+        email = page.get_by_label("ایمیل Gmail", exact=True)
+        expect(email).to_have_attribute("required", "")
+        expect(email).to_have_value("")
+        screenshot(page, "checkout-blank", width, tmp_path)
+
+        page.get_by_role("button", name="ثبت سفارش", exact=True).click()
+        error = page.locator("#id_email_error")
+        expect(error).to_be_visible()
+        expect(page.get_by_text(error.inner_text(), exact=True)).to_have_count(1)
+        expect(email).to_have_attribute("aria-invalid", "true")
+        expect(email).to_have_value("")
+        screenshot(page, "checkout-error", width, tmp_path)
+
+
+@pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize("javascript", [True, False])
 def test_checkout_terms_stay_in_summary_outside_phone_bar(
     browser, live_server, buyer, plan, width, javascript, tmp_path

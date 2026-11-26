@@ -22,8 +22,12 @@ def _page(
     *,
     discount_code: str = "",
     error: str = "",
+    email_error: ValidationError | None = None,
     status: int = 200,
 ) -> HttpResponse:
+    account = request.user if request.user.is_authenticated else None
+    if email_error is not None and account is not None:
+        account.refresh_from_db()
     quote = None
     existing = None
     if request.user.is_authenticated:
@@ -53,14 +57,16 @@ def _page(
         for line in purchase.lines:
             key = f"customer_input_{line.plan.pk}"
             initial[key] = request.POST.get(key, "")[:2000]
-    form = CheckoutForm(initial=initial, purchase=purchase)
+    form = CheckoutForm(initial=initial, purchase=purchase, account=account)
     if (
         request.method == "POST"
         and request.POST.get("action") == "checkout"
         and (error or status == 400)
     ):
-        submitted = CheckoutForm(request.POST, purchase=purchase)
+        submitted = CheckoutForm(request.POST, purchase=purchase, account=account)
         submitted.is_valid()
+        if email_error is not None and not submitted.has_error("email"):
+            submitted.add_error("email", email_error)
         # Keep field errors while presenting a new quote.
         form.errors.update(submitted.errors)
         for _, bound in form.input_fields:
@@ -104,6 +110,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
         except ValidationError as exc:
             return _page(request, discount_code=code, error=" ".join(exc.messages), status=400)
         return _page(request, discount_code=code)
+    # A blank email can still be an exact replay after the account loses its contact.
     form = CheckoutForm(request.POST)
     if action != "checkout" or not form.is_valid():
         errors = form.errors
@@ -129,6 +136,8 @@ def checkout(request: HttpRequest) -> HttpResponse:
     except UnpaidOrderExists:
         return _page(request, discount_code=code, status=409)
     except ValidationError as exc:
+        if getattr(exc, "code", None) == "email_required":
+            return _page(request, discount_code=code, email_error=exc, status=400)
         return _page(
             request,
             discount_code=code,

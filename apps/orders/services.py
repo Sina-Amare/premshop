@@ -1103,6 +1103,15 @@ def quote_order(*, user: User, lines: Sequence[OrderLine], discount_code: str = 
     )
 
 
+CHECKOUT_EMAIL_REQUIRED = (
+    "ایمیل Gmail خود را وارد کنید. برای دیدن اطلاعات تحویل، کد را به همین ایمیل می‌فرستیم."
+)
+
+
+def checkout_email_required(account: User) -> bool:
+    return not (account.email or (account.telegram_id and account.telegram_linked_at))
+
+
 def replay_checkout(*, user: User, checkout_id: uuid.UUID, submission_digest: str) -> Order | None:
     order = Order.objects.filter(checkout_id=checkout_id).first()
     if order is not None and (
@@ -1151,6 +1160,8 @@ def place_order(
     if not isinstance(email, str):
         raise ValidationError(GMAIL_ERROR)
     email = normalize_gmail(email)
+    if not email and checkout_email_required(account):
+        raise ValidationError(CHECKOUT_EMAIL_REQUIRED, code="email_required")
     name = _code_name(discount_code)
     requested_code_id = (
         DiscountCode.objects.filter(code=name).values_list("pk", flat=True).first()
