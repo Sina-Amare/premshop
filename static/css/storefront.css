@@ -1192,10 +1192,10 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 
 /* Controls never select the text around them on a quick double or triple click; text a person may copy stays selectable. */
 :where(button,.btn,summary,[role=button],.v-dept-more,.v-view-all,.v-category-links a,.sort__link,.order-tabs a,.acct__nav a,.pcard__quick){-webkit-user-select:none;user-select:none}
-/* Copying the support identifier: the button turns green and says so. */
-[data-copy-support]{transition:background 160ms,border-color 160ms,color 160ms}
-[data-copy-support].is-copied{border-color:#12b886;background:#12b886;color:#fff;animation:copied-pop 320ms ease-out}
-[data-copy-support].is-copied::before{content:"✓";margin-inline-end:6px;font-weight:800}
+/* A copy button turns green and says so. */
+[data-copy-text]{transition:background 160ms,border-color 160ms,color 160ms}
+[data-copy-text].is-copied{border-color:#12b886;background:#12b886;color:#fff;animation:copied-pop 320ms ease-out}
+[data-copy-text].is-copied::before{content:"✓";margin-inline-end:6px;font-weight:800}
 @keyframes copied-pop{0%{transform:scale(1)}45%{transform:scale(1.06)}100%{transform:scale(1)}}
 /* Smaller drop-downs inside the order page open with the same round plus. */
 .acct__main details:not(.order-record)>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;list-style:none;cursor:pointer;font-weight:600;color:var(--v-ink)}

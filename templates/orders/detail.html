@@ -94,7 +94,9 @@
 {% include "orders/_saved_terms.html" with groups=groups policies=order.policy_snapshot only %}</details>{% endif %}
 <details class="order-record" id="order-tracking"><summary>پیگیری سفارش بدون ورود</summary>
 <p>هر کسی این لینک را داشته باشد، نام محصولات و وضعیت سفارش را می‌بیند.</p>
-<a href="{% url 'order-tracking' order.tracking_token %}" rel="noreferrer">لینک پیگیری سفارش</a></details>
+{% url 'order-tracking' order.tracking_token as tracking %}<div class="order-actions"><a href="{{ tracking }}" rel="noreferrer">لینک پیگیری سفارش</a><button type="button" class="btn btn--secondary" data-copy-text="{{ site_url }}{{ tracking }}" data-copy-select="tracking-url" data-copy-note="tracking-copy-status" data-copy-failed="کپی نشد. لینک را خودتان کپی کنید." hidden>کپی لینک</button></div>
+<p class="order-tracking-url" dir="ltr" id="tracking-url" hidden>{{ site_url }}{{ tracking }}</p>
+<p aria-live="polite" aria-atomic="true" id="tracking-copy-status"></p></details>
 {% if timeline %}<details class="order-record" id="order-history"><summary>تاریخچه‌ی این سفارش</summary>
 <ol class="order-timeline">{% for event in timeline %}<li><p><bdi>{{ event.name }}</bdi>، {{ event.status }}</p><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></details>{% endif %}
 {% if can_cancel %}<details class="order-record" id="order-cancel"><summary>لغو سفارش</summary>
