@@ -55,7 +55,7 @@ def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
     if not session_key or not email:
         raise ValidationError(
-            "برای دیدن اطلاعات تحویل، نشانی Gmail خود را در تلگرام برای پشتیبانی بفرستید."
+            "برای دیدن اطلاعات تحویل، ایمیل Gmail خود را در تلگرام برای پشتیبانی بفرستید."
         )
     binding = salted_hmac(
         "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"

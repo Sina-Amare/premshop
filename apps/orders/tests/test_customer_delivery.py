@@ -639,3 +639,19 @@ def test_gm_still_sends_a_reveal_code_to_a_stored_non_gmail_address(
 
     assert mailoutbox[-1].to == ["stored@outlook.com"]
     assert confirm(order, buyer, code)
+
+
+@pytest.mark.parametrize("stored", ["buyer@gmail.com", ""])
+def test_gm_the_recovery_guidance_asks_for_a_gmail_address(buyer, plan, operator, stored):
+    order, _ = delivered(buyer, plan, operator)
+    models.Order.objects.filter(pk=order.pk).update(placement_email=stored)
+    client = Client()
+    client.force_login(buyer)
+
+    body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+    guidance = re.search(r"<p data-delivery-recovery>(.*?)</p>", body, re.S)
+    assert guidance and "ایمیل Gmail" in guidance[1]
+    if not stored:
+        with pytest.raises(ValidationError, match="ایمیل Gmail"):
+            request_code(order, buyer)
