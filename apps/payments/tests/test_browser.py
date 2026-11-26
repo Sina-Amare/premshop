@@ -209,7 +209,7 @@ def test_inline_signin_merge_discount_stale_confirmation_and_purchase(
     tmp_path,
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
-    User.objects.filter(pk=buyer.pk).update(phone="09121230003")
+    User.objects.filter(pk=buyer.pk).update(phone="09121230003", email="buyer@gmail.com")
     context, cart, guest_key = guest_context(browser, live_server, buyer, plan, width)
     page = context.new_page()
     errors = []
@@ -259,7 +259,7 @@ def test_no_javascript_signin_returns_to_checkout_and_can_submit(
     browser, live_server, buyer, plan, width, monkeypatch
 ):
     monkeypatch.setattr("apps.accounts.otp.secrets.randbelow", lambda limit: 123456)
-    User.objects.filter(pk=buyer.pk).update(phone="09121230004")
+    User.objects.filter(pk=buyer.pk).update(phone="09121230004", email="buyer@gmail.com")
     context, cart, _ = guest_context(browser, live_server, buyer, plan, width, javascript=False)
     page = context.new_page()
     try:
