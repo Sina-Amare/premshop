@@ -39,11 +39,11 @@ def check_out(account, **changes):
 
 
 def test_an_email_given_at_checkout_is_saved_and_used(phone_only):
-    order = check_out(phone_only, email="Buyer@Example.test")
+    order = check_out(phone_only, email="Buyer+Orders@Gmail.com")
 
     phone_only.refresh_from_db()
-    assert order.placement_email == "buyer@example.test"
-    assert phone_only.email == "buyer@example.test"
+    assert order.placement_email == "buyer+orders@gmail.com"
+    assert phone_only.email == "buyer+orders@gmail.com"
 
 
 def test_an_order_without_an_email_sends_its_telegram_notice_and_no_email(phone_only, settings):
@@ -70,10 +70,10 @@ def test_the_checkout_asks_for_an_optional_email_instead_of_a_phone(client, phon
 def test_the_account_page_shows_the_number_and_edits_the_email(client, phone_only):
     client.force_login(phone_only)
 
-    client.post(reverse("account"), {"email": "New@Example.test"})
+    client.post(reverse("account"), {"email": "New@Gmail.com"})
 
     phone_only.refresh_from_db()
-    assert phone_only.email == "new@example.test" and phone_only.phone == "09123456789"
+    assert phone_only.email == "new@gmail.com" and phone_only.phone == "09123456789"
     assert "۰۹۱۲۳۴۵۶۷۸۹" in client.get(reverse("account")).content.decode()
 
 

@@ -6,7 +6,6 @@ from typing import cast
 
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.validators import validate_email
 from django.db import transaction
 from django.utils.crypto import salted_hmac
 from django.utils.html import format_html
@@ -55,7 +54,9 @@ def email_for(order: Order) -> tuple[str, int]:
 def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
     if not session_key or not email:
-        raise ValidationError("برای دیدن اطلاعات تحویل، در تلگرام به پشتیبانی پیام بدهید.")
+        raise ValidationError(
+            "برای دیدن اطلاعات تحویل، نشانی Gmail خود را در تلگرام برای پشتیبانی بفرستید."
+        )
     binding = salted_hmac(
         "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"
     ).hexdigest()
@@ -125,7 +126,7 @@ def _recovery_subject(order: Order, owner: User, actor: User, email: str) -> str
         or owner.telegram_linked_at >= order.created_at
     ):
         raise ValidationError(RECOVERY_UNAVAILABLE)
-    validate_email(email)
+    otp.normalize_gmail(email, required=True)
     _, generation = email_for(order)
     binding = salted_hmac(
         "order-recovery",

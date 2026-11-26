@@ -54,7 +54,11 @@ def _page(
             key = f"customer_input_{line.plan.pk}"
             initial[key] = request.POST.get(key, "")[:2000]
     form = CheckoutForm(initial=initial, purchase=purchase)
-    if request.method == "POST" and request.POST.get("action") == "checkout" and error:
+    if (
+        request.method == "POST"
+        and request.POST.get("action") == "checkout"
+        and (error or status == 400)
+    ):
         submitted = CheckoutForm(request.POST, purchase=purchase)
         submitted.is_valid()
         # Keep field errors while presenting a new quote.
@@ -102,13 +106,13 @@ def checkout(request: HttpRequest) -> HttpResponse:
         return _page(request, discount_code=code)
     form = CheckoutForm(request.POST)
     if action != "checkout" or not form.is_valid():
-        error = " ".join(str(value) for values in form.errors.values() for value in values)
-        return _page(
-            request,
-            discount_code=code,
-            error=error or "مشکلی در فرم ثبت سفارش پیش آمد. صفحه را دوباره باز کنید.",
-            status=400,
+        errors = form.errors
+        error = " ".join(
+            " ".join(map(str, values)) for name, values in errors.items() if name != "email"
         )
+        if not error and (action != "checkout" or "email" not in errors):
+            error = "مشکلی در فرم ثبت سفارش پیش آمد. صفحه را دوباره باز کنید."
+        return _page(request, discount_code=code, error=error, status=400)
     try:
         order = services.checkout(
             user=user,

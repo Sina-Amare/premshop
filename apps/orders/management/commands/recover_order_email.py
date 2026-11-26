@@ -10,12 +10,12 @@ from apps.orders.models import Order
 
 
 class Command(BaseCommand):
-    help = "Recover an order's reveal email through its pre-purchase Telegram link."
+    help = "Set a Gmail address for order reveal through the pre-purchase Telegram link."
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("order_number", type=int)
         parser.add_argument("--operator-id", type=int, required=True)
-        parser.add_argument("--email", required=True)
+        parser.add_argument("--email", required=True, help="New Gmail address")
         parser.add_argument("--confirm", action="store_true")
 
     def handle(self, *args: Any, **options: Any) -> None:

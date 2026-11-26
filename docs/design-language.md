@@ -223,6 +223,7 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «برای ادامه‌ی اتصال، از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | «از صفحه‌ی حساب کاربری لینک جدیدی بگیرید.» | The heading already says the link expired. The sentence gives the next step. |
 | «اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.» | «به پشتیبانی پیام بدهید.» | The word «پشتیبانی» is the link. |
 | «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | «مراحل تحویل را در صفحه‌ی سفارش ببینید.» | The owner's second rewrite of their own line. A pointer names what the reader will find there and nothing more; the noun stack read heavy. |
+| «یک نشانی معتبر Gmail وارد کنید.» | «ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید.» | Show how the accepted address should look. |
 | «رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.» | «رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.» | Say what this email address is for. |
 | «اگر از لینک یک محصول به این صفحه رسیده‌اید، نامش را جستجو کنید یا از فهرست محصولات به خرید ادامه دهید.» | «شاید آدرس اشتباه است، یا این محصول را دیگر نمی‌فروشیم.» | Keep the reason on the 404. A second line can point to search and the shop. |
 | «اگر می‌خواهید خرید بقیه‌ی محصولات را ادامه دهید، این مورد را از سبد خرید حذف کنید.» | «برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید.» | The unavailable item is already identified. Give the action directly. |

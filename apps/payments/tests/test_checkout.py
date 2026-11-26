@@ -41,16 +41,16 @@ def test_checkout_commits_one_purchase_and_identical_retry_keeps_deadline(buyer,
     Plan.objects.filter(pk=plan.pk).update(stock_quantity=2)
     quote = services.quote_checkout(user=buyer)
     key = uuid.uuid4()
-    order = submit(buyer, quote, checkout_id=key, email="Order@Example.test")
+    order = submit(buyer, quote, checkout_id=key, email="Order@Gmail.com")
     assert order.total_amount == 200000 and not cart.items.exists()
     assert order.consent_accepted_at is None
     assert order.unpaid_expires_at == order.created_at + timedelta(hours=24)
     assert order.items.get().stock_debited is True
     buyer.refresh_from_db()
-    assert order.placement_email == "order@example.test"
+    assert order.placement_email == "order@gmail.com"
     assert buyer.email == "buyer@example.test", "an account that has an email keeps it"
     with time_machine.travel(order.created_at + timedelta(days=2), tick=False):
-        replay = submit(buyer, quote, checkout_id=key, email="order@example.test")
+        replay = submit(buyer, quote, checkout_id=key, email="order@gmail.com")
     assert replay.pk == order.pk and replay.unpaid_expires_at == order.unpaid_expires_at
     assert Order.objects.count() == 1
     plan.refresh_from_db()
@@ -62,8 +62,8 @@ def test_key_reuse_changed_content_and_other_owner_are_refused(buyer, cart):
     key = uuid.uuid4()
     order = submit(buyer, quote, checkout_id=key)
     with pytest.raises(ValidationError):
-        submit(buyer, quote, checkout_id=key, email="other@example.test")
-    other = User.objects.create_user("other@example.test")
+        submit(buyer, quote, checkout_id=key, email="other@gmail.com")
+    other = User.objects.create_user("other@gmail.com")
     with pytest.raises(ValidationError):
         submit(other, quote, checkout_id=key)
     assert Order.objects.get(pk=order.pk).user == buyer
