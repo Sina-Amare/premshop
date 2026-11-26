@@ -1103,9 +1103,7 @@ def quote_order(*, user: User, lines: Sequence[OrderLine], discount_code: str = 
     )
 
 
-CHECKOUT_EMAIL_REQUIRED = (
-    "ایمیل Gmail خود را وارد کنید. برای دیدن اطلاعات تحویل، کد را به همین ایمیل می‌فرستیم."
-)
+CHECKOUT_EMAIL_REQUIRED = "ایمیل Gmail خود را وارد کنید."
 
 
 def checkout_email_required(account: User) -> bool:

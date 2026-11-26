@@ -117,9 +117,7 @@ def test_checkout_says_a_typed_email_is_kept_on_an_account_without_one(client, p
 
 
 GMAIL_ERROR = "ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید."
-REQUIRED_ERROR = (
-    "ایمیل Gmail خود را وارد کنید. برای دیدن اطلاعات تحویل، کد را به همین ایمیل می‌فرستیم."
-)
+REQUIRED_ERROR = "ایمیل Gmail خود را وارد کنید."
 
 
 def checkout_post(client, buyer, **data):
