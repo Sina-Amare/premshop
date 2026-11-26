@@ -26,7 +26,9 @@ def test_production_boots_with_a_key_and_a_line(reload_base):
     assert load_prod().SMS_IR_API_KEY == PRODUCTION["SMS_IR_API_KEY"]
 
 
-@pytest.mark.parametrize("name", ["SMS_IR_TEMPLATE_ID", "SMS_IR_LINE_NUMBER"])
+@pytest.mark.parametrize(
+    "name", ["SMS_IR_TEMPLATE_ID", "SMS_IR_DELIVERY_TEMPLATE_ID", "SMS_IR_LINE_NUMBER"]
+)
 def test_an_sms_id_that_is_not_a_number_is_refused(reload_base, name):
     with pytest.raises(ImproperlyConfigured, match=name):
         reload_base(**{**PRODUCTION, name: "5000 3268"})

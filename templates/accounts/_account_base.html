@@ -30,8 +30,8 @@
   </nav>
 
   <div class="acct__main">
-    {% for message in messages %}
-      {% if message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
+    {% for message in messages %}{% if "order-delivery" in message.tags %}{# The delivery card shows its own. #}
+      {% elif message.level_tag == "error" %}<div class="form-error" role="alert">{{ message }}</div>{% else %}<div class="form-ok" role="status">{{ message }}</div>{% endif %}
     {% endfor %}
     <div class="acct-hero"><span class="acct-hero__icon">{% if section == "orders" %}{% include 'storefront/icon.html' with name='cart' %}{% else %}{% include 'storefront/icon.html' with name='user' %}{% endif %}</span><h1 class="acct__title">{% block heading %}{% endblock %}</h1>{% include 'accounts/_hero_art.html' %}</div>
     {% block section %}{% endblock %}

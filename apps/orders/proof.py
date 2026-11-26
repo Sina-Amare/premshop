@@ -12,13 +12,16 @@ from django.utils.html import format_html
 
 from apps.accounts import otp
 from apps.accounts.models import User
-from apps.core import ratelimit, telegram
+from apps.core import ratelimit, sms, telegram
 from apps.core.email import send_templated_email
 from apps.core.formatting import to_persian_digits
 from apps.orders.models import Order, OrderEmailRecovery
 
 TTL = 600
 UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
+SMS_UNSENT = "نتوانستیم کد را پیامک کنیم. چند دقیقه دیگر دوباره کد بگیرید."
+NO_EMAIL = "برای این سفارش ایمیلی ثبت نشده است."
+NO_PHONE = "برای حساب کاربری‌تان شماره‌ی موبایلی ثبت نشده است."
 LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
 LAPSED = "مهلت دیدن اطلاعات تحویل تمام شد. برای دیدن دوباره، کد جدیدی بگیرید."
 DELIVERY_LIMITED = (
@@ -51,14 +54,19 @@ def email_for(order: Order) -> tuple[str, int]:
     return (recovery.email, recovery.pk) if recovery else (order.placement_email, 0)
 
 
+def phone_for(order: Order) -> str:
+    """The account's own number, read fresh: a code by SMS goes only there (ADR-0031)."""
+    return User.objects.filter(pk=order.user_id).values_list("phone", flat=True).first() or ""
+
+
 def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
-    if not session_key or not email:
-        raise ValidationError(
-            "برای دیدن اطلاعات تحویل، ایمیل Gmail خود را در تلگرام برای پشتیبانی بفرستید."
-        )
+    phone = phone_for(order)
+    if not session_key or not (email or phone):
+        raise ValidationError("برای دیدن اطلاعات تحویل، به پشتیبانی پیام بدهید.")
+    # A new order email or a new account number ends every proof made before it.
     binding = salted_hmac(
-        "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"
+        "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}:{phone}"
     ).hexdigest()
     return f"order-delivery:{order.pk}:{binding}"
 
@@ -78,23 +86,37 @@ def _budget(
         raise ValidationError(message)
 
 
-def request_code(*, order_id: int, actor: User, session_key: str, ip: str) -> None:
+def request_code(
+    *, order_id: int, actor: User, session_key: str, ip: str, channel: str = "email"
+) -> None:
+    """Send a code to the order's email or, with channel "sms", to the account's number."""
+    if channel not in ("email", "sms"):
+        raise ValidationError(UNSENT)
     with transaction.atomic():
         order, _ = locked_order(order_id, actor)
         subject = _subject(order, session_key)
         email, _ = email_for(order)
+        to = email if channel == "email" else phone_for(order)
+        if not to:
+            raise ValidationError(NO_EMAIL if channel == "email" else NO_PHONE)
         _budget(order, actor, "delivery-code", ip, DELIVERY_LIMITED)
     code = otp._new_code()
-    try:
-        sent = send_templated_email(
-            "delivery_code",
-            to=[email],
-            context={"code": code, "order_number": order.order_number},
-        )
-    except Exception:  # noqa: BLE001 — transport errors can include a recipient or message
-        raise ValidationError(UNSENT) from None
-    if not sent:
-        raise ValidationError(UNSENT)
+    if channel == "sms":
+        try:
+            sms.send_code(to, code, kind="delivery_code")
+        except sms.SmsNotSent:
+            raise ValidationError(SMS_UNSENT) from None
+    else:
+        try:
+            sent = send_templated_email(
+                "delivery_code",
+                to=[to],
+                context={"code": code, "order_number": order.order_number},
+            )
+        except Exception:  # noqa: BLE001 — transport errors can include a recipient or message
+            raise ValidationError(UNSENT) from None
+        if not sent:
+            raise ValidationError(UNSENT)
     with transaction.atomic():
         order, _ = locked_order(order_id, actor)
         if subject != _subject(order, session_key):

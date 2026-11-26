@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -56,6 +56,12 @@ ORDERS_PER_PAGE = 20
 _TRACKING_IP = ratelimit.Limit("tracking:ip", times=30, seconds=60)
 _TRACKING_TOKEN = ratelimit.Limit("tracking:token", times=60, seconds=60)
 INVOICE_NOTICE = "این فاکتور رسید پرداخت نیست."
+# The code steps redirect back to the delivery card, so their notices are shown there.
+DELIVERY_NOTICE = "order-delivery"
+DELIVERY_SENT = {
+    "email": "کد را به ایمیل این سفارش فرستادیم.",
+    "sms": "کد را برایتان پیامک کردیم.",
+}
 
 
 @never_cache
@@ -123,6 +129,7 @@ def _render_detail(
     summary: dict[str, Any],
     *,
     error: str = "",
+    delivery_error: str = "",
     status: int = 200,
     review_error: tuple[int, str, Any] | None = None,
 ) -> HttpResponse:
@@ -155,6 +162,7 @@ def _render_detail(
             "timeline": customer_timeline(summary["order"]),
             "section": "orders",
             "error": error,
+            "delivery_error": delivery_error,
             "input_requests": input_requests,
             "review_items": _review_items(summary["order"], review_error),
             "has_site_input": any(row["can_submit"] for row in input_requests),
@@ -245,10 +253,13 @@ def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
         )
         row["claim_pill"] = order_status.claim_pill(outcome) if outcome else None
     email, _ = proof.email_for(order) if rows else ("", 0)
+    phone = proof.phone_for(order) if rows else ""
     return {
         "delivery_rows": rows,
         "delivery_ready": any(row["available"] and row["delivery"] for row in rows),
         "delivery_email": (email[:1] + "•••@" + email.partition("@")[2]) if email else "",
+        # Stars, not dots: a dot beside Persian digits reads as a zero.
+        "delivery_phone": to_persian_digits(phone[:4] + "***" + phone[-4:]) if phone else "",
         "delivery_confirmed": (
             proof.is_confirmed(order=order, session_key=request.session.session_key or "")
             if rows
@@ -270,16 +281,24 @@ def delivery_code(
         "actor": cast(User, request.user),
         "session_key": request.session.session_key or "",
     }
+    # The digit boxes send the code by fetch and turn green or red on this answer.
+    wants_json = confirm and "application/json" in request.headers.get("Accept", "")
     try:
         if confirm:
             if not proof.confirm_code(**arguments, code=request.POST.get("code", "")):
                 raise ValidationError("کد اشتباه است یا اعتبارش تمام شده است.")
         else:
-            proof.request_code(**arguments, ip=ratelimit.client_ip(request))
-            messages.success(request, "کد را به ایمیل این سفارش فرستادیم.")
+            channel = "sms" if request.POST.get("channel") == "sms" else "email"
+            proof.request_code(**arguments, ip=ratelimit.client_ip(request), channel=channel)
+            messages.success(request, DELIVERY_SENT[channel], DELIVERY_NOTICE)
     except ValidationError as invalid:
-        return _render_detail(request, summary, error=" ".join(invalid.messages), status=400)
-    return redirect("order-detail", order_number=order_number)
+        if wants_json:
+            return JsonResponse({"ok": False, "error": " ".join(invalid.messages)}, status=400)
+        return _render_detail(
+            request, summary, delivery_error=" ".join(invalid.messages), status=400
+        )
+    card = reverse("order-detail", args=[order_number]) + "#order-delivery"
+    return JsonResponse({"ok": True, "next": card}) if wants_json else redirect(card)
 
 
 @never_cache
@@ -301,8 +320,8 @@ def delivery_reveal(request: HttpRequest, order_number: int, item_id: int) -> Ht
         )
     except PermissionDenied:
         # The page was opened while the proof held; the owner only needs a new code.
-        messages.error(request, proof.LAPSED)
-        return redirect("order-detail", order_number=order_number)
+        messages.error(request, proof.LAPSED, DELIVERY_NOTICE)
+        return redirect(reverse("order-detail", args=[order_number]) + "#order-delivery")
     except ImproperlyConfigured:
         content, state = None, "unreadable"
     else:
