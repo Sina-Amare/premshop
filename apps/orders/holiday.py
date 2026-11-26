@@ -4,7 +4,8 @@ A clock that would start during a holiday starts stopped, and ending the holiday
 stopped deadline by the time it stood still. Every path that starts a delivery clock takes
 `lock` shared, after its buyer, order and payment rows and before its items. New order
 placement takes the same lock before checking whether the shop is taking orders. The switch
-takes it exclusively and then locks only items.
+takes it exclusively and then locks only items. A write sees either side of the switch, and
+the switch never waits for the buyer, order or payment locks already held by writers.
 """
 
 from __future__ import annotations
@@ -27,7 +28,8 @@ from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 _LOCK_KEY = 0x484F4C49
 PAUSE_NOTE = "شروع تعطیلی"
 STALE = gettext_lazy("صفحه را دوباره باز کنید و وضعیت تعطیلی را ببینید.")
-CHECKOUT_CLOSED = (
+CHECKOUT_CLOSED = "تا پایان تعطیلی سفارش جدید نمی‌گیریم."
+CHECKOUT_CLOSED_WITH_CART = (
     "تا پایان تعطیلی سفارش جدید نمی‌گیریم و محصولاتی که انتخاب کرده‌اید، در سبد خریدتان می‌مانند."
 )
 

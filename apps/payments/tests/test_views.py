@@ -101,13 +101,15 @@ def test_holiday_checkout_explains_the_hold_before_showing_any_form(
     assert response.status_code == 200
     body = response.content.decode()
     assert "تا پایان تعطیلی سفارش جدید نمی‌گیریم" in body
-    assert 'href="/cart/"' in body
+    assert "در سبد خریدتان می‌مانند" not in body
+    assert 'href="/cart/">بازگشت به سبد خرید</a>' in body
     assert "checkout-form" not in body and "data-checkout-login" not in body
 
 
 def test_checkout_opened_before_a_holiday_keeps_its_cart_and_can_be_retried(
     client, buyer, plan, cart, operator
 ):
+    Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
     client.force_login(buyer)
     url = reverse("checkout")
     quote = client.get(url).context["quote"]
@@ -115,9 +117,12 @@ def test_checkout_opened_before_a_holiday_keeps_its_cart_and_can_be_retried(
     holiday_record = holiday.start(actor=operator, expected_latest=None)
     response = client.post(url, submission)
     assert response.status_code == 409
-    assert "تا پایان تعطیلی سفارش جدید نمی‌گیریم" in response.content.decode()
+    assert (
+        "تا پایان تعطیلی سفارش جدید نمی‌گیریم و محصولاتی که انتخاب کرده‌اید، در سبد خریدتان می‌مانند."
+        in response.content.decode()
+    )
     assert cart.items.filter(plan=plan, quantity=1).exists() and not Order.objects.exists()
-    assert Plan.objects.get(pk=plan.pk).stock_quantity == plan.stock_quantity
+    assert Plan.objects.get(pk=plan.pk).stock_quantity == 1
 
     holiday.end(actor=operator, expected_open=holiday_record.pk)
     placed = client.post(url, submission)
@@ -126,7 +131,9 @@ def test_checkout_opened_before_a_holiday_keeps_its_cart_and_can_be_retried(
     retry = client.post(url, submission)
     assert retry.status_code == 302 and retry.url == placed.url
     assert Order.objects.count() == 1
-    assert placed.url in client.get(url).content.decode()
+    assert Plan.objects.get(pk=plan.pk).stock_quantity == 0
+    closed = client.get(url).content.decode()
+    assert placed.url in closed and "در سبد خریدتان می‌مانند" not in closed
 
 
 @pytest.mark.parametrize(

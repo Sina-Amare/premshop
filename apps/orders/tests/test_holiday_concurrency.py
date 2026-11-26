@@ -81,6 +81,8 @@ def test_a_payment_racing_the_start_never_leaves_a_running_clock(buyer, plan, op
 
 
 def test_an_order_waiting_for_the_holiday_switch_is_refused(buyer, plan, operator):
+    Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
+
     def place():
         with pytest.raises(ValidationError) as refused:
             services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
@@ -88,7 +90,7 @@ def test_an_order_waiting_for_the_holiday_switch_is_refused(buyer, plan, operato
 
     race(lambda: opened_now(operator), place)
     assert not Order.objects.exists()
-    assert Plan.objects.get(pk=plan.pk).stock_quantity == plan.stock_quantity
+    assert Plan.objects.get(pk=plan.pk).stock_quantity == 1
 
 
 def test_a_payment_racing_the_end_keeps_its_whole_pause(buyer, plan, operator):
