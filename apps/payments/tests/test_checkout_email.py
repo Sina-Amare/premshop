@@ -5,12 +5,15 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.cart.models import Cart, CartItem
 from apps.notifications import services as notifications
 from apps.notifications.models import Notification
+from apps.orders.models import Order
+from apps.orders.services import OrderLine, place_order
 from apps.payments import services
 
 pytestmark = pytest.mark.django_db
@@ -89,10 +92,6 @@ def test_an_account_with_no_number_never_reads_none(client, plan):
 
 @pytest.mark.parametrize("email", ["a" * 250 + "@example.test", 42])
 def test_the_services_refuse_an_email_the_form_would(phone_only, plan, email):
-    from django.core.exceptions import ValidationError
-
-    from apps.orders.services import OrderLine, place_order
-
     with pytest.raises(ValidationError):
         place_order(user=phone_only, lines=[OrderLine(plan, 1, None)], email=email)
     with pytest.raises(ValidationError):
@@ -105,3 +104,82 @@ def test_checkout_says_a_typed_email_is_kept_on_an_account_without_one(client, p
     page = client.get(reverse("checkout")).content.decode()
 
     assert "اگر برای حساب کاربری ایمیلی ثبت نکرده‌اید، این نشانی در حساب هم ذخیره می‌شود." in page
+
+
+GMAIL_ERROR = "ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید."
+
+
+def checkout_post(client, buyer, **data):
+    client.force_login(buyer)
+    return client.post(
+        reverse("checkout"),
+        {
+            "action": "checkout",
+            "quote": services.quote_checkout(user=buyer).token,
+            "checkout_id": uuid.uuid4(),
+            **data,
+        },
+    )
+
+
+@pytest.mark.parametrize("email", ["buyer@outlook.com", "missing-at"])
+def test_gm_checkout_rejects_the_address_in_its_own_field(client, phone_only, email):
+    response = checkout_post(client, phone_only, email=email)
+
+    assert response.status_code == 400
+    assert response.context["form"].errors == {"email": [GMAIL_ERROR]}
+    body = response.content.decode()
+    assert f'<div id="id_email_error"><p class="field__error">{GMAIL_ERROR}</p>' in body
+    assert body.count(GMAIL_ERROR) == 1
+    phone_only.refresh_from_db()
+    assert phone_only.email == "" and not Order.objects.exists()
+    assert CartItem.objects.filter(cart__user=phone_only).exists()
+
+
+def test_gm_place_order_rejects_a_non_gmail_address(phone_only, plan):
+    with pytest.raises(ValidationError) as invalid:
+        place_order(user=phone_only, lines=[OrderLine(plan, 1, None)], email="buyer@outlook.com")
+
+    assert invalid.value.messages == [GMAIL_ERROR]
+    phone_only.refresh_from_db()
+    assert phone_only.email == "" and not Order.objects.exists()
+
+
+@pytest.mark.parametrize("email", ["other@outlook.com", "missing-at"])
+def test_gm_account_rejects_the_address_in_its_own_field(client, phone_only, email):
+    phone_only.email = "saved@gmail.com"
+    phone_only.save(update_fields=["email"])
+    client.force_login(phone_only)
+    response = client.post(reverse("account"), {"email": email})
+
+    assert response.status_code == 200
+    assert response.context["profile_form"].errors == {"email": [GMAIL_ERROR]}
+    body = response.content.decode()
+    assert f'<div id="id_email_error"><p class="field__error">{GMAIL_ERROR}</p>' in body
+    assert body.count(GMAIL_ERROR) == 1
+    phone_only.refresh_from_db()
+    assert phone_only.email == "saved@gmail.com"
+
+
+def test_gm_account_accepts_blank(client, phone_only):
+    phone_only.email = "saved@gmail.com"
+    phone_only.save(update_fields=["email"])
+    client.force_login(phone_only)
+
+    assert client.post(reverse("account"), {"email": ""}).status_code == 302
+    phone_only.refresh_from_db()
+    assert phone_only.email == ""
+
+
+def test_gm_checkout_accepts_blank_and_an_outlook_activation_address(client, phone_only, plan):
+    plan.input_type = "email"
+    plan.max_quantity = 1
+    plan.save()
+    response = checkout_post(
+        client, phone_only, email="", **{f"customer_input_{plan.pk}": "login@outlook.com"}
+    )
+
+    assert response.status_code == 302
+    order = Order.objects.get(user=phone_only)
+    assert order.placement_email == ""
+    assert order.items.get().customer_input == "login@outlook.com"

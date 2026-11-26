@@ -605,3 +605,37 @@ def test_the_code_email_names_its_order(buyer, plan, operator, mailoutbox):
     request_code(order, buyer)
     number = to_persian_digits(order.order_number)
     assert number in mailoutbox[-1].subject and number in mailoutbox[-1].body
+
+
+@pytest.mark.parametrize("stage", ["start", "finish"])
+def test_gm_recovery_rejects_a_non_gmail_address_before_side_effects(buyer, plan, operator, stage):
+    order, _ = delivered(buyer, plan, operator)
+    link_before_order(buyer, order)
+    kwargs = {"order_id": order.pk, "actor": operator, "email": "buyer@outlook.com"}
+
+    with (
+        patch("apps.orders.proof.telegram.send_message") as sent,
+        patch("apps.orders.proof.otp.consume", return_value={}) as consume,
+    ):
+        with pytest.raises(ValidationError) as invalid:
+            if stage == "start":
+                proof().start_recovery(**kwargs)
+            else:
+                proof().finish_recovery(**kwargs, code="test-code")
+
+    assert invalid.value.messages == ["ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید."]
+    sent.assert_not_called()
+    consume.assert_not_called()
+    assert not models.OrderEmailRecovery.objects.filter(order=order).exists()
+
+
+def test_gm_still_sends_a_reveal_code_to_a_stored_non_gmail_address(
+    buyer, plan, operator, mailoutbox
+):
+    order, _ = delivered(buyer, plan, operator)
+    models.Order.objects.filter(pk=order.pk).update(placement_email="stored@outlook.com")
+
+    code = request_code(order, buyer)
+
+    assert mailoutbox[-1].to == ["stored@outlook.com"]
+    assert confirm(order, buyer, code)
