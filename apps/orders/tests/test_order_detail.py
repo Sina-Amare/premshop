@@ -360,8 +360,10 @@ def test_holiday_order_page_explains_the_delivery_pause_and_keeps_the_input_dead
     order = order_for_state(buyer, plan, operator, state)
     normal = card_of(page(client, buyer, order))
     opened = holiday.start(actor=operator, expected_latest=None)
-    paused = card_of(page(client, buyer, order))
-    assert ("data-holiday-delivery" in paused) == (state != "waiting")
+    paused_body = page(client, buyer, order)
+    paused = card_of(paused_body)
+    assert ("data-holiday-delivery" in paused) == (state == "queued")
+    assert ("data-holiday-delivery" in purchase_of(paused_body)) == (state == "mixed")
     assert "پس از دریافت اطلاعات، تا" not in paused
     if state != "queued":
         assert "پس از دریافت اطلاعات، تا" in normal

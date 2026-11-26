@@ -29,11 +29,15 @@ def _page(
 ) -> HttpResponse:
     account = request.user if request.user.is_authenticated else None
     if holiday.current() is not None:
+        cart = get_cart(request)
+        has_items = cart is not None and cart.items.exists()
         return render(
             request,
             "payments/checkout.html",
             {
-                "checkout_holiday": holiday.CHECKOUT_CLOSED,
+                "checkout_holiday": (
+                    holiday.CHECKOUT_CLOSED_WITH_CART if has_items else holiday.CHECKOUT_CLOSED
+                ),
                 "existing": current_unpaid_order(account) if account is not None else None,
             },
             status=409 if request.method == "POST" else 200,
@@ -113,8 +117,6 @@ def checkout(request: HttpRequest) -> HttpResponse:
     code = request.POST.get("discount_code", "")[:32]
     action = request.POST.get("action")
     if action in ("review", "apply_discount", "remove_discount"):
-        if holiday.current() is not None:
-            return _page(request, discount_code=code)
         if action == "remove_discount":
             code = ""
         if action == "apply_discount" and not code.strip():

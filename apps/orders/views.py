@@ -132,6 +132,9 @@ def _render_detail(
         support_identifier = None
     items = list(summary["order"].items.all())
     is_holiday = holiday.current() is not None
+    holiday_delivery = is_holiday and any(
+        item.status == OrderItem.Status.QUEUED and item.sla_paused_at for item in items
+    )
     input_requests = [
         {
             "item": item,
@@ -156,9 +159,8 @@ def _render_detail(
             "review_items": _review_items(summary["order"], review_error),
             "has_site_input": any(row["can_submit"] for row in input_requests),
             "is_holiday": is_holiday,
-            "holiday_delivery": is_holiday
-            and any(
-                item.status == OrderItem.Status.QUEUED and item.sla_paused_at for item in items
+            "holiday_delivery": (
+                "زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود." if holiday_delivery else ""
             ),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),

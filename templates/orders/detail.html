@@ -27,6 +27,7 @@
 <p>فعلاً نیازی نیست کاری انجام دهید. {% if reachable %}وقتی نتیجه مشخص شد، خبر می‌دهیم.{% else %}نتیجه را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
 {% elif state == 'queued' %}
 <h2 id="order-next-title">{% if card.partly_paused %}مهلت تحویل بخشی از خریدها متوقف است{% elif card.paused %}مهلت تحویل فعلاً متوقف است{% elif card.due_at %}تا {{ card.due_at|jalali }}، ساعت {{ card.due_at|date:"H:i"|fa_digits }} تحویل می‌دهیم{% elif card.hours %}تا {{ card.hours|fa_digits }} ساعت پس از تأیید پرداخت تحویل می‌دهیم{% else %}<bdi>{{ products }}</bdi>{% endif %}</h2>
+{% if holiday_delivery %}<p data-holiday-delivery>{{ holiday_delivery }}</p>{% endif %}
 <p>فعلاً نیازی نیست کاری انجام دهید. {% if reachable %}پس از تحویل خبر می‌دهیم.{% else %}وضعیت تحویل را همین‌جا می‌بینید.{% endif %}</p>{% if not reachable %}<p>برای دریافت خبرهای این سفارش، در <a href="{% url 'account' %}">حساب کاربری</a> ایمیلتان را ثبت کنید{% if telegram_available %} یا تلگرام را وصل کنید{% endif %}.</p>{% endif %}
 {% elif state == 'delivered' %}
 {% if card.rejected_at %}<h2 id="order-next-title">درخواست تعویض در {{ card.rejected_at|jalali }} رد شد</h2>
@@ -57,7 +58,6 @@
 <a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
 {% endif %}
 {% endwith %}
-{% if holiday_delivery %}<p data-holiday-delivery>زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود.</p>{% endif %}
 {% if input_requests %}<div id="order-input" aria-label="اطلاعات فعال‌سازی">
 {% for row in input_requests %}<div class="order-input-item" data-input-item="{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
@@ -75,6 +75,7 @@
 {% include "orders/_delivery.html" %}
 <section class="card order-card" id="order-purchase" aria-labelledby="order-purchase-title">
 <h2 id="order-purchase-title">محصولات و مبلغ سفارش</h2>
+{% if holiday_delivery and card.state != 'queued' %}<p data-holiday-delivery>{{ holiday_delivery }}</p>{% endif %}
 {% include "orders/_groups.html" with groups=purchase_groups %}
 <dl class="order-totals">{% if order.discount_amount %}<div><dt>جمع محصولات</dt><dd>{{ order.subtotal|price_html }}</dd></div><div><dt>تخفیف{% if order.discount_snapshot.code %} <bdi>{{ order.discount_snapshot.code }}</bdi>{% endif %}</dt><dd>{{ order.discount_amount|price_html }}</dd></div>{% endif %}<div class="order-total" data-order-total><dt>مبلغ نهایی سفارش</dt><dd>{{ order.total_amount|price_html }}</dd></div>{% if money.paid is not None %}<div data-money="paid"><dt>پرداخت‌شده{% if money.paid_at %} در {{ money.paid_at|jalali }}{% endif %}</dt><dd>{{ money.paid|price_html }}</dd></div>{% endif %}{% if money.returned %}<div data-money="returned"><dt>مبلغ برگشتی</dt><dd>{{ money.returned|price_html }}</dd></div>{% endif %}{% if money.owed %}<div data-money="owed"><dt>در انتظار بازگشت وجه</dt><dd>{{ money.owed|price_html }}</dd></div>{% endif %}</dl>
 <a class="btn btn--secondary" href="{% url 'order-invoice' order.order_number %}">مشاهده‌ی فاکتور</a>
