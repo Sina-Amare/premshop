@@ -527,6 +527,8 @@ class OrderAdmin(ModelAdmin):
             if action not in ("start", "end") or step not in ("review", "confirm"):
                 return HttpResponseBadRequest()
             try:
+                if action == "start" and opened is not None:
+                    raise ValidationError(_("تعطیلی قبلاً شروع شده است."))
                 if (
                     action != ("end" if opened is not None else "start")
                     or raw is None

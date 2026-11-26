@@ -116,6 +116,14 @@ def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner
     assert Holiday.objects.filter(ended_at=None).count() == 1
 
 
+def test_a_stale_start_form_says_a_holiday_has_already_started(client, owner):
+    begin(owner)
+    response = client.post(page(), {"action": "start", "step": "confirm", "expected": ""})
+    assert response.status_code == 400
+    assert "تعطیلی قبلاً شروع شده است." in response.content.decode()
+    assert Holiday.objects.count() == 1
+
+
 def test_a_stale_end_form_says_the_shop_has_reopened(client, owner):
     opened = begin(owner)
     finish(owner)
