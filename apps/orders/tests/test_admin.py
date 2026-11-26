@@ -126,7 +126,7 @@ def test_the_panel_finds_a_customer_and_their_orders_by_any_spelling_of_the_numb
     client, plan, typed
 ):
     customer = User.objects.create_user(phone="09121112233")
-    order = place_order(user=customer, lines=[OrderLine(plan, 1, None)])
+    order = place_order(user=customer, lines=[OrderLine(plan, 1, None)], email="buyer@gmail.com")
     client.force_login(User.objects.create_superuser("operator@example.test"))
 
     orders = client.get(reverse("admin:orders_order_changelist"), {"q": typed, "tab": "all"})

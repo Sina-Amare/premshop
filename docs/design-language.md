@@ -224,6 +224,7 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «اگر درباره‌ی خرید یا سفارشتان سؤالی دارید، از دکمه‌ی «پشتیبانی» پیام بدهید تا پیام به دست ما برسد.» | «به پشتیبانی پیام بدهید.» | The word «پشتیبانی» is the link. |
 | «می‌توانید جزئیات و اقدامات موردنیاز برای تحویل سفارش را در صفحه‌ی سفارش ببینید.» | «مراحل تحویل را در صفحه‌ی سفارش ببینید.» | The owner's second rewrite of their own line. A pointer names what the reader will find there and nothing more; the noun stack read heavy. |
 | «رسید و خبرهای سفارش‌های بعدی به این نشانی می‌رسد. ایمیل سفارش‌هایی که قبلاً ثبت کرده‌اید، عوض نمی‌شود.» | «رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.» | Say what this email address is for. |
+| «ایمیل Gmail خود را وارد کنید. برای دیدن اطلاعات تحویل، کد را به همین ایمیل می‌فرستیم.» | «ایمیل Gmail خود را وارد کنید.» | The hint above the field already says the code goes to this email. |
 | «اگر از لینک یک محصول به این صفحه رسیده‌اید، نامش را جستجو کنید یا از فهرست محصولات به خرید ادامه دهید.» | «شاید آدرس اشتباه است، یا این محصول را دیگر نمی‌فروشیم.» | Keep the reason on the 404. A second line can point to search and the shop. |
 | «اگر می‌خواهید خرید بقیه‌ی محصولات را ادامه دهید، این مورد را از سبد خرید حذف کنید.» | «برای ادامه‌ی خرید، لطفاً این مورد را از سبد خرید خود حذف کنید.» | The unavailable item is already identified. Give the action directly. |
 | «برای خرید، محصولتان را از فهرست پیدا کنید و به سبد اضافه کنید.» | «برای شروع، یک محصول را انتخاب کنید.» | One step is enough for an empty cart. |

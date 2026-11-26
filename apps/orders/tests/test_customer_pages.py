@@ -15,7 +15,7 @@ from apps.catalog.models import Category, Plan, Product
 from apps.core import support
 from apps.core.formatting import format_toman, to_persian_digits
 from apps.orders import services
-from apps.orders.models import OrderItem, OrderItemEvent
+from apps.orders.models import Order, OrderItem, OrderItemEvent
 from apps.orders.services import OrderLine
 from apps.orders.tests.test_order_detail import second_plan
 
@@ -514,8 +514,14 @@ def test_the_order_page_promises_news_only_when_news_can_reach_the_customer(
     settings.TELEGRAM_BOT_TOKEN = "test" if bot_enabled else ""  # nosec B105
     plan.input_type, plan.max_quantity = "none", 1
     plan.save()
-    customer = User.objects.create_user(email, phone="09121112244", telegram_id=telegram_id)
+    customer = User.objects.create_user(
+        email or "buyer@gmail.com", phone="09121112244", telegram_id=telegram_id
+    )
     order = services.place_order(user=customer, lines=[OrderLine(plan, 1, None)])
+    if not email:
+        # These orders could be placed before checkout required a delivery contact.
+        User.objects.filter(pk=customer.pk).update(email="")
+        Order.objects.filter(pk=order.pk).update(placement_email="")
     record_manual_payment(
         order_id=order.pk,
         actor=User.objects.create_superuser("operator@example.test"),

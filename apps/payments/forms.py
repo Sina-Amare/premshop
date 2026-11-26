@@ -9,12 +9,13 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.models import User
 from apps.accounts.otp import GMAIL_ERROR, normalize_gmail
 from apps.catalog.inputs import normalize_customer_input
 from apps.core.formatting import format_jalali, format_toman, to_latin_digits, to_persian_digits
 from apps.orders.clock import TEHRAN
 from apps.orders.selectors import item_numbers
-from apps.orders.services import Purchase
+from apps.orders.services import CHECKOUT_EMAIL_REQUIRED, Purchase, checkout_email_required
 from apps.payments.models import Refund
 
 
@@ -146,8 +147,19 @@ class CheckoutForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args: Any, purchase: Purchase | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        purchase: Purchase | None = None,
+        account: User | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
+        if account is not None and checkout_email_required(account):
+            email = self.fields["email"]
+            email.required = True
+            email.label = "ایمیل Gmail"
+            email.error_messages["required"] = CHECKOUT_EMAIL_REQUIRED
         self.input_fields = []
         self.input_types: dict[str, str] = {}
         if purchase:
