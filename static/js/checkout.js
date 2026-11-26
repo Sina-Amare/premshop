@@ -1,7 +1,9 @@
 (() => {
   const root = document.querySelector('[data-checkout-login]');
   if (!root) {
-    document.querySelector('[data-checkout-error]')?.focus();
+    const error = document.querySelector('[data-checkout-error]')
+      || document.querySelector('#id_email[aria-invalid="true"]');
+    error?.focus();
     return;
   }
   const phone = root.querySelector('[data-inline-phone]');

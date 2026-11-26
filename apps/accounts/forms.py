@@ -87,11 +87,11 @@ class ProfileForm(forms.ModelForm):
     """
 
     email = forms.EmailField(
-        label="ایمیل",
+        label="ایمیل Gmail",
         required=False,
         max_length=254,
         help_text="رسید و اطلاعات سفارش‌های بعدی به ایمیل شما ارسال می‌شود.",
-        error_messages={"invalid": "این ایمیل درست نیست."},
+        error_messages={"invalid": otp.GMAIL_ERROR},
         widget=forms.EmailInput(
             attrs={
                 "class": "field__input",
@@ -107,4 +107,4 @@ class ProfileForm(forms.ModelForm):
         fields = ["email"]
 
     def clean_email(self) -> str:
-        return otp.normalize_email(self.cleaned_data.get("email") or "")
+        return otp.normalize_gmail(self.cleaned_data["email"])

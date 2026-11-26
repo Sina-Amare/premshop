@@ -133,7 +133,7 @@ def test_customer_state_gate_does_not_change_staff_reveal(buyer, plan, operator,
 
 def test_proof_is_bound_to_owner_order_and_session(buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
-    other = User.objects.create_user("other@example.test")
+    other = User.objects.create_user("other@gmail.com")
     code = request_code(order, buyer)
     with pytest.raises(PermissionDenied):
         request_code(order, other)
@@ -386,7 +386,7 @@ def link_before_order(buyer, order):
     buyer.save(update_fields=["telegram_id", "telegram_linked_at"])
 
 
-def start_recovery(order, operator, email="recovered@example.test"):
+def start_recovery(order, operator, email="recovered@gmail.com"):
     with patch("apps.orders.proof.telegram.send_message", return_value={"message_id": 4}) as sent:
         proof().start_recovery(order_id=order.pk, actor=operator, email=email)
     assert sent.call_args.args[0] == 88776655
@@ -395,7 +395,7 @@ def start_recovery(order, operator, email="recovered@example.test"):
     return re.search(r"(?<!\d)\d{6}(?!\d)", text).group()
 
 
-def finish_recovery(order, operator, code, email="recovered@example.test"):
+def finish_recovery(order, operator, code, email="recovered@gmail.com"):
     return proof().finish_recovery(order_id=order.pk, actor=operator, email=email, code=code)
 
 
@@ -414,12 +414,12 @@ def test_recovery_challenge_authorizes_one_order_address_then_requires_its_email
     assert order.placement_email == original_email
     row = models.OrderEmailRecovery.objects.get()
     assert row.operator_id == operator.pk and row.telegram_id == buyer.telegram_id
-    assert row.email == "recovered@example.test" and row.created_at is not None
+    assert row.email == "recovered@gmail.com" and row.created_at is not None
     with pytest.raises(PermissionDenied):
         reveal(order, item, buyer)
     with time_machine.travel(timezone.now() + timedelta(seconds=61), tick=False):
         verified(order, buyer)
-        assert mailoutbox[-1].to == ["recovered@example.test"]
+        assert mailoutbox[-1].to == ["recovered@gmail.com"]
     assert reveal(order, item, buyer).lines == (LINE,)
     assert "delivery_code" in email_log.PROTECTED
 
@@ -463,7 +463,7 @@ def test_recovery_refuses_missing_new_or_changed_link_and_wrong_operator_or_addr
     order, _ = delivered(buyer, plan, operator)
     link_before_order(buyer, order)
     code = start_recovery(order, operator)
-    actor, email = operator, "recovered@example.test"
+    actor, email = operator, "recovered@gmail.com"
     if changed == "absent":
         buyer.telegram_id = None
     elif changed == "new":
@@ -475,7 +475,7 @@ def test_recovery_refuses_missing_new_or_changed_link_and_wrong_operator_or_addr
     elif changed == "operator":
         actor = User.objects.create_superuser("second-operator@example.test")
     else:
-        email = "other@example.test"
+        email = "other@gmail.com"
     buyer.save(update_fields=["telegram_id", "telegram_linked_at"])
     if changed in ("absent", "new", "unlink"):
         with pytest.raises(ValidationError):
@@ -490,7 +490,7 @@ def test_recovery_expiry_guess_budget_permissions_and_send_failure(buyer, plan, 
     link_before_order(buyer, order)
     for actor in (buyer, staff_with("view_order", "view_orderitem")):
         with pytest.raises(PermissionDenied):
-            proof().start_recovery(order_id=order.pk, actor=actor, email="recovered@example.test")
+            proof().start_recovery(order_id=order.pk, actor=actor, email="recovered@gmail.com")
     now = timezone.now()
     with time_machine.travel(now, tick=False):
         code = start_recovery(order, operator)
@@ -503,7 +503,7 @@ def test_recovery_expiry_guess_budget_permissions_and_send_failure(buyer, plan, 
         assert not finish_recovery(order, operator, code)
         with patch("apps.orders.proof.telegram.send_message", side_effect=RuntimeError("failed")):
             with pytest.raises(ValidationError, match="کد تغییر ایمیل در تلگرام فرستاده نشد"):
-                proof().start_recovery(order_id=order.pk, actor=operator, email="new@example.test")
+                proof().start_recovery(order_id=order.pk, actor=operator, email="new@gmail.com")
     assert not models.OrderEmailRecovery.objects.exists()
 
 
@@ -519,7 +519,7 @@ def test_recovery_rechecks_link_after_transport_and_command_never_prints_code(
 
     with patch("apps.orders.proof.telegram.send_message", side_effect=changed):
         with pytest.raises(ValidationError):
-            proof().start_recovery(order_id=order.pk, actor=operator, email="new@example.test")
+            proof().start_recovery(order_id=order.pk, actor=operator, email="new@gmail.com")
     link_before_order(buyer, order)
     with time_machine.travel(timezone.now() + timedelta(seconds=61), tick=False):
         code = start_recovery(order, operator)
@@ -531,7 +531,7 @@ def test_recovery_rechecks_link_after_transport_and_command_never_prints_code(
                 "recover_order_email",
                 order.order_number,
                 operator_id=operator.pk,
-                email="recovered@example.test",
+                email="recovered@gmail.com",
                 confirm=True,
                 stdout=out,
             )
@@ -605,3 +605,53 @@ def test_the_code_email_names_its_order(buyer, plan, operator, mailoutbox):
     request_code(order, buyer)
     number = to_persian_digits(order.order_number)
     assert number in mailoutbox[-1].subject and number in mailoutbox[-1].body
+
+
+@pytest.mark.parametrize("stage", ["start", "finish"])
+def test_gm_recovery_rejects_a_non_gmail_address_before_side_effects(buyer, plan, operator, stage):
+    order, _ = delivered(buyer, plan, operator)
+    link_before_order(buyer, order)
+    kwargs = {"order_id": order.pk, "actor": operator, "email": "buyer@outlook.com"}
+
+    with (
+        patch("apps.orders.proof.telegram.send_message") as sent,
+        patch("apps.orders.proof.otp.consume", return_value={}) as consume,
+    ):
+        with pytest.raises(ValidationError) as invalid:
+            if stage == "start":
+                proof().start_recovery(**kwargs)
+            else:
+                proof().finish_recovery(**kwargs, code="test-code")
+
+    assert invalid.value.messages == ["ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید."]
+    sent.assert_not_called()
+    consume.assert_not_called()
+    assert not models.OrderEmailRecovery.objects.filter(order=order).exists()
+
+
+def test_gm_still_sends_a_reveal_code_to_a_stored_non_gmail_address(
+    buyer, plan, operator, mailoutbox
+):
+    order, _ = delivered(buyer, plan, operator)
+    models.Order.objects.filter(pk=order.pk).update(placement_email="stored@outlook.com")
+
+    code = request_code(order, buyer)
+
+    assert mailoutbox[-1].to == ["stored@outlook.com"]
+    assert confirm(order, buyer, code)
+
+
+@pytest.mark.parametrize("stored", ["buyer@gmail.com", ""])
+def test_gm_the_recovery_guidance_asks_for_a_gmail_address(buyer, plan, operator, stored):
+    order, _ = delivered(buyer, plan, operator)
+    models.Order.objects.filter(pk=order.pk).update(placement_email=stored)
+    client = Client()
+    client.force_login(buyer)
+
+    body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+    guidance = re.search(r"<p data-delivery-recovery>(.*?)</p>", body, re.S)
+    assert guidance and "ایمیل Gmail" in guidance[1]
+    if not stored:
+        with pytest.raises(ValidationError, match="ایمیل Gmail"):
+            request_code(order, buyer)

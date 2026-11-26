@@ -136,7 +136,7 @@ def test_saving_the_account_page_writes_only_its_own_column(client):
     client.force_login(User.objects.create_user("operator@example.test", PASSWORD, is_staff=True))
 
     with CaptureQueriesContext(connection) as queries:
-        client.post(reverse("account"), {"email": "operator@example.test"})
+        client.post(reverse("account"), {"email": "operator@gmail.com"})
 
     updates = [q["sql"] for q in queries if q["sql"].startswith('UPDATE "accounts_user"')]
     assert updates and all('"password"' not in sql for sql in updates), updates

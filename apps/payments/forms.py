@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.accounts.otp import normalize_email
+from apps.accounts.otp import GMAIL_ERROR, normalize_gmail
 from apps.catalog.inputs import normalize_customer_input
 from apps.core.formatting import format_jalali, format_toman, to_latin_digits, to_persian_digits
 from apps.orders.clock import TEHRAN
@@ -133,14 +133,14 @@ class CheckoutForm(forms.Form):
         ),
     )
     email = forms.EmailField(
-        label="ایمیل (اختیاری)",
+        label="ایمیل Gmail (اختیاری)",
         max_length=254,
         required=False,
         help_text=(
             "رسید، خبرهای این سفارش و کد نمایش اطلاعات تحویل به همین ایمیل فرستاده می‌شود. "
             "اگر برای حساب کاربری ایمیلی ثبت نکرده‌اید، این نشانی در حساب هم ذخیره می‌شود."
         ),
-        error_messages={"invalid": "این ایمیل درست نیست."},
+        error_messages={"invalid": GMAIL_ERROR},
         widget=forms.EmailInput(
             attrs={"class": "field__input", "dir": "ltr", "autocomplete": "email"}
         ),
@@ -178,7 +178,7 @@ class CheckoutForm(forms.Form):
                 self.input_fields.append((line, self[name]))
 
     def clean_email(self) -> str:
-        return normalize_email(self.cleaned_data["email"])
+        return normalize_gmail(self.cleaned_data["email"])
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}

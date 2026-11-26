@@ -19,6 +19,8 @@ from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.utils.crypto import constant_time_compare, salted_hmac
 
 from apps.accounts.validators import PERSIAN_TO_ASCII_DIGITS, normalize_digits
@@ -180,3 +182,19 @@ def prepare_login_code(phone: str) -> str:
 def normalize_email(email: str) -> str:
     """One spelling of an address everywhere: lowercase, trimmed."""
     return (email or "").strip().lower()
+
+
+GMAIL_ERROR = "ایمیل Gmail را کامل و به شکل name@gmail.com وارد کنید."
+
+
+def normalize_gmail(email: str, *, required: bool = False) -> str:
+    email = normalize_email(email)
+    if not email and not required:
+        return ""
+    try:
+        validate_email(email)
+    except ValidationError:
+        raise ValidationError(GMAIL_ERROR, code="invalid") from None
+    if len(email) > 254 or email.rpartition("@")[2] != "gmail.com":
+        raise ValidationError(GMAIL_ERROR, code="invalid")
+    return email
