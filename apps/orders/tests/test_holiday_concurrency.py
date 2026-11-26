@@ -7,13 +7,14 @@ from threading import Event
 
 import pytest
 import time_machine
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.catalog.models import Plan, Product
 from apps.orders import holiday, services
 from apps.orders.clock import delivery_deadline, resumed_deadline
-from apps.orders.models import Holiday
+from apps.orders.models import Holiday, Order
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act, purchase
 from apps.orders.tests.test_input_clock import operator as operator
@@ -77,6 +78,19 @@ def test_a_payment_racing_the_start_never_leaves_a_running_clock(buyer, plan, op
     item = order.items.get()
     assert item.status == "QUEUED" and item.paid_at >= opened.started_at
     assert item.sla_paused_at == item.paid_at
+
+
+def test_an_order_waiting_for_the_holiday_switch_is_refused(buyer, plan, operator):
+    Plan.objects.filter(pk=plan.pk).update(stock_quantity=1)
+
+    def place():
+        with pytest.raises(ValidationError) as refused:
+            services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
+        assert refused.value.code == "holiday"
+
+    race(lambda: opened_now(operator), place)
+    assert not Order.objects.exists()
+    assert Plan.objects.get(pk=plan.pk).stock_quantity == 1
 
 
 def test_a_payment_racing_the_end_keeps_its_whole_pause(buyer, plan, operator):

@@ -7,7 +7,7 @@ from django.utils import timezone
 from playwright.sync_api import expect
 
 from apps.core.formatting import to_persian_digits
-from apps.orders import services
+from apps.orders import holiday, services
 from apps.orders.models import Order, OrderItem
 from apps.orders.tests.test_customer_browser import capture, context_for
 from apps.orders.tests.test_input_clock import operator as operator
@@ -15,6 +15,24 @@ from apps.orders.tests.test_order_detail import CASES, order_for_state, pause, s
 from apps.orders.tests.test_paid_cancellation import paid_order
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("state", ["queued", "waiting", "mixed"])
+def test_holiday_order_card_reads_at_both_widths(
+    browser, live_server, buyer, plan, operator, state, width, tmp_path
+):
+    order = order_for_state(buyer, plan, operator, state)
+    holiday.start(actor=operator, expected_latest=None)
+    with context_for(browser, live_server, buyer, width) as context:
+        page = context.new_page()
+        url = live_server.url + reverse("order-detail", args=[order.order_number])
+        page.goto(url)
+        expect(page).to_have_url(url)
+        expect(page.locator("#order-next-title")).to_be_visible()
+        expect(page.locator("[data-holiday-delivery]")).to_have_count(int(state != "waiting"))
+        expect(page.get_by_text("پس از دریافت اطلاعات، تا", exact=False)).to_have_count(0)
+        capture(page, f"holiday-{state}", width, tmp_path)
 
 
 @pytest.mark.parametrize("width", [390, 1440])

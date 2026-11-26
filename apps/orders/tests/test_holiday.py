@@ -14,7 +14,7 @@ from apps.orders import holiday, selectors, services
 from apps.orders.clock import TEHRAN, resumed_deadline
 from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 from apps.orders.tests.test_delivery import deliver
-from apps.orders.tests.test_input_clock import act, purchase
+from apps.orders.tests.test_input_clock import act, pay, place, purchase
 from apps.orders.tests.test_input_clock import operator as operator
 
 pytestmark = pytest.mark.django_db
@@ -117,8 +117,11 @@ def test_ending_moves_each_paused_deadline_once_and_records_it(buyer, plan, oper
 
 def test_a_payment_during_a_holiday_starts_paused(buyer, plan, operator):
     began = MONDAY - timedelta(hours=1)
+    order = place(buyer, plan, telegram=False, at=began - timedelta(hours=1))
     start(operator, began)
-    _, item = purchase(buyer, plan, operator, telegram=False)
+    with time_machine.travel(MONDAY, tick=False):
+        pay(order, operator)
+    item = order.items.get()
     assert item.status == "QUEUED" and item.paid_at == MONDAY
     assert item.sla_paused_at == MONDAY and item.due_at == MONDAY + timedelta(hours=6)
     closed = end(operator, MONDAY + timedelta(hours=3))
@@ -128,8 +131,11 @@ def test_a_payment_during_a_holiday_starts_paused(buyer, plan, operator):
 
 
 def test_a_first_wait_paid_during_a_holiday_has_no_clock_to_pause(buyer, plan, operator):
+    order = place(buyer, plan, telegram=True, at=MONDAY - timedelta(hours=2))
     start(operator, MONDAY - timedelta(hours=1))
-    _, item = purchase(buyer, plan, operator, telegram=True)
+    with time_machine.travel(MONDAY, tick=False):
+        pay(order, operator)
+    item = order.items.get()
     assert item.status == "AWAITING_INPUT" and item.due_at is None and item.sla_paused_at is None
 
 

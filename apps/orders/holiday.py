@@ -2,9 +2,10 @@
 
 A clock that would start during a holiday starts stopped, and ending the holiday moves each
 stopped deadline by the time it stood still. Every path that starts a delivery clock takes
-`lock` shared, after its buyer, order and payment rows and before its items; the switch takes
-it alone and then locks only items. So no clock starts running in the instant a holiday
-begins, none starts stopped just after it ends, and no two paths wait on each other.
+`lock` shared, after its buyer, order and payment rows and before its items. New order
+placement takes the same lock before checking whether the shop is taking orders. The switch
+takes it exclusively and then locks only items. A write sees either side of the switch, and
+the switch never waits for the buyer, order or payment locks already held by writers.
 """
 
 from __future__ import annotations
@@ -26,7 +27,11 @@ from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 # A fixed key no other advisory lock in the project uses ("HOLI" in ASCII).
 _LOCK_KEY = 0x484F4C49
 PAUSE_NOTE = "شروع تعطیلی"
-STALE = gettext_lazy("وضعیت تعطیلی تغییر کرد. صفحه را دوباره باز کنید.")
+STALE = gettext_lazy("صفحه را دوباره باز کنید و وضعیت تعطیلی را ببینید.")
+CHECKOUT_CLOSED = "تا پایان تعطیلی سفارش جدید نمی‌گیریم."
+CHECKOUT_CLOSED_WITH_CART = (
+    "تا پایان تعطیلی سفارش جدید نمی‌گیریم و محصولاتی که انتخاب کرده‌اید، در سبد خریدتان می‌مانند."
+)
 
 
 def lock(*, exclusive: bool = False) -> None:

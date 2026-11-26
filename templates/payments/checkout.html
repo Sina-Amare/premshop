@@ -7,8 +7,17 @@
   <header class="cart-heading cart-hero"><span class="cart-hero__icon">{% include 'storefront/icon.html' with name='check' %}</span><h1>ثبت سفارش</h1>{% include 'payments/_hero_art.html' %}</header>
   {% if error %}<p class="cart-notice cart-notice--error" role="alert" tabindex="-1" data-checkout-error>{{ error }}</p>{% endif %}
   {% for message in messages %}<p class="cart-notice" role="status">{{ message }}</p>{% endfor %}
-  {% if existing %}
-    <section class="checkout-box"><h2>یک سفارش در انتظار پرداخت دارید</h2><p>اول سفارش فعلی را پرداخت یا لغو کنید. محصولات تا آن زمان در سبد خریدتان می‌مانند.</p><a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a></section>
+  {% if checkout_holiday or existing %}
+    <section class="checkout-box">
+      {% if checkout_holiday %}<p data-checkout-holiday {% if request.method == 'POST' %}role="alert" tabindex="-1" data-checkout-error{% else %}role="status"{% endif %}>{{ checkout_holiday }}</p>{% endif %}
+      {% if existing %}
+        <h2>یک سفارش در انتظار پرداخت دارید</h2>
+        {% if not checkout_holiday %}<p>اول سفارش فعلی را پرداخت یا لغو کنید. محصولات تا آن زمان در سبد خریدتان می‌مانند.</p>{% endif %}
+        <a class="btn btn--primary" href="{% url 'order-detail' existing.order_number %}">مشاهده‌ی سفارش {{ existing.order_number|fa_digits }}</a>
+      {% else %}
+        <a class="btn btn--secondary" href="{% url 'cart' %}">بازگشت به سبد خرید</a>
+      {% endif %}
+    </section>
   {% elif not request.user.is_authenticated %}
     <div class="cart-layout checkout-signin">
       <section class="checkout-box checkout-login" data-checkout-login>

@@ -21,7 +21,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core import ratelimit
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
-from apps.orders import proof
+from apps.orders import holiday, proof
 from apps.orders import status as order_status
 from apps.orders.forms import ReviewForm
 from apps.orders.models import (
@@ -130,6 +130,11 @@ def _render_detail(
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
     except ImproperlyConfigured:
         support_identifier = None
+    items = list(summary["order"].items.all())
+    is_holiday = holiday.current() is not None
+    holiday_delivery = is_holiday and any(
+        item.status == OrderItem.Status.QUEUED and item.sla_paused_at for item in items
+    )
     input_requests = [
         {
             "item": item,
@@ -138,7 +143,7 @@ def _render_detail(
                 input_last_day(item.input_requested_at) if item.input_requested_at else None
             ),
         }
-        for item in summary["order"].items.all()
+        for item in items
         if item.status == OrderItem.Status.AWAITING_INPUT
     ]
     response = render(
@@ -153,6 +158,10 @@ def _render_detail(
             "input_requests": input_requests,
             "review_items": _review_items(summary["order"], review_error),
             "has_site_input": any(row["can_submit"] for row in input_requests),
+            "is_holiday": is_holiday,
+            "holiday_delivery": (
+                "زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود." if holiday_delivery else ""
+            ),
             "support_identifier": support_identifier,
             "again_url": _again_url(summary),
             "telegram_available": bool(settings.TELEGRAM_BOT_TOKEN),

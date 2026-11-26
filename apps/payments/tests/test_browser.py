@@ -9,7 +9,10 @@ from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Plan, Product
 from apps.cms.models import Page
 from apps.core import sms
+from apps.orders import holiday
 from apps.orders.models import Order
+from apps.orders.tests.test_customer_browser import context_for
+from apps.orders.tests.test_input_clock import operator as operator
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
@@ -36,6 +39,30 @@ def screenshot(page, label, width, directory):
     page.evaluate("document.fonts.ready")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
     page.screenshot(path=str(directory / f"{label}-{width}.png"), full_page=True)
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_checkout_open_in_the_browser_shows_the_holiday_without_losing_the_cart(
+    browser, live_server, buyer, plan, operator, width, tmp_path
+):
+    cart = Cart.objects.create(user=buyer)
+    CartItem.objects.create(cart=cart, plan=plan)
+    with context_for(browser, live_server, buyer, width) as context:
+        page = context.new_page()
+        url = live_server.url + reverse("checkout")
+        page.goto(url)
+        place = page.get_by_role("button", name="ثبت سفارش", exact=True)
+        expect(place).to_be_visible()
+        holiday.start(actor=operator, expected_latest=None)
+        place.click()
+        expect(page).to_have_url(url)
+        notice = page.locator("[data-checkout-holiday]")
+        expect(notice).to_have_attribute("role", "alert")
+        expect(notice).to_be_focused()
+        expect(place).to_have_count(0)
+        expect(page.get_by_role("link", name="بازگشت به سبد خرید")).to_be_visible()
+        screenshot(page, "checkout-holiday", width, tmp_path)
+    assert cart.items.filter(plan=plan).exists()
 
 
 @pytest.mark.parametrize("width", [390, 1440])
