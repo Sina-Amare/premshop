@@ -233,6 +233,7 @@ The owner's rewrites are the model to imitate. Every line the owner rewrites joi
 | «این سفارش ایمیل ندارد.» | «برای این سفارش ایمیلی ثبت نشده است.» | An order does not "have" an email. Say what was or was not recorded. |
 | «اطلاعات فعال‌سازی لازم است» | «برای فعال‌سازی به اطلاعات شما نیاز داریم» | The shop says what it needs from the buyer, instead of stating an impersonal requirement. |
 | «روزی که توضیحات محصول را با منابع بررسی کردید.» | «تاریخ آخرین بررسی صحت اطلاعات محصول» | A field hint names what the date vouches for. The relative clause dangled under its label. |
+| «وضعیت تعطیلی تغییر کرد. صفحه را دوباره باز کنید.» | «تعطیلات تمام شد و برگشتیم.» | Shown when the holiday ends or the operator submits an old form after reopening. When a different holiday is open, the panel names that state instead. |
 
 ### Building a line
 

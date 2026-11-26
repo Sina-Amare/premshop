@@ -518,6 +518,8 @@ class OrderAdmin(ModelAdmin):
         latest = Holiday.objects.order_by("-pk").values_list("pk", flat=True).first()
         token = opened.pk if opened is not None else latest
         confirming, error = "", ""
+        stale_end = None
+        reopened = _("تعطیلات تمام شد و برگشتیم.")
         if request.method == "POST":
             action, step = request.POST.get("action"), request.POST.get("step")
             raw = request.POST.get("expected")
@@ -534,17 +536,23 @@ class OrderAdmin(ModelAdmin):
                 if step == "confirm":
                     if action == "start":
                         holiday.start(actor=cast(User, request.user), expected_latest=token)
-                        done = _("تعطیلی شروع شد.")
+                        done = str(_("تعطیلی شروع شد."))
                     else:
                         holiday.end(actor=cast(User, request.user), expected_open=cast(int, token))
-                        done = _("تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید.")
+                        deadlines = _("مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید.")
+                        done = f"{reopened} {deadlines}"
                     self.message_user(request, done, messages.SUCCESS)
                     return redirect("admin:orders_order_holiday")
                 confirming = action
             except ValidationError as failure:
                 error = " ".join(failure.messages)
+                if action == "end" and raw is not None:
+                    stale_end = to_latin_digits(raw).strip()
         now = timezone.now()
         facts = holiday.summary(now)
+        past_holidays = list(
+            Holiday.objects.filter(ended_at__isnull=False).select_related("started_by", "ended_by")[:10]
+        )
         past = [
             {
                 "holiday": row,
@@ -552,10 +560,12 @@ class OrderAdmin(ModelAdmin):
                     int((cast(datetime, row.ended_at) - row.started_at).total_seconds())
                 ),
             }
-            for row in Holiday.objects.filter(ended_at__isnull=False).select_related(
-                "started_by", "ended_by"
-            )[:10]
+            for row in past_holidays
         ]
+        if stale_end and any(stale_end == str(row.pk) for row in past_holidays):
+            error = str(
+                _("تعطیلی دیگری شروع شده است.") if facts["opened"] is not None else reopened
+            )
         response = render(
             request,
             "admin/orders/holiday.html",

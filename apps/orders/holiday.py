@@ -26,7 +26,7 @@ from apps.orders.models import Holiday, OrderItem, OrderItemEvent
 # A fixed key no other advisory lock in the project uses ("HOLI" in ASCII).
 _LOCK_KEY = 0x484F4C49
 PAUSE_NOTE = "شروع تعطیلی"
-STALE = gettext_lazy("وضعیت تعطیلی تغییر کرد. صفحه را دوباره باز کنید.")
+STALE = gettext_lazy("صفحه را دوباره باز کنید و وضعیت تعطیلی را ببینید.")
 CHECKOUT_CLOSED = (
     "تا پایان تعطیلی سفارش جدید نمی‌گیریم و محصولاتی که انتخاب کرده‌اید، در سبد خریدتان می‌مانند."
 )
