@@ -2114,8 +2114,8 @@ msgstr "%(items)s items"
 msgid "از همین حالا مهلت %(items)s محصول در صف دوباره می‌گذرد."
 msgstr "From now on, the deadlines of %(items)s queued items run again."
 
-msgid "از همین حالا مهلت %(items)s محصول در صف نمی‌گذرد و مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود."
-msgstr "From now on, the deadlines of %(items)s queued items stop running, and new orders' deadlines do not start until the holiday ends."
+msgid "از همین حالا مهلت %(items)s محصول در صف نمی‌گذرد. تا پایان تعطیلی سفارش جدید نمی‌گیریم."
+msgstr "The deadlines of %(items)s queued items pause now. New orders are closed until the holiday ends."
 
 msgid "فروشگاه در حالت تعطیلی نیست."
 msgstr "The shop is not on holiday."
@@ -2126,8 +2126,11 @@ msgstr "This is the first holiday."
 msgid "تحویل طبق روال"
 msgstr "Delivering as usual"
 
-msgid "تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید."
-msgstr "The holiday has ended. Each item's new deadline is in the order queue."
+msgid "تعطیلات تمام شد و برگشتیم."
+msgstr "The holiday is over and we're back."
+
+msgid "مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید."
+msgstr "Each item's new deadline is in the order queue."
 
 msgid "تعطیلی شروع شد."
 msgstr "The holiday has started."
@@ -2135,8 +2138,11 @@ msgstr "The holiday has started."
 msgid "تعطیلی قبلاً شروع شده است."
 msgstr "A holiday has already started."
 
-msgid "وضعیت تعطیلی تغییر کرد. صفحه را دوباره باز کنید."
-msgstr "A holiday started or ended since this page opened. Open it again."
+msgid "صفحه را دوباره باز کنید و وضعیت تعطیلی را ببینید."
+msgstr "Reopen this page to see the current holiday status."
+
+msgid "تعطیلی دیگری شروع شده است."
+msgstr "Another holiday has started."
 
 msgid "زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود، ولی مهلت فرستادن اطلاعات مشتری در تعطیلی هم می‌گذرد."
 msgstr "Holiday time does not count toward delivery deadlines, but the time a customer has to send details keeps running."
@@ -2153,8 +2159,14 @@ msgstr "Holiday so far"
 msgid "مهلت تحویل: %(left)s، تا پایان تعطیلی نمی‌گذرد"
 msgstr "Delivery deadline: %(left)s, not running until the holiday ends"
 
-msgid "مهلتشان تا پایان تعطیلی شروع نمی‌شود"
-msgstr "Their deadlines start when the holiday ends"
+msgid "ثبت سفارش بسته است"
+msgstr "Order placement is closed"
+
+msgid "پرداخت سفارش‌های قبلی"
+msgstr "Payment of existing orders"
+
+msgid "مهلت تحویل تا پایان تعطیلی شروع نمی‌شود"
+msgstr "Delivery deadlines start after the holiday"
 
 msgid "نزدیک‌ترین مهلت"
 msgstr "Nearest deadline"

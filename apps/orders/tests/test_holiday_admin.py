@@ -100,7 +100,8 @@ def test_ending_from_the_page_moves_the_deadlines_and_lists_the_holiday(client, 
     assert order.items.get().sla_paused_at is None
     body = client.get(page()).content.decode()
     assert "تحویل طبق روال" in body and "تعطیلی‌های گذشته" in body and owner.email in body
-    assert "تعطیلی تمام شد. مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید." in body
+    assert "تعطیلات تمام شد و برگشتیم." in body
+    assert "مهلت جدید هر محصول را در صف سفارش‌ها می‌بینید." in body
 
 
 def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner):
@@ -110,8 +111,26 @@ def test_a_stale_form_is_explained_on_the_page_and_changes_nothing(client, owner
     response = client.post(page(), {"action": "end", "step": "confirm", "expected": first.pk})
     body = response.content.decode()
     assert response.status_code == 400 and 'role="alert"' in body
-    assert "صفحه را دوباره باز کنید" in body
+    assert "تعطیلی دیگری شروع شده است." in body
+    assert "تعطیلات تمام شد و برگشتیم." not in body
     assert Holiday.objects.filter(ended_at=None).count() == 1
+
+
+def test_a_stale_start_form_says_a_holiday_has_already_started(client, owner):
+    begin(owner)
+    response = client.post(page(), {"action": "start", "step": "confirm", "expected": ""})
+    assert response.status_code == 400
+    assert "تعطیلی قبلاً شروع شده است." in response.content.decode()
+    assert Holiday.objects.count() == 1
+
+
+def test_a_stale_end_form_says_the_shop_has_reopened(client, owner):
+    opened = begin(owner)
+    finish(owner)
+    response = client.post(page(), {"action": "end", "step": "confirm", "expected": opened.pk})
+    assert response.status_code == 400
+    assert "تعطیلات تمام شد و برگشتیم." in response.content.decode()
+    assert Holiday.objects.count() == 1 and not Holiday.objects.filter(ended_at=None).exists()
 
 
 @pytest.mark.parametrize("value", [None, "bad", "²"])
@@ -131,13 +150,13 @@ def test_the_history_has_an_empty_state(client, owner):
 
 def test_holiday_copy_describes_clocks_starting_from_payment_or_details(client, owner, buyer, plan):
     review = client.post(page(), {"action": "start", "step": "review", "expected": ""})
-    assert "مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود." in review.content.decode()
+    assert "تا پایان تعطیلی سفارش جدید نمی‌گیریم." in review.content.decode()
     _, waiting = purchase(buyer, plan, owner, telegram=True)
     begin(owner)
     assert waiting.status == "AWAITING_INPUT" and waiting.due_at is None
     body = client.get(page()).content.decode()
-    assert "سفارش‌های جدید" in body and "مهلتشان تا پایان تعطیلی شروع نمی‌شود" in body
-    assert "پرداخت‌های جدید" not in body
+    assert "سفارش‌های جدید" in body and "ثبت سفارش بسته است" in body
+    assert "پرداخت سفارش‌های قبلی" in body and "مهلت تحویل تا پایان تعطیلی شروع نمی‌شود" in body
 
 
 def test_only_the_owner_or_staff_given_the_permission_reach_the_page(client):
