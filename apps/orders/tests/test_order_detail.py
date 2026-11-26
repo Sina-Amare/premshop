@@ -750,3 +750,12 @@ def test_one_refund_is_stated_by_the_card_and_the_totals_not_again_on_its_line(
     purchase = body.split('id="order-purchase"', 1)[1].split('class="order-records"', 1)[0]
     assert "data-line-money" not in purchase
     assert 'data-money="owed"' in purchase and "به شما برمی‌گردانیم" in card_of(body)
+
+
+def test_the_tracking_link_can_be_copied_whole(client, buyer, plan, operator, settings):
+    order = order_for_state(buyer, plan, operator, "unpaid")
+    link = settings.SITE_URL + reverse("order-tracking", args=[order.tracking_token])
+
+    tracking = page(client, buyer, order).split('id="order-tracking"', 1)[1].split("</details>")[0]
+
+    assert f'data-copy-text="{link}"' in tracking and ">کپی لینک</button>" in tracking

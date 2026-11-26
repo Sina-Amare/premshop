@@ -197,3 +197,36 @@ def test_a_purchase_deadline_fits_beside_a_long_price(
         capture(page, "purchase-deadline", width, tmp_path)
     finally:
         context.close()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_the_tracking_link_copies_the_whole_address(
+    browser, live_server, buyer, plan, operator, settings, width, tmp_path
+):
+    order = order_for_state(buyer, plan, operator, "unpaid")
+    link = settings.SITE_URL + reverse("order-tracking", args=[order.tracking_token])
+    context = context_for(browser, live_server, buyer, width)
+    context.add_init_script("""Object.defineProperty(navigator, 'clipboard', {
+      value: {writeText: async text => { window.copiedLink = text; }}
+    });""")
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("order-detail", args=[order.order_number]))
+        page.locator("#order-tracking > summary").click()
+        copy = page.locator("#order-tracking [data-copy-text]")
+        expect(copy).to_have_text("کپی لینک")
+        copy.click()
+        expect(copy).to_have_text("کپی شد")
+        assert page.evaluate("window.copiedLink") == link
+        page.evaluate(
+            "() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; }"
+        )
+        copy.click()
+        expect(page.locator("#tracking-copy-status")).to_have_text("کپی نشد. لینک را خودتان کپی کنید.")
+        # Read at once: the success label's own 2.2-second reset must not be what restores it.
+        assert copy.text_content() == "کپی لینک"
+        expect(page.locator("#tracking-url")).to_be_visible()
+        assert page.evaluate("getSelection().toString()") == link
+        capture(page, "tracking-copy-refused", width, tmp_path)
+    finally:
+        context.close()
