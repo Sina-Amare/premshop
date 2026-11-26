@@ -217,6 +217,7 @@ def test_the_tracking_link_copies_the_whole_address(
         expect(copy).to_have_text("کپی لینک")
         copy.click()
         expect(copy).to_have_text("کپی شد")
+        expect(copy).to_have_css("background-color", "rgb(18, 184, 134)")
         assert page.evaluate("window.copiedLink") == link
         page.evaluate(
             "() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; }"
