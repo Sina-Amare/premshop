@@ -12,6 +12,8 @@ from django.views.decorators.http import require_http_methods
 
 from apps.accounts.forms import CodeForm, PhoneForm
 from apps.cart.services import cart_summary, get_cart
+from apps.orders import holiday
+from apps.orders.selectors import current_unpaid_order
 from apps.orders.services import UnpaidOrderExists
 from apps.payments import services
 from apps.payments.forms import CheckoutForm
@@ -26,6 +28,16 @@ def _page(
     status: int = 200,
 ) -> HttpResponse:
     account = request.user if request.user.is_authenticated else None
+    if holiday.current() is not None:
+        return render(
+            request,
+            "payments/checkout.html",
+            {
+                "checkout_holiday": holiday.CHECKOUT_CLOSED,
+                "existing": current_unpaid_order(account) if account is not None else None,
+            },
+            status=409 if request.method == "POST" else 200,
+        )
     if email_error is not None and account is not None:
         account.refresh_from_db()
     quote = None
@@ -101,6 +113,8 @@ def checkout(request: HttpRequest) -> HttpResponse:
     code = request.POST.get("discount_code", "")[:32]
     action = request.POST.get("action")
     if action in ("review", "apply_discount", "remove_discount"):
+        if holiday.current() is not None:
+            return _page(request, discount_code=code)
         if action == "remove_discount":
             code = ""
         if action == "apply_discount" and not code.strip():
@@ -136,13 +150,16 @@ def checkout(request: HttpRequest) -> HttpResponse:
     except UnpaidOrderExists:
         return _page(request, discount_code=code, status=409)
     except ValidationError as exc:
-        if getattr(exc, "code", None) == "email_required":
+        code_name = getattr(exc, "code", None)
+        if code_name == "email_required":
             return _page(request, discount_code=code, email_error=exc, status=400)
+        if code_name == "holiday":
+            return _page(request, discount_code=code, status=409)
         return _page(
             request,
             discount_code=code,
             error=" ".join(exc.messages),
-            status=409 if getattr(exc, "code", None) == "quote_changed" else 400,
+            status=409 if code_name == "quote_changed" else 400,
         )
     # The order's own card says how to pay; the greeting only confirms it was placed.
     messages.success(request, "سفارشتان ثبت شد.")

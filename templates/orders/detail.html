@@ -14,7 +14,7 @@
 {% elif state == 'awaiting_input' %}
 <h2 id="order-next-title">برای فعال‌سازی <bdi>{{ products }}</bdi> به اطلاعات شما نیاز داریم</h2>
 <div data-input-request>{% if not has_site_input %}<p data-support-instructions>اطلاعات فعال‌سازی{% if support_identifier %}، شماره‌ی سفارش و شناسه‌ی پشتیبانی{% else %} و شماره‌ی سفارش{% endif %} را در تلگرام برای پشتیبانی بفرستید.</p>{% endif %}
-{% if card.hours %}<p>پس از دریافت اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
+{% if card.hours and not is_holiday %}<p>پس از دریافت اطلاعات، تا {{ card.hours|fa_digits }} ساعت تحویل می‌دهیم.</p>{% endif %}</div>
 {% elif state == 'refund_owed' %}
 <h2 id="order-next-title">{{ card.refund|price_html }} را به شما برمی‌گردانیم</h2>
 {% include "orders/_paid_cancel_reason.html" %}
@@ -57,6 +57,7 @@
 <a class="btn btn--secondary" href="{{ again_url }}">دیدن محصولات</a>
 {% endif %}
 {% endwith %}
+{% if holiday_delivery %}<p data-holiday-delivery>زمان تعطیلی جزو مهلت تحویل حساب نمی‌شود.</p>{% endif %}
 {% if input_requests %}<div id="order-input" aria-label="اطلاعات فعال‌سازی">
 {% for row in input_requests %}<div class="order-input-item" data-input-item="{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>

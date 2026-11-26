@@ -132,8 +132,8 @@ def test_the_history_has_an_empty_state(client, owner):
 def test_holiday_copy_describes_clocks_starting_from_payment_or_details(client, owner, buyer, plan):
     review = client.post(page(), {"action": "start", "step": "review", "expected": ""})
     assert "مهلت سفارش‌های جدید هم تا پایان تعطیلی شروع نمی‌شود." in review.content.decode()
-    begin(owner)
     _, waiting = purchase(buyer, plan, owner, telegram=True)
+    begin(owner)
     assert waiting.status == "AWAITING_INPUT" and waiting.due_at is None
     body = client.get(page()).content.decode()
     assert "سفارش‌های جدید" in body and "مهلتشان تا پایان تعطیلی شروع نمی‌شود" in body
@@ -189,9 +189,9 @@ def test_a_paused_item_never_hides_a_refund_owed_or_details_to_chase(client, own
     begin(owner)
     body = client.get(queue("all")).content.decode()
     assert "را واریز کنید" in body and "تحویل بدهید" not in body
+    finish(owner)
     other = User.objects.create_user("other@example.test")
     _, (asked, still) = paid_order(other, owner, [OrderLine(plan, 2)])
-    finish(owner)
     act(services.request_input, asked, owner)
     begin(owner)
     body = client.get(queue("all")).content.decode()
@@ -202,21 +202,21 @@ def test_a_paused_item_never_hides_a_refund_owed_or_details_to_chase(client, own
 
 def test_running_deadlines_lead_the_queued_tab_and_paused_ones_follow(client, owner, buyer, plan):
     now = timezone.now()
-    Holiday.objects.create(started_by=owner)
     mixed = make_order(buyer, plan, quantity=2, due_at=now + timedelta(hours=9))
     first = mixed.items.order_by("pk").first()
     OrderItem.objects.filter(pk=first.pk).update(due_at=now + timedelta(hours=1), sla_paused_at=now)
     running = make_order(buyer, plan, due_at=now + timedelta(hours=5))
     paused_early = make_order(buyer, plan, due_at=now + timedelta(minutes=30), sla_paused_at=now)
     paused_late = make_order(buyer, plan, due_at=now + timedelta(hours=2), sla_paused_at=now)
+    Holiday.objects.create(started_by=owner)
     response = client.get(queue())
     assert list(response.context["cl"].result_list) == [running, mixed, paused_early, paused_late]
 
 
 def test_stopped_rows_within_one_order_follow_their_deadlines(client, owner, buyer, plan):
     now = timezone.now()
-    begin(owner)
     order = make_order(buyer, plan, quantity=2, due_at=now + timedelta(hours=8), sla_paused_at=now)
+    begin(owner)
     later_due, earlier_due = order.items.order_by("pk")
     OrderItem.objects.filter(pk=earlier_due.pk).update(
         due_at=now + timedelta(hours=3), sla_paused_at=now + timedelta(hours=1)

@@ -13,7 +13,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Category, Plan, Product
 from apps.core import support
 from apps.core.formatting import format_jalali, format_toman, to_persian_digits
-from apps.orders import selectors, services, telegram_panel
+from apps.orders import holiday, selectors, services, telegram_panel
 from apps.orders.models import DiscountCode, Order, OrderItem, OrderSupportIdentifier
 from apps.orders.tests.test_delivery import deliver
 from apps.orders.tests.test_input_clock import act
@@ -351,6 +351,27 @@ def test_a_paused_item_shows_no_frozen_date_apology_or_hours(
         assert false not in card, false
     assert "مهلت تحویل فعلاً متوقف است" in card
     assert support.details()["telegram_url"] not in card_of(page(client, buyer, order))
+
+
+@pytest.mark.parametrize("state", ["queued", "waiting", "mixed"])
+def test_holiday_order_page_explains_the_delivery_pause_and_keeps_the_input_deadline(
+    client, buyer, plan, operator, state
+):
+    order = order_for_state(buyer, plan, operator, state)
+    normal = card_of(page(client, buyer, order))
+    opened = holiday.start(actor=operator, expected_latest=None)
+    paused = card_of(page(client, buyer, order))
+    assert ("data-holiday-delivery" in paused) == (state != "waiting")
+    assert "پس از دریافت اطلاعات، تا" not in paused
+    if state != "queued":
+        assert "پس از دریافت اطلاعات، تا" in normal
+        item = order.items.get(status=OrderItem.Status.AWAITING_INPUT)
+        deadline = format_jalali(services.input_last_day(item.input_requested_at))
+        assert deadline in normal and deadline in paused
+    holiday.end(actor=operator, expected_open=opened.pk)
+    resumed = card_of(page(client, buyer, order))
+    assert "data-holiday-delivery" not in resumed
+    assert ("پس از دریافت اطلاعات، تا" in resumed) == (state != "queued")
 
 
 def test_a_paused_unit_and_running_units_of_one_plan_each_keep_their_own_line(

@@ -1177,6 +1177,9 @@ def place_order(
         .filter(Exists(pending))
         .order_by("pk")
     )
+    holiday.lock()
+    if holiday.current() is not None:
+        raise ValidationError(holiday.CHECKOUT_CLOSED, code="holiday")
     existing_ids = [order.pk for order in existing]
     plan_ids = set(
         OrderItem.objects.filter(order_id__in=existing_ids).values_list("plan_id", flat=True)
