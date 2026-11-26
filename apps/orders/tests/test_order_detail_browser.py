@@ -223,7 +223,9 @@ def test_the_tracking_link_copies_the_whole_address(
             "() => { navigator.clipboard.writeText = async () => { throw new Error('denied'); }; }"
         )
         copy.click()
-        expect(page.locator("#tracking-copy-status")).to_have_text("کپی نشد. لینک را خودتان کپی کنید.")
+        expect(page.locator("#tracking-copy-status")).to_have_text(
+            "کپی نشد. لینک را خودتان کپی کنید."
+        )
         # Read at once: the success label's own 2.2-second reset must not be what restores it.
         assert copy.text_content() == "کپی لینک"
         expect(page.locator("#tracking-url")).to_be_visible()
