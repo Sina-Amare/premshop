@@ -809,10 +809,12 @@ def _forget(item_id: int, today: date) -> int:
     if held.annotate(n=Length(Cast("customer_input", TextField()))).filter(n__gt=0).exists():
         held.update(customer_input="")
         removed.append("اطلاعات مشتری")
-    words = ClaimDetail.objects.filter(event__order_item=item)
-    if words.exists():
-        words.delete()
+    added = ClaimDetail.objects.filter(event__order_item=item)
+    if added.filter(text__isnull=False).exists():
         removed.append("توضیح مشتری")
+    if added.exclude(telegram="").exists():
+        removed.append("آیدی تلگرام مشتری")
+    added.delete()
     if not removed:
         return 0
     named = removed[0] if len(removed) == 1 else "، ".join(removed[:-1]) + " و " + removed[-1]

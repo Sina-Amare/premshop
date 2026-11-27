@@ -341,3 +341,26 @@ def test_a_four_letter_collectible_handle_is_accepted(buyer, plan, operator):
     other(item, buyer, telegram="@abcd")
 
     assert ClaimDetail.objects.get().telegram == "abcd"
+
+
+@pytest.mark.parametrize(
+    ("detail", "named", "unnamed"),
+    [(DETAIL, "توضیح مشتری", "آیدی تلگرام مشتری"), ("", "آیدی تلگرام مشتری", "توضیح مشتری")],
+)
+def test_retention_names_only_what_it_deleted(buyer, plan, operator, detail, named, unnamed):
+    _, item = delivered(buyer, plan, operator)
+    services.open_customer_claim(
+        order_id=item.order_id,
+        item_id=item.pk,
+        actor=buyer,
+        reason="details_failed",
+        detail=detail,
+        telegram="buyer_tg" if not detail else "",
+        expected_event_id=event_id(item),
+    )
+    reject(item, operator)
+
+    services.delete_expired_details(today=timezone.localdate() + timedelta(days=120))
+
+    note = item.events.filter(actor="system").latest("pk").note
+    assert named in note and unnamed not in note
