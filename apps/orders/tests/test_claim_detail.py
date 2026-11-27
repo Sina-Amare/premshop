@@ -283,3 +283,24 @@ def test_a_logged_reveal_alone_also_refuses_the_reverse(buyer, plan, operator):
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_words_on_a_named_reason_also_refuse_the_reverse(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator)
+    services.open_customer_claim(
+        order_id=item.order_id,
+        item_id=item.pk,
+        actor=buyer,
+        reason="details_failed",
+        detail=DETAIL,
+        telegram="buyer_tg",
+        expected_event_id=event_id(item),
+    )
+    previous = ("orders", "0029_order_placement_phone")
+    try:
+        with pytest.raises(RuntimeError, match="words"):
+            MigrationExecutor(connection).migrate([previous])
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+    assert ClaimDetail.objects.count() == 1

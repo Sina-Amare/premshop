@@ -10,6 +10,9 @@ def refuse_a_stranding_reverse(apps, schema_editor):
     # The earlier constraints know neither the reason nor the access target this adds.
     if apps.get_model("orders", "OrderItemEvent").objects.filter(claim_reason="other").exists():
         raise RuntimeError("Claims for another problem exist; reversing would strand them.")
+    # Any reason may carry a buyer's words or handle, and the reverse drops their table.
+    if apps.get_model("orders", "ClaimDetail").objects.exists():
+        raise RuntimeError("Buyers' words or handles are kept; reversing would delete them.")
     log = apps.get_model("orders", "CredentialAccessLog")
     if log.objects.filter(target="claim_detail").exists():
         raise RuntimeError("Reveals of a claim's words are logged; reversing would strand them.")
