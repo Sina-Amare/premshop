@@ -243,3 +243,15 @@ def test_the_whole_claim_form_is_starred_out_of_an_error_report(client, buyer, p
     )
 
     assert response.wsgi_request.sensitive_post_parameters == "__ALL__"
+
+
+def test_a_logged_reveal_alone_also_refuses_the_reverse(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator)
+    CredentialAccessLog.objects.create(order_item=item, user=operator, target="claim_detail")
+    previous = ("orders", "0029_order_placement_phone")
+    try:
+        with pytest.raises(RuntimeError, match="Reveals"):
+            MigrationExecutor(connection).migrate([previous])
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
