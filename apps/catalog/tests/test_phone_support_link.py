@@ -78,8 +78,13 @@ def test_support_is_one_tap_away_on_every_phone_page(browser, live_server, shop,
         expect(link.locator("small")).to_have_text(details["hours"])
         box = link.bounding_box()
         assert box["width"] >= 44 and box["height"] >= 44, box
-        # The 44px target fits the row, so the header keeps the height every offset reads.
-        assert 128 <= header_height(page) < 129, header_height(page)
+        # The 44px target fits the row, and the stylesheet's header offset matches the header
+        # before rails.js measures it, so nothing jumps when the script takes over.
+        declared = page.evaluate(
+            "() => { const root = document.documentElement; root.style.removeProperty('--hdr-h');"
+            " return parseFloat(getComputedStyle(root).getPropertyValue('--hdr-h')); }"
+        )
+        assert abs(header_height(page) - declared) < 1, (header_height(page), declared)
         shoot(page, url, tmp_path / f"{path.strip('/').split('/')[0] or 'home'}-390.png")
 
         # The header steps aside reading down and returns as one short row on the way up;
