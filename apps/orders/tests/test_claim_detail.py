@@ -8,6 +8,7 @@ absent from every message, and forgotten with the item's other details at the re
 from datetime import timedelta
 
 import pytest
+import time_machine
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
@@ -177,3 +178,24 @@ def test_the_detail_migration_reverses_only_when_nothing_would_be_stranded(buyer
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
     assert ClaimDetail.objects.count() == 1
+
+
+@pytest.mark.parametrize("warranty", ["none", "days_7"])
+def test_another_problem_in_the_first_48_hours_refunds_like_a_delivery_that_failed(
+    buyer, plan, operator, warranty
+):
+    _, item = delivered(buyer, plan, operator, warranty=warranty)
+    with time_machine.travel(timezone.now() + timedelta(hours=30), tick=False):
+        other(item, buyer)
+        item.refresh_from_db()
+
+        assert services.refund_amount(item, "warranty_refund") == item.paid_amount
+
+
+def test_another_problem_after_48_hours_is_an_ordinary_warranty_refund(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator)
+    with time_machine.travel(timezone.now() + timedelta(hours=72), tick=False):
+        other(item, buyer)
+        item.refresh_from_db()
+
+        assert 0 < services.refund_amount(item, "warranty_refund") < item.paid_amount

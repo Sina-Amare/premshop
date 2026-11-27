@@ -492,20 +492,26 @@ def _refund_claim(item: OrderItem) -> tuple[OrderItemEvent, bool]:
         note="",
     )
     while claim is not None:
-        if claim.claim_reason not in (
-            OrderItemEvent.ClaimReason.DETAILS,
-            OrderItemEvent.ClaimReason.SUBSCRIPTION,
-        ):
-            return claim, False
         delivery = (
             deliveries.filter(pk__lt=claim.pk)
             .order_by("-pk")
-            .values_list("pk", "from_status")
+            .values_list("pk", "from_status", "created_at")
             .first()
         )
+        # Another problem, reported within the 48 hours a delivery problem has, counts as one.
+        failed = claim.claim_reason in (
+            OrderItemEvent.ClaimReason.DETAILS,
+            OrderItemEvent.ClaimReason.SUBSCRIPTION,
+        ) or (
+            claim.claim_reason == OrderItemEvent.ClaimReason.OTHER
+            and delivery is not None
+            and claim.created_at <= delivery[2] + timedelta(hours=48)
+        )
+        if not failed:
+            return claim, False
         if delivery is None:
             break
-        delivery_id, before = delivery
+        delivery_id, before, _ = delivery
         if before == OrderItem.Status.QUEUED:
             return claim, True
         claim = claims.filter(pk__lt=delivery_id).order_by("-pk").first()
