@@ -2,6 +2,8 @@
 
 The visual and verbal system of the storefront, the operator panel and the emails. The decisions behind it are [ADR-0016](decisions/0016-brand-and-type.md) (type and colour), [ADR-0026](decisions/0026-storefront-composition.md) (storefront composition) and [ADR-0023](decisions/0023-email-templates.md) (email). The tokens live in `static/css/input.css`, the base, and `static/css/storefront.css`, the storefront layer that sets the current palette.
 
+**How to read this file.** It describes the current design, and only two parts of it are rules: the quality floor (Principles) and «Decided by the owner». The palette, the accent's use, the type scale, sizes, the header, the cards and every other component may change: change the token or the component, and update the tests that describe it in the same change.
+
 - [Principles](#principles)
 - [Colour](#colour)
 - [Typography](#typography)
@@ -21,7 +23,7 @@ The visual and verbal system of the storefront, the operator panel and the email
 - **Amber means attention:** the customer's move (an unpaid order, details awaited, a card number for a refund) or time running out (deadlines and countdowns), and nothing else (owner, 2026-11-11).
 - **Motion serves the reader.** Anything may move when the movement explains something or answers an action; nothing that moves shifts the layout or holds back content, and everything stands still under `prefers-reduced-motion`. What moves today is listed under Motion.
 - **No style is banned and none is required** (owner, 2026-11-27). Each choice is argued from this business and judged by the owner on the rendered page, at phone and desktop width. A generated template's habits are not a choice: they are what gets drawn when nobody argued, and they cost a shop like this its customers' trust.
-- **The quality floor holds for any look:** WCAG 2.2 AA; nothing cut, overlapping or scrolling sideways on a phone from 320px wide; the Core Web Vitals and font budgets; every asset from our own host, so pages render during an international cut; no inline style or script; and Persian typography's absolute rules (Typography). Values live in the tokens, so a change moves the token rather than one element, and a test pins a behaviour, never a pixel value.
+- **The quality floor holds for any look:** WCAG 2.2 AA; nothing cut, overlapping or scrolling sideways on a phone from 320px wide; the Core Web Vitals and font budgets; every asset from our own host, so pages render during an international cut; no inline style or script; and Persian typography's absolute rules (Typography). Values live in the tokens, so a change moves the token rather than one element. A test that describes the current look (a height, a ratio, a colour, a screenshot) is not a lock: a design change updates it in the same change and keeps the behaviour it guards. Only the tests of the quality floor and of the owner's decisions are locks.
 
 ## Colour
 
@@ -92,7 +94,6 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 - `letter-spacing: 0` everywhere: Persian is cursive and tracking breaks the joins. The one exception is the sign-in code's field, whose six digits stand apart and never join.
 - No italic: neither family ships one, and a synthesised slant shears the joins. `font-synthesis: none`.
 - No `text-transform`, which would uppercase the Latin half of «اشتراک Claude Pro», and no `justify`, since no browser implements kashida.
-- Never both faces in one line.
 
 ## Space, shape and layout
 
@@ -400,9 +401,8 @@ For any new page or component. These hold quality and consistency; none of them 
 - [ ] The quality floor (Principles): WCAG 2.2 AA, nothing cut or overlapping from 320px, the speed and font budgets, our own assets, no inline style or script
 - [ ] Space, corners, colour and motion from the tokens; a new value is a new or changed token, never a one-off
 - [ ] Every gap between groups larger than the gaps within them, so related things read as one
-- [ ] Cobalt only on what can be pressed; amber only on attention; every status in one of the five tones, with words and an icon
-- [ ] Body 17px, prose line height 1.85, text blocks at most 32rem wide
-- [ ] Never both faces in one line
+- [ ] Amber only on attention, and every status in one of the five tones (both the owner's); a status never shown by colour alone, always with words and an icon
+- [ ] Nothing below 12px, and prose leading that clears Persian descenders (Typography, "Why these numbers")
 - [ ] Persian digits out, Latin digits in inputs; tabular figures for counts, codes and clocks
 - [ ] Logical properties only; no `left` or `right`
 - [ ] `:focus-visible` on everything interactive; no `transition: all`
