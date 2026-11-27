@@ -169,8 +169,13 @@ def _send_code(phone: str) -> otp.Issued:
 
 def _code_sent(request: HttpRequest, phone: str) -> None:
     # shortcut: preflight can race; short windows bound concurrent daily overshoot.
-    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone)
     ratelimit.hit(ratelimit.OTP_REQUESTS_PER_IP_DAILY, ratelimit.client_ip(request))
+    record_sms_sent(phone)
+
+
+def record_sms_sent(phone: str) -> None:
+    """An accepted SMS, a sign-in code or a delivery code, spends the number's day and the shop's."""
+    ratelimit.hit(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone)
     # One send of each window is the 100th, so the operator hears once a window,
     # however many sends cross the mark at once.
     if ratelimit.count(ratelimit.SMS_DAILY_BUDGET, "shop") == ratelimit.SMS_ALERT_AT:

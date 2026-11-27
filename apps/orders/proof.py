@@ -1,5 +1,7 @@
-"""Independent, session-bound permission to read an owned order's delivery."""
+"""Session-bound permission to read an owned order's delivery, by a code sent to the order's
+email or by SMS to the number it was placed with (ADR-0031, amended 2026-11-27)."""
 
+import logging
 import time
 from datetime import datetime
 from typing import cast
@@ -11,14 +13,20 @@ from django.utils.crypto import salted_hmac
 from django.utils.html import format_html
 
 from apps.accounts import otp
+from apps.accounts import services as account_services
 from apps.accounts.models import User
-from apps.core import ratelimit, telegram
+from apps.core import ratelimit, sms, telegram
 from apps.core.email import send_templated_email
 from apps.core.formatting import to_persian_digits
 from apps.orders.models import Order, OrderEmailRecovery
 
+logger = logging.getLogger(__name__)
 TTL = 600
 UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
+SMS_UNSENT = "نتوانستیم کد را پیامک کنیم. چند دقیقه دیگر دوباره کد بگیرید."
+NO_EMAIL = "برای این سفارش ایمیلی ثبت نشده است."
+NO_PHONE = "برای این سفارش نمی‌توانیم کد پیامک کنیم."
+CHANGED = "ایمیل یا شماره‌ی این سفارش همین حالا تغییر کرد. کد جدیدی بگیرید."
 LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
 LAPSED = "مهلت دیدن اطلاعات تحویل تمام شد. برای دیدن دوباره، کد جدیدی بگیرید."
 DELIVERY_LIMITED = (
@@ -51,14 +59,38 @@ def email_for(order: Order) -> tuple[str, int]:
     return (recovery.email, recovery.pk) if recovery else (order.placement_email, 0)
 
 
+def phone_for(order: Order) -> str:
+    """The number the order was placed with, while it is still the account's (ADR-0031).
+
+    A number support changes later never receives a code for an earlier order, as the
+    email has its own guarded recovery."""
+    current = User.objects.filter(pk=order.user_id).values_list("phone", flat=True).first()
+    return current if current and current == order.placement_phone else ""
+
+
+def _instead(email: str) -> str:
+    """Where a buyer turns when no SMS can go: the order email, or support without one."""
+    return "کد را به ایمیل سفارش بگیرید." if email else "به پشتیبانی پیام بدهید."
+
+
+def _sms_budget(phone: str, *, email: str) -> None:
+    """Delivery codes spend the sign-in SMS's daily budgets: each one is paid for."""
+    then = _instead(email)
+    if not ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop"):
+        raise ValidationError(f"فعلاً نمی‌توانیم کد را پیامک کنیم. {then}")
+    if not ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone):
+        daily = to_persian_digits(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY.times)
+        raise ValidationError(f"برای این شماره در ۲۴ ساعت فقط {daily} کد پیامک می‌کنیم. {then}")
+
+
 def _subject(order: Order, session_key: str) -> str:
     email, generation = email_for(order)
-    if not session_key or not email:
-        raise ValidationError(
-            "برای دیدن اطلاعات تحویل، ایمیل Gmail خود را در تلگرام برای پشتیبانی بفرستید."
-        )
+    phone = phone_for(order)
+    if not session_key or not (email or phone):
+        raise ValidationError("برای دیدن اطلاعات تحویل، به پشتیبانی پیام بدهید.")
+    # A new order email or a new account number ends every proof made before it.
     binding = salted_hmac(
-        "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}"
+        "order-delivery", f"{order.user_id}:{session_key}:{email}:{generation}:{phone}"
     ).hexdigest()
     return f"order-delivery:{order.pk}:{binding}"
 
@@ -78,27 +110,53 @@ def _budget(
         raise ValidationError(message)
 
 
-def request_code(*, order_id: int, actor: User, session_key: str, ip: str) -> None:
+def request_code(
+    *, order_id: int, actor: User, session_key: str, ip: str, channel: str = "email"
+) -> None:
+    """Send a code to the order's email or, with channel "sms", to the account's number."""
+    if channel not in ("email", "sms"):
+        raise ValidationError(UNSENT)
     with transaction.atomic():
         order, _ = locked_order(order_id, actor)
         subject = _subject(order, session_key)
         email, _ = email_for(order)
+        to = email if channel == "email" else phone_for(order)
+        if not to:
+            raise ValidationError(
+                NO_EMAIL if channel == "email" else f"{NO_PHONE} {_instead(email)}"
+            )
+        if channel == "sms":
+            _sms_budget(to, email=email)
         _budget(order, actor, "delivery-code", ip, DELIVERY_LIMITED)
     code = otp._new_code()
-    try:
-        sent = send_templated_email(
-            "delivery_code",
-            to=[email],
-            context={"code": code, "order_number": order.order_number},
-        )
-    except Exception:  # noqa: BLE001 — transport errors can include a recipient or message
-        raise ValidationError(UNSENT) from None
-    if not sent:
-        raise ValidationError(UNSENT)
+    if channel == "sms":
+        try:
+            sms.send_code(to, code, kind="delivery_code")
+        except sms.SmsNotSent as error:
+            # SMS.ir's statuses only: its replies can repeat the number and the code.
+            logger.error(
+                "delivery code SMS not sent: HTTP %s, SMS.ir status %s",
+                error.status or "none",
+                "none" if error.provider_status is None else error.provider_status,
+            )
+            raise ValidationError(SMS_UNSENT) from None
+        account_services.record_sms_sent(to)
+    else:
+        try:
+            sent = send_templated_email(
+                "delivery_code",
+                to=[to],
+                context={"code": code, "order_number": order.order_number},
+            )
+        except Exception:  # noqa: BLE001 — transport errors can include a recipient or message
+            raise ValidationError(UNSENT) from None
+        if not sent:
+            raise ValidationError(UNSENT)
     with transaction.atomic():
         order, _ = locked_order(order_id, actor)
         if subject != _subject(order, session_key):
-            raise ValidationError(UNSENT)
+            # The code went out but is not stored, so it would not work: ask for a new one.
+            raise ValidationError(CHANGED)
         otp._store(subject, code)
 
 

@@ -40,6 +40,7 @@ def smsir(settings, monkeypatch):
     settings.SMS_BACKEND = "smsir"
     settings.SMS_IR_API_KEY = "test-key"
     settings.SMS_IR_TEMPLATE_ID = ""
+    settings.SMS_IR_DELIVERY_TEMPLATE_ID = ""
     settings.SMS_IR_LINE_NUMBER = "500032685089846"
     FakeConnection.calls, FakeConnection.reply, FakeConnection.error = [], ACCEPTED, None
     monkeypatch.setattr(sms, "HTTPSConnection", FakeConnection)
@@ -117,3 +118,36 @@ def test_the_fake_backend_keeps_what_it_would_have_sent(settings):
     sms.send_code(PHONE, CODE)
 
     assert sms.outbox[-1][0] == PHONE and CODE in sms.outbox[-1][1]
+
+
+def test_a_delivery_code_says_what_it_opens(smsir):
+    sms.send_code(PHONE, CODE, kind="delivery_code")
+
+    _, path, body, _ = smsir.calls[0]
+    assert path == "/v1/send/bulk"
+    assert CODE in body["messageText"] and body["messageText"].startswith("کد نمایش اطلاعات تحویل")
+    # Only a signed-in session can ask for it, so an unasked code means someone else is in.
+    assert "اگر خودتان این کد را نخواسته‌اید" in body["messageText"]
+
+
+def test_a_delivery_code_never_goes_out_on_the_sign_in_template(smsir, settings):
+    settings.SMS_IR_TEMPLATE_ID = "123456"
+
+    sms.send_code(PHONE, CODE, kind="delivery_code")
+    settings.SMS_IR_DELIVERY_TEMPLATE_ID = "654321"
+    sms.send_code(PHONE, CODE, kind="delivery_code")
+
+    assert smsir.calls[0][1] == "/v1/send/bulk"
+    assert smsir.calls[1][1:3] == (
+        "/v1/send/verify",
+        {"mobile": PHONE, "templateId": 654321, "parameters": [{"name": "CODE", "value": CODE}]},
+    )
+
+
+def test_without_its_own_template_or_a_line_a_delivery_code_is_not_sent(smsir, settings):
+    settings.SMS_IR_TEMPLATE_ID = "123456"
+    settings.SMS_IR_LINE_NUMBER = ""
+
+    with pytest.raises(sms.SmsNotSent):
+        sms.send_code(PHONE, CODE, kind="delivery_code")
+    assert not smsir.calls

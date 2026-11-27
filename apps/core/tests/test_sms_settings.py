@@ -26,7 +26,9 @@ def test_production_boots_with_a_key_and_a_line(reload_base):
     assert load_prod().SMS_IR_API_KEY == PRODUCTION["SMS_IR_API_KEY"]
 
 
-@pytest.mark.parametrize("name", ["SMS_IR_TEMPLATE_ID", "SMS_IR_LINE_NUMBER"])
+@pytest.mark.parametrize(
+    "name", ["SMS_IR_TEMPLATE_ID", "SMS_IR_DELIVERY_TEMPLATE_ID", "SMS_IR_LINE_NUMBER"]
+)
 def test_an_sms_id_that_is_not_a_number_is_refused(reload_base, name):
     with pytest.raises(ImproperlyConfigured, match=name):
         reload_base(**{**PRODUCTION, name: "5000 3268"})
@@ -35,6 +37,24 @@ def test_an_sms_id_that_is_not_a_number_is_refused(reload_base, name):
 def test_an_unknown_sms_backend_is_refused(reload_base):
     with pytest.raises(ImproperlyConfigured, match="SMS_BACKEND"):
         reload_base(SMS_BACKEND="smsr")
+
+
+def test_a_sign_in_template_alone_leaves_delivery_codes_no_way_out(reload_base):
+    with pytest.raises(ImproperlyConfigured, match="SMS_IR_DELIVERY_TEMPLATE_ID"):
+        reload_base(**{**PRODUCTION, "SMS_IR_TEMPLATE_ID": "123456", "SMS_IR_LINE_NUMBER": ""})
+
+
+def test_a_template_for_each_kind_of_code_boots_without_a_line(reload_base):
+    settings = reload_base(
+        **{
+            **PRODUCTION,
+            "SMS_IR_TEMPLATE_ID": "123456",
+            "SMS_IR_DELIVERY_TEMPLATE_ID": "654321",
+            "SMS_IR_LINE_NUMBER": "",
+        }
+    )
+
+    assert settings.SMS_IR_DELIVERY_TEMPLATE_ID == "654321"
 
 
 def test_a_key_with_neither_a_template_nor_a_line_is_refused(reload_base):

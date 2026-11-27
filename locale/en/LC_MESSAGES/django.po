@@ -1362,6 +1362,9 @@ msgstr "Purchase confirmations"
 msgid "ایمیل زمان خرید"
 msgstr "Email at purchase"
 
+msgid "شماره‌ی موبایل زمان خرید"
+msgstr "Mobile number at purchase"
+
 msgid "روش تحویل"
 msgstr "Delivery method"
 

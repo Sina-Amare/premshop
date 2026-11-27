@@ -137,6 +137,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 | `discount_snapshot` | The code's rule and arithmetic as applied |
 | `policy_snapshot` | The published terms, refunds and contact pages at placement, each with a content hash |
 | `placement_email` | Where the order's mail goes: the address typed at checkout, else the account's when the order was placed. Empty when there was neither, and on orders placed before confirmations existed; order updates then fall back to the account's current address |
+| `placement_phone` | The account's number when the order was placed. A delivery code goes to it by SMS only while it is still the account's number; orders from before the field took the account's number when it was added |
 | `unpaid_expires_at` | 24 hours after placement. Never extended |
 | `expiry_last_attempt_at`, `cancelled_at` | Sweep bookkeeping and the time of a whole-order cancellation |
 | `channel` | `web`, `bot` or `legacy` |

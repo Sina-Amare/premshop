@@ -1,4 +1,4 @@
-"""Sign-in codes by SMS, through SMS.ir.
+"""Sign-in and delivery codes by SMS, through SMS.ir.
 
 One attempt per request, as a code email was sent: the customer's resend is the
 retry, since a code that arrives minutes late is no use. A failure keeps only the
@@ -8,7 +8,9 @@ proxy the machine may hold for Telegram.
 
 SMS_IR_TEMPLATE_ID set: SMS.ir's `verify` call with the shop's approved template,
 whose one variable is `#CODE#`. Unset: a plain message from SMS_IR_LINE_NUMBER,
-which needs no template and serves until the template is approved.
+which needs no template and serves until the template is approved. A delivery code
+has its own template, SMS_IR_DELIVERY_TEMPLATE_ID, and never borrows the sign-in one,
+whose text would tell the customer someone is signing in.
 """
 
 from __future__ import annotations
@@ -24,6 +26,10 @@ HOST = "api.sms.ir"
 TIMEOUT = 10
 # The fake backend's record, for tests: (mobile, text) per send.
 outbox: list[tuple[str, str]] = []
+TEMPLATE_SETTINGS = {
+    "login_code": "SMS_IR_TEMPLATE_ID",
+    "delivery_code": "SMS_IR_DELIVERY_TEMPLATE_ID",
+}
 
 
 class SmsNotSent(Exception):
@@ -33,23 +39,26 @@ class SmsNotSent(Exception):
         self.provider_status = provider_status
 
 
-def send_code(mobile: str, code: str) -> None:
-    """Send a sign-in code to an `09…` number, or raise SmsNotSent."""
-    text = render_to_string("sms/login_code.txt", {"code": code}).strip()
+def send_code(mobile: str, code: str, *, kind: str = "login_code") -> None:
+    """Send a sign-in or delivery code to an `09…` number, or raise SmsNotSent."""
+    text = render_to_string(f"sms/{kind}.txt", {"code": code}).strip()
     if settings.SMS_BACKEND == "fake":
         outbox.append((mobile, text))
         return
     if not settings.SMS_IR_API_KEY:
         raise SmsNotSent(None)
-    if settings.SMS_IR_TEMPLATE_ID:
+    template = getattr(settings, TEMPLATE_SETTINGS[kind])
+    if template:
         _post(
             "/v1/send/verify",
             {
                 "mobile": mobile,
-                "templateId": int(settings.SMS_IR_TEMPLATE_ID),
+                "templateId": int(template),
                 "parameters": [{"name": "CODE", "value": code}],
             },
         )
+    elif not settings.SMS_IR_LINE_NUMBER:
+        raise SmsNotSent(None)
     else:
         _post(
             "/v1/send/bulk",

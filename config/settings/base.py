@@ -278,23 +278,38 @@ if TELEGRAM_BOT_TOKEN and not TELEGRAM_BOT_USERNAME:
     # Without it every link the account page opens points at nobody.
     raise ImproperlyConfigured("TELEGRAM_BOT_TOKEN needs TELEGRAM_BOT_USERNAME. See .env.example.")
 
-# Sign-in codes by SMS (ADR-0031). "fake" keeps each message in memory for tests and
+# Sign-in and delivery codes by SMS (ADR-0031). "fake" keeps each message in memory for tests and
 # sends nothing; a value that is neither would otherwise send nothing without a word.
 SMS_BACKEND = env("SMS_BACKEND", "smsir")
 if SMS_BACKEND not in ("smsir", "fake"):
     raise ImproperlyConfigured("SMS_BACKEND must be smsir or fake. See .env.example.")
 SMS_IR_API_KEY = env("SMS_IR_API_KEY")
 SMS_IR_TEMPLATE_ID = env("SMS_IR_TEMPLATE_ID")
+SMS_IR_DELIVERY_TEMPLATE_ID = env("SMS_IR_DELIVERY_TEMPLATE_ID")
 SMS_IR_LINE_NUMBER = env("SMS_IR_LINE_NUMBER")
 if SMS_IR_API_KEY and not (SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER):
     # With neither, every code would be refused by SMS.ir after the customer asked.
     raise ImproperlyConfigured(
         "SMS_IR_API_KEY needs SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
     )
-if not all(value.isdecimal() for value in (SMS_IR_TEMPLATE_ID, SMS_IR_LINE_NUMBER) if value):
-    # SMS.ir takes both as numbers; a typo would be a crash on every code request.
+if (
+    SMS_IR_API_KEY
+    and SMS_IR_TEMPLATE_ID
+    and not (SMS_IR_DELIVERY_TEMPLATE_ID or SMS_IR_LINE_NUMBER)
+):
+    # Sign-in would work while every delivery code by SMS was refused, unlogged by SMS.ir.
     raise ImproperlyConfigured(
-        "SMS_IR_TEMPLATE_ID and SMS_IR_LINE_NUMBER are numbers. See .env.example."
+        "Delivery codes need SMS_IR_DELIVERY_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
+    )
+if not all(
+    value.isdecimal()
+    for value in (SMS_IR_TEMPLATE_ID, SMS_IR_DELIVERY_TEMPLATE_ID, SMS_IR_LINE_NUMBER)
+    if value
+):
+    # SMS.ir takes these as numbers; a typo would be a crash on every code request.
+    raise ImproperlyConfigured(
+        "SMS_IR_TEMPLATE_ID, SMS_IR_DELIVERY_TEMPLATE_ID and SMS_IR_LINE_NUMBER are numbers."
+        " See .env.example."
     )
 
 # Django derives two things from socket.getfqdn(): the Message-ID domain and the SMTP

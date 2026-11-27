@@ -128,6 +128,8 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
     browser, https_server, buyer, plan, operator, width, tmp_path, mailoutbox
 ):
     order, item = delivered(buyer, plan, operator)
+    type(buyer).objects.filter(pk=buyer.pk).update(phone="09123456789")
+    models.Order.objects.filter(pk=order.pk).update(placement_phone="09123456789")
     context, _ = customer_context(browser, https_server, buyer, width)
     page = context.new_page()
     detail = https_server + reverse("order-detail", args=[order.order_number])
@@ -135,31 +137,40 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
     try:
         page.goto(detail)
         capture(page, detail, "#order-delivery", "masked", width, tmp_path)
-        expect(page.locator("[data-delivery-recovery]")).to_contain_text("پیش از ثبت این سفارش")
+        expect(page.locator("[data-delivery-recovery]")).to_have_count(0)
+        expect(page.get_by_role("button", name="فرستادن کد با پیامک")).to_contain_text(
+            "۰۹۱۲•••۶۷۸۹"
+        )
         scan(page)
         assert "delivered-secret" not in page.content()
-        page.get_by_role("button", name="فرستادن کد به ایمیل", exact=True).focus()
+        page.get_by_role("button", name="فرستادن کد به ایمیل").focus()
         page.keyboard.press("Enter")
         # The code box is on the page before the send, so the sent notice is the evidence.
-        expect(page.get_by_text("کد را به ایمیل این سفارش فرستادیم.")).to_be_visible()
-        code = code_from_mail()
-        page.get_by_label("کد نمایش اطلاعات تحویل").fill("wrong")
-        page.get_by_role("button", name="تأیید کد", exact=True).click()
-        expect(page.locator("[role=alert]")).to_contain_text("کد اشتباه است")
-        capture(
-            page,
-            https_server + reverse("order-delivery-confirm", args=[order.order_number]),
-            "#order-delivery",
-            "code-error",
-            width,
-            tmp_path,
+        expect(page.locator("#order-delivery [role=status]")).to_have_text(
+            "کد را به ایمیل این سفارش فرستادیم."
         )
-        page.get_by_label("کد نمایش اطلاعات تحویل").fill(code)
-        page.get_by_role("button", name="تأیید کد", exact=True).focus()
-        page.keyboard.press("Enter")
+        card = detail + "#order-delivery"
+        assert page.url == card
+        code = code_from_mail()
+        cells = page.locator("#order-delivery .otp__cell")
+        cells.first.focus()
+        page.keyboard.type("000000" if code != "000000" else "111111")
+        expect(page.locator("#delivery-code-error")).to_contain_text("کد اشتباه است")
+        capture(page, card, "#order-delivery", "code-error", width, tmp_path)
+        expect(cells.first).to_be_enabled()
+        expect(cells.first).to_have_value("")
+        # The page reloads right after the row turns green, so the green is recorded as it happens.
+        page.evaluate(
+            """() => new MutationObserver(() => {
+                 if (document.querySelectorAll('#code-cells .is-ok').length === 6) sessionStorage.green = '1';
+               }).observe(document.getElementById('code-cells'), {subtree: true, attributes: true})"""
+        )
+        cells.first.focus()
+        page.keyboard.type(code)
         expect(page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True)).to_be_visible()
+        assert page.evaluate("sessionStorage.green") == "1"
         expect(page.locator("#order-delivery")).to_contain_text("کد تأیید شد.")
-        capture(page, detail, "[data-delivery-masked]", "confirmed", width, tmp_path)
+        capture(page, card, "[data-delivery-masked]", "confirmed", width, tmp_path)
         with page.expect_response(lambda response: response.url == reveal) as seen:
             page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True).click()
         response = seen.value

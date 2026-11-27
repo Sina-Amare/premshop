@@ -19,7 +19,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.core import email_log
+from apps.core import email_log, ratelimit, sms
 from apps.core.fields import EncryptedTextField
 from apps.core.formatting import to_persian_digits
 from apps.orders import models, services
@@ -64,6 +64,11 @@ def reveal(order, item, buyer, session=SESSION):
         ip="127.0.0.1",
         customer_session=session,
     )
+
+
+def give_phone(order, buyer, phone="09123456789"):
+    User.objects.filter(pk=buyer.pk).update(phone=phone)
+    models.Order.objects.filter(pk=order.pk).update(placement_phone=phone or "")
 
 
 def delivered(buyer, plan, operator):
@@ -582,7 +587,8 @@ def test_a_lapsed_proof_sends_the_buyer_back_to_ask_for_a_new_code(buyer, plan, 
         verified(order, buyer, client.session.session_key)
     with time_machine.travel(now + timedelta(seconds=601), tick=False):
         response = client.post(urls(order, item)[2], follow=True)
-    assert response.redirect_chain == [(reverse("order-detail", args=[order.order_number]), 302)]
+    detail = reverse("order-detail", args=[order.order_number])
+    assert response.redirect_chain == [(detail + "#order-delivery", 302)]
     body = response.content.decode()
     assert "مهلت دیدن اطلاعات تحویل تمام شد." in body and urls(order, item)[0] in body
     assert VALUE not in body and not models.CredentialAccessLog.objects.exists()
@@ -641,17 +647,222 @@ def test_gm_still_sends_a_reveal_code_to_a_stored_non_gmail_address(
     assert confirm(order, buyer, code)
 
 
-@pytest.mark.parametrize("stored", ["buyer@gmail.com", ""])
-def test_gm_the_recovery_guidance_asks_for_a_gmail_address(buyer, plan, operator, stored):
+@pytest.mark.parametrize(
+    ("email", "phone", "offered"),
+    [
+        ("buyer@gmail.com", "09123456789", {"email", "sms"}),
+        ("", "09123456789", {"sms"}),
+        ("buyer@gmail.com", None, {"email"}),
+        ("", None, set()),
+    ],
+)
+def test_the_code_goes_to_the_order_email_or_the_account_phone_only(
+    buyer, plan, operator, email, phone, offered
+):
     order, _ = delivered(buyer, plan, operator)
-    models.Order.objects.filter(pk=order.pk).update(placement_email=stored)
+    models.Order.objects.filter(pk=order.pk).update(placement_email=email)
+    give_phone(order, buyer, phone)
     client = Client()
     client.force_login(buyer)
 
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
+    assert set(re.findall(r'name="channel" value="(\w+)"', body)) == offered
     guidance = re.search(r"<p data-delivery-recovery>(.*?)</p>", body, re.S)
-    assert guidance and "ایمیل Gmail" in guidance[1]
-    if not stored:
-        with pytest.raises(ValidationError, match="ایمیل Gmail"):
-            request_code(order, buyer)
+    assert bool(guidance) == (not offered) and "Gmail" not in body.partition("order-delivery")[2]
+    for channel in {"email", "sms"} - offered:
+        with pytest.raises(ValidationError):
+            proof().request_code(
+                order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel=channel
+            )
+
+
+def test_a_code_by_sms_opens_the_delivery_and_a_new_number_closes_it(
+    buyer, plan, operator, settings
+):
+    settings.SMS_BACKEND = "fake"
+    sms.outbox.clear()
+    order, item = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    buyer.refresh_from_db()
+
+    proof().request_code(
+        order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel="sms"
+    )
+
+    phone, text = sms.outbox[-1]
+    assert phone == "09123456789" and VALUE not in text
+    assert confirm(order, buyer, re.search(r"(?<!\d)\d{6}(?!\d)", text).group())
+    assert reveal(order, item, buyer).lines == (LINE,)
+    User.objects.filter(pk=buyer.pk).update(phone="09120000000")
+    with pytest.raises(PermissionDenied):
+        reveal(order, item, buyer)
+
+
+def test_a_refused_sms_keeps_no_code_and_logs_why_without_the_number(
+    buyer, plan, operator, settings, caplog
+):
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    with patch("apps.core.sms.send_code", side_effect=sms.SmsNotSent(503, 7)):
+        with pytest.raises(ValidationError, match="پیامک"):
+            proof().request_code(
+                order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel="sms"
+            )
+    assert not confirm(order, buyer, "000000")
+    assert "delivery code SMS not sent: HTTP 503, SMS.ir status 7" in caplog.text
+    assert "09123456789" not in caplog.text
+
+
+@pytest.mark.parametrize("channel", ["email", "sms"])
+def test_a_code_sent_as_the_order_changed_asks_for_a_new_one(
+    buyer, plan, operator, settings, channel
+):
+    settings.SMS_BACKEND = "fake"
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    subjects = iter(["order-delivery:before", "order-delivery:after"])
+    with patch.object(proof(), "_subject", side_effect=lambda *args: next(subjects)):
+        with pytest.raises(ValidationError, match="کد جدیدی بگیرید") as refused:
+            proof().request_code(
+                order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel=channel
+            )
+    assert "فرستاده نشد" not in refused.value.messages[0]
+
+
+def test_the_digit_boxes_get_a_json_answer_and_the_sms_notice_lands_in_the_card(
+    buyer, plan, operator, settings
+):
+    settings.SMS_BACKEND = "fake"
+    sms.outbox.clear()
+    order, item = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    code_url, confirm_url, _ = urls(order, item)
+    client = Client()
+    client.force_login(buyer)
+
+    sent = client.post(code_url, {"channel": "sms"})
+    page = client.get(sent.url).content.decode()
+    assert "کد را برایتان پیامک کردیم." in page.partition('id="order-delivery"')[2]
+    assert "۰۹۱۲•••۶۷۸۹" in page and "09123456789" not in page
+
+    wrong = client.post(confirm_url, {"code": "x"}, HTTP_ACCEPT="application/json")
+    assert wrong.status_code == 400 and wrong.json()["ok"] is False
+    assert "کد اشتباه است" in wrong.json()["error"]
+    code = re.search(r"(?<!\d)\d{6}(?!\d)", sms.outbox[-1][1]).group()
+    right = client.post(confirm_url, {"code": code}, HTTP_ACCEPT="application/json")
+    detail = reverse("order-detail", args=[order.order_number])
+    assert right.json() == {"ok": True, "next": detail + "#order-delivery"}
+
+
+def test_unlock_comes_first_and_its_notices_stay_in_the_delivery_card(
+    buyer, plan, operator, mailoutbox
+):
+    order, item = delivered(buyer, plan, operator)
+    code_url, confirm_url, reveal_url = urls(order, item)
+    client = Client()
+    client.force_login(buyer)
+
+    def card(body):
+        return body.partition('id="order-delivery"')[2].partition("</section>")[0]
+
+    page = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+    assert card(page).index(code_url) < card(page).index("data-delivery-item")
+
+    sent = client.post(code_url)
+    assert sent.url.endswith("#order-delivery")
+    page = client.get(sent.url).content.decode()
+    assert page.count("کد را به ایمیل این سفارش فرستادیم.") == 1
+    assert "کد را به ایمیل این سفارش فرستادیم." in card(page)
+
+    wrong = client.post(confirm_url, {"code": "wrong"})
+    assert wrong.status_code == 400
+    page = wrong.content.decode()
+    assert page.count("کد اشتباه است") == 1 and "کد اشتباه است" in card(page)
+
+    lapsed = client.post(reveal_url)
+    assert lapsed.url.endswith("#order-delivery")
+    page = client.get(lapsed.url).content.decode()
+    assert page.count(proof().LAPSED) == 1 and proof().LAPSED in card(page)
+
+
+def send_by_sms(order, buyer):
+    proof().request_code(
+        order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel="sms"
+    )
+
+
+def test_an_order_keeps_the_number_it_was_placed_with(buyer, plan):
+    User.objects.filter(pk=buyer.pk).update(phone="09123456789")
+    buyer.refresh_from_db()
+
+    order = services.place_order(user=buyer, lines=[services.OrderLine(plan, 1)])
+
+    assert order.placement_phone == "09123456789"
+
+
+def test_a_number_changed_after_the_order_gets_no_code_for_it(buyer, plan, operator, settings):
+    settings.SMS_BACKEND = "fake"
+    sms.outbox.clear()
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    User.objects.filter(pk=buyer.pk).update(phone="09120000000")
+    client = Client()
+    client.force_login(buyer)
+
+    body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
+
+    assert 'value="sms"' not in body and 'value="email"' in body
+    with pytest.raises(ValidationError, match="کد را به ایمیل سفارش بگیرید"):
+        send_by_sms(order, buyer)
+    assert not sms.outbox
+
+
+def test_a_delivery_sms_spends_the_shops_and_the_numbers_day(buyer, plan, operator, settings):
+    settings.SMS_BACKEND = "fake"
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    shop = ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop")
+    number = ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, "09123456789")
+
+    send_by_sms(order, buyer)
+
+    assert ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop") == shop - 1
+    assert ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, "09123456789") == number - 1
+
+
+@pytest.mark.parametrize("spent", ["shop", "number"])
+def test_a_spent_sms_day_sends_nothing_and_points_to_the_email(
+    buyer, plan, operator, settings, spent, mailoutbox
+):
+    settings.SMS_BACKEND = "fake"
+    sms.outbox.clear()
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    limit, subject = (
+        (ratelimit.SMS_DAILY_BUDGET, "shop")
+        if spent == "shop"
+        else (ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, "09123456789")
+    )
+    for _ in range(limit.times):
+        ratelimit.hit(limit, subject)
+
+    with pytest.raises(ValidationError, match="کد را به ایمیل سفارش بگیرید"):
+        send_by_sms(order, buyer)
+
+    assert not sms.outbox
+    assert confirm(order, buyer, request_code(order, buyer))
+
+
+def test_the_phone_migration_backfills_from_the_account_and_reverses(buyer, plan, operator):
+    order, _ = delivered(buyer, plan, operator)
+    User.objects.filter(pk=buyer.pk).update(phone="09123456789")
+    executor = MigrationExecutor(connection)
+    newest = executor.loader.graph.leaf_nodes()
+    try:
+        executor.migrate([("orders", "0028_holiday")])
+        executor = MigrationExecutor(connection)
+        executor.migrate(newest)
+        assert models.Order.objects.get(pk=order.pk).placement_phone == "09123456789"
+    finally:
+        MigrationExecutor(connection).migrate(newest)
