@@ -7,7 +7,7 @@
 {% elif delivery_ready %}<div class="delivery-unlock">
 {% if delivery_email or delivery_phone %}<p class="delivery-unlock__lead">{% include "storefront/icon.html" with name="lock" %}برای اینکه فقط خودتان اطلاعات تحویل را ببینید، کدی برایتان می‌فرستیم.</p>
 <ol class="delivery-steps">
-<li><span class="delivery-steps__n" aria-hidden="true">۱</span><form method="post" action="{% url 'order-delivery-code' order.order_number %}#order-delivery">{% csrf_token %}
+<li><span class="delivery-steps__n" aria-hidden="true">۱</span><form data-in-place method="post" action="{% url 'order-delivery-code' order.order_number %}#order-delivery">{% csrf_token %}
 {% if delivery_email and delivery_phone %}<p>کد را کجا بفرستیم؟</p>{% endif %}
 <div class="delivery-send">{% if delivery_email %}<button type="submit" class="btn btn--secondary" name="channel" value="email"><span>فرستادن کد به ایمیل</span> <bdi dir="ltr">{{ delivery_email }}</bdi></button>{% endif %}{% if delivery_phone %}<button type="submit" class="btn btn--secondary" name="channel" value="sms"><span>فرستادن کد با پیامک</span> <bdi dir="ltr">{{ delivery_phone }}</bdi></button>{% endif %}</div>
 {% if not delivery_email %}<p class="delivery-send__note">برای این سفارش ایمیلی ثبت نشده است.</p>{% endif %}
@@ -23,7 +23,7 @@
 {% endif %}</div>
 {% endif %}
 {% for row in delivery_rows %}
-<div class="order-input-item" data-delivery-item="{{ row.item.pk }}">
+<div class="order-input-item" data-delivery-item="{{ row.item.pk }}" id="delivery-item-{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
 {% if not row.available %}<p data-delivery-unavailable>این خرید لغو شده است و اطلاعات تحویلش دیگر نمایش داده نمی‌شود.</p>
 {% elif not row.delivery %}<p data-delivery-deleted>مهلت نگهداری اطلاعات تحویل این محصول تمام شده و آن را حذف کرده‌ایم.</p>

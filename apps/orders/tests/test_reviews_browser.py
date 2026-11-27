@@ -51,7 +51,8 @@ def test_review_states_and_keyboard(browser, live_server, buyer, plan, operator,
         expect(submit).to_be_focused()
         page.keyboard.press("Enter")
         expect(section.get_by_role("alert")).to_contain_text("ایمیل یا شماره‌ی موبایل")
-        expect(page).to_have_url(order_url + f"items/{item.pk}/review/#order-reviews")
+        # The refusal is swapped into the order page, so the address stays on it.
+        expect(page).to_have_url(order_url)
         expect(text).to_have_value("buyer@example.test")
         expect(four).to_be_checked()
         capture(page, "order-error", width, tmp_path)
@@ -60,7 +61,7 @@ def test_review_states_and_keyboard(browser, live_server, buyer, plan, operator,
         expect(four).to_be_checked()
         text.fill("بسیار خوب‌ بود. " + "MixedContent" * 75)
         submit.click()
-        expect(page).to_have_url(order_url + "#order-reviews")
+        expect(page).to_have_url(order_url)
         expect(section.get_by_text("در انتظار بررسی")).to_be_visible()
         expect(section.get_by_role("img", name="۴ از ۵")).to_be_visible()
         expect(

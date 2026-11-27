@@ -77,10 +77,13 @@ def test_customer_input_states_keep_keyboard_access_and_private_responses(
         if state == "empty":
             field.fill(NEW)
             page.keyboard.press("Tab")
-            with page.expect_navigation() as navigation:
+            # Answered in place: the page the redirect leads to is fetched, not navigated to.
+            with page.expect_response(
+                lambda r: r.url.split("#")[0] == url and r.request.method == "GET"
+            ) as answer:
                 page.keyboard.press("Enter")
-            response = navigation.value
-            assert response and "no-store" in response.headers["cache-control"]
+            response = answer.value
+            assert "no-store" in response.headers["cache-control"]
             expect(page).to_have_url(url)
             expect(page.locator('[name="customer_input"]')).to_have_count(0)
             item = OrderItem.objects.get(pk=item.pk)

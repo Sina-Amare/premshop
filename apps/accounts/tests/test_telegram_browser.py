@@ -29,7 +29,8 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
     try:
         page.goto(account)
         page.get_by_role("button", name="اتصال تلگرام").click()
-        expect(page).to_have_url(account + "#telegram")
+        # Answered in place: the address stays as it was, with no #telegram from a redirect.
+        expect(page).to_have_url(account)
         opener = page.get_by_role("link", name="باز کردن تلگرام")
         expect(opener).to_have_attribute(
             "href", re.compile(r"^https://t\.me/premshop_test_bot\?start=[\w-]{22}$")
@@ -41,6 +42,57 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
         assert command.evaluate("el => el.getClientRects().length") == 1
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"telegram-{width}.png"), full_page=True)
+        # The swap replaced the sign-out form too; leaving still asks first (the owner's decision).
+        page.get_by_role("button", name="خروج از حساب", exact=True).click()
+        expect(page.get_by_role("dialog", name="از حساب کاربری خارج می‌شوید؟")).to_be_visible()
+        expect(page).to_have_url(account)
+    finally:
+        context.close()
+
+
+def test_linking_works_where_the_browser_names_no_submitter(browser, live_server, client, settings):
+    """Safari before 15.4 leaves SubmitEvent.submitter empty, so action=link would never be sent."""
+    from playwright.sync_api import expect
+
+    settings.TELEGRAM_BOT_TOKEN = (
+        "123456789:AAEexampleSECRETexampleSECRETexample12"  # noqa: S105  # nosec B105
+    )
+    settings.TELEGRAM_BOT_USERNAME = "premshop_test_bot"
+    client.force_login(User.objects.create_user("telegram-old@example.test"))
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [{"name": "sessionid", "value": client.cookies["sessionid"].value, "url": live_server.url}]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("account"))
+        page.evaluate(
+            "Object.defineProperty(SubmitEvent.prototype, 'submitter', {get: () => null})"
+        )
+        page.get_by_role("button", name="اتصال تلگرام").click()
+        expect(page.get_by_role("link", name="باز کردن تلگرام")).to_be_visible()
+    finally:
+        context.close()
+
+
+def test_a_refused_email_is_focused_where_it_is_said(browser, live_server, client):
+    from playwright.sync_api import expect
+
+    client.force_login(User.objects.create_user("profile-error@example.test"))
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [{"name": "sessionid", "value": client.cookies["sessionid"].value, "url": live_server.url}]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("account"))
+        page.evaluate("window.stayed = true")
+        form = page.locator("form.acct__form").first
+        form.locator('input[name="email"]').fill("not-an-email")
+        form.get_by_role("button", name="ذخیره", exact=True).click()
+        error = page.locator("form.acct__form .field__error").first
+        expect(error).to_be_focused()
+        assert page.evaluate("window.stayed") is True
     finally:
         context.close()
 
