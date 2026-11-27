@@ -142,6 +142,10 @@ class Order(models.Model):
     placement_email = models.EmailField(
         _("ایمیل زمان خرید"), blank=True, default="", editable=False
     )
+    # A delivery code by SMS goes here only while it is still the account's number.
+    placement_phone = models.CharField(
+        _("شماره‌ی موبایل زمان خرید"), max_length=20, blank=True, default="", editable=False
+    )
     subtotal = MoneyField(verbose_name=_("جمع اقلام"))
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.PROTECT, null=True, blank=True)
     discount_amount = MoneyField(verbose_name=_("تخفیف"), default=0)

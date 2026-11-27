@@ -20,7 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.core import ratelimit
-from apps.core.formatting import format_jalali, format_toman, to_persian_digits
+from apps.core.formatting import format_jalali, format_toman, mask_phone, to_persian_digits
 from apps.orders import holiday, proof
 from apps.orders import status as order_status
 from apps.orders.forms import ReviewForm
@@ -258,8 +258,7 @@ def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
         "delivery_rows": rows,
         "delivery_ready": any(row["available"] and row["delivery"] for row in rows),
         "delivery_email": (email[:1] + "•••@" + email.partition("@")[2]) if email else "",
-        # Stars, not dots: a dot beside Persian digits reads as a zero.
-        "delivery_phone": to_persian_digits(phone[:4] + "***" + phone[-4:]) if phone else "",
+        "delivery_phone": mask_phone(phone),
         "delivery_confirmed": (
             proof.is_confirmed(order=order, session_key=request.session.session_key or "")
             if rows

@@ -11,6 +11,7 @@ from django.utils.crypto import salted_hmac
 from django.utils.html import format_html
 
 from apps.accounts import otp
+from apps.accounts import services as account_services
 from apps.accounts.models import User
 from apps.core import ratelimit, sms, telegram
 from apps.core.email import send_templated_email
@@ -21,7 +22,7 @@ TTL = 600
 UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
 SMS_UNSENT = "نتوانستیم کد را پیامک کنیم. چند دقیقه دیگر دوباره کد بگیرید."
 NO_EMAIL = "برای این سفارش ایمیلی ثبت نشده است."
-NO_PHONE = "برای حساب کاربری‌تان شماره‌ی موبایلی ثبت نشده است."
+NO_PHONE = "برای این سفارش نمی‌توانیم کد پیامک کنیم."
 LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
 LAPSED = "مهلت دیدن اطلاعات تحویل تمام شد. برای دیدن دوباره، کد جدیدی بگیرید."
 DELIVERY_LIMITED = (
@@ -55,8 +56,22 @@ def email_for(order: Order) -> tuple[str, int]:
 
 
 def phone_for(order: Order) -> str:
-    """The account's own number, read fresh: a code by SMS goes only there (ADR-0031)."""
-    return User.objects.filter(pk=order.user_id).values_list("phone", flat=True).first() or ""
+    """The number the order was placed with, while it is still the account's (ADR-0031).
+
+    A number support changes later never receives a code for an earlier order, as the
+    email has its own guarded recovery."""
+    current = User.objects.filter(pk=order.user_id).values_list("phone", flat=True).first()
+    return current if current and current == order.placement_phone else ""
+
+
+def _sms_budget(phone: str, *, email: str) -> None:
+    """Delivery codes spend the sign-in SMS's daily budgets: each one is paid for."""
+    then = "کد را به ایمیل سفارش بگیرید." if email else "به پشتیبانی پیام بدهید."
+    if not ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop"):
+        raise ValidationError(f"فعلاً نمی‌توانیم کد را پیامک کنیم. {then}")
+    if not ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone):
+        daily = to_persian_digits(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY.times)
+        raise ValidationError(f"برای این شماره در ۲۴ ساعت فقط {daily} کد پیامک می‌کنیم. {then}")
 
 
 def _subject(order: Order, session_key: str) -> str:
@@ -99,6 +114,8 @@ def request_code(
         to = email if channel == "email" else phone_for(order)
         if not to:
             raise ValidationError(NO_EMAIL if channel == "email" else NO_PHONE)
+        if channel == "sms":
+            _sms_budget(to, email=email)
         _budget(order, actor, "delivery-code", ip, DELIVERY_LIMITED)
     code = otp._new_code()
     if channel == "sms":
@@ -106,6 +123,7 @@ def request_code(
             sms.send_code(to, code, kind="delivery_code")
         except sms.SmsNotSent:
             raise ValidationError(SMS_UNSENT) from None
+        account_services.record_sms_sent(to)
     else:
         try:
             sent = send_templated_email(

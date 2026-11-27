@@ -22,7 +22,13 @@ def test_the_holiday_reverses_only_when_nothing_would_be_stranded(buyer, plan):
     _, item = queued(buyer, plan, operator)
 
     def reverse():
-        MigrationExecutor(connection).migrate([previous])
+        try:
+            MigrationExecutor(connection).migrate([previous])
+        except RuntimeError:
+            # Later migrations reversed before the refusal; the code under test needs them back.
+            executor = MigrationExecutor(connection)
+            executor.migrate(executor.loader.graph.leaf_nodes())
+            raise
 
     def delay():
         act(orders.delay_supply, item, operator, hours=2, note="تأمین‌کننده دیر کرد")

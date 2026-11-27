@@ -129,6 +129,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
 ):
     order, item = delivered(buyer, plan, operator)
     type(buyer).objects.filter(pk=buyer.pk).update(phone="09123456789")
+    models.Order.objects.filter(pk=order.pk).update(placement_phone="09123456789")
     context, _ = customer_context(browser, https_server, buyer, width)
     page = context.new_page()
     detail = https_server + reverse("order-detail", args=[order.order_number])
@@ -138,7 +139,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         capture(page, detail, "#order-delivery", "masked", width, tmp_path)
         expect(page.locator("[data-delivery-recovery]")).to_have_count(0)
         expect(page.get_by_role("button", name="فرستادن کد با پیامک")).to_contain_text(
-            "۰۹۱۲***۶۷۸۹"
+            "۰۹۱۲•••۶۷۸۹"
         )
         scan(page)
         assert "delivered-secret" not in page.content()
