@@ -1560,6 +1560,9 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 ::view-transition-group(*){animation-duration:350ms;animation-timing-function:cubic-bezier(.2,.8,.3,1)}
 ::view-transition-old(root),::view-transition-new(root){animation-duration:200ms}
 
+/* The currency word also sits on a selected plan's tint, where the muted grey falls below 4.5:1. */
+:root .price__cur{color:var(--v-text)}
+
 /* Phone widths: no text cut short, nothing drawn over text, no band short of its card's edge.
    apps/core/tests/test_phone_layout_browser.py holds the pages to it from 320 to 414 wide. */
 .v-account span{white-space:nowrap}
@@ -1583,6 +1586,12 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 @media(max-width:360px){
   .v-category-mark{inset-inline-end:-34px;inset-block-end:-46px}
   .v-category-mark .v-icon{width:56px;height:56px}
+  /* The icon goes above the name, so a department's name has the tile's whole width, with room
+     to spare on any phone's text rendering. */
+  .v-category-links>a[data-dept]{flex-direction:column;align-items:flex-start;gap:8px;padding-inline:12px}
+  .v-category-links>a[data-dept] .v-category-icon{width:32px;height:32px;border-radius:9px}
+  .v-category-links>a[data-dept] .v-category-icon .v-icon{width:18px;height:18px}
+  .v-category-links>a[data-dept]>span:nth-child(2){flex:none;inline-size:100%}
 }
 @media(max-width:760px){
   /* Two cards to a row: the request card takes the whole row, as under the home catalogue, so its button reads on one line. */
