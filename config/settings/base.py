@@ -292,8 +292,10 @@ if SMS_IR_API_KEY and not (SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER):
     raise ImproperlyConfigured(
         "SMS_IR_API_KEY needs SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER. See .env.example."
     )
-if SMS_IR_API_KEY and SMS_IR_TEMPLATE_ID and not (
-    SMS_IR_DELIVERY_TEMPLATE_ID or SMS_IR_LINE_NUMBER
+if (
+    SMS_IR_API_KEY
+    and SMS_IR_TEMPLATE_ID
+    and not (SMS_IR_DELIVERY_TEMPLATE_ID or SMS_IR_LINE_NUMBER)
 ):
     # Sign-in would work while every delivery code by SMS was refused, unlogged by SMS.ir.
     raise ImproperlyConfigured(
