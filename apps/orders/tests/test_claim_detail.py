@@ -199,3 +199,14 @@ def test_another_problem_after_48_hours_is_an_ordinary_warranty_refund(buyer, pl
         item.refresh_from_db()
 
         assert 0 < services.refund_amount(item, "warranty_refund") < item.paid_amount
+
+
+def test_a_past_delivery_deadline_is_not_shown_beside_the_warranty_one(
+    client, buyer, plan, operator
+):
+    order, item = delivered(buyer, plan, operator)
+    client.force_login(buyer)
+    with time_machine.travel(timezone.now() + timedelta(hours=72), tick=False):
+        page = client.get(f"/account/orders/{order.order_number}/").content.decode()
+
+    assert "مهلت گزارش قطع اشتراک" in page and "مهلت گزارش مشکل تحویل" not in page

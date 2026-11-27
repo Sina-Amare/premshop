@@ -237,7 +237,12 @@ def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
         ]
         row["claim_deadline"] = (
             delivery.created_at + timedelta(hours=48)
-            if delivery and any(value != OrderItemEvent.ClaimReason.STOPPED for value in available)
+            if delivery
+            and any(
+                value
+                in (OrderItemEvent.ClaimReason.DETAILS, OrderItemEvent.ClaimReason.SUBSCRIPTION)
+                for value in available
+            )
             else None
         )
         row["warranty_end"] = (
