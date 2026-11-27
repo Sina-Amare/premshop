@@ -421,8 +421,6 @@ def provide_input(request: HttpRequest, order_number: int, item_id: int) -> Http
 
 
 @sensitive_post_parameters()
-# The buyer's own words may hold account details, so an error report never carries them.
-@sensitive_post_parameters("detail")
 @never_cache
 @login_required
 @require_POST

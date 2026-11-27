@@ -109,8 +109,6 @@ def test_the_page_offers_the_box_and_files_the_words(client, buyer, plan, operat
     )
 
     assert response.status_code == 302
-    # A crash report of this request would show the words as starred out.
-    assert response.wsgi_request.sensitive_post_parameters == ("detail",)
     assert ClaimDetail.objects.get(event=item.events.latest("pk")).text == DETAIL
     page = client.get(f"/account/orders/{order.order_number}/").content.decode()
     assert DETAIL not in page
@@ -210,3 +208,14 @@ def test_a_past_delivery_deadline_is_not_shown_beside_the_warranty_one(
         page = client.get(f"/account/orders/{order.order_number}/").content.decode()
 
     assert "مهلت گزارش قطع اشتراک" in page and "مهلت گزارش مشکل تحویل" not in page
+
+
+def test_the_whole_claim_form_is_starred_out_of_an_error_report(client, buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    client.force_login(buyer)
+
+    response = client.post(
+        url(order, item), {"reason": OTHER, "detail": DETAIL, "expected_event_id": event_id(item)}
+    )
+
+    assert response.wsgi_request.sensitive_post_parameters == "__ALL__"
