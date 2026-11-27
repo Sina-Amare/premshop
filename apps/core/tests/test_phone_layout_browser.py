@@ -80,16 +80,20 @@ def shop():
                 telegram_required=False,
             )
     # A published page of prose: a heading, a long paragraph, a list and a link to support.
-    Page.objects.filter(slug=Page.Slug.TERMS).update(
-        title="قوانین خرید",
-        description="شرایط خرید، تحویل و بازگشت وجه در پرم‌شاپ.",
-        body=(
-            "## پیش از خرید\n\nپیش از پرداخت، مدت اشتراک، زمان تحویل و شرایط گارانتی هر محصول را در"
-            " صفحه‌ی همان محصول ببینید. اگر سؤالی دارید، [از پشتیبانی بپرسید]"
-            "(https://t.me/premshop_support).\n\n"
-            "- تحویل تا ۴۸ ساعت پس از تأیید پرداخت\n- لغو سفارش و بازگشت وجه پیش از تحویل"
-        ),
-        is_published=True,
+    # The seeded row is gone once an earlier test in this worker emptied the database.
+    Page.objects.update_or_create(
+        slug=Page.Slug.TERMS,
+        defaults={
+            "title": "قوانین خرید",
+            "description": "شرایط خرید، تحویل و بازگشت وجه در پرم‌شاپ.",
+            "is_published": True,
+            "body": (
+                "## پیش از خرید\n\nپیش از پرداخت، مدت اشتراک، زمان تحویل و شرایط گارانتی هر محصول"
+                " را در صفحه‌ی همان محصول ببینید. اگر سؤالی دارید، [از پشتیبانی بپرسید]"
+                "(https://t.me/premshop_support).\n\n"
+                "- تحویل تا ۴۸ ساعت پس از تأیید پرداخت\n- لغو سفارش و بازگشت وجه پیش از تحویل"
+            ),
+        },
     )
     return Product.objects.get(slug="chatgpt-plus")
 
@@ -108,9 +112,7 @@ def visit(page, url: str) -> list[str]:
     return look(page)
 
 
-def test_no_customer_page_cuts_or_covers_text_at_phone_widths(
-    browser, live_server, shop, settings
-):
+def test_no_customer_page_cuts_or_covers_text_at_phone_widths(browser, live_server, shop, settings):
     # The delivery below encrypts its details, so the test brings its own key.
     settings.FIELD_ENCRYPTION_KEY = Fernet.generate_key().decode()
     settings.FIELD_ENCRYPTION_KEY_FALLBACKS = []
