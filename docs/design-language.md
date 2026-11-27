@@ -19,8 +19,9 @@ The visual and verbal system of the storefront, the operator panel and the email
 - **Visible bookkeeping.** A buyer's biggest fear is paying and receiving nothing. The shop answers it the way a small business that keeps records would: hairlines, aligned figures, exact amounts, stated hours and plainly stated terms. It should not read like a brand campaign or a landing page.
 - **Colour belongs to the goods.** Product brand colours appear in the products' artwork; the interface around them stays neutral, with one accent for what can be pressed. Departments are the exception: their banners, tiles, page heads and the hero's range pills carry each department's own colour, and a product page's head and section strips carry the product's.
 - **Amber means attention:** the customer's move (an unpaid order, details awaited, a card number for a refund) or time running out (deadlines and countdowns), and nothing else (owner, 2026-11-11).
-- **Nothing moves unless a person acts**, with two exceptions: the home page's service scene, and the small drawings in the banners that open the home sections, the department pages, the account, the cart, the checkout and sign-in.
-- **Every choice is argued from this business, never defaulted.** Purple-blue gradients, glassmorphism, glowing dark heroes, large radii on everything, emoji as icons and entrance animations are generated-template habits, and they cost a shop like this its customers' trust.
+- **Motion serves the reader.** Anything may move when the movement explains something or answers an action; nothing that moves shifts the layout or holds back content, and everything stands still under `prefers-reduced-motion`. What moves today is listed under Motion.
+- **No style is banned and none is required** (owner, 2026-11-27). Each choice is argued from this business and judged by the owner on the rendered page, at phone and desktop width. A generated template's habits are not a choice: they are what gets drawn when nobody argued, and they cost a shop like this its customers' trust.
+- **The quality floor holds for any look:** WCAG 2.2 AA; nothing cut, overlapping or scrolling sideways on a phone from 320px wide; the Core Web Vitals and font budgets; every asset from our own host, so pages render during an international cut; no inline style or script; and Persian typography's absolute rules (Typography). Values live in the tokens, so a change moves the token rather than one element, and a test pins a behaviour, never a pixel value.
 
 ## Colour
 
@@ -118,7 +119,7 @@ Estedad sets headings and price figures; Vazirmatn sets everything else. Both ar
 - **The one automatic motion** is the home page's service orbit. It keeps moving and has no pause button; it stops while a logo is pointed at or focused, while it is off screen or the tab is hidden, and never moves under `prefers-reduced-motion`. That is the owner's accepted trade against WCAG 2.2.2. On a wide screen the logos glow in their brand colours around the shop's mark, and the services' sketches circle that mark on a ring of their own, turning the other way; it is the one band no logo or name ever crosses (`orbit.js`).
 - **The banners' loops.** A banner is a flat colour with one soft light, an icon tile, a title and a small looping drawing of what the section holds: for the departments a robot answering in a speech bubble (AI), code typing in a terminal (development), a video player beside a music player (entertainment), a gift box and a card (gift cards); for the offers a seal with the deepest discount among the department emoji; an ID card and an order's journey for the account; the cart's own goods dropping into a basket and piling up; a receipt with a check for the checkout; a code arriving in a bubble for sign-in. They are inline SVG moved by CSS, with no file to load, and stand still under `prefers-reduced-motion`. A banner that names a place opens it.
 - **Adding to the cart** tosses the product's mark from the button into the header's cart, which bounces as it lands; the toast follows.
-- **Everything else answers a person.** Shelves move only when scrolled, offer tags stay still, nothing animates on entry, and a hover moves an element a few pixels at most. No `transition: all`.
+- **Everything else answers a person.** Shelves move when scrolled, offer tags stay still, and a hover moves an element a few pixels. No `transition: all`, which also animates layout and makes a page stutter.
 
 ## Numbers, currency and right-to-left text
 
@@ -393,20 +394,19 @@ Each of these looks like a detail anyone could tidy away, and each is the owner'
 
 ## Checklist
 
-For any new page or component:
+For any new page or component. These hold quality and consistency; none of them bans a style:
 
 - [ ] Nothing under «Decided by the owner» changed without the owner's agreement
-- [ ] Space between components from the nine tokens; optical spacing only inside a component
-- [ ] Every gap between groups at least twice the gap within them; headings own the space after them
-- [ ] Corners from `--radius-sm` and `--radius-lg`; edges that touch the viewport square
-- [ ] Cobalt only on what can be pressed; amber only on attention; every status in one of the five tones, with words and an icon; new colours as tokens
+- [ ] The quality floor (Principles): WCAG 2.2 AA, nothing cut or overlapping from 320px, the speed and font budgets, our own assets, no inline style or script
+- [ ] Space, corners, colour and motion from the tokens; a new value is a new or changed token, never a one-off
+- [ ] Every gap between groups larger than the gaps within them, so related things read as one
+- [ ] Cobalt only on what can be pressed; amber only on attention; every status in one of the five tones, with words and an icon
 - [ ] Body 17px, prose line height 1.85, text blocks at most 32rem wide
-- [ ] Estedad only in headings and price figures, never both faces in one line
+- [ ] Never both faces in one line
 - [ ] Persian digits out, Latin digits in inputs; tabular figures for counts, codes and clocks
 - [ ] Logical properties only; no `left` or `right`
-- [ ] `:focus-visible` on everything interactive; no `transition: all`; durations from the tokens
-- [ ] `prefers-reduced-motion` honoured; only the home orbit and the banners' drawings move without an action
-- [ ] One ledger group per region
-- [ ] Nothing centred, no three feature cards, no rounded-up customer counts, no emoji outside the offers banner
+- [ ] `:focus-visible` on everything interactive; no `transition: all`
+- [ ] `prefers-reduced-motion` honoured; nothing that moves shifts the layout or holds back content
+- [ ] SVG icons, since emoji draw differently on every system (the two files the emoji check allows aside); no rounded-up customer counts
 - [ ] Every promise, badge and section head a noun phrase; explanation in the FAQ
 - [ ] Every product name, plan title and user value wrapped in `<bdi>`
