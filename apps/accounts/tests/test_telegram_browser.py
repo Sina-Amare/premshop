@@ -50,6 +50,53 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
         context.close()
 
 
+def test_linking_works_where_the_browser_names_no_submitter(browser, live_server, client, settings):
+    """Safari before 15.4 leaves SubmitEvent.submitter empty, so action=link would never be sent."""
+    from playwright.sync_api import expect
+
+    settings.TELEGRAM_BOT_TOKEN = (
+        "123456789:AAEexampleSECRETexampleSECRETexample12"  # noqa: S105  # nosec B105
+    )
+    settings.TELEGRAM_BOT_USERNAME = "premshop_test_bot"
+    client.force_login(User.objects.create_user("telegram-old@example.test"))
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [{"name": "sessionid", "value": client.cookies["sessionid"].value, "url": live_server.url}]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("account"))
+        page.evaluate(
+            "Object.defineProperty(SubmitEvent.prototype, 'submitter', {get: () => null})"
+        )
+        page.get_by_role("button", name="اتصال تلگرام").click()
+        expect(page.get_by_role("link", name="باز کردن تلگرام")).to_be_visible()
+    finally:
+        context.close()
+
+
+def test_a_refused_email_is_focused_where_it_is_said(browser, live_server, client):
+    from playwright.sync_api import expect
+
+    client.force_login(User.objects.create_user("profile-error@example.test"))
+    context = browser.new_context(viewport={"width": 390, "height": 1000})
+    context.add_cookies(
+        [{"name": "sessionid", "value": client.cookies["sessionid"].value, "url": live_server.url}]
+    )
+    page = context.new_page()
+    try:
+        page.goto(live_server.url + reverse("account"))
+        page.evaluate("window.stayed = true")
+        form = page.locator("form.acct__form").first
+        form.locator('input[name="email"]').fill("not-an-email")
+        form.get_by_role("button", name="ذخیره", exact=True).click()
+        error = page.locator("form.acct__form .field__error").first
+        expect(error).to_be_focused()
+        assert page.evaluate("window.stayed") is True
+    finally:
+        context.close()
+
+
 def test_the_page_shows_the_link_once_the_bot_confirms_it(browser, live_server, client, settings):
     from playwright.sync_api import expect
 

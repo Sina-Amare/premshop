@@ -93,7 +93,9 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
                     "node => { node.checked = true; node.value = 'invalid'; }"
                 )
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
-                expect(page.get_by_role("alert")).to_contain_text("یکی از دلیل‌ها را انتخاب کنید.")
+                refusal = page.get_by_role("alert")
+                expect(refusal).to_contain_text("یکی از دلیل‌ها را انتخاب کنید.")
+                expect(refusal).to_be_focused()
             if state == "other":
                 capture(page, "claim-other-filled", width, tmp_path)
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()

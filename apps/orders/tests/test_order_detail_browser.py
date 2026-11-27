@@ -102,9 +102,14 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             page.keyboard.press("Enter")
             page.locator('[name="expected_support_token"]').evaluate("el => {el.value = 'stale';}")
             page.get_by_role("button", name="ساخت شناسه‌ی جدید", exact=True).click()
-            expect(page.get_by_role("alert")).to_have_text(
+            refusal = page.get_by_role("alert")
+            expect(refusal).to_have_text(
                 "شناسه‌ی پشتیبانی تغییر کرده است. شناسه‌ی فعلی در همین صفحه است."
             )
+            # Said at the top of the page, outside the help box: focus and the screen go to it.
+            expect(refusal).to_be_focused()
+            expect(refusal).to_be_in_viewport()
+            expect(page.locator("#order-help")).to_have_attribute("open", "")
             # The refusal is swapped into the order page, so the address stays on it.
             expect(page).to_have_url(
                 live_server.url + reverse("order-detail", args=[order.order_number])

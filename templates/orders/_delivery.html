@@ -23,7 +23,7 @@
 {% endif %}</div>
 {% endif %}
 {% for row in delivery_rows %}
-<div class="order-input-item" data-delivery-item="{{ row.item.pk }}">
+<div class="order-input-item" data-delivery-item="{{ row.item.pk }}" id="delivery-item-{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
 {% if not row.available %}<p data-delivery-unavailable>این خرید لغو شده است و اطلاعات تحویلش دیگر نمایش داده نمی‌شود.</p>
 {% elif not row.delivery %}<p data-delivery-deleted>مهلت نگهداری اطلاعات تحویل این محصول تمام شده و آن را حذف کرده‌ایم.</p>
