@@ -1065,8 +1065,8 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 @media(max-width:760px){.v-offer-tag{width:44px;height:44px}.v-offer-tag b{font-size:14px}}
 
 /* Dashboard: the side menu as a panel with the customer on a cobalt head, each page opening on a cobalt banner like the departments', and every section a panel with a header strip. */
-.acct__nav{gap:4px;padding:14px;border:1px solid var(--v-line);border-radius:20px;background:#fff;box-shadow:0 18px 40px -34px rgb(32 37 46/.5)}
-.acct__who{margin:-14px -14px 10px;padding:18px 16px;border:0;border-radius:19px 19px 0 0;background:radial-gradient(circle at 15% 130%,rgb(255 255 255/.2),transparent 55%),var(--v-accent);color:#fff}
+.acct__nav{--nav-pad:14px;gap:4px;padding:var(--nav-pad);border:1px solid var(--v-line);border-radius:20px;background:#fff;box-shadow:0 18px 40px -34px rgb(32 37 46/.5)}
+.acct__who{margin:calc(-1 * var(--nav-pad)) calc(-1 * var(--nav-pad)) 10px;padding:18px 16px;border:0;border-radius:19px 19px 0 0;background:radial-gradient(circle at 15% 130%,rgb(255 255 255/.2),transparent 55%),var(--v-accent);color:#fff}
 .acct__avatar{width:42px;height:42px;border-radius:13px;background:rgb(255 255 255/.16);box-shadow:inset 0 0 0 1px rgb(255 255 255/.3);color:#fff}
 .acct__who .acct__email{color:rgb(255 255 255/.92)}
 .acct__nav a{display:flex;align-items:center;gap:10px;min-height:46px;padding:10px 14px;border:0;border-radius:12px;font-weight:600;color:var(--v-text);transition:background 140ms,color 140ms}
@@ -1136,8 +1136,8 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 
 @media(max-width:900px){.acct-panels{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
-  .acct__nav{padding:10px}
-  .acct__who{margin:-10px -10px 6px;padding:14px}
+  .acct__nav{--nav-pad:10px}
+  .acct__who{margin-block-end:6px;padding:14px}
   .acct__nav a{flex:1;justify-content:center;min-height:42px;padding:8px 10px;font-size:14px}
   .acct__out{flex-basis:100%;margin-top:4px;padding-top:4px}
   .acct__out .btn{justify-content:center}
@@ -1559,3 +1559,57 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 /* In-place changes (storefront.js): sorted cards glide to their new places, and what else changed fades quickly. */
 ::view-transition-group(*){animation-duration:350ms;animation-timing-function:cubic-bezier(.2,.8,.3,1)}
 ::view-transition-old(root),::view-transition-new(root){animation-duration:200ms}
+
+/* The currency word also sits on a selected plan's tint, where the muted grey falls below 4.5:1. */
+:root .price__cur{color:var(--v-text)}
+
+/* Phone widths: no text cut short, nothing drawn over text, no band short of its card's edge.
+   apps/core/tests/test_phone_layout_browser.py holds the pages to it from 320 to 414 wide. */
+.v-account span{white-space:nowrap}
+.v-search button>.v-icon{display:none}
+@media(max-width:860px){
+  /* In the wrapping menu the band is a line of its own, wider than the line by the padding it bleeds over. */
+  .acct__who{inline-size:auto;flex:0 0 calc(100% + 2 * var(--nav-pad))}
+}
+@media(max-width:760px){
+  /* A banner's mark keeps a strip of its own at the end, and the text stays out of it. */
+  .v-page-hero>:is(h1,h2,p,.page-head__title,.page-head__intro){padding-inline-end:72px}
+  .v-page-hero__mark{inset-inline-end:12px;font-size:96px}
+  .v-page-hero__mark .v-icon,.v-page-hero--light .v-page-hero__mark .v-icon{width:56px;height:56px}
+  .v-faq__heading{flex-direction:column;align-items:flex-start;justify-content:center;gap:10px;padding-block:18px;padding-inline-end:84px}
+  .v-faq__heading .v-page-hero__mark{inset-inline-end:14px;font-size:96px}
+  .v-category-mark{inset-inline-end:-30px;inset-block-end:-40px}
+  .v-category-mark .v-icon{width:64px;height:64px}
+  /* An address wider than the line breaks inside its chip rather than running out of it. */
+  .page-head__intro a:any-link{overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+}
+@media(max-width:360px){
+  .v-category-mark{inset-inline-end:-34px;inset-block-end:-46px}
+  .v-category-mark .v-icon{width:56px;height:56px}
+  /* The icon goes above the name, so a department's name has the tile's whole width, with room
+     to spare on any phone's text rendering. */
+  .v-category-links>a[data-dept]{flex-direction:column;align-items:flex-start;gap:8px;padding-inline:12px}
+  .v-category-links>a[data-dept] .v-category-icon{width:32px;height:32px;border-radius:9px}
+  .v-category-links>a[data-dept] .v-category-icon .v-icon{width:18px;height:18px}
+  .v-category-links>a[data-dept]>span:nth-child(2){flex:none;inline-size:100%}
+}
+@media(max-width:760px){
+  /* Two cards to a row: the request card takes the whole row, as under the home catalogue, so its button reads on one line. */
+  .grid>.v-request{grid-column:1/-1}
+}
+@media(max-width:379px){
+  /* «گزینه‌های خرید» keeps one line in a card this narrow; the arrow is what gives way. */
+  .pcard .pcard__quick{padding-inline:8px}
+  .pcard .pcard__quick .v-icon{display:none}
+}
+@media(max-width:420px){
+  /* The button's word becomes the magnifier, so «جستجوی محصول» keeps the room it needs. */
+  .v-search>.v-icon{display:none}
+  .v-search button{display:grid;place-items:center;min-inline-size:42px;padding-inline:0}
+  .v-search button>.v-icon{display:block;width:18px;height:18px}
+  .v-search button>span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+}
+@media(max-width:359px){
+  /* The wordmark yields first, as in the compact header, so «ورود | ثبت‌نام» stays whole. */
+  .v-header .v-brand span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}
+}

@@ -152,10 +152,6 @@ html[data-motion=off] .rate__stars label{transition:none}
 .order-tabs__count{min-inline-size:24px;padding:0 6px;font-size:13px;font-weight:500;line-height:22px;text-align:center;color:var(--v-text);background:var(--color-fill-subtle);border-radius:var(--radius-sm)}
 /* Four groups on a phone: two even rows rather than a ragged wrap. */
 @media(max-width:760px){.order-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.order-tabs a{justify-content:space-between}}
- .order-claim { margin-block-start: 1rem; }
- .order-claim fieldset { border: 0; padding: 0; margin-block: 1rem; }
- .order-claim-choice { display: flex; align-items: baseline; gap: .5rem; margin-block: .75rem; }
- .order-claim-choice input { flex-shrink: 0; }
 /* Unlocking the delivery is the buyer's move: a quiet panel with the attention edge, before the products it opens. */
 #order-delivery{scroll-margin-block-start:120px}
 #order-delivery>.form-ok,#order-delivery>.form-error{margin-block:0 16px}
@@ -179,5 +175,19 @@ html[data-motion=off] .rate__stars label{transition:none}
 .delivery-steps .otp{justify-content:flex-end}
 .delivery-steps .field__error{margin-block:8px 0}
 @media(max-width:600px){.delivery-unlock{padding-inline:14px}.delivery-steps>li{grid-template-columns:24px minmax(0,1fr);gap:10px}.delivery-steps__n{inline-size:24px;block-size:24px;font-size:13px}.delivery-steps .otp{gap:5px}.delivery-steps .otp__cell{inline-size:2.25rem;block-size:2.9rem;font-size:20px}.delivery-send .btn{min-inline-size:0;inline-size:100%}}
-/* The replacement form is a quiet fold under its product, not a heading for what follows. */
+/* The replacement form is a quiet fold under its product that opens into a panel:
+   its deadlines, the reasons as cards, then the button. */
+.acct__main .order-claim{margin-block-start:8px}
+.acct__main .order-claim>details{padding-inline:14px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:#fff}
+.acct__main .order-claim>details[open]{padding-block-end:16px;background:var(--v-soft)}
 .acct__main .order-claim>details:not(.order-record)>summary{font-size:14px;font-weight:500;color:var(--v-text)}
+.acct__main .order-claim>details[open]:not(.order-record)>summary{font-weight:600;color:var(--v-ink)}
+.order-claim__deadline{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:13px;line-height:1.8;color:var(--v-text)}
+.order-claim__deadline .v-icon{flex:none;inline-size:16px;block-size:16px;color:var(--color-time-text)}
+.order-claim fieldset{min-inline-size:0;margin:14px 0 0;padding:0;border:0}
+.order-claim legend{margin-block-end:10px;padding:0;font:600 15px/1.8 var(--font-head);color:var(--v-ink)}
+.order-claim-choice{display:flex;align-items:flex-start;gap:10px;margin:0 0 8px;padding:12px 14px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:#fff;font-size:14px;line-height:1.8;color:var(--v-ink);cursor:pointer;transition:border-color var(--dur),background-color var(--dur)}
+.order-claim-choice:hover{border-color:var(--color-line-strong)}
+.order-claim-choice:has(input:checked){border-color:var(--v-accent);background:var(--v-mint)}
+.order-claim-choice input{flex:none;inline-size:18px;block-size:18px;margin:4px 0 0;accent-color:var(--v-accent)}
+.order-claim form>.btn{margin-block-start:8px}
