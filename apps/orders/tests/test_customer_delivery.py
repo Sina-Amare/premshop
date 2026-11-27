@@ -699,15 +699,35 @@ def test_a_code_by_sms_opens_the_delivery_and_a_new_number_closes_it(
         reveal(order, item, buyer)
 
 
-def test_a_refused_sms_keeps_no_code(buyer, plan, operator, settings):
+def test_a_refused_sms_keeps_no_code_and_logs_why_without_the_number(
+    buyer, plan, operator, settings, caplog
+):
     order, _ = delivered(buyer, plan, operator)
     give_phone(order, buyer)
-    with patch("apps.core.sms.send_code", side_effect=sms.SmsNotSent(None)):
+    with patch("apps.core.sms.send_code", side_effect=sms.SmsNotSent(503, 7)):
         with pytest.raises(ValidationError, match="پیامک"):
             proof().request_code(
                 order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel="sms"
             )
     assert not confirm(order, buyer, "000000")
+    assert "delivery code SMS not sent: HTTP 503, SMS.ir status 7" in caplog.text
+    assert "09123456789" not in caplog.text
+
+
+@pytest.mark.parametrize("channel", ["email", "sms"])
+def test_a_code_sent_as_the_order_changed_asks_for_a_new_one(
+    buyer, plan, operator, settings, channel
+):
+    settings.SMS_BACKEND = "fake"
+    order, _ = delivered(buyer, plan, operator)
+    give_phone(order, buyer)
+    subjects = iter(["order-delivery:before", "order-delivery:after"])
+    with patch.object(proof(), "_subject", side_effect=lambda *args: next(subjects)):
+        with pytest.raises(ValidationError, match="کد جدیدی بگیرید") as refused:
+            proof().request_code(
+                order_id=order.pk, actor=buyer, session_key=SESSION, ip="127.0.0.1", channel=channel
+            )
+    assert "فرستاده نشد" not in refused.value.messages[0]
 
 
 def test_the_digit_boxes_get_a_json_answer_and_the_sms_notice_lands_in_the_card(
@@ -793,7 +813,7 @@ def test_a_number_changed_after_the_order_gets_no_code_for_it(buyer, plan, opera
     body = client.get(reverse("order-detail", args=[order.order_number])).content.decode()
 
     assert 'value="sms"' not in body and 'value="email"' in body
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="کد را به ایمیل سفارش بگیرید"):
         send_by_sms(order, buyer)
     assert not sms.outbox
 

@@ -1,5 +1,6 @@
 """Independent, session-bound permission to read an owned order's delivery."""
 
+import logging
 import time
 from datetime import datetime
 from typing import cast
@@ -18,6 +19,7 @@ from apps.core.email import send_templated_email
 from apps.core.formatting import to_persian_digits
 from apps.orders.models import Order, OrderEmailRecovery
 
+logger = logging.getLogger(__name__)
 TTL = 600
 UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیقه دیگر دوباره کد بگیرید."
 SMS_UNSENT = "نتوانستیم کد را پیامک کنیم. چند دقیقه دیگر دوباره کد بگیرید."
@@ -121,7 +123,13 @@ def request_code(
     if channel == "sms":
         try:
             sms.send_code(to, code, kind="delivery_code")
-        except sms.SmsNotSent:
+        except sms.SmsNotSent as error:
+            # SMS.ir's statuses only: its replies can repeat the number and the code.
+            logger.error(
+                "delivery code SMS not sent: HTTP %s, SMS.ir status %s",
+                error.status or "none",
+                "none" if error.provider_status is None else error.provider_status,
+            )
             raise ValidationError(SMS_UNSENT) from None
         account_services.record_sms_sent(to)
     else:

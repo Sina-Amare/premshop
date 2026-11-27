@@ -39,6 +39,24 @@ def test_an_unknown_sms_backend_is_refused(reload_base):
         reload_base(SMS_BACKEND="smsr")
 
 
+def test_a_sign_in_template_alone_leaves_delivery_codes_no_way_out(reload_base):
+    with pytest.raises(ImproperlyConfigured, match="SMS_IR_DELIVERY_TEMPLATE_ID"):
+        reload_base(**{**PRODUCTION, "SMS_IR_TEMPLATE_ID": "123456", "SMS_IR_LINE_NUMBER": ""})
+
+
+def test_a_template_for_each_kind_of_code_boots_without_a_line(reload_base):
+    settings = reload_base(
+        **{
+            **PRODUCTION,
+            "SMS_IR_TEMPLATE_ID": "123456",
+            "SMS_IR_DELIVERY_TEMPLATE_ID": "654321",
+            "SMS_IR_LINE_NUMBER": "",
+        }
+    )
+
+    assert settings.SMS_IR_DELIVERY_TEMPLATE_ID == "654321"
+
+
 def test_a_key_with_neither_a_template_nor_a_line_is_refused(reload_base):
     with pytest.raises(ImproperlyConfigured, match="SMS_IR_TEMPLATE_ID or SMS_IR_LINE_NUMBER"):
         reload_base(**{**PRODUCTION, "SMS_IR_LINE_NUMBER": ""})
