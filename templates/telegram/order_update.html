@@ -7,8 +7,7 @@
 <tr><th>{{ e.DEADLINE }} زمان تحویل جدید</th><td>تا {{ due_at|jalali }}، ساعت {{ due_at|date:"H:i"|fa_digits }}</td></tr>{% elif template_name == "input_reminder" or template_name == "input_final_warning" %}
 <tr><th>{{ e.DEADLINE }} مهلت ارسال اطلاعات</th><td>تا پایان {{ due_at|jalali }}</td></tr>{% endif %}
 </table>{% if template_name == "delivery_completed" %}
-<p>برای دیدن اطلاعات تحویل، در صفحه‌ی سفارش «فرستادن کد به ایمیل» را بزنید و کدی را که به ایمیل سفارش می‌رسد، همان‌جا وارد کنید.</p>
-<p>اگر برای سفارش ایمیلی ثبت نشده یا به آن دسترسی ندارید، از صفحه‌ی سفارش به پشتیبانی پیام بدهید.</p>{% endif %}{% if template_name == "replacement_rejected" %}
+<p>برای دیدن اطلاعات تحویل، در صفحه‌ی سفارش کد را به ایمیل یا با پیامک بگیرید و همان‌جا وارد کنید.</p>{% endif %}{% if template_name == "replacement_rejected" %}
 <p>برای اطلاع از دلیل، به {{ support.telegram }} پیام بدهید.</p>{% endif %}{% if template_name == "input_requested" or template_name == "input_reminder" or template_name == "input_final_warning" %}
 <p>اطلاعات را طبق راهنمای صفحه‌ی سفارش بفرستید، نه در این گفت‌وگو.</p>{% endif %}{% if template_name == "input_requested" %}
 <blockquote><p>اگر تا پایان {{ due_at|jalali }} اطلاعات به دستمان نرسد، خرید این محصول را لغو می‌کنیم و هر مبلغی را که برای آن پرداخته‌اید برمی‌گردانیم.</p></blockquote>{% endif %}{% if template_name == "input_reminder" or template_name == "input_final_warning" %}
