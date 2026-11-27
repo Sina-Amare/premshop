@@ -25,6 +25,7 @@ UNSENT = "کد به ایمیل سفارش فرستاده نشد. چند دقیق
 SMS_UNSENT = "نتوانستیم کد را پیامک کنیم. چند دقیقه دیگر دوباره کد بگیرید."
 NO_EMAIL = "برای این سفارش ایمیلی ثبت نشده است."
 NO_PHONE = "برای این سفارش نمی‌توانیم کد پیامک کنیم."
+CHANGED = "ایمیل یا شماره‌ی این سفارش همین حالا تغییر کرد. کد جدیدی بگیرید."
 LIMITED = "درخواست کد موقتاً محدود شده است. کمی بعد دوباره امتحان کنید."
 LAPSED = "مهلت دیدن اطلاعات تحویل تمام شد. برای دیدن دوباره، کد جدیدی بگیرید."
 DELIVERY_LIMITED = (
@@ -66,9 +67,14 @@ def phone_for(order: Order) -> str:
     return current if current and current == order.placement_phone else ""
 
 
+def _instead(email: str) -> str:
+    """Where a buyer turns when no SMS can go: the order email, or support without one."""
+    return "کد را به ایمیل سفارش بگیرید." if email else "به پشتیبانی پیام بدهید."
+
+
 def _sms_budget(phone: str, *, email: str) -> None:
     """Delivery codes spend the sign-in SMS's daily budgets: each one is paid for."""
-    then = "کد را به ایمیل سفارش بگیرید." if email else "به پشتیبانی پیام بدهید."
+    then = _instead(email)
     if not ratelimit.remaining(ratelimit.SMS_DAILY_BUDGET, "shop"):
         raise ValidationError(f"فعلاً نمی‌توانیم کد را پیامک کنیم. {then}")
     if not ratelimit.remaining(ratelimit.OTP_REQUESTS_PER_PHONE_DAILY, phone):
@@ -115,7 +121,9 @@ def request_code(
         email, _ = email_for(order)
         to = email if channel == "email" else phone_for(order)
         if not to:
-            raise ValidationError(NO_EMAIL if channel == "email" else NO_PHONE)
+            raise ValidationError(
+                NO_EMAIL if channel == "email" else f"{NO_PHONE} {_instead(email)}"
+            )
         if channel == "sms":
             _sms_budget(to, email=email)
         _budget(order, actor, "delivery-code", ip, DELIVERY_LIMITED)
@@ -146,7 +154,8 @@ def request_code(
     with transaction.atomic():
         order, _ = locked_order(order_id, actor)
         if subject != _subject(order, session_key):
-            raise ValidationError(UNSENT)
+            # The code went out but is not stored, so it would not work: ask for a new one.
+            raise ValidationError(CHANGED)
         otp._store(subject, code)
 
 
