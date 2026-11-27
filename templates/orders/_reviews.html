@@ -16,7 +16,7 @@
 {% elif review.status == "hidden" %}<p>این نظر در صفحه‌ی محصول منتشر نمی‌شود.</p>
 {% elif item.plan.product.is_public %}<a href="{% url 'product' item.plan.product.slug %}#product-reviews">دیدن در صفحه‌ی محصول</a>{% endif %}
 {% else %}
-<form class="order-review__form" method="post" action="{% url 'order-review' order.order_number item.pk %}#order-reviews">{% csrf_token %}
+<form data-in-place class="order-review__form" method="post" action="{% url 'order-review' order.order_number item.pk %}#order-reviews">{% csrf_token %}
 <fieldset class="rate">
 <legend class="field__label">امتیاز</legend>
 <div class="rate__stars">{% for value in "12345" %}<input class="rate__input" type="radio" name="rating" value="{{ value }}" id="review-{{ item.pk }}-{{ value }}" required{% if row.submitted.rating == value %} checked{% endif %}><label for="review-{{ item.pk }}-{{ value }}"><svg aria-hidden="true"><use href="#i-star"></use></svg><span class="sr-only">{{ value|fa_digits }} از ۵</span></label>{% endfor %}</div>

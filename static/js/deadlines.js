@@ -81,5 +81,6 @@
     if (!timed.length) { clearInterval(timer); timer = null; }
   }
   document.addEventListener('prices:updated', register);
+  document.addEventListener('content:replaced', register);
   register();
 })();

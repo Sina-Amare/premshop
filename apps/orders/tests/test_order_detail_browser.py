@@ -105,8 +105,9 @@ def test_customer_order_states_keep_the_reading_order_and_keyboard_access(
             expect(page.get_by_role("alert")).to_have_text(
                 "شناسه‌ی پشتیبانی تغییر کرده است. شناسه‌ی فعلی در همین صفحه است."
             )
+            # The refusal is swapped into the order page, so the address stays on it.
             expect(page).to_have_url(
-                live_server.url + reverse("order-support-replace", args=[order.order_number])
+                live_server.url + reverse("order-detail", args=[order.order_number])
             )
         if state == "unavailable":
             expect(

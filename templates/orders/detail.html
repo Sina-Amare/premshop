@@ -62,7 +62,7 @@
 {% for row in input_requests %}<div class="order-input-item" data-input-item="{{ row.item.pk }}">
 <h3><bdi>{{ row.item.product_snapshot.name }}</bdi>، <bdi>{{ row.item.product_snapshot.plan_title }}</bdi></h3>
 {% if row.last_day %}<p id="input-deadline-{{ row.item.pk }}" data-input-deadline>آخرین روز ارسال: {{ row.last_day|jalali }}</p>{% endif %}
-{% if row.can_submit %}<form method="post" action="{% url 'order-input-submit' order.order_number row.item.pk %}">
+{% if row.can_submit %}<form data-in-place method="post" action="{% url 'order-input-submit' order.order_number row.item.pk %}">
 {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ row.item.latest_event_id }}">
 <div class="field"><label class="field__label" for="customer-input-{{ row.item.pk }}">{{ row.item.product_snapshot.customer_input_label }}</label>
 <input class="field__input" id="customer-input-{{ row.item.pk }}" name="customer_input" type="{% if row.item.product_snapshot.input_type == 'email' %}email{% else %}text{% endif %}" maxlength="{% if row.item.product_snapshot.input_type == 'email' %}254{% else %}150{% endif %}" dir="auto" autocomplete="off" spellcheck="false" required{% if row.last_day %} aria-describedby="input-deadline-{{ row.item.pk }}"{% endif %}></div>
@@ -89,7 +89,7 @@
 <p>پاسخ‌گویی: {{ support.hours }}</p>
 {% if support_identifier %}<details class="order-support-replace"><summary>شناسه را به کسی داده‌اید؟</summary>
 <p>با ساخت شناسه‌ی جدید، شناسه‌ی قبلی باطل می‌شود.</p>
-<form method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
+<form data-in-place method="post" action="{% url 'order-support-replace' order.order_number %}">{% csrf_token %}<input type="hidden" name="expected_support_token" value="{{ support_identifier.support_token }}"><button type="submit" class="btn btn--secondary" name="confirm" value="yes">ساخت شناسه‌ی جدید</button></form>
 </details>{% endif %}
 </details>
 {% if groups or order.policy_snapshot %}<details class="order-record" id="order-conditions"><summary>شرایط هنگام خرید</summary>
@@ -103,7 +103,7 @@
 <ol class="order-timeline">{% for event in timeline %}<li><p><bdi>{{ event.name }}</bdi>، {{ event.status }}</p><time>{{ event.at|jalali }}، ساعت {{ event.at|date:"H:i"|fa_digits }}</time></li>{% endfor %}</ol></details>{% endif %}
 {% if can_cancel %}<details class="order-record" id="order-cancel"><summary>لغو سفارش</summary>
 <p>با این کار، خرید همه‌ی محصولات این سفارش را لغو می‌کنید.</p>
-<form method="post" action="{% url 'order-cancel' order.order_number %}">{% csrf_token %}<button class="btn btn--secondary order-cancel" type="submit" name="confirm" value="yes">بله، لغو سفارش</button></form>
+<form data-in-place method="post" action="{% url 'order-cancel' order.order_number %}">{% csrf_token %}<button class="btn btn--secondary order-cancel" type="submit" name="confirm" value="yes">بله، لغو سفارش</button></form>
 </details>{% endif %}
 <a href="{% url 'order-list' %}">همه‌ی سفارش‌ها</a>
 </div>

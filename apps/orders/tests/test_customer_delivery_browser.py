@@ -143,14 +143,17 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         )
         scan(page)
         assert "delivered-secret" not in page.content()
+        # A reload would drop this, so its survival proves each step happened in place.
+        page.evaluate("window.stayed = true")
         page.get_by_role("button", name="فرستادن کد به ایمیل").focus()
         page.keyboard.press("Enter")
         # The code box is on the page before the send, so the sent notice is the evidence.
-        expect(page.locator("#order-delivery [role=status]")).to_have_text(
-            "کد را به ایمیل این سفارش فرستادیم."
-        )
-        card = detail + "#order-delivery"
+        sent = page.locator("#order-delivery [role=status]")
+        expect(sent).to_have_text("کد را به ایمیل این سفارش فرستادیم.")
+        expect(sent).to_be_focused()
+        card = detail
         assert page.url == card
+        assert page.evaluate("window.stayed") is True
         code = code_from_mail()
         cells = page.locator("#order-delivery .otp__cell")
         cells.first.focus()
@@ -159,7 +162,7 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         capture(page, card, "#order-delivery", "code-error", width, tmp_path)
         expect(cells.first).to_be_enabled()
         expect(cells.first).to_have_value("")
-        # The page reloads right after the row turns green, so the green is recorded as it happens.
+        # The section is replaced right after the row turns green, so the green is recorded as it happens.
         page.evaluate(
             """() => new MutationObserver(() => {
                  if (document.querySelectorAll('#code-cells .is-ok').length === 6) sessionStorage.green = '1';
@@ -169,7 +172,10 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         page.keyboard.type(code)
         expect(page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True)).to_be_visible()
         assert page.evaluate("sessionStorage.green") == "1"
-        expect(page.locator("#order-delivery")).to_contain_text("کد تأیید شد.")
+        confirmed = page.locator("#order-delivery .form-ok")
+        expect(confirmed).to_contain_text("کد تأیید شد.")
+        expect(confirmed).to_be_focused()
+        assert page.evaluate("window.stayed") is True
         capture(page, card, "[data-delivery-masked]", "confirmed", width, tmp_path)
         with page.expect_response(lambda response: response.url == reveal) as seen:
             page.get_by_role("button", name="نمایش اطلاعات تحویل", exact=True).click()
@@ -188,6 +194,37 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         assert denied.status == 403
         assert "no-store" in denied.headers["cache-control"]
         assert denied.headers["content-encoding"] == "identity"
+    finally:
+        context.close()
+
+
+def test_without_javascript_the_code_still_posts_and_the_page_loads(
+    browser, https_server, buyer, plan, operator, mailoutbox
+):
+    order, _ = delivered(buyer, plan, operator)
+    client = Client()
+    client.force_login(buyer)
+    context = browser.new_context(java_script_enabled=False, ignore_https_errors=True)
+    context.add_cookies(
+        [
+            {
+                "name": settings.SESSION_COOKIE_NAME,
+                "value": client.session.session_key,
+                "url": https_server,
+            }
+        ]
+    )
+    page = context.new_page()
+    detail = https_server + reverse("order-detail", args=[order.order_number])
+    try:
+        page.goto(detail)
+        with page.expect_navigation():
+            page.get_by_role("button", name="فرستادن کد به ایمیل").click()
+        assert page.url == detail + "#order-delivery"
+        expect(page.locator("#order-delivery [role=status]")).to_have_text(
+            "کد را به ایمیل این سفارش فرستادیم."
+        )
+        assert len(mailoutbox) == 1
     finally:
         context.close()
 

@@ -29,7 +29,8 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
     try:
         page.goto(account)
         page.get_by_role("button", name="اتصال تلگرام").click()
-        expect(page).to_have_url(account + "#telegram")
+        # Answered in place: the address stays as it was, with no #telegram from a redirect.
+        expect(page).to_have_url(account)
         opener = page.get_by_role("link", name="باز کردن تلگرام")
         expect(opener).to_have_attribute(
             "href", re.compile(r"^https://t\.me/premshop_test_bot\?start=[\w-]{22}$")
@@ -41,6 +42,10 @@ def test_linking_shows_the_bot_link_and_the_typed_fallback(
         assert command.evaluate("el => el.getClientRects().length") == 1
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
         page.screenshot(path=str(tmp_path / f"telegram-{width}.png"), full_page=True)
+        # The swap replaced the sign-out form too; leaving still asks first (the owner's decision).
+        page.get_by_role("button", name="خروج از حساب", exact=True).click()
+        expect(page.get_by_role("dialog", name="از حساب کاربری خارج می‌شوید؟")).to_be_visible()
+        expect(page).to_have_url(account)
     finally:
         context.close()
 
