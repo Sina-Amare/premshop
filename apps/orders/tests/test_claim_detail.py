@@ -113,7 +113,7 @@ def test_the_telegram_handle_is_kept_plainly_and_shown_to_the_operator(buyer, pl
     assert DETAIL not in page and not CredentialAccessLog.objects.exists()
 
 
-@pytest.mark.parametrize("handle", ["ab", "with space", "@" + "a" * 33, "نام"])
+@pytest.mark.parametrize("handle", ["abc", "with space", "@" + "a" * 33, "نام"])
 def test_a_malformed_telegram_handle_is_refused(buyer, plan, operator, handle):
     _, item = delivered(buyer, plan, operator)
 
@@ -333,3 +333,11 @@ def test_a_handle_without_words_shows_the_handle_and_nothing_to_reveal(buyer, pl
     assert "@buyer_tg" in page and reveal_url(order, item) not in page
     assert "data-revealed-claim-detail" not in shown
     assert not CredentialAccessLog.objects.exists()
+
+
+def test_a_four_letter_collectible_handle_is_accepted(buyer, plan, operator):
+    _, item = delivered(buyer, plan, operator)
+
+    other(item, buyer, telegram="@abcd")
+
+    assert ClaimDetail.objects.get().telegram == "abcd"

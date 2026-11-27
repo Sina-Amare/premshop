@@ -349,8 +349,9 @@ def available_claim_reasons(
 
 
 CLAIM_DETAIL_LENGTH = 1000
-# Telegram's own rule for a username: five to 32 letters, digits or underscores.
-TELEGRAM_HANDLE = re.compile(r"[A-Za-z0-9_]{5,32}")
+# A Telegram username: letters, digits or underscores, five to 32 long, or four for a
+# collectible one bought on Fragment.
+TELEGRAM_HANDLE = re.compile(r"[A-Za-z0-9_]{4,32}")
 
 
 @transaction.atomic
