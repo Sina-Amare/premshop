@@ -48,6 +48,7 @@
   {% elif mode == "replace" %}
     <p class="delivery-claim">{% translate "دلیل درخواست تعویض" %}: {{ claim_reason|default:claim_note }}</p>
     {% if claim_reason and claim_note %}<p>{{ claim_note }}</p>{% endif %}
+    {% if claim_has_detail %}<form method="post" action="{% url 'admin:orders_order_reveal_claim_detail' order.pk item.pk %}">{% csrf_token %}<button type="submit" class="order-input-action">{% translate "نمایش توضیح مشتری" %}</button></form>{% endif %}
     <p>{% translate "ثبت‌کننده" %}: {{ claim_actor }}</p>
   {% endif %}
   {% if error or form.errors %}<div role="alert" class="delivery-error">{% if error %}<p>{{ error }}</p>{% endif %}{{ form.non_field_errors }}{% if form.errors and not form.non_field_errors %}<p>{% translate "موارد مشخص‌شده در فرم را اصلاح کنید." %}</p>{% endif %}</div>{% endif %}

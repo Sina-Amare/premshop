@@ -331,7 +331,7 @@ def test_operator_can_file_an_undated_item_after_the_website_window(
     current = item.deliveries.latest("pk").created_at
     if operator_hour == 49:
         with time_machine.travel(current + timedelta(hours=47), tick=False):
-            assert services.available_claim_reasons(item) == [A]
+            assert services.available_claim_reasons(item) == [A, "other"]
     with time_machine.travel(current + timedelta(hours=operator_hour), tick=False):
         client.force_login(buyer)
         assert (

@@ -416,6 +416,8 @@ def provide_input(request: HttpRequest, order_number: int, item_id: int) -> Http
 
 
 @sensitive_post_parameters()
+# The buyer's own words may hold account details, so an error report never carries them.
+@sensitive_post_parameters("detail")
 @never_cache
 @login_required
 @require_POST
@@ -434,6 +436,7 @@ def file_claim(request: HttpRequest, order_number: int, item_id: int) -> HttpRes
             actor=cast(User, request.user),
             expected_event_id=expected,
             reason=request.POST.get("reason", ""),
+            detail=request.POST.get("detail", ""),
         )
     except ValidationError as invalid:
         return _render_detail(

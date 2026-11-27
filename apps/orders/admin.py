@@ -46,6 +46,7 @@ from apps.core.ratelimit import client_ip
 from apps.orders import holiday
 from apps.orders import status as order_status
 from apps.orders.models import (
+    ClaimDetail,
     CredentialAccessLog,
     DiscountCode,
     DiscountRedemption,
@@ -78,6 +79,7 @@ from apps.orders.services import (
     replace_delivery,
     request_input,
     resume_input,
+    reveal_claim_detail,
     reveal_customer_input,
     reveal_delivery,
 )
@@ -487,6 +489,12 @@ class OrderAdmin(ModelAdmin):
                 name="orders_order_reveal_customer_input",
             ),
             path(
+                "<int:order_id>/items/<int:item_id>/claim-detail/reveal/",
+                self.admin_site.admin_view(self.reveal_view),
+                {"target": "claim_detail"},
+                name="orders_order_reveal_claim_detail",
+            ),
+            path(
                 "<int:order_id>/items/<int:item_id>/delivery/reveal/",
                 self.admin_site.admin_view(self.reveal_view),
                 {"target": "delivery"},
@@ -764,6 +772,13 @@ class OrderAdmin(ModelAdmin):
             context: dict[str, Any] = {
                 "content": reveal_delivery(order_id=order_id, item_id=item_id, actor=actor, ip=ip)
             }
+        elif target == "claim_detail":
+            template, title = "admin/orders/claim_detail_reveal.html", _("توضیح مشتری")
+            context = {
+                "detail": reveal_claim_detail(
+                    order_id=order_id, item_id=item_id, actor=actor, ip=ip
+                )
+            }
         else:
             template, title = "admin/orders/input_reveal.html", _("اطلاعات مشتری")
             context = {
@@ -925,6 +940,10 @@ class OrderAdmin(ModelAdmin):
                 "claim_reason": claim_event.get_claim_reason_display() if claim_event else "",
                 "claim_note": claim_event.note if claim_event else "",
                 "claim_actor": claim_event.get_actor_display() if claim_event else "",
+                # Whether words exist, asked without reading them: only the logged reveal reads.
+                "claim_has_detail": bool(
+                    claim_event and ClaimDetail.objects.filter(event=claim_event).exists()
+                ),
                 "cancel_options": cancel_options,
                 "cancel_refusal": cancel_refusal,
             },
