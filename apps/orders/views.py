@@ -132,6 +132,7 @@ def _render_detail(
     delivery_error: str = "",
     status: int = 200,
     review_error: tuple[int, str, Any] | None = None,
+    claim_error: tuple[int, str, str, str] | None = None,
 ) -> HttpResponse:
     try:
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
@@ -153,12 +154,14 @@ def _render_detail(
         for item in items
         if item.status == OrderItem.Status.AWAITING_INPUT
     ]
+    delivery = _delivery_context(request, summary["order"])
+    error = error or _claim_refusal(delivery, claim_error)
     response = render(
         request,
         "orders/detail.html",
         {
             **summary,
-            **_delivery_context(request, summary["order"]),
+            **delivery,
             "timeline": customer_timeline(summary["order"]),
             "section": "orders",
             "error": error,
@@ -202,6 +205,20 @@ def _review_items(order: Order, error: tuple[int, str, Any] | None) -> list[dict
         }
         for item in items
     ]
+
+
+def _claim_refusal(delivery: dict[str, Any], claim_error: tuple[int, str, str, str] | None) -> str:
+    """Put a refused request back in its box with its reason and words; what no box shows any
+    more is the page's to say."""
+    if claim_error is None:
+        return ""
+    item_id, message, reason, detail = claim_error
+    for row in delivery["delivery_rows"]:
+        if row["item"].pk == item_id and row["claim_choices"]:
+            row["claim_refusal"] = message
+            row["claim_submitted"] = {"reason": reason, "detail": detail}
+            return ""
+    return message
 
 
 def _delivery_context(request: HttpRequest, order: Any) -> dict[str, Any]:
@@ -445,8 +462,13 @@ def file_claim(request: HttpRequest, order_number: int, item_id: int) -> HttpRes
         return _render_detail(
             request,
             _owned_summary(request, order_number),
-            error=" ".join(invalid.messages),
             status=400,
+            claim_error=(
+                item_id,
+                " ".join(invalid.messages),
+                request.POST.get("reason", ""),
+                request.POST.get("detail", ""),
+            ),
         )
     return redirect("order-detail", order_number=order_number)
 

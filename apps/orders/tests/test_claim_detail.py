@@ -210,6 +210,30 @@ def test_a_past_delivery_deadline_is_not_shown_beside_the_warranty_one(
     assert "مهلت گزارش قطع اشتراک" in page and "مهلت گزارش مشکل تحویل" not in page
 
 
+def test_a_refused_request_keeps_the_reason_and_the_words_beside_its_error(
+    client, buyer, plan, operator
+):
+    order, item = delivered(buyer, plan, operator)
+    client.force_login(buyer)
+    # A line break posts as two characters; the limit counts it as one, as the box does.
+    words = "الف" * 165 + "\r\n" * 3
+
+    accepted = client.post(
+        url(order, item), {"reason": OTHER, "detail": words, "expected_event_id": event_id(item)}
+    )
+    assert accepted.status_code == 302
+    _, item = delivered(buyer, plan, operator)
+    refused = client.post(
+        url(item.order, item),
+        {"reason": OTHER, "detail": "  ", "expected_event_id": event_id(item)},
+    )
+
+    body = refused.content.decode()
+    box = body.partition(f'data-claim-item="{item.pk}"')[2]
+    assert refused.status_code == 400 and "مشکل را در چند کلمه بنویسید." in box
+    assert f'value="{OTHER}" required checked' in box and "<details open>" in body
+
+
 def test_the_whole_claim_form_is_starred_out_of_an_error_report(client, buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
     client.force_login(buyer)

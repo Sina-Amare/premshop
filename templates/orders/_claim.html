@@ -2,14 +2,15 @@
 <div class="order-claim" data-claim-item="{{ row.item.pk }}">
 {% if row.claim_pill %}<p><span class="badge badge--{{ row.claim_pill.badge }}" data-state="{{ row.claim_pill.state }}">{% include "storefront/icon.html" with name=row.claim_pill.icon %}{{ row.claim_pill.label }}</span></p>{% endif %}
 {% if row.claim_reason %}<p data-claim-reason>{{ row.claim_reason }}</p>{% endif %}
-{% if row.claim_choices %}<details><summary>درخواست تعویض</summary>
+{% if row.claim_choices %}<details{% if row.claim_refusal %} open{% endif %}><summary>درخواست تعویض</summary>
+{% if row.claim_refusal %}<p class="form-error" role="alert">{{ row.claim_refusal }}</p>{% endif %}
 {% if row.claim_deadline %}<p class="order-claim__deadline">{% include "storefront/icon.html" with name="clock" %}مهلت گزارش مشکل تحویل: {{ row.claim_deadline|jalali }}، ساعت {{ row.claim_deadline|date:"H:i"|fa_digits }}</p>{% endif %}
 {% if row.warranty_end %}<p class="order-claim__deadline">{% include "storefront/icon.html" with name="clock" %}مهلت گزارش قطع اشتراک: {{ row.warranty_end|jalali }}</p>{% endif %}
 <form method="post" action="{% url 'order-claim' order.order_number row.item.pk %}">
 {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ row.item.latest_event_id }}">
 <fieldset><legend>مشکل این محصول چیست؟</legend>
-{% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required> {{ label }}</label>{% if value == "other" %}
-<div class="field order-claim-other"><label class="field__label" for="claim-detail-{{ row.item.pk }}">توضیح مشکل</label><textarea class="field__input" id="claim-detail-{{ row.item.pk }}" name="detail" rows="3" maxlength="500" aria-describedby="claim-detail-hint-{{ row.item.pk }}"></textarea><p class="small" id="claim-detail-hint-{{ row.item.pk }}">تا ۵۰۰ کاراکتر می‌توانید بنویسید. اطلاعات ورود اکانت را اینجا ننویسید.</p></div>{% endif %}{% endfor %}
+{% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required{% if row.claim_submitted.reason == value %} checked{% endif %}> {{ label }}</label>{% if value == "other" %}
+<div class="field order-claim-other"><label class="field__label" for="claim-detail-{{ row.item.pk }}">توضیح مشکل</label><textarea class="field__input" id="claim-detail-{{ row.item.pk }}" name="detail" rows="3" maxlength="500" aria-describedby="claim-detail-hint-{{ row.item.pk }}">{{ row.claim_submitted.detail }}</textarea><p class="small" id="claim-detail-hint-{{ row.item.pk }}">تا ۵۰۰ کاراکتر می‌توانید بنویسید. اطلاعات ورود اکانت را اینجا ننویسید.</p></div>{% endif %}{% endfor %}
 </fieldset><button class="btn btn--secondary" type="submit">ثبت درخواست تعویض</button>
 </form></details>{% elif row.item.status == "DELIVERED" %}<p>مهلت درخواست تعویض گذشته است.</p>{% endif %}
 </div>

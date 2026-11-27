@@ -374,7 +374,10 @@ def open_customer_claim(
         raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
     if reason not in available_claim_reasons(item):
         raise ValidationError(gettext_lazy("مهلت ثبت درخواست با این دلیل تمام شده است."))
-    words = detail.strip() if reason == OrderItemEvent.ClaimReason.OTHER else ""
+    # A line break posts as two characters; the box and this limit count it as one.
+    words = (
+        detail.replace("\r\n", "\n").strip() if reason == OrderItemEvent.ClaimReason.OTHER else ""
+    )
     if reason == OrderItemEvent.ClaimReason.OTHER and not words:
         raise ValidationError(gettext_lazy("مشکل را در چند کلمه بنویسید."))
     if len(words) > CLAIM_DETAIL_LENGTH:
