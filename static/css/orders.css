@@ -191,9 +191,8 @@ html[data-motion=off] .rate__stars label{transition:none}
 .order-claim-choice:has(input:checked){border-color:var(--v-accent);background:var(--v-mint)}
 .order-claim-choice input{flex:none;inline-size:18px;block-size:18px;margin:4px 0 0;accent-color:var(--v-accent)}
 .order-claim form>.btn{margin-block-start:8px}
-/* The box for another problem opens under its reason when that reason is chosen; a browser
-   without :has shows it all along, and the server asks for the words only with that reason. */
-.order-claim-other{margin:0 0 8px;padding-inline-start:28px}
-.order-claim-other .field__input{max-inline-size:100%;min-block-size:5.5rem;resize:vertical;font-size:16px}
-.order-claim-other .small{margin:6px 0 0;font-size:13px;line-height:1.8;color:var(--v-text)}
-@supports selector(:has(*)){.order-claim form:not(:has(input[value=other]:checked)) .order-claim-other{display:none}}
+/* Under the reasons, the buyer's words and the Telegram handle support will write to. */
+.order-claim-words{margin:12px 0 0}
+.order-claim-words .field__input{max-inline-size:100%;font-size:16px}
+.order-claim-words textarea.field__input{min-block-size:6.5rem;resize:vertical}
+.order-claim-words .small{margin:6px 0 0;font-size:13px;line-height:1.8;color:var(--v-text)}

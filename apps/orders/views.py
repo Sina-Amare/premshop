@@ -132,7 +132,7 @@ def _render_detail(
     delivery_error: str = "",
     status: int = 200,
     review_error: tuple[int, str, Any] | None = None,
-    claim_error: tuple[int, str, str, str] | None = None,
+    claim_error: tuple[int, str, dict[str, str]] | None = None,
 ) -> HttpResponse:
     try:
         support_identifier = OrderSupportIdentifier.objects.filter(order=summary["order"]).first()
@@ -207,16 +207,18 @@ def _review_items(order: Order, error: tuple[int, str, Any] | None) -> list[dict
     ]
 
 
-def _claim_refusal(delivery: dict[str, Any], claim_error: tuple[int, str, str, str] | None) -> str:
-    """Put a refused request back in its box with its reason and words; what no box shows any
-    more is the page's to say."""
+def _claim_refusal(
+    delivery: dict[str, Any], claim_error: tuple[int, str, dict[str, str]] | None
+) -> str:
+    """Put a refused request back in its box with what the buyer chose and wrote; what no box
+    shows any more is the page's to say."""
     if claim_error is None:
         return ""
-    item_id, message, reason, detail = claim_error
+    item_id, message, submitted = claim_error
     for row in delivery["delivery_rows"]:
         if row["item"].pk == item_id and row["claim_choices"]:
             row["claim_refusal"] = message
-            row["claim_submitted"] = {"reason": reason, "detail": detail}
+            row["claim_submitted"] = submitted
             return ""
     return message
 
@@ -457,18 +459,15 @@ def file_claim(request: HttpRequest, order_number: int, item_id: int) -> HttpRes
             expected_event_id=expected,
             reason=request.POST.get("reason", ""),
             detail=request.POST.get("detail", ""),
+            telegram=request.POST.get("telegram", ""),
         )
     except ValidationError as invalid:
+        submitted = {key: request.POST.get(key, "") for key in ("reason", "detail", "telegram")}
         return _render_detail(
             request,
             _owned_summary(request, order_number),
             status=400,
-            claim_error=(
-                item_id,
-                " ".join(invalid.messages),
-                request.POST.get("reason", ""),
-                request.POST.get("detail", ""),
-            ),
+            claim_error=(item_id, " ".join(invalid.messages), submitted),
         )
     return redirect("order-detail", order_number=order_number)
 

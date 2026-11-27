@@ -1383,8 +1383,14 @@ msgstr "No description was given, or it was deleted after the retention period. 
 msgid "مشکل را در چند کلمه بنویسید."
 msgstr "Describe the problem in a few words."
 
-msgid "تا ۵۰۰ کاراکتر می‌توانید بنویسید."
-msgstr "You can write up to 500 characters."
+msgid "تا ۱۰۰۰ کاراکتر می‌توانید بنویسید."
+msgstr "You can write up to 1,000 characters."
+
+msgid "آیدی تلگرام مشتری"
+msgstr "Customer's Telegram ID"
+
+msgid "آیدی تلگرام را به شکل @username بنویسید."
+msgstr "Write the Telegram ID as @username."
 
 msgid "روش تحویل"
 msgstr "Delivery method"

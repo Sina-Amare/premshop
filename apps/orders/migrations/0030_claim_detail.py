@@ -32,7 +32,18 @@ class Migration(migrations.Migration):
                         auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
                     ),
                 ),
-                ("text", apps.core.fields.EncryptedTextField(verbose_name="توضیح مشتری")),
+                (
+                    "text",
+                    apps.core.fields.EncryptedTextField(
+                        blank=True, null=True, verbose_name="توضیح مشتری"
+                    ),
+                ),
+                (
+                    "telegram",
+                    models.CharField(
+                        blank=True, default="", max_length=32, verbose_name="آیدی تلگرام مشتری"
+                    ),
+                ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),

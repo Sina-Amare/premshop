@@ -942,7 +942,15 @@ class OrderAdmin(ModelAdmin):
                 "claim_actor": claim_event.get_actor_display() if claim_event else "",
                 # Whether words exist, asked without reading them: only the logged reveal reads.
                 "claim_has_detail": bool(
-                    claim_event and ClaimDetail.objects.filter(event=claim_event).exists()
+                    claim_event
+                    and ClaimDetail.objects.filter(event=claim_event, text__isnull=False).exists()
+                ),
+                "claim_telegram": (
+                    ClaimDetail.objects.filter(event=claim_event)
+                    .values_list("telegram", flat=True)
+                    .first()
+                    if claim_event
+                    else ""
                 ),
                 "cancel_options": cancel_options,
                 "cancel_refusal": cancel_refusal,

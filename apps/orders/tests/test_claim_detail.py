@@ -28,13 +28,14 @@ OTHER = "other"
 DETAIL = "پس از ورود، Netflix کد تأیید ایمیل اکانت را می‌خواهد."
 
 
-def other(item, buyer, detail=DETAIL):
+def other(item, buyer, detail=DETAIL, telegram=""):
     return services.open_customer_claim(
         order_id=item.order_id,
         item_id=item.pk,
         actor=buyer,
         reason=OTHER,
         detail=detail,
+        telegram=telegram,
         expected_event_id=event_id(item),
     )
 
@@ -55,7 +56,7 @@ def test_another_problem_is_offered_beside_the_reasons_and_only_while_one_is(buy
     [
         ("", "مشکل را در چند کلمه بنویسید."),
         ("   ", "مشکل را در چند کلمه بنویسید."),
-        ("ب" * 501, "۵۰۰"),
+        ("ب" * 1001, "۱۰۰۰"),
     ],
 )
 def test_another_problem_needs_its_words(buyer, plan, operator, detail, refusal):
@@ -82,7 +83,8 @@ def test_the_words_are_stored_encrypted_on_the_customers_claim(buyer, plan, oper
     assert DETAIL not in stored and "$" in stored
 
 
-def test_a_named_reason_keeps_no_words(buyer, plan, operator):
+@pytest.mark.parametrize(("detail", "kept"), [(DETAIL, True), ("  ", False)])
+def test_a_named_reason_may_carry_words_too(buyer, plan, operator, detail, kept):
     _, item = delivered(buyer, plan, operator)
 
     services.open_customer_claim(
@@ -90,18 +92,44 @@ def test_a_named_reason_keeps_no_words(buyer, plan, operator):
         item_id=item.pk,
         actor=buyer,
         reason="details_failed",
-        detail=DETAIL,
+        detail=detail,
         expected_event_id=event_id(item),
     )
 
-    assert not ClaimDetail.objects.exists()
+    assert ClaimDetail.objects.filter(text__isnull=False).exists() is kept
+    assert not ClaimDetail.objects.filter(text__isnull=True).exists()
+
+
+def test_the_telegram_handle_is_kept_plainly_and_shown_to_the_operator(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+
+    other(item, buyer, telegram=" @Buyer_tg ")
+
+    assert ClaimDetail.objects.get().telegram == "Buyer_tg"
+    staff = Client()
+    staff.force_login(operator)
+    page = staff.get(f"/admin/orders/order/{order.pk}/items/{item.pk}/deliver/").content.decode()
+    assert "@Buyer_tg" in page and "https://t.me/Buyer_tg" in page
+    assert DETAIL not in page and not CredentialAccessLog.objects.exists()
+
+
+@pytest.mark.parametrize("handle", ["ab", "with space", "@" + "a" * 33, "نام"])
+def test_a_malformed_telegram_handle_is_refused(buyer, plan, operator, handle):
+    _, item = delivered(buyer, plan, operator)
+
+    with pytest.raises(ValidationError, match="آیدی تلگرام را به شکل"):
+        other(item, buyer, telegram=handle)
 
 
 def test_the_page_offers_the_box_and_files_the_words(client, buyer, plan, operator):
     order, item = delivered(buyer, plan, operator)
     client.force_login(buyer)
+    buyer.telegram_username = "buyer_tg"
+    buyer.save(update_fields=["telegram_username"])
     page = client.get(f"/account/orders/{order.order_number}/").content.decode()
     assert f'name="reason" value="{OTHER}"' in page and 'name="detail"' in page
+    # The linked account's handle is offered, and the buyer may change it.
+    assert 'name="telegram"' in page and 'value="buyer_tg"' in page
 
     response = client.post(
         url(order, item),
@@ -216,7 +244,7 @@ def test_a_refused_request_keeps_the_reason_and_the_words_beside_its_error(
     order, item = delivered(buyer, plan, operator)
     client.force_login(buyer)
     # A line break posts as two characters; the limit counts it as one, as the box does.
-    words = "الف" * 165 + "\r\n" * 3
+    words = "الف" * 332 + "\r\n" * 3
 
     accepted = client.post(
         url(order, item), {"reason": OTHER, "detail": words, "expected_event_id": event_id(item)}

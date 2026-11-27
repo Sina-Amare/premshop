@@ -132,12 +132,14 @@ def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str |
 
 
 def reveal_claim_detail(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
-    """The buyer's words for the item's latest claim of another problem, logged before reading."""
+    """The buyer's words on the item's latest replacement request, logged before reading."""
     with transaction.atomic(durable=True):
         _may_reveal(actor)
         row = (
             ClaimDetail.objects.filter(
-                event__order_item_id=item_id, event__order_item__order_id=order_id
+                event__order_item_id=item_id,
+                event__order_item__order_id=order_id,
+                text__isnull=False,
             )
             .order_by("-pk")
             .only("pk")
@@ -146,7 +148,7 @@ def reveal_claim_detail(*, order_id: int, item_id: int, actor: User, ip: str | N
         if row is None:
             return ""
         _log_reveal(item_id, actor, ip, CredentialAccessLog.Target.CLAIM_DETAIL)
-        return ClaimDetail.objects.values_list("text", flat=True).get(pk=row.pk)
+        return ClaimDetail.objects.values_list("text", flat=True).get(pk=row.pk) or ""
 
 
 DELIVERY_LINES = 6
@@ -346,7 +348,9 @@ def available_claim_reasons(
     return reasons
 
 
-CLAIM_DETAIL_LENGTH = 500
+CLAIM_DETAIL_LENGTH = 1000
+# Telegram's own rule for a username: five to 32 letters, digits or underscores.
+TELEGRAM_HANDLE = re.compile(r"[A-Za-z0-9_]{5,32}")
 
 
 @transaction.atomic
@@ -358,6 +362,7 @@ def open_customer_claim(
     expected_event_id: int,
     reason: str,
     detail: str = "",
+    telegram: str = "",
 ) -> OrderItem:
     account = User.objects.filter(pk=actor.pk, is_active=True).first()
     if account is None:
@@ -375,13 +380,14 @@ def open_customer_claim(
     if reason not in available_claim_reasons(item):
         raise ValidationError(gettext_lazy("مهلت ثبت درخواست با این دلیل تمام شده است."))
     # A line break posts as two characters; the box and this limit count it as one.
-    words = (
-        detail.replace("\r\n", "\n").strip() if reason == OrderItemEvent.ClaimReason.OTHER else ""
-    )
+    words = detail.replace("\r\n", "\n").strip()
     if reason == OrderItemEvent.ClaimReason.OTHER and not words:
         raise ValidationError(gettext_lazy("مشکل را در چند کلمه بنویسید."))
     if len(words) > CLAIM_DETAIL_LENGTH:
-        raise ValidationError(gettext_lazy("تا ۵۰۰ کاراکتر می‌توانید بنویسید."))
+        raise ValidationError(gettext_lazy("تا ۱۰۰۰ کاراکتر می‌توانید بنویسید."))
+    handle = telegram.strip().removeprefix("@")
+    if handle and not TELEGRAM_HANDLE.fullmatch(handle):
+        raise ValidationError(gettext_lazy("آیدی تلگرام را به شکل @username بنویسید."))
     item.status = OrderItem.Status.REPLACEMENT_REQUESTED
     item.save(update_fields=["status"])
     event = _input_event(
@@ -392,8 +398,8 @@ def open_customer_claim(
         claim_reason=reason,
         notification="customer_claim",
     )
-    if words:
-        ClaimDetail.objects.create(event=event, text=words)
+    if words or handle:
+        ClaimDetail.objects.create(event=event, text=words or None, telegram=handle)
     return item
 
 

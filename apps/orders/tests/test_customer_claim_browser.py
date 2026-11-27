@@ -80,13 +80,11 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
                 assert box.locator('input[name="reason"]').count() == 2
                 expect(box.locator(f'input[value="{C}"]')).to_be_visible()
             elif state == "other":
-                # The box for the buyer's words opens only under its reason.
-                expect(box.locator('textarea[name="detail"]')).to_be_hidden()
                 box.get_by_label("مشکل دیگری دارد.", exact=True).check()
-                expect(box.get_by_label("توضیح مشکل", exact=True)).to_be_visible()
                 box.get_by_label("توضیح مشکل", exact=True).fill(
                     "پس از ورود، کد تأیید ایمیل اکانت را می‌خواهد."
                 )
+                box.get_by_label("آیدی تلگرام شما (اختیاری)", exact=True).fill("@buyer_tg")
             else:
                 expect(box.get_by_label(LABEL_A, exact=True)).to_be_visible()
                 expect(box.locator(f'input[value="{B}"]')).to_be_visible()
@@ -116,6 +114,11 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
             radio = box.get_by_label(LABEL_A, exact=True)
             radio.focus()
             page.keyboard.press("Space")
+            # From the reason, Tab reaches the words, the Telegram handle, then the button.
+            page.keyboard.press("Tab")
+            expect(box.get_by_label("توضیح مشکل", exact=True)).to_be_focused()
+            page.keyboard.press("Tab")
+            expect(box.get_by_label("آیدی تلگرام شما (اختیاری)", exact=True)).to_be_focused()
             page.keyboard.press("Tab")
             expect(box.get_by_role("button", name="ثبت درخواست تعویض", exact=True)).to_be_focused()
             page.keyboard.press("Enter")

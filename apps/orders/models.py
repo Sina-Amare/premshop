@@ -537,17 +537,19 @@ class OrderItemEvent(models.Model):
 
 
 class ClaimDetail(models.Model):
-    """The buyer's words for a problem no reason names, kept apart from the claim's event.
+    """What a buyer adds to a replacement request: their words and a Telegram handle.
 
-    They may hold account details, so they are encrypted and live in a row no history, timeline
-    or panel page loads by the way: only the logged reveal reads them, and retention deletes them
-    with the item's other details (ADR-0007).
+    The words may hold account details, so they are encrypted and live in a row no history,
+    timeline or panel page loads by the way: only the logged reveal reads them, and retention
+    deletes the row with the item's other details (ADR-0007). The handle is how support reaches
+    the buyer, so the panel shows it as it is.
     """
 
     event = models.OneToOneField(
         OrderItemEvent, on_delete=models.CASCADE, related_name="claim_detail"
     )
-    text = EncryptedTextField(_("توضیح مشتری"))
+    text = EncryptedTextField(_("توضیح مشتری"), null=True, blank=True)
+    telegram = models.CharField(_("آیدی تلگرام مشتری"), max_length=32, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
