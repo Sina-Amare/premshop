@@ -126,6 +126,8 @@ def test_a_delivery_code_says_what_it_opens(smsir):
     _, path, body, _ = smsir.calls[0]
     assert path == "/v1/send/bulk"
     assert CODE in body["messageText"] and body["messageText"].startswith("کد نمایش اطلاعات تحویل")
+    # Only a signed-in session can ask for it, so an unasked code means someone else is in.
+    assert "اگر خودتان این کد را نخواسته‌اید" in body["messageText"]
 
 
 def test_a_delivery_code_never_goes_out_on_the_sign_in_template(smsir, settings):
