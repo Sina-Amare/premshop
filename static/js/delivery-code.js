@@ -46,8 +46,10 @@
         show(data.error);
         row.fail(function () { row.disable(false); row.focus(); busy = false; });
       }).catch(function () {
-        // A 503 page or a dropped connection: the plain post lets the server answer.
-        form.submit();
+        // A 503 page or a dropped connection, perhaps after the server used the code: the page
+        // asks what the server now holds and never posts the code again.
+        if (window.inPlace) window.inPlace.refresh(location.href, 'order-delivery');
+        else location.replace(location.pathname + location.search);
       });
     }
     form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });

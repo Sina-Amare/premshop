@@ -198,6 +198,42 @@ def test_https_code_and_keyboard_reveal_is_private_and_accessible(
         context.close()
 
 
+def test_a_lost_answer_to_the_code_is_never_posted_again(
+    browser, https_server, buyer, plan, operator, mailoutbox
+):
+    """The server used the code, then the connection dropped: the page asks what it now holds."""
+    order, _ = delivered(buyer, plan, operator)
+    context, _ = customer_context(browser, https_server, buyer, 390)
+    page = context.new_page()
+    detail = https_server + reverse("order-detail", args=[order.order_number])
+    confirm = reverse("order-delivery-confirm", args=[order.order_number])
+    posts = []
+    page.on(
+        "request",
+        lambda request: (
+            posts.append(request.url)
+            if request.method == "POST" and confirm in request.url
+            else None
+        ),
+    )
+
+    def answer_lost(route):
+        route.fetch()
+        route.abort()
+
+    try:
+        page.goto(detail)
+        page.get_by_role("button", name="فرستادن کد به ایمیل").click()
+        expect(page.locator("#order-delivery [role=status]")).to_be_visible()
+        page.route(f"**{confirm}*", answer_lost)
+        page.locator("#order-delivery .otp__cell").first.focus()
+        page.keyboard.type(code_from_mail())
+        expect(page.locator("#order-delivery .form-ok")).to_contain_text("کد تأیید شد.")
+        assert len(posts) == 1, posts
+    finally:
+        context.close()
+
+
 def test_without_javascript_the_code_still_posts_and_the_page_loads(
     browser, https_server, buyer, plan, operator, mailoutbox
 ):
