@@ -1,4 +1,5 @@
-"""Independent, session-bound permission to read an owned order's delivery."""
+"""Session-bound permission to read an owned order's delivery, by a code sent to the order's
+email or by SMS to the number it was placed with (ADR-0031, amended 2026-11-27)."""
 
 import logging
 import time

@@ -4,7 +4,7 @@ from django.db.models.functions import Coalesce
 
 
 def record_the_accounts_number(apps, schema_editor):
-    # An earlier order's number at purchase was never kept; the account's is the best record.
+    # An earlier order's number at purchase was never kept; none had been placed in production.
     User = apps.get_model("accounts", "User")
     apps.get_model("orders", "Order").objects.update(
         placement_phone=Coalesce(
