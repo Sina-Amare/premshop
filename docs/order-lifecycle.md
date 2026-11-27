@@ -213,7 +213,7 @@ A product whose warranty runs to the end of the period cannot be delivered or re
 
 The buyer files through `open_customer_claim`, with the expected event and a fixed reason, never prose. It locks the active owning account, order and item; staff using this customer route must own the order and are recorded as customers. Reason A reports incorrect delivered details/code; B reports inactive/wrong subscription; both last 48 hours from the current delivery. An item without a subscription end offers A only. C reports service stopping during the purchased warranty: `warranty_ends_on` is frozen at first delivery and replacement cannot extend it. The form offers only eligible reasons, and the service checks them again under locks. Repeats from the same customer/page keep the first claim, while pages older than its rejection or replacement are refused. A fresh page can file again inside the windows.
 
-The claim and its reason-bearing customer event commit together. Operator rejection and replacement use their existing services and delivery generations. Claim badges share the five order tones. Customer reveal still requires order-email proof and exposes only the current generation. Every committed customer claim queues an operator email after commit; the minute sweep recovers a missed callback. Granting a refund uses the separate coverage and amount rules below.
+The claim and its reason-bearing customer event commit together. Operator rejection and replacement use their existing services and delivery generations. Claim badges share the five order tones. Customer reveal still requires the order's code proof and exposes only the current generation. Every committed customer claim queues an operator email after commit; the minute sweep recovers a missed callback. Granting a refund uses the separate coverage and amount rules below.
 
 ### Retention
 
@@ -280,7 +280,7 @@ No message carries a credential value or customer input ([ADR-0008](decisions/00
 
 ## Customer delivery access
 
-The owned order page lists only field titles and fixed masks, without loading encrypted values or notes. Revealing a current set requires independent email proof as specified in ADR-0031's 2026-11-16 amendment. The proof permits only that order, buyer and current session for ten minutes. Every reveal is a POST, writes a `customer` access row before decryption, and bypasses caching and compression. The newest set and its note are returned; older generations remain inaccessible. Missing or unreadable data has its own state.
+The owned order page lists only field titles and fixed masks, without loading encrypted values or notes. Revealing a current set requires a code the buyer chooses to receive at the order email or by SMS at `placement_phone`, the number the order was placed with, while it is still the account's (ADR-0031, amendments of 2026-11-16 and 2026-11-27). A delivery SMS spends the number's and the shop's daily SMS budgets. The proof permits only that order, buyer and current session for ten minutes. Every reveal is a POST, writes a `customer` access row before decryption, and bypasses caching and compression. The newest set and its note are returned; older generations remain inaccessible. Missing or unreadable data has its own state.
 
 Customers can reveal only items in `DELIVERED` or `REPLACEMENT_REQUESTED`. A cancelled or refunded item is unavailable even when its encrypted sets still exist until the retention deadline. Staff reveal permissions and retention are unchanged.
 
@@ -308,7 +308,7 @@ The first command sends a challenge through the shop's bot to the unchanged Tele
 | Customer pages, tracking and the invoice | `apps/orders/tests/test_customer_pages.py` |
 | Staff reveal of customer input and its log | `apps/orders/tests/test_input_reveal.py` |
 | Delivery: storage, refusals, races, preview, reveal, privacy headers and error reports | `apps/orders/tests/test_delivery.py`, `test_delivery_browser.py` |
-| Independent order-email proof, customer status gate, bot recovery, source backfill/reversal and HTTPS browser journeys | `apps/orders/tests/test_customer_delivery.py`, `test_customer_delivery_browser.py` |
+| Order-email or SMS proof, customer status gate, bot recovery, source backfill/reversal and HTTPS browser journeys | `apps/orders/tests/test_customer_delivery.py`, `test_customer_delivery_browser.py` |
 | The input-timeout ladder: notices, their once-per-episode rule, support hours, the operator's flag, the 21st-day cancellation, races and the refund's attribution | `apps/orders/tests/test_input_ladder.py` |
 | Paid cancellation: reasons by status, warranty and 21-day boundaries, amounts, discount shares and their release, stock, repeats, permissions and the panel form | `apps/orders/tests/test_paid_cancellation.py`, `test_paid_cancellation_admin.py`, `test_paid_cancellation_browser.py` |
 | The refund ledger's database guards | `apps/payments/tests/test_refund_guards.py` |
