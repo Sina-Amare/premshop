@@ -8,7 +8,8 @@
 <form method="post" action="{% url 'order-claim' order.order_number row.item.pk %}">
 {% csrf_token %}<input type="hidden" name="expected_event_id" value="{{ row.item.latest_event_id }}">
 <fieldset><legend>مشکل این محصول چیست؟</legend>
-{% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required> {{ label }}</label>{% endfor %}
+{% for value, label in row.claim_choices %}<label class="order-claim-choice" for="claim-{{ row.item.pk }}-{{ value }}"><input type="radio" id="claim-{{ row.item.pk }}-{{ value }}" name="reason" value="{{ value }}" required> {{ label }}</label>{% if value == "other" %}
+<div class="field order-claim-other"><label class="field__label" for="claim-detail-{{ row.item.pk }}">توضیح مشکل</label><textarea class="field__input" id="claim-detail-{{ row.item.pk }}" name="detail" rows="3" maxlength="500" aria-describedby="claim-detail-hint-{{ row.item.pk }}"></textarea><p class="small" id="claim-detail-hint-{{ row.item.pk }}">تا ۵۰۰ کاراکتر می‌توانید بنویسید. اطلاعات ورود اکانت را اینجا ننویسید.</p></div>{% endif %}{% endfor %}
 </fieldset><button class="btn btn--secondary" type="submit">ثبت درخواست تعویض</button>
 </form></details>{% elif row.item.status == "DELIVERED" %}<p>مهلت درخواست تعویض گذشته است.</p>{% endif %}
 </div>
