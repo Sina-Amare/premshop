@@ -253,13 +253,19 @@ def test_a_refused_request_keeps_the_reason_and_the_words_beside_its_error(
     _, item = delivered(buyer, plan, operator)
     refused = client.post(
         url(item.order, item),
-        {"reason": OTHER, "detail": "  ", "expected_event_id": event_id(item)},
+        {
+            "reason": OTHER,
+            "detail": "  ",
+            "telegram": "@kept_tg",
+            "expected_event_id": event_id(item),
+        },
     )
 
     body = refused.content.decode()
     box = body.partition(f'data-claim-item="{item.pk}"')[2]
     assert refused.status_code == 400 and "مشکل را در چند کلمه بنویسید." in box
     assert f'value="{OTHER}" required checked' in box and "<details open>" in body
+    assert 'value="@kept_tg"' in box
 
 
 def test_the_whole_claim_form_is_starred_out_of_an_error_report(client, buyer, plan, operator):
@@ -304,3 +310,26 @@ def test_words_on_a_named_reason_also_refuse_the_reverse(buyer, plan, operator):
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
     assert ClaimDetail.objects.count() == 1
+
+
+def test_a_handle_without_words_shows_the_handle_and_nothing_to_reveal(buyer, plan, operator):
+    order, item = delivered(buyer, plan, operator)
+    services.open_customer_claim(
+        order_id=item.order_id,
+        item_id=item.pk,
+        actor=buyer,
+        reason="details_failed",
+        detail="",
+        telegram="buyer_tg",
+        expected_event_id=event_id(item),
+    )
+    assert ClaimDetail.objects.filter(text__isnull=True).count() == 1
+    staff = Client()
+    staff.force_login(operator)
+
+    page = staff.get(f"/admin/orders/order/{order.pk}/items/{item.pk}/deliver/").content.decode()
+    shown = staff.post(reveal_url(order, item)).content.decode()
+
+    assert "@buyer_tg" in page and reveal_url(order, item) not in page
+    assert "data-revealed-claim-detail" not in shown
+    assert not CredentialAccessLog.objects.exists()
