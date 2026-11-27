@@ -43,6 +43,7 @@ erDiagram
   OrderItem ||--o| Refund : "refunded by"
   OrderItem ||--o| Review : "reviewed by"
   OrderItemEvent ||--o| Delivery : records
+  OrderItemEvent ||--o| ClaimDetail : "buyer's words"
   Holiday |o--o{ OrderItemEvent : "pauses and resumes"
   Delivery ||--|{ DeliveryField : lines
   DiscountCode |o--o{ Order : discounts
@@ -170,7 +171,7 @@ Not drawn, for readability: the user keys on `DiscountRedemption`, `OrderItemEve
 
 **OrderItemEvent** is the append-only history of each item: the status before (null at creation) and after, the actor (`operator`, `customer` or `system`), the acting user if any, and a note. It is written in the same transaction as the change it records, and the database trigger `orders_event_immutable` refuses any UPDATE or DELETE. A row whose status before and after are the same records an annotation: a moved deadline or a retention deletion.
 
-Customer claim events also hold `claim_reason`: `details_failed`, `subscription_mismatch` or `stopped_early`. A database constraint limits a nonempty reason to a customer DELIVERED → REPLACEMENT_REQUESTED event without a prose note. Staff claims retain their operator note and actor.
+Customer claim events also hold `claim_reason`: `details_failed`, `subscription_mismatch`, `stopped_early` or `other`. What a buyer adds to a request is a **ClaimDetail** row, one per event and deleted with it: an encrypted `text`, required for `other` and optional otherwise, that only `reveal_claim_detail` reads after writing its access-log row, and a plain `telegram` handle the panel shows. Retention deletes the row with the item's other details. A database constraint limits a nonempty reason to a customer DELIVERED → REPLACEMENT_REQUESTED event without a prose note. Staff claims retain their operator note and actor.
 
 A holiday's own pause and resume rows also hold `holiday`, the holiday that wrote them; the customer's history leaves them out.
 
@@ -193,7 +194,7 @@ One code applies per order, on top of promotional prices. A percentage rounds ha
 
 **DiscountRedemption** is one row per order that used a code (`order` is unique): the code, the customer and what the code actually cost. `released_at` is set when an unpaid order is cancelled, or once every paid item the code covered has been cancelled without ever being delivered, so the redemption stops counting against the code's limits while its history stays. `per_user_limit` is counted from these rows.
 
-**CredentialAccessLog** is one row per successful reveal of an item's customer input or delivered details: the item, authenticated user, address, time, `target` (`customer_input` or `delivery`) and `source` (`panel` or `customer`), never the value. Existing rows were backfilled as `panel`. The reveal writes its row before decrypting and commits before returning; failed decryption rolls it back. Rows are deleted after 365 days.
+**CredentialAccessLog** is one row per successful reveal of an item's customer input or delivered details: the item, authenticated user, address, time, `target` (`customer_input`, `delivery` or `claim_detail`) and `source` (`panel` or `customer`), never the value. Existing rows were backfilled as `panel`. A reveal of a claim's words has the target `claim_detail`. The reveal writes its row before decrypting and commits before returning; failed decryption rolls it back. Rows are deleted after 365 days.
 
 **OrderEmailRecovery** appends one row per operator-authorized recovery of an order's delivery email: order, email, operator, Telegram id/link timestamp and creation time. Its user/order keys use PROTECT. It does not edit `placement_email` or the account's contact address. The latest row's id is the trusted-email generation; it invalidates earlier order-email codes and session proofs. Recovery requires a single-use bot challenge to the unchanged pre-order Telegram link; it still requires confirmation of an email code afterwards (ADR-0031, 2026-11-16). Only hashes of codes and session bindings live in the cache, for ten minutes.
 
@@ -279,7 +280,7 @@ The catalogue's constraints carry a Persian message, shown in the panel under th
 | `Order.user`, `Order.discount_code`, `OrderItem.order`, `OrderItemEvent.order_item`, `OrderItemEvent.actor_user`, `OrderItemEvent.holiday`, `Holiday.started_by`, `Holiday.ended_by`, every key on `Payment`, `Refund`, `DiscountRedemption`, `CredentialAccessLog` and `Delivery`, `Notification.order` | PROTECT | Money and audit records fail loudly rather than disappear. A used discount code is deactivated, never deleted |
 | `OrderItem.plan`, `CartItem.plan` | PROTECT | A sold plan must outlive its sales, and deleting a plan would silently empty someone's cart. Retire it with `is_available = false` |
 | `Product.category` | PROTECT | No orphan products |
-| `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart`; `DeliveryField.delivery` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
+| `Plan`, `ProductSpec`, `ProductSection`, `ProductQuestion` to `Product`; `Cart.user`; `CartItem.cart`; `DeliveryField.delivery`; `ClaimDetail.event` | CASCADE | Pure children. A product with sales still cannot be deleted, because its plans are protected by their order items |
 
 ## 5. Indexes
 

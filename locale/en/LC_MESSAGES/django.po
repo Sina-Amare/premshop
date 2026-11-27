@@ -1365,6 +1365,33 @@ msgstr "Email at purchase"
 msgid "شماره‌ی موبایل زمان خرید"
 msgstr "Mobile number at purchase"
 
+msgid "مشکل دیگری دارد."
+msgstr "It has another problem."
+
+msgid "توضیح درخواست تعویض"
+msgstr "Replacement request description"
+
+msgid "توضیح مشتری"
+msgstr "Customer's description"
+
+msgid "نمایش توضیح مشتری"
+msgstr "Show the customer's description"
+
+msgid "توضیحی ثبت نشده یا پس از مهلت نگهداری حذف شده است. سابقه‌ی سفارش را ببینید."
+msgstr "No description was given, or it was deleted after the retention period. See the order history."
+
+msgid "مشکل را در چند کلمه بنویسید."
+msgstr "Describe the problem in a few words."
+
+msgid "تا ۱۰۰۰ کاراکتر می‌توانید بنویسید."
+msgstr "You can write up to 1,000 characters."
+
+msgid "آیدی تلگرام مشتری"
+msgstr "Customer's Telegram ID"
+
+msgid "آیدی تلگرام را به شکل @username بنویسید."
+msgstr "Write the Telegram ID as @username."
+
 msgid "روش تحویل"
 msgstr "Delivery method"
 

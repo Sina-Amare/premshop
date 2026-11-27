@@ -29,6 +29,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
         "long",
         "no_end",
         "warranty",
+        "other",
     ],
 )
 def test_customer_claim_states(browser, live_server, buyer, plan, operator, width, state, tmp_path):
@@ -73,11 +74,17 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
             if state in ("rejected", "replaced"):
                 expect(box.locator(f'[data-state="claim_{state}"]')).to_be_visible()
             if state == "no_end":
-                assert box.locator('input[name="reason"]').count() == 1
+                assert box.locator('input[name="reason"]').count() == 2
                 expect(box.locator(f'input[value="{A}"]')).to_be_visible()
             elif state == "warranty":
-                assert box.locator('input[name="reason"]').count() == 1
+                assert box.locator('input[name="reason"]').count() == 2
                 expect(box.locator(f'input[value="{C}"]')).to_be_visible()
+            elif state == "other":
+                box.get_by_label("مشکل دیگری دارد.", exact=True).check()
+                box.get_by_label("توضیح مشکل", exact=True).fill(
+                    "پس از ورود، کد تأیید ایمیل اکانت را می‌خواهد."
+                )
+                box.get_by_label("آیدی تلگرام شما (اختیاری)", exact=True).fill("@buyer_tg")
             else:
                 expect(box.get_by_label(LABEL_A, exact=True)).to_be_visible()
                 expect(box.locator(f'input[value="{B}"]')).to_be_visible()
@@ -87,6 +94,11 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
                 )
                 box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
                 expect(page.get_by_role("alert")).to_contain_text("یکی از دلیل‌ها را انتخاب کنید.")
+            if state == "other":
+                capture(page, "claim-other-filled", width, tmp_path)
+                box.get_by_role("button", name="ثبت درخواست تعویض", exact=True).click()
+                expect(page.locator('[data-state="claim_open"]')).to_be_visible()
+                expect(page.locator("[data-claim-reason]")).to_have_text("مشکل دیگری دارد.")
             elif state == "stale":
                 submit(item, buyer)
                 reject(item, operator)
@@ -102,6 +114,11 @@ def test_customer_claim_states(browser, live_server, buyer, plan, operator, widt
             radio = box.get_by_label(LABEL_A, exact=True)
             radio.focus()
             page.keyboard.press("Space")
+            # From the reason, Tab reaches the words, the Telegram handle, then the button.
+            page.keyboard.press("Tab")
+            expect(box.get_by_label("توضیح مشکل", exact=True)).to_be_focused()
+            page.keyboard.press("Tab")
+            expect(box.get_by_label("آیدی تلگرام شما (اختیاری)", exact=True)).to_be_focused()
             page.keyboard.press("Tab")
             expect(box.get_by_role("button", name="ثبت درخواست تعویض", exact=True)).to_be_focused()
             page.keyboard.press("Enter")

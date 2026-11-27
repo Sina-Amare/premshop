@@ -375,6 +375,7 @@ class CredentialAccessLog(models.Model):
     class Target(models.TextChoices):
         CUSTOMER_INPUT = "customer_input", _("اطلاعات مشتری")
         DELIVERY = "delivery", _("اطلاعات تحویل")
+        CLAIM_DETAIL = "claim_detail", _("توضیح درخواست تعویض")
 
     order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -387,7 +388,7 @@ class CredentialAccessLog(models.Model):
         ordering = ["created_at", "pk"]
         constraints = [
             models.CheckConstraint(
-                condition=Q(target__in=["customer_input", "delivery"]),
+                condition=Q(target__in=["customer_input", "delivery", "claim_detail"]),
                 name="credential_access_target_valid",
             ),
             models.CheckConstraint(
@@ -469,6 +470,8 @@ class OrderItemEvent(models.Model):
         DETAILS = "details_failed", _("اطلاعات ورود اکانت یا کد تحویل‌داده‌شده درست نیست.")
         SUBSCRIPTION = "subscription_mismatch", _("اشتراک فعال نیست یا نوع آن با سفارش فرق دارد.")
         STOPPED = "stopped_early", _("اشتراک کار می‌کرد، اما پیش از پایان گارانتی قطع شده است.")
+        # The buyer's own words go in a ClaimDetail row, read only through a logged reveal.
+        OTHER = "other", _("مشکل دیگری دارد.")
 
     class Actor(models.TextChoices):
         OPERATOR = "operator", _("پشتیبانی")
@@ -502,7 +505,14 @@ class OrderItemEvent(models.Model):
             models.CheckConstraint(
                 condition=Q(claim_reason="")
                 | (
-                    Q(claim_reason__in=["details_failed", "subscription_mismatch", "stopped_early"])
+                    Q(
+                        claim_reason__in=[
+                            "details_failed",
+                            "subscription_mismatch",
+                            "stopped_early",
+                            "other",
+                        ]
+                    )
                     & Q(
                         from_status__isnull=False,
                         from_status="DELIVERED",
@@ -524,6 +534,26 @@ class OrderItemEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{to_persian_digits(self.order_item_id)} · {self.get_to_status_display()}"
+
+
+class ClaimDetail(models.Model):
+    """What a buyer adds to a replacement request: their words and a Telegram handle.
+
+    The words may hold account details, so they are encrypted and live in a row no history,
+    timeline or panel page loads by the way: only the logged reveal reads them, and retention
+    deletes the row with the item's other details (ADR-0007). The handle is how support reaches
+    the buyer, so the panel shows it as it is.
+    """
+
+    event = models.OneToOneField(
+        OrderItemEvent, on_delete=models.CASCADE, related_name="claim_detail"
+    )
+    text = EncryptedTextField(_("توضیح مشتری"), null=True, blank=True)
+    telegram = models.CharField(_("آیدی تلگرام مشتری"), max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Claim detail for event {self.event_id}"
 
 
 class Delivery(models.Model):

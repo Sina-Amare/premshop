@@ -36,6 +36,7 @@ from apps.orders import status as order_status
 from apps.orders.clock import TEHRAN, delivery_deadline, in_support_window, resumed_deadline
 from apps.orders.models import (
     SUPPORT_ALPHABET,
+    ClaimDetail,
     CredentialAccessLog,
     Delivery,
     DeliveryField,
@@ -128,6 +129,26 @@ def reveal_customer_input(*, order_id: int, item_id: int, actor: User, ip: str |
         if value:
             _log_reveal(item_id, actor, ip, CredentialAccessLog.Target.CUSTOMER_INPUT)
     return value
+
+
+def reveal_claim_detail(*, order_id: int, item_id: int, actor: User, ip: str | None) -> str:
+    """The buyer's words on the item's latest replacement request, logged before reading."""
+    with transaction.atomic(durable=True):
+        _may_reveal(actor)
+        row = (
+            ClaimDetail.objects.filter(
+                event__order_item_id=item_id,
+                event__order_item__order_id=order_id,
+                text__isnull=False,
+            )
+            .order_by("-pk")
+            .only("pk")
+            .first()
+        )
+        if row is None:
+            return ""
+        _log_reveal(item_id, actor, ip, CredentialAccessLog.Target.CLAIM_DETAIL)
+        return ClaimDetail.objects.values_list("text", flat=True).get(pk=row.pk) or ""
 
 
 DELIVERY_LINES = 6
@@ -293,9 +314,14 @@ def open_claim(
 
 
 def operator_claim_reasons(item: OrderItem) -> list[str]:
+    # The operator's note says what is wrong, so another problem is the buyer's choice only.
     if item.expires_at is None:
         return [OrderItemEvent.ClaimReason.DETAILS]
-    return OrderItemEvent.ClaimReason.values
+    return [
+        reason
+        for reason in OrderItemEvent.ClaimReason.values
+        if reason != OrderItemEvent.ClaimReason.OTHER
+    ]
 
 
 def available_claim_reasons(
@@ -316,12 +342,28 @@ def available_claim_reasons(
     end = order_status.warranty_last_day(item)
     if item.expires_at is not None and end is not None and timezone.localdate(now) <= end:
         reasons.append(OrderItemEvent.ClaimReason.STOPPED)
+    # Another problem, in the buyer's words, within the same windows as the named ones.
+    if reasons:
+        reasons.append(OrderItemEvent.ClaimReason.OTHER)
     return reasons
+
+
+CLAIM_DETAIL_LENGTH = 1000
+# A Telegram username: letters, digits or underscores, five to 32 long, or four for a
+# collectible one bought on Fragment.
+TELEGRAM_HANDLE = re.compile(r"[A-Za-z0-9_]{4,32}")
 
 
 @transaction.atomic
 def open_customer_claim(
-    *, order_id: int, item_id: int, actor: User, expected_event_id: int, reason: str
+    *,
+    order_id: int,
+    item_id: int,
+    actor: User,
+    expected_event_id: int,
+    reason: str,
+    detail: str = "",
+    telegram: str = "",
 ) -> OrderItem:
     account = User.objects.filter(pk=actor.pk, is_active=True).first()
     if account is None:
@@ -338,9 +380,18 @@ def open_customer_claim(
         raise ValidationError(gettext_lazy("یکی از دلیل‌ها را انتخاب کنید."))
     if reason not in available_claim_reasons(item):
         raise ValidationError(gettext_lazy("مهلت ثبت درخواست با این دلیل تمام شده است."))
+    # A line break posts as two characters; the box and this limit count it as one.
+    words = detail.replace("\r\n", "\n").strip()
+    if reason == OrderItemEvent.ClaimReason.OTHER and not words:
+        raise ValidationError(gettext_lazy("مشکل را در چند کلمه بنویسید."))
+    if len(words) > CLAIM_DETAIL_LENGTH:
+        raise ValidationError(gettext_lazy("تا ۱۰۰۰ کاراکتر می‌توانید بنویسید."))
+    handle = telegram.strip().removeprefix("@")
+    if handle and not TELEGRAM_HANDLE.fullmatch(handle):
+        raise ValidationError(gettext_lazy("آیدی تلگرام را به شکل @username بنویسید."))
     item.status = OrderItem.Status.REPLACEMENT_REQUESTED
     item.save(update_fields=["status"])
-    _input_event(
+    event = _input_event(
         item,
         account,
         OrderItem.Status.DELIVERED,
@@ -348,6 +399,8 @@ def open_customer_claim(
         claim_reason=reason,
         notification="customer_claim",
     )
+    if words or handle:
+        ClaimDetail.objects.create(event=event, text=words or None, telegram=handle)
     return item
 
 
@@ -449,20 +502,26 @@ def _refund_claim(item: OrderItem) -> tuple[OrderItemEvent, bool]:
         note="",
     )
     while claim is not None:
-        if claim.claim_reason not in (
-            OrderItemEvent.ClaimReason.DETAILS,
-            OrderItemEvent.ClaimReason.SUBSCRIPTION,
-        ):
-            return claim, False
         delivery = (
             deliveries.filter(pk__lt=claim.pk)
             .order_by("-pk")
-            .values_list("pk", "from_status")
+            .values_list("pk", "from_status", "created_at")
             .first()
         )
+        # Another problem, reported within the 48 hours a delivery problem has, counts as one.
+        failed = claim.claim_reason in (
+            OrderItemEvent.ClaimReason.DETAILS,
+            OrderItemEvent.ClaimReason.SUBSCRIPTION,
+        ) or (
+            claim.claim_reason == OrderItemEvent.ClaimReason.OTHER
+            and delivery is not None
+            and claim.created_at <= delivery[2] + timedelta(hours=48)
+        )
+        if not failed:
+            return claim, False
         if delivery is None:
             break
-        delivery_id, before = delivery
+        delivery_id, before, _ = delivery
         if before == OrderItem.Status.QUEUED:
             return claim, True
         claim = claims.filter(pk__lt=delivery_id).order_by("-pk").first()
@@ -750,14 +809,21 @@ def _forget(item_id: int, today: date) -> int:
     if held.annotate(n=Length(Cast("customer_input", TextField()))).filter(n__gt=0).exists():
         held.update(customer_input="")
         removed.append("اطلاعات مشتری")
+    added = ClaimDetail.objects.filter(event__order_item=item)
+    if added.filter(text__isnull=False).exists():
+        removed.append("توضیح مشتری")
+    if added.exclude(telegram="").exists():
+        removed.append("آیدی تلگرام مشتری")
+    added.delete()
     if not removed:
         return 0
+    named = removed[0] if len(removed) == 1 else "، ".join(removed[:-1]) + " و " + removed[-1]
     OrderItemEvent.objects.create(
         order_item=item,
         from_status=item.status,
         to_status=item.status,
         actor=OrderItemEvent.Actor.SYSTEM,
-        note=" و ".join(removed) + " طبق مهلت نگهداری حذف شد.",
+        note=named + " طبق مهلت نگهداری حذف شد.",
     )
     return 1
 
