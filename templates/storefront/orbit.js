@@ -13,7 +13,15 @@
   const steps = nodes.map(node => [...node.querySelectorAll('template[data-from]')]);
   const step = i => steps[i].filter(t => +t.dataset.from <= (performance.now() - born) / 1000).pop();
   const priced = nodes.map((node, i) => step(i));
-  let lit = 0, turn = -Math.PI / 2, last = 0, frame = 0, cycle = 0;
+  const timed = steps.some(list => list.length > 1);
+  const reprice = () => nodes.forEach((node, i) => {
+    const now = step(i);
+    if (now === priced[i]) return;
+    priced[i] = now;
+    node.querySelector('a .po-price').replaceWith(now.content.querySelector('.po-price').cloneNode(true));
+    if (i === lit) show(i);
+  });
+  let lit = 0, turn = -Math.PI / 2, last = 0, frame = 0, cycle = 0, check = 0;
   let size = 0, plates = [], visible = false, pointed = false, pill = false;
 
   // One rigid constellation: each inner logo sits in a gap between two outer ones, so no
@@ -62,6 +70,16 @@
       clearInterval(cycle);
       cycle = 0;
     }
+    // Prices are checked only while the orbit can be seen, and caught up when it is again.
+    const seen = timed && visible && !document.hidden;
+    if (seen && !check) {
+      reprice();
+      check = setInterval(reprice, 1000);
+    }
+    if (!seen && check) {
+      clearInterval(check);
+      check = 0;
+    }
   };
   const layout = () => {
     if (wide.matches) {
@@ -100,13 +118,6 @@
       update();
     });
   });
-  if (steps.some(list => list.length > 1)) setInterval(() => nodes.forEach((node, i) => {
-    const now = step(i);
-    if (now === priced[i]) return;
-    priced[i] = now;
-    node.querySelector('a .po-price').replaceWith(now.content.querySelector('.po-price').cloneNode(true));
-    if (i === lit) show(i);
-  }), 1000);
   document.addEventListener('visibilitychange', update);
   document.addEventListener('storefront:motion', update);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update(); }).observe(scene);

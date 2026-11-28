@@ -383,3 +383,32 @@ def test_the_card_beside_the_headline_stands_still(browser, live_server, catalog
         expect(page.locator(".po-core .po-core__name")).to_have_text("JetBrains All Products")
     finally:
         page.close()
+
+
+def test_the_price_check_rests_while_the_orbit_is_out_of_sight(browser, live_server, catalog):
+    """A hidden tab, a scene scrolled away or a phone's hidden scene does no work; the
+    price catches up the moment the orbit is seen again."""
+    plan = catalog["ChatGPT Plus"].plans.get()
+    plan.promo_price = Decimal(500_000)
+    plan.promo_ends_at = timezone.now() + timedelta(seconds=60)
+    plan.save()
+    before, after = format_toman(500_000, with_unit=False), format_toman(
+        plan.sale_price, with_unit=False
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        price = page.locator(".po-core .price__num")
+        expect(price).to_have_text(before)
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        page.clock.run_for(62_000)
+        assert price.inner_text() == before
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        expect(price).to_have_text(after)
+    finally:
+        page.close()
