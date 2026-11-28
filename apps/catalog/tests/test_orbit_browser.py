@@ -1,33 +1,78 @@
-"""The orbit keeps links reachable and stops before a visitor selects one."""
+"""The hero's services: an orbit round a centre card from 1200px, a card beside
+the headline from 761px and without scripts, nothing on a phone."""
+
+import re
+from datetime import timedelta
+from decimal import Decimal
 
 import pytest
+from django.utils import timezone
+from playwright.sync_api import expect
 
-from apps.catalog.models import Category, Product
+from apps.catalog.models import Category, Plan, Product
+from apps.core.formatting import format_toman
 from apps.core.tests.test_accessibility_browser import STYLED
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.browser]
 
+DEPARTMENTS = {
+    "ai": ("هوش مصنوعی", ["ChatGPT Plus", "Claude Pro", "Gemini Advanced", "Perplexity Pro"]),
+    "dev": ("برنامه‌نویسی", ["GitHub Copilot", "JetBrains All Products", "Cursor Pro", "Figma"]),
+    "media": ("سرگرمی", ["Spotify Premium", "YouTube Premium", "Netflix", "Steam Wallet"]),
+    "gift": ("گیفت کارت", ["Apple Gift Card", "Google Play Gift Card", "PlayStation", "Xbox"]),
+}
+# Every frame of a whole turn, the closest any two logos, names or the centre card come.
+TURN = """() => {
+    const core = document.querySelector('.po-core').getBoundingClientRect();
+    const cx = core.left + core.width / 2, cy = core.top + core.height / 2, r = core.width / 2;
+    const apart = (a, b) => Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
+    const fromCore = b => Math.hypot(Math.max(b.left - cx, 0, cx - b.right), Math.max(b.top - cy, 0, cy - b.bottom)) - r;
+    let closest = Infinity, time = 1000;
+    window.orbitFrame(time);
+    for (let step = 0; step < 360; step++) {
+        window.orbitFrame(time += 150000 / 360);
+        const nodes = [...document.querySelectorAll('.po-node')].map(node =>
+            [...node.querySelectorAll('.po-plate, .po-label')].map(e => e.getBoundingClientRect()).filter(b => b.width > 1));
+        nodes.forEach((boxes, i) => boxes.forEach(a => {
+            closest = Math.min(closest, fromCore(a));
+            nodes.slice(i + 1).forEach(other => other.forEach(b => { closest = Math.min(closest, apart(a, b)); }));
+        }));
+    }
+    return closest;
+}"""
+STILL_FRAMES = "window.requestAnimationFrame = f => { window.orbitFrame = f; return 1 }; window.cancelAnimationFrame = () => {}"
 
-def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live_server):
-    category = Category.objects.create(name="سرویس‌ها", slug="services")
-    names = [
-        "ChatGPT Plus",
-        "Claude Pro",
-        "Gemini Advanced",
-        "GitHub Copilot",
-        "JetBrains All Products",
-        "Spotify Premium",
-        "YouTube Premium",
-        "Netflix",
-        "Apple Gift Card",
-        "Google Play Gift Card",
-    ]
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=name, slug=f"service-{i}", status="active")
-            for i, name in enumerate(names)
-        ]
-    )
+
+@pytest.fixture
+def catalog():
+    """Sixteen services in four departments; the orbit takes the shelf's first twelve,
+    three of each, the longest names among them."""
+    products = {}
+    for order, (slug, (name, names)) in enumerate(DEPARTMENTS.items()):
+        category = Category.objects.create(name=name, slug=slug, sort_order=order)
+        for i, title in enumerate(names):
+            product = Product.objects.create(
+                category=category,
+                name=title,
+                slug=f"{slug}-{i}",
+                delivery_hours=12,
+                status="active",
+            )
+            Plan.objects.create(
+                product=product,
+                title="۱ ماهه",
+                cost_price=1,
+                sale_price=Decimal(1_000_000 + 10_000 * (order * 4 + i)),
+            )
+            products[title] = product
+    return products
+
+
+def lit(page) -> str:
+    return page.locator(".po-node.is-lit .po-label").inner_text()
+
+
+def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     held = []
     try:
@@ -51,321 +96,9 @@ def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live
         page.close()
 
 
-@pytest.mark.parametrize("count", [0, 1, 3, 6, 8, 9, 24, 60])
-def test_every_service_is_reachable_once_with_static_phone_groups(browser, live_server, count):
-    category = Category.objects.create(name="سرگرمی", slug="fun")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(count)
-        ]
-    )
-    page = browser.new_page(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(STYLED)
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode === 'still'", polling=50
-        )
-        seen = []
-        while True:
-            visible = page.locator(".nebula__item:visible")
-            seen.extend(visible.evaluate_all("items => items.map(e=>e.getAttribute('href'))"))
-            assert visible.count() <= 6
-            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-            if (
-                page.locator("[data-orbit-next]").is_hidden()
-                or page.locator("[data-orbit-next]").is_disabled()
-            ):
-                break
-            page.locator("[data-orbit-next]").click()
-        assert len(seen) == count == len(set(seen))
-    finally:
-        page.close()
-
-
-def test_desktop_orbit_moves_and_freezes_for_selection(browser, live_server):
-    category = Category.objects.create(name="سرگرمی", slug="fun")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(16)
-        ]
-    )
-    page = browser.new_page(viewport={"width": 1440, "height": 1050})
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(STYLED)
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode === 'orbit'"
-        )
-        item = page.locator(".nebula__item").first
-        initial = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != initial
-        page.locator(".nebula").hover()
-        empty = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != empty
-        name = item.locator(".v-service-name")
-        box = name.bounding_box()
-        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        assert name.evaluate("e=>e.matches(':hover')")
-        over_name = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != over_name
-        box = item.locator(".v-service-mark").bounding_box()
-        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") == frozen
-        # Only the orbit stops for the pointer; the scene behind it keeps moving.
-        animated, running = page.evaluate(
-            "(() => { const all = [...document.querySelectorAll('.v-service-effects *')]"
-            ".filter(e => getComputedStyle(e).animationName !== 'none');"
-            " return [all.length, all.every(e => getComputedStyle(e).animationPlayState === 'running')]; })()"
-        )
-        assert animated and running
-        item.focus()
-        page.mouse.move(0, 0)
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") == frozen
-        page.locator(".v-brand").focus()
-        page.mouse.move(0, 0)
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != frozen
-        item.evaluate("e=>e.addEventListener('click',event=>event.preventDefault(),{once:true})")
-        box = item.locator(".v-service-mark").bounding_box()
-        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        item.click()
-        page.mouse.move(0, 0)
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != frozen
-        page.locator("[data-orbit-next]").click()
-        assert page.locator(".nebula__item:visible").count() == 8
-        item = page.locator(".nebula__item:visible").first
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(350)
-        assert item.evaluate("e=>e.style.transform") != frozen
-        assert page.locator("[data-hero-toggle]").count() == 0
-    finally:
-        page.close()
-
-
-@pytest.mark.parametrize("count", [6, 8])
-@pytest.mark.parametrize("two_lines", [False, True])
-def test_complete_orbit_keeps_padded_targets_apart_and_long_names_fall_back(
-    browser, live_server, two_lines, count
-):
-    category = Category.objects.create(name="سرگرمی", slug="fun")
-    products = [
-        Product.objects.create(
-            category=category,
-            name="Google Play Gift Card" if two_lines else f"Service {i}",
-            slug=f"service-{i}",
-            status="active",
-        )
-        for i in range(count)
-    ]
-    page = browser.new_page(viewport={"width": 1440, "height": 1050})
-    page.add_init_script(
-        "window.requestAnimationFrame = callback => {window.orbitFrame = callback; return 1}; window.cancelAnimationFrame = () => {}"
-    )
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(
-            "window.orbitFrame && document.querySelector('[data-hero-scene]').dataset.orbitMode === 'orbit'",
-            polling=50,
-        )
-        for step in range(121):
-            failures = page.evaluate(
-                """time => {
-                window.orbitFrame(time);
-                const track = document.querySelector('.nebula').getBoundingClientRect();
-                const nodes = [...document.querySelectorAll('.nebula__item:not([hidden])')];
-                const boxes = nodes.map(e => e.getBoundingClientRect());
-                if (nodes.some((e,i)=>[...e.querySelectorAll('.v-service-mark,.v-service-name bdi')].some(child=> {const c=child.getBoundingClientRect(),a=boxes[i];return c.top<a.top || c.bottom>a.bottom || c.left<a.left || c.right>a.right}))) return true;
-                return boxes.some((a,i)=> a.left < track.left || a.right > track.right || a.top < track.top || a.bottom > track.bottom || boxes.slice(i+1).some(b=>a.left < b.right+12 && a.right+12 > b.left && a.top < b.bottom+12 && a.bottom+12 > b.top));
-            }""",
-                1000 + step * 2000,
-            )
-            assert not failures, step
-        products[0].name = "A very long service name " * 6
-        products[0].save()
-        page.reload()
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode === 'still'", polling=50
-        )
-        assert page.locator(".nebula__item:visible").count() == 6
-    finally:
-        page.close()
-
-
-def test_real_catalog_names_get_a_spaced_orbit_and_compact_numeric_paging(browser, live_server):
-    category = Category.objects.create(name="محصولات", slug="services")
-    names = [
-        "Claude Pro",
-        "GitHub Copilot",
-        "Spotify Premium",
-        "Apple Gift Card",
-        "ChatGPT Plus",
-        "JetBrains All Products",
-        "YouTube Premium",
-        "Google Play Gift Card",
-    ]
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=names[i % 8], slug=f"service-{i}", status="active")
-            for i in range(24)
-        ]
-    )
-    page = browser.new_page(viewport={"width": 1440, "height": 1050})
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode !== undefined"
-        )
-        assert page.locator("[data-hero-scene]").get_attribute("data-orbit-mode") == "orbit"
-        assert page.locator(".nebula__item:visible").count() == 6
-        spacing = page.evaluate("""() => {
-            const hero = document.querySelector('.v-hero').getBoundingClientRect();
-            // The copy block's top: the line above the headline since U8.
-            const first = document.querySelector('.v-hero__copy').firstElementChild.getBoundingClientRect();
-            const actions = document.querySelector('.v-hero__actions').getBoundingClientRect();
-            return {height: hero.height, above: first.top - hero.top,
-                    below: hero.bottom - actions.bottom};
-        }""")
-        assert spacing["height"] <= 620, spacing
-        assert spacing["above"] <= 145 and spacing["below"] <= 180, spacing
-        assert 34 <= spacing["below"] - spacing["above"] <= 38, spacing
-        assert page.locator("[data-orbit-range]").inner_text() == "۱–۶ / ۲۴"
-        controls = page.locator(".v-orbit-controls").bounding_box()
-        tools = page.locator(".v-scene-tools").bounding_box()
-        caption = page.locator(".v-scene-caption").bounding_box()
-        assert controls and caption and controls["width"] < 240
-        assert abs(tools["x"] + tools["width"] / 2 - caption["x"] - caption["width"] / 2) < 1
-        assert (
-            page.locator("[data-orbit-range]").evaluate("e=>getComputedStyle(e).direction") == "ltr"
-        )
-        seen = []
-        while True:
-            seen.extend(
-                page.locator(".nebula__item:visible").evaluate_all(
-                    'es=>es.map(e=>e.getAttribute("href"))'
-                )
-            )
-            if page.locator("[data-orbit-next]").is_disabled():
-                break
-            page.locator("[data-orbit-next]").click()
-        assert len(seen) == len(set(seen)) == 24
-    finally:
-        page.close()
-
-
-@pytest.mark.parametrize("javascript", [False, True])
-def test_static_modes_keep_services_reachable_without_motion(browser, live_server, javascript):
-    category = Category.objects.create(name="محصولات", slug="services")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(24)
-        ]
-    )
-    page = browser.new_page(
-        viewport={"width": 390 if not javascript else 1440, "height": 900},
-        java_script_enabled=javascript,
-        reduced_motion="reduce",
-    )
-    try:
-        page.goto(live_server.url + "/")
-        if javascript:
-            page.wait_for_function(
-                "document.querySelector('[data-hero-scene]').dataset.orbitMode==='still'"
-            )
-            assert page.locator(".nebula__item:visible").count() == 6
-        else:
-            assert page.locator(".nebula__item:visible").count() == 24
-        assert page.locator("[data-hero-toggle]").count() == 0
-        assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
-    finally:
-        page.close()
-
-
-def test_resizing_keeps_the_focused_service_in_its_visible_group(browser, live_server):
-    category = Category.objects.create(name="محصولات", slug="services")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(9)
-        ]
-    )
-    page = browser.new_page(viewport={"width": 1440, "height": 1050})
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='orbit'"
-        )
-        item = page.locator(".nebula__item").nth(7)
-        item.focus()
-        page.set_viewport_size({"width": 390, "height": 844})
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='still'"
-        )
-        assert item.is_visible() and item.evaluate("e=>e===document.activeElement")
-    finally:
-        page.close()
-
-
-def test_orbit_suspends_offscreen_and_on_a_visibility_event(browser, live_server):
-    category = Category.objects.create(name="محصولات", slug="services")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=f"Service {i}", slug=f"service-{i}", status="active")
-            for i in range(8)
-        ]
-    )
-    page = browser.new_page(viewport={"width": 1440, "height": 1050})
-    try:
-        page.goto(live_server.url + "/")
-        page.wait_for_function(
-            "document.querySelector('[data-hero-scene]').dataset.orbitMode==='orbit'"
-        )
-        page.evaluate("scrollTo(0,document.body.scrollHeight)")
-        page.wait_for_timeout(200)
-        item = page.locator(".nebula__item").first
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(250)
-        assert item.evaluate("e=>e.style.transform") == frozen
-        page.evaluate("scrollTo(0,0)")
-        page.wait_for_timeout(300)
-        assert item.evaluate("e=>e.style.transform") != frozen
-        page.evaluate(
-            "Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
-        )
-        frozen = item.evaluate("e=>e.style.transform")
-        page.wait_for_timeout(250)
-        assert item.evaluate("e=>e.style.transform") == frozen
-        page.evaluate(
-            "Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
-        )
-        page.wait_for_timeout(250)
-        assert item.evaluate("e=>e.style.transform") != frozen
-    finally:
-        page.close()
-
-
-def test_late_fonts_do_not_move_the_home_hero(browser, live_server):
+def test_late_fonts_do_not_move_the_home_hero(browser, live_server, catalog):
     """In the wider fallback face the hero's two facts wrapped onto two lines,
     so the copy grew a line and shifted when the web fonts arrived."""
-    category = Category.objects.create(name="سرویس‌ها", slug="services")
-    Product.objects.bulk_create(
-        [
-            Product(category=category, name=name, slug=f"service-{i}", status="active")
-            for i, name in enumerate(["ChatGPT Plus", "Claude Pro", "Spotify Premium", "Netflix"])
-        ]
-    )
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     try:
         page.add_init_script(
@@ -376,5 +109,260 @@ def test_late_fonts_do_not_move_the_home_hero(browser, live_server):
         page.evaluate("() => document.fonts.ready")
         page.wait_for_timeout(300)
         assert page.evaluate("window.homeShift") < 0.01
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("width", [1200, 1440, 1920])
+def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(browser, live_server, catalog, width):
+    page = browser.new_page(viewport={"width": width, "height": 1000})
+    page.add_init_script(STILL_FRAMES)
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        page.evaluate("() => document.fonts.ready")
+        page.wait_for_function("typeof window.orbitFrame === 'function'", polling=50)
+        stage = page.locator(".po-stage").bounding_box()
+        assert abs(stage["width"] - stage["height"]) < 1 and stage["width"] >= 560, stage
+        assert page.locator(".po-node").count() == 12
+        assert page.locator(".po-node--inner").count() == 4
+        closest = page.evaluate(TURN)
+        assert closest >= 8, closest
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    finally:
+        page.close()
+
+
+def test_the_centre_names_the_lit_service_with_its_price_and_delivery(
+    browser, live_server, catalog
+):
+    product = catalog["JetBrains All Products"]
+    Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=9_000_000)
+    price = format_toman(product.plans.order_by("sale_price").first().sale_price, with_unit=False)
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        logo = page.locator(".po-node a", has_text=product.name)
+        expect(logo).to_have_accessible_name(
+            re.compile(rf"^{product.name}\s*، از {price} تومان\s*، تحویل تا ۱۲ ساعت\s*$")
+        )
+        logo.hover()
+        core = page.locator(".po-core")
+        expect(core.locator(".po-core__name")).to_have_text(product.name)
+        expect(core.locator(".po-core__dept")).to_have_text("برنامه‌نویسی")
+        expect(core.locator(".po-price")).to_have_text(re.compile(f"از\\s*{price}\\s*تومان"))
+        expect(core.locator(".po-core__sla")).to_have_text("تحویل تا ۱۲ ساعت")
+        go = core.locator(".po-core__go")
+        expect(go).to_have_attribute("href", product.get_absolute_url())
+        expect(go).to_have_accessible_name(re.compile(f"دیدن محصول.*{product.name}"))
+        assert lit(page) == product.name
+        # The price is the cards' own face, not a weight the font files lack.
+        number = core.locator(".price__num")
+        assert number.evaluate("e => getComputedStyle(e).fontWeight") == "800"
+        assert page.locator(".pcard .price__num").first.evaluate(
+            "e => getComputedStyle(e).fontFamily"
+        ) == number.evaluate("e => getComputedStyle(e).fontFamily")
+    finally:
+        page.close()
+
+
+def test_a_free_service_reads_free_in_the_centre(browser, live_server, catalog):
+    Plan.objects.filter(product=catalog["ChatGPT Plus"]).update(sale_price=0)
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    try:
+        page.goto(live_server.url + "/")
+        expect(page.locator(".po-core .po-price")).to_have_text("رایگان")
+    finally:
+        page.close()
+
+
+def test_a_discount_ending_switches_the_centre_price(browser, live_server, catalog):
+    product = catalog["ChatGPT Plus"]
+    plan = product.plans.get()
+    plan.promo_price = Decimal(500_000)
+    plan.promo_ends_at = timezone.now() + timedelta(seconds=60)
+    plan.save()
+    after = format_toman(plan.sale_price, with_unit=False)
+    page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        price = page.locator(".po-core .price__num")
+        expect(price).to_have_text(format_toman(500_000, with_unit=False))
+        page.clock.run_for(62_000)
+        expect(price).to_have_text(after)
+        expect(page.locator(".po-node a").first).to_have_accessible_name(
+            re.compile(rf"^ChatGPT Plus\s*، {after} تومان\s*، ")
+        )
+    finally:
+        page.close()
+
+
+def test_pointing_at_or_focusing_a_logo_stops_the_turn_and_the_cycle(browser, live_server, catalog):
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
+        node = page.locator(".po-node").first
+        before, first = node.get_attribute("style"), lit(page)
+        page.clock.run_for(3500)
+        assert node.get_attribute("style") != before, "the orbit turns on its own"
+        assert lit(page) != first, "the centre moves to the next service"
+        logo = page.locator(".po-node a").nth(5)
+        logo.hover()
+        held, name = node.get_attribute("style"), lit(page)
+        assert name == logo.locator(".po-label").inner_text()
+        page.clock.run_for(8000)
+        assert (node.get_attribute("style"), lit(page)) == (held, name)
+        # Reaching for the centre's link must not swap the service under the pointer.
+        page.locator(".po-core__go").hover()
+        page.clock.run_for(8000)
+        assert (node.get_attribute("style"), lit(page)) == (held, name)
+        page.mouse.move(5, 5)
+        page.clock.run_for(3500)
+        assert node.get_attribute("style") != held and lit(page) != name
+        page.locator(".po-node a").nth(9).focus()
+        held, name = node.get_attribute("style"), lit(page)
+        page.clock.run_for(8000)
+        assert (node.get_attribute("style"), lit(page)) == (held, name)
+        page.locator(".v-brand").focus()
+        page.clock.run_for(3500)
+        assert node.get_attribute("style") != held
+        assert page.locator("[data-orbit-toggle],[data-hero-toggle]").count() == 0
+    finally:
+        page.close()
+
+
+def test_a_department_pill_dims_the_other_departments(browser, live_server, catalog):
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        page.locator('.v-hero__chip[data-dept="media"]').hover()
+        expect(page.locator(".po-node.is-dim")).to_have_count(9)
+        expect(page.locator('.po-node[data-dept="media"].is-dim')).to_have_count(0)
+        expect(page.locator(".po-core .po-core__dept")).to_have_text("سرگرمی")
+        assert lit(page) == "Spotify Premium"
+        page.mouse.move(5, 5)
+        expect(page.locator(".po-node.is-dim")).to_have_count(0)
+    finally:
+        page.close()
+
+
+def test_under_reduced_motion_the_orbit_stands_still(browser, live_server, catalog):
+    page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        expect(page.locator("[data-hero-scene]")).to_have_class(re.compile(r"\bis-orbit\b"))
+        node = page.locator(".po-node").first
+        before, first = node.get_attribute("style"), lit(page)
+        page.clock.run_for(8000)
+        assert (node.get_attribute("style"), lit(page)) == (before, first)
+    finally:
+        page.close()
+
+
+def test_the_orbit_suspends_off_screen_and_on_a_visibility_event(browser, live_server, catalog):
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
+        page.evaluate("scrollTo(0,document.body.scrollHeight)")
+        page.wait_for_timeout(200)
+        node = page.locator(".po-node").first
+        frozen = node.get_attribute("style")
+        page.wait_for_timeout(250)
+        assert node.get_attribute("style") == frozen
+        page.evaluate("scrollTo(0,0)")
+        page.wait_for_timeout(300)
+        assert node.get_attribute("style") != frozen
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        frozen = node.get_attribute("style")
+        page.wait_for_timeout(250)
+        assert node.get_attribute("style") == frozen
+        page.evaluate(
+            "Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'))"
+        )
+        page.wait_for_timeout(250)
+        assert node.get_attribute("style") != frozen
+    finally:
+        page.close()
+
+
+def card_layout(page) -> None:
+    """The centre as a row above the twelve logos, six to a row, names for screen readers only."""
+    scene = page.locator("[data-hero-scene]")
+    expect(scene).to_be_visible()
+    expect(page.locator(".po-dial")).to_be_hidden()
+    core = page.locator(".po-core").bounding_box()
+    plates = [box for box in (p.bounding_box() for p in page.locator(".po-plate").all())]
+    assert len(plates) == 12
+    assert core["y"] + core["height"] <= min(box["y"] for box in plates)
+    assert len({round(box["y"] + box["height"] / 2) for box in plates[:6]}) == 1
+    assert plates[6]["y"] > plates[0]["y"] + plates[0]["height"]
+    assert all(label.bounding_box()["width"] <= 1 for label in page.locator(".po-label").all())
+    expect(page.locator(".po-node a").nth(5)).to_have_accessible_name(
+        re.compile(r"^JetBrains All Products\s*، ")
+    )
+    hrefs = page.locator(".po-node a").evaluate_all(
+        "links => links.map(a => a.getAttribute('href'))"
+    )
+    assert len(set(hrefs)) == 12
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@pytest.mark.parametrize("width", [761, 1000, 1199])
+def test_from_761_to_1199_the_services_are_a_card_beside_the_headline(
+    browser, live_server, catalog, width
+):
+    page = browser.new_page(viewport={"width": width, "height": 900})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        card_layout(page)
+        scene = page.locator("[data-hero-scene]").bounding_box()
+        title = page.locator(".v-hero h1").bounding_box()
+        assert (
+            scene["y"] < title["y"] + title["height"] and title["y"] < scene["y"] + scene["height"]
+        )
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("width", [1000, 1440])
+def test_without_javascript_the_card_layout_keeps_every_link(browser, live_server, catalog, width):
+    page = browser.new_page(viewport={"width": width, "height": 900}, java_script_enabled=False)
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        card_layout(page)
+        expect(page.locator(".po-core .po-core__name")).to_have_text("ChatGPT Plus")
+        expect(page.locator(".po-core .po-core__go")).to_have_attribute(
+            "href", catalog["ChatGPT Plus"].get_absolute_url()
+        )
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("width", [390, 760])
+def test_on_a_phone_the_hero_ends_at_its_buttons(browser, live_server, catalog, width):
+    page = browser.new_page(viewport={"width": width, "height": 900})
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        expect(page.locator("[data-hero-scene]")).to_be_hidden()
+        hero = page.locator(".v-hero").bounding_box()
+        actions = page.locator(".v-hero__actions").bounding_box()
+        assert hero["y"] + hero["height"] - (actions["y"] + actions["height"]) < 60
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     finally:
         page.close()

@@ -1,4 +1,4 @@
-"""Manual shelves stay still while the orbit retains its own controls."""
+"""Manual shelves stay still; the orbit moves on its own and resumes after a visitor."""
 
 import pytest
 from playwright.sync_api import expect
@@ -66,15 +66,13 @@ def test_manual_browsing_resumes_motion_without_a_settings_menu(browser, live_se
         page.goto(live_server.url + "/")
         expect(page.locator("[data-motion-settings],[data-motion-preference]")).to_have_count(0)
         page.mouse.move(0, 0)
-        item = page.locator(".nebula__item").first
+        item = page.locator(".po-node").first
         page.wait_for_timeout(250)
         moving = item.get_attribute("style")
         page.wait_for_timeout(350)
         assert item.get_attribute("style") != moving
-        page.locator("[data-orbit-next]").click()
-        item = page.locator(".nebula__item:visible").first
+        item.locator("a").focus()
         page.evaluate("document.activeElement.blur()")
-        page.mouse.move(0, 0)
         page.wait_for_timeout(250)
         expect(page.locator("html")).to_have_attribute("data-motion", "on")
         stopped = item.get_attribute("style")

@@ -1,135 +1,115 @@
 (() => {
   const scene = document.querySelector('[data-hero-scene]');
   if (!scene) return;
-  const track = scene.querySelector('.nebula');
-  const items = [...track.querySelectorAll('.nebula__item')];
-  const controls = scene.querySelector('[data-orbit-controls]');
-  const previous = scene.querySelector('[data-orbit-prev]');
-  const next = scene.querySelector('[data-orbit-next]');
-  const range = scene.querySelector('[data-orbit-range]');
-  const desktop = matchMedia('(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
-  const digits = new Intl.NumberFormat('fa-IR');
-  let start = 0, size = 6, group = [], points = [], orbital = false;
-  let visible = false, hovered = false, phase = -Math.PI / 2, frame = 0, last = 0;
-  // The services' sketches circle the hub on a ring of their own, inside the logos' orbit
-  // and turning the other way: the only band no logo or name ever passes through.
-  const sketchLayer = scene.querySelector('.v-service-effects');
-  const sketches = sketchLayer ? [...sketchLayer.querySelectorAll('[data-service-effect]')] : [];
-  const sketchHome = sketches.map(g => g.getAttribute('transform'));
-  const sketchView = sketchLayer?.getAttribute('viewBox');
-  const moon = {rx: 92, ry: 70, scale: .75};
-  let sketchCentres = [], hub = {x: 0, y: 0};
-  const paintSketches = () => sketchCentres.forEach((c, i) => {
-    const a = -phase * 2 + i * Math.PI * 2 / sketches.length;
-    const x = hub.x + Math.cos(a) * moon.rx - c.x * moon.scale;
-    const y = hub.y + Math.sin(a) * moon.ry - c.y * moon.scale;
-    sketches[i].setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${moon.scale})`);
-  });
-  const positions = angle => points.map((point, i) => {
-    const theta = angle + i * Math.PI * 2 / group.length;
-    return {x: point.cx + Math.cos(theta) * point.rx, y: point.cy + Math.sin(theta) * point.ry, w:point.w, h:point.h};
-  });
+  const stage = scene.querySelector('.po-stage');
+  const core = scene.querySelector('.po-core');
+  const beam = scene.querySelector('.po-beam');
+  const nodes = [...scene.querySelectorAll('.po-node')];
+  const outer = nodes.filter(node => !node.classList.contains('po-node--inner')).length;
+  const wide = matchMedia('(min-width: 1200px)');
+  const born = performance.now();
+  // Each service's centre now and from each second a discount ends at, counted from this
+  // load as the cards' countdowns are, never by the visitor's clock.
+  const steps = nodes.map(node => [...node.querySelectorAll('template[data-from]')]);
+  const step = i => steps[i].filter(t => +t.dataset.from <= (performance.now() - born) / 1000).pop();
+  const priced = nodes.map((node, i) => step(i));
+  let lit = 0, turn = -Math.PI / 2, last = 0, frame = 0, cycle = 0;
+  let size = 0, plates = [], visible = false, pointed = false, pill = false;
+
+  // One rigid constellation: each inner logo sits in a gap between two outer ones, so no
+  // name ever crosses another logo, whatever the angle.
+  const angle = i => turn + (i < outer ? i * 2 * Math.PI / outer : Math.PI / outer + (i - outer) * 2 * Math.PI / (nodes.length - outer));
+  const radius = i => (i < outer ? 272 : 160);
+  const aim = () => {
+    beam.setAttribute('x2', (320 + Math.cos(angle(lit)) * radius(lit)).toFixed(1));
+    beam.setAttribute('y2', (320 + Math.sin(angle(lit)) * radius(lit)).toFixed(1));
+  };
   const paint = () => {
-    positions(phase).forEach((p, i) => {
-      group[i].style.transform = `translate(${p.x}px, ${p.y}px)`;
+    // The logo's centre sits on its ring and its name hangs below it.
+    nodes.forEach((node, i) => {
+      const r = radius(i) * size / 640;
+      node.style.transform = `translate(${(Math.cos(angle(i)) * r).toFixed(1)}px, ${(size / 2 + Math.sin(angle(i)) * r - plates[i] / 2).toFixed(1)}px)`;
     });
-    paintSketches();
+    aim();
+  };
+  const show = i => {
+    lit = i;
+    nodes.forEach((node, k) => node.classList.toggle('is-lit', k === i));
+    stage.style.setProperty('--brand', nodes[i].style.getPropertyValue('--brand'));
+    core.replaceChildren(step(i).content.cloneNode(true));
+    aim();
   };
   const tick = time => {
-    if (last) phase += (time - last) * Math.PI * 2 / 240000;
+    if (last) {
+      turn += (time - last) * 2 * Math.PI / 150000;
+      paint();
+    }
     last = time;
-    paint();
     frame = requestAnimationFrame(tick);
   };
   const update = () => {
-    const eligible = orbital && desktop.matches;
-    const moving = eligible && document.documentElement.dataset.motion === 'on';
-    // A pointer or focus on a logo stops only the orbit; the scene behind it pauses only off screen.
-    const playing = moving && visible && !document.hidden;
-    const running = playing && !hovered && !scene.querySelector('.nebula__item:focus-visible, [data-orbit-controls] :focus-visible');
-    scene.classList.toggle('is-animated', moving);
-    scene.classList.toggle('is-paused', !playing);
-    if (running && !frame) frame = requestAnimationFrame(tick);
-    if (!running && frame) {cancelAnimationFrame(frame); frame = 0; last = 0;}
+    const held = pointed || pill || scene.contains(document.activeElement);
+    const live = document.documentElement.dataset.motion === 'on' && visible && !document.hidden && !held;
+    if (live && wide.matches && !frame) frame = requestAnimationFrame(tick);
+    if (!(live && wide.matches) && frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      last = 0;
+    }
+    if (live && !cycle) cycle = setInterval(() => show((lit + 1) % nodes.length), 3400);
+    if (!live && cycle) {
+      clearInterval(cycle);
+      cycle = 0;
+    }
   };
   const layout = () => {
-    const focusIndex = items.indexOf(document.activeElement);
-    size = 6;
-    if (desktop.matches) {
-      // Choose one capacity for the whole catalog so paging never repeats items.
-      scene.dataset.orbitCapacity = '8';
-      scene.classList.add('is-orbital');
-      items.forEach(item => {item.hidden=false;item.style.transform='';});
-      const width=track.clientWidth, height=track.clientHeight;
-      const maxW=Math.max(0,...items.map(item=>item.offsetWidth));
-      const maxH=Math.max(0,...items.map(item=>item.offsetHeight));
-      const rx=(width-maxW)/2-12, ry=(height-maxH)/2-12, chord=2*Math.sin(Math.PI/8);
-      if (items.length<=3 || (rx>0 && ry>0 && ((maxW+16)/(chord*rx))**2 + ((maxH+16)/(chord*ry))**2 <= 1)) size=8;
-    }
-    scene.dataset.orbitCapacity=String(size);
-    if (focusIndex >= 0) start = Math.floor(focusIndex / size) * size;
-    else start = Math.min(Math.floor(start / size) * size, Math.max(0, Math.ceil(items.length / size) - 1) * size);
-    group = items.slice(start, start + size);
-    items.forEach((item, i) => {item.hidden = i < start || i >= start + size; item.style.transform = '';});
-    controls.hidden = items.length <= size;
-    previous.disabled = start === 0;
-    next.disabled = start + size >= items.length;
-    range.textContent = items.length ? `${digits.format(start+1)}–${digits.format(start+group.length)} / ${digits.format(items.length)}` : '۰ / ۰';
-    range.setAttribute('aria-label', `${digits.format(start+1)} تا ${digits.format(start+group.length)} از ${digits.format(items.length)} سرویس`);
-    orbital = desktop.matches && group.length > 3;
-    scene.classList.toggle('is-orbital', orbital);
-    points = group.map(item => ({w:item.offsetWidth, h:item.offsetHeight}));
-    const width = track.clientWidth, height = track.clientHeight;
-    const maxW = Math.max(0, ...points.map(p => p.w));
-    const maxH = Math.max(0, ...points.map(p => p.h));
-    points.forEach(p => Object.assign(p, {cx:(width-p.w)/2, cy:(height-p.h)/2, rx:(width-maxW)/2-12, ry:(height-maxH)/2-12}));
-    // The drawn track runs through the logos' own centres, so line and logos never disagree.
-    const mark = group[0]?.querySelector('.v-service-mark');
-    const shift = mark ? mark.offsetTop + mark.offsetHeight/2 - group[0].offsetHeight/2 : 0;
-    track.style.setProperty('--orbit-rx', `${Math.max(0, (width-maxW)/2-12)}px`);
-    track.style.setProperty('--orbit-ry', `${Math.max(0, (height-maxH)/2-12)}px`);
-    track.style.setProperty('--orbit-shift', `${shift}px`);
-    hub = {x: width / 2, y: height / 2 + shift};
-    // A complete ellipse must keep the padded rectangles apart at every angle.
-    if (orbital) for (let i = 0; i < points.length; i++) {
-      for (let j = i + 1; j < points.length; j++) {
-        const chord = 2 * Math.sin((j-i) * Math.PI / points.length);
-        const a = points[i], b = points[j];
-        const horizontal = ((a.w+b.w)/2+16) / (chord*a.rx);
-        const vertical = ((a.h+b.h)/2+16) / (chord*a.ry);
-        if (a.rx <= 0 || a.ry <= 0 || horizontal**2 + vertical**2 > 1) orbital = false;
-      }
-    }
-    scene.classList.toggle('is-orbital', orbital);
-    scene.dataset.orbitMode = orbital ? 'orbit' : 'still';
-    if (sketchLayer && orbital) {
-      // One unit per pixel, so the ring is laid out in the same measure as the logos.
-      sketchLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
-      sketches.forEach(g => g.removeAttribute('transform'));
-      sketchCentres = sketches.map(g => {const b = g.getBBox(); return {x: b.x + b.width / 2, y: b.y + b.height / 2};});
-    } else if (sketchLayer) {
-      sketchCentres = [];
-      sketchLayer.setAttribute('viewBox', sketchView);
-      sketches.forEach((g, i) => g.setAttribute('transform', sketchHome[i]));
-    }
-    if (orbital) paint();
+    if (wide.matches) {
+      size = stage.clientWidth;
+      stage.style.setProperty('--s', (size / 640).toFixed(4));
+      plates = nodes.map(node => node.querySelector('.po-plate').offsetHeight);
+      paint();
+    } else nodes.forEach(node => { node.style.transform = ''; });
     update();
   };
-  previous.addEventListener('click', () => {start -= size; layout();});
-  next.addEventListener('click', () => {start += size; layout();});
+
+  nodes.forEach((node, i) => {
+    const link = node.querySelector('a');
+    link.addEventListener('pointerenter', () => { pointed = true; show(i); update(); });
+    link.addEventListener('pointerleave', () => { pointed = false; update(); });
+    link.addEventListener('focus', () => show(i));
+  });
+  // Reaching for the centre's link must not swap the service under the pointer.
+  core.addEventListener('pointerenter', () => { pointed = true; update(); });
+  core.addEventListener('pointerleave', () => { pointed = false; update(); });
   scene.addEventListener('focusin', update);
-  // Pointer events precede hover styles in Firefox.
-  for (const item of items) {
-    const mark = item.querySelector('.v-service-mark');
-    mark.addEventListener('pointerenter', () => {hovered = true; update();});
-    mark.addEventListener('pointerleave', () => {hovered = false; update();});
-  }
   scene.addEventListener('focusout', () => queueMicrotask(update));
-  desktop.addEventListener('change', layout);
+  // A department pill in the copy lights its own services.
+  document.querySelectorAll('.v-hero__chip[data-dept]').forEach(chip => {
+    const first = nodes.findIndex(node => node.dataset.dept === chip.dataset.dept);
+    if (first < 0) return;
+    chip.addEventListener('pointerenter', () => {
+      nodes.forEach(node => node.classList.toggle('is-dim', node.dataset.dept !== chip.dataset.dept));
+      pill = true;
+      show(first);
+      update();
+    });
+    chip.addEventListener('pointerleave', () => {
+      nodes.forEach(node => node.classList.remove('is-dim'));
+      pill = false;
+      update();
+    });
+  });
+  if (steps.some(list => list.length > 1)) setInterval(() => nodes.forEach((node, i) => {
+    const now = step(i);
+    if (now === priced[i]) return;
+    priced[i] = now;
+    node.querySelector('a .po-price').replaceWith(now.content.querySelector('.po-price').cloneNode(true));
+    if (i === lit) show(i);
+  }), 1000);
   document.addEventListener('visibilitychange', update);
   document.addEventListener('storefront:motion', update);
-  new IntersectionObserver(([entry]) => {visible = entry.isIntersecting; update();}).observe(scene);
-  new ResizeObserver(layout).observe(scene);
-  document.fonts.ready.then(layout);
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update(); }).observe(scene);
+  new ResizeObserver(layout).observe(stage);
+  scene.classList.add('is-orbit');
   layout();
 })();

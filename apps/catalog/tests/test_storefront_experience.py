@@ -30,7 +30,7 @@ def test_delivery_facts_and_answer_remain_without_a_jump_link(client, db):
     assert 'id="delivery"' in body
 
 
-def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client, db):
+def test_orbit_takes_the_interleaved_shelfs_first_twelve_in_fixed_queries(client, db):
     from django.db import connection
     from django.test.utils import CaptureQueriesContext
 
@@ -56,12 +56,11 @@ def test_orbit_interleaves_complete_public_catalog_without_extra_queries(client,
     )
     with CaptureQueriesContext(connection) as queries:
         response = client.get(reverse("home"))
-    assert [p.pk for p in response.context["shelf"]] == expected
-    assert len(queries) == 6  # Includes published legal-page navigation.
+    # The shelf's first twelve, departments taking turns.
+    assert [p.pk for p in response.context["orbit"]] == expected[:12]
+    assert len(queries) == 8  # Includes published legal-page navigation.
     body = response.content.decode()
-    assert body.count('class="nebula__item"') == 30
-    assert "data-orbit-next" in body
-    assert "data-orbit-range" in body
+    assert body.count('<li class="po-node') == 12
 
 
 def test_the_first_paint_waits_for_the_orbit_marker(client, db):

@@ -25,6 +25,7 @@ SEARCH_RESULT_CAP = 50
 SUGGESTION_CAP = 5
 SUGGESTION_MIN_LENGTH = 2
 HOME_PRODUCT_CAP = 24
+ORBIT_SIZE = 12  # eight on the outer ring, four on the inner
 CATEGORY_SORTS = ("new", "cheap", "expensive")
 
 
@@ -59,15 +60,9 @@ def home(request: HttpRequest) -> HttpResponse:
     # contradicting itself. The cap comes back the moment the catalogue is
     # bigger than one screen of scrolling, with paging behind it.
     featured = _for_cards().order_by("-created_at")[:HOME_PRODUCT_CAP]
-    # The shelf is the complete index — every service the shop stocks, as a
-    # mark you can tap. It answers a different question from the cards below
-    # ("do you have it" rather than "what does it cost"), so it carries no
-    # plans and needs none of the prefetching the cards do: one flat query.
-    index = list(
-        Product.objects.public()
-        .order_by("created_at", "id")
-        .only("name", "slug", "image", "brand_colour", "category_id", "created_at")
-    )
+    # The shelf is every service the shop stocks, departments taking turns, in
+    # one flat query; the hero's orbit shows its first twelve.
+    index = list(Product.objects.public().order_by("created_at", "id").only("category_id"))
     shelf = [
         item
         for group in zip_longest(
@@ -75,7 +70,11 @@ def home(request: HttpRequest) -> HttpResponse:
         )
         for item in group
         if item is not None
-    ]
+    ][:ORBIT_SIZE]
+    # The orbit's centre names each one's price and delivery, as its card does. A
+    # service withdrawn between the two queries is skipped.
+    loaded = _for_cards().in_bulk([item.pk for item in shelf])
+    orbit = [loaded[item.pk] for item in shelf if item.pk in loaded]
     # Real discounts only. `promotion_is_active` consults the window as well as
     # the price, so a promotion whose end date has passed drops out of this row
     # on its own — a shop that advertises an expired discount has done worse
@@ -97,7 +96,7 @@ def home(request: HttpRequest) -> HttpResponse:
         "catalog/home.html",
         {
             "featured": featured,
-            "shelf": shelf,
+            "orbit": orbit,
             "discounted": discounted,
             "offer_peak": offer_peak,
             "by_category": by_category,

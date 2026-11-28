@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from base64 import b64decode, b64encode
+from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
@@ -18,6 +19,7 @@ from pathlib import Path
 import pytest
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 from PIL import Image
 
 from apps.catalog.management.commands.seed_catalog import MARKS, PRODUCTS, _normalise_mark
@@ -67,29 +69,53 @@ def test_every_card_names_the_shop_and_a_small_tile_does_not(client, shop):
 # --- The shelf ---------------------------------------------------------------
 
 
-def test_the_hero_shows_every_service_and_each_mark_is_a_link(client, shop):
-    """The constellation in the hero is the catalogue, not decoration: it
-    answers «do you have it» in a glance, so every active product is in it and
-    every tile goes to that product."""
+ORBIT_NODE = re.compile(r'<li class="po-node[ "].*?</li>', re.DOTALL)
+
+
+def test_the_hero_shows_the_shelfs_first_twelve_services_each_a_link(client, shop):
+    """Twelve logos fill the two rings; every other service is in its department below."""
+    for i in range(13):
+        Product.objects.create(
+            category=shop.category, name=f"Service {i}", slug=f"service-{i}", status="active"
+        )
+    nodes = ORBIT_NODE.findall(client.get(reverse("home")).content.decode())
+
+    assert len(nodes) == 12
+    assert f'<a href="{shop.get_absolute_url()}"' in nodes[0]
+
+
+def test_each_logo_names_its_service_price_and_delivery(client, shop):
+    """A link whose only content is an image has no name without one; the logo's
+    name also says what the centre card shows, for a reader who never sees it."""
+    node = ORBIT_NODE.search(client.get(reverse("home")).content.decode()).group(0)
+    link = node[: node.index("</a>")]
+
+    assert f"<bdi>{shop.name}</bdi>" in link, "the visible label must name the link"
+    assert "۱,۳۹۰,۰۰۰" in link and "تومان" in link and "تحویل تا ۱۲ ساعت" in link
+
+
+def test_the_centre_shows_the_first_service_without_a_script(client, shop):
     body = client.get(reverse("home")).content.decode()
+    core = body.split('<div class="po-core">', 1)[1].split("</div>", 1)[0]
 
-    assert body.count('class="nebula__item"') == Product.objects.public().count()
-    assert re.search(
-        r'class="nebula__item"[^>]*href="' + reverse("product", args=[shop.slug]) + '"', body
-    )
+    assert shop.category.name in core and f"<bdi>{shop.name}</bdi>" in core
+    assert "۱,۳۹۰,۰۰۰" in core and "تحویل تا ۱۲ ساعت" in core
+    assert f'href="{shop.get_absolute_url()}"' in core and "دیدن محصول" in core
 
 
-def test_every_mark_in_the_hero_has_an_accessible_name(client, shop):
-    """A link whose only content is an image has no name without one. These
-    tiles are the first ten links on the page; empty alt text would make the
-    whole hero unreadable to a screen reader and invisible to search."""
-    body = client.get(reverse("home")).content.decode()
+def test_a_logo_carries_the_price_its_discount_ends_into(client, shop):
+    """Like a card, the orbit holds the price after each discount with the seconds
+    until it starts, so the centre never shows a price that has run out."""
+    plan = shop.plans.get()
+    plan.promo_price = Decimal(1190000)
+    plan.promo_ends_at = timezone.now() + timedelta(hours=1)
+    plan.save()
+    node = ORBIT_NODE.search(client.get(reverse("home")).content.decode()).group(0)
+    steps = re.findall(r'<template data-from="(\d+)">(.*?)</template>', node, re.DOTALL)
 
-    hero = body[body.index('aria-label="انتخاب سرویس"') : body.index('id="service-hint"')]
-
-    assert f"<bdi>{shop.name}</bdi>" in hero, "the visible label must name the link"
-    # With a mark it is the image's alt; without one it is visually hidden text.
-    assert shop.name in hero, "the service is unnamed to a screen reader"
+    assert [int(start) for start, _ in steps][0] == 0
+    assert 3590 <= int(steps[1][0]) <= 3600
+    assert "۱,۱۹۰,۰۰۰" in steps[0][1] and "۱,۳۹۰,۰۰۰" in steps[1][1]
 
 
 def test_a_draft_product_is_not_in_the_hero(client, shop):
@@ -105,7 +131,7 @@ def test_a_draft_product_is_not_in_the_hero(client, shop):
     body = client.get(reverse("home")).content.decode()
 
     assert "Secret" not in body
-    assert body.count('class="nebula__item"') == 1
+    assert len(ORBIT_NODE.findall(body)) == 1
 
 
 def test_the_shelves_row_lists_only_departments_that_have_something_in_them(client, shop):

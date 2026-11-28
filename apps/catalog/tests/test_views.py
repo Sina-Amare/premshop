@@ -24,7 +24,8 @@ pytestmark = pytest.mark.django_db
 # and one for the product's published reviews, however many there are.
 PRODUCT_PAGE_QUERY_BUDGET = 10
 CATEGORY_PAGE_QUERY_BUDGET = 5
-HOME_PAGE_QUERY_BUDGET = 6
+# The home page also loads its orbit's twelve services with their plans: two queries.
+HOME_PAGE_QUERY_BUDGET = 8
 
 
 @pytest.fixture
