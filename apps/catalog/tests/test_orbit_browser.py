@@ -366,3 +366,20 @@ def test_on_a_phone_the_hero_ends_at_its_buttons(browser, live_server, catalog, 
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     finally:
         page.close()
+
+
+def test_the_card_beside_the_headline_stands_still(browser, live_server, catalog):
+    """The owner's call: below 1200px the centre changes only for a visitor."""
+    page = browser.new_page(viewport={"width": 1000, "height": 900})
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        expect(page.locator("html")).to_have_attribute("data-motion", "on")
+        page.clock.run_for(8000)
+        expect(page.locator(".po-core .po-core__name")).to_have_text("ChatGPT Plus")
+        assert lit(page) == "ChatGPT Plus"
+        page.locator(".po-node a").nth(5).hover()
+        expect(page.locator(".po-core .po-core__name")).to_have_text("JetBrains All Products")
+    finally:
+        page.close()

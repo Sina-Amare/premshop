@@ -49,9 +49,10 @@
   };
   const update = () => {
     const held = pointed || pill || scene.contains(document.activeElement);
-    const live = document.documentElement.dataset.motion === 'on' && visible && !document.hidden && !held;
-    if (live && wide.matches && !frame) frame = requestAnimationFrame(tick);
-    if (!(live && wide.matches) && frame) {
+    // Below 1200px the card stands still: it changes only for a visitor.
+    const live = wide.matches && document.documentElement.dataset.motion === 'on' && visible && !document.hidden && !held;
+    if (live && !frame) frame = requestAnimationFrame(tick);
+    if (!live && frame) {
       cancelAnimationFrame(frame);
       frame = 0;
       last = 0;
