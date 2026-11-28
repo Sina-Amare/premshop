@@ -232,8 +232,14 @@ def test_a_discount_ending_switches_the_centre_price(browser, live_server, catal
         page.goto(live_server.url + "/")
         price = page.locator(".po-core .price__num")
         expect(price).to_have_text(format_toman(500_000, with_unit=False))
+        # The original stands struck beside the offer, as on the cards, in the centre and the logo's name.
+        expect(page.locator(".po-core .price__was")).to_have_text(re.compile(rf"{after}$"))
+        expect(page.locator(".po-node a").first).to_have_accessible_name(
+            re.compile(rf"^ChatGPT Plus\s*، قیمت قبلی {after}\s*قیمت با تخفیف ۵۰۰,۰۰۰ تومان\s*، ")
+        )
         page.clock.run_for(62_000)
         expect(price).to_have_text(after)
+        expect(page.locator(".po-core .price__was")).to_have_count(0)
         expect(page.locator(".po-node a").first).to_have_accessible_name(
             re.compile(rf"^ChatGPT Plus\s*، {after} تومان\s*، ")
         )
@@ -492,11 +498,43 @@ PAST_THE_CIRCLE = """() => {
         [[b.left, b.top], [b.right, b.top], [b.left, b.bottom], [b.right, b.bottom]]
             .map(([x, y]) => Math.hypot(x - cx, y - cy) - r)));
 }"""
+# The smallest size any text a reader sees inside the selector is set in.
+SMALLEST_TEXT = """selector => Math.min(...[...document.querySelectorAll(selector + ' *')]
+    .filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())
+        && e.getClientRects().length && !e.closest('.sr-only'))
+    .map(e => parseFloat(getComputedStyle(e).fontSize)))"""
+# Where the beam ends, as an angle in degrees round the centre.
+BEAM = """() => { const b = document.querySelector('.po-beam');
+    return Math.atan2(b.getAttribute('y2') - 320, b.getAttribute('x2') - 320) * 180 / Math.PI; }"""
 
 
+def test_the_beam_sweeps_round_to_a_newly_lit_logo(browser, live_server, catalog):
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    stop_time(page)
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        logos = page.locator(".po-node a")
+        logos.nth(0).hover()
+        page.clock.run_for(1000)
+        start = page.evaluate(BEAM)
+        logos.nth(2).hover()
+        page.clock.run_for(150)
+        middle = page.evaluate(BEAM)
+        page.clock.run_for(1000)
+        end = page.evaluate(BEAM)
+        # Partway along the short arc between the two logos, then on the second.
+        arc, done = ((a - start + 540) % 360 - 180 for a in (end, middle))
+        assert abs(arc) > 30
+        assert 0 < done / arc < 1, (start, middle, end)
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("discounted", [False, True])
 @pytest.mark.parametrize("width", [1200, 1920])
 def test_the_centre_keeps_a_long_name_note_and_price_inside_its_circle(
-    browser, live_server, catalog, width
+    browser, live_server, catalog, width, discounted
 ):
     product = catalog["ChatGPT Plus"]
     product.name = "Adobe Creative Cloud All Apps with Stock and Fonts"
@@ -506,7 +544,14 @@ def test_the_centre_keeps_a_long_name_note_and_price_inside_its_circle(
     )
     product.save()
     product.plans.update(sale_price=12_345_678)
-    Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=99_000_000)
+    if discounted:
+        # A discount adds the struck original as one more line.
+        product.plans.update(
+            sale_price=99_345_678,
+            promo_price=12_345_678,
+            promo_ends_at=timezone.now() + timedelta(days=10),
+        )
+    Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=199_000_000)
     page = browser.new_page(viewport={"width": width, "height": 1000})
     stop_time(page)
     try:
@@ -514,9 +559,12 @@ def test_the_centre_keeps_a_long_name_note_and_price_inside_its_circle(
         page.wait_for_function(STYLED)
         page.evaluate("() => document.fonts.ready")
         expect(page.locator(".po-core .po-price")).to_have_text(
-            re.compile(r"از\s*۱۲,۳۴۵,۶۷۸\s*تومان")
+            re.compile(r"از.*۱۲,۳۴۵,۶۷۸\s*تومان")
         )
+        expect(page.locator(".po-core .price__was")).to_have_count(1 if discounted else 0)
         assert page.evaluate(PAST_THE_CIRCLE) <= 0
+        # Persian detail needs 12px: nothing in the centre is set smaller.
+        assert page.evaluate(SMALLEST_TEXT, ".po-core") >= 12
         # Cut short in the centre, whole in the logo's accessible name.
         expect(page.locator(".po-node a").first).to_have_accessible_name(
             re.compile(f"^{product.name}.*{product.delivery_note}")
