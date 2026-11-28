@@ -18,8 +18,10 @@
     const now = step(i);
     if (now === priced[i]) return;
     priced[i] = now;
-    node.querySelector('a .po-price').replaceWith(now.content.querySelector('.po-price').cloneNode(true));
-    if (i === lit) show(i);
+    const price = () => now.content.querySelector('.po-price').cloneNode(true);
+    node.querySelector('a .po-price').replaceWith(price());
+    // Only the price changes, so a focused «دیدن محصول» keeps its focus.
+    if (i === lit) core.querySelector('.po-price').replaceWith(price());
   });
   let lit = 0, turn = -Math.PI / 2, last = 0, frame = 0, cycle = 0, check = 0;
   let size = 0, plates = [], visible = false, pointed = false, pill = false;
@@ -41,6 +43,8 @@
     aim();
   };
   const show = i => {
+    // Redrawing would delete a focused «دیدن محصول» and send its product elsewhere.
+    if (core.contains(document.activeElement)) return;
     lit = i;
     nodes.forEach((node, k) => node.classList.toggle('is-lit', k === i));
     stage.style.setProperty('--brand', nodes[i].style.getPropertyValue('--brand'));

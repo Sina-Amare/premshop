@@ -412,3 +412,32 @@ def test_the_price_check_rests_while_the_orbit_is_out_of_sight(browser, live_ser
         expect(price).to_have_text(after)
     finally:
         page.close()
+
+
+def test_the_focused_centre_link_keeps_its_focus_and_its_product(browser, live_server, catalog):
+    product = catalog["ChatGPT Plus"]
+    plan = product.plans.get()
+    plan.promo_price = Decimal(500_000)
+    plan.promo_ends_at = timezone.now() + timedelta(seconds=60)
+    plan.save()
+    focused = (
+        "() => [document.activeElement.className, document.activeElement.getAttribute('href')]"
+    )
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        page.locator(".po-core__go").focus()
+        held = ["po-core__go", product.get_absolute_url()]
+        page.clock.run_for(62_000)
+        expect(page.locator(".po-core .price__num")).to_have_text(
+            format_toman(plan.sale_price, with_unit=False)
+        )
+        assert page.evaluate(focused) == held
+        page.locator('.v-hero__chip[data-dept="media"]').hover()
+        page.locator(".po-node a").nth(5).hover()
+        assert page.evaluate(focused) == held
+        expect(page.locator(".po-core .po-core__name")).to_have_text(product.name)
+    finally:
+        page.close()
