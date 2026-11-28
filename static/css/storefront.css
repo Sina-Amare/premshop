@@ -92,64 +92,68 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
   .v-category-links small{font-size:10px}
 }
 
-/* All links remain available when scripts or motion are unavailable. */
-.v-service-cloud{--service-plate:80px;--service-logo:42px;min-width:0;width:100%;max-width:640px;justify-self:center}
-.v-service-cloud .nebula{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:16px 10px;position:relative;padding:12px 0;isolation:isolate}
-.v-service-cloud .nebula__item{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:4px;color:var(--v-ink);min-width:0;inline-size:auto;block-size:auto;transition:none;animation:none;background:transparent;border:0;box-shadow:none}
-.v-service-cloud .nebula__item:nth-of-type(3n+2){margin-top:12px}
-.v-service-cloud .nebula__mono{font:600 32px/1 var(--font-head);color:var(--v-accent)}
-.v-orbit-scene{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:-1}
-.v-service-effects{position:absolute;inset:0;inline-size:100%;block-size:100%;pointer-events:none;z-index:-1;overflow:hidden}
-.v-effect{stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
-.v-effect--chat{color:#438470}.v-effect--writing{color:#b76c55}.v-effect--multimodal{color:#5e7db7}
-.v-effect--code{color:#5473a8}.v-effect--film{color:#b25d67}.v-effect--audio{color:#439369}
-.v-equalizer__bar{stroke-width:2;transform-box:fill-box;transform-origin:center bottom}
-.v-effect__satellites{transform-box:fill-box;transform-origin:center}
-@keyframes service-writing{0%,20%,100%{stroke-dashoffset:0}65%{stroke-dashoffset:34}}
-@keyframes service-thought{0%,100%{stroke-dashoffset:0}50%{stroke-dashoffset:12}}
-@keyframes service-orbit{0%,100%{transform:rotate(-15deg)}50%{transform:rotate(15deg)}}
-@keyframes service-cursor{0%,100%{opacity:.35}50%{opacity:1}}
-@keyframes service-frame{0%,100%{transform:translateX(-2px)}50%{transform:translateX(2px)}}
-@keyframes service-audio{0%,100%{transform:scaleY(.45)}45%{transform:scaleY(1)}70%{transform:scaleY(.7)}}
-@media(min-width:1001px) and (prefers-reduced-motion:no-preference){
-  .is-animated .v-effect__write{stroke-dasharray:34;animation:service-writing 7s ease-in-out infinite}
-  .is-animated .v-effect__thought{stroke-dasharray:12 4;animation:service-thought 6s ease-in-out infinite}
-  .is-animated .v-effect__reply{animation:service-cursor 6s ease-in-out -2s infinite}
-  .is-animated .v-effect__satellites{animation:service-orbit 12s ease-in-out infinite}
-  .is-animated .v-effect__cursor{animation:service-cursor 4s ease-in-out infinite}
-  .is-animated .v-effect__frame{animation:service-frame 8s ease-in-out infinite}
-  .is-animated .v-equalizer__bar{animation:service-audio 3.2s ease-in-out infinite}
-  .is-animated .v-equalizer__bar:nth-of-type(3n){animation-delay:-.9s}
-  .is-animated .v-equalizer__bar:nth-of-type(2n){animation-delay:-1.7s}
-  .is-paused .v-service-effects *{animation-play-state:paused}
+/* The hero's services. As a card beside the headline (761px to 1199px, and wherever the
+   script does not run): the centre names the lit service above a grid of the twelve logos,
+   their names for screen readers. From 1200px orbit.js turns it into an orbit round the
+   centre. On a phone the hero ends at its buttons. */
+.po{min-width:0;width:100%;max-width:620px;justify-self:center}
+.po-stage{--s:1;position:relative;display:flex;flex-direction:column;gap:14px;padding:14px;background:#fff;border:1px solid var(--v-line);border-radius:20px}
+.po-dial{display:none}
+.po-core{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"dept price" "name price" "sla go";align-items:center;gap:3px 12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--brand) 7%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 18%,transparent);text-align:start}
+.po-core__dept{grid-area:dept;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;line-height:1.5;color:var(--dept)}
+.po-core__dept::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+/* A long name or delivery note is cut at two lines; the logo's accessible name holds it whole. */
+.po-core__name,.po-core__sla span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.po-core__name{grid-area:name;font:600 17px/1.35 var(--font-head);color:var(--v-ink)}
+.po-core .po-price{grid-area:price;justify-self:end;display:inline-flex;align-items:baseline;gap:5px;color:var(--v-ink)}
+.po-core .price__num{font-size:20px}
+.po-core__sla{grid-area:sla;display:inline-flex;align-items:center;gap:5px;font-size:12px;line-height:1.6;color:var(--v-text)}
+.po-core__sla .v-icon{flex:none;width:14px;height:14px}
+.po-core__go{grid-area:go;justify-self:end;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:var(--v-mint);color:var(--v-accent);font-size:12px;font-weight:700;line-height:1.6;white-space:nowrap;transition:background-color 140ms}
+.po-core__go:hover{background:#dce6ff}
+.po-core__go .v-icon{width:14px;height:14px}
+.po-nodes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}
+.po-node{transition:opacity 250ms}
+.po-node.is-dim{opacity:.25}
+.po-node a{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--v-text);text-decoration:none}
+.po-node a:focus-visible{outline:none}
+.po-plate{display:grid;place-items:center;width:100%;aspect-ratio:1;border:1px solid #e1e6ec;border-radius:16px;background:#fff;box-shadow:0 8px 18px -12px rgb(20 30 50/.4);transition:transform 200ms,box-shadow 200ms,border-color 200ms}
+.po-plate img{width:52%;height:52%;object-fit:contain}
+.po-mono{font:600 24px/1 var(--font-head);color:var(--v-accent)}
+.po-node.is-lit .po-plate,.po-node a:is(:hover,:focus-visible) .po-plate{transform:scale(1.12);border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 15%,transparent),0 12px 24px -14px var(--brand)}
+.po-node a:focus-visible .po-plate{outline:2px solid var(--v-accent);outline-offset:3px}
+.po-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.v-hero__chip[data-dept]{cursor:default}
+@media(min-width:1200px){
+  .v-hero__inner{grid-template-columns:.86fr 1.34fr;gap:40px}
+  .po.is-orbit{max-width:640px;padding-block-end:24px}
+  .is-orbit .po-stage{display:block;aspect-ratio:1;padding:0;border:0;border-radius:0;background:none}
+  .is-orbit .po-dial{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .po-dial__halo{fill:none;stroke:#e9edf3}
+  .po-dial__outer{fill:none;stroke:#cfd6df;stroke-width:1.2;stroke-dasharray:3 7}
+  .po-dial__inner{fill:none;stroke:#dde2e9}
+  .po-beam{stroke:var(--brand);stroke-width:1.5;stroke-dasharray:3 5;opacity:.45}
+  /* Centred by its insets, so the layout reads the same in either direction. */
+  .is-orbit .po-core{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:196px;height:196px;margin:auto;padding:14px;border-radius:50%;background:#fff;text-align:center;transform:scale(var(--s));box-shadow:0 0 0 7px color-mix(in srgb,var(--brand) 9%,transparent),0 0 0 1px color-mix(in srgb,var(--brand) 22%,transparent),0 22px 44px -22px rgb(20 30 50/.4);transition:box-shadow 350ms}
+  /* Sized so two lines of name and of delivery, and an eight-digit price, stay inside the circle. */
+  .is-orbit .po-core__name{max-inline-size:144px;font-size:17px;line-height:1.25}
+  .is-orbit .po-core .price__num{font-size:22px}
+  .is-orbit .po-core__sla{max-inline-size:160px;font-size:11px;line-height:1.4}
+  .is-orbit .po-core__go{padding:4px 10px}
+  .is-orbit .po-nodes{display:block}
+  /* orbit.js moves each logo from the stage's centre line, so its anchor is the middle. */
+  .is-orbit .po-node{position:absolute;inset-block-start:0;inset-inline:0;z-index:3;width:104px;margin-inline:auto;will-change:transform}
+  .is-orbit .po-plate{width:calc(62px * var(--s));border-radius:18px}
+  .is-orbit .po-node--inner .po-plate{width:calc(52px * var(--s));border-radius:15px}
+  .is-orbit .po-node--inner .po-plate img{width:50%;height:50%}
+  /* An inner name would point into the centre, which names the lit service anyway. An outer
+     name keeps to two lines, clear of the inner ring and inside the hero; the link reads it whole. */
+  .is-orbit .po-node:not(.po-node--inner) .po-label{position:static;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;width:auto;height:auto;max-width:104px;overflow:hidden;clip-path:none;white-space:normal;font-size:12px;line-height:1.25;text-align:center;text-shadow:0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg);transition:color 200ms}
+  .is-orbit .po-node.is-lit .po-label,.is-orbit .po-node a:is(:hover,:focus-visible) .po-label{color:var(--v-ink);font-weight:700}
 }
-.v-service-mark{
-  display:grid;place-items:center;inline-size:var(--service-plate);block-size:var(--service-plate);flex:none;
-  background:#fff;border:1px solid #d8dfe9;border-radius:24%;box-shadow:0 7px 15px -10px #20252e40;
-  animation:none;transform:rotate(var(--plate-turn,0deg));transition:border-color 160ms,box-shadow 160ms
-}
-.v-service-cloud .nebula__item img{inline-size:calc(var(--service-logo)*var(--service-scale,1));block-size:calc(var(--service-logo)*var(--service-scale,1));max-inline-size:100%;max-block-size:100%;object-fit:contain;transform:rotate(calc(-1 * var(--plate-turn,0deg)))}
-.v-service-name{display:block;width:100%;min-height:39px;font-size:12px;font-weight:500;line-height:1.6;text-align:center}
-.v-service-name bdi{display:block;overflow-wrap:anywhere}
-.v-service-cloud .nebula__item:is(:hover,:focus-visible){transform:none;box-shadow:none}
-.v-service-cloud .nebula__item:is(:hover,:focus-visible) .v-service-mark{border-color:var(--v-accent);box-shadow:0 8px 22px -10px #2459d350}
-.v-service-cloud .nebula__item:is(:hover,:focus-visible) .v-service-name{color:var(--v-accent)}
-.v-service-cloud .nebula__item:focus-visible{outline:none}
-.v-service-cloud .nebula__item:focus-visible .v-service-mark{border-color:var(--v-accent);box-shadow:0 0 0 1px var(--v-accent)}
-.v-scene-footer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.v-scene-caption{min-width:0;order:2}
-.v-scene-caption p{font-size:14px;line-height:1.6;color:var(--v-text);text-align:center;margin:0}
-
-.v-orbit-controls{display:flex;align-items:center;justify-content:center;gap:4px;width:max-content;max-width:100%;min-height:44px;border:1px solid var(--v-line);border-radius:var(--radius-sm);background:var(--v-light);font-size:14px;line-height:1.6;color:var(--v-text)}.v-orbit-controls bdi{min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
-.v-orbit-controls button{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:var(--radius-sm);background:transparent;cursor:pointer;color:var(--v-ink)}.v-orbit-controls button:hover:not(:disabled){background:var(--v-soft)}
-.v-orbit-controls button:disabled{opacity:.35;cursor:default}
-.v-scene-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}
-.v-service-cloud.is-orbital .nebula{height:640px;display:block;padding:0}
-.v-service-cloud.is-orbital .nebula__item{position:absolute;left:0;top:0;width:112px;margin:0;will-change:transform}
-.v-service-name{min-height:0;font-size:12px;line-height:1.6;flex:none}
-.v-service-cloud .v-service-mark{animation:none;transform:none}
-.v-service-cloud .nebula__item img{transform:none}
-@media(min-width:1200px){.v-hero__inner{grid-template-columns:.9fr 1.3fr;gap:48px}}
-@media(max-width:760px){.v-service-cloud{--service-plate:66px;--service-logo:36px;max-width:460px}.v-service-cloud .nebula{gap:12px 6px}.v-service-cloud .nebula__item{padding:4px 0}.v-service-name{font-size:12px}.v-scene-footer{gap:8px;margin-top:12px}}
+/* Stacked under the headline on a phone, the services would repeat the departments and
+   products just below, so the hero ends at its buttons. */
+@media(max-width:760px){.po{display:none}}
 
 /* Shape cues keep prose links identifiable without underlines. */
 html body a:any-link,html body a:any-link:is(:hover,:focus-visible){text-decoration:none}
@@ -182,8 +186,6 @@ main :is(.prose,.rich) a:any-link:hover{border-color:var(--v-accent);background:
 @media(min-width:1200px){
   .v-hero__inner{padding-block:10px}
 }
-/* The same query orbit.js uses, so the offset does not wait for the script. */
-@media(min-width:1200px) and (pointer:fine) and (prefers-reduced-motion:no-preference){.v-hero__copy{padding-block-end:36px}}
 .v-section-mark{display:inline-grid;place-items:center;vertical-align:middle;margin-inline-end:9px;color:var(--v-accent)}
 .v-section-mark .v-icon{width:23px;height:23px}
 .v-rail-controls [data-rail-prev] .v-icon{transform:rotate(180deg)}
@@ -279,9 +281,7 @@ html body .v-search input:focus{box-shadow:none}
 .v-footer nav .v-icon--telegram{width:16px;height:16px}
 html body [aria-invalid=true]:focus,html body .field--error :is(input,textarea,select):focus{border-color:var(--color-danger,#bd2d35);box-shadow:0 0 0 1px var(--color-danger,#bd2d35)}
 
-[data-orbit-prev] .v-icon{transform:rotate(180deg)}
 
-.v-service-name{position:relative;background:var(--v-hero-bg);box-shadow:0 0 0 5px var(--v-hero-bg);border-radius:4px}
 
 .snapshot-extras{padding-block:24px;border-bottom:1px solid var(--v-line)}
 .snapshot-extras>p{font-size:14px;line-height:1.9}
@@ -298,9 +298,6 @@ tr.snapshot-placeholder{display:table-row}
 
 html body .buybox .stepper input.stepper__input:focus{outline:2px solid var(--v-accent);outline-offset:-2px;box-shadow:none}
 
-.v-service-cloud.is-orbital[data-orbit-capacity="6"] .nebula{height:520px}
-.v-service-cloud .v-orbit-scene{opacity:.5}
-.v-service-cloud .v-service-effects{opacity:.42}
 
 .pcard__link{display:flex;flex:1;flex-direction:column;min-width:0;color:inherit}
 .pcard:has(.pcard__link:focus-visible){outline:2px solid var(--v-accent);outline-offset:2px}
@@ -401,7 +398,7 @@ html[data-motion=off] .pcard__quick:hover .v-icon{transform:none}
 @media(max-width:719px){.cart-toast{padding-inline:10px 4px}.cart-toast__message{gap:8px}.cart-toast--art .cart-toast__art{width:32px;height:32px;border-radius:8px}.cart-toast__art img{width:22px;height:22px}.cart-toast__message strong{font-size:13px}.cart-toast__message [data-toast-detail]{font-size:12px}.cart-toast>a{padding-inline:6px;font-size:12px}}
 
 @media(max-width:760px){.v-category-section .v-track .pcard__art,.v-offers-band .v-track .pcard__art{aspect-ratio:16/9}}
-.pcard__art img{max-inline-size:64px}@media(min-width:1200px) and (prefers-reduced-motion:reduce),(min-width:1200px) and (not (pointer:fine)){.v-hero__inner{padding-block:36px}}
+.pcard__art img{max-inline-size:64px}
 
 .pcard .pcard__art,.v-track .pcard__art{aspect-ratio:2/1}@media(max-width:760px){.pcard .pcard__art,.v-track .pcard__art{aspect-ratio:16/9}}
 .acct__hint a{color:var(--v-accent)}
@@ -1472,41 +1469,6 @@ main .v-page-hero--light .page-head__intro a:any-link{border-color:#b5c4df;backg
 .cart-art--n8 .cart-art__cart{animation:cart-bump-8 7s ease-out infinite}
 @keyframes cart-bump-9{0%,100%{transform:none}12%{transform:translateY(2px) rotate(-2deg)}15%{transform:none}20%{transform:translateY(2px) rotate(-2deg)}23%{transform:none}28%{transform:translateY(2px) rotate(-2deg)}31%{transform:none}36%{transform:translateY(2px) rotate(-2deg)}39%{transform:none}44%{transform:translateY(2px) rotate(-2deg)}47%{transform:none}52%{transform:translateY(2px) rotate(-2deg)}55%{transform:none}60%{transform:translateY(2px) rotate(-2deg)}63%{transform:none}68%{transform:translateY(2px) rotate(-2deg)}71%{transform:none}76%{transform:translateY(2px) rotate(-2deg)}79%{transform:none}}
 .cart-art--n9 .cart-art__cart{animation:cart-bump-9 7s ease-out infinite}
-
-/* Hero orbit: each logo glows in its own brand colour, as its card does, and the shop sits at the centre as the hub every service circles. */
-.v-service-cloud .nebula__item .v-service-mark{position:relative;border-color:color-mix(in oklab,var(--brand,#737373) 28%,white);box-shadow:0 14px 28px -16px color-mix(in oklab,var(--brand,#737373) 75%,transparent)}
-.v-service-cloud .nebula__item .v-service-mark::before{content:"";position:absolute;inset:-16px;z-index:-1;border-radius:50%;background:radial-gradient(circle,color-mix(in oklab,var(--brand,#737373) 40%,transparent),transparent 68%);opacity:.7;transition:opacity 200ms ease-out,transform 200ms ease-out}
-.v-service-cloud .nebula__item:is(:hover,:focus-visible) .v-service-mark{border-color:var(--brand,var(--v-accent));box-shadow:0 18px 32px -14px color-mix(in oklab,var(--brand,#737373) 85%,transparent)}
-.v-service-cloud .nebula__item:is(:hover,:focus-visible) .v-service-mark::before{opacity:1;transform:scale(1.18)}
-.nebula__hub{display:none}
-.v-service-cloud.is-orbital .nebula__hub{position:absolute;left:50%;top:50%;z-index:0;display:grid;place-items:center;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a83ea,var(--v-accent) 70%);color:#fff;box-shadow:0 24px 50px -20px var(--v-accent),0 0 0 10px color-mix(in oklab,var(--v-accent) 9%,transparent)}
-.nebula__hub .v-mark{width:50px;height:50px}
-.nebula__hub::before,.nebula__hub::after{content:"";position:absolute;inset:0;border:2px solid color-mix(in oklab,var(--v-accent) 40%,transparent);border-radius:50%;animation:hub-ring 3.4s ease-out infinite}
-.nebula__hub::after{animation-delay:-1.7s}
-@keyframes hub-ring{from{transform:scale(1);opacity:.8}to{transform:scale(2.2);opacity:0}}
-.v-service-cloud.is-orbital .nebula__hub{background:#fff;color:var(--v-accent);box-shadow:0 24px 50px -18px var(--v-accent),0 0 0 10px color-mix(in oklab,var(--v-accent) 10%,transparent),inset 0 0 0 1px color-mix(in oklab,var(--v-accent) 18%,white)}.nebula__hub .v-mark{width:54px;height:54px}
-
-/* Orbit, cleaned: one dashed track through the logos' centres instead of crossing lines and scattered sketches, a smaller hub whose rings stay clear of the logos, and halos that keep off the names. */
-.v-service-cloud.is-orbital :is(.v-orbit-scene,.v-service-effects){display:none}
-.v-service-cloud.is-orbital .nebula::before{content:"";position:absolute;left:50%;top:calc(50% + var(--orbit-shift,0px));z-index:-1;width:calc(var(--orbit-rx,0px) * 2);height:calc(var(--orbit-ry,0px) * 2);border:1.5px dashed color-mix(in oklab,var(--v-accent) 26%,transparent);border-radius:50%;translate:-50% -50%;pointer-events:none}
-.v-service-cloud.is-orbital .nebula::after{content:"";position:absolute;left:50%;top:calc(50% + var(--orbit-shift,0px));z-index:-1;width:calc(var(--orbit-rx,0px) * 1.2);height:calc(var(--orbit-ry,0px) * 1.2);border-radius:50%;background:radial-gradient(closest-side,color-mix(in oklab,var(--v-accent) 9%,transparent),transparent);translate:-50% -50%;pointer-events:none}
-.v-service-cloud.is-orbital .nebula__hub{top:calc(50% + var(--orbit-shift,0px));width:96px;height:96px;margin:-48px 0 0 -48px;box-shadow:0 20px 40px -18px var(--v-accent),0 0 0 8px color-mix(in oklab,var(--v-accent) 10%,transparent),inset 0 0 0 1px color-mix(in oklab,var(--v-accent) 18%,white)}
-.nebula__hub .v-mark{width:46px;height:46px}
-@keyframes hub-ring{from{transform:scale(1);opacity:.7}to{transform:scale(1.55);opacity:0}}
-.v-service-cloud .nebula__item .v-service-mark::before{inset:-10px}
-
-/* Orbit details kept, and given room: the sketches sit on an inner ring between the hub and the logos, the background lines fade out round the hub, and the drawn track gives way to them. */
-.v-service-cloud.is-orbital .v-orbit-scene{display:block;-webkit-mask-image:radial-gradient(ellipse 52% 50% at 50% 47%,transparent 30%,#000 62%);mask-image:radial-gradient(ellipse 52% 50% at 50% 47%,transparent 30%,#000 62%)}
-.v-service-cloud.is-orbital .v-service-effects{display:block;opacity:.85}
-.v-service-cloud.is-orbital .v-effect{opacity:.85}
-.v-service-cloud.is-orbital .nebula::before{content:none}
-@keyframes hub-ring{from{transform:scale(1);opacity:.7}to{transform:scale(1.45);opacity:0}}
-
-/* The hub, compact, so the services' sketches can circle it as moons inside the logos' orbit (orbit.js). */
-.v-service-cloud.is-orbital .nebula__hub{width:72px;height:72px;margin:-36px 0 0 -36px;box-shadow:0 16px 32px -14px var(--v-accent),0 0 0 6px color-mix(in oklab,var(--v-accent) 10%,transparent),inset 0 0 0 1px color-mix(in oklab,var(--v-accent) 18%,white)}
-.nebula__hub .v-mark{width:34px;height:34px}
-@keyframes hub-ring{from{transform:scale(1);opacity:.6}to{transform:scale(1.22);opacity:0}}
-.v-service-cloud.is-orbital .v-effect{opacity:.9}
 
 /* Every pill a person taps is at least 44px tall. */
 .cart-remove,.cart-summary .cart-back,.checkout-box .cart-back,.buybox__note a,.sort__link{min-height:44px}

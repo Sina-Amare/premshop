@@ -65,9 +65,6 @@ field
 field__hint
 grid
 micro
-nebula
-nebula__item
-nebula__mono
 page-head__intro
 page-head__title
 pcard

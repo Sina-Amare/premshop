@@ -59,17 +59,21 @@ def test_the_orbit_moves_without_a_pause_button_and_stops_for_a_visitor(
         )
         page.goto(live_server.url + "/")
         scene = page.locator("[data-hero-scene]")
-        expect(scene).to_have_attribute("data-orbit-mode", "orbit")
+        expect(scene).to_have_class(re.compile(r"\bis-orbit\b"))
         assert page.locator("[data-orbit-toggle]").count() == 0
-        item = page.locator(".nebula__item:visible").first
+        item = page.locator(".po-node").first
         before = item.get_attribute("style")
         page.wait_for_timeout(350)
         assert item.get_attribute("style") != before, "the orbit should move on its own"
-        item.hover(force=True)
+        item.locator("a").hover(force=True)
         stopped = item.get_attribute("style")
         page.wait_for_timeout(350)
         assert item.get_attribute("style") == stopped
+        page.mouse.move(5, 5)
         page.emulate_media(reduced_motion="reduce")
-        expect(scene).not_to_have_class(re.compile(r"\bis-animated\b"))
+        expect(page.locator("html")).to_have_attribute("data-motion", "off")
+        stopped = item.get_attribute("style")
+        page.wait_for_timeout(350)
+        assert item.get_attribute("style") == stopped
     finally:
         page.close()
