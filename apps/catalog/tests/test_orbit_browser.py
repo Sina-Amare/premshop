@@ -96,12 +96,19 @@ def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live
         page.add_init_script(
             "window.homeShift=0;new PerformanceObserver(xs=>xs.getEntries().forEach(x=>{if(!x.hadRecentInput)window.homeShift+=x.value})).observe({type:'layout-shift',buffered:true});"
         )
+        # Layout shifts ignore transforms, so read the logos' places in the first frame
+        # itself: a frame callback queued first runs just before the first paint.
+        page.add_init_script(
+            "requestAnimationFrame(() => { window.firstFrame = [...document.querySelectorAll('.po-node')].map(n => n.style.transform); });"
+        )
         page.route("**/static/js/cart.js", lambda route: held.append(route))
         page.goto(live_server.url + "/", wait_until="commit")
         page.wait_for_function(
             "performance.getEntriesByType('paint').some(x=>x.name==='first-contentful-paint')"
         )
         assert len(held) == 1
+        placed = page.evaluate("window.firstFrame")
+        assert len(placed) == 12 and all(placed) and len(set(placed)) == 12, placed
         held.pop().continue_()
         page.wait_for_load_state()
         page.evaluate("() => document.fonts.ready")
