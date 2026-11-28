@@ -21,13 +21,15 @@ DEPARTMENTS = {
     "media": ("سرگرمی", ["Spotify Premium", "YouTube Premium", "Netflix", "Steam Wallet"]),
     "gift": ("گیفت کارت", ["Apple Gift Card", "Google Play Gift Card", "PlayStation", "Xbox"]),
 }
-# Every frame of a whole turn, the closest any two logos, names or the centre card come.
+# Every frame of a whole turn, the closest any two logos, names or the centre card come,
+# and how far any of them reaches past the hero, which clips what leaves it.
 TURN = """() => {
     const core = document.querySelector('.po-core').getBoundingClientRect();
+    const hero = document.querySelector('.v-hero').getBoundingClientRect();
     const cx = core.left + core.width / 2, cy = core.top + core.height / 2, r = core.width / 2;
     const apart = (a, b) => Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
     const fromCore = b => Math.hypot(Math.max(b.left - cx, 0, cx - b.right), Math.max(b.top - cy, 0, cy - b.bottom)) - r;
-    let closest = Infinity, time = 1000;
+    let closest = Infinity, outside = -Infinity, time = 1000;
     window.orbitFrame(time);
     for (let step = 0; step < 360; step++) {
         window.orbitFrame(time += 150000 / 360);
@@ -35,11 +37,17 @@ TURN = """() => {
             [...node.querySelectorAll('.po-plate, .po-label')].map(e => e.getBoundingClientRect()).filter(b => b.width > 1));
         nodes.forEach((boxes, i) => boxes.forEach(a => {
             closest = Math.min(closest, fromCore(a));
+            outside = Math.max(outside, hero.top - a.top, a.bottom - hero.bottom);
             nodes.slice(i + 1).forEach(other => other.forEach(b => { closest = Math.min(closest, apart(a, b)); }));
         }));
     }
-    return closest;
+    return [closest, outside];
 }"""
+# How many lines the longest outer name takes.
+NAME_LINES = """() => Math.max(...[...document.querySelectorAll('.po-node:not(.po-node--inner) .po-label')]
+    .map(e => Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))))"""
+# A name that wraps to three lines under its logo.
+LONG_NAME = "Google Play Gift Card, United States Store"
 # The smallest angle, in degrees, between an inner logo and an outer one.
 IN_THE_GAPS = """() => {
     const core = document.querySelector('.po-core').getBoundingClientRect();
@@ -128,6 +136,7 @@ def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(
 ):
     shelf = [names[i] for i in range(4) for _, names in DEPARTMENTS.values()]
     Product.objects.filter(name__in=shelf[count:]).update(status="draft")
+    Product.objects.filter(name="Google Play Gift Card").update(name=LONG_NAME)
     page = browser.new_page(viewport={"width": width, "height": 1000})
     page.add_init_script(STILL_FRAMES)
     try:
@@ -141,8 +150,10 @@ def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(
         assert page.locator(".po-node--inner").count() == count - 8
         # Each inner logo sits in a gap between two outer ones, never in line with one.
         assert page.evaluate(IN_THE_GAPS) >= 15
-        closest = page.evaluate(TURN)
+        assert page.evaluate(NAME_LINES) <= 2
+        closest, outside = page.evaluate(TURN)
         assert closest >= 8, closest
+        assert outside <= 0, outside
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     finally:
         page.close()

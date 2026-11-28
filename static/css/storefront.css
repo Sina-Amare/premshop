@@ -142,8 +142,9 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
   .is-orbit .po-plate{width:calc(62px * var(--s));border-radius:18px}
   .is-orbit .po-node--inner .po-plate{width:calc(52px * var(--s));border-radius:15px}
   .is-orbit .po-node--inner .po-plate img{width:50%;height:50%}
-  /* An inner name would point into the centre, which names the lit service anyway. */
-  .is-orbit .po-node:not(.po-node--inner) .po-label{position:static;width:auto;height:auto;max-width:104px;overflow:visible;clip-path:none;white-space:normal;font-size:12px;line-height:1.25;text-align:center;text-shadow:0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg);transition:color 200ms}
+  /* An inner name would point into the centre, which names the lit service anyway. An outer
+     name keeps to two lines, clear of the inner ring and inside the hero; the link reads it whole. */
+  .is-orbit .po-node:not(.po-node--inner) .po-label{position:static;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;width:auto;height:auto;max-width:104px;overflow:hidden;clip-path:none;white-space:normal;font-size:12px;line-height:1.25;text-align:center;text-shadow:0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg),0 0 3px var(--v-hero-bg);transition:color 200ms}
   .is-orbit .po-node.is-lit .po-label,.is-orbit .po-node a:is(:hover,:focus-visible) .po-label{color:var(--v-ink);font-weight:700}
 }
 /* Stacked under the headline on a phone, the services would repeat the departments and
