@@ -96,10 +96,16 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
    script does not run): the centre names the lit service above a grid of the twelve logos,
    their names for screen readers. From 1200px orbit.js turns it into an orbit round the
    centre. On a phone the hero ends at its buttons. */
+/* The lit service's colour, registered so it can glide from one service to the next. */
+@property --po-glow{syntax:"<color>";inherits:true;initial-value:#2459d3}
 .po{min-width:0;width:100%;max-width:620px;justify-self:center}
-.po-stage{--s:1;position:relative;display:flex;flex-direction:column;gap:14px;padding:14px;background:#fff;border:1px solid var(--v-line);border-radius:20px}
+.po-stage{--s:1;--po-glow:var(--brand);position:relative;display:flex;flex-direction:column;gap:14px;padding:14px;background:#fff;border:1px solid var(--v-line);border-radius:20px;transition:--po-glow 700ms ease}
 .po-dial{display:none}
-.po-core{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"dept price" "name price" "sla go";align-items:center;gap:3px 12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--brand) 7%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 18%,transparent);text-align:start}
+.po-core{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"dept price" "name price" "sla go";align-items:center;gap:3px 12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--po-glow) 7%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--po-glow) 18%,transparent);text-align:start}
+/* A new service's details fade in rather than cut in. */
+.po-core>*{animation:po-in 320ms var(--ease-out) both}
+@keyframes po-in{from{opacity:0}}
+.po-core .pcard__pre{font-size:12px}
 .po-core__dept{grid-area:dept;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;line-height:1.5;color:var(--dept)}
 .po-core__dept::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
 /* A long name or delivery note is cut at two lines; the logo's accessible name holds it whole. */
@@ -117,7 +123,8 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
 .po-node.is-dim{opacity:.25}
 .po-node a{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--v-text);text-decoration:none}
 .po-node a:focus-visible{outline:none}
-.po-plate{display:grid;place-items:center;width:100%;aspect-ratio:1;border:1px solid #e1e6ec;border-radius:16px;background:#fff;box-shadow:0 8px 18px -12px rgb(20 30 50/.4);transition:transform 200ms,box-shadow 200ms,border-color 200ms}
+/* Each tile casts a soft shadow of its own brand's colour, so the ring reads as many services. */
+.po-plate{display:grid;place-items:center;width:100%;aspect-ratio:1;border:1px solid #e1e6ec;border-radius:16px;background:#fff;box-shadow:0 9px 20px -12px color-mix(in srgb,var(--brand) 60%,rgb(20 30 50/.5));transition:transform 200ms,box-shadow 200ms,border-color 200ms}
 .po-plate img{width:52%;height:52%;object-fit:contain}
 .po-mono{font:600 24px/1 var(--font-head);color:var(--v-accent)}
 .po-node.is-lit .po-plate,.po-node a:is(:hover,:focus-visible) .po-plate{transform:scale(1.12);border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 15%,transparent),0 12px 24px -14px var(--brand)}
@@ -128,17 +135,22 @@ html{scroll-behavior:smooth}body{background:#fff;color:var(--v-ink)}a,button,inp
   .v-hero__inner{grid-template-columns:.86fr 1.34fr;gap:40px}
   .po.is-orbit{max-width:640px;padding-block-end:24px}
   .is-orbit .po-stage{display:block;aspect-ratio:1;padding:0;border:0;border-radius:0;background:none}
+  /* The lit service's colour pools softly round the centre and tints both orbits. */
+  .is-orbit .po-stage::before{content:"";position:absolute;inset:13%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--po-glow) 22%,transparent),color-mix(in srgb,var(--po-glow) 8%,transparent) 60%,transparent);pointer-events:none}
   .is-orbit .po-dial{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
   .po-dial__halo{fill:none;stroke:#e9edf3}
-  .po-dial__outer{fill:none;stroke:#cfd6df;stroke-width:1.2;stroke-dasharray:3 7}
-  .po-dial__inner{fill:none;stroke:#dde2e9}
-  .po-beam{stroke:var(--brand);stroke-width:1.5;stroke-dasharray:3 5;opacity:.45}
+  .po-dial__outer,.po-dial__inner{fill:none;stroke:color-mix(in srgb,var(--po-glow) 30%,#cfd6df);stroke-width:1.2;stroke-dasharray:3 7}
+  .po-beam{stroke:var(--po-glow);stroke-width:1.5;stroke-dasharray:3 5;opacity:.55}
   /* Centred by its insets, so the layout reads the same in either direction. */
-  .is-orbit .po-core{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:196px;height:196px;margin:auto;padding:14px;border-radius:50%;background:#fff;text-align:center;transform:scale(var(--s));box-shadow:0 0 0 7px color-mix(in srgb,var(--brand) 9%,transparent),0 0 0 1px color-mix(in srgb,var(--brand) 22%,transparent),0 22px 44px -22px rgb(20 30 50/.4);transition:box-shadow 350ms}
-  /* Sized so two lines of name and of delivery, and an eight-digit price, stay inside the circle. */
+  .is-orbit .po-core{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:208px;height:208px;margin:auto;padding:14px;border-radius:50%;background:#fff;text-align:center;transform:scale(var(--s));box-shadow:0 0 0 7px color-mix(in srgb,var(--po-glow) 11%,transparent),0 0 0 1px color-mix(in srgb,var(--po-glow) 26%,transparent),0 0 48px 2px color-mix(in srgb,var(--po-glow) 18%,transparent),0 22px 44px -22px rgb(20 30 50/.4)}
+  /* Sized so two lines of name and of delivery, an eight-digit price and a discount's struck original stay inside the circle. */
   .is-orbit .po-core__name{max-inline-size:144px;font-size:17px;line-height:1.25}
   .is-orbit .po-core .price__num{font-size:22px}
-  .is-orbit .po-core__sla{max-inline-size:160px;font-size:11px;line-height:1.4}
+  /* A discount's original price takes its own line above the price, which fills the circle's width. */
+  .is-orbit .po-core .po-price{display:flex;flex-wrap:wrap;justify-content:center;column-gap:5px;inline-size:100%}
+  .is-orbit .po-core .price{display:contents}
+  .is-orbit .po-core .price__was{order:-1;flex-basis:100%;margin:0;font-size:12px;line-height:1.3;text-align:center}
+  .is-orbit .po-core__sla{max-inline-size:160px;font-size:12px;line-height:1.4}
   .is-orbit .po-core__go{padding:4px 10px}
   .is-orbit .po-nodes{display:block}
   /* orbit.js moves each logo from the stage's centre line, so its anchor is the middle. */

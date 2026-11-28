@@ -31,9 +31,17 @@
   const gap = 2 * Math.PI / outer;
   const angle = i => turn + (i < outer ? i * gap : gap / 2 + Math.floor((i - outer) * outer / (nodes.length - outer)) * gap);
   const radius = i => (i < outer ? 272 : 160);
+  // The beam sweeps round to a newly lit logo, the short way, rather than jumping to it. Its end is
+  // kept relative to the turn, so the sweep rides along with the constellation.
+  let beamAt = [0, radius(0)], sweepFrom = beamAt, since = -Infinity, sweeping = 0;
   const aim = () => {
-    beam.setAttribute('x2', (320 + Math.cos(angle(lit)) * radius(lit)).toFixed(1));
-    beam.setAttribute('y2', (320 + Math.sin(angle(lit)) * radius(lit)).toFixed(1));
+    const t = document.documentElement.dataset.motion === 'on' ? Math.min(1, (performance.now() - since) / 420) : 1;
+    const e = 1 - (1 - t) ** 3;
+    const [o0, r0] = sweepFrom, o1 = angle(lit) - turn, r1 = radius(lit);
+    beamAt = [o0 + (((o1 - o0 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) * e, r0 + (r1 - r0) * e];
+    beam.setAttribute('x2', (320 + Math.cos(turn + beamAt[0]) * beamAt[1]).toFixed(1));
+    beam.setAttribute('y2', (320 + Math.sin(turn + beamAt[0]) * beamAt[1]).toFixed(1));
+    if (t < 1 && !sweeping) sweeping = requestAnimationFrame(() => { sweeping = 0; aim(); });
   };
   const paint = () => {
     // The logo's centre sits on its ring and its name hangs below it.
@@ -46,6 +54,8 @@
   const show = i => {
     // Redrawing would delete a focused «دیدن محصول» and send its product elsewhere.
     if (core.contains(document.activeElement)) return;
+    sweepFrom = beamAt;
+    since = performance.now();
     lit = i;
     nodes.forEach((node, k) => node.classList.toggle('is-lit', k === i));
     stage.style.setProperty('--brand', nodes[i].style.getPropertyValue('--brand'));
