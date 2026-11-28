@@ -40,6 +40,15 @@ TURN = """() => {
     }
     return closest;
 }"""
+# The smallest angle, in degrees, between an inner logo and an outer one.
+IN_THE_GAPS = """() => {
+    const core = document.querySelector('.po-core').getBoundingClientRect();
+    const angle = node => { const b = node.querySelector('.po-plate').getBoundingClientRect();
+        return Math.atan2(b.top + b.height / 2 - core.top - core.height / 2, b.left + b.width / 2 - core.left - core.width / 2) * 180 / Math.PI; };
+    const outer = [...document.querySelectorAll('.po-node:not(.po-node--inner)')].map(angle);
+    const inner = [...document.querySelectorAll('.po-node--inner')].map(angle);
+    return Math.min(...inner.flatMap(a => outer.map(b => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); })));
+}"""
 STILL_FRAMES = "window.requestAnimationFrame = f => { window.orbitFrame = f; return 1 }; window.cancelAnimationFrame = () => {}"
 
 
@@ -113,8 +122,12 @@ def test_late_fonts_do_not_move_the_home_hero(browser, live_server, catalog):
         page.close()
 
 
-@pytest.mark.parametrize("width", [1200, 1440, 1920])
-def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(browser, live_server, catalog, width):
+@pytest.mark.parametrize("width,count", [(1200, 12), (1440, 12), (1920, 12), (1440, 9), (1440, 11)])
+def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(
+    browser, live_server, catalog, width, count
+):
+    shelf = [names[i] for i in range(4) for _, names in DEPARTMENTS.values()]
+    Product.objects.filter(name__in=shelf[count:]).update(status="draft")
     page = browser.new_page(viewport={"width": width, "height": 1000})
     page.add_init_script(STILL_FRAMES)
     try:
@@ -124,8 +137,10 @@ def test_a_whole_turn_keeps_logos_names_and_the_centre_apart(browser, live_serve
         page.wait_for_function("typeof window.orbitFrame === 'function'", polling=50)
         stage = page.locator(".po-stage").bounding_box()
         assert abs(stage["width"] - stage["height"]) < 1 and stage["width"] >= 560, stage
-        assert page.locator(".po-node").count() == 12
-        assert page.locator(".po-node--inner").count() == 4
+        assert page.locator(".po-node").count() == count
+        assert page.locator(".po-node--inner").count() == count - 8
+        # Each inner logo sits in a gap between two outer ones, never in line with one.
+        assert page.evaluate(IN_THE_GAPS) >= 15
         closest = page.evaluate(TURN)
         assert closest >= 8, closest
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

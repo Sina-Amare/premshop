@@ -26,9 +26,10 @@
   let lit = 0, turn = -Math.PI / 2, last = 0, frame = 0, cycle = 0, check = 0;
   let size = 0, plates = [], visible = false, pointed = false, pill = false;
 
-  // One rigid constellation: each inner logo sits in a gap between two outer ones, so no
-  // name ever crosses another logo, whatever the angle.
-  const angle = i => turn + (i < outer ? i * 2 * Math.PI / outer : Math.PI / outer + (i - outer) * 2 * Math.PI / (nodes.length - outer));
+  // One rigid constellation: each inner logo sits in a gap between two outer ones, spread
+  // over the gaps however many there are, so no name ever crosses another logo.
+  const gap = 2 * Math.PI / outer;
+  const angle = i => turn + (i < outer ? i * gap : gap / 2 + Math.floor((i - outer) * outer / (nodes.length - outer)) * gap);
   const radius = i => (i < outer ? 272 : 160);
   const aim = () => {
     beam.setAttribute('x2', (320 + Math.cos(angle(lit)) * radius(lit)).toFixed(1));
