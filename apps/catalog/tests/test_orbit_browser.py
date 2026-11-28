@@ -467,3 +467,44 @@ def test_the_focused_centre_link_keeps_its_focus_and_its_product(browser, live_s
         expect(page.locator(".po-core .po-core__name")).to_have_text(product.name)
     finally:
         page.close()
+
+
+# How far the farthest corner of anything in the centre reaches past its circle.
+PAST_THE_CIRCLE = """() => {
+    const core = document.querySelector('.po-core'), c = core.getBoundingClientRect();
+    const cx = c.left + c.width / 2, cy = c.top + c.height / 2, r = c.width / 2;
+    return Math.max(...[...core.children].map(e => e.getBoundingClientRect()).flatMap(b =>
+        [[b.left, b.top], [b.right, b.top], [b.left, b.bottom], [b.right, b.bottom]]
+            .map(([x, y]) => Math.hypot(x - cx, y - cy) - r)));
+}"""
+
+
+@pytest.mark.parametrize("width", [1200, 1920])
+def test_the_centre_keeps_a_long_name_note_and_price_inside_its_circle(
+    browser, live_server, catalog, width
+):
+    product = catalog["ChatGPT Plus"]
+    product.name = "Adobe Creative Cloud All Apps with Stock and Fonts"
+    product.delivery_note = (
+        "به‌علت محدودیت پرداخت بین‌المللی، تحویل این اشتراک ممکن است تا سه روز کاری"
+        " پس از پرداخت طول بکشد."
+    )
+    product.save()
+    product.plans.update(sale_price=12_345_678)
+    Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=99_000_000)
+    page = browser.new_page(viewport={"width": width, "height": 1000})
+    page.clock.install()
+    try:
+        page.goto(live_server.url + "/")
+        page.wait_for_function(STYLED)
+        page.evaluate("() => document.fonts.ready")
+        expect(page.locator(".po-core .po-price")).to_have_text(
+            re.compile(r"از\s*۱۲,۳۴۵,۶۷۸\s*تومان")
+        )
+        assert page.evaluate(PAST_THE_CIRCLE) <= 0
+        # Cut short in the centre, whole in the logo's accessible name.
+        expect(page.locator(".po-node a").first).to_have_accessible_name(
+            re.compile(f"^{product.name}.*{product.delivery_note}")
+        )
+    finally:
+        page.close()
