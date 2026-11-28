@@ -2,7 +2,7 @@
 the headline from 761px and without scripts, nothing on a phone."""
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -89,6 +89,14 @@ def lit(page) -> str:
     return page.locator(".po-node.is-lit .po-label").inner_text()
 
 
+def stop_time(page) -> None:
+    """An installed clock keeps flowing on its own; paused, only run_for moves the page's
+    time, so the orbit cannot turn between one step of a test and the next."""
+    start = datetime(2030, 1, 1)
+    page.clock.install(time=start)
+    page.clock.pause_at(start + timedelta(seconds=1))
+
+
 def test_the_orbit_is_laid_out_before_unrelated_cart_code_finishes(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     held = []
@@ -173,7 +181,7 @@ def test_the_centre_names_the_lit_service_with_its_price_and_delivery(
     Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=9_000_000)
     price = format_toman(product.plans.order_by("sale_price").first().sale_price, with_unit=False)
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
@@ -219,7 +227,7 @@ def test_a_discount_ending_switches_the_centre_price(browser, live_server, catal
     plan.save()
     after = format_toman(plan.sale_price, with_unit=False)
     page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         price = page.locator(".po-core .price__num")
@@ -235,7 +243,7 @@ def test_a_discount_ending_switches_the_centre_price(browser, live_server, catal
 
 def test_pointing_at_or_focusing_a_logo_stops_the_turn_and_the_cycle(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
@@ -288,7 +296,7 @@ def test_a_department_pill_dims_the_other_departments(browser, live_server, cata
 
 def test_under_reduced_motion_the_orbit_stands_still(browser, live_server, catalog):
     page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
@@ -404,7 +412,7 @@ def test_on_a_phone_the_hero_ends_at_its_buttons(browser, live_server, catalog, 
 def test_the_card_beside_the_headline_stands_still(browser, live_server, catalog):
     """The owner's call: below 1200px the centre changes only for a visitor."""
     page = browser.new_page(viewport={"width": 1000, "height": 900})
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
@@ -429,7 +437,7 @@ def test_the_price_check_rests_while_the_orbit_is_out_of_sight(browser, live_ser
         plan.sale_price, with_unit=False
     )
     page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         price = page.locator(".po-core .price__num")
@@ -457,7 +465,7 @@ def test_the_focused_centre_link_keeps_its_focus_and_its_product(browser, live_s
         "() => [document.activeElement.className, document.activeElement.getAttribute('href')]"
     )
     page = browser.new_page(viewport={"width": 1440, "height": 1000})
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
@@ -500,7 +508,7 @@ def test_the_centre_keeps_a_long_name_note_and_price_inside_its_circle(
     product.plans.update(sale_price=12_345_678)
     Plan.objects.create(product=product, title="۱ ساله", cost_price=1, sale_price=99_000_000)
     page = browser.new_page(viewport={"width": width, "height": 1000})
-    page.clock.install()
+    stop_time(page)
     try:
         page.goto(live_server.url + "/")
         page.wait_for_function(STYLED)
