@@ -629,38 +629,6 @@
   .hero__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-4);
                margin-block-start: var(--spacing-6); }
 
-  /* The constellation: three sizes on offset rows, so it reads as an
-     arrangement rather than a grid that lost a column. */
-  .nebula { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap;
-            gap: var(--spacing-4); justify-content: center; align-content: center; }
-  .nebula__item { display: grid; place-items: center; text-decoration: none;
-                  inline-size: 86px; block-size: 86px; flex: none;
-                  background: var(--color-surface);
-                  border: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent);
-                  border-radius: 22px; box-shadow: var(--shadow-lift);
-                  animation: nebula-float 9s ease-in-out infinite;
-                  transition: transform var(--dur-lg) var(--ease-out),
-                              box-shadow var(--dur-lg) var(--ease-out); }
-  .nebula__item img { inline-size: auto; block-size: auto;
-                      max-inline-size: 42px; max-block-size: 42px; }
-  .nebula__mono { font-family: var(--font-head); font-size: 26px; font-weight: 600;
-                  line-height: 1; color: var(--color-secondary); }
-  .nebula__item:nth-child(3n + 2) { inline-size: 70px; block-size: 70px; border-radius: 18px;
-                                    animation-delay: -3s; }
-  .nebula__item:nth-child(3n + 2) img { max-inline-size: 34px; max-block-size: 34px; }
-  .nebula__item:nth-child(4n + 3) { inline-size: 100px; block-size: 100px; border-radius: 26px;
-                                    animation-delay: -6s; }
-  .nebula__item:nth-child(4n + 3) img { max-inline-size: 50px; max-block-size: 50px; }
-  .nebula__item:hover, .nebula__item:focus-visible {
-    transform: translateY(-4px) scale(1.03);
-    box-shadow: var(--shadow-tile-hover);
-  }
-  .nebula__item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-  @keyframes nebula-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-7px); }
-  }
-
   /* --- The discounts panel --------------------------------------------------
      A tinted surface holding the cards, rather than a bare row of them. The
      shop will often have exactly one thing on offer, and one card in a
@@ -692,7 +660,6 @@
     .hero { padding-block: var(--spacing-7); }
     .hero__inner { grid-template-columns: 1fr; gap: var(--spacing-6); }
     .hero__said { grid-column: 1; grid-row: 1; }
-    .nebula { grid-column: 1; grid-row: 2; justify-content: flex-start; }
     .hero__title { font-size: 34px; }
     .hero__lead { font-size: 17px; }
   }
@@ -701,21 +668,7 @@
     .hero__title { font-size: 28px; }
     .hero__act { gap: var(--spacing-3); }
     .hero__act .btn { inline-size: 100%; }
-    .nebula { gap: var(--spacing-3); }
-    .nebula__item,
-    .nebula__item:nth-child(3n + 2),
-    .nebula__item:nth-child(4n + 3) { inline-size: 64px; block-size: 64px; border-radius: 16px; }
-    .nebula__item img,
-    .nebula__item:nth-child(3n + 2) img,
-    .nebula__item:nth-child(4n + 3) img { max-inline-size: 32px; max-block-size: 32px; }
-
   }
-  /* Ambient motion is a desktop affordance: on a phone it sits under the thumb
-     during the first scroll and costs battery nobody asked to spend. */
-  @media (max-width: 900px), (prefers-reduced-motion: reduce) {
-    .nebula__item { animation: none; }
-  }
-
   /* --- Grids and cards ------------------------------------------------------ */
   .grid { display: grid; gap: var(--spacing-4);
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
